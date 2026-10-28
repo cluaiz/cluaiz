@@ -100,9 +100,31 @@ from `permission.json` (`cluaiz permission port <n>`).
 | Text-to-speech | Experimental | Kokoro and other supported families |
 | Speech-to-text | Not available | Whisper |
 | Embeddings | Text | Text, CLIP-style images |
-| Document extraction (text, PDF with OCR, DOCX) | Native, no model needed | Native, no model needed |
+| Document ingest | Vision models read pages and images; text embeddings | Text and image embeddings |
 
 Families and the models tested with each are listed in [`RELEASE.md`](RELEASE.md).
+
+### Documents and ingest
+
+`POST /v1/ingest` and `cluaiz ingest <file>` turn documents and images into text, chunks or vectors. A model is
+optional: without one the engine extracts the text itself.
+
+| Input | Native extraction (no model) |
+| :--- | :--- |
+| Text, Markdown, source code, CSV | Text and chunks |
+| Digital PDF | The embedded page text |
+| Scanned PDF and images | OCR (PDFium renders the pages, Tesseract reads them) |
+| DOCX, legacy DOC | Main-body text and tables |
+
+| Model chosen | Result |
+| :--- | :--- |
+| None | Text, chunks and extraction metadata |
+| A text embedding model (GGUF or ONNX) | Chunk vectors, optionally with the text |
+| An image embedding model (ONNX) | Image or page vectors |
+| A GGUF vision model | Text the model writes from the page or image, following an instruction |
+
+Not included yet: XLSX / PPTX parsing and a persistent vector index. Details:
+[`docs/api/inference/ingest.md`](docs/api/inference/ingest.md).
 
 ### Placement and memory
 
