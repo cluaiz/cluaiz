@@ -288,15 +288,19 @@ graph TD
 
 ### Hardware Compatibility Matrix
 
-| Backend      | Vendor    | Acceleration         | Status         |
-| :----------- | :-------- | :------------------- | :------------- |
-| **CUDA**     | NVIDIA    | Tensor Cores (v11+)  | ✅ Alpha        |
-| **Metal**    | Apple     | MPS / Neural Engine  | ✅ Alpha        |
-| **Vulkan**   | Cross-Platform | Cross-Vendor Compute | ✅ Alpha        |
-| **ROCm/HIP** | AMD       | Matrix Cores         | ✅ Alpha        |
-| **OpenVINO** | Intel     | NPU / iGPU           | 🧪 Experimental |
-| **SYCL**     | Intel     | oneAPI / XMX         | 🧪 Experimental |
-| **CANN**     | Huawei    | Ascend NPU           | 🧪 Experimental |
+What release v0.1.0 ships (core + GPU packs, chosen by the installer) and where it has run. Details:
+[`docs/deployments/platforms.md`](docs/deployments/platforms.md).
+
+| Hardware | Backend | Release package | Tested on |
+| :--- | :--- | :--- | :--- |
+| **NVIDIA GPU**, Windows | CUDA 12 / CUDA 13 | `win-x64` core + `llama-cuda12` / `llama-cuda13` | ✅ RTX 3050 Laptop 4 GB, Windows 11 (CUDA 13) |
+| **NVIDIA GPU**, Linux | CUDA 12 / CUDA 13 | `linux-x64` core + `llama-cuda12` / `llama-cuda13` | ✅ Tesla T4 16 GB, Ubuntu 24.04 (CUDA 12 pack, driver 580) |
+| **AMD Radeon / Intel Arc**, Windows and Linux | Vulkan | core + `llama-vulkan` | 🧪 Built, not yet run on this hardware |
+| **Apple Silicon** (M1 or newer) | Metal (inside the core) | `mac-arm64` core | 🧪 Built, Mac test pending ([`test/mac`](test/mac)) |
+| **x86-64 CPU** (SSE4.2 to AVX-512) | CPU, best build picked at start | any core | ✅ Ryzen 7 7435HS (Windows), Xeon 2.3 GHz (Ubuntu) |
+| **ARM64 Linux** | CPU (NEON and newer) | `linux-arm64` core | 🧪 Built, not yet run on hardware |
+
+ROCm/HIP, OpenVINO, SYCL and CANN builds are not part of the release yet.
 
 ### Local Hardware Benchmark (Empirical Results: 2026-10-12)
 
@@ -336,6 +340,63 @@ graph TD
 > 
 > **Complete Reproducible Benchmark**: Full test tables, methodology, and reproduction scripts (`python test/engine_regression/run.py`) are documented in [`test/engine_regression/RESULTS.md`](test/engine_regression/RESULTS.md).
 >
+
+### Cloud GPU Benchmark (Empirical Results: 2026-10-28)
+
+*Same test (`test/engine_regression/run.py`) on **Google Cloud `n1-standard-8`: Intel Xeon 2.3 GHz (4C/8T), 29 GB RAM,
+NVIDIA Tesla T4 (16 GB VRAM), Ubuntu 24.04, driver 580**. Cluaiz is release v0.1.0 installed with `install.sh`
+(CUDA 12 pack); llama.cpp is `llama-bench` built on the same machine from the same llama.cpp commit and given the
+placement Cluaiz chose.*
+
+#### 1. Generation Speed (Tokens / Second)
+
+| Model (Quantization) | Mode | Placement | Cluaiz | Upstream llama.cpp | Delta |
+| :--- | :--- | :--- | :---: | :---: | :---: |
+| **Qwen3 4B (Q4_K_M)** | auto / gpu | Full GPU | **65.5 t/s** | 62.3 t/s | +5% |
+| | split | 18 of 36 blocks on GPU | **14.5 t/s** | 13.9 t/s | +4% |
+| | cpu | CPU only | **7.7 t/s** | 7.9 t/s | same |
+| **Gemma 3 12B (Q4_K_M)** | auto / gpu | Full GPU | **17.0 t/s** | 15.7 t/s | +8% |
+| | split | 24 of 48 blocks on GPU | **5.5 t/s** | 5.4 t/s | same |
+| | cpu | CPU only | **3.1 t/s** | 3.1 t/s | same |
+| **Mistral Small 3.2 24B (Q4_K_M, 13.3 GB)** | auto / gpu | Full GPU | **8.0 t/s** | 8.2 t/s | same |
+| | split | 20 of 40 blocks on GPU | **3.1 t/s** | 3.1 t/s | same |
+| **Gemma 4 31B (Q4_K_M, 17.1 GB)** | auto | 41 of 60 blocks on GPU (planner) | **3.2 t/s** | 3.1 t/s | same |
+| | split | 30 of 60 blocks on GPU | **2.3 t/s** | 2.3 t/s | same |
+| | cpu | CPU only | **1.3 t/s** | 1.3 t/s | same |
+| **Gemma 4 31B (Q8_0, 30.4 GB)** | auto | 23 of 60 blocks on GPU (planner) | **1.3 t/s** | 1.3 t/s | same |
+
+#### 2. Prompt Processing Speed (~535 tokens prompt)
+
+Measured with the prompt fixes on `main` (commits `6120d017`, `4228752a`; not in release v0.1.0). Before them the
+T4 showed llama.cpp 7–22% ahead in the cases marked below.
+
+| Model | Full GPU (Cluaiz vs llama.cpp) | Split GPU + RAM (Cluaiz vs llama.cpp) | Split Speedup |
+| :--- | :---: | :---: | :---: |
+| **Qwen3 4B** | 1935 vs 1978 t/s (v0.1.0: 1758 vs 1882) | **593 vs 393 t/s** | **1.5x faster** |
+| **Gemma 3 12B** | 690 vs 725 t/s (v0.1.0: 572 vs 649) | **228 vs 141 t/s** | **1.6x faster** |
+| **Mistral Small 3.2 24B** | 372 vs 385 t/s (v0.1.0: 315 vs 340) | 154 vs 153 t/s (1085 tokens) | same |
+| **Gemma 4 31B Q4** (planner split, 41/60) | — | **116 vs 117 t/s** (v0.1.0: 96 vs 117) | same |
+| **Gemma 4 31B Q8** (planner split, 23/60) | — | **50 vs 51 t/s** (v0.1.0: 45 vs 51) | same |
+
+CPU only, llama.cpp also without a GPU (`-dev none`): Qwen3 4B 27 vs 29, Gemma 3 12B 10 vs 10, Mistral 24B 5 vs 5,
+Gemma 4 31B 4 vs 4 t/s.
+
+#### 3. Less RAM and Models Bigger Than RAM + VRAM (same VM with 15 GB RAM)
+
+| Model | What happened | Cluaiz | llama.cpp |
+| :--- | :--- | :---: | :---: |
+| **Gemma 4 31B Q4** (17.1 GB) | Planner: 41 of 60 blocks on GPU | **2.3 t/s** gen, 112 t/s prompt | 2.3 t/s gen, 112 t/s prompt |
+| **Gemma 4 31B Q8** (30.4 GB, dense) | Planner refuses: the closest split is 8 GB short of RAM, with a clear message | not loaded (by design) | — |
+| | Forced by the user setting `n_gpu_layers 20`: weights read from the disk on every token | 0.008–0.014 t/s gen, 1.5–3.0 t/s prompt | not measured (test ended) |
+
+> [!NOTE]
+> **Reading the T4 numbers**: generation equals llama.cpp in every test (-3% to +8%; the T4's clock moves a few
+> percent between runs). Prompt processing equals llama.cpp on full GPU after the two fixes and stays up to 1.6x
+> faster when a model is split across GPU and RAM. A dense model larger than RAM + VRAM is refused by the planner
+> instead of thrashing the disk; streaming from the SSD is used for MoE experts (Gemma 4 26B above).
+>
+> **Full Report**: methodology, every setting, the exact llama-bench commands and all logs are in
+> [`test/cloud/runs/2026-10-28-run5-linux-t4-regression/RESULTS.md`](test/cloud/runs/2026-10-28-run5-linux-t4-regression/RESULTS.md).
 ### Hardware & Performance Troubleshooting
 
 cluaiz pushes hardware to its absolute mathematical limits. If you experience unexpected performance drops:

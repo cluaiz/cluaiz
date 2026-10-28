@@ -1,0 +1,71 @@
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M
+║   • Architecture    : llama | 40 layers | heads 32 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 13.35 GB | input embeddings 0.35 GB (always CPU) | output head 0.51 GB | vocab 131072
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 131072 tokens
+║   • Active context  : 4096 tokens, KV Kv8 (Auto: 4096 tokens with KV Kv8 + buffer 0.89 GB (did not fit with KV Kv16 + buffer 0.89 GB))
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : Tesla T4 | free 14.56 of 15.00 GB | buffer kept free 0.89 GB (measured: GPU pool +0.14 GB + 0.75 GB reserve; estimate corrected by llama.cpp's dry run +0.04 GB)
+║   • RAM             : free 27.87 of 29.37 GB | Cluaiz may use 26.41 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv8 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 40 on GPU, 0 in RAM (of 40)
+║   • VRAM            : 13.62 GB (weights + KV 0.33 + logits)
+║   • RAM             : 0.35 GB (incl. KV 0.00)
+║   • Reason          : Full GPU: weights 12.99 + KV 0.33 + buffers 0.29 = 13.62 GB vs usable VRAM 13.67 GB
+║   • Speed           : not measured (chosen by rule order)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM 13.62 GB | RAM  0.35 GB | weights 12.99 + KV 0.33 + buffers 0.29 = 13.62 GB vs usable VRAM 13.67 GB
+║   • GPU + RAM split  [FITS]     VRAM 13.27 GB | RAM  0.69 GB | 39 / 40 blocks + output head on GPU (13.27 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM 13.92 GB | weights 13.34 + KV 0.33 + logits 0.25 = 13.92 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+2026-10-28T13:30:35.566455Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch-reg/models/chat/mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf | ctx: 4096 tokens
+2026-10-28T13:30:46.930877Z  INFO 🔍 [EngineHost] VRAM planned 13.62 GB, taken 13.75 GB | n_ctx planned 4096 created 4096 | n_gpu_layers -1 n_cpu_moe 0
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M
+║   • Architecture    : llama | 40 layers | heads 32 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 13.35 GB | input embeddings 0.35 GB (always CPU) | output head 0.51 GB | vocab 131072
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 131072 tokens
+║   • Active context  : 3072 tokens, KV Kv8 (Auto: 3072 tokens, KV Kv8 + buffer 0.89 GB, to stay on the GPU (4096 did not fit))
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : Tesla T4 | free 14.43 of 15.00 GB | buffer kept free 0.89 GB (measured: GPU pool +0.14 GB + 0.75 GB reserve; estimate corrected by llama.cpp's dry run +0.04 GB)
+║   • RAM             : free 27.78 of 29.37 GB | Cluaiz may use 26.32 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : GPU + RAM split
+║   • llama.cpp       : n_gpu_layers = 21 | n_cpu_moe = 0 | n_ctx = 3072 | KV Kv8 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 20 on GPU, 20 in RAM (of 40)
+║   • VRAM            : 7.17 GB (weights + KV 0.12 + logits)
+║   • RAM             : 6.72 GB (incl. KV 0.12)
+║   • Reason          : User setting: planner bypassed: n_gpu_layers 21 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 7.17 of usable 13.54 GB
+║   • Speed           : not measured (chosen by rule order)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM  7.17 GB | RAM  6.72 GB | planner bypassed: n_gpu_layers 21 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 7.17 of usable 13.54 GB
+║   • Full GPU         [FITS]     VRAM 13.53 GB | RAM  0.35 GB | weights 12.99 + KV 0.25 + buffers 0.29 = 13.53 GB vs usable VRAM 13.54 GB
+║   • GPU + RAM split  [FITS]     VRAM 13.19 GB | RAM  0.69 GB | 39 / 40 blocks + output head on GPU (13.19 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM 13.84 GB | weights 13.34 + KV 0.25 + logits 0.25 = 13.84 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+2026-10-28T13:31:41.790702Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch-reg/models/chat/mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf | ctx: 3072 tokens
+2026-10-28T13:31:47.732185Z  INFO 🔍 [EngineHost] VRAM planned 7.17 GB, taken 7.20 GB | n_ctx planned 3072 created 3072 | n_gpu_layers 21 n_cpu_moe 0

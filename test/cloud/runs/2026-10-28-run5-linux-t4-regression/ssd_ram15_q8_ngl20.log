@@ -1,0 +1,30 @@
+== machine
+               total        used        free      shared  buff/cache   available
+Mem:              14           2           0           0          12          12
+Swap:              0           0           0
+name, memory.total [MiB], memory.used [MiB]
+Tesla T4, 15360 MiB, 2115 MiB
+total 33041672
+drwxrwxr-x 3 Aryan Aryan        4096 Oct 28 09:16 .
+drwxrwxr-x 7 Aryan Aryan        4096 Oct 28 09:07 ..
+drwxrwxr-x 2 Aryan Aryan        4096 Oct 28 09:16 MTP
+-rw-rw-r-- 1 Aryan Aryan        4702 Oct 28 09:16 config.json
+-rw-rw-r-- 1 Aryan Aryan 32635677632 Oct 28 09:16 gemma-4-31B-it-Q8_0.gguf
+-rw-rw-r-- 1 Aryan Aryan  1198957024 Oct 28 09:16 mmproj-F16.gguf
+-rw-rw-r-- 1 Aryan Aryan         902 Oct 28 09:16 model_manifest.json
+== cluaiz request 1: prompt 541 tok 1.52 t/s | gen 8 tok 0.008 t/s
+   load: {"placement": "Hybrid", "n_gpu_layers": 20, "n_cpu_moe": 0, "cache_type": "Kv8", "n_ctx": 4096, "settings": {"flash_attn": "Auto", "n_batch": 512, "n_threads": 4, "n_threads_batch": 4, "n_ubatch": 512, "use_mmap": true}}
+   answer: The text consists of a note number followed
+   wall 1873 s, disk read 384.89 GB
+== cluaiz request 2: prompt 534 tok 2.98 t/s | gen 8 tok 0.014 t/s
+   load: {"placement": "Hybrid", "n_gpu_layers": 20, "n_cpu_moe": 0, "cache_type": "Kv8", "n_ctx": 4096, "settings": {"flash_attn": "Auto", "n_batch": 512, "n_threads": 4, "n_threads_batch": 4, "n_ubatch": 512, "use_mmap": true}}
+   answer: This text describes a river that transports stones
+   wall 764 s, disk read 156.11 GB
+== llama-bench -ngl 20 -ncmoe 0 -ctk q8_0 -ctv q8_0 -p 535 -n 0
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 14911 MiB):
+  Device 0: Tesla T4, compute capability 7.5, VMM: yes, VRAM: 14911 MiB
+   wall 214 s, disk read 42.62 GB
+== llama-bench -ngl 20 -ncmoe 0 -ctk q8_0 -ctv q8_0 -p 0 -n 8 -d 535
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 14911 MiB):
+  Device 0: Tesla T4, compute capability 7.5, VMM: yes, VRAM: 14911 MiB
+== llama-bench stopped by hand during the generation step: the cloud test was ended

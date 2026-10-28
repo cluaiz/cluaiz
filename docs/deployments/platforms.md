@@ -9,7 +9,7 @@ Cluaiz ships as a **core** plus optional **GPU packs** (see [Release Workflow](c
 | Platform | Core | Status |
 |---|---|---|
 | Windows 10 / 11 x64 | `win-x64` | Tested |
-| Linux x64, glibc 2.38+ (Ubuntu 24.04, Debian 13, Fedora 39 or newer) | `linux-x64` | Tested on CPU (Ubuntu 24.04); GPU run pending |
+| Linux x64, glibc 2.38+ (Ubuntu 24.04, Debian 13, Fedora 39 or newer) | `linux-x64` | Tested (Ubuntu 24.04: CPU, and NVIDIA Tesla T4 with the CUDA 12 pack) |
 | Linux ARM64, glibc 2.38+ | `linux-arm64` | Built in CI; not yet run on hardware |
 | macOS Apple Silicon | `mac-arm64` | Built in CI; not yet run on hardware |
 

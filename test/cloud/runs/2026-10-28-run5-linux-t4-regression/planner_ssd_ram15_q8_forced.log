@@ -1,0 +1,56 @@
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+║ [MODEL]
+║   • Model ID        : gemma-4-31b-it-gguf-Q8_0
+║   • Architecture    : gemma4 | 60 layers | heads 32 | KV heads 16 | head size K 512 / V 512, sliding window 1024 on 50 layers | dense
+║   • Weights         : file 30.39 GB | input embeddings 1.39 GB (always CPU) | output head 1.39 GB | vocab 262144
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 4096 tokens, KV Kv8 (Auto: 4096 tokens, KV Kv8; model does not fit on one device, so it is split and the context stays at the floor)
+║ [HARDWARE]
+║   • GPU             : Tesla T4 | free 12.52 of 15.00 GB | buffer kept free 0.23 GB (measured: GPU pool -0.52 GB + 0.75 GB reserve; estimate corrected by llama.cpp's dry run +1.09 GB)
+║   • RAM             : free 12.65 of 29.37 GB | Cluaiz may use 11.18 GB
+║ [PLACEMENT]
+║   • Mode            : GPU + RAM split
+║   • llama.cpp       : n_gpu_layers = 23 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv8 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 22 on GPU, 38 in RAM (of 60)
+║   • VRAM            : 13.92 GB (weights + KV 0.29 + logits)
+║   • RAM             : 20.23 GB (incl. KV 0.50)
+║   • Disk (mmap)     : 9.05 GB of experts read from disk when used
+║   • Reason          : User setting: planner bypassed: n_gpu_layers 23 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 13.92 of usable 12.29 GB; 9.05 GB over the RAM limit is read from disk when used (mmap); 1.63 GB over usable VRAM (llama.cpp may fail, or Windows moves the rest to shared GPU memory)
+║   • Speed           : not measured (chosen by rule order)
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM 13.92 GB | RAM 20.23 GB | planner bypassed: n_gpu_layers 23 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 13.92 of usable 12.29 GB; 9.05 GB over the RAM limit is read from disk when used (mmap); 1.63 GB over usable VRAM (llama.cpp may fail, or Windows moves the rest to shared GPU memory)
+║   • Full GPU         [NO]       VRAM 32.76 GB | RAM  1.39 GB | does not fit in VRAM: weights 30.38 + KV 0.79 + buffers 1.59 = 32.76 GB vs usable VRAM 12.29 GB
+║   • GPU + RAM split  [NO]       VRAM 11.91 GB | RAM 22.24 GB | 18 / 60 blocks + output head on GPU (11.91 GB), 42 blocks in RAM; needs 11.06 GB more RAM than allowed
+║   • CPU only         [NO]       VRAM  0.00 GB | RAM 31.67 GB | weights 30.38 + KV 0.79 + logits 0.50 = 31.67 GB in RAM; needs 20.49 GB more RAM than allowed
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+2026-10-28T16:13:47.966000Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch-reg/models/chat/gemma-4-31b-it-gguf-Q8_0/gemma-4-31B-it-Q8_0.gguf | ctx: 4096 tokens
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+║ [MODEL]
+║   • Model ID        : gemma-4-31b-it-gguf-Q8_0
+║   • Architecture    : gemma4 | 60 layers | heads 32 | KV heads 16 | head size K 512 / V 512, sliding window 1024 on 50 layers | dense
+║   • Weights         : file 30.39 GB | input embeddings 1.39 GB (always CPU) | output head 1.39 GB | vocab 262144
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 4096 tokens, KV Kv8 (Auto: 4096 tokens, KV Kv8; model does not fit on one device, so it is split and the context stays at the floor)
+║ [HARDWARE]
+║   • GPU             : Tesla T4 | free 12.40 of 15.00 GB | buffer kept free 0.23 GB (measured: GPU pool -0.52 GB + 0.75 GB reserve; estimate corrected by llama.cpp's dry run +1.09 GB)
+║   • RAM             : free 12.20 of 29.37 GB | Cluaiz may use 10.73 GB
+║ [PLACEMENT]
+║   • Mode            : GPU + RAM split
+║   • llama.cpp       : n_gpu_layers = 23 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv8 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 22 on GPU, 38 in RAM (of 60)
+║   • VRAM            : 13.92 GB (weights + KV 0.29 + logits)
+║   • RAM             : 20.23 GB (incl. KV 0.50)
+║   • Disk (mmap)     : 9.50 GB of experts read from disk when used
+║   • Reason          : User setting: planner bypassed: n_gpu_layers 23 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 13.92 of usable 12.16 GB; 9.50 GB over the RAM limit is read from disk when used (mmap); 1.75 GB over usable VRAM (llama.cpp may fail, or Windows moves the rest to shared GPU memory)
+║   • Speed           : not measured (chosen by rule order)
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM 13.92 GB | RAM 20.23 GB | planner bypassed: n_gpu_layers 23 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 13.92 of usable 12.16 GB; 9.50 GB over the RAM limit is read from disk when used (mmap); 1.75 GB over usable VRAM (llama.cpp may fail, or Windows moves the rest to shared GPU memory)
+║   • Full GPU         [NO]       VRAM 32.76 GB | RAM  1.39 GB | does not fit in VRAM: weights 30.38 + KV 0.79 + buffers 1.59 = 32.76 GB vs usable VRAM 12.16 GB
+║   • GPU + RAM split  [NO]       VRAM 11.91 GB | RAM 22.24 GB | 18 / 60 blocks + output head on GPU (11.91 GB), 42 blocks in RAM; needs 11.50 GB more RAM than allowed
+║   • CPU only         [NO]       VRAM  0.00 GB | RAM 31.67 GB | weights 30.38 + KV 0.79 + logits 0.50 = 31.67 GB in RAM; needs 20.93 GB more RAM than allowed
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+2026-10-28T16:20:55.425739Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch-reg/models/chat/gemma-4-31b-it-gguf-Q8_0/gemma-4-31B-it-Q8_0.gguf | ctx: 4096 tokens
