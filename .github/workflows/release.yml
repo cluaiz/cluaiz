@@ -152,7 +152,7 @@ jobs:
         run: |
           tag="v${VERSION}"
           if gh release view "$tag" >/dev/null 2>&1; then
-            # Also a Release Drafter draft with this tag: add the files and publish it
+            # A re-run, or a draft left with this tag: add the files and publish it
             gh release upload "$tag" dist/* --clobber
             gh release edit "$tag" --draft=false --prerelease=${{ inputs.prerelease }}
           else

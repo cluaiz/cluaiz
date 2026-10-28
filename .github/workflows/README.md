@@ -30,13 +30,9 @@ The older split workflows (`cluaize-cmd`, `-engine`, `-kernel-*`, `publish-regis
 
 ---
 
-## 📝 3. AUTOMATED CHANGELOGS (RELEASE DRAFTER)
+## 📝 3. RELEASE NOTES
 
-To maintain professional, OpenClaw-style Release Notes without manual overhead, we utilize **Release Drafter** (`.github/workflows/release-drafter.yml`).
-
-- As developers merge Pull Requests into `main`, the Drafter quietly categorizes them based on labels (`feature`, `bug`, `performance`, `documentation`).
-- It continuously updates a **Draft Release** on the GitHub Releases page.
-- When the team is ready to launch, the beautiful, formatted changelog (with `🚀 Highlights`, `⚡ Changes & Optimizations`, `🐛 Fixes`) is already written and ready to be published.
+The release page text comes from `.github/release-notes.md` (install commands and which file each machine needs). Release Drafter was removed: it ran on every push but builds its changelog only from pull requests, which this repository does not use.
 
 ---
 
