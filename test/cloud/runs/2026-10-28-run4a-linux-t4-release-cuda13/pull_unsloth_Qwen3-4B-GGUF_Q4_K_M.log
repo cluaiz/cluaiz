@@ -1,0 +1,41 @@
+  ⚠️ [Ghost Execution Detected] You are running a local binary at "/home/Aryan/.cluaiz/bin/cluaiz"
+  💡 To use the System, run the global 'cluaiz' command.
+
+
+   ▄████▄   ██▓     █    ██  ▄▄▄       ██▓▒███████▒
+  ▒██▀ ▀█  ▓██▒     ██  ▓██▒▒████▄    ▓██▒▒ ▒ ▒ ▄▀░
+  ▒▓█    ▄ ▒██░    ▓██  ▒██░▒██  ▀█▄  ▒██▒░ ▒ ▄▀▒░ 
+  ▒▓▓▄ ▄██▒▒██░    ▓▓█  ░██░░██▄▄▄▄██ ░██░  ▄▀▒   ░
+  ▒ ▓███▀ ░░██████▒▒▒█████▓  ▓█   ▓██▒░██░▒███████▒
+  ░ ░▒ ▒  ░░ ▒░▓  ░░▒▓▒ ▒ ▒  ▒▒   ▓▒█░░▓  ░▒▒ ▓░▒░▒
+    ░  ▒   ░ ░ ▒  ░░░▒░ ░ ░   ▒   ▒▒ ░ ▒ ░░░▒ ▒ ░ ▒
+  ░          ░ ░    ░░░ ░ ░   ░   ▒    ▒ ░░ ░ ░ ░ ░
+  ░ ░          ░  ░   ░           ░  ░ ░    ░ ░    
+  ░                                       ░        
+
+  ⚙️ [cluaiz] Initializing Kernel for 'unsloth/Qwen3-4B-GGUF:Q4_K_M'...
+  🔍 Scanning HuggingFace Hub for 'unsloth/Qwen3-4B-GGUF'...
+  ⚡ Direct Quantization Tag Matched: ':Q4_K_M' -> Qwen3-4B-Q4_K_M.gguf (2.33 GB)
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: qwen3-4b-gguf-Q4_K_M
+    ├─ 📦 Format: GGUF
+    ├─ 🏷️  Precision / Quant Tag: Q4_K_M
+    ├─ 🧠 Architecture: transformer
+    ├─ 📁 Category: chat
+    ├─ 🧩 Parameters: 4B
+    ├─ 💾 Total Download Size: 2.33 GB
+    └─ 📁 Files to Download (2 files):
+       ├─ ⚖️  Qwen3-4B-Q4_K_M.gguf
+       └─ 📄 config.json
+   ├─ [1/2] Downloading Qwen3-4B-Q4_K_M.gguf
+   ├─ [2/2] Downloading config.json
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  qwen3-4b-gguf-Q4_K_M
+  │ 📁 Vault Path:     /home/Aryan/ch/models/chat/qwen3-4b-gguf-Q4_K_M
+  │ 🚀 Run Command:   cluaiz run qwen3-4b-gguf-Q4_K_M
+  └─────────────────────────────────────────────────────────────┘
+

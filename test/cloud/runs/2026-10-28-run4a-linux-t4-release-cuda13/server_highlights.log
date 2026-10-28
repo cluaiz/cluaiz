@@ -1,0 +1,8 @@
+2026-10-28T07:45:00.510928Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+2026-10-28T07:45:03.188850Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+║   • Mode            : Full GPU
+║   • Reason          : Full GPU: weights 2.32 + KV 5.62 + buffers 0.31 = 8.26 GB vs usable VRAM 13.56 GB
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  8.26 GB | RAM  0.30 GB | weights 2.32 + KV 5.62 + buffers 0.31 = 8.26 GB vs usable VRAM 13.56 GB
+2026-10-28T07:45:20.126568Z ERROR [llama.cpp] cudaFuncGetAttributes(&attr, kernel)

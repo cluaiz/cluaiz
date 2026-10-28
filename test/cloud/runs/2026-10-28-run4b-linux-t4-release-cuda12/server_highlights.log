@@ -1,0 +1,38 @@
+2026-10-28T07:52:38.380918Z  INFO ⚡ NVIDIA CUDA + cuDNN 9 runtime libraries verified.
+2026-10-28T07:52:38.657385Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+║   • Mode            : Full GPU
+║   • Reason          : Full GPU: weights 2.32 + KV 5.62 + buffers 0.31 = 8.26 GB vs usable VRAM 13.56 GB
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  8.26 GB | RAM  0.30 GB | weights 2.32 + KV 5.62 + buffers 0.31 = 8.26 GB vs usable VRAM 13.56 GB
+2026-10-28T07:54:03.437730Z  INFO 📏 [EngineHost] The loaded model now takes +0.16 GB over its estimate; learned for its next load
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+║   • Mode            : Full GPU
+║   • Reason          : Full GPU: weights 6.79 + KV 6.09 + buffers 0.54 = 13.42 GB vs usable VRAM 13.44 GB
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM 13.42 GB | RAM  0.77 GB | weights 6.79 + KV 6.09 + buffers 0.54 = 13.42 GB vs usable VRAM 13.44 GB
+2026-10-28T07:55:03.976647Z  INFO 📏 [EngineHost] Measured on this GPU: reloading with 48 blocks on the GPU and 17152 tokens (was 48 and 16640)
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+║   • Mode            : Full GPU
+║   • Reason          : Full GPU: weights 6.79 + KV 6.28 + buffers 0.54 = 13.61 GB vs usable VRAM 13.66 GB
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM 13.61 GB | RAM  0.77 GB | weights 6.79 + KV 6.28 + buffers 0.54 = 13.61 GB vs usable VRAM 13.66 GB
+2026-10-28T07:55:40.369725Z  INFO 📏 [EngineHost] The loaded model now takes +0.04 GB over its estimate; learned for its next load
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+║   • Mode            : Full GPU
+║   • Reason          : Full GPU: weights 12.99 + KV 0.62 + buffers 0.29 = 13.91 GB vs usable VRAM 13.94 GB
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM 13.91 GB | RAM  0.35 GB | weights 12.99 + KV 0.62 + buffers 0.29 = 13.91 GB vs usable VRAM 13.94 GB
+2026-10-28T07:57:34.874661Z  WARN 453 Memcpy nodes are added to the graph main_graph for CUDAExecutionProvider. It might have negative impact on performance (including unable to run CUDA graph). Set session_options.log_severity_level=1 to see the detail logs before this message.
+2026-10-28T07:57:37.832238Z  WARN 89 Memcpy nodes are added to the graph main_graph for CUDAExecutionProvider. It might have negative impact on performance (including unable to run CUDA graph). Set session_options.log_severity_level=1 to see the detail logs before this message.
+2026-10-28T07:57:41.138618Z  WARN 80 Memcpy nodes are added to the graph main_graph for CUDAExecutionProvider. It might have negative impact on performance (including unable to run CUDA graph). Set session_options.log_severity_level=1 to see the detail logs before this message.
+2026-10-28T07:57:41.158709Z ERROR Exception during initialization: /home/runner/work/ort-artifacts/ort-artifacts/onnxruntime/onnxruntime/core/framework/bfc_arena.cc:359 void *onnxruntime::BFCArena::AllocateRawInternal(size_t, bool, Stream *) Failed to allocate memory for requested buffer of size 265
+2026-10-28T07:57:43.433746Z  INFO 📏 [ONNX] onnx:whisper-large-v3-turbo-INT8:speech_to_text:cuda filled the GPU (0.02 GB free after it); kept as needing at least 0.51 GB
+2026-10-28T07:57:43.433972Z  INFO ONNX on the CPU: it filled the GPU model=whisper-large-v3-turbo-INT8 task="speech_to_text"
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+║   • Mode            : Full GPU
+║   • Reason          : Full GPU: weights 2.32 + KV 5.62 + buffers 0.31 = 8.26 GB vs usable VRAM 13.52 GB
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  8.26 GB | RAM  0.30 GB | weights 2.32 + KV 5.62 + buffers 0.31 = 8.26 GB vs usable VRAM 13.52 GB
+2026-10-28T07:58:50.964403Z  WARN 241 Memcpy nodes are added to the graph main_graph for CUDAExecutionProvider. It might have negative impact on performance (including unable to run CUDA graph). Set session_options.log_severity_level=1 to see the detail logs before this message.
+2026-10-28T07:58:51.514509Z  INFO 📏 [ONNX] onnx:kokoro-82m-v1.0-onnx-UINT8:text_to_speech:cuda takes 0.26 GB on the GPU

@@ -1,0 +1,37 @@
+  ⚠️ [Ghost Execution Detected] You are running a local binary at "/home/Aryan/.cluaiz/bin/cluaiz"
+  💡 To use the System, run the global 'cluaiz' command.
+
+
+   ▄████▄   ██▓     █    ██  ▄▄▄       ██▓▒███████▒
+  ▒██▀ ▀█  ▓██▒     ██  ▓██▒▒████▄    ▓██▒▒ ▒ ▒ ▄▀░
+  ▒▓█    ▄ ▒██░    ▓██  ▒██░▒██  ▀█▄  ▒██▒░ ▒ ▄▀▒░ 
+  ▒▓▓▄ ▄██▒▒██░    ▓▓█  ░██░░██▄▄▄▄██ ░██░  ▄▀▒   ░
+  ▒ ▓███▀ ░░██████▒▒▒█████▓  ▓█   ▓██▒░██░▒███████▒
+  ░ ░▒ ▒  ░░ ▒░▓  ░░▒▓▒ ▒ ▒  ▒▒   ▓▒█░░▓  ░▒▒ ▓░▒░▒
+    ░  ▒   ░ ░ ▒  ░░░▒░ ░ ░   ▒   ▒▒ ░ ▒ ░░░▒ ▒ ░ ▒
+  ░          ░ ░    ░░░ ░ ░   ░   ▒    ▒ ░░ ░ ░ ░ ░
+  ░ ░          ░  ░   ░           ░  ░ ░    ░ ░    
+  ░                                       ░        
+
+  ⚙️ [cluaiz] Initializing Kernel for 'ggml-org/bge-m3-Q8_0-GGUF'...
+  🔍 Scanning HuggingFace Hub for 'ggml-org/bge-m3-Q8_0-GGUF'...
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: bge-m3-q8_0-gguf
+    ├─ 📦 Format: GGUF
+    ├─ 🏷️  Precision / Quant Tag: Q8_0
+    ├─ 🧠 Architecture: transformer
+    ├─ 📁 Category: embedding
+    ├─ 💾 Total Download Size: 0.59 GB
+    └─ 📁 Files to Download (1 files):
+       └─ ⚖️  bge-m3-q8_0.gguf
+   ├─ [1/1] Downloading bge-m3-q8_0.gguf
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  bge-m3-q8_0-gguf
+  │ 📁 Vault Path:     /home/Aryan/ch/models/embedding/bge-m3-q8_0-gguf
+  │ 🚀 Run Command:   cluaiz run bge-m3-q8_0-gguf
+  └─────────────────────────────────────────────────────────────┘
+

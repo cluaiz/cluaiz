@@ -1,0 +1,66 @@
+  ⚠️ [Ghost Execution Detected] You are running a local binary at "/home/Aryan/.cluaiz/bin/cluaiz"
+  💡 To use the System, run the global 'cluaiz' command.
+
+
+   ▄████▄   ██▓     █    ██  ▄▄▄       ██▓▒███████▒
+  ▒██▀ ▀█  ▓██▒     ██  ▓██▒▒████▄    ▓██▒▒ ▒ ▒ ▄▀░
+  ▒▓█    ▄ ▒██░    ▓██  ▒██░▒██  ▀█▄  ▒██▒░ ▒ ▄▀▒░ 
+  ▒▓▓▄ ▄██▒▒██░    ▓▓█  ░██░░██▄▄▄▄██ ░██░  ▄▀▒   ░
+  ▒ ▓███▀ ░░██████▒▒▒█████▓  ▓█   ▓██▒░██░▒███████▒
+  ░ ░▒ ▒  ░░ ▒░▓  ░░▒▓▒ ▒ ▒  ▒▒   ▓▒█░░▓  ░▒▒ ▓░▒░▒
+    ░  ▒   ░ ░ ▒  ░░░▒░ ░ ░   ▒   ▒▒ ░ ▒ ░░░▒ ▒ ░ ▒
+  ░          ░ ░    ░░░ ░ ░   ░   ▒    ▒ ░░ ░ ░ ░ ░
+  ░ ░          ░  ░   ░           ░  ░ ░    ░ ░    
+  ░                                       ░        
+
+  ⚙️ [cluaiz] Initializing Kernel for 'onnx-community/whisper-large-v3-turbo:int8'...
+  🔍 Scanning HuggingFace Hub for 'onnx-community/whisper-large-v3-turbo'...
+  ⚡ Direct Quantization Tag Matched: ':int8' -> encoder_model_int8.onnx (1.82 GB)
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: whisper-large-v3-turbo-INT8
+    ├─ 📦 Format: ONNX
+    ├─ 🏷️  Precision / Quant Tag: INT8
+    ├─ 🧠 Architecture: transformer
+    ├─ 📁 Category: stt
+    ├─ 💾 Total Download Size: 1.82 GB
+    └─ 📁 Files to Download (15 files):
+       ├─ ⚖️  onnx/encoder_model_int8.onnx
+       ├─ ⚖️  onnx/decoder_model_int8.onnx
+       ├─ ⚖️  onnx/decoder_model_merged_int8.onnx
+       ├─ ⚖️  onnx/decoder_with_past_model_int8.onnx
+       ├─ 📄 added_tokens.json
+       ├─ 📄 config.json
+       ├─ 📄 generation_config.json
+       ├─ 📄 merges.txt
+       ├─ 📄 normalizer.json
+       ├─ 📄 preprocessor_config.json
+       ├─ 📄 quantize_config.json
+       ├─ 📄 special_tokens_map.json
+       ├─ 📄 tokenizer.json
+       ├─ 📄 tokenizer_config.json
+       └─ 📄 vocab.json
+   ├─ [1/15] Already on disk: encoder_model_int8.onnx
+   ├─ [2/15] Already on disk: decoder_model_int8.onnx
+   ├─ [3/15] Already on disk: decoder_model_merged_int8.onnx
+   ├─ [4/15] Already on disk: decoder_with_past_model_int8.onnx
+   ├─ [5/15] Already on disk: added_tokens.json
+   ├─ [6/15] Already on disk: config.json
+   ├─ [7/15] Already on disk: generation_config.json
+   ├─ [8/15] Already on disk: merges.txt
+   ├─ [9/15] Already on disk: normalizer.json
+   ├─ [10/15] Already on disk: preprocessor_config.json
+   ├─ [11/15] Already on disk: quantize_config.json
+   ├─ [12/15] Already on disk: special_tokens_map.json
+   ├─ [13/15] Already on disk: tokenizer.json
+   ├─ [14/15] Already on disk: tokenizer_config.json
+   ├─ [15/15] Already on disk: vocab.json
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  whisper-large-v3-turbo-INT8
+  │ 📁 Vault Path:     /home/Aryan/ch/models/stt/whisper-large-v3-turbo-INT8
+  │ 🚀 Run Command:   cluaiz run whisper-large-v3-turbo-INT8
+  └─────────────────────────────────────────────────────────────┘
+

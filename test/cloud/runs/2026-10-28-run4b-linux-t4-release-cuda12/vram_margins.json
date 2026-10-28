@@ -1,0 +1,10 @@
+{
+  "proj:llama:14333922848:40:ub512:fa-auto": 0.043060302734375,
+  "pool:llama:14333922848:40:ub512:fa-auto": 0.022991180419921875,
+  "onnx:kokoro-82m-v1.0-onnx-UINT8:text_to_speech:cuda": 0.259765625,
+  "pool:gemma3:7300778336:48:ub512:fa-auto": 0.04193675518035889,
+  "pool:qwen3:2497281312:36:ub512:fa-auto": 0.15746545791625977,
+  "proj:gemma3:7300778336:48:ub512:fa-auto": 0.03771042823791504,
+  "onnx:whisper-large-v3-turbo-INT8:speech_to_text:cuda": 0.50665283203125,
+  "proj:qwen3:2497281312:36:ub512:fa-auto": 0.023529052734375
+}

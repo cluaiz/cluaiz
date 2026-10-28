@@ -1,0 +1,22 @@
+  ⚠️ [Ghost Execution Detected] You are running a local binary at "/home/Aryan/.cluaiz/bin/cluaiz"
+  💡 To use the System, run the global 'cluaiz' command.
+
+
+   ▄████▄   ██▓     █    ██  ▄▄▄       ██▓▒███████▒
+  ▒██▀ ▀█  ▓██▒     ██  ▓██▒▒████▄    ▓██▒▒ ▒ ▒ ▄▀░
+  ▒▓█    ▄ ▒██░    ▓██  ▒██░▒██  ▀█▄  ▒██▒░ ▒ ▄▀▒░ 
+  ▒▓▓▄ ▄██▒▒██░    ▓▓█  ░██░░██▄▄▄▄██ ░██░  ▄▀▒   ░
+  ▒ ▓███▀ ░░██████▒▒▒█████▓  ▓█   ▓██▒░██░▒███████▒
+  ░ ░▒ ▒  ░░ ▒░▓  ░░▒▓▒ ▒ ▒  ▒▒   ▓▒█░░▓  ░▒▒ ▓░▒░▒
+    ░  ▒   ░ ░ ▒  ░░░▒░ ░ ░   ▒   ▒▒ ░ ▒ ░░░▒ ▒ ░ ▒
+  ░          ░ ░    ░░░ ░ ░   ░   ▒    ▒ ░░ ░ ░ ░ ░
+  ░ ░          ░  ░   ░           ░  ░ ░    ░ ░    
+  ░                                       ░        
+
+  ⚙️ [cluaiz] Initializing Kernel for 'unsloth/gemma-3-12b-it-GGUF:Q4_K_M'...
+  🔍 Scanning HuggingFace Hub for 'unsloth/gemma-3-12b-it-GGUF'...
+  ⚡ Direct Quantization Tag Matched: ':Q4_K_M' -> gemma-3-12b-it-Q4_K_M.gguf (6.80 GB)
+
+  ⚠️ Warning: This exact variant is already downloaded locally under ID: 'gemma-3-12b-it-gguf-Q4_K_M'
+     If you wish to re-download, please delete the old one first using: cluaiz rm gemma-3-12b-it-gguf-Q4_K_M
+

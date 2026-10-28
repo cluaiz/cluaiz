@@ -1,0 +1,42 @@
+total 1134548
+drwxr-xr-x 2 Aryan Aryan      4096 Oct 28 03:00 .
+drwxrwxr-x 4 Aryan Aryan      4096 Oct 28 07:40 ..
+-rw-r--r-- 1 Aryan Aryan     11351 Oct 28 06:34 LICENSE
+-rw-r--r-- 1 Aryan Aryan      2149 Oct 28 06:34 THIRD_PARTY_NOTICES.md
+-rwxr-xr-x 1 Aryan Aryan  81048536 Oct 28 06:34 cluaiz
+-rw-r--r-- 1 Aryan Aryan  57619096 Oct 28 04:15 libcublas.so.13
+-rw-r--r-- 1 Aryan Aryan 544944760 Oct 28 04:15 libcublasLt.so.13
+-rw-r--r-- 1 Aryan Aryan    798496 Oct 28 04:15 libcudart.so.13
+lrwxrwxrwx 1 Aryan Aryan        17 Oct 28 06:34 libggml-base.so -> libggml-base.so.0
+lrwxrwxrwx 1 Aryan Aryan        22 Oct 28 06:34 libggml-base.so.0 -> libggml-base.so.0.26.0
+-rw-r--r-- 1 Aryan Aryan    951312 Oct 28 06:34 libggml-base.so.0.26.0
+-rw-r--r-- 1 Aryan Aryan   1418824 Oct 28 06:34 libggml-cpu-alderlake.so
+-rw-r--r-- 1 Aryan Aryan   1670608 Oct 28 06:34 libggml-cpu-cannonlake.so
+-rw-r--r-- 1 Aryan Aryan   1678504 Oct 28 06:34 libggml-cpu-cascadelake.so
+-rw-r--r-- 1 Aryan Aryan   1678672 Oct 28 06:34 libggml-cpu-cooperlake.so
+-rw-r--r-- 1 Aryan Aryan   1422920 Oct 28 06:34 libggml-cpu-haswell.so
+-rw-r--r-- 1 Aryan Aryan   1678504 Oct 28 06:34 libggml-cpu-icelake.so
+-rw-r--r-- 1 Aryan Aryan   1342168 Oct 28 06:34 libggml-cpu-ivybridge.so
+-rw-r--r-- 1 Aryan Aryan   1338072 Oct 28 06:34 libggml-cpu-piledriver.so
+-rw-r--r-- 1 Aryan Aryan   1320568 Oct 28 06:34 libggml-cpu-sandybridge.so
+-rw-r--r-- 1 Aryan Aryan   1920352 Oct 28 06:34 libggml-cpu-sapphirerapids.so
+-rw-r--r-- 1 Aryan Aryan   1670608 Oct 28 06:34 libggml-cpu-skylakex.so
+-rw-r--r-- 1 Aryan Aryan    989648 Oct 28 06:34 libggml-cpu-sse42.so
+-rw-r--r-- 1 Aryan Aryan    989728 Oct 28 06:34 libggml-cpu-x64.so
+-rw-r--r-- 1 Aryan Aryan   1678672 Oct 28 06:34 libggml-cpu-zen4.so
+-rwxr-xr-x 1 Aryan Aryan 162570672 Oct 28 04:15 libggml-cuda.so
+lrwxrwxrwx 1 Aryan Aryan        12 Oct 28 06:34 libggml.so -> libggml.so.0
+lrwxrwxrwx 1 Aryan Aryan        17 Oct 28 06:34 libggml.so.0 -> libggml.so.0.26.0
+-rw-r--r-- 1 Aryan Aryan     60112 Oct 28 06:34 libggml.so.0.26.0
+lrwxrwxrwx 1 Aryan Aryan        20 Oct 28 06:34 libllama-common.so -> libllama-common.so.0
+lrwxrwxrwx 1 Aryan Aryan        24 Oct 28 06:34 libllama-common.so.0 -> libllama-common.so.0.6.0
+-rw-r--r-- 1 Aryan Aryan   6293408 Oct 28 06:34 libllama-common.so.0.6.0
+lrwxrwxrwx 1 Aryan Aryan        13 Oct 28 06:34 libllama.so -> libllama.so.0
+lrwxrwxrwx 1 Aryan Aryan        17 Oct 28 06:34 libllama.so.0 -> libllama.so.0.6.0
+-rw-r--r-- 1 Aryan Aryan   4891448 Oct 28 06:34 libllama.so.0.6.0
+lrwxrwxrwx 1 Aryan Aryan        12 Oct 28 06:34 libmtmd.so -> libmtmd.so.0
+lrwxrwxrwx 1 Aryan Aryan        16 Oct 28 06:34 libmtmd.so.0 -> libmtmd.so.0.6.0
+-rw-r--r-- 1 Aryan Aryan   1938496 Oct 28 06:34 libmtmd.so.0.6.0
+-rwxr-xr-x 1 Aryan Aryan 279775016 Oct 28 03:00 libonnxruntime_providers_cuda.so
+-rwxr-xr-x 1 Aryan Aryan     14632 Oct 28 03:00 libonnxruntime_providers_shared.so
+1.1G	/home/Aryan/.cluaiz/bin
