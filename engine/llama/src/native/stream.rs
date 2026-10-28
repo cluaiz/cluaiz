@@ -628,8 +628,9 @@ pub(crate) fn stream_tokens_with_media(
             let swa = llama_cpp::llama_model_n_swa(llama.model_ptr) > 0
                 || llama_cpp::llama_model_is_recurrent(llama.model_ptr)
                 || llama_cpp::llama_model_is_hybrid(llama.model_ptr);
-            let split = if swa && new_tokens.len() > crate::native::context::CHECKPOINT_TAIL {
-                new_tokens.len() - crate::native::context::CHECKPOINT_TAIL
+            let tail = llama.checkpoint_tail();
+            let split = if swa && new_tokens.len() > tail {
+                new_tokens.len() - tail
             } else {
                 0
             };

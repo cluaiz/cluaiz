@@ -199,6 +199,19 @@ impl NativeLlama {
         prompt_chunk_lens(n_tokens, (n_ubatch.min(self.n_batch) as usize).min(cap), min_batch)
     }
 
+    /// Prompt tokens processed after a sliding-window checkpoint. llama-server keeps 4 (`CHECKPOINT_TAIL`);
+    /// with weights in RAM a chunk that small is computed on the CPU (Gemma 4 31B split on a T4: 94 t/s
+    /// prompt against llama.cpp's 115), so the tail is the op-offload size there: a few more tokens to
+    /// process again on the next turn, and 544 tokens are cut 512 + 32 like llama.cpp.
+    pub fn checkpoint_tail(&self) -> usize {
+        let tail = crate::native::context::CHECKPOINT_TAIL;
+        if self.weights_in_ram_with_gpu {
+            tail.max(op_offload_min_batch())
+        } else {
+            tail
+        }
+    }
+
     /// Starts a new timing window (call before a generation).
     pub fn reset_timings(&mut self) {
         unsafe { llama_cpp::llama_perf_context_reset(self.ctx_ptr) }

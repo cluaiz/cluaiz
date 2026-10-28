@@ -810,8 +810,9 @@ impl MediaInput {
                         bail!("Media layout does not match its chunks");
                     };
                     let rest = &tokens[if i == first { skip } else { 0 }..];
-                    let split = if swa && last && rest.len() > super::context::CHECKPOINT_TAIL {
-                        rest.len() - super::context::CHECKPOINT_TAIL
+                    let tail = llama.checkpoint_tail();
+                    let split = if swa && last && rest.len() > tail {
+                        rest.len() - tail
                     } else {
                         0
                     };
