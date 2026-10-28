@@ -1,0 +1,37 @@
+== qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf -p 535 -n 0
+| model                          |       size |     params | backend    | ngl | n_batch | dev          |         lm |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | ------: | ------------ | ---------: | --------------: | -------------------: |
+| qwen3 4B Q4_K - Medium         |   2.32 GiB |     4.02 B | CUDA       |   0 |     512 | none         |       mmap |           pp535 |         29.25 ± 0.87 |
+
+build: 8f9842cd1 (11456)
+== qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf -p 0 -n 64 -d 535
+| model                          |       size |     params | backend    | ngl | n_batch | dev          |         lm |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | ------: | ------------ | ---------: | --------------: | -------------------: |
+| qwen3 4B Q4_K - Medium         |   2.32 GiB |     4.02 B | CUDA       |   0 |     512 | none         |       mmap |     tg64 @ d535 |          7.94 ± 0.09 |
+
+build: 8f9842cd1 (11456)
+== gemma-3-12b-it-gguf-Q4_K_M/gemma-3-12b-it-Q4_K_M.gguf -p 537 -n 0
+| model                          |       size |     params | backend    | ngl | n_batch | dev          |         lm |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | ------: | ------------ | ---------: | --------------: | -------------------: |
+| gemma3 12B Q4_K - Medium       |   6.79 GiB |    11.77 B | CUDA       |   0 |     512 | none         |       mmap |           pp537 |         10.11 ± 0.04 |
+
+build: 8f9842cd1 (11456)
+== gemma-3-12b-it-gguf-Q4_K_M/gemma-3-12b-it-Q4_K_M.gguf -p 0 -n 64 -d 537
+| model                          |       size |     params | backend    | ngl | n_batch | dev          |         lm |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | ------: | ------------ | ---------: | --------------: | -------------------: |
+| gemma3 12B Q4_K - Medium       |   6.79 GiB |    11.77 B | CUDA       |   0 |     512 | none         |       mmap |     tg64 @ d537 |          3.08 ± 0.00 |
+
+build: 8f9842cd1 (11456)
+== mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf -p 1085 -n 0
+| model                          |       size |     params | backend    | ngl | n_batch | dev          |         lm |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | ------: | ------------ | ---------: | --------------: | -------------------: |
+| llama 13B Q4_K - Medium        |  13.34 GiB |    23.57 B | CUDA       |   0 |     512 | none         |       mmap |          pp1085 |          5.14 ± 0.02 |
+
+build: 8f9842cd1 (11456)
+== mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf -p 0 -n 64 -d 1085
+| model                          |       size |     params | backend    | ngl | n_batch | dev          |         lm |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | ------: | ------------ | ---------: | --------------: | -------------------: |
+| llama 13B Q4_K - Medium        |  13.34 GiB |    23.57 B | CUDA       |   0 |     512 | none         |       mmap |    tg64 @ d1085 |          1.73 ± 0.01 |
+
+build: 8f9842cd1 (11456)
+== cpu done
