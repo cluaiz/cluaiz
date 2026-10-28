@@ -37,12 +37,21 @@ Cluaiz is one engine process that runs local models and serves them to apps, scr
   and vision encoders.
 - **A placement planner** that measures the free GPU memory and RAM on every load and chooses where the model
   runs, how large the context is and which KV cache type fits. You can override any of it.
+- **MoE models larger than the GPU, and larger than free RAM:** attention stays on the GPU, the experts sit in
+  RAM, and whatever does not fit RAM is read from the SSD when it is used.
 - **APIs** that existing clients already speak (OpenAI-compatible and Ollama-style routes), plus CEP, one
   JSON-RPC 2.0 protocol for everything engine-specific, over HTTP, MCP or a C library.
 - **Tools for agents:** skills, plugins and MCP servers, with permission levels, approvals and an audit log.
 
 On the same model file, placement and settings, Cluaiz generates as fast as llama.cpp's own `llama-bench`, and
 reads prompts up to 2x faster when a model is split across GPU and RAM (see [Benchmarks](#benchmarks)).
+
+> [!TIP]
+> **A 26B model on a 4 GB laptop GPU.** Gemma 4 26B A4B (MoE, 13.3 GB file) on an RTX 3050 Laptop with 4 GB
+> VRAM: **16–18 tokens/s** with about 8 GB of free RAM, and still **7.4 tokens/s** with only about 3 GB free,
+> when more of the experts are read from the SSD. The planner picks this placement by itself (`n_cpu_moe`); no flags
+> needed. Dense models that do not fit RAM + VRAM are refused with the reason instead of crawling from the disk.
+> [Details](test/engine_regression/RESULTS.md#gemma-4-26b-a4b-moe-1327-gb-file-4-gb-gpu).
 
 ## Quick Start
 
