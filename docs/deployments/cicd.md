@@ -15,6 +15,7 @@ Only when started by hand. Pushes and pull requests never start a build.
 |---|---|
 | **Run workflow** on `Release` (manual, with a version such as `0.1.0`) | The core for every platform, the smoke test, both driver workflows, and the GitHub release `v<version>` with `SHA256SUMS.txt`. |
 | **Run workflow** on a driver workflow | Only those drivers, as run artifacts (no release). |
+| **Run workflow** on `Release` with **drivers_run** set to an earlier run's ID | The core and the release; the GPU drivers are taken from that run instead of being built again. |
 
 ## Jobs
 
@@ -48,6 +49,10 @@ Each core is unpacked into an empty folder and run with a fresh `CLUAIZ_HOME` on
 3. When it finishes, the release page lists the files and their checksums. Running it again with the same version replaces the files.
 
 The CUDA jobs take the longest (the CUDA backend is compiled for every supported GPU generation).
+
+The drivers change only with the llama.cpp fork commit or the ONNX Runtime version. When only the core changed (a fix in the CLI, API or engine), put the ID of an earlier run whose drivers passed (the number in its URL, `actions/runs/<ID>`) into **drivers_run**: the run then builds only the core, about 20 minutes instead of about 2 hours. Driver files are kept for 90 days. Never use it after updating `engine/llama/llama.cpp`, since a driver only works with the core of the same fork commit.
+
+**Re-run jobs** on an old run builds that run's old commit again, not the newest code; after a fix, use **Run workflow**.
 
 ## Speed and reproducibility
 
