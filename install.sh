@@ -12,7 +12,7 @@
 #   CLUAIZ_VERSION      release to install, e.g. 0.1.0 (default: the newest release)
 #   CLUAIZ_INSTALL_DIR  where the files go (default: ~/.cluaiz/bin)
 #   CLUAIZ_GPU          auto | cuda | vulkan | cpu (default: auto)
-#   CLUAIZ_CUDA         12 | 13 (default: 13 with NVIDIA driver 580+ on an RTX 20 series or newer, else 12)
+#   CLUAIZ_CUDA         12 | 13 (default: the newest pack the NVIDIA driver and GPU can run, see below)
 set -eu
 
 REPO="cluaiz/cluaiz"
@@ -96,16 +96,38 @@ case "$GPU" in
   cuda)
     cuda="${CLUAIZ_CUDA:-}"
     if [ -z "$cuda" ]; then
-      # CUDA 13 needs driver 580+ and compute capability 7.5+ (Turing); older drivers and GPUs use CUDA 12
-      driver=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -n1 | cut -d. -f1)
-      cap=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | tr -d . | sort -n | head -n1)
-      if [ "${driver:-0}" -ge 580 ] 2>/dev/null && [ "${cap:-0}" -ge 75 ] 2>/dev/null; then cuda=13; else cuda=12; fi
+      # A pack runs on a GPU it has ready-made code for, given a driver of the same CUDA major version.
+      # For other GPUs (e.g. Turing, RTX 20) the driver compiles the pack's code on first use, and only a
+      # driver at least as new as the pack's toolkit can: nvidia-smi prints the newest CUDA version the
+      # driver supports. Toolkits and ready-made GPUs of cluaize-llama-driver.yml (linux-cuda, llama.cpp's
+      # default architectures): CUDA 13.4 for 8.6 8.9 12.0 12.1, needs 7.5+; CUDA 12.8 for 8.6 8.9 12.0
+      drv=$(nvidia-smi 2>/dev/null | grep -oE 'CUDA (UMD )?Version: *[0-9]+\.[0-9]+' | head -n1 | grep -oE '[0-9]+\.[0-9]+$')
+      drv_num=0
+      [ -n "$drv" ] && drv_num=$(( ${drv%.*} * 100 + ${drv#*.} ))
+      caps=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | tr -d '.\r')
+      # runs <major> <toolkit as 1304> <lowest GPU> <ready-made GPUs>: true when every GPU can run it
+      runs() {
+        [ "$drv_num" -ge $(( $1 * 100 )) ] && [ -n "$caps" ] || return 1
+        for c in $caps; do
+          [ "$c" -ge "$3" ] 2>/dev/null || return 1
+          [ "$drv_num" -ge "$2" ] && continue
+          case " $4 " in *" $c "*) ;; *) return 1 ;; esac
+        done
+      }
+      if runs 13 1304 75 "86 89 120 121"; then cuda=13
+      elif runs 12 1208 50 "86 89 120"; then cuda=12
+      else
+        printf "  ${GRAY}- The NVIDIA driver (CUDA %s) is too old for the CUDA packs; update it for CUDA. Using Vulkan meanwhile${NC}\n" "${drv:-unknown}"
+        GPU="vulkan"
+      fi
     fi
-    files="$files cluaiz-$version-$platform-llama-cuda$cuda.tar.gz cluaiz-$version-$platform-cudart$cuda.tar.gz cluaiz-$version-$platform-onnx-cuda$cuda.tar.gz"
-    GPU="cuda$cuda"
+    if [ "$GPU" = cuda ]; then
+      files="$files cluaiz-$version-$platform-llama-cuda$cuda.tar.gz cluaiz-$version-$platform-cudart$cuda.tar.gz cluaiz-$version-$platform-onnx-cuda$cuda.tar.gz"
+      GPU="cuda$cuda"
+    fi
     ;;
-  vulkan) files="$files cluaiz-$version-$platform-llama-vulkan.tar.gz" ;;
 esac
+[ "$GPU" = vulkan ] && files="$files cluaiz-$version-$platform-llama-vulkan.tar.gz"
 
 # ── Download, check, unpack ───────────────────────────────────────────────────────────────────
 for file in $files; do
