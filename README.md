@@ -93,14 +93,15 @@ from `permission.json` (`cluaiz permission port <n>`).
 
 ### Models and formats
 
-| | GGUF (llama.cpp) | ONNX (ONNX Runtime) |
-| :--- | :--- | :--- |
-| Text chat, tool calls, thinking models | Supported | Not available |
-| Images, audio, video frames, documents in chat | With a compatible vision / audio projector | Not available |
-| Text-to-speech | Experimental | Kokoro and other supported families |
-| Speech-to-text | Not available | Whisper |
-| Embeddings | Text | Text, CLIP-style images |
-| Document ingest | Vision models read pages and images; text embeddings | Text and image embeddings |
+| | GGUF (llama.cpp) | ONNX (ONNX Runtime) | API |
+| :--- | :--- | :--- | :--- |
+| Text chat, tool calls, thinking models | Supported | Not available | [Chat](docs/api/inference/chat_completions.md) |
+| Images, audio, video frames, documents in chat | With a compatible vision / audio projector (Gemma 4 E4B tested) | Not available | [Chat](docs/api/inference/chat_completions.md) |
+| Text-to-speech | Experimental | Kokoro and other supported families | [Speech](docs/api/inference/audio_speech.md) |
+| Speech-to-text | Not available | Whisper | [Transcriptions](docs/api/inference/audio_transcriptions.md) |
+| Text embeddings | Supported (BGE, EmbeddingGemma-2 tested) | Supported (BGE tested) | [Embeddings](docs/api/inference/embeddings.md) |
+| Image embeddings | Not available | CLIP-style vision models (FashionCLIP tested, 512-dim vectors) | [Embeddings](docs/api/inference/embeddings.md), [Ingest](docs/api/inference/ingest.md) |
+| Document and image ingest | Vision models write text from pages and images; text embeddings for chunks | Text embeddings for chunks; CLIP-style vision models for image and page vectors | [Ingest](docs/api/inference/ingest.md) |
 
 Families and the models tested with each are listed in [`RELEASE.md`](RELEASE.md).
 
@@ -120,7 +121,7 @@ optional: without one the engine extracts the text itself.
 | :--- | :--- |
 | None | Text, chunks and extraction metadata |
 | A text embedding model (GGUF or ONNX) | Chunk vectors, optionally with the text |
-| An image embedding model (ONNX) | Image or page vectors |
+| An ONNX vision (CLIP-style) model, e.g. FashionCLIP | Image or page vectors for similarity search (not text) |
 | A GGUF vision model | Text the model writes from the page or image, following an instruction |
 
 Not included yet: XLSX / PPTX parsing and a persistent vector index. Details:
