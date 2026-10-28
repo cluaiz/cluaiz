@@ -1,6 +1,12 @@
 # Run 4 — Linux, Tesla T4, release v0.1.0 by one-command install (2026-10-28)
 
-> **Saar (Hinglish).** Pehli baar release ko user ki tarah ek command se install karke GPU par chalaya. Install 17–45 s mein hua. CUDA 13 pack T4 par pehle chat par hi crash hua (4a); installer ab driver ka CUDA version dekh kar T4 ko CUDA 12 deta hai. CUDA 12 pack par 4B / 12B / 24B teeno poore GPU par chale (4B 65 t/s, 12B 22–24 t/s, 24B 11 t/s); Kokoro, Whisper, bge-m3, Qwen3-TTS pehle round mein sahi. Phir Kokoro ke GPU par chalte hi server crash: VM image ka cuDNN (CUDA 13 wala) CUDA 12 provider ke saath load hua. Engine ki do Linux kamiyan mili (neeche), fix baaki.
+> **Summary.** First run of the release installed like a user would, with its one command, on a GPU. The
+> install took 17–45 s. The CUDA 13 pack crashed the server on the T4 at the first chat (4a); the installer now
+> reads the driver's CUDA version and gives the T4 the CUDA 12 pack. On the CUDA 12 pack the 4B, 12B and 24B
+> models all ran fully on the GPU (4B 65 t/s, 12B 22–24 t/s, 24B 11 t/s); Kokoro, Whisper, bge-m3 and
+> Qwen3-TTS were correct in the first round. Then Kokoro on the GPU aborted the server: the VM image's cuDNN
+> (built for CUDA 13) was loaded with the CUDA 12 provider. Two Linux problems in the engine were found
+> (below); the fix is pending.
 
 ## Machine
 | | |
