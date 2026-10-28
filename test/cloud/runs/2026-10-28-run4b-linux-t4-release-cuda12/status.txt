@@ -1,0 +1,7 @@
+  ⚠️ [Ghost Execution Detected] You are running a local binary at "/home/Aryan/.cluaiz/bin/cluaiz"
+  💡 To use the System, run the global 'cluaiz' command.
+
+os        Ubuntu 24.04 (x86_64)
+cpu       Intel(R) Xeon(R) CPU @ 2.30GHz | 4 cores, 8 threads
+ram       27.89 GB free of 29.37 GB
+gpu 0     Tesla T4 | 14.56 GB free of 15.00 GB VRAM

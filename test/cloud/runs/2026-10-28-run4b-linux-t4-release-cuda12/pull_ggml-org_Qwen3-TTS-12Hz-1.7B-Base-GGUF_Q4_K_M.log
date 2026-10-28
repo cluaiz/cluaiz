@@ -1,0 +1,22 @@
+  ⚠️ [Ghost Execution Detected] You are running a local binary at "/home/Aryan/.cluaiz/bin/cluaiz"
+  💡 To use the System, run the global 'cluaiz' command.
+
+
+   ▄████▄   ██▓     █    ██  ▄▄▄       ██▓▒███████▒
+  ▒██▀ ▀█  ▓██▒     ██  ▓██▒▒████▄    ▓██▒▒ ▒ ▒ ▄▀░
+  ▒▓█    ▄ ▒██░    ▓██  ▒██░▒██  ▀█▄  ▒██▒░ ▒ ▄▀▒░ 
+  ▒▓▓▄ ▄██▒▒██░    ▓▓█  ░██░░██▄▄▄▄██ ░██░  ▄▀▒   ░
+  ▒ ▓███▀ ░░██████▒▒▒█████▓  ▓█   ▓██▒░██░▒███████▒
+  ░ ░▒ ▒  ░░ ▒░▓  ░░▒▓▒ ▒ ▒  ▒▒   ▓▒█░░▓  ░▒▒ ▓░▒░▒
+    ░  ▒   ░ ░ ▒  ░░░▒░ ░ ░   ▒   ▒▒ ░ ▒ ░░░▒ ▒ ░ ▒
+  ░          ░ ░    ░░░ ░ ░   ░   ▒    ▒ ░░ ░ ░ ░ ░
+  ░ ░          ░  ░   ░           ░  ░ ░    ░ ░    
+  ░                                       ░        
+
+  ⚙️ [cluaiz] Initializing Kernel for 'ggml-org/Qwen3-TTS-12Hz-1.7B-Base-GGUF:Q4_K_M'...
+  🔍 Scanning HuggingFace Hub for 'ggml-org/Qwen3-TTS-12Hz-1.7B-Base-GGUF'...
+  ⚡ Direct Quantization Tag Matched: ':Q4_K_M' -> Qwen3-TTS-12Hz-1.7B-Base-Q4_K_M.gguf (0.96 GB)
+
+  ⚠️ Warning: This exact variant is already downloaded locally under ID: 'qwen3-tts-12hz-1.7b-base-gguf-Q4_K_M'
+     If you wish to re-download, please delete the old one first using: cluaiz rm qwen3-tts-12hz-1.7b-base-gguf-Q4_K_M
+
