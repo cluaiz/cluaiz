@@ -1,6 +1,9 @@
 # Release Workflow
 
-One workflow, [`.github/workflows/release.yml`](../../.github/workflows/release.yml), builds and publishes Cluaiz. It follows llama.cpp's own release layout: a **core** that runs everything on the CPU, and **GPU packs** that the core loads when they sit beside it.
+[`.github/workflows/release.yml`](../../.github/workflows/release.yml) builds and publishes Cluaiz: a **core** that runs everything on the CPU, plus the **GPU drivers** the core loads when they sit beside it. The drivers come from two workflows that `release.yml` calls, so every file of a version lands on **one release page**:
+
+- [`cluaize-llama-driver.yml`](../../.github/workflows/cluaize-llama-driver.yml): GGUF drivers, llama.cpp's CUDA 12, CUDA 13 and Vulkan backends plus the NVIDIA CUDA runtime.
+- [`cluaize-onnx-driver.yml`](../../.github/workflows/cluaize-onnx-driver.yml): ONNX drivers, ONNX Runtime's CUDA 12 and CUDA 13 providers.
 
 ---
 
@@ -9,23 +12,25 @@ One workflow, [`.github/workflows/release.yml`](../../.github/workflows/release.
 | Event | What runs |
 |---|---|
 | Push to `main` or a pull request that touches engine / CLI / API code | Core builds for every platform and the smoke test. A broken build is caught here, before a release. |
-| **Run workflow** (manual, with a version such as `0.1.0`) | Everything above, the GPU packs, and the GitHub release `v<version>` with `SHA256SUMS.txt`. |
+| **Run workflow** on `Release` (manual, with a version such as `0.1.0`) | Everything above, both driver workflows, and the GitHub release `v<version>` with `SHA256SUMS.txt`. |
+| **Run workflow** on a driver workflow | Only those drivers, as run artifacts (no release). |
 
 ## Jobs
 
 | Job | Runner | Builds | Output |
 |---|---|---|---|
-| `core (win-x64)` | `windows-2022` | `cargo build -p cmd --release --locked --no-default-features` | `cluaiz-<v>-win-x64.zip`, `cluaiz-<v>-win-x64-onnx-cuda.zip` |
-| `core (linux-x64)` | `ubuntu-24.04` | same | `cluaiz-<v>-linux-x64.tar.gz`, `…-onnx-cuda.tar.gz` |
+| `core (win-x64)` | `windows-2022` | `cargo build -p cmd --release --locked --no-default-features` | `cluaiz-<v>-win-x64.zip` |
+| `core (linux-x64)` | `ubuntu-24.04` | same | `cluaiz-<v>-linux-x64.tar.gz` |
 | `core (linux-arm64)` | `ubuntu-24.04-arm` | same (experimental: a failure does not block the release) | `cluaiz-<v>-linux-arm64.tar.gz` |
 | `core (mac-arm64)` | `macos-14` | same with `--features metal` (experimental) | `cluaiz-<v>-mac-arm64.tar.gz` |
-| `gpu (win-x64-cuda12)` | `windows-2022` + CUDA 12.4 | CMake target `ggml-cuda` only | `…-win-x64-llama-cuda12.zip`, `…-win-x64-cudart12.zip` |
-| `gpu (win-x64-vulkan)` | `windows-2022` + Vulkan SDK | CMake target `ggml-vulkan` only | `…-win-x64-llama-vulkan.zip` |
-| `gpu (linux-x64-cuda12)` | `nvidia/cuda:12.8.1-devel-ubuntu24.04` | CMake target `ggml-cuda` only | `…-linux-x64-llama-cuda12.tar.gz`, `…-linux-x64-cudart12.tar.gz` |
-| `gpu (linux-x64-vulkan)` | `ubuntu-24.04` | CMake target `ggml-vulkan` only | `…-linux-x64-llama-vulkan.tar.gz` |
+| `llama cuda12` / `cuda13` (win-x64) | `windows-2022` + CUDA 12.4 / 13.4 | CMake target `ggml-cuda` only | `…-win-x64-llama-cuda12.zip` + `…-cudart12.zip`, same for 13 |
+| `llama vulkan` (win-x64) | `windows-2022` + Vulkan SDK | CMake target `ggml-vulkan` only | `…-win-x64-llama-vulkan.zip` |
+| `llama cuda12` / `cuda13` (linux-x64) | `nvidia/cuda:12.8.1` / `13.4.1-devel-ubuntu24.04` | CMake target `ggml-cuda` only | `…-linux-x64-llama-cuda12.tar.gz` + `…-cudart12.tar.gz`, same for 13 |
+| `llama vulkan` (linux-x64) | `ubuntu-24.04` | CMake target `ggml-vulkan` only | `…-linux-x64-llama-vulkan.tar.gz` |
+| `onnx cuda12` / `cuda13` (win-x64, linux-x64) | `ubuntu-24.04` | nothing compiled: Microsoft's ONNX Runtime GPU release of the version in `Cargo.lock`, checked against GitHub's SHA-256 | `…-onnx-cuda12.*`, `…-onnx-cuda13.*` |
 | `release` | `ubuntu-24.04` | — | the GitHub release with every file that built and `SHA256SUMS.txt` |
 
-GPU packs are built from the same pinned `engine/llama/llama.cpp` fork commit as the core, so they match the core's `ggml-base` library. A GPU job that fails leaves its pack out of the release; the core still ships.
+GGUF drivers are built from the same pinned `engine/llama/llama.cpp` fork commit as the core, so they match the core's `ggml-base` library. ONNX drivers are the same ONNX Runtime version the core links (read from `ort-sys` in `Cargo.lock`); NVIDIA cuDNN and the CUDA runtime they need are downloaded by the engine on first GPU use. A driver job that fails leaves its file out of the release; the core still ships.
 
 ## Smoke test
 
@@ -52,7 +57,9 @@ The CUDA jobs take the longest (the CUDA backend is compiled for every supported
 
 | File | Purpose |
 |---|---|
-| `release.yml` | Builds, tests and publishes (this page). |
+| `release.yml` | Builds and tests the core, calls the driver workflows, publishes one release page. |
+| `cluaize-llama-driver.yml` | GGUF drivers (llama.cpp CUDA 12 / 13, Vulkan) and the NVIDIA CUDA runtime. |
+| `cluaize-onnx-driver.yml` | ONNX drivers (ONNX Runtime CUDA 12 / 13 providers). |
 | `release-drafter.yml` | Keeps a draft changelog from merged pull requests; `release.yml` publishes that draft when it has the same tag. |
 
-The earlier split workflows (`cluaize-cmd`, `-engine`, `-kernel-*`, `-*-driver`, `publish-registry`) and their registry scripts were removed; they built package names that no longer exist and never produced a release.
+The earlier split workflows (`cluaize-cmd`, `-engine`, `-kernel-*`, `publish-registry`) and their registry scripts were removed; they built package names that no longer exist and never produced a release.

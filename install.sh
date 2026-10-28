@@ -12,6 +12,7 @@
 #   CLUAIZ_VERSION      release to install, e.g. 0.1.0 (default: the newest release)
 #   CLUAIZ_INSTALL_DIR  where the files go (default: ~/.cluaiz/bin)
 #   CLUAIZ_GPU          auto | cuda | vulkan | cpu (default: auto)
+#   CLUAIZ_CUDA         12 | 13 (default: 13 with NVIDIA driver 580+ on an RTX 20 series or newer, else 12)
 set -eu
 
 REPO="cluaiz/cluaiz"
@@ -92,7 +93,17 @@ curl -fsSL "$base/SHA256SUMS.txt" -o "$tmp/SHA256SUMS.txt" || fail "cannot downl
 
 files="cluaiz-$version-$platform.tar.gz"
 case "$GPU" in
-  cuda) files="$files cluaiz-$version-$platform-llama-cuda12.tar.gz cluaiz-$version-$platform-cudart12.tar.gz cluaiz-$version-$platform-onnx-cuda.tar.gz" ;;
+  cuda)
+    cuda="${CLUAIZ_CUDA:-}"
+    if [ -z "$cuda" ]; then
+      # CUDA 13 needs driver 580+ and compute capability 7.5+ (Turing); older drivers and GPUs use CUDA 12
+      driver=$(nvidia-smi --query-gpu=driver_version --format=csv,noheader 2>/dev/null | head -n1 | cut -d. -f1)
+      cap=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader 2>/dev/null | tr -d . | sort -n | head -n1)
+      if [ "${driver:-0}" -ge 580 ] 2>/dev/null && [ "${cap:-0}" -ge 75 ] 2>/dev/null; then cuda=13; else cuda=12; fi
+    fi
+    files="$files cluaiz-$version-$platform-llama-cuda$cuda.tar.gz cluaiz-$version-$platform-cudart$cuda.tar.gz cluaiz-$version-$platform-onnx-cuda$cuda.tar.gz"
+    GPU="cuda$cuda"
+    ;;
   vulkan) files="$files cluaiz-$version-$platform-llama-vulkan.tar.gz" ;;
 esac
 

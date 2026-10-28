@@ -23,7 +23,8 @@ The core carries llama.cpp's CPU backend in several builds (x86: SSE4.2, AVX, AV
 
 | GPU | GGUF models (llama.cpp) | ONNX models (speech, transcription) |
 |---|---|---|
-| NVIDIA (GTX 900 series and newer) | `llama-cuda12` pack + `cudart12` runtime pack | `onnx-cuda` pack; cuDNN is fetched on first use |
+| NVIDIA, driver 580+ and RTX 20 series or newer | `llama-cuda13` + `cudart13` | `onnx-cuda13`; cuDNN is fetched from NVIDIA on first use |
+| NVIDIA, older driver or GTX 900 / 10 series | `llama-cuda12` + `cudart12` | `onnx-cuda12`; cuDNN is fetched from NVIDIA on first use |
 | AMD Radeon, Intel Arc (Windows, Linux) | `llama-vulkan` pack | CPU on Linux; DirectML on Windows (inside the core) |
 | Apple Silicon | Metal, inside the macOS core | CPU |
 | Integrated GPUs | CPU by default; the Vulkan pack can be installed by hand (`CLUAIZ_GPU=vulkan`) | as above |
