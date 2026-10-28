@@ -20,6 +20,10 @@ on:
         description: "Mark as pre-release"
         type: boolean
         default: true
+      drivers_run:
+        description: "Reuse the GPU drivers of an earlier run (its run ID, from the run's URL) instead of building them again; empty builds them"
+        required: false
+        default: ""
 
 concurrency:
   group: release-${{ github.ref }}
@@ -118,14 +122,18 @@ jobs:
           if-no-files-found: error
 
   # ── Drivers: built by their own workflows, published on this release page ──────────────────
+  # Skipped when drivers_run names an earlier run: the drivers depend only on the llama.cpp fork
+  # commit and the ONNX Runtime version, so a core-only fix need not wait ~2 hours for them again
   gguf-drivers:
     name: GGUF drivers
+    if: inputs.drivers_run == ''
     uses: ./.github/workflows/cluaize-llama-driver.yml
     with:
       version: ${{ inputs.version }}
 
   onnx-drivers:
     name: ONNX drivers
+    if: inputs.drivers_run == ''
     uses: ./.github/workflows/cluaize-onnx-driver.yml
     with:
       version: ${{ inputs.version }}
@@ -138,8 +146,19 @@ jobs:
     runs-on: ubuntu-24.04
     permissions:
       contents: write
+      actions: read
     steps:
       - uses: actions/checkout@v4
+
+      - name: Drivers from run ${{ inputs.drivers_run }}
+        if: inputs.drivers_run != ''
+        uses: actions/download-artifact@v4
+        with:
+          run-id: ${{ inputs.drivers_run }}
+          github-token: ${{ github.token }}
+          pattern: driver-*
+          path: dist
+          merge-multiple: true
 
       - uses: actions/download-artifact@v4
         with:
