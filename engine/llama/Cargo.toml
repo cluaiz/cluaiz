@@ -21,7 +21,6 @@ tokio = { version = "1.0", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 libc = "0.2"
-tokenizers = "0.22.2"
 sysinfo = "0.30"
 
 [dev-dependencies]
