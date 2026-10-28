@@ -9,10 +9,11 @@
 
 ## When it runs
 
+Only when started by hand. Pushes and pull requests never start a build.
+
 | Event | What runs |
 |---|---|
-| Push to `main` or a pull request that touches engine / CLI / API code | Core builds for every platform and the smoke test. A broken build is caught here, before a release. |
-| **Run workflow** on `Release` (manual, with a version such as `0.1.0`) | Everything above, both driver workflows, and the GitHub release `v<version>` with `SHA256SUMS.txt`. |
+| **Run workflow** on `Release` (manual, with a version such as `0.1.0`) | The core for every platform, the smoke test, both driver workflows, and the GitHub release `v<version>` with `SHA256SUMS.txt`. |
 | **Run workflow** on a driver workflow | Only those drivers, as run artifacts (no release). |
 
 ## Jobs
