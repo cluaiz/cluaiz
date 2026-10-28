@@ -107,15 +107,22 @@ pub fn variant_manifest(cuda_variant: &str) -> Option<&'static CudaVariantManife
 /// Inspects raw binary bytes of `onnxruntime_providers_cuda.dll` / `libonnxruntime_providers_cuda.so`
 /// to determine whether the provider was compiled against CUDA 13 or CUDA 12.
 pub fn detect_cuda_variant_from_provider_bytes(bytes: &[u8]) -> Option<&'static str> {
-    const CUDA13: &[&[u8]] = &[b"cublas64_13.dll", b"cudart64_13.dll", b"libcublas.so.13", b"libcudart.so.13"];
-    const CUDA12: &[&[u8]] = &[b"cublas64_12.dll", b"cudart64_12.dll", b"libcublas.so.12", b"libcudart.so.12"];
-    if CUDA13.iter().any(|m| bytes.windows(m.len()).any(|w| w.eq_ignore_ascii_case(m))) {
-        return Some("cuda13");
-    }
-    if CUDA12.iter().any(|m| bytes.windows(m.len()).any(|w| w.eq_ignore_ascii_case(m))) {
-        return Some("cuda12");
-    }
-    None
+    // cuBLAS is named only for the CUDA major the provider links. Both cudart names appear in the
+    // CUDA 12 and the CUDA 13 builds of ONNX Runtime 1.28, so they decide only without a cuBLAS name.
+    const MARKERS: &[(&[u8], &str)] = &[
+        (b"cublas64_13.dll", "cuda13"),
+        (b"libcublas.so.13", "cuda13"),
+        (b"cublas64_12.dll", "cuda12"),
+        (b"libcublas.so.12", "cuda12"),
+        (b"cudart64_13.dll", "cuda13"),
+        (b"libcudart.so.13", "cuda13"),
+        (b"cudart64_12.dll", "cuda12"),
+        (b"libcudart.so.12", "cuda12"),
+    ];
+    MARKERS
+        .iter()
+        .find(|(marker, _)| bytes.windows(marker.len()).any(|w| w.eq_ignore_ascii_case(marker)))
+        .map(|(_, variant)| *variant)
 }
 
 /// Returns candidate directories where the active `onnxruntime_providers_cuda` binary may reside,
@@ -763,6 +770,12 @@ mod tests {
         assert_eq!(detect_cuda_variant_from_provider_bytes(b"MZ...cublas64_13.dll\0"), Some("cuda13"));
         assert_eq!(detect_cuda_variant_from_provider_bytes(b"\x7fELF...libcublas.so.13\0"), Some("cuda13"));
         assert_eq!(detect_cuda_variant_from_provider_bytes(b"no_cuda_imports"), None);
+        // Microsoft's CUDA 12 provider also names cudart64_13.dll; cuBLAS decides
+        assert_eq!(
+            detect_cuda_variant_from_provider_bytes(b"MZ...cudart64_13.dll\0cudart64_12.dll\0cublas64_12.dll\0"),
+            Some("cuda12")
+        );
+        assert_eq!(detect_cuda_variant_from_provider_bytes(b"MZ...cudart64_12.dll\0"), Some("cuda12"));
     }
 
     #[test]
