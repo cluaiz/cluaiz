@@ -1,111 +1,103 @@
-# Cluaiz Mac test (Apple Silicon)
+# Mac test (Apple Silicon)
 
-Ye test aapke MacBook par Cluaiz chalata hai aur use **llama.cpp** ke saath, same model aur same setting
-par, compare karta hai. Lagbhag **1 ghanta** lagta hai. Aapko sirf **ek line** chalani hai, baaki sab
-apne aap hota hai. Aakhir mein Desktop par **ek file** banti hai: bas wahi wapas bhejni hai.
+Runs Cluaiz on a Mac with Apple Silicon and compares it with plain llama.cpp on the same model files and the
+same settings. It takes about an hour and needs one command; all results are packed into one archive.
 
-> Kuch install ya kharab nahi hota: sab kuch ek alag folder `~/cluaiz-mactest` mein jaata hai, jo baad mein
-> ek command se hat jaata hai.
+Everything is kept in `~/cluaiz-mactest`, which can be removed afterwards (see [Clean up](#clean-up)).
 
-## Shuru karne se pehle
+## Requirements
 
 | | |
 |---|---|
-| 💻 Mac | Apple Silicon (M1, M2, M3, M4, M5). Intel Mac par ye test nahi chalta. |
-| 🔌 Charger | **Laga ke rakhiye.** Battery par Mac dheema chalta hai aur test galat aata hai. |
-| 📶 Internet | Achha Wi-Fi. 10 se 40 GB download hota hai (RAM ke hisaab se, neeche dekhiye). |
-| 💾 Khali jagah | Kam se kam **40 GB** free. |
-| ⏳ Dhyan | Test ke dauraan Mac band ya sleep mat kijiye, lid khuli rakhiye, bhaari kaam mat chalaiye. |
+| Mac | Apple Silicon (M1 or newer). Intel Macs are not supported. |
+| Power | Connected to the charger: on battery the Mac slows down and the numbers are not comparable. |
+| Network | 10 to 40 GB of downloads, depending on the RAM (see [What it does](#what-it-does)). |
+| Disk | At least 40 GB free. |
+| During the test | Keep the Mac awake with the lid open and avoid other heavy work. |
 
-## Steps
+## Run
 
-**1. Terminal kholiye.** `Cmd + Space` dabaiye, `Terminal` likhiye, `Enter`.
+1. Open Terminal.
+2. Run:
 
-**2. Ye poori line copy karke Terminal mein paste kijiye aur `Enter` dabaiye:**
+   ```bash
+   bash -c "$(curl -fsSL https://raw.githubusercontent.com/cluaiz/cluaiz/main/test/mac/mac_test.sh)"
+   ```
 
-```bash
-bash -c "$(curl -fsSL https://raw.githubusercontent.com/cluaiz/cluaiz/main/test/mac/mac_test.sh)"
-```
+3. If macOS asks to install the Command Line Tools, install them and run the command again.
+4. Wait until the last lines read:
 
-**3. Agar ek window aaye "Command Line Tools install karein?"**, to **Install** dabaiye. 5 se 10 minute
-mein poora ho jaata hai. Uske baad **step 2 wali line dobara** chalaiye. (Ye window sirf pehli baar aati hai.)
+   ```
+   == [55 min] done in 55 min
+   == results: /Users/<you>/Desktop/cluaiz-mac-results-<date>.tar.gz (send this file)
+   ```
 
-**4. Ab bas intezaar kijiye.** Screen par aisa likha aata rahega:
+The archive on the Desktop is the result of the test.
 
-```
-== [0 min] machine
-== [2 min] install (the release's one command)
-== [3 min] downloads
-== [21 min] test unsloth/Qwen3-4B-GGUF:Q4_K_M (auto,gpu,split,cpu)
-...
-== [55 min] done in 55 min
-== results: /Users/aap/Desktop/cluaiz-mac-results-20261029-1130.tar.gz (send this file)
-```
+## What it does
 
-Beech mein kuch mat dabaiye. Lambi lines aur numbers aana normal hai.
+1. Records the machine: chip, RAM, macOS version, SSD write speed, power and thermal state.
+2. Installs the latest release with the official installer (`install.sh`).
+3. Downloads Q4_K_M models that fit the RAM:
 
-**5. Khatam hone par** Desktop par ek file milegi: **`cluaiz-mac-results-….tar.gz`**.
-📎 **Wahi file WhatsApp, email ya Google Drive se wapas bhej dijiye.** Bas itna hi.
-
-## Test kya karta hai
-
-1. Mac ki jaankari likhta hai: chip, RAM, macOS, SSD ki speed, battery aur garmi.
-2. Cluaiz ko uske official ek-command installer se install karta hai.
-3. Mac ki RAM dekh kar **Q4 model** chunta hai aur download karta hai:
-
-   | Mac ki RAM | Model | Download |
+   | RAM | Models | Download |
    |---|---|---|
    | 16 GB | Qwen3 4B, Gemma 3 12B | ~9 GB |
-   | 24 GB | upar wale + Mistral Small 24B | ~22 GB |
-   | 32 GB ya zyada | upar wale + Gemma 4 31B | ~40 GB |
+   | 24 GB | the above + Mistral Small 3.2 24B | ~22 GB |
+   | 32 GB or more | the above + Gemma 4 31B | ~40 GB |
 
-4. Saath mein **llama.cpp** (Apple ke Metal GPU ke saath) banata hai, usi version se jo Cluaiz ke andar hai.
-5. Har model ko **4 tarah** se chalata hai, pehle Cluaiz par, phir llama.cpp par:
+4. Builds `llama-bench` with Metal from the llama.cpp commit the release uses, while the models download.
+5. Runs [`test/engine_regression/run.py`](../engine_regression/run.py) for every model in four placement modes,
+   on Cluaiz and on llama.cpp with the same placement:
 
-   | Mode | Matlab |
+   | Mode | Placement |
    |---|---|
-   | auto | Cluaiz khud tay karta hai model kahan chalana hai |
-   | gpu | poora model GPU par |
-   | split | aadha GPU par, aadha CPU par |
-   | cpu | sirf CPU |
+   | `auto` | chosen by the Cluaiz planner |
+   | `gpu` | every layer on the GPU |
+   | `split` | half of the layers on the GPU |
+   | `cpu` | CPU only |
 
-6. Saare logs aur nateeje ek file mein pack karke Desktop par rakhta hai.
+6. Packs every log and report into the archive on the Desktop.
 
-## Error aaye to
+## Options
 
-- Terminal ka **screenshot** le kar bhej dijiye.
-- Lal rang mein `ERROR` dikhe, ya **15 se 20 minute** tak screen par kuch naya na aaye, tab bhi bata dijiye.
-- Beech mein rokna ho to `Ctrl + C` dabaiye. Tab bhi jitna test hua, uski file Desktop par ban jaati hai:
-  wo bhej dijiye.
-- Dobara chalana ho to step 2 wali line phir se chalaiye. Jo model download ho chuke hain, wo dobara
-  download nahi hote.
-
-## Aur zyada test (optional)
-
-16 GB wale Mac par bada model (Gemma 4 31B, 17 GB) bhi chalana ho, jo RAM se bada hai aur SSD se padha
-jaata hai. Isme 20 se 30 minute zyada lagte hain:
+| Variable | Effect |
+|---|---|
+| `BIG=1` | Also runs Gemma 4 31B (17 GB) on a Mac with less than 32 GB RAM, read from the SSD while it runs (`auto` mode only, about 20 to 30 minutes more). |
+| `RUNS=<n>` | Requests per model and mode (default 3; the first one is the cold run). |
 
 ```bash
 BIG=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/cluaiz/cluaiz/main/test/mac/mac_test.sh)"
 ```
 
-## Baad mein saaf karna (zaroori nahi)
+## If something goes wrong
+
+- Stopping with `Ctrl + C` still writes the archive with the results finished so far.
+- Running the command again reuses the models already downloaded.
+- If there is an error, or no new line appears for 15 to 20 minutes, keep a screenshot of the Terminal
+  together with the archive.
+
+## Results archive
+
+| File | Content |
+|---|---|
+| `machine.txt` | Hardware, macOS, SSD write speed, power and thermal state |
+| `install.log`, `installed_files.txt` | Installer output and the installed files |
+| `pulls.log`, `pull_*.log` | Model downloads |
+| `llama_bench_build.log` | llama.cpp build |
+| `server.log`, `planner.log` | Engine log; the planner's placement decisions |
+| `RESULTS_*.md`, `run_*.log` | Cluaiz vs llama.cpp per model and mode, with every setting and the exact llama-bench command |
+| `loaded_libs.txt` | Libraries the engine loaded |
+| `mac_test.log` | Everything the script printed |
+
+The server runs with its own home (`CLUAIZ_HOME=~/cluaiz-mactest/home`) on port 8011, so another Cluaiz
+installation on the same Mac is not touched.
+
+## Clean up
 
 ```bash
 rm -rf ~/cluaiz-mactest
 ```
 
-Installer `~/.zshrc` mein `# Cluaiz` naam ki ek PATH line bhi jodta hai. Wo bhi hatani ho to `~/.zshrc` ko
-TextEdit mein kholiye aur `# Cluaiz` wali line aur uske neeche wali `export PATH=...` line delete kar dijiye.
-
-## Developers ke liye
-
-- Script: [`mac_test.sh`](mac_test.sh). Comparison: [`test/engine_regression/run.py`](../engine_regression/run.py).
-- `RUNS=2` har model aur mode par requests ki ginti badalta hai (default 3, pehli cold run hoti hai).
-- Archive mein: `machine.txt`, `install.log`, `installed_files.txt`, `pulls.log`, `pull_*.log`,
-  `llama_bench_build.log`, `server.log`, `planner.log` (planner ne kya chuna), `run_*.log`,
-  `RESULTS_*.md` (Cluaiz vs llama.cpp, har setting aur exact llama-bench command ke saath), `loaded_libs.txt`.
-- Server alag folder (`CLUAIZ_HOME=~/cluaiz-mactest/home`) aur port 8011 par chalta hai, kisi aur Cluaiz
-  install ko nahi chhoota.
-
-Shukriya! 🙏
+The installer also adds a `# Cluaiz` PATH line to `~/.zshrc`; remove that line and the `export PATH=...` line
+below it if the Mac is not used for Cluaiz afterwards.
