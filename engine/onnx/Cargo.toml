@@ -32,11 +32,12 @@ sha2 = "0.10"
 zip = { version = "2.4", default-features = false, features = ["deflate"] }
 
 # DirectML exists only on Windows. On Linux the prebuilt ONNX Runtime with CUDA also carries
-# TensorRT / NV-RTX, so the exact "cuda" set has no download: take the closest build
+# TensorRT / NV-RTX, and macOS has no CUDA build at all (only CoreML), so the exact "cuda" set
+# has no download there: take the closest build
 [target.'cfg(windows)'.dependencies]
 ort = { version = "2.0.0-rc.13", features = ["directml"] }
 
-[target.'cfg(target_os = "linux")'.dependencies]
+[target.'cfg(not(windows))'.dependencies]
 ort = { version = "2.0.0-rc.13", features = ["lax-feature-matching"] }
 
 [dev-dependencies]

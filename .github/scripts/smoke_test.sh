@@ -11,6 +11,8 @@ exe="$dir/cluaiz"
 [ -f "$dir/cluaiz.exe" ] && exe="$dir/cluaiz.exe"
 
 export CLUAIZ_HOME="${RUNNER_TEMP:-$(mktemp -d)}/cluaiz-smoke-home"
+# No terminal in CI: answer the download confirmation with its default
+export CLUAIZ_NONINTERACTIVE=1
 rm -rf "$CLUAIZ_HOME"
 
 "$exe" --version
