@@ -29,7 +29,7 @@ rayon = "1.10"
 base64 = "0.22"
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "blocking"] }
 sha2 = "0.10"
-zip = { version = "2.4", default-features = false, features = ["deflate"] }
+zip = { version = "9.0.5", default-features = false, features = ["deflate"] }
 
 # DirectML exists only on Windows. On Linux the prebuilt ONNX Runtime with CUDA also carries
 # TensorRT / NV-RTX, and macOS has no CUDA build at all (only CoreML), so the exact "cuda" set

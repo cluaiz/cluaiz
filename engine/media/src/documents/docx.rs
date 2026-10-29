@@ -17,6 +17,7 @@ pub(super) fn extract(bytes: &[u8], limits: MediaLimits) -> Result<Vec<DocumentP
     let mut omissions = Vec::new();
     if archive
         .file_names()
+        .flatten()
         .any(|name| name.starts_with("word/header") || name.starts_with("word/footer"))
     {
         omissions.push("header_footer_content_not_extracted");
@@ -95,7 +96,7 @@ pub(super) fn extract(bytes: &[u8], limits: MediaLimits) -> Result<Vec<DocumentP
                 _ => {}
             },
             Event::Text(value) if text_depth.is_some() => {
-                append(&mut text, &value.xml_content()?, limits)?
+                append(&mut text, &value.xml11_content()?, limits)?
             }
             Event::CData(value) if text_depth.is_some() => {
                 append(&mut text, &value.decode()?, limits)?

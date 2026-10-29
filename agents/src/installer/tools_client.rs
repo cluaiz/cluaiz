@@ -291,7 +291,7 @@ impl ToolsInstaller {
                 Some(path) => target_dir.join(path),
                 None => continue,
             };
-            if (*file.name()).ends_with('/') {
+            if file.is_dir() {
                 std::fs::create_dir_all(&outpath)?;
             } else {
                 if let Some(p) = outpath.parent() {
