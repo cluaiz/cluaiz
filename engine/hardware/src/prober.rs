@@ -12,10 +12,17 @@ static CACHED_HARDWARE: Lazy<RwLock<Option<SystemInfo>>> = Lazy::new(|| RwLock::
 
 pub struct HardwareProber;
 
+struct QuickFacts {
+    ram_total_bytes: u64,
+    logical_threads: usize,
+    gpus: Vec<(String, u64)>,
+}
+
 impl HardwareProber {
     /// Returns the cached hardware snapshot. The deep probe (seconds: memory benchmark, WMI, disks) runs
     /// once and is kept in `hardware_profile.json`; later processes read that file and only measure free
-    /// RAM / VRAM again. `calibrate()` re-runs the deep probe.
+    /// RAM / VRAM again. `calibrate()` re-runs the deep probe, and so does a start where the total RAM,
+    /// the CPU threads or the NVIDIA GPUs no longer match the file (RAM added, a VM resized).
     pub fn current() -> SystemInfo {
         {
             let guard = CACHED_HARDWARE.read().unwrap();
@@ -24,11 +31,14 @@ impl HardwareProber {
             }
         }
         let info = match Self::load_profile() {
-            Some(mut saved) => {
+            Some(mut saved) if !Self::hardware_changed(&saved, &Self::quick_facts()) => {
                 Self::apply_live_memory(&mut saved);
                 saved
             }
-            None => {
+            stale => {
+                if stale.is_some() {
+                    tracing::info!("RAM, CPU or GPU changed since hardware_profile.json was written; scanning the hardware again");
+                }
                 let fresh = Self::probe_system();
                 Self::save_profile(&fresh);
                 fresh
@@ -36,6 +46,36 @@ impl HardwareProber {
         };
         *CACHED_HARDWARE.write().unwrap() = Some(info.clone());
         info
+    }
+
+    /// The facts a hardware change alters, read in milliseconds: total RAM, CPU threads, and each
+    /// NVIDIA GPU's name with its total VRAM.
+    fn quick_facts() -> QuickFacts {
+        let sys = System::new_with_specifics(
+            sysinfo::RefreshKind::new()
+                .with_memory(sysinfo::MemoryRefreshKind::new().with_ram())
+                .with_cpu(sysinfo::CpuRefreshKind::new()),
+        );
+        let mut gpus = Vec::new();
+        #[cfg(not(target_os = "macos"))]
+        if let Ok(nvml) = nvml_wrapper::Nvml::init() {
+            for i in 0..nvml.device_count().unwrap_or(0) {
+                if let Ok(device) = nvml.device_by_index(i) {
+                    let name = device.name().unwrap_or_else(|_| "NVIDIA GPU".into());
+                    gpus.push((name, device.memory_info().map(|m| m.total).unwrap_or(0)));
+                }
+            }
+        }
+        QuickFacts { ram_total_bytes: sys.total_memory(), logical_threads: sys.cpus().len(), gpus }
+    }
+
+    /// A fact that could not be read (zero) is not a change. RAM may differ by a little between boots.
+    fn hardware_changed(saved: &SystemInfo, now: &QuickFacts) -> bool {
+        let saved_ram = saved.memory.total_bytes;
+        let ram_changed = now.ram_total_bytes > 0 && saved_ram.abs_diff(now.ram_total_bytes) > saved_ram / 32;
+        let threads_changed = now.logical_threads > 0 && now.logical_threads != saved.cpu.logical_threads;
+        let saved_gpus: Vec<(String, u64)> = saved.gpus.iter().map(|g| (g.name.clone(), g.vram_total_bytes)).collect();
+        ram_changed || threads_changed || saved_gpus != now.gpus
     }
 
     /// Runs the deep probe again and stores it (`cluaiz calibrate`, e.g. after a hardware change).
@@ -554,5 +594,30 @@ mod live_memory_tests {
         assert_eq!((info.gpus[0].vram_free_bytes, info.gpus[0].vram_available_gb), (0, 0.0));
         HardwareProber::apply_memory_snapshot(&mut info, (Some(cluaiz_core::GIB), Some(cluaiz_core::GIB)));
         assert_eq!((info.memory.available_gb, info.gpus[0].vram_available_gb), (1.0, 1.0));
+    }
+
+    #[test]
+    fn saved_profile_is_stale_after_ram_cpu_or_gpu_changes() {
+        let mut saved = SystemInfo::default();
+        saved.memory.total_bytes = 16 * cluaiz_core::GIB;
+        saved.cpu.logical_threads = 8;
+        saved.gpus.push(crate::GpuSubsystem { name: "T4".into(), vram_total_bytes: 15 * cluaiz_core::GIB, ..Default::default() });
+        let same = || QuickFacts {
+            ram_total_bytes: 16 * cluaiz_core::GIB - 100 * 1024 * 1024,
+            logical_threads: 8,
+            gpus: vec![("T4".into(), 15 * cluaiz_core::GIB)],
+        };
+        assert!(!HardwareProber::hardware_changed(&saved, &same()));
+        assert!(!HardwareProber::hardware_changed(&saved, &QuickFacts { ram_total_bytes: 0, logical_threads: 0, ..same() }));
+        assert!(HardwareProber::hardware_changed(&saved, &QuickFacts { ram_total_bytes: 32 * cluaiz_core::GIB, ..same() }));
+        assert!(HardwareProber::hardware_changed(&saved, &QuickFacts { logical_threads: 16, ..same() }));
+        assert!(HardwareProber::hardware_changed(&saved, &QuickFacts { gpus: vec![], ..same() }));
+    }
+
+    #[test]
+    #[ignore]
+    fn this_machine_matches_a_fresh_probe() {
+        let probed = HardwareProber::probe_system();
+        assert!(!HardwareProber::hardware_changed(&probed, &HardwareProber::quick_facts()));
     }
 }
