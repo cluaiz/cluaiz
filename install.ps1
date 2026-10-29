@@ -15,7 +15,8 @@
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch { }
 
 $Repo = 'cluaiz/cluaiz'
 $InstallDir = if ($env:CLUAIZ_INSTALL_DIR) { $env:CLUAIZ_INSTALL_DIR } else { Join-Path $HOME '.cluaiz\bin' }
@@ -79,7 +80,7 @@ try {
 
     $Tmp = Join-Path ([IO.Path]::GetTempPath()) ("cluaiz-install-" + [Guid]::NewGuid())
     New-Item -ItemType Directory -Force $Tmp | Out-Null
-    Invoke-WebRequest "$Base/SHA256SUMS.txt" -OutFile "$Tmp\SHA256SUMS.txt"
+    Invoke-WebRequest "$Base/SHA256SUMS.txt" -OutFile "$Tmp\SHA256SUMS.txt" -UseBasicParsing
     $Sums = @{}
     foreach ($line in Get-Content "$Tmp\SHA256SUMS.txt") {
         $parts = $line -split '\s+\*?', 2
@@ -164,7 +165,7 @@ try {
                 $stream.Dispose()
             }
         } catch {
-            Invoke-WebRequest $url -OutFile $outPath
+            Invoke-WebRequest $url -OutFile $outPath -UseBasicParsing
         } finally {
             $client.Dispose()
         }
@@ -198,7 +199,7 @@ try {
     $sys = [Environment]::SystemDirectory
     if (-not ((Test-Path "$sys\vcruntime140_1.dll") -and (Test-Path "$sys\msvcp140.dll") -and (Test-Path "$sys\vcomp140.dll"))) {
         Write-Step 'Installing the Microsoft Visual C++ runtime (Windows may ask for permission)'
-        Invoke-WebRequest 'https://aka.ms/vs/17/release/vc_redist.x64.exe' -OutFile "$Tmp\vc_redist.x64.exe"
+        Invoke-WebRequest 'https://aka.ms/vs/17/release/vc_redist.x64.exe' -OutFile "$Tmp\vc_redist.x64.exe" -UseBasicParsing
         Start-Process "$Tmp\vc_redist.x64.exe" -ArgumentList '/install', '/quiet', '/norestart' -Verb RunAs -Wait
         Complete-Step 'Microsoft Visual C++ runtime'
     }
