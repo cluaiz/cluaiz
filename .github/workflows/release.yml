@@ -160,6 +160,17 @@ jobs:
           path: dist
           merge-multiple: true
 
+      # The earlier run named its packs with its own version (cluaiz-0.1.0-...); the installers look
+      # for this release's version, so the reused packs are renamed before the core files arrive
+      - name: Name the reused drivers for v${{ inputs.version }}
+        if: inputs.drivers_run != ''
+        run: |
+          cd dist
+          for f in cluaiz-*; do
+            new=$(echo "$f" | sed -E "s/^cluaiz-[0-9]+\.[0-9]+\.[0-9]+[^-]*-/cluaiz-${VERSION}-/")
+            [ "$f" = "$new" ] || mv -v "$f" "$new"
+          done
+
       - uses: actions/download-artifact@v4
         with:
           path: dist
