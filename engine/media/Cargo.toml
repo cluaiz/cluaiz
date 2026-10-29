@@ -18,9 +18,9 @@ reqwest = { version = "0.12", default-features = false, features = ["rustls-tls"
 tempfile = "3"
 tokio = { version = "1", features = ["fs", "io-util", "rt", "macros"] }
 serde = { version = "1", features = ["derive"] }
-pdf-extract = "0.7.12"
-zip = { version = "2.4", default-features = false, features = ["deflate"] }
-quick-xml = "0.39.4"
+pdf-extract = "0.12.1"
+zip = { version = "9.0.5", default-features = false, features = ["deflate"] }
+quick-xml = "0.41"
 libloading = "0.8.9"
 sha2 = "0.10"
 serde_json = "1.0"
