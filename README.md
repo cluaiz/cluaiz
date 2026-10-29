@@ -544,7 +544,7 @@ sequenceDiagram
 | :--- | :--- |
 | A laptop generates at about half its usual speed | On battery, Windows limits the GPU's power. Plug in the charger. |
 | A model forced fully onto a small GPU is very slow on Windows | What does not fit spills into shared GPU memory (system RAM over PCIe). Leave placement on auto, or use fewer GPU layers. |
-| Speeds or limits look wrong after changing RAM, GPU or driver | The deep hardware scan is cached. Run `cluaiz calibrate`. |
+| Speeds or limits look wrong after a driver update or other change | The deep hardware scan is cached; a change in total RAM, CPU threads or NVIDIA GPUs re-runs it by itself at the next start. For anything else, run `cluaiz calibrate`. |
 | The first answer on a Tesla T4 or RTX 20 takes a minute | The GPU pack has no ready-made code for that GPU and the driver compiles it once; later answers are at full speed. |
 | "Does not fit" when loading a model | The plan needs more free memory than there is. Close other apps, lower the context, or use a smaller quantization (the message says how much is missing). |
 
