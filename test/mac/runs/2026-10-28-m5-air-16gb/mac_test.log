@@ -1,0 +1,45 @@
+
+== [0 min] tools
+
+== [0 min] machine
+Apple M5, 16 GB RAM
+models: unsloth/Qwen3-4B-GGUF:Q4_K_M unsloth/gemma-3-12b-it-GGUF:Q4_K_M
+
+== [0 min] install (the release's one command)
+  ⚠️ [Ghost Execution Detected] You are running a local binary at "/Users/tester/cluaiz-mactest/bin/cluaiz"
+  💡 To use the System, run the global 'cluaiz' command.
+
+cluaiz 0.1.0
+
+== [2 min] llama-bench (plain llama.cpp, Metal), built while the models download
+
+== [2 min] downloads
+unsloth/Qwen3-4B-GGUF:Q4_K_M exit 0 546s
+unsloth/gemma-3-12b-it-GGUF:Q4_K_M exit 0 1513s
+
+== [37 min] server
+
+== [37 min] test unsloth/Qwen3-4B-GGUF:Q4_K_M (auto,gpu,split,cpu)
+
+model                 mode   result   engine pp/tg      llama.cpp pp/tg   notes
+qwen3-4b-gguf-Q4_K_M  auto   FAIL                                         empty answer; request failed: HTTP Error 500: Internal Server Error
+qwen3-4b-gguf-Q4_K_M  gpu    PASS     104 / 22.7        110 / 22.1        
+qwen3-4b-gguf-Q4_K_M  split  PASS     111 / 24.6        105 / 22.5        
+qwen3-4b-gguf-Q4_K_M  cpu    PASS     88 / 17.2         82 / 16.3         
+
+3 passed, 1 failed, 0 skipped / not fitting
+report written: /Users/tester/cluaiz-mactest/results/RESULTS_qwen3-4b-gguf.md
+
+== [41 min] test unsloth/gemma-3-12b-it-GGUF:Q4_K_M (auto,gpu,split,cpu)
+
+model                       mode   result   engine pp/tg      llama.cpp pp/tg   notes
+gemma-3-12b-it-gguf-Q4_K_M  -      SKIP                                         file 6.8 GB > free RAM + VRAM (use --allow-big)
+
+0 passed, 0 failed, 1 skipped / not fitting
+report written: /Users/tester/cluaiz-mactest/results/RESULTS_gemma-3-12b.md
+
+== [41 min] logs
+bash: line 123: 71314 Terminated: 15          "$BIN" serve > "$OUT/server.log" 2>&1
+
+== [41 min] done in 41 min
+To remove everything afterwards: rm -rf ~/cluaiz-mactest, and the '# Cluaiz' PATH lines in ~/.zshrc

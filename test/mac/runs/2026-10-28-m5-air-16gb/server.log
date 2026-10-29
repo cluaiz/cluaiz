@@ -1,0 +1,294 @@
+  ⚠️ [Ghost Execution Detected] You are running a local binary at "/Users/tester/cluaiz-mactest/bin/cluaiz"
+  💡 To use the System, run the global 'cluaiz' command.
+
+2026-10-28T16:35:28.348692Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-10-28T16:35:28.350411Z  INFO 🛰️ [cluaiz] Synchronizing Neural Registry...
+Starting the Cluaiz API server on http://localhost:8011 ...
+2026-10-28T16:35:29.900173Z  INFO 🔒 [Auth] Initialized local session secret at /Users/tester/cluaiz-mactest/home/session.token
+2026-10-28T16:35:34.278368Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-10-28T16:35:34.287874Z  INFO 🌐 Cluaiz API Server running on http://127.0.0.1:8011
+2026-10-28T16:35:34.856719Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-4b-gguf-Q4_K_M' to "/Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf"
+2026-10-28T16:35:34.856895Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-10-28T16:35:34.861606Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3-4b-gguf-Q4_K_M
+║   • Architecture    : qwen3 | 36 layers | heads 32 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 2.33 GB | input embeddings 0.30 GB (always CPU) | output head 0.30 GB | vocab 151936
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 40960 tokens
+║   • Active context  : 4096 tokens, KV Kv8 (Auto: 4096 tokens, KV Kv8; model does not fit on one device, so it is split and the context stays at the floor)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : none | free 0.00 of 0.00 GB | buffer kept free 0.00 GB (0 MiB rule, model not measured on this machine yet)
+║   • RAM             : free 0.00 of 16.00 GB | Cluaiz may use 0.00 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Rejected
+║   • llama.cpp       : n_gpu_layers = 0 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv8 | offload_kqv = 0 | op_offload = 1
+║   • Blocks          : 0 on GPU, 36 in RAM (of 36)
+║   • VRAM            : 0.00 GB (weights + KV 0.00 + logits)
+║   • RAM             : 0.00 GB (incl. KV 0.00)
+║   • Reason          : Does not fit: closest placement (CPU only) is 2.91 GB short (weights 2.32 + KV 0.30 + logits 0.29 = 2.91 GB in RAM; needs 2.91 GB more RAM than allowed). Free memory, lower the context, or use a smaller quantization.
+║   • Speed           : not measured (chosen by rule order)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • CPU only         [NO]       VRAM  0.00 GB | RAM  2.91 GB | weights 2.32 + KV 0.30 + logits 0.29 = 2.91 GB in RAM; needs 2.91 GB more RAM than allowed
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 10 / batch 10 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-10-28T16:35:34.861764Z ERROR ❌ [API] Model could not be loaded: Does not fit: closest placement (CPU only) is 2.91 GB short (weights 2.32 + KV 0.30 + logits 0.29 = 2.91 GB in RAM; needs 2.91 GB more RAM than allowed). Free memory, lower the context, or use a smaller quantization.
+2026-10-28T16:35:34.863038Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-4b-gguf-Q4_K_M' to "/Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf"
+2026-10-28T16:35:34.863044Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-10-28T16:35:34.863127Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3-4b-gguf-Q4_K_M
+║   • Architecture    : qwen3 | 36 layers | heads 32 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 2.33 GB | input embeddings 0.30 GB (always CPU) | output head 0.30 GB | vocab 151936
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 40960 tokens
+║   • Active context  : 4096 tokens, KV Kv8 (Auto: 4096 tokens, KV Kv8; model does not fit on one device, so it is split and the context stays at the floor)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : none | free 0.00 of 0.00 GB | buffer kept free 0.00 GB (0 MiB rule, model not measured on this machine yet)
+║   • RAM             : free 0.00 of 16.00 GB | Cluaiz may use 0.00 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Rejected
+║   • llama.cpp       : n_gpu_layers = 0 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv8 | offload_kqv = 0 | op_offload = 1
+║   • Blocks          : 0 on GPU, 36 in RAM (of 36)
+║   • VRAM            : 0.00 GB (weights + KV 0.00 + logits)
+║   • RAM             : 0.00 GB (incl. KV 0.00)
+║   • Reason          : Does not fit: closest placement (CPU only) is 2.91 GB short (weights 2.32 + KV 0.30 + logits 0.29 = 2.91 GB in RAM; needs 2.91 GB more RAM than allowed). Free memory, lower the context, or use a smaller quantization.
+║   • Speed           : not measured (chosen by rule order)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • CPU only         [NO]       VRAM  0.00 GB | RAM  2.91 GB | weights 2.32 + KV 0.30 + logits 0.29 = 2.91 GB in RAM; needs 2.91 GB more RAM than allowed
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 10 / batch 10 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-10-28T16:35:34.863139Z ERROR ❌ [API] Model could not be loaded: Does not fit: closest placement (CPU only) is 2.91 GB short (weights 2.32 + KV 0.30 + logits 0.29 = 2.91 GB in RAM; needs 2.91 GB more RAM than allowed). Free memory, lower the context, or use a smaller quantization.
+2026-10-28T16:35:34.866296Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-4b-gguf-Q4_K_M' to "/Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf"
+2026-10-28T16:35:34.866305Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-10-28T16:35:34.866419Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3-4b-gguf-Q4_K_M
+║   • Architecture    : qwen3 | 36 layers | heads 32 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 2.33 GB | input embeddings 0.30 GB (always CPU) | output head 0.30 GB | vocab 151936
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 40960 tokens
+║   • Active context  : 4096 tokens, KV Kv8 (Auto: 4096 tokens, KV Kv8; model does not fit on one device, so it is split and the context stays at the floor)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : none | free 0.00 of 0.00 GB | buffer kept free 0.00 GB (0 MiB rule, model not measured on this machine yet)
+║   • RAM             : free 0.00 of 16.00 GB | Cluaiz may use 0.00 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : CPU only, experts read from disk
+║   • llama.cpp       : n_gpu_layers = 0 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv8 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 0 on GPU, 36 in RAM (of 36)
+║   • VRAM            : 0.00 GB (weights + KV 0.00 + logits)
+║   • RAM             : 2.91 GB (incl. KV 0.30)
+║   • Disk (mmap)     : 2.91 GB of experts read from disk when used
+║   • Reason          : User setting: planner bypassed: n_gpu_layers 0 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 0.00 of usable 0.00 GB; 2.91 GB over the RAM limit is read from disk when used (mmap)
+║   • Speed           : not measured (chosen by rule order)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM  0.00 GB | RAM  2.91 GB | planner bypassed: n_gpu_layers 0 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 0.00 of usable 0.00 GB; 2.91 GB over the RAM limit is read from disk when used (mmap)
+║   • CPU only         [NO]       VRAM  0.00 GB | RAM  2.91 GB | weights 2.32 + KV 0.30 + logits 0.29 = 2.91 GB in RAM; needs 2.91 GB more RAM than allowed
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 10 / batch 10 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-10-28T16:35:34.866430Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-10-28T16:35:34.866985Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = 0, load_mode = 1, n_threads = 10, n_threads_batch = 10
+2026-10-28T16:35:34.866991Z  INFO 🧬 [Native-Llama] Loading model: /Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf | ctx: 4096 tokens
+2026-10-28T16:35:36.029508Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M"
+2026-10-28T16:35:36.045347Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-10-28T16:35:36.045351Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-10-28T16:35:36.045354Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 4096 tokens
+2026-10-28T16:35:36.045361Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-10-28T16:35:36.045364Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 10/10
+2026-10-28T16:35:36.277567Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf
+2026-10-28T16:35:36.286111Z  INFO 🧮 [Tokens] Conversation 526 tokens (1 messages) counted in 1.01 ms
+2026-10-28T16:35:36.287307Z  INFO ⏱️ [Preflight] 1421 ms total | model load 1411 ms | registry + template + tags 7 ms | skills + tools 1 ms | rest 0 ms
+2026-10-28T16:35:36.291507Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (2736 bytes) in 3 ms
+2026-10-28T16:35:41.061573Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1793205341
+2026-10-28T16:35:51.491411Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-10-28T16:35:51.491460Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 534 tokens in 4770 ms (111.96 t/s) | generation 243 tokens in 10391 ms (23.39 t/s)
+2026-10-28T16:35:51.491467Z  INFO 🧠 [Context] prompt 534 tokens (0 from the cache) | context 777 of 4096 | stop eos
+2026-10-28T16:35:51.508744Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-4b-gguf-Q4_K_M' to "/Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf"
+2026-10-28T16:35:51.510341Z  INFO 🧮 [Tokens] Conversation 527 tokens (1 messages) counted in 1.38 ms
+2026-10-28T16:35:51.510510Z  INFO ⏱️ [Preflight] 2 ms total | model load 0 ms | registry + template + tags 0 ms | skills + tools 1 ms | rest 0 ms
+2026-10-28T16:35:51.514572Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (2756 bytes) in 3 ms
+2026-10-28T16:35:56.655240Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1793205356
+2026-10-28T16:35:59.387244Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 534 tokens in 5140 ms (103.88 t/s) | generation 64 tokens in 2720 ms (23.53 t/s)
+2026-10-28T16:35:59.387287Z  INFO 🧠 [Context] prompt 539 tokens (5 from the cache) | context 603 of 4096 | stop limit
+2026-10-28T16:35:59.397867Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-4b-gguf-Q4_K_M' to "/Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf"
+2026-10-28T16:35:59.402904Z  INFO 🧮 [Tokens] Conversation 527 tokens (1 messages) counted in 4.74 ms
+2026-10-28T16:35:59.403116Z  INFO ⏱️ [Preflight] 6 ms total | model load 0 ms | registry + template + tags 0 ms | skills + tools 4 ms | rest 0 ms
+2026-10-28T16:35:59.407008Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (2756 bytes) in 3 ms
+2026-10-28T16:36:04.570936Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1793205364
+2026-10-28T16:36:07.503288Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 534 tokens in 5163 ms (103.42 t/s) | generation 64 tokens in 2919 ms (21.93 t/s)
+2026-10-28T16:36:07.503465Z  INFO 🧠 [Context] prompt 539 tokens (5 from the cache) | context 603 of 4096 | stop limit
+2026-10-28T16:36:07.503662Z  INFO ♻️ [Memory] Unloading model post-generation due to keep_alive: 0
+2026-10-28T16:36:07.526695Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-10-28T16:36:49.490286Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-4b-gguf-Q4_K_M' to "/Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf"
+2026-10-28T16:36:49.490662Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-10-28T16:36:49.491511Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3-4b-gguf-Q4_K_M
+║   • Architecture    : qwen3 | 36 layers | heads 32 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 2.33 GB | input embeddings 0.30 GB (always CPU) | output head 0.30 GB | vocab 151936
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 40960 tokens
+║   • Active context  : 4096 tokens, KV Kv8 (Auto: 4096 tokens, KV Kv8; model does not fit on one device, so it is split and the context stays at the floor)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : none | free 0.00 of 0.00 GB | buffer kept free 0.00 GB (0 MiB rule, model not measured on this machine yet)
+║   • RAM             : free 0.75 of 16.00 GB | Cluaiz may use 0.00 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : CPU only, experts read from disk
+║   • llama.cpp       : n_gpu_layers = 0 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv8 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 0 on GPU, 36 in RAM (of 36)
+║   • VRAM            : 0.00 GB (weights + KV 0.00 + logits)
+║   • RAM             : 2.91 GB (incl. KV 0.30)
+║   • Disk (mmap)     : 2.91 GB of experts read from disk when used
+║   • Reason          : User setting: planner bypassed: n_gpu_layers 0 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 0.00 of usable 0.00 GB; 2.91 GB over the RAM limit is read from disk when used (mmap)
+║   • Speed           : not measured (chosen by rule order)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM  0.00 GB | RAM  2.91 GB | planner bypassed: n_gpu_layers 0 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 0.00 of usable 0.00 GB; 2.91 GB over the RAM limit is read from disk when used (mmap)
+║   • CPU only         [NO]       VRAM  0.00 GB | RAM  2.91 GB | weights 2.32 + KV 0.30 + logits 0.29 = 2.91 GB in RAM; needs 2.91 GB more RAM than allowed
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 10 / batch 10 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-10-28T16:36:49.491532Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-10-28T16:36:49.492219Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = 0, load_mode = 1, n_threads = 10, n_threads_batch = 10
+2026-10-28T16:36:49.492224Z  INFO 🧬 [Native-Llama] Loading model: /Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf | ctx: 4096 tokens
+2026-10-28T16:36:49.938552Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M"
+2026-10-28T16:36:49.946815Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-10-28T16:36:49.946820Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-10-28T16:36:49.946823Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 4096 tokens
+2026-10-28T16:36:49.946827Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-10-28T16:36:49.946830Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 10/10
+2026-10-28T16:36:50.089069Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf
+2026-10-28T16:36:50.094911Z  INFO 🧮 [Tokens] Conversation 527 tokens (1 messages) counted in 0.83 ms
+2026-10-28T16:36:50.095106Z  INFO ⏱️ [Preflight] 606 ms total | model load 598 ms | registry + template + tags 4 ms | skills + tools 1 ms | rest 0 ms
+2026-10-28T16:36:50.098564Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (2737 bytes) in 3 ms
+2026-10-28T16:36:54.877850Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1793205414
+2026-10-28T16:37:06.074550Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-10-28T16:37:06.074573Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 535 tokens in 4779 ms (111.96 t/s) | generation 266 tokens in 11143 ms (23.87 t/s)
+2026-10-28T16:37:06.074582Z  INFO 🧠 [Context] prompt 535 tokens (0 from the cache) | context 801 of 4096 | stop eos
+2026-10-28T16:37:06.077198Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-4b-gguf-Q4_K_M' to "/Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf"
+2026-10-28T16:37:06.078261Z  INFO 🧮 [Tokens] Conversation 526 tokens (1 messages) counted in 0.84 ms
+2026-10-28T16:37:06.078439Z  INFO ⏱️ [Preflight] 1 ms total | model load 0 ms | registry + template + tags 0 ms | skills + tools 1 ms | rest 0 ms
+2026-10-28T16:37:06.083004Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (2755 bytes) in 4 ms
+2026-10-28T16:37:10.877622Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1793205430
+2026-10-28T16:37:13.552362Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 533 tokens in 4794 ms (111.18 t/s) | generation 64 tokens in 2661 ms (24.05 t/s)
+2026-10-28T16:37:13.552375Z  INFO 🧠 [Context] prompt 538 tokens (5 from the cache) | context 602 of 4096 | stop limit
+2026-10-28T16:37:13.555765Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-4b-gguf-Q4_K_M' to "/Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf"
+2026-10-28T16:37:13.556444Z  INFO 🧮 [Tokens] Conversation 527 tokens (1 messages) counted in 0.50 ms
+2026-10-28T16:37:13.556599Z  INFO ⏱️ [Preflight] 1 ms total | model load 0 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-10-28T16:37:13.560714Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (2756 bytes) in 4 ms
+2026-10-28T16:37:18.407845Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1793205438
+2026-10-28T16:37:20.644492Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-10-28T16:37:20.644504Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 534 tokens in 4847 ms (110.18 t/s) | generation 56 tokens in 2225 ms (25.17 t/s)
+2026-10-28T16:37:20.644511Z  INFO 🧠 [Context] prompt 539 tokens (5 from the cache) | context 595 of 4096 | stop eos
+2026-10-28T16:37:20.644621Z  INFO ♻️ [Memory] Unloading model post-generation due to keep_alive: 0
+2026-10-28T16:37:20.670287Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-10-28T16:37:52.776096Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-4b-gguf-Q4_K_M' to "/Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf"
+2026-10-28T16:37:52.776406Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-10-28T16:37:52.776861Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3-4b-gguf-Q4_K_M
+║   • Architecture    : qwen3 | 36 layers | heads 32 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 2.33 GB | input embeddings 0.30 GB (always CPU) | output head 0.30 GB | vocab 151936
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 40960 tokens
+║   • Active context  : 4096 tokens, KV Kv8 (Auto: 4096 tokens, KV Kv8; model does not fit on one device, so it is split and the context stays at the floor)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : none | free 0.00 of 0.00 GB | buffer kept free 0.00 GB (0 MiB rule, model not measured on this machine yet)
+║   • RAM             : free 0.00 of 16.00 GB | Cluaiz may use 0.00 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : CPU only, experts read from disk
+║   • llama.cpp       : n_gpu_layers = 0 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv8 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 0 on GPU, 36 in RAM (of 36)
+║   • VRAM            : 0.00 GB (weights + KV 0.00 + logits)
+║   • RAM             : 2.91 GB (incl. KV 0.30)
+║   • Disk (mmap)     : 2.91 GB of experts read from disk when used
+║   • Reason          : User setting: planner bypassed: n_gpu_layers 0 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 0.00 of usable 0.00 GB; 2.91 GB over the RAM limit is read from disk when used (mmap)
+║   • Speed           : not measured (chosen by rule order)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM  0.00 GB | RAM  2.91 GB | planner bypassed: n_gpu_layers 0 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 0.00 of usable 0.00 GB; 2.91 GB over the RAM limit is read from disk when used (mmap)
+║   • CPU only         [NO]       VRAM  0.00 GB | RAM  2.91 GB | weights 2.32 + KV 0.30 + logits 0.29 = 2.91 GB in RAM; needs 2.91 GB more RAM than allowed
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 10 / batch 10 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-10-28T16:37:52.776889Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-10-28T16:37:52.776936Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = 0, load_mode = 1, n_threads = 10, n_threads_batch = 10
+2026-10-28T16:37:52.776941Z  INFO 🧬 [Native-Llama] Loading model: /Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf | ctx: 4096 tokens
+2026-10-28T16:37:53.003319Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M"
+2026-10-28T16:37:53.008018Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-10-28T16:37:53.008022Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-10-28T16:37:53.008031Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 4096 tokens
+2026-10-28T16:37:53.008035Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-10-28T16:37:53.008038Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 10/10
+2026-10-28T16:37:53.116980Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf
+2026-10-28T16:37:53.122880Z  INFO 🧮 [Tokens] Conversation 527 tokens (1 messages) counted in 0.72 ms
+2026-10-28T16:37:53.123049Z  INFO ⏱️ [Preflight] 348 ms total | model load 340 ms | registry + template + tags 5 ms | skills + tools 0 ms | rest 0 ms
+2026-10-28T16:37:53.126555Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (2737 bytes) in 3 ms
+2026-10-28T16:37:58.218771Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1793205478
+2026-10-28T16:38:44.740634Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-10-28T16:38:44.740670Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 535 tokens in 5092 ms (105.07 t/s) | generation 802 tokens in 46290 ms (17.33 t/s)
+2026-10-28T16:38:44.740682Z  INFO 🧠 [Context] prompt 535 tokens (0 from the cache) | context 1337 of 4096 | stop eos
+2026-10-28T16:38:44.742762Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-4b-gguf-Q4_K_M' to "/Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf"
+2026-10-28T16:38:44.743804Z  INFO 🧮 [Tokens] Conversation 527 tokens (1 messages) counted in 0.77 ms
+2026-10-28T16:38:44.744055Z  INFO ⏱️ [Preflight] 1 ms total | model load 0 ms | registry + template + tags 0 ms | skills + tools 1 ms | rest 0 ms
+2026-10-28T16:38:44.750717Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (2756 bytes) in 6 ms
+2026-10-28T16:38:50.791713Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1793205530
+2026-10-28T16:38:53.861126Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-10-28T16:38:53.861152Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 534 tokens in 6040 ms (88.41 t/s) | generation 51 tokens in 3052 ms (16.71 t/s)
+2026-10-28T16:38:53.861165Z  INFO 🧠 [Context] prompt 539 tokens (5 from the cache) | context 590 of 4096 | stop eos
+2026-10-28T16:38:53.863834Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-4b-gguf-Q4_K_M' to "/Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf"
+2026-10-28T16:38:53.865065Z  INFO 🧮 [Tokens] Conversation 527 tokens (1 messages) counted in 0.91 ms
+2026-10-28T16:38:53.865367Z  INFO ⏱️ [Preflight] 1 ms total | model load 0 ms | registry + template + tags 0 ms | skills + tools 1 ms | rest 0 ms
+2026-10-28T16:38:53.872971Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (2756 bytes) in 7 ms
+2026-10-28T16:39:00.011705Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1793205540
+2026-10-28T16:39:03.405682Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-10-28T16:39:03.405707Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 534 tokens in 6138 ms (87.00 t/s) | generation 60 tokens in 3373 ms (17.79 t/s)
+2026-10-28T16:39:03.405762Z  INFO 🧠 [Context] prompt 539 tokens (5 from the cache) | context 599 of 4096 | stop eos
+2026-10-28T16:39:03.405943Z  INFO ♻️ [Memory] Unloading model post-generation due to keep_alive: 0
+2026-10-28T16:39:03.443026Z  INFO ♻️ [EngineHost] Model unloaded from process memory

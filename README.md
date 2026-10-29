@@ -209,7 +209,7 @@ What release v0.1.0 ships (core + GPU packs, chosen by the installer) and where 
 | **NVIDIA GPU**, Windows | CUDA 12 / CUDA 13 | `win-x64` core + `llama-cuda12` / `llama-cuda13` | ✅ RTX 3050 Laptop 4 GB, Windows 11 (CUDA 13) |
 | **NVIDIA GPU**, Linux | CUDA 12 / CUDA 13 | `linux-x64` core + `llama-cuda12` / `llama-cuda13` | ✅ Tesla T4 16 GB, Ubuntu 24.04 (CUDA 12 pack, driver 580) |
 | **AMD Radeon / Intel Arc**, Windows and Linux | Vulkan | core + `llama-vulkan` | 🧪 Built, not yet run on this hardware |
-| **Apple Silicon** (M1 or newer) | Metal (inside the core) | `mac-arm64` core | 🧪 Built, Mac test pending ([`test/mac`](test/mac)) |
+| **Apple Silicon** (M1 or newer) | Metal (inside the core) | `mac-arm64` core | ⚠️ M5, 16 GB: installs and chats at llama.cpp's speed for the same settings, but auto placement does not use the Metal GPU yet ([run](test/mac/runs/2026-10-28-m5-air-16gb/SUMMARY.md)) |
 | **x86-64 CPU** (SSE4.2 to AVX-512) | CPU, best build picked at start | any core | ✅ Ryzen 7 7435HS (Windows), Xeon 2.3 GHz (Ubuntu) |
 | **ARM64 Linux** | CPU (NEON and newer) | `linux-arm64` core | 🧪 Built, not yet run on hardware |
 

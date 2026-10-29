@@ -1,0 +1,9 @@
+
+model                 mode   result   engine pp/tg      llama.cpp pp/tg   notes
+qwen3-4b-gguf-Q4_K_M  auto   FAIL                                         empty answer; request failed: HTTP Error 500: Internal Server Error
+qwen3-4b-gguf-Q4_K_M  gpu    PASS     104 / 22.7        110 / 22.1        
+qwen3-4b-gguf-Q4_K_M  split  PASS     111 / 24.6        105 / 22.5        
+qwen3-4b-gguf-Q4_K_M  cpu    PASS     88 / 17.2         82 / 16.3         
+
+3 passed, 1 failed, 0 skipped / not fitting
+report written: /Users/tester/cluaiz-mactest/results/RESULTS_qwen3-4b-gguf.md
