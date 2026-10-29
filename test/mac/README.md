@@ -25,10 +25,22 @@ Everything is kept in `~/cluaiz-mactest`, which can be removed afterwards (see [
    ```
 
 3. If macOS asks to install the Command Line Tools, install them and run the command again.
-4. Wait until the last lines read:
+4. The first step checks the Mac (processor, macOS version, Metal, memory, free disk, power, Command Line
+   Tools, network) and stops with the reason when something is missing. After that every step prints its
+   number and the time so far, for example `== [step 4 of 8, 6:12 elapsed] downloading the models`, and the
+   downloads print their progress every 20 seconds:
 
    ```
-   == [55 min] done in 55 min
+      [1/2] unsloth/Qwen3-4B-GGUF:Q4_K_M (about 2.5 GB)
+         1.3 of 2.5 GB (52%), 4.4 MB/s, about 5 min left
+   ```
+
+5. Wait until the last lines read:
+
+   ```
+   == summary
+      qwen3-4b-gguf-Q4_K_M  auto   PASS ...
+   == done in 55:10
    == results: /Users/<you>/Desktop/cluaiz-mac-results-<date>.tar.gz (send this file)
    ```
 
@@ -36,8 +48,10 @@ The archive on the Desktop is the result of the test.
 
 ## What it does
 
-1. Records the machine: chip, RAM, macOS version, SSD write speed, power and thermal state.
-2. Installs the latest release with the official installer (`install.sh`).
+1. Checks that the Mac can run the test, and records the machine: chip, RAM, macOS version, Metal, SSD
+   write speed, power and thermal state.
+2. Installs the newest release with the same command as the website, `curl -fsSL https://cluaiz.com/install.sh | sh`
+   (into `~/cluaiz-mactest/bin`).
 3. Downloads Q4_K_M models that fit the RAM:
 
    | RAM | Models | Download |
@@ -57,7 +71,9 @@ The archive on the Desktop is the result of the test.
    | `split` | half of the layers on the GPU |
    | `cpu` | CPU only |
 
-6. Packs every log and report into the archive on the Desktop.
+6. Runs plain `llama-bench` with every layer on the Metal GPU (`-ngl 99`) on each model, as the reference
+   for what the GPU can do.
+7. Packs every log and report into the archive on the Desktop.
 
 ## Options
 
@@ -65,6 +81,7 @@ The archive on the Desktop is the result of the test.
 |---|---|
 | `BIG=1` | Also runs Gemma 4 31B (17 GB) on a Mac with less than 32 GB RAM, read from the SSD while it runs (`auto` mode only, about 20 to 30 minutes more). |
 | `RUNS=<n>` | Requests per model and mode (default 3; the first one is the cold run). |
+| `CLUAIZ_VERSION=<x.y.z>` | Release to install (default: the newest, pre-releases included). |
 
 ```bash
 BIG=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/cluaiz/cluaiz/main/test/mac/mac_test.sh)"
@@ -85,7 +102,9 @@ BIG=1 bash -c "$(curl -fsSL https://raw.githubusercontent.com/cluaiz/cluaiz/main
 | `install.log`, `installed_files.txt` | Installer output and the installed files |
 | `pulls.log`, `pull_*.log` | Model downloads |
 | `llama_bench_build.log` | llama.cpp build |
+| `status.txt` | The hardware the engine sees (`cluaiz status`): RAM and GPU |
 | `server.log`, `planner.log` | Engine log; the planner's placement decisions |
+| `metal_reference.log` | Plain llama.cpp with every layer on the Metal GPU |
 | `RESULTS_*.md`, `run_*.log` | Cluaiz vs llama.cpp per model and mode, with every setting and the exact llama-bench command |
 | `loaded_libs.txt` | Libraries the engine loaded |
 | `mac_test.log` | Everything the script printed |
