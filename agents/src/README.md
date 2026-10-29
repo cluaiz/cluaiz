@@ -27,7 +27,7 @@ $$\mathbf{engines/src/tools/}$$
 
 ```
 ~/.cluaiz/
-├── engine/config/
+├── config/
 │   ├── model_registry.json              <── Master record for GGUF & ONNX models
 │   └── tools_registry.json              <── Master record for all installed tools (JSON only)
 └── tools/                               <── Master Tools domain folder

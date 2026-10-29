@@ -197,7 +197,7 @@ PDF empty pages and image/form resources are attempted through packaged native O
 
 Text/code attachment extensions are not repeated in each Chat planner response. An available `text` input uses the shared extraction route; image/audio inputs retain their separate model capability checks. A filename suffix does not prove textual contents. Ordinary text must be UTF-8 or BOM-marked UTF-16; source-code text is passed to the model, not executed. This does not add Office spreadsheets/slides or typed ONNX chat attachment dispatch.
 
-Installers/embedded launchers must place the verified native package at `EnvironmentManager::engine_dir()/media` under the selected Cluaiz home. See [provider ownership, package and shutdown contract](../engine/media/src/documents/README.md). Runtime performs no native asset/model download. A source-only build without that package retains text extraction and explicit OCR-unavailable results.
+Installers/embedded launchers must place the verified native package at `EnvironmentManager::media_dir()` (`bin/media`) under the selected Cluaiz home. See [provider ownership, package and shutdown contract](../engine/media/src/documents/README.md). Runtime performs no native asset/model download. A source-only build without that package retains text extraction and explicit OCR-unavailable results.
 
 ## Executed document acceptance — 2026-10-14
 

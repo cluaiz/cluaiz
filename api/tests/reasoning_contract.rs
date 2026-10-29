@@ -120,7 +120,7 @@ async fn real_skip_reasoning_ends_native_thinking_and_preserves_next_request() -
     let home = PathBuf::from(std::env::var("CLUAIZ_HOME")?);
     let isolated_home = std::env::var("CLUAIZ_MEDIA_TEST_HOME")?;
     if home != std::path::Path::new(&isolated_home)
-        || home.join("engine/config/model_registry.json").exists()
+        || home.join("config/model_registry.json").exists()
     {
         bail!("Fresh isolated home required");
     }

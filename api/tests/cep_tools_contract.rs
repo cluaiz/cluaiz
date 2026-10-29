@@ -105,7 +105,7 @@ async fn test_tools_install_task_files_settings_cache_execution_and_boundaries()
     let text = format!("---\nname: {name}\ndescription: Inspect fixture metadata\n---\n\nReal local fixture instructions.\n");
     let fixture = registry_fixture(name, &text).await?;
     save_json(
-        &home.path().join("engine/config/package.json"),
+        &home.path().join("config/package.json"),
         json!({"tools":{"manifest_url":format!("{}/registry.json",fixture.url)}}),
     )?;
     for kind in ["plugins", "mcp"] {

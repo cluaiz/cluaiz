@@ -63,7 +63,7 @@ pub struct NativeAssets {
 
 impl NativeAssets {
     pub fn from_environment() -> Result<Self> {
-        Self::read(&EnvironmentManager::current().engine_dir().join("media"))
+        Self::read(&EnvironmentManager::current().media_dir())
     }
 
     pub fn read(root: &Path) -> Result<Self> {

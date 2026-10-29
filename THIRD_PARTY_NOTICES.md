@@ -25,7 +25,7 @@ This document provides attribution and license notices for third-party open-sour
 - **Unicode CLDR:** https://github.com/unicode-org/cldr-json (Unicode License v3, `SPDX-License-Identifier: Unicode-3.0`).
 
 ## 6. NVIDIA CUDA Runtime & cuDNN Redistributables (Downloaded on Demand, Not Bundled in Source)
-When an NVIDIA GPU is detected on a user's machine and the ONNX Runtime CUDA Execution Provider (`onnxruntime_providers_cuda`) is active, Cluaiz may download official NVIDIA redistributable runtime archives (`cuDNN 9`, `cuda_cudart`, `libcublas`, and `libcufft`) directly from NVIDIA's public redistributable CDN (`https://developer.download.nvidia.com/compute/`) into the user's local `<cluaiz_home>/engine/drivers/` directory, verifying each archive's byte size and SHA-256 digest against `engine/onnx/src/data/cudnn_sources.json`.
+When an NVIDIA GPU is detected on a user's machine and the ONNX Runtime CUDA Execution Provider (`onnxruntime_providers_cuda`) is active, Cluaiz may download official NVIDIA redistributable runtime archives (`cuDNN 9`, `cuda_cudart`, `libcublas`, `libcufft`, and on Linux `libcurand`) directly from NVIDIA's public redistributable CDN (`https://developer.download.nvidia.com/compute/`) into the user's local `<cluaiz_home>/bin/` directory, verifying each archive's byte size and SHA-256 digest against `engine/onnx/src/data/cudnn_sources.json`.
 
 These runtime shared libraries are proprietary software of NVIDIA Corporation and are governed by:
 - **NVIDIA CUDA Toolkit End User License Agreement (EULA):** https://docs.nvidia.com/cuda/eula/index.html

@@ -79,7 +79,7 @@ pub struct ToolsRegistry {
 }
 
 impl ToolsRegistry {
-    /// Returns canonical path to `tools_registry.json` (~/.cluaiz/engine/config/tools_registry.json)
+    /// Returns canonical path to `tools_registry.json` (~/.cluaiz/config/tools_registry.json)
     pub fn registry_path() -> PathBuf {
         EnvironmentManager::current().tools_registry_json_path()
     }

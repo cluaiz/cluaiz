@@ -49,7 +49,7 @@ The legacy DOC reader's internal stream/piece/formatting allocations are not bou
 
 ## Packaged assets and shutdown
 
-`native-assets.json` names verified library/dependency/license files, explicit language identifiers, traineddata directory, nonzero OCR deadline, PDF library and DPI. Provider assets resolve below the selected Cluaiz environment's `engine/media` directory. The builder's `media-assets --source <verified-package> --output <new-directory>` stages only declared assets and refuses overwrite or damaged hashes. This is build packaging, not a replacement model downloader.
+`native-assets.json` names verified library/dependency/license files, explicit language identifiers, traineddata directory, nonzero OCR deadline, PDF library and DPI. Provider assets resolve below the selected Cluaiz environment's `bin/media` directory. The builder's `media-assets --source <verified-package> --output <new-directory>` stages only declared assets and refuses overwrite or damaged hashes. This is build packaging, not a replacement model downloader.
 
 The embedding host must call `release_native_providers()` after stopping requests. CLI document extraction releases its providers before returning; the API waits for graceful Ctrl+C shutdown then releases them. Each lock excludes native use during destruction. Force-killing a process does not run Rust/native cleanup. Tesseract native work can reach its configured deadline; disconnect cancellation inside recognition and PDF rendering is not implemented.
 

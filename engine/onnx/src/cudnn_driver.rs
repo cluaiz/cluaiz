@@ -5,7 +5,7 @@
 //! Provisioning runs during setup/bootstrap (`provision_cuda_runtime_at_setup`) so user inference
 //! requests never block waiting for multi-hundred-megabyte redistributable downloads. At model
 //! load time, `is_cuda_runtime_ready_or_spawn_background` performs a fast synchronous file check:
-//! if all required DLLs/SOs are present, it registers `<cluaiz_home>/engine/drivers` on `PATH` and
+//! if all required DLLs/SOs are present, it registers `<cluaiz_home>/bin` on `PATH` and
 //! returns `true`; if any are missing, it spawns a single background provisioning thread and
 //! immediately returns `false` so the current request proceeds on CPU/DirectML without delay.
 
@@ -257,9 +257,9 @@ fn remove_stale_downloads(drivers_dir: &Path) {
     }
 }
 
-/// Default `<cluaiz_home>/engine/drivers` directory.
+/// Default drivers directory: `<cluaiz_home>/bin`, beside `cluaiz` and the GPU packs.
 pub fn default_drivers_dir() -> PathBuf {
-    cluaiz_core::EnvironmentManager::current().engine_dir().join("drivers")
+    cluaiz_core::EnvironmentManager::current().drivers_dir()
 }
 
 /// Checks whether a specific sentinel library file exists and is non-empty inside `drivers_dir`.
@@ -655,7 +655,6 @@ pub fn ensure_cuda_runtime_ready(drivers_dir: &Path, has_nvidia_gpu: bool) -> Re
         );
     }
 
-    let _ = std::fs::write(drivers_dir.join("cudnn9.ready"), &v_manifest.cudnn_version);
     let _ = std::fs::write(
         drivers_dir.join("cuda_runtime.ready"),
         format!("{}:{}", v_manifest.cuda_variant, v_manifest.cuda_version),

@@ -149,7 +149,7 @@ async fn collect_native(response: cluaiz_runtime::HostResponse) -> Result<String
 async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()> {
     let home = PathBuf::from(std::env::var("CLUAIZ_HOME")?);
     let test_home = PathBuf::from(std::env::var("CLUAIZ_MEDIA_TEST_HOME")?);
-    if home != test_home || home.join("engine/config/model_registry.json").exists() {
+    if home != test_home || home.join("config/model_registry.json").exists() {
         bail!("An empty isolated media test home is required");
     }
     let model_path = PathBuf::from(std::env::var("CLUAIZ_MEDIA_MODEL")?);
@@ -485,7 +485,7 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
 async fn real_router_onnx_audio_selected_model_and_retention() -> Result<()> {
     let home = PathBuf::from(std::env::var("CLUAIZ_HOME")?);
     let test_home = PathBuf::from(std::env::var("CLUAIZ_MEDIA_TEST_HOME")?);
-    if home != test_home || home.join("engine/config/model_registry.json").exists() {
+    if home != test_home || home.join("config/model_registry.json").exists() {
         bail!("An empty isolated media test home is required");
     }
     let tts = PathBuf::from(std::env::var("CLUAIZ_ONNX_TTS_MODEL")?);

@@ -3,7 +3,7 @@
 
 /// Where the measurements are kept
 fn path() -> std::path::PathBuf {
-    cluaiz_core::EnvironmentManager::current().engine_dir().join("vram_margins.json")
+    cluaiz_core::EnvironmentManager::current().config_dir().join("vram_margins.json")
 }
 
 /// Reads the measurements once per process

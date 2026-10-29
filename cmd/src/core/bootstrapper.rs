@@ -112,7 +112,7 @@ impl Bootstrapper {
             tracing::info!("⚡ NVIDIA GPU hardware acceleration verified.");
         }
 
-        let drivers_dir = cluaiz_core::EnvironmentManager::current().engine_dir().join("drivers");
+        let drivers_dir = cluaiz_core::EnvironmentManager::current().drivers_dir();
         if drivers_dir.exists() {
             tracing::debug!("🔌 Hardware dynamic drivers directory verified: {:?}", drivers_dir);
         }
@@ -188,7 +188,7 @@ impl Bootstrapper {
             None
         };
 
-        // 1. Hardware Driver Sync (ONNX & Vendor Providers into engine/drivers/)
+        // 1. Hardware Driver Sync (ONNX & Vendor Providers into bin/, beside the executable)
         let kernels_to_sync = vec![
             ("cluaiz_onnx", "cluaiz-onnx"),
             ("onnxruntime", "onnxruntime"),
@@ -215,7 +215,7 @@ impl Bootstrapper {
             ("cufft64_12", "cufft64_12"),
         ];
 
-        let interface_path = hub_path.join("engine");
+        let drivers_dir = hub_path.join("bin");
         let is_cuda_redist_dll = |name: &str| {
             name.starts_with("cudnn")
                 || name.starts_with("cudart")
@@ -234,19 +234,13 @@ impl Bootstrapper {
             }
 
             if let Some((kernel_src, is_kernel_release)) = find_artifact(src_name, ext) {
-                let kernel_dest = interface_path.join("drivers").join(format!("{}.{}", dest_name, ext));
+                let kernel_dest = drivers_dir.join(format!("{}.{}", dest_name, ext));
                 
                 let _ = std::fs::create_dir_all(kernel_dest.parent().unwrap());
                 
                 if let Err(e) = copy_with_rename(&kernel_src, &kernel_dest) {
                     tracing::warn!("⚠️ [DevSync] {} Kernel Link Failed: {}.", dest_name, e);
                 } else {
-                    // Create a ready marker
-                    if !src_name.starts_with("onnxruntime") && !is_cuda_redist_dll(src_name) {
-                        let marker_name = format!("{}.ready", dest_name);
-                        let marker = "dev-release";
-                        let _ = std::fs::write(interface_path.join(marker_name), marker);
-                    }
                     tracing::info!("🧬 [DevSync] {} Driver Linked (release={}): {:?}", dest_name, is_kernel_release, kernel_dest);
                 }
             } else {
@@ -259,7 +253,6 @@ impl Bootstrapper {
         if target == "all" || target == "drivers" || target == "driver" {
             let hw = cluaiz_hw::HardwareProber::current();
             let has_nvidia = hw.gpus.iter().any(|g| g.vendor.to_uppercase().contains("NVIDIA"));
-            let drivers_dir = interface_path.join("drivers");
             if let Err(err) = onnx_engine::cudnn_driver::ensure_cuda_runtime_ready(&drivers_dir, has_nvidia) {
                 tracing::warn!("⚠️ [DevSync] CUDA/cuDNN 9 runtime provisioning warning: {}", err);
             }

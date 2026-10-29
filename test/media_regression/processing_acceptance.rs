@@ -20,15 +20,15 @@ async fn real_repeated_attachments_report_progress_and_keep_loaded_plan() -> Res
         .installed_models
         .retain(|id, entry| id == &model_id && entry.category == "chat");
     assert_eq!(registry.installed_models.len(), 1);
-    std::fs::create_dir_all(home.join("engine/config"))?;
+    std::fs::create_dir_all(home.join("config"))?;
     std::fs::write(
-        home.join("engine/config/model_registry.json"),
+        home.join("config/model_registry.json"),
         serde_json::to_vec(&registry)?,
     )?;
-    std::fs::write(home.join("engine/config/settings.json"), &settings_bytes)?;
+    std::fs::write(home.join("config/settings.json"), &settings_bytes)?;
     let profile = settings_path.with_file_name("hardware_profile.json");
     if profile.is_file() {
-        std::fs::copy(profile, home.join("engine/config/hardware_profile.json"))?;
+        std::fs::copy(profile, home.join("config/hardware_profile.json"))?;
     }
     configure_test_permissions()?;
     let (_daemon, client) = start_daemon(&home).await?;
