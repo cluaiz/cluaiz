@@ -50,7 +50,7 @@ The archive on the Desktop is the result of the test.
 
 1. Checks that the Mac can run the test, and records the machine: chip, RAM, macOS version, Metal, SSD
    write speed, power and thermal state.
-2. Installs the newest release with the same command as the website, `curl -fsSL https://cluaiz.com/install.sh | sh`
+2. Installs the newest release with the same command as the website, `curl -fsSL https://cluaiz.com/install.sh | bash`
    (into `~/cluaiz-mactest/bin`).
 3. Downloads Q4_K_M models that fit the RAM:
 

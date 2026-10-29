@@ -1,7 +1,7 @@
 #!/bin/sh
 # Installs Cluaiz from its GitHub release:
 #
-#   curl -fsSL https://raw.githubusercontent.com/cluaiz/cluaiz/main/install.sh | sh
+#   curl -fsSL https://cluaiz.com/install.sh | bash
 #
 # It picks the core for this OS and processor, adds the GPU pack for the GPU it finds (NVIDIA: CUDA,
 # other GPUs with a Vulkan driver: Vulkan), checks every file against the release's SHA256SUMS.txt
