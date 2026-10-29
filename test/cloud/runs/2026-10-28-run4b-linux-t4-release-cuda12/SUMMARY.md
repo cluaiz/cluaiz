@@ -52,5 +52,12 @@ Installer took core + `llama-cuda12` + `cudart12` + `onnx-cuda12`, 45 s. Server 
 | 2 | On Linux nothing makes the engine's own drivers folder visible to the loader (`register_drivers_dir_in_path` only acts on Windows), and the Linux provider also needs `libcurand.so.10`, which neither the pack nor the download list has. On a clean machine ONNX on CUDA would not load its libraries; here the image's CUDA 12.9 libraries hid that. | `readelf -d libonnxruntime_providers_cuda.so`; `ldconfig -p` |
 | 3 | A CUDA failure inside llama.cpp (`ggml_abort`) or cuDNN ends the whole server instead of failing the one request. | 4a and 4b server logs |
 
+**Update 2026-10-29:** 1 and 2 are fixed in `engine/onnx/src/cudnn_driver.rs`. cuDNN now counts only from the
+engine's drivers folder, installed for the provider's CUDA major; cuRAND is in the download list for Linux; and on
+Linux the runtime libraries are loaded by full path before the first CUDA session. Checked on a Google Cloud VM with
+the same image (system cuDNN 9.13 for CUDA 13) and the v0.1.0 CUDA 12 provider: the engine downloaded cuDNN 9.8 for
+CUDA 12, and every cuDNN library in the process came from the drivers folder
+(`live_linux_runtime_loads_from_drivers_dir`). Not yet re-run on a GPU. 3 is open.
+
 ## Files
 `install.log`, `installed_files.txt` (what the installer unpacked), `machine.txt`, `status.txt`, `pulls.log` and `pull_*.log`, `server.log`, `server_highlights.log`, `checks.log`, `results.json`, `kokoro.wav`, `run.log`, `loaded_libs.txt` (empty: the server had already exited), `vram_margins.json`.

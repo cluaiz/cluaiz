@@ -140,9 +140,35 @@
           ]
         },
         {
+          "component": "libcurand",
+          "version": "10.3.9.90",
+          "base_url": "https://developer.download.nvidia.com/compute/cuda/redist/",
+          "platforms": [
+            {
+              "platform": "linux-x86_64",
+              "relative_path": "libcurand/linux-x86_64/libcurand-linux-x86_64-10.3.9.90-archive.tar.xz",
+              "bytes": 88606668,
+              "sha256": "32a5ec30be446c1b7228d1bc502b2f029cc8b59a5e362c70d960754fa646778b",
+              "sentinel_libraries": ["libcurand.so.10"],
+              "library_prefix": "libcurand",
+              "library_extension": ".so.10"
+            },
+            {
+              "platform": "linux-aarch64",
+              "relative_path": "libcurand/linux-aarch64/libcurand-linux-aarch64-10.3.9.90-archive.tar.xz",
+              "bytes": 79214140,
+              "sha256": "bd2ff4a5ef69f37e943d20fb5017c7f6d789b6f78da6365fab5021e500e6305a",
+              "sentinel_libraries": ["libcurand.so.10"],
+              "library_prefix": "libcurand",
+              "library_extension": ".so.10"
+            }
+          ]
+        },
+        {
           "component": "cudnn",
           "version": "9.8.0.87",
           "base_url": "https://developer.download.nvidia.com/compute/cudnn/redist/",
+          "own_copy_only": true,
           "platforms": [
             {
               "platform": "windows-x86_64",
@@ -256,9 +282,26 @@
           ]
         },
         {
+          "component": "libcurand",
+          "version": "10.4.0.35",
+          "base_url": "https://developer.download.nvidia.com/compute/cuda/redist/",
+          "platforms": [
+            {
+              "platform": "linux-x86_64",
+              "relative_path": "libcurand/linux-x86_64/libcurand-linux-x86_64-10.4.0.35-archive.tar.xz",
+              "bytes": 86175028,
+              "sha256": "ee0dbf473998050bda876cb945634bec87d44b90b05a5550e9c2499ab7c1a5c3",
+              "sentinel_libraries": ["libcurand.so.10"],
+              "library_prefix": "libcurand",
+              "library_extension": ".so.10"
+            }
+          ]
+        },
+        {
           "component": "cudnn",
           "version": "9.13.0.50",
           "base_url": "https://developer.download.nvidia.com/compute/cudnn/redist/",
+          "own_copy_only": true,
           "platforms": [
             {
               "platform": "windows-x86_64",

@@ -54,6 +54,12 @@ pub struct CudaComponentManifest {
     pub component: String,
     pub version: String,
     pub base_url: String,
+    /// cuDNN's file names do not say which CUDA major it was built for, so a copy elsewhere on the
+    /// system can need another cuBLAS than the provider loads (a CUDA 13 cuDNN with the CUDA 12
+    /// provider aborted the process). Such a component counts only from `drivers_dir`, installed
+    /// there for the provider's variant.
+    #[serde(default)]
+    pub own_copy_only: bool,
     pub platforms: Vec<CudaComponentPlatformSource>,
 }
 
@@ -283,8 +289,42 @@ pub fn is_component_available(drivers_dir: &Path, source: &CudaComponentPlatform
         })
 }
 
+/// The CUDA variant recorded in `cuda_runtime.ready` when the runtime was installed into `drivers_dir`.
+fn installed_variant(drivers_dir: &Path) -> Option<String> {
+    let text = std::fs::read_to_string(drivers_dir.join("cuda_runtime.ready")).ok()?;
+    Some(text.split(':').next()?.trim().to_string())
+}
+
+/// Whether one component can be used with the provider's `cuda_variant` (see `own_copy_only`).
+fn is_component_ready(
+    drivers_dir: &Path,
+    cuda_variant: &str,
+    comp: &CudaComponentManifest,
+    source: &CudaComponentPlatformSource,
+) -> bool {
+    if comp.own_copy_only {
+        is_component_in_drivers_dir(drivers_dir, source)
+            && installed_variant(drivers_dir).as_deref() == Some(cuda_variant)
+    } else {
+        is_component_available(drivers_dir, source)
+    }
+}
+
+/// The variant's components with an entry for this platform. One without an entry is not needed
+/// here (only the Linux provider links cuRAND).
+fn platform_components<'a>(
+    v_manifest: &'static CudaVariantManifest,
+    key: &'a str,
+) -> impl Iterator<Item = (&'static CudaComponentManifest, &'static CudaComponentPlatformSource)> + 'a {
+    v_manifest
+        .components
+        .iter()
+        .filter_map(move |comp| comp.platforms.iter().find(|p| p.platform == key).map(|source| (comp, source)))
+}
+
 /// Checks whether the full CUDA + cuDNN 9 runtime suite (`cuda_cudart`, `libcublas`, `libcufft`,
-/// `cudnn`) for the detected CUDA variant is available in `drivers_dir` or on the system path.
+/// `libcurand` on Linux, `cudnn`) for the detected CUDA variant is available in `drivers_dir` or on
+/// the system path.
 pub fn is_cuda_runtime_available_in(drivers_dir: &Path) -> bool {
     let Some(key) = current_platform_key() else {
         return false;
@@ -293,13 +333,8 @@ pub fn is_cuda_runtime_available_in(drivers_dir: &Path) -> bool {
     let Some(v_manifest) = variant_manifest(cuda_variant) else {
         return false;
     };
-    v_manifest.components.iter().all(|comp| {
-        comp.platforms
-            .iter()
-            .find(|p| p.platform == key)
-            .map(|plat_src| is_component_available(drivers_dir, plat_src))
-            .unwrap_or(false)
-    })
+    platform_components(v_manifest, key)
+        .all(|(comp, source)| is_component_ready(drivers_dir, cuda_variant, comp, source))
 }
 
 /// Checks whether the platform's cuDNN 9 sentinel library is available either in `drivers_dir` or
@@ -309,42 +344,111 @@ pub fn is_cudnn_available_in(drivers_dir: &Path) -> bool {
 }
 
 fn is_sentinel_on_system_path(sentinel_library: &str) -> bool {
+    system_library_path(sentinel_library).is_some()
+}
+
+/// Where the system has a library: a `PATH` folder on Windows; `LD_LIBRARY_PATH` or a standard
+/// library folder elsewhere.
+fn system_library_path(library: &str) -> Option<PathBuf> {
+    let non_empty = |path: &PathBuf| std::fs::metadata(path).map(|m| m.is_file() && m.len() > 0).unwrap_or(false);
     #[cfg(windows)]
     {
-        std::env::var_os("PATH")
-            .map(|path_os| {
-                std::env::split_paths(&path_os).any(|dir| {
-                    std::fs::metadata(dir.join(sentinel_library))
-                        .map(|m| m.is_file() && m.len() > 0)
-                        .unwrap_or(false)
-                })
-            })
-            .unwrap_or(false)
+        let path_os = std::env::var_os("PATH")?;
+        std::env::split_paths(&path_os).map(|dir| dir.join(library)).find(non_empty)
     }
     #[cfg(not(windows))]
     {
-        if let Some(ld_os) = std::env::var_os("LD_LIBRARY_PATH") {
-            if std::env::split_paths(&ld_os).any(|dir| {
-                std::fs::metadata(dir.join(sentinel_library))
-                    .map(|m| m.is_file() && m.len() > 0)
-                    .unwrap_or(false)
-            }) {
-                return true;
-            }
+        let ld_dirs = std::env::var_os("LD_LIBRARY_PATH")
+            .map(|ld_os| std::env::split_paths(&ld_os).collect::<Vec<_>>())
+            .unwrap_or_default();
+        let std_dirs = ["/usr/local/cuda/lib64", "/usr/lib/x86_64-linux-gnu", "/usr/lib/aarch64-linux-gnu", "/usr/lib64"];
+        ld_dirs
+            .into_iter()
+            .chain(std_dirs.iter().map(PathBuf::from))
+            .map(|dir| dir.join(library))
+            .find(non_empty)
+    }
+}
+
+/// glibc reads `LD_LIBRARY_PATH` only when the process starts, so on Linux `drivers_dir` cannot be
+/// added to the search path at run time. The runtime's libraries are loaded here by full path and
+/// globally, so the provider's `libcudnn.so.9`, `libcublasLt.so.12`, ... resolve to them by name.
+/// A library already loaded under its name (llama.cpp's CUDA backend loads cuBLAS from the GPU
+/// pack) is left alone, so no second copy is mapped.
+#[cfg(target_os = "linux")]
+fn load_runtime_libraries(drivers_dir: &Path) {
+    static TRIED: Mutex<Vec<PathBuf>> = Mutex::new(Vec::new());
+    let Some(key) = current_platform_key() else {
+        return;
+    };
+    let cuda_variant = detect_provider_cuda_variant(drivers_dir);
+    let Some(v_manifest) = variant_manifest(cuda_variant) else {
+        return;
+    };
+    let mut pending = Vec::new();
+    for (comp, source) in platform_components(v_manifest, key) {
+        if !is_component_ready(drivers_dir, cuda_variant, comp, source) {
+            continue;
         }
-        ["/usr/local/cuda/lib64", "/usr/lib/x86_64-linux-gnu", "/usr/lib/aarch64-linux-gnu", "/usr/lib64"]
-            .iter()
-            .any(|std_dir| {
-                std::fs::metadata(Path::new(std_dir).join(sentinel_library))
-                    .map(|m| m.is_file() && m.len() > 0)
-                    .unwrap_or(false)
+        // The versioned duplicates of older installs (`libcudnn.so.9.8.0`) do not end with the extension
+        let own: Vec<PathBuf> = std::fs::read_dir(drivers_dir)
+            .into_iter()
+            .flatten()
+            .flatten()
+            .map(|entry| entry.path())
+            .filter(|path| {
+                let name = path.file_name().and_then(|n| n.to_str()).unwrap_or_default();
+                name.starts_with(&source.library_prefix) && name.ends_with(&source.library_extension) && path.is_file()
             })
+            .collect();
+        if own.is_empty() {
+            pending.extend(source.sentinel_libraries.iter().filter_map(|s| system_library_path(s)));
+        } else {
+            pending.extend(own);
+        }
+    }
+    let Ok(mut tried) = TRIED.lock() else {
+        return;
+    };
+    pending.retain(|path| !tried.contains(path));
+    tried.extend(pending.iter().cloned());
+    // A library opens only after the ones it links (cuBLAS needs cuBLASLt, cuDNN's parts need its
+    // graph library), so the rest are tried again while a pass still opens one
+    loop {
+        let before = pending.len();
+        pending.retain(|path| !open_library_globally(path));
+        if pending.is_empty() || pending.len() == before {
+            break;
+        }
+    }
+    for path in &pending {
+        tracing::warn!(?path, "Could not load a CUDA runtime library; ONNX models may not run on CUDA");
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn open_library_globally(path: &Path) -> bool {
+    use std::os::unix::ffi::OsStrExt;
+    let Some(name) = path.file_name() else {
+        return false;
+    };
+    let (Ok(name), Ok(full)) = (
+        std::ffi::CString::new(name.as_bytes()),
+        std::ffi::CString::new(path.as_os_str().as_bytes()),
+    ) else {
+        return false;
+    };
+    // SAFETY: both strings are NUL-terminated; the handles are kept for the life of the process
+    unsafe {
+        !libc::dlopen(name.as_ptr(), libc::RTLD_NOW | libc::RTLD_NOLOAD).is_null()
+            || !libc::dlopen(full.as_ptr(), libc::RTLD_NOW | libc::RTLD_GLOBAL).is_null()
     }
 }
 
 /// Ensures `drivers_dir` is registered on `PATH` (Windows) so `LoadLibrary` inside
 /// `onnxruntime_providers_cuda` can resolve `cudart`, `cublas`, `cublasLt`, `cufft`, and `cudnn`,
 /// and that the provider libraries sit beside the executable (see `place_providers_beside_executable`).
+/// On Linux the libraries are loaded before a CUDA session instead (`load_runtime_libraries`).
 pub fn register_drivers_dir_in_path(drivers_dir: &Path) {
     place_providers_beside_executable(drivers_dir);
     #[cfg(windows)]
@@ -432,6 +536,8 @@ pub fn is_cuda_runtime_ready_or_spawn_background() -> bool {
     let drivers_dir = default_drivers_dir();
     if is_cuda_runtime_available_in(&drivers_dir) {
         register_drivers_dir_in_path(&drivers_dir);
+        #[cfg(target_os = "linux")]
+        load_runtime_libraries(&drivers_dir);
         return true;
     }
 
@@ -492,11 +598,8 @@ pub fn ensure_cuda_runtime_ready(drivers_dir: &Path, has_nvidia_gpu: bool) -> Re
         .with_context(|| format!("failed to create drivers directory {:?}", drivers_dir))?;
     remove_stale_downloads(drivers_dir);
 
-    for comp in &v_manifest.components {
-        let Some(source) = comp.platforms.iter().find(|p| p.platform == key) else {
-            bail!("no platform entry '{}' for CUDA component '{}' ({})", key, comp.component, cuda_variant);
-        };
-        if is_component_available(drivers_dir, source) {
+    for (comp, source) in platform_components(v_manifest, key) {
+        if is_component_ready(drivers_dir, cuda_variant, comp, source) {
             continue;
         }
 
@@ -718,7 +821,9 @@ fn extract_component_from_tar_xz(
                 continue;
             }
             let Some(file_name) = path.file_name().and_then(|n| n.to_str()) else { continue };
-            if !file_name.starts_with(&source.library_prefix) || !file_name.contains(&source.library_extension) {
+            // Only the names the loader asks for (`libcudnn.so.9`): the archives also hold each
+            // library under its full version (`libcudnn.so.9.8.0`), which doubled the ~2 GB on disk
+            if !file_name.starts_with(&source.library_prefix) || !file_name.ends_with(&source.library_extension) {
                 continue;
             }
             if let Ok(meta) = std::fs::metadata(&path) {
@@ -752,7 +857,7 @@ mod tests {
         for variant_key in ["cuda12", "cuda13"] {
             let vm = variant_manifest(variant_key).unwrap_or_else(|| panic!("missing variant {variant_key}"));
             let comp_names: Vec<&str> = vm.components.iter().map(|c| c.component.as_str()).collect();
-            assert_eq!(comp_names, vec!["cuda_cudart", "libcublas", "libcufft", "cudnn"]);
+            assert_eq!(comp_names, vec!["cuda_cudart", "libcublas", "libcufft", "libcurand", "cudnn"]);
             for comp in &vm.components {
                 assert!(comp.base_url.starts_with("https://developer.download.nvidia.com/"));
                 for plat in &comp.platforms {
@@ -762,6 +867,28 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn curand_is_linux_only_and_cudnn_counts_only_when_installed_for_the_variant() {
+        let vm = variant_manifest("cuda12").unwrap();
+        let names = |key| platform_components(vm, key).map(|(c, _)| c.component.as_str()).collect::<Vec<_>>();
+        assert!(!names("windows-x86_64").contains(&"libcurand"));
+        assert!(names("linux-x86_64").contains(&"libcurand"));
+
+        let dir = std::env::temp_dir().join(format!("cluaiz-cudnn-variant-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let (comp, source) = platform_components(vm, "linux-x86_64").find(|(c, _)| c.component == "cudnn").unwrap();
+        assert!(comp.own_copy_only);
+        std::fs::write(dir.join("libcudnn.so.9"), b"\x7fELF").unwrap();
+        // Installed by hand, or for the other CUDA major: its cuBLAS may not be the provider's
+        assert!(!is_component_ready(&dir, "cuda12", comp, source));
+        std::fs::write(dir.join("cuda_runtime.ready"), "cuda13:13.0.0").unwrap();
+        assert!(!is_component_ready(&dir, "cuda12", comp, source));
+        std::fs::write(dir.join("cuda_runtime.ready"), "cuda12:12.8.1").unwrap();
+        assert!(is_component_ready(&dir, "cuda12", comp, source));
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
@@ -849,6 +976,35 @@ mod tests {
         assert!(!out_dir.join("cudnn.h").exists());
         assert!(!out_dir.join("cudnn.lib").exists());
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Needs no GPU. Run a copy of the test binary from the folder of a release's
+    /// `libonnxruntime_providers_cuda.so` (the provider beside the executable decides the variant).
+    /// The runtime is installed into a fresh folder and loaded; then every library the provider asks
+    /// for by name must open, and cuDNN must be the folder's copy, not a system cuDNN built for
+    /// another CUDA major. (The provider itself cannot be opened outside ONNX Runtime: its start-up
+    /// code calls into the runtime.)
+    #[cfg(target_os = "linux")]
+    #[test]
+    #[ignore]
+    fn live_linux_runtime_loads_from_drivers_dir() {
+        let dir = std::env::temp_dir().join("cluaiz-linux-runtime");
+        assert!(ensure_cuda_runtime_ready(&dir, true).unwrap());
+        assert!(is_cuda_runtime_available_in(&dir));
+        load_runtime_libraries(&dir);
+
+        let vm = variant_manifest(detect_provider_cuda_variant(&dir)).unwrap();
+        for (_, source) in platform_components(vm, current_platform_key().unwrap()) {
+            for name in &source.sentinel_libraries {
+                let c_name = std::ffi::CString::new(name.as_str()).unwrap();
+                assert!(!unsafe { libc::dlopen(c_name.as_ptr(), libc::RTLD_NOW) }.is_null(), "{name} does not open");
+            }
+        }
+        let maps = std::fs::read_to_string("/proc/self/maps").unwrap();
+        let cudnn: std::collections::BTreeSet<&str> =
+            maps.lines().filter_map(|l| l.split_whitespace().nth(5)).filter(|p| p.contains("libcudnn")).collect();
+        eprintln!("{} {cudnn:?}", vm.cuda_variant);
+        assert!(!cudnn.is_empty() && cudnn.iter().all(|p| p.starts_with(dir.to_str().unwrap())));
     }
 
     #[test]
