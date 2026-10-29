@@ -1,6 +1,6 @@
 # Installs Cluaiz from its GitHub release:
 #
-#   irm https://raw.githubusercontent.com/cluaiz/cluaiz/main/install.ps1 | iex
+#   powershell -c "irm https://cluaiz.com/install.ps1 | iex"
 #
 # It picks the Windows core, adds the GPU pack for the GPU it finds (NVIDIA: CUDA, AMD / Intel:
 # Vulkan), checks every file against the release's SHA256SUMS.txt and unpacks them into one folder.

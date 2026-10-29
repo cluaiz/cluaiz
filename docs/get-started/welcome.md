@@ -10,7 +10,7 @@ Deploy `cluaiz` directly onto your hardware workspace without virtualized contai
 
 ### Windows (PowerShell)
 ```powershell
-powershell -ExecutionPolicy Bypass -Command "irm https://cluaiz.com/install.ps1 | iex"
+powershell -c "irm https://cluaiz.com/install.ps1 | iex"
 ```
 
 ### Linux & macOS (Bash)

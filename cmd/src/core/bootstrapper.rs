@@ -341,6 +341,18 @@ impl Bootstrapper {
             let bin_dir = cluaiz_core::EnvironmentManager::current().ensure_bin_dir().unwrap_or_else(|_| cluaiz_core::EnvironmentManager::current().bin_dir());
             let bin_str = bin_dir.to_string_lossy().to_string();
 
+            // Only the installed binary puts its own folder on the PATH. A build or a test run with
+            // another CLUAIZ_HOME added <home>\bin on every start: 60+ dead folders piled up in the
+            // user PATH, and a stale cluaiz.exe in one of them answered after the real one was removed
+            let norm = |d: &std::path::Path| d.to_string_lossy().trim_end_matches(['\\', '/']).to_lowercase();
+            let exe_in_bin = std::env::current_exe()
+                .ok()
+                .and_then(|exe| exe.parent().map(|dir| norm(dir) == norm(&bin_dir)))
+                .unwrap_or(false);
+            if !exe_in_bin {
+                return;
+            }
+
             // Already on this process's PATH (inherited from the user PATH): nothing to do, no PowerShell
             let on_path = std::env::var_os("PATH")
                 .map(|p| {

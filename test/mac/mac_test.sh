@@ -97,7 +97,7 @@ fi
 # ── 2. Install ──────────────────────────────────────────────────────────────────────────────
 step "installing Cluaiz with the installer command (cluaiz.com / github fallback)"
 (curl -fsSL https://cluaiz.com/install.sh 2>/dev/null || curl -fsSL https://raw.githubusercontent.com/cluaiz/cluaiz/main/install.sh) |
-  CLUAIZ_INSTALL_DIR="$W/bin" CLUAIZ_VERSION="${CLUAIZ_VERSION:-}" sh > "$OUT/install.log" 2>&1
+  CLUAIZ_INSTALL_DIR="$W/bin" CLUAIZ_VERSION="${CLUAIZ_VERSION:-}" bash > "$OUT/install.log" 2>&1
 [ -x "$BIN" ] || { echo "install failed:"; tail -20 "$OUT/install.log"; exit 1; }
 sed 's/\x1b\[[0-9;]*m//g' "$OUT/install.log" | grep -E "DONE|ERROR|error" | sed 's/^ */   /'
 note "installed: $("$BIN" --version 2>/dev/null | tail -n 1)"

@@ -15,7 +15,7 @@ The recommended method to deploy the node is using the official single-line auto
 Execute this command inside a standard or Administrator **PowerShell** prompt:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -Command "irm https://cluaiz.com/install.ps1 | iex"
+powershell -c "irm https://cluaiz.com/install.ps1 | iex"
 ```
 
 *   **Bypass Flag (`-ExecutionPolicy Bypass`):** Instructs PowerShell to bypass local script signing policies temporarily to execute the installer.

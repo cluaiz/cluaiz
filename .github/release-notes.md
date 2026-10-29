@@ -3,13 +3,13 @@
 **Linux and macOS**
 
 ```sh
-curl -fsSL https://cluaiz.com/install.sh | sh
+curl -fsSL https://cluaiz.com/install.sh | bash
 ```
 
-**Windows (PowerShell)**
+**Windows** (Command Prompt or PowerShell)
 
 ```powershell
-irm https://cluaiz.com/install.ps1 | iex
+powershell -c "irm https://cluaiz.com/install.ps1 | iex"
 ```
 
 The installer picks the files for your machine and checks them against `SHA256SUMS.txt`.
