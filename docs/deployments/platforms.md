@@ -11,7 +11,7 @@ Cluaiz ships as a **core** plus optional **GPU packs** (see [Release Workflow](c
 | Windows 10 / 11 x64 | `win-x64` | Tested |
 | Linux x64, glibc 2.38+ (Ubuntu 24.04, Debian 13, Fedora 39 or newer) | `linux-x64` | Tested (Ubuntu 24.04: CPU, and NVIDIA Tesla T4 with the CUDA 12 pack) |
 | Linux ARM64, glibc 2.38+ | `linux-arm64` | Built in CI; not yet run on hardware |
-| macOS Apple Silicon | `mac-arm64` | Built in CI; not yet run on hardware |
+| macOS Apple Silicon | `mac-arm64` | Run on a MacBook Air M5 16 GB: installs and chats; auto placement does not use the Metal GPU yet ([run](../../test/mac/runs/2026-10-28-m5-air-16gb/SUMMARY.md)) |
 
 Older Linux (Ubuntu 22.04, Debian 12) is not supported yet: the bundled ONNX Runtime needs glibc 2.38.
 

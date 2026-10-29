@@ -1,0 +1,173 @@
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3-4b-gguf-Q4_K_M
+║   • Architecture    : qwen3 | 36 layers | heads 32 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 2.33 GB | input embeddings 0.30 GB (always CPU) | output head 0.30 GB | vocab 151936
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 40960 tokens
+║   • Active context  : 4096 tokens, KV Kv8 (Auto: 4096 tokens, KV Kv8; model does not fit on one device, so it is split and the context stays at the floor)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : none | free 0.00 of 0.00 GB | buffer kept free 0.00 GB (0 MiB rule, model not measured on this machine yet)
+║   • RAM             : free 0.00 of 16.00 GB | Cluaiz may use 0.00 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Rejected
+║   • llama.cpp       : n_gpu_layers = 0 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv8 | offload_kqv = 0 | op_offload = 1
+║   • Blocks          : 0 on GPU, 36 in RAM (of 36)
+║   • VRAM            : 0.00 GB (weights + KV 0.00 + logits)
+║   • RAM             : 0.00 GB (incl. KV 0.00)
+║   • Reason          : Does not fit: closest placement (CPU only) is 2.91 GB short (weights 2.32 + KV 0.30 + logits 0.29 = 2.91 GB in RAM; needs 2.91 GB more RAM than allowed). Free memory, lower the context, or use a smaller quantization.
+║   • Speed           : not measured (chosen by rule order)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • CPU only         [NO]       VRAM  0.00 GB | RAM  2.91 GB | weights 2.32 + KV 0.30 + logits 0.29 = 2.91 GB in RAM; needs 2.91 GB more RAM than allowed
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 10 / batch 10 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3-4b-gguf-Q4_K_M
+║   • Architecture    : qwen3 | 36 layers | heads 32 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 2.33 GB | input embeddings 0.30 GB (always CPU) | output head 0.30 GB | vocab 151936
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 40960 tokens
+║   • Active context  : 4096 tokens, KV Kv8 (Auto: 4096 tokens, KV Kv8; model does not fit on one device, so it is split and the context stays at the floor)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : none | free 0.00 of 0.00 GB | buffer kept free 0.00 GB (0 MiB rule, model not measured on this machine yet)
+║   • RAM             : free 0.00 of 16.00 GB | Cluaiz may use 0.00 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Rejected
+║   • llama.cpp       : n_gpu_layers = 0 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv8 | offload_kqv = 0 | op_offload = 1
+║   • Blocks          : 0 on GPU, 36 in RAM (of 36)
+║   • VRAM            : 0.00 GB (weights + KV 0.00 + logits)
+║   • RAM             : 0.00 GB (incl. KV 0.00)
+║   • Reason          : Does not fit: closest placement (CPU only) is 2.91 GB short (weights 2.32 + KV 0.30 + logits 0.29 = 2.91 GB in RAM; needs 2.91 GB more RAM than allowed). Free memory, lower the context, or use a smaller quantization.
+║   • Speed           : not measured (chosen by rule order)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • CPU only         [NO]       VRAM  0.00 GB | RAM  2.91 GB | weights 2.32 + KV 0.30 + logits 0.29 = 2.91 GB in RAM; needs 2.91 GB more RAM than allowed
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 10 / batch 10 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3-4b-gguf-Q4_K_M
+║   • Architecture    : qwen3 | 36 layers | heads 32 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 2.33 GB | input embeddings 0.30 GB (always CPU) | output head 0.30 GB | vocab 151936
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 40960 tokens
+║   • Active context  : 4096 tokens, KV Kv8 (Auto: 4096 tokens, KV Kv8; model does not fit on one device, so it is split and the context stays at the floor)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : none | free 0.00 of 0.00 GB | buffer kept free 0.00 GB (0 MiB rule, model not measured on this machine yet)
+║   • RAM             : free 0.00 of 16.00 GB | Cluaiz may use 0.00 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : CPU only, experts read from disk
+║   • llama.cpp       : n_gpu_layers = 0 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv8 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 0 on GPU, 36 in RAM (of 36)
+║   • VRAM            : 0.00 GB (weights + KV 0.00 + logits)
+║   • RAM             : 2.91 GB (incl. KV 0.30)
+║   • Disk (mmap)     : 2.91 GB of experts read from disk when used
+║   • Reason          : User setting: planner bypassed: n_gpu_layers 0 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 0.00 of usable 0.00 GB; 2.91 GB over the RAM limit is read from disk when used (mmap)
+║   • Speed           : not measured (chosen by rule order)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM  0.00 GB | RAM  2.91 GB | planner bypassed: n_gpu_layers 0 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 0.00 of usable 0.00 GB; 2.91 GB over the RAM limit is read from disk when used (mmap)
+║   • CPU only         [NO]       VRAM  0.00 GB | RAM  2.91 GB | weights 2.32 + KV 0.30 + logits 0.29 = 2.91 GB in RAM; needs 2.91 GB more RAM than allowed
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 10 / batch 10 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+2026-10-28T16:35:34.866991Z  INFO 🧬 [Native-Llama] Loading model: /Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf | ctx: 4096 tokens
+2026-10-28T16:35:51.491460Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 534 tokens in 4770 ms (111.96 t/s) | generation 243 tokens in 10391 ms (23.39 t/s)
+2026-10-28T16:35:59.387244Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 534 tokens in 5140 ms (103.88 t/s) | generation 64 tokens in 2720 ms (23.53 t/s)
+2026-10-28T16:36:07.503288Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 534 tokens in 5163 ms (103.42 t/s) | generation 64 tokens in 2919 ms (21.93 t/s)
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3-4b-gguf-Q4_K_M
+║   • Architecture    : qwen3 | 36 layers | heads 32 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 2.33 GB | input embeddings 0.30 GB (always CPU) | output head 0.30 GB | vocab 151936
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 40960 tokens
+║   • Active context  : 4096 tokens, KV Kv8 (Auto: 4096 tokens, KV Kv8; model does not fit on one device, so it is split and the context stays at the floor)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : none | free 0.00 of 0.00 GB | buffer kept free 0.00 GB (0 MiB rule, model not measured on this machine yet)
+║   • RAM             : free 0.75 of 16.00 GB | Cluaiz may use 0.00 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : CPU only, experts read from disk
+║   • llama.cpp       : n_gpu_layers = 0 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv8 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 0 on GPU, 36 in RAM (of 36)
+║   • VRAM            : 0.00 GB (weights + KV 0.00 + logits)
+║   • RAM             : 2.91 GB (incl. KV 0.30)
+║   • Disk (mmap)     : 2.91 GB of experts read from disk when used
+║   • Reason          : User setting: planner bypassed: n_gpu_layers 0 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 0.00 of usable 0.00 GB; 2.91 GB over the RAM limit is read from disk when used (mmap)
+║   • Speed           : not measured (chosen by rule order)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM  0.00 GB | RAM  2.91 GB | planner bypassed: n_gpu_layers 0 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 0.00 of usable 0.00 GB; 2.91 GB over the RAM limit is read from disk when used (mmap)
+║   • CPU only         [NO]       VRAM  0.00 GB | RAM  2.91 GB | weights 2.32 + KV 0.30 + logits 0.29 = 2.91 GB in RAM; needs 2.91 GB more RAM than allowed
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 10 / batch 10 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+2026-10-28T16:36:49.492224Z  INFO 🧬 [Native-Llama] Loading model: /Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf | ctx: 4096 tokens
+2026-10-28T16:37:06.074573Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 535 tokens in 4779 ms (111.96 t/s) | generation 266 tokens in 11143 ms (23.87 t/s)
+2026-10-28T16:37:13.552362Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 533 tokens in 4794 ms (111.18 t/s) | generation 64 tokens in 2661 ms (24.05 t/s)
+2026-10-28T16:37:20.644504Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 534 tokens in 4847 ms (110.18 t/s) | generation 56 tokens in 2225 ms (25.17 t/s)
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3-4b-gguf-Q4_K_M
+║   • Architecture    : qwen3 | 36 layers | heads 32 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 2.33 GB | input embeddings 0.30 GB (always CPU) | output head 0.30 GB | vocab 151936
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 40960 tokens
+║   • Active context  : 4096 tokens, KV Kv8 (Auto: 4096 tokens, KV Kv8; model does not fit on one device, so it is split and the context stays at the floor)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : none | free 0.00 of 0.00 GB | buffer kept free 0.00 GB (0 MiB rule, model not measured on this machine yet)
+║   • RAM             : free 0.00 of 16.00 GB | Cluaiz may use 0.00 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : CPU only, experts read from disk
+║   • llama.cpp       : n_gpu_layers = 0 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv8 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 0 on GPU, 36 in RAM (of 36)
+║   • VRAM            : 0.00 GB (weights + KV 0.00 + logits)
+║   • RAM             : 2.91 GB (incl. KV 0.30)
+║   • Disk (mmap)     : 2.91 GB of experts read from disk when used
+║   • Reason          : User setting: planner bypassed: n_gpu_layers 0 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 0.00 of usable 0.00 GB; 2.91 GB over the RAM limit is read from disk when used (mmap)
+║   • Speed           : not measured (chosen by rule order)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM  0.00 GB | RAM  2.91 GB | planner bypassed: n_gpu_layers 0 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 0.00 of usable 0.00 GB; 2.91 GB over the RAM limit is read from disk when used (mmap)
+║   • CPU only         [NO]       VRAM  0.00 GB | RAM  2.91 GB | weights 2.32 + KV 0.30 + logits 0.29 = 2.91 GB in RAM; needs 2.91 GB more RAM than allowed
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 10 / batch 10 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+2026-10-28T16:37:52.776941Z  INFO 🧬 [Native-Llama] Loading model: /Users/tester/cluaiz-mactest/home/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf | ctx: 4096 tokens
+2026-10-28T16:38:44.740670Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 535 tokens in 5092 ms (105.07 t/s) | generation 802 tokens in 46290 ms (17.33 t/s)
+2026-10-28T16:38:53.861152Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 534 tokens in 6040 ms (88.41 t/s) | generation 51 tokens in 3052 ms (16.71 t/s)
+2026-10-28T16:39:03.405707Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 534 tokens in 6138 ms (87.00 t/s) | generation 60 tokens in 3373 ms (17.79 t/s)

@@ -276,7 +276,13 @@ impl Planner {
         // User fixed the placement (settings or the request's "llama" params): use exactly that, no refusal.
         // The estimate is still printed so the user sees what it costs.
         if opt.is_manual_placement() {
-            let ngl = if hardware.gpus.is_empty() { 0 } else { opt.n_gpu_layers.unwrap_or(-1) };
+            // The user's n_gpu_layers goes to llama.cpp as it is, also when no GPU is detected here: the
+            // probe sees NVIDIA GPUs only, so a Metal or Vulkan GPU would otherwise lose every layer
+            let ngl = match opt.n_gpu_layers {
+                Some(n) => n,
+                None if hardware.gpus.is_empty() => 0,
+                None => -1,
+            };
             let n_cpu_moe = opt.n_cpu_moe.unwrap_or(0);
             let kv_offload = opt.offload_kqv.unwrap_or(true);
             let p = place(ngl, n_cpu_moe as usize, kv_offload);
@@ -637,6 +643,21 @@ mod tests {
         assert_eq!(plan.n_gpu_layers, 30);
         assert_eq!(plan.block_split(), (29, 7));
         assert!(plan.explanation.contains("over usable VRAM"), "{}", plan.explanation);
+    }
+
+    #[test]
+    fn user_gpu_layers_are_kept_when_no_gpu_is_detected() {
+        // A Mac: Metal is not seen by the probe, the user still asks for every layer on the GPU
+        let mut s = settings(ContextSetting::Custom(4096), KvCacheQuantization::Kv8);
+        s.optimization.n_gpu_layers = Some(-1);
+        let mut mac = hw(0.0, 12.0);
+        mac.gpus.clear();
+        let plan = Planner::create_plan("m", &qwen3_like(2.3), &mac, &s);
+        assert_eq!(plan.n_gpu_layers, -1, "{}", plan.explanation);
+        // Only offload_kqv set: nothing asked about layers, so no GPU means none
+        s.optimization.n_gpu_layers = None;
+        s.optimization.offload_kqv = Some(true);
+        assert_eq!(Planner::create_plan("m", &qwen3_like(2.3), &mac, &s).n_gpu_layers, 0);
     }
 
     #[test]

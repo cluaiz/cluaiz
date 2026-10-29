@@ -42,10 +42,11 @@ if [ "$(uname -m)" != arm64 ]; then echo "This test is for Apple Silicon (arm64)
 
 step "machine"
 {
-  sw_vers; uname -a
+  sw_vers; uname -smr
   sysctl -n machdep.cpu.brand_string
   sysctl hw.memsize hw.ncpu hw.perflevel0.physicalcpu hw.perflevel1.physicalcpu 2>/dev/null
-  system_profiler SPHardwareDataType SPDisplaysDataType 2>/dev/null
+  # Without the Mac's serial number and IDs: the results go into a public repository
+  system_profiler SPHardwareDataType SPDisplaysDataType 2>/dev/null | grep -vE "Serial|UUID|UDID|Activation Lock"
   df -h "$HOME"; pmset -g batt; pmset -g therm 2>/dev/null
   echo "== SSD write, 2 GB"; dd if=/dev/zero of="$W/ddtest" bs=1m count=2048 2>&1 | tail -1; rm -f "$W/ddtest"
 } > "$OUT/machine.txt" 2>&1
@@ -116,6 +117,14 @@ for id in $MODELS; do
     --models-dir "$CLUAIZ_HOME/models" --llama-bench "$LB" --only "$key" --modes "$modes" \
     --runs "${RUNS:-3}" ${extra[@]+"${extra[@]}"} --report "$OUT/RESULTS_$name.md" 2>&1 | tee "$OUT/run_$name.log"
 done
+
+# What the Metal GPU does with every layer on it, whatever Cluaiz chose
+step "plain llama.cpp with every layer on the Metal GPU (-ngl 99), for reference"
+find "$CLUAIZ_HOME/models" -name '*.gguf' ! -name 'mmproj*' | while read -r f; do
+  gb=$(( $(stat -f %z "$f") / 1073741824 ))
+  if [ "$gb" -ge $(( RAM_GB * 6 / 10 )) ]; then echo "skip $(basename "$f"): $gb GB"; continue; fi
+  "$LB" -m "$f" -ngl 99 -p 512 -n 64 -r 2
+done 2>&1 | tee "$OUT/metal_reference.log"
 
 step "logs"
 lsof -p "$SERVER" 2>/dev/null | grep -E "\.dylib|\.metallib" > "$OUT/loaded_libs.txt"

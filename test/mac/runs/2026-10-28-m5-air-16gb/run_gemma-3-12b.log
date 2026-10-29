@@ -1,0 +1,6 @@
+
+model                       mode   result   engine pp/tg      llama.cpp pp/tg   notes
+gemma-3-12b-it-gguf-Q4_K_M  -      SKIP                                         file 6.8 GB > free RAM + VRAM (use --allow-big)
+
+0 passed, 0 failed, 1 skipped / not fitting
+report written: /Users/tester/cluaiz-mactest/results/RESULTS_gemma-3-12b.md
