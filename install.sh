@@ -24,7 +24,24 @@ step() { printf "  ${GRAY}* %s${NC}\n" "$1"; }
 done_step() { printf "  ${GREEN}[DONE]${NC} %s\n" "$1"; }
 fail() { printf "\n  ${RED}[ERROR] %s${NC}\n" "$1" >&2; exit 1; }
 
-printf "\n  ${CYAN}${BOLD}cluaiz${NC}\n  ${GRAY}>_ Installing cluaiz...${NC}\n\n"
+# ── Logo (Variant 10 Gothic / Tiny auto-fit) ──────────────────────────────────────────────────
+cols=$(tput cols 2>/dev/null || echo 80)
+printf "\n"
+if [ "$cols" -ge 60 ]; then
+  printf "  ${CYAN}   ▄████▄   ██▓     █    ██  ▄▄▄       ██▓▒███████▒${NC}\n"
+  printf "  ${CYAN}  ▒██▀ ▀█  ▓██▒     ██  ▓██▒▒████▄    ▓██▒▒ ▒ ▒ ▄▀░${NC}\n"
+  printf "  ${CYAN}  ▒▓█    ▄ ▒██░    ▓██  ▒██░▒██  ▀█▄  ▒██▒░ ▒ ▄▀▒░ ${NC}\n"
+  printf "  ${CYAN}  ▒▓▓▄ ▄██▒▒██░    ▓▓█  ░██░░██▄▄▄▄██ ░██░  ▄▀▒   ░${NC}\n"
+  printf "  ${CYAN}  ▒ ▓███▀ ░░██████▒▒▒█████▓  ▓█   ▓██▒░██░▒███████▒${NC}\n"
+  printf "  ${CYAN}  ░ ░▒ ▒  ░░ ▒░▓  ░░▒▓▒ ▒ ▒  ▒▒   ▓▒█░░▓  ░▒▒ ▓░▒░▒${NC}\n"
+  printf "  ${CYAN}    ░  ▒   ░ ░ ▒  ░░░▒░ ░ ░   ▒   ▒▒ ░ ▒ ░░░▒ ▒ ░ ▒${NC}\n"
+  printf "  ${CYAN}  ░          ░ ░    ░░░ ░ ░   ░   ▒    ▒ ░░ ░ ░ ░ ░${NC}\n"
+  printf "  ${CYAN}  ░ ░          ░  ░   ░           ░  ░ ░    ░ ░    ${NC}\n"
+  printf "  ${CYAN}  ░                                       ░        ${NC}\n"
+else
+  printf "  ${CYAN}  [ C L U A I Z ]${NC}\n"
+fi
+printf "\n  ${GRAY}>_ Installing cluaiz...${NC}\n\n"
 
 need() { command -v "$1" >/dev/null 2>&1 || fail "'$1' is needed; install it and run this again"; }
 need curl

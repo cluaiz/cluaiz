@@ -22,16 +22,31 @@ $InstallDir = if ($env:CLUAIZ_INSTALL_DIR) { $env:CLUAIZ_INSTALL_DIR } else { Jo
 $Gpu = if ($env:CLUAIZ_GPU) { $env:CLUAIZ_GPU } else { 'auto' }
 
 $E = [char]27
-$GRAY = "$E[90m"; $GREEN = "$E[32m"; $NC = "$E[0m"
+$CYAN = "$E[36m"; $GRAY = "$E[90m"; $GREEN = "$E[32m"; $NC = "$E[0m"
 function Write-Step ([string]$msg) { Write-Host ("  " + $GRAY + "* " + $msg + $NC) }
 function Complete-Step ([string]$msg) { Write-Host ("  " + $GREEN + "[DONE] " + $NC + $msg) }
 
-# --- Logo ---
-$C1 = [char]0x2591; $C2 = [char]0x2580; $C3 = [char]0x2584; $C4 = [char]0x2588
+# --- Logo (Variant 10 Gothic / Tiny auto-fit) ---
+$TermWidth = 80
+try {
+    if ($Host.UI.RawUI.WindowSize.Width) { $TermWidth = $Host.UI.RawUI.WindowSize.Width }
+} catch { }
+
 Write-Host ""
-Write-Host "  $C1$C2$C3$C1$C1$C1$C1$C1$C1$C1$C1$C4$C2$C2$C1$C4$C1$C1$C1$C4$C1$C4$C1$C4$C2$C4$C1$C2$C4$C2$C1$C2$C2$C4" -ForegroundColor Cyan
-Write-Host "  $C1$C1$C3$C2$C1$C1$C1$C1$C1$C1$C1$C4$C1$C1$C1$C4$C1$C1$C1$C4$C1$C4$C1$C4$C2$C4$C1$C1$C4$C1$C1$C3$C2$C1" -ForegroundColor Cyan
-Write-Host "  $C1$C2$C1$C1$C1$C2$C2$C2$C1$C1$C1$C2$C2$C2$C1$C2$C2$C2$C1$C2$C2$C2$C1$C2$C1$C2$C1$C2$C2$C2$C1$C2$C2$C2" -ForegroundColor Cyan
+if ($TermWidth -ge 60) {
+    Write-Host "     ▄████▄   ██▓     █    ██  ▄▄▄       ██▓▒███████▒" -ForegroundColor Cyan
+    Write-Host "    ▒██▀ ▀█  ▓██▒     ██  ▓██▒▒████▄    ▓██▒▒ ▒ ▒ ▄▀░" -ForegroundColor Cyan
+    Write-Host "    ▒▓█    ▄ ▒██░    ▓██  ▒██░▒██  ▀█▄  ▒██▒░ ▒ ▄▀▒░ " -ForegroundColor Cyan
+    Write-Host "    ▒▓▓▄ ▄██▒▒██░    ▓▓█  ░██░░██▄▄▄▄██ ░██░  ▄▀▒   ░" -ForegroundColor Cyan
+    Write-Host "    ▒ ▓███▀ ░░██████▒▒▒█████▓  ▓█   ▓██▒░██░▒███████▒" -ForegroundColor Cyan
+    Write-Host "    ░ ░▒ ▒  ░░ ▒░▓  ░░▒▓▒ ▒ ▒  ▒▒   ▓▒█░░▓  ░▒▒ ▓░▒░▒" -ForegroundColor Cyan
+    Write-Host "      ░  ▒   ░ ░ ▒  ░░░▒░ ░ ░   ▒   ▒▒ ░ ▒ ░░░▒ ▒ ░ ▒" -ForegroundColor Cyan
+    Write-Host "    ░          ░ ░    ░░░ ░ ░   ░   ▒    ▒ ░░ ░ ░ ░ ░" -ForegroundColor Cyan
+    Write-Host "    ░ ░          ░  ░   ░           ░  ░ ░    ░ ░    " -ForegroundColor Cyan
+    Write-Host "    ░                                       ░        " -ForegroundColor Cyan
+} else {
+    Write-Host "    [ C L U A I Z ]" -ForegroundColor Cyan
+}
 Write-Host ""
 Write-Host "  >_ Installing cluaiz..." -ForegroundColor Gray
 Write-Host ""
@@ -112,6 +127,49 @@ try {
     if ($Gpu -eq 'vulkan') { $Files += "cluaiz-$Version-$Platform-llama-vulkan.zip" }
 
     # --- Download, check, unpack ---
+    function Download-FileWithProgress ([string]$url, [string]$outPath, [string]$fileName) {
+        Add-Type -AssemblyName System.Net.Http -ErrorAction SilentlyContinue
+        Write-Step "Downloading $fileName"
+        $client = [System.Net.Http.HttpClient]::new()
+        try {
+            $resp = $client.GetAsync($url, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead).GetAwaiter().GetResult()
+            $null = $resp.EnsureSuccessStatusCode()
+            $total = $resp.Content.Headers.ContentLength
+            $stream = $resp.Content.ReadAsStreamAsync().GetAwaiter().GetResult()
+            $fs = [System.IO.FileStream]::new($outPath, [System.IO.FileMode]::Create, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+            try {
+                $buf = [byte[]]::new(65536)
+                $read = 0
+                $lastTime = [DateTime]::MinValue
+                while (($cnt = $stream.Read($buf, 0, $buf.Length)) -gt 0) {
+                    $fs.Write($buf, 0, $cnt)
+                    $read += $cnt
+                    $now = [DateTime]::UtcNow
+                    if (($now - $lastTime).TotalMilliseconds -ge 150) {
+                        $lastTime = $now
+                        if ($total -and $total -gt 0) {
+                            $pct = [int](($read / $total) * 100)
+                            $mbRead = [math]::Round($read / 1MB, 1)
+                            $mbTot = [math]::Round($total / 1MB, 1)
+                            Write-Host ("`r  " + $GRAY + "* Downloading $fileName " + $CYAN + "[$pct%]" + $GRAY + " ($mbRead MB / $mbTot MB)" + $NC) -NoNewline
+                        } else {
+                            $mbRead = [math]::Round($read / 1MB, 1)
+                            Write-Host ("`r  " + $GRAY + "* Downloading $fileName " + $GRAY + "($mbRead MB)" + $NC) -NoNewline
+                        }
+                    }
+                }
+                Write-Host ""
+            } finally {
+                $fs.Dispose()
+                $stream.Dispose()
+            }
+        } catch {
+            Invoke-WebRequest $url -OutFile $outPath
+        } finally {
+            $client.Dispose()
+        }
+    }
+
     $Got = @()
     foreach ($file in $Files) {
         if (-not $Sums.ContainsKey($file)) {
@@ -119,8 +177,7 @@ try {
             Write-Host "  $GRAY- $file is not in this release; models run on the CPU instead$NC"
             continue
         }
-        Write-Step "Downloading $file"
-        Invoke-WebRequest "$Base/$file" -OutFile "$Tmp\$file"
+        Download-FileWithProgress "$Base/$file" "$Tmp\$file" "$file"
         $actual = (Get-FileHash "$Tmp\$file" -Algorithm SHA256).Hash.ToLower()
         if ($actual -ne $Sums[$file]) { throw "$file does not match SHA256SUMS.txt (expected $($Sums[$file]), got $actual)" }
         Complete-Step "$file (checksum OK)"
