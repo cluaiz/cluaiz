@@ -36,11 +36,14 @@ No run had every layer on the Metal GPU, so how far these numbers are from Metal
 ## Engine problems found
 | # | Problem | Evidence | Status |
 |---|---|---|---|
-| 1 | The hardware probe asks NVML only, so an Apple GPU (and an AMD or Intel GPU on Vulkan) is not seen: `GPU: none`, auto placement never offloads. llama.cpp itself loaded the Metal backend (`Backends loaded; GPU offload available`). | `planner.log`, `server.log` line 8 | open |
-| 2 | Free RAM read as 0.00 GB (once 0.75) of 16 GB. sysinfo 0.30 on macOS counts free + inactive + purgeable pages minus the compressor's pages, which reaches zero when macOS compresses memory, so the planner refused a 2.9 GB plan. | `planner.log` `RAM: free 0.00 of 16.00 GB` | open |
+| 1 | The hardware probe asks NVML only, so an Apple GPU (and an AMD or Intel GPU on Vulkan) is not seen: `GPU: none`, auto placement never offloads. llama.cpp itself loaded the Metal backend (`Backends loaded; GPU offload available`). | `planner.log`, `server.log` line 8 | fixed on `main`: GPUs of llama.cpp's own backends when NVML finds none; on unified memory the GPU part is counted in RAM too |
+| 2 | Free RAM read as 0.00 GB (once 0.75) of 16 GB. sysinfo 0.30 on macOS counts free + inactive + purgeable pages minus the compressor's pages, which reaches zero when macOS compresses memory, so the planner refused a 2.9 GB plan. | `planner.log` `RAM: free 0.00 of 16.00 GB` | fixed on `main`: free RAM computed as Activity Monitor does |
 | 3 | A request's `n_gpu_layers -1` became 0 when no GPU was detected, against the rule that a user setting goes to llama.cpp as it is. | `planner.log` `User setting: ... n_gpu_layers 0` | fixed on `main` (planner) |
-| 4 | A refused load answers HTTP 500 (server error) instead of a client error with the reason. | `run_qwen3-4b-gguf.log` | open |
-| 5 | Install output: `curl: (56) Failure writing output` while finding the release, and a "Ghost Execution Detected" warning for the binary the installer just placed. Neither stopped the install. | `install.log` | open |
+| 4 | A refused load answers HTTP 500 (server error) instead of a client error with the reason. | `run_qwen3-4b-gguf.log` | fixed on `main`: HTTP 503 with `code: insufficient_memory` |
+| 5 | Install output: `curl: (56) Failure writing output` while finding the release, and a "Ghost Execution Detected" warning for the binary the installer just placed. Neither stopped the install. | `install.log` | fixed on `main` |
+
+The fixes are checked by unit tests and a macOS build check of the hardware crate; they have not run on a
+Mac yet. That needs a release with them (`CLUAIZ_VERSION`) and `mac_test.sh` again.
 
 ## Files
 `mac_test.log` (the console), `machine.txt`, `install.log`, `installed_files.txt`, `pulls.log` and `pull_*.log`,
