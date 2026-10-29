@@ -7,6 +7,8 @@ pub const GGML_TYPE_F16: i32 = 1;
 pub const GGML_TYPE_Q8_0: i32 = 8;
 pub const GGML_TYPE_Q4_0: i32 = 2;
 pub const GGML_BACKEND_DEVICE_TYPE_CPU: i32 = 0;
+pub const GGML_BACKEND_DEVICE_TYPE_GPU: i32 = 1;
+pub const GGML_BACKEND_DEVICE_TYPE_IGPU: i32 = 2;
 
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
@@ -167,6 +169,18 @@ extern "C" {
 
     /// First registered device of a type (`GGML_BACKEND_DEVICE_TYPE_*`), null when none.
     pub fn ggml_backend_dev_by_type(kind: i32) -> *mut std::ffi::c_void;
+
+    /// Number of registered devices (CPU, GPUs, accelerators) of the loaded backends.
+    pub fn ggml_backend_dev_count() -> usize;
+    pub fn ggml_backend_dev_get(index: usize) -> *mut std::ffi::c_void;
+    /// `GGML_BACKEND_DEVICE_TYPE_*`
+    pub fn ggml_backend_dev_type(device: *mut std::ffi::c_void) -> i32;
+    /// Short backend device name, e.g. `MTL0`, `Vulkan0`, `CUDA0`.
+    pub fn ggml_backend_dev_name(device: *mut std::ffi::c_void) -> *const c_char;
+    /// The device's own name, e.g. `Apple M5`.
+    pub fn ggml_backend_dev_description(device: *mut std::ffi::c_void) -> *const c_char;
+    /// Free and total bytes (Metal: the recommended working set minus what this process allocated).
+    pub fn ggml_backend_dev_memory(device: *mut std::ffi::c_void, free: *mut usize, total: *mut usize);
 
     /// 🛠️ Get default model parameters.
     pub fn llama_model_default_params() -> LlamaModelParams;

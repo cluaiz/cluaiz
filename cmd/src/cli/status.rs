@@ -1,6 +1,8 @@
 //! `cluaiz status`: the hardware the planner sees (live free memory).
 
 pub fn execute() {
+    // Loading llama.cpp's backends first lets the probe list Metal and Vulkan GPUs too
+    let _ = cluaiz_runtime::gguf_hardware();
     let hw = cluaiz_hw::HardwareProber::with_live_memory();
     let row = |k: &str, v: String| println!("{:<10}{}", k, v);
     row("os", format!("{} {} ({})", hw.os_name, hw.os_version, hw.architecture));

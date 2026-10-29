@@ -216,12 +216,16 @@ impl Planner {
         let vram_free = gib_to_bytes(hardware.gpus.first().map(|g| g.vram_available_gb).unwrap_or(0.0));
         let gpu_allowed = !hardware.gpus.is_empty() && opt.n_gpu_layers != Some(0);
         let ram_budget = ram_budget_bytes(hardware, settings);
+        // Apple Silicon: the GPU's memory is the RAM, so what goes on the GPU is counted in RAM too, and
+        // the GPU gets at most the free RAM (its own cap, the Metal working set, is still the VRAM limit)
+        let unified = hardware.memory.is_unified_memory && !hardware.gpus.is_empty();
 
         // Context is decided for the preferred placement (CTX rules):
         // GPU -> dense: all weights on GPU, MoE: attention/shared weights on GPU; CPU -> everything in RAM.
         let budget = if gpu_allowed {
             let gpu_weights = if is_moe { w.full_gpu() - experts } else { w.full_gpu() };
-            DeviceBudget { free_bytes: vram_free, fixed_bytes: gpu_weights + gpu_logits, buffers_gb: model_buffer_options(geometry, hardware, settings) }
+            let free_bytes = if unified { vram_free.min(ram_budget.saturating_sub(w.input_cpu)) } else { vram_free };
+            DeviceBudget { free_bytes, fixed_bytes: gpu_weights + gpu_logits, buffers_gb: model_buffer_options(geometry, hardware, settings) }
         } else {
             DeviceBudget { free_bytes: ram_budget, fixed_bytes: w.total + logits, buffers_gb: vec![0.0] }
         };
@@ -267,6 +271,9 @@ impl Planner {
             }
             p.vram += p.kv_gpu;
             p.ram += p.kv_ram;
+            if unified {
+                p.ram += p.vram;
+            }
             p
         };
         let over_vram = |p: &Placement| p.vram.saturating_sub(vram_usable);
@@ -658,6 +665,22 @@ mod tests {
         s.optimization.n_gpu_layers = None;
         s.optimization.offload_kqv = Some(true);
         assert_eq!(Planner::create_plan("m", &qwen3_like(2.3), &mac, &s).n_gpu_layers, 0);
+    }
+
+    #[test]
+    fn apple_silicon_puts_the_model_on_the_gpu_and_counts_it_in_ram() {
+        let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
+        let mut mac = hw(10.0, 8.0);
+        mac.memory.total_gb = 16.0;
+        mac.memory.is_unified_memory = true;
+        mac.gpus[0].vram_total_gb = 10.7;
+        let plan = Planner::create_plan("m", &qwen3_like(2.3), &mac, &s);
+        assert_eq!(plan.selected_tier, PlacementTier::GpuOnly, "{}", plan.explanation);
+        let full = plan.candidates.iter().find(|c| c.name == "Full GPU").unwrap();
+        assert!(full.ram_required_gb >= full.vram_required_gb, "{}", full.reason);
+        // The same model with almost no free RAM does not fit, though the Metal working set is free
+        mac.memory.available_gb = 3.0;
+        assert!(!Planner::create_plan("m", &qwen3_like(2.3), &mac, &s).is_feasible());
     }
 
     #[test]

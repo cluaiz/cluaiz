@@ -79,13 +79,15 @@ if [ -n "${CLUAIZ_VERSION:-}" ]; then
   tag="v${CLUAIZ_VERSION#v}"
 else
   # The newest release, pre-releases included
+  # sed reads the whole answer (grep -m1 stopped early and curl printed "Failure writing output")
   tag=$(curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=1" |
-    grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')
+    sed -n -E 's/.*"tag_name": *"([^"]+)".*/\1/p' | head -n 1)
   [ -n "$tag" ] || fail "no release found on github.com/$REPO"
 fi
 version=${tag#v}
 base="https://github.com/$REPO/releases/download/$tag"
-done_step "Release $tag ($platform, GPU: $GPU)"
+if [ "$os" = "mac" ]; then gpu_text="Metal, inside the core"; else gpu_text="$GPU"; fi
+done_step "Release $tag ($platform, GPU: $gpu_text)"
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT

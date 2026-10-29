@@ -271,6 +271,12 @@ errors:
   - status: 503
     type: "resource_error"
     when: "Another attachment request holds the media buffers (`code: media_busy`); retry after it ends"
+  - status: 503
+    type: "engine_load_error"
+    when: "No placement of the model fits the free memory (`code: insufficient_memory`); the message says how much is missing. Free memory, lower the context, or use a smaller quantization"
+  - status: 500
+    type: "engine_load_error"
+    when: "llama.cpp could not load the model for another reason"
 ---
 
 # Chat & Multimodal Completions API

@@ -112,7 +112,7 @@ pub(super) fn error_response(
         };
         return axum::response::sse::Sse::new(stream).into_response();
     }
-    let status = if code == Some("media_busy") {
+    let status = if code == Some("media_busy") || code == Some("insufficient_memory") {
         axum::http::StatusCode::SERVICE_UNAVAILABLE
     } else if error_type == "permission_error" {
         axum::http::StatusCode::FORBIDDEN
@@ -333,12 +333,16 @@ impl PreparedChatContext {
             {
                 let err_msg = format!("Model could not be loaded: {}", e);
                 tracing::error!("❌ [API] {}", err_msg);
+                // Not enough free memory is the machine's state, not an engine failure (503, not 500)
+                let code = e
+                    .downcast_ref::<cluaiz_runtime::PlacementRefused>()
+                    .map(|_| "insufficient_memory");
                 return Err(error_response(
                     request,
                     request_id,
                     err_msg,
                     "engine_load_error",
-                    None,
+                    code,
                 ));
             }
         }
