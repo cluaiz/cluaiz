@@ -43,6 +43,19 @@ struct MediaGeneration {
     chat: Option<String>,
 }
 
+/// No placement fits the free memory (the plan's explanation says how much is missing). Answered as
+/// "not enough memory right now", not as an engine failure.
+#[derive(Debug)]
+pub struct PlacementRefused(pub String);
+
+impl std::fmt::Display for PlacementRefused {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.0)
+    }
+}
+
+impl std::error::Error for PlacementRefused {}
+
 pub enum HostResponse {
     TokenStream(mpsc::Receiver<String>),
     Completed(String),
@@ -300,7 +313,7 @@ impl EngineHost {
             // Still report why, so the user sees the numbers behind the refusal
             self.record_plan_report(plan.format_telemetry_banner(&geometry, &hw, settings))
                 .await;
-            return Err(anyhow::anyhow!("{}", plan.explanation));
+            return Err(PlacementRefused(plan.explanation.clone()).into());
         }
         let measured_before = cluaiz_plan::margin::learned(&geometry, settings).is_some();
         let mut plan = self.load_model_inner(&path_str, &plan, settings).await?;
@@ -414,7 +427,7 @@ impl EngineHost {
             .await;
 
         if !plan.is_feasible() {
-            return Err(anyhow::anyhow!("{}", plan.explanation));
+            return Err(PlacementRefused(plan.explanation.clone()).into());
         }
 
         // 🛡️ CRITICAL VRAM HYGIENE: Unload previous model before allocating new one!

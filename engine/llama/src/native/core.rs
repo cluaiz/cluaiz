@@ -404,13 +404,59 @@ fn load_backends() {
         unsafe { llama_cpp::ggml_backend_load_all_from_path(dir.as_ref().map_or(std::ptr::null(), |d| d.as_ptr())) };
         let gpu = unsafe { llama_cpp::llama_supports_gpu_offload() };
         info!("🧩 [Llama-Engine] Backends loaded; GPU offload {}", if gpu { "available" } else { "not available, models run on the CPU" });
+        cluaiz_hw::HardwareProber::set_backend_gpus(backend_gpus);
     });
+}
+
+/// The GPUs of the loaded backends with their memory now: dedicated GPUs, else integrated ones.
+/// The hardware probe uses these when NVML finds no NVIDIA GPU (Metal on a Mac, Vulkan on AMD or
+/// Intel); without them the planner saw no GPU there and placed every layer on the CPU.
+fn backend_gpus() -> Vec<cluaiz_hw::GpuSubsystem> {
+    let text = |ptr: *const c_char| {
+        // SAFETY: ggml returns NUL-terminated names that live as long as the device
+        (!ptr.is_null()).then(|| unsafe { std::ffi::CStr::from_ptr(ptr) }.to_string_lossy().into_owned())
+    };
+    for kind in [llama_cpp::GGML_BACKEND_DEVICE_TYPE_GPU, llama_cpp::GGML_BACKEND_DEVICE_TYPE_IGPU] {
+        let mut gpus = Vec::new();
+        for i in 0..unsafe { llama_cpp::ggml_backend_dev_count() } {
+            let dev = unsafe { llama_cpp::ggml_backend_dev_get(i) };
+            if dev.is_null() || unsafe { llama_cpp::ggml_backend_dev_type(dev) } != kind {
+                continue;
+            }
+            let (mut free, mut total) = (0usize, 0usize);
+            unsafe { llama_cpp::ggml_backend_dev_memory(dev, &mut free, &mut total) };
+            let backend = text(unsafe { llama_cpp::ggml_backend_dev_name(dev) }).unwrap_or_default();
+            let vendor = if backend.starts_with("CUDA") {
+                "NVIDIA".to_string()
+            } else if backend.starts_with("MTL") || backend.starts_with("Metal") {
+                "Apple".to_string()
+            } else {
+                backend.trim_end_matches(|c: char| c.is_ascii_digit()).to_string()
+            };
+            let (free, total) = (free as u64, total as u64);
+            gpus.push(cluaiz_hw::GpuSubsystem {
+                index: gpus.len() as u32,
+                name: text(unsafe { llama_cpp::ggml_backend_dev_description(dev) }).unwrap_or(backend),
+                vendor,
+                vram_total_bytes: total,
+                vram_free_bytes: free,
+                vram_total_gb: cluaiz_core::bytes_to_gib(total),
+                vram_available_gb: cluaiz_core::bytes_to_gib(free),
+                ..Default::default()
+            });
+        }
+        if !gpus.is_empty() {
+            return gpus;
+        }
+    }
+    Vec::new()
 }
 
 /// True when a loaded backend can hold model layers. Without a GPU pack (or its driver) it is false
 /// even on a machine with a GPU, and GGUF models are planned for the CPU.
 pub fn gpu_offload_available() -> bool {
-    load_backends();
+    // With the logs routed, so ggml's "load_backend: ..." lines go to the log, not the terminal
+    route_llama_logs();
     unsafe { llama_cpp::llama_supports_gpu_offload() }
 }
 

@@ -281,7 +281,10 @@ async fn main() -> Result<()> {
     // 🚀 SOVEREIGN GHOST EXECUTION GUARD
     if let Ok(current_exe) = std::env::current_exe() {
         let global_bin_dir = cluaiz_core::EnvironmentManager::current().local_dir.join("bin");
-        if !current_exe.starts_with(&global_bin_dir) {
+        // Only when an installed copy exists there too: a binary installed elsewhere on purpose
+        // (CLUAIZ_INSTALL_DIR) is not a stray build
+        let installed = global_bin_dir.join(current_exe.file_name().unwrap_or_default());
+        if !current_exe.starts_with(&global_bin_dir) && installed.is_file() {
             eprintln!("  {} [Ghost Execution Detected] You are running a local binary at {:?}", "⚠️".yellow().bold(), current_exe);
             eprintln!("  {} To use the System, run the global 'cluaiz' command.\n", "💡".cyan());
         }

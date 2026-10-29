@@ -15,3 +15,6 @@ raw-cpuid = "11.6"
 tracing = "0.1"
 anyhow = "1.0"
 
+# host_statistics64 for free RAM on macOS (`prober::macos_available_ram`)
+[target.'cfg(target_os = "macos")'.dependencies]
+libc = "0.2"

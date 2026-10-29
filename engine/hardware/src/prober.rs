@@ -10,6 +10,11 @@ use crate::types::{SystemInfo, CpuSubsystem, MemorySubsystem, StorageSubsystem, 
 
 static CACHED_HARDWARE: Lazy<RwLock<Option<SystemInfo>>> = Lazy::new(|| RwLock::new(None));
 
+/// GPUs that llama.cpp itself can use (Metal, Vulkan), with their free memory read when called.
+/// NVML sees NVIDIA GPUs only, so these are taken when it finds none. Set by the engine once its
+/// backends are loaded (`set_backend_gpus`); never saved in `hardware_profile.json`.
+static BACKEND_GPUS: std::sync::OnceLock<fn() -> Vec<GpuSubsystem>> = std::sync::OnceLock::new();
+
 pub struct HardwareProber;
 
 struct QuickFacts {
@@ -24,6 +29,26 @@ impl HardwareProber {
     /// RAM / VRAM again. `calibrate()` re-runs the deep probe, and so does a start where the total RAM,
     /// the CPU threads or the NVIDIA GPUs no longer match the file (RAM added, a VM resized).
     pub fn current() -> SystemInfo {
+        let mut info = Self::current_saved();
+        Self::add_backend_gpus(&mut info);
+        info
+    }
+
+    /// Where llama.cpp's own GPUs come from (see `BACKEND_GPUS`). Only the first call counts.
+    pub fn set_backend_gpus(source: fn() -> Vec<GpuSubsystem>) {
+        let _ = BACKEND_GPUS.set(source);
+    }
+
+    fn add_backend_gpus(info: &mut SystemInfo) {
+        if info.gpus.is_empty() {
+            if let Some(source) = BACKEND_GPUS.get() {
+                info.gpus = source();
+            }
+        }
+    }
+
+    /// The snapshot as kept in `hardware_profile.json` (NVIDIA GPUs only).
+    fn current_saved() -> SystemInfo {
         {
             let guard = CACHED_HARDWARE.read().unwrap();
             if let Some(ref info) = *guard {
@@ -80,9 +105,10 @@ impl HardwareProber {
 
     /// Runs the deep probe again and stores it (`cluaiz calibrate`, e.g. after a hardware change).
     pub fn calibrate() -> SystemInfo {
-        let fresh = Self::probe_system();
+        let mut fresh = Self::probe_system();
         Self::save_profile(&fresh);
         *CACHED_HARDWARE.write().unwrap() = Some(fresh.clone());
+        Self::add_backend_gpus(&mut fresh);
         fresh
     }
 
@@ -137,7 +163,7 @@ impl HardwareProber {
     fn live_memory_snapshot() -> (Option<u64>, Option<u64>) {
         let mut sys = System::new();
         sys.refresh_memory();
-        let ram_free = (sys.total_memory() > 0).then(|| sys.available_memory());
+        let ram_free = (sys.total_memory() > 0).then(|| Self::available_ram(&sys));
 
         let mut vram_free = None;
         #[cfg(not(target_os = "macos"))]
@@ -151,6 +177,15 @@ impl HardwareProber {
             }
         }
         (ram_free, vram_free)
+    }
+
+    /// RAM that can be given to a model now. sysinfo's figure, except on macOS (`macos_available_ram`).
+    fn available_ram(sys: &System) -> u64 {
+        #[cfg(target_os = "macos")]
+        if let Some(available) = macos_available_ram(sys.total_memory()) {
+            return available;
+        }
+        sys.available_memory()
     }
 
     /// Deep hardware probe measuring real silicon properties
@@ -408,7 +443,7 @@ impl HardwareProber {
         }
 
         let total_mem = sys.total_memory();
-        let avail_mem = sys.available_memory();
+        let avail_mem = Self::available_ram(sys);
 
         MemorySubsystem {
             total_bytes: total_mem,
@@ -577,6 +612,37 @@ impl HardwareProber {
     }
 }
 
+/// Free RAM as macOS's Activity Monitor counts it: the total minus app memory (anonymous pages that
+/// are not purgeable), wired memory and the compressor's pages. sysinfo 0.30 takes free + inactive +
+/// purgeable minus the compressor's pages, which is zero once macOS compresses memory: a 16 GB Mac
+/// read 0.00 GB free and the planner refused a 2.9 GB model.
+#[cfg(target_os = "macos")]
+fn macos_available_ram(total: u64) -> Option<u64> {
+    // SAFETY: host_statistics64 fills at most `count` integers of the zeroed struct
+    let (stat, page) = unsafe {
+        let mut stat: libc::vm_statistics64 = std::mem::zeroed();
+        let mut count = libc::HOST_VM_INFO64_COUNT;
+        #[allow(deprecated)]
+        let host = libc::mach_host_self();
+        let ok = libc::host_statistics64(host, libc::HOST_VM_INFO64, &mut stat as *mut _ as *mut _, &mut count);
+        (ok == libc::KERN_SUCCESS).then_some((stat, libc::sysconf(libc::_SC_PAGESIZE)))?
+    };
+    let page = u64::try_from(page).ok().filter(|p| *p > 0)?;
+    Some(activity_monitor_available(
+        total,
+        page,
+        [stat.internal_page_count, stat.purgeable_count, stat.wire_count, stat.compressor_page_count],
+    ))
+}
+
+/// `[internal, purgeable, wired, compressor]` page counts
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+fn activity_monitor_available(total: u64, page: u64, [internal, purgeable, wired, compressor]: [u32; 4]) -> u64 {
+    let pages = |n: u32| u64::from(n).saturating_mul(page);
+    let used = pages(internal).saturating_sub(pages(purgeable)) + pages(wired) + pages(compressor);
+    total.saturating_sub(used)
+}
+
 #[cfg(test)]
 mod live_memory_tests {
     use super::*;
@@ -612,6 +678,33 @@ mod live_memory_tests {
         assert!(HardwareProber::hardware_changed(&saved, &QuickFacts { ram_total_bytes: 32 * cluaiz_core::GIB, ..same() }));
         assert!(HardwareProber::hardware_changed(&saved, &QuickFacts { logical_threads: 16, ..same() }));
         assert!(HardwareProber::hardware_changed(&saved, &QuickFacts { gpus: vec![], ..same() }));
+    }
+
+    #[test]
+    fn macos_free_ram_is_total_minus_app_wired_and_compressed() {
+        // The M5 run: 16 GB, much of it compressed; sysinfo's free+inactive+purgeable-compressor was 0
+        let page = 16 * 1024;
+        let gib_pages = |gib: u32| gib * (1024 * 1024 * 1024 / page as u32);
+        let available = activity_monitor_available(16 * cluaiz_core::GIB, page, [gib_pages(6), gib_pages(1), gib_pages(2), gib_pages(3)]);
+        assert_eq!(available, 6 * cluaiz_core::GIB);
+        // More in use than the total (counts read at different moments) is no free RAM, not an overflow
+        assert_eq!(activity_monitor_available(cluaiz_core::GIB, page, [gib_pages(2), 0, 0, 0]), 0);
+    }
+
+    #[test]
+    fn backend_gpus_fill_in_only_when_nvml_finds_none() {
+        fn metal() -> Vec<crate::GpuSubsystem> {
+            vec![crate::GpuSubsystem { name: "Apple M5".into(), vendor: "Apple".into(), ..Default::default() }]
+        }
+        HardwareProber::set_backend_gpus(metal);
+        let mut none = SystemInfo::default();
+        HardwareProber::add_backend_gpus(&mut none);
+        assert_eq!(none.gpus[0].name, "Apple M5");
+        let mut nvidia = SystemInfo::default();
+        nvidia.gpus.push(crate::GpuSubsystem { name: "T4".into(), ..Default::default() });
+        HardwareProber::add_backend_gpus(&mut nvidia);
+        assert_eq!(nvidia.gpus.len(), 1);
+        assert_eq!(nvidia.gpus[0].name, "T4");
     }
 
     #[test]
