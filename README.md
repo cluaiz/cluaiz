@@ -61,11 +61,17 @@ against the release's checksums):
 ```powershell
 # Windows (PowerShell)
 irm https://cluaiz.com/install.ps1 | iex
+
+# Or via GitHub:
+irm https://raw.githubusercontent.com/cluaiz/cluaiz/main/install.ps1 | iex
 ```
 
 ```bash
 # Linux and macOS
 curl -fsSL https://cluaiz.com/install.sh | sh
+
+# Or via GitHub:
+curl -fsSL https://raw.githubusercontent.com/cluaiz/cluaiz/main/install.sh | sh
 ```
 
 **2. Chat with a model** (an installed model, a registry name or a Hugging Face repository; it is downloaded on
