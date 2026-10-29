@@ -783,7 +783,7 @@ impl Settings {
         CACHED_SETTINGS.read().unwrap().clone()
     }
 
-    /// Updates the cached settings and persists them to ~/.cluaiz/engine/config/settings.json
+    /// Updates the cached settings and persists them to ~/.cluaiz/config/settings.json
     pub fn update(new_settings: ActiveUserSettings) -> anyhow::Result<()> {
         let env = EnvironmentManager::current();
         env.ensure_config_dir()?;

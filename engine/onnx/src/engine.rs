@@ -99,9 +99,7 @@ impl OnnxEngine {
         // Windows resolves CUDA/TensorRT DLLs through PATH. Unix loaders do not.
         #[cfg(windows)]
         {
-            let drivers_dir = cluaiz_core::EnvironmentManager::current()
-                .engine_dir()
-                .join("drivers");
+            let drivers_dir = cluaiz_core::EnvironmentManager::current().drivers_dir();
             if drivers_dir.exists() {
                 let current_path = std::env::var_os("PATH").unwrap_or_default();
                 let mut new_path = drivers_dir.into_os_string();

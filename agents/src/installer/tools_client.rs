@@ -453,7 +453,7 @@ impl ToolsInstaller {
         let candidates: [PathBuf; 3] = [
             env.config_dir().join("package.json"),
             PathBuf::from("package.json"),
-            PathBuf::from(".cluaiz/engine/config/package.json"),
+            PathBuf::from(".cluaiz/config/package.json"),
         ];
         for p in &candidates {
             if p.exists() {

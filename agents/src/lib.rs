@@ -57,7 +57,7 @@ impl ToolsEngine {
             .unwrap_or_else(|| PathBuf::from("."))
     }
 
-    /// Loads master tools registry from `~/.cluaiz/engine/config/tools_registry.json`
+    /// Loads master tools registry from `~/.cluaiz/config/tools_registry.json`
     pub fn registry() -> Result<ToolsRegistry> {
         ToolsRegistry::load()
     }

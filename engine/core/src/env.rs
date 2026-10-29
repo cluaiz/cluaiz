@@ -26,22 +26,26 @@ impl EnvironmentManager {
         if let Ok(exe_path) = std::env::current_exe() {
             if let Some(parent) = exe_path.parent() {
                 if parent.join("portable.flag").exists() {
-                    return Self {
+                    let mgr = Self {
                         mode: EnvironmentMode::Portable,
                         local_dir: parent.to_path_buf(),
                         global_dir: parent.to_path_buf(),
                     };
+                    mgr.migrate_engine_folder();
+                    return mgr;
                 }
             }
         }
 
         // 2. Environment Override
         if let Ok(env_path) = std::env::var("CLUAIZ_HOME") {
-            return Self {
+            let mgr = Self {
                 mode: EnvironmentMode::Installed,
                 local_dir: PathBuf::from(&env_path),
                 global_dir: PathBuf::from(&env_path),
             };
+            mgr.migrate_engine_folder();
+            return mgr;
         }
 
         // 3. Central System Directory (Single Source of Truth)
@@ -58,18 +62,18 @@ impl EnvironmentManager {
             local_dir: global_path.clone(),
             global_dir: global_path,
         };
+        mgr.migrate_engine_folder();
         let _ = mgr.ensure_env_file();
         mgr.load_env();
         mgr
     }
 
-    /// Automatically loads environment variables from ~/.cluaiz/engine/config/.env into std::env
+    /// Automatically loads environment variables from ~/.cluaiz/config/.env into std::env
     pub fn load_env(&self) {
         let candidates = [
             self.config_dir().join(".env"),
-            self.global_dir.join("engine").join("config").join(".env"),
-            self.local_dir.join("engine").join("config").join(".env"),
-            std::env::current_dir().map(|p| p.join(".cluaiz/engine/config/.env")).unwrap_or_default(),
+            self.global_dir.join("config").join(".env"),
+            std::env::current_dir().map(|p| p.join(".cluaiz/config/.env")).unwrap_or_default(),
             std::env::current_dir().map(|p| p.join(".env")).unwrap_or_default(),
         ];
 
@@ -109,11 +113,18 @@ impl EnvironmentManager {
         Ok(path)
     }
 
-    pub fn engine_dir(&self) -> PathBuf {
-        self.local_dir.join("engine")
-    }
+    /// Settings, permissions, registries and the cached hardware scan
     pub fn config_dir(&self) -> PathBuf {
-        self.engine_dir().join("config")
+        self.local_dir.join("config")
+    }
+    /// Every driver is beside `cluaiz`: the GPU packs the installer puts there, and the NVIDIA
+    /// libraries the engine downloads for ONNX models on the GPU (cuDNN, cuFFT, cuRAND)
+    pub fn drivers_dir(&self) -> PathBuf {
+        self.bin_dir()
+    }
+    /// The native media package (OCR, PDF rendering, video decoding), when installed
+    pub fn media_dir(&self) -> PathBuf {
+        self.bin_dir().join("media")
     }
     pub fn models_dir(&self) -> PathBuf {
         self.global_dir.join("models")
@@ -153,7 +164,7 @@ impl EnvironmentManager {
         if p.exists() {
             p
         } else {
-            let global_p = self.global_dir.join("engine").join("config").join("tools_registry.json");
+            let global_p = self.global_dir.join("config").join("tools_registry.json");
             if global_p.exists() {
                 global_p
             } else {
@@ -166,7 +177,7 @@ impl EnvironmentManager {
         if p.exists() {
             p
         } else {
-            let global_p = self.global_dir.join("engine").join("config").join("model_registry.json");
+            let global_p = self.global_dir.join("config").join("model_registry.json");
             if global_p.exists() {
                 global_p
             } else {
@@ -176,14 +187,6 @@ impl EnvironmentManager {
     }
     pub fn reports_dir(&self) -> PathBuf {
         self.local_dir.join("reports")
-    }
-
-    pub fn ensure_engine_dir(&self) -> std::io::Result<PathBuf> {
-        let dir = self.engine_dir();
-        if !dir.exists() {
-            std::fs::create_dir_all(&dir)?;
-        }
-        Ok(dir)
     }
 
     pub fn ensure_config_dir(&self) -> std::io::Result<PathBuf> {
@@ -252,6 +255,48 @@ impl EnvironmentManager {
         }
         Ok(dir)
     }
+
+    /// Up to v0.1.1 the home had an `engine/` folder: settings in `engine/config`, downloaded NVIDIA
+    /// libraries in `engine/drivers`, the native media package in `engine/media` and VRAM
+    /// measurements in `engine/vram_margins.json`. They move once, at the first start of a newer
+    /// build, to `config/`, `bin/`, `bin/media/` and `config/`. An item already at its new place is
+    /// left in `engine/` (nothing is overwritten); `engine/` is removed when it is empty.
+    fn migrate_engine_folder(&self) {
+        static DONE: std::sync::Once = std::sync::Once::new();
+        DONE.call_once(|| migrate_engine_folder(&self.local_dir));
+    }
+}
+
+fn migrate_engine_folder(home: &Path) {
+    let engine = home.join("engine");
+    if !engine.is_dir() {
+        return;
+    }
+    let move_entries = |from: &Path, to: &Path| {
+        let Ok(entries) = std::fs::read_dir(from) else { return };
+        if std::fs::create_dir_all(to).is_err() {
+            return;
+        }
+        for entry in entries.flatten() {
+            let target = to.join(entry.file_name());
+            // A library a running Cluaiz has loaded cannot move now: it moves at a later start
+            if !target.exists() {
+                let _ = std::fs::rename(entry.path(), &target);
+            }
+        }
+        let _ = std::fs::remove_dir(from);
+    };
+    move_entries(&engine.join("config"), &home.join("config"));
+    move_entries(&engine.join("drivers"), &home.join("bin"));
+    let (media, new_media) = (engine.join("media"), home.join("bin").join("media"));
+    if media.is_dir() && !new_media.exists() && std::fs::create_dir_all(home.join("bin")).is_ok() {
+        let _ = std::fs::rename(&media, &new_media);
+    }
+    let (margins, new_margins) = (engine.join("vram_margins.json"), home.join("config").join("vram_margins.json"));
+    if margins.is_file() && !new_margins.exists() && std::fs::create_dir_all(home.join("config")).is_ok() {
+        let _ = std::fs::rename(&margins, &new_margins);
+    }
+    let _ = std::fs::remove_dir(&engine);
 }
 
 /// Moves every `*.bin` file of `dir` into `backup` (created when needed); returns the new paths
@@ -279,6 +324,39 @@ fn retire_bins(dir: &Path, backup: &Path) -> Vec<PathBuf> {
 #[cfg(test)]
 mod bin_tests {
     use super::*;
+
+    #[test]
+    fn the_engine_folder_moves_to_config_and_bin_once() {
+        let home = std::env::temp_dir().join(format!("cluaiz-layout-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&home);
+        let engine = home.join("engine");
+        for dir in ["config", "drivers", "media"] {
+            std::fs::create_dir_all(engine.join(dir)).unwrap();
+        }
+        std::fs::write(engine.join("config").join("settings.json"), b"{}").unwrap();
+        std::fs::write(engine.join("drivers").join("cudnn64_9.dll"), b"x").unwrap();
+        std::fs::write(engine.join("media").join("native-assets.json"), b"{}").unwrap();
+        std::fs::write(engine.join("vram_margins.json"), b"{}").unwrap();
+        // The installer already put the GPU pack in bin: it stays
+        std::fs::create_dir_all(home.join("bin")).unwrap();
+        std::fs::write(home.join("bin").join("ggml-cuda.dll"), b"pack").unwrap();
+
+        migrate_engine_folder(&home);
+        assert!(home.join("config").join("settings.json").is_file());
+        assert!(home.join("config").join("vram_margins.json").is_file());
+        assert!(home.join("bin").join("cudnn64_9.dll").is_file());
+        assert!(home.join("bin").join("ggml-cuda.dll").is_file());
+        assert!(home.join("bin").join("media").join("native-assets.json").is_file());
+        assert!(!engine.exists());
+
+        // An item already at its new place is not overwritten, and engine/ stays for it
+        std::fs::create_dir_all(engine.join("config")).unwrap();
+        std::fs::write(engine.join("config").join("settings.json"), b"old").unwrap();
+        migrate_engine_folder(&home);
+        assert_eq!(std::fs::read(home.join("config").join("settings.json")).unwrap(), b"{}");
+        assert!(engine.join("config").join("settings.json").is_file());
+        let _ = std::fs::remove_dir_all(&home);
+    }
 
     #[test]
     fn bins_move_to_the_backup_and_json_stays() {

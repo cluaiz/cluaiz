@@ -6,7 +6,7 @@ use super::*;
 async fn real_final_executable_embeddings_and_vision() -> Result<()> {
     let home = env_path("CLUAIZ_HOME")?;
     assert_eq!(home, env_path("CLUAIZ_MEDIA_TEST_HOME")?);
-    if home.join("engine/config/model_registry.json").exists() {
+    if home.join("config/model_registry.json").exists() {
         bail!("Empty isolated home required");
     }
     let mut registry = ModelRegistry::default();

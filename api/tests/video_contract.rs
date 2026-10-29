@@ -44,7 +44,7 @@ fn test_video_transport_is_ordered_and_audio_is_explicit() -> Result<()> {
 async fn real_video_api_json_sse_and_planner_reach_selected_vision_model() -> Result<()> {
     let home = PathBuf::from(std::env::var("CLUAIZ_HOME")?);
     if home != std::path::Path::new(&std::env::var("CLUAIZ_MEDIA_TEST_HOME")?)
-        || home.join("engine/config/model_registry.json").exists()
+        || home.join("config/model_registry.json").exists()
     {
         bail!("Empty isolated test home required");
     }

@@ -153,7 +153,7 @@ async fn pdf_preparation(pdf: &str, mut settings: cluaiz_core::ActiveUserSetting
 async fn real_ingest_selected_models_and_native_fallback() -> Result<()> {
     let home = PathBuf::from(std::env::var("CLUAIZ_HOME")?);
     if home != PathBuf::from(std::env::var("CLUAIZ_MEDIA_TEST_HOME")?)
-        || home.join("engine/config/model_registry.json").exists()
+        || home.join("config/model_registry.json").exists()
     {
         bail!("Empty isolated fixture home required");
     }

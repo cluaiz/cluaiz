@@ -151,7 +151,7 @@ async fn test_router_document_extraction_content_errors_auth_and_workspace() -> 
 async fn real_router_pdf_attachment_reaches_text_only_llama() -> Result<()> {
     let home = PathBuf::from(std::env::var("CLUAIZ_HOME")?);
     if home.as_path() != std::path::Path::new(&std::env::var("CLUAIZ_MEDIA_TEST_HOME")?)
-        || home.join("engine/config/model_registry.json").exists()
+        || home.join("config/model_registry.json").exists()
     {
         bail!("Empty isolated fixture home required");
     }

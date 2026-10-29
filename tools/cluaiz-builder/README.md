@@ -5,7 +5,7 @@
 - **Location:** `tools/cluaiz-builder/`
 - **Purpose:** Orchestrates granular compilation across the single-binary core and hardware-adaptive dynamic drivers without compiling unused dependencies.
 - **Platform Support:** Windows (x86_64), Linux (x86_64, aarch64), macOS (Apple Silicon arm64, x86_64).
-- **Execution Target:** Generates the unified standalone executable (`bin/cluaiz.exe` / `bin/cluaiz`) and dynamically loaded execution providers (`engine/drivers/`).
+- **Execution Target:** Generates the unified standalone executable (`bin/cluaiz.exe` / `bin/cluaiz`) and dynamically loaded execution providers (`bin/`, beside the executable).
 - **Build Profiles:** `debug` (Rapid iteration, unoptimized) and `release` (LTO, SIMD vectorized, optimized production binary).
 
 ---
@@ -31,7 +31,7 @@ graph TD
     I --> J
     
     J --> K["~/.cluaiz/bin/cluaiz.exe (Single Unified Binary)"]
-    J --> L["~/.cluaiz/engine/drivers/ (Hardware Dynamic Providers)"]
+    J --> L["~/.cluaiz/bin/ (Hardware Dynamic Providers)"]
 ```
 
 ---
@@ -81,7 +81,7 @@ Native OCR/PDF package staging uses `media-assets`:
 cargo run -p cluaiz-builder --release --bin cluaiz-builder -- media-assets --source <verified-native-package> --output <new-staging-directory>
 ```
 
-Staging reuses the runtime manifest verifier, copies declared library/dependency/traineddata/license files, checks SHA-256 digests and refuses an existing output. It performs no model/provider download. The installer or embedded launcher must deploy the staged directory as `engine/media` inside its selected Cluaiz environment. Current physical native acceptance is Windows x86_64; other-platform packages and a clean-machine installer remain unverified. See the [shared native provider contract](../../engine/media/src/documents/README.md).
+Staging reuses the runtime manifest verifier, copies declared library/dependency/traineddata/license files, checks SHA-256 digests and refuses an existing output. It performs no model/provider download. The installer or embedded launcher must deploy the staged directory as `bin/media` inside its selected Cluaiz environment. Current physical native acceptance is Windows x86_64; other-platform packages and a clean-machine installer remain unverified. See the [shared native provider contract](../../engine/media/src/documents/README.md).
 
 Compilation places artifacts inside `target/<profile>/`. To deploy these updates into your active system directory (`~/.cluaiz`), execute the synchronization command via the unified CLI:
 
@@ -92,13 +92,13 @@ cargo run -p cmd -- dev-sync all --profile <debug|release>
 ```
 
 ### 2. Synchronize Core Executable (`dev-sync core`)
-Copies `target/<profile>/cluaiz.exe` to `~/.cluaiz/bin/cluaiz.exe` and links any ready hardware drivers in `target/<profile>/` into `~/.cluaiz/engine/drivers/`:
+Copies `target/<profile>/cluaiz.exe` to `~/.cluaiz/bin/cluaiz.exe` and links any ready hardware drivers in `target/<profile>/` into `~/.cluaiz/bin/`:
 ```bash
 cargo run -p cmd -- dev-sync core --profile <debug|release>
 ```
 
 ### 3. Synchronize Specific Driver (`dev-sync driver <name>`)
-Deploys a single driver update into `~/.cluaiz/engine/drivers/`:
+Deploys a single driver update into `~/.cluaiz/bin/`:
 ```bash
 cargo run -p cmd -- dev-sync driver onnx --profile <debug|release>
 cargo run -p cmd -- dev-sync driver llama --profile <debug|release>
@@ -108,38 +108,15 @@ cargo run -p cmd -- dev-sync driver llama --profile <debug|release>
 
 ## 📂 Target System Directory Layout (`~/.cluaiz`)
 
-Following the Single-Binary Architecture, artifacts are deployed strictly as follows:
+Every file per OS and GPU is listed in [`docs/deployments/install-layout.md`](../../docs/deployments/install-layout.md).
 
 ```text
 ~/.cluaiz/
-├── bin/
-│   └── cluaiz.exe (Linux/Mac: cluaiz)          [Unified Core: CLI + API + Llama Core + ONNX Base]
-│
-├── engine/
-│   ├── config/                                 [Fast Deserialized JSON & .BIN Metadata Caches]
-│   │   ├── permission.json / .bin
-│   │   ├── llm_optimization.json / .bin
-│   │   ├── model_registry.json / .bin
-│   │   ├── gguf_metadata_headers.json / .bin
-│   │   ├── onnx_metadata_headers.json / .bin
-│   │   ├── tools_registry.json / .bin
-│   │   └── package.json / .bin
-│   │
-│   └── drivers/                                [Hardware Dynamic Execution Providers]
-│       ├── DirectML.dll                        (Cross-vendor DirectX 12 GPU acceleration)
-│       ├── onnxruntime_providers_cuda.dll      (NVIDIA CUDA hardware kernel provider)
-│       ├── onnxruntime_providers_tensorrt.dll  (NVIDIA TensorRT acceleration provider)
-│       ├── onnxruntime_providers_nv_tensorrt_rtx.dll
-│       └── onnxruntime_providers_shared.dll
-│
-├── models/                                     [Discovered & Downloaded Model Weights]
-│   ├── chat/ (GGUF)
-│   ├── embedding/
-│   ├── vision/
-│   ├── tts/ (ONNX)
-│   └── stt/ (ONNX)
-│
-└── tools/                                      [Skills, Plugins, and MCP Sandboxes]
+├── bin/          cluaiz(.exe) and every driver: llama.cpp libraries, CPU and GPU backends,
+│                 ONNX Runtime providers, and the NVIDIA libraries the engine downloads (cuDNN, ...)
+├── config/       settings.json, permission.json, registries, hardware_profile.json
+├── models/       chat/, embedding/, tts/, stt/, ingest/
+└── tools/        skills/, plugins/, mcp/
 ```
 
 ---

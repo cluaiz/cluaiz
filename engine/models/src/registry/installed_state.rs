@@ -1,5 +1,5 @@
 //! ═══════════════════════════════════════════════════════════════════════
-//!   Registry: Live Installed State & Slot Manager (.cluaiz/engine/config/model_registry.json)
+//!   Registry: Live Installed State & Slot Manager (.cluaiz/config/model_registry.json)
 //! ═══════════════════════════════════════════════════════════════════════
 
 use crate::models::types::entities::{SlotType, SlotTypeTasksExt};
