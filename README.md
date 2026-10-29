@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="" srcset="assets/Banner.png">
-    <img alt="Cluaiz Banner" src="assets/Banner.png" width="100%">
+    <source media="" srcset="assets/cluaiz-light.webp">
+    <img alt="Cluaiz Banner" src="assets/Banner.png" width="40%">
   </picture>
 </p>
 <h3 align="center">
