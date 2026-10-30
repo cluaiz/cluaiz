@@ -4,8 +4,9 @@
 
 - **Purpose:** Presentation-only Rust library for an interactive client. It owns screen drawing,
   input editing, theme preview and a bounded transcript projection. Execution stays in the caller.
-- **Current milestone:** P1 UI foundation. The production `cluaiz` agent is not connected to this
-  package yet. No model responses, approvals, tools or saved sessions are implemented here.
+- **Client:** The existing `cluaiz agent` command supplies real generation/tool events through
+  `cmd/src/agent/terminal.rs`. This library remains presentation-only; it does not execute tools.
+  Saved sessions and the remaining shared-controller migration are separate work.
 - **Dependencies:** Ratatui, its maintained textarea widget, Crossterm and textwrap. No workspace
   dependency, model backend, GPU driver, network client or filesystem service.
 - **Platform boundary:** Cross-platform terminal APIs. Automated backend tests do not establish
@@ -18,7 +19,7 @@ flowchart LR
     Caller["Client supplies metadata and display entries"] --> State["App and bounded transcript"]
     Input["Crossterm key / paste / resize"] --> Reducer["App.handle"]
     Reducer --> State
-    Reducer --> Action["Submit / Cancel / Exit action returned to client"]
+    Reducer --> Action["Submit / Cancel / Approval / Exit returned to client"]
     State --> Render["Pure Ratatui rendering"]
     Render --> Screen["Exclusive Screen guard"]
     Screen --> Restore["Normal close, error or panic restores terminal modes"]
@@ -30,6 +31,12 @@ flowchart LR
   there is no model discovery or hidden settings/home-directory lookup.
 - `App::handle(Event) -> Action` handles UI input. The client must process Submit/Cancel/Exit;
   receiving a Submit action does not mean anything was executed or persisted.
+- `App::request_approval` preserves the user's draft. Responses allow once, request a tool-scoped
+  session grant, deny, or return case-preserved instructions. The client owns authorization. Long
+  operations scroll with PgUp/PgDn; allowing is blocked until their final line is visible. Esc denies.
+- `App::set_suggestions` accepts client-provided command/path choices. This library does no path
+  enumeration. Tab inserts, Enter chooses; file choices do not submit a message. Completion is
+  suppressed while editing in the middle of a draft so a suffix cannot be accidentally replaced.
 - `Transcript::upsert(id, label, content)` inserts or replaces a stable display entry. Oversized
   entries return an error instead of silently shortening content. The caller supplies a preview
   and a full-output mechanism when needed. Exceeding entry retention evicts older display entries
@@ -55,6 +62,8 @@ flowchart LR
 | `src/transcript.rs` | Stable display entries, cached wrapping, logical-line scroll anchors. |
 | `src/render.rs` | Responsive header, transcript, composer, footer and theme overlay. |
 | `src/sanitize.rs` | Removes raw control characters from untrusted cell content; only renderer writes ANSI. |
+| `src/approval.rs` | UI permission response values and case-preserving feedback parsing. |
+| `tests/agent_interaction.rs` | Approval focus, long-operation review and completion behavior. |
 | `tests/behavior.rs` | Deterministic interaction and rendered-buffer checks. |
 | `tests/interactive.rs` | Ignored, explicitly labelled developer preview; no AI/tool execution. |
 
@@ -77,19 +86,22 @@ control characters cannot issue screen/clipboard/title instructions. Escape-sequ
 may remain visible literally; this is not a terminal emulator. Draft limits reject the whole insertion
 and retain the old text. Text is not trimmed when submitting. Theme/draft state is currently in RAM.
 
-## Validation and preview
+## Running the agent and validating the library
+
+The user-facing command is `cluaiz agent`, in an existing CMD/PowerShell/shell tab. Use
+`cluaiz agent --ui plain` for the previous line-oriented interface. There is no second terminal
+application or separate CLI executable. See [the agent guide](../docs/cmd/agent.md).
 
 From the repository root:
 
 ```sh
 cargo test --release -p cluaiz-terminal
 cargo clippy --release -p cluaiz-terminal --all-targets -- -D warnings
-cargo test --release -p cluaiz-terminal --test interactive test_interactive_preview -- --ignored --nocapture
 ```
 
-The last command is interactive: F2 previews themes, type/paste edits a draft, Enter adds your
-input to the preview transcript, and Ctrl+Q exits. The initial rows are labelled UI fixtures.
-No Engine, model, tool or command is executed. Tests belong in test targets, not production commands.
+`tests/interactive.rs` is an ignored developer-only terminal restoration test with labelled
+fixtures. It is not the way to start Cluaiz or test model behavior; the Rust test harness can print
+its own progress message over a long-running test. Use the production command for live UI review.
 
 The separate `test_real_terminal_cleanup_after_error_and_panic` ignored test checks caller-error,
 expected-panic, exclusive-screen and reopen behavior. Its panic text is intentional; the test must
@@ -108,5 +120,5 @@ do not constitute a full Engine/CLI native build or API regression pass.
 - Input and display limits return notices/errors. The caller owns durable logs and old-history loading.
 - Tiny windows show a recoverable resize notice. Wrapped content is rebuilt on width/content changes;
   when reading older output the logical source line is retained, not an exact byte/pixel position.
-- Mouse capture, selection/export UI, Markdown styling, persistent theme/history, `/` and `@`
-  completion, API/agent integration, background work and approval UI remain later milestones.
+- Mouse capture, selection/export UI, Markdown styling, persistent theme/history, daemon attach,
+  installed MCP/plugin/skill integration and background task views remain later milestones.
