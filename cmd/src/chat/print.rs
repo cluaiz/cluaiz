@@ -21,6 +21,8 @@ enum Phase {
 pub struct StreamPrinter {
     show_thinking: bool,
     markdown: Option<MarkdownStream>,
+    /// Agent: `<tool_call>` blocks are not shown (each call gets its own row)
+    calls: Option<CallFilter>,
     phase: Phase,
     ends_with_newline: bool,
     wrote: bool,
@@ -32,6 +34,7 @@ impl StreamPrinter {
         Self {
             show_thinking: show_thinking && terminal,
             markdown: terminal.then(MarkdownStream::new),
+            calls: None,
             phase: Phase::Start,
             ends_with_newline: true,
             wrote: false,
@@ -52,7 +55,23 @@ impl StreamPrinter {
         self.ends_with_newline = text.ends_with('\n');
     }
 
+    /// Leaves `<tool_call>` blocks out of the shown answer.
+    pub fn hiding_tool_calls(mut self) -> Self {
+        self.calls = Some(CallFilter::default());
+        self
+    }
+
     pub fn content(&mut self, text: &str) {
+        match self.calls.as_mut() {
+            Some(calls) => {
+                let shown = calls.pass(text);
+                self.show(&shown);
+            }
+            None => self.show(text),
+        }
+    }
+
+    fn show(&mut self, text: &str) {
         // Blank lines between the thinking and the answer are not printed
         let text = if self.phase == Phase::Answer { text } else { text.trim_start() };
         if text.is_empty() {
@@ -74,6 +93,9 @@ impl StreamPrinter {
 
     /// Ends the answer on a fresh line.
     pub fn finish(&mut self) {
+        if let Some(rest) = self.calls.as_mut().map(CallFilter::finish) {
+            self.show(&rest);
+        }
         if self.phase == Phase::Thinking {
             self.close_thinking();
         }
@@ -100,6 +122,47 @@ impl StreamPrinter {
         let _ = out.write_all(text.as_bytes());
         let _ = out.flush();
         self.wrote = true;
+    }
+}
+
+/// Text of a stream with its `<tool_call>` blocks left out. A tail that may be the start of a block
+/// is held back until the next text shows whether it is one.
+#[derive(Default)]
+struct CallFilter {
+    held: String,
+    inside: bool,
+}
+
+impl CallFilter {
+    const OPEN: &'static str = "<tool_call>";
+    const CLOSE: &'static str = "</tool_call>";
+
+    fn pass(&mut self, text: &str) -> String {
+        self.held.push_str(text);
+        let mut shown = String::new();
+        loop {
+            if self.inside {
+                let Some(at) = self.held.find(Self::CLOSE) else { return shown };
+                self.held.drain(..at + Self::CLOSE.len());
+                self.inside = false;
+            } else if let Some(at) = self.held.find(Self::OPEN) {
+                shown.push_str(&self.held[..at]);
+                self.held.drain(..at + Self::OPEN.len());
+                self.inside = true;
+            } else {
+                let keep = (1..Self::OPEN.len()).rev().find(|&n| self.held.ends_with(&Self::OPEN[..n])).unwrap_or(0);
+                let cut = self.held.len() - keep;
+                shown.push_str(&self.held[..cut]);
+                self.held.drain(..cut);
+                return shown;
+            }
+        }
+    }
+
+    /// What is still held back: shown when it was not a block after all
+    fn finish(&mut self) -> String {
+        let rest = std::mem::take(&mut self.held);
+        std::mem::replace(&mut self.inside, false).then(String::new).unwrap_or(rest)
     }
 }
 
@@ -144,5 +207,21 @@ pub fn stats(report: &TurnReport) {
     }
     if report.cancelled {
         eprintln!("{}", "stopped by Ctrl+C".dimmed());
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::CallFilter;
+
+    #[test]
+    fn tool_call_blocks_are_left_out() {
+        let mut f = CallFilter::default();
+        let mut shown = String::new();
+        for piece in ["Reading it.\n<to", "ol_call>\n{\"name\": \"read_file\"}", "\n</tool_call>", " done <b"] {
+            shown.push_str(&f.pass(piece));
+        }
+        shown.push_str(&f.finish());
+        assert_eq!(shown, "Reading it.\n done <b");
     }
 }

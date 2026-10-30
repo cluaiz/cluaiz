@@ -9,6 +9,7 @@ llama.cpp's names (`llama-cli`, `llama-bench`); chat commands follow `ollama run
 | Command | What it does |
 | --- | --- |
 | `cluaiz run [model] ["prompt"]` | Chat, or answer one prompt and exit. `model` = installed id, a `.gguf` path, or an id to download. No model = the active chat model. |
+| `cluaiz agent ["task"]` | Coding agent in the current folder (`--dir`): reads, searches and edits files, runs commands. Bare `cluaiz` on a terminal opens it when there is an active chat model. |
 | `cluaiz show <model>` | GGUF details, thinking tags, and the plan the model would get now (`-v`: full planner banner, all metadata, tensors) |
 | `cluaiz list` | Installed models (`*` = active chat model) |
 | `cluaiz bench <model>` | llama-bench's test (`pp512`, `tg128`, mean ± sd); `-p`, `-n`, `-r`, `-o md` or `-o json` |
@@ -20,6 +21,30 @@ llama.cpp's names (`llama-cli`, `llama-bench`); chat commands follow `ollama run
 
 `-v` on any command shows engine logs on stderr (`-vv` debug). The full log is always in
 `~/.cluaiz/cluaiz_Core.log` (appended; restarted after 20 MiB).
+
+## `agent`
+
+```sh
+cluaiz agent                                    # chat with the agent in this folder
+cluaiz agent "fix the failing test in calc.py"  # one task, then exit
+cluaiz agent -m qwen3 --dir ../app --yes "..."  # model, folder, no questions
+```
+
+- Tools (`agent/tools.rs`): `read_file`, `list_dir`, `search` (regex over the folder, skipping
+  `.git`, `target`, `node_modules`, ...), `write_file`, `edit_file` (exact text, once unless
+  `replace_all`), `run_command` (PowerShell on Windows, `sh` elsewhere).
+- Each call is one row (`● Read src/main.rs`, `⎿ 120 lines`); a change shows its `-` / `+` lines.
+- Reads inside the folder run at once. A read outside it, every write or edit, and every command
+  that is not read-only ask `[y]es / [n]o / [a]lways this session`. `--yes` or `/yes` allows them all.
+  Commands go through `cluaiz_agents::ExecutionPolicy`: destructive patterns are refused even then.
+  With no terminal to ask (piped stdin) a call that needs asking is refused unless `--yes`.
+- The tools are sent the way an API request's `tools` are: the model's own template renders them
+  (or the inline `<tool_call>` form when it cannot), and calls come back as `<tool_call>` blocks
+  (`cluaiz_core::tool_calls`). The conversation keeps calls and results in the Engine's form.
+- The system prompt names the folder, the OS and the shell, and adds the folder's `AGENTS.md`
+  (first 8,000 characters) and `--system-prompt`. A request stops after 40 tool steps.
+- Installed skills, plugins and MCP servers are not offered to the CLI agent yet; the API's
+  `/v1/chat/completions` agent loop has them.
 
 ## `run`
 
@@ -64,7 +89,8 @@ cluaiz run qwen3                                              # chat
 | `cli/models.rs` | Model name → file (path, or the installed registry the API also uses) |
 | `cli/keys.rs` | Dotted keys over JSON (`config`, `/set parameter`) |
 | `cli/server.rs` | Requests to a running `cluaiz serve` (port + session token) |
-| `chat/` | Chat session (`mod.rs`), terminal output (`print.rs`), interactive loop (`repl.rs`) |
+| `chat/` | Chat session (`mod.rs`), terminal output (`print.rs`, `markdown.rs`), interactive loop (`repl.rs`) |
+| `agent/` | `cluaiz agent`: the tool loop (`mod.rs`) and the built-in tools with their approvals (`tools.rs`) |
 | `cli/install.rs` | Download flow shared by `pull`, `run` and the model list: resolve, confirm, `ModelDownloader::install` |
 | `core/` | `bootstrapper.rs` (start-up checks, dev-sync), `state.rs` (model list state) |
 | `ui/apps/registry/` | Model list with download / delete (unchanged) |
