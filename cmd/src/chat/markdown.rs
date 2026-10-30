@@ -39,6 +39,13 @@ impl MarkdownStream {
         }
     }
 
+    /// Ends the line being streamed here (drawn formatted), so other output can take the next line.
+    pub fn break_line(&mut self) {
+        if !self.line.is_empty() {
+            self.end_line();
+        }
+    }
+
     /// Draws what is still pending; the answer then ends on a fresh line.
     pub fn finish(&mut self) {
         if !self.line.is_empty() {

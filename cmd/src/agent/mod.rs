@@ -174,12 +174,19 @@ impl Agent {
         self.history.push(ChatMessage::new("user", text));
         let schemas = Tools::schemas();
         for _ in 0..MAX_STEPS {
-            let mut messages = Vec::with_capacity(self.history.len() + 1);
-            messages.push(ChatMessage::new("system", self.system.clone()));
-            messages.extend(self.history.iter().cloned());
-
-            let mut out = print::StreamPrinter::new(self.session.options.show_thinking).hiding_tool_calls();
-            let (answer, report) = self.session.generate(messages, Some(&schemas), &mut out).await?;
+            let (answer, report) = loop {
+                let mut messages = Vec::with_capacity(self.history.len() + 1);
+                messages.push(ChatMessage::new("system", self.system.clone()));
+                messages.extend(self.history.iter().cloned());
+                let mut out = print::StreamPrinter::new(self.session.options.show_thinking).hiding_tool_calls();
+                match self.session.generate(messages, Some(&schemas), &mut out).await {
+                    Ok(done) => break done,
+                    Err(e) if e.to_string().contains("exceeds the available context") && self.make_room() => {
+                        eprintln!("{}", "Context full: the oldest part of the conversation was left out.".dimmed());
+                    }
+                    Err(e) => return Err(e),
+                }
+            };
             if self.session.options.verbose || report.cancelled {
                 print::stats(&report);
             }
@@ -202,6 +209,22 @@ impl Agent {
         }
         eprintln!("{}", format!("Stopped after {MAX_STEPS} steps; say how to go on.").yellow());
         Ok(())
+    }
+
+    /// Room in a full context: the oldest earlier request goes, else the oldest long tool result of
+    /// this one is replaced by a note. False when nothing is left to take out.
+    fn make_room(&mut self) -> bool {
+        if let Some(next) = self.history.iter().skip(1).position(|m| m.role == "user") {
+            self.history.drain(..next + 1);
+            return true;
+        }
+        match self.history.iter_mut().find(|m| m.role == "tool" && m.content.len() > 200) {
+            Some(result) => {
+                result.content = "(This result was left out: the context was full. Run the tool again for less, e.g. a few lines.)".into();
+                true
+            }
+            None => false,
+        }
     }
 }
 

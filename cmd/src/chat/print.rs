@@ -2,6 +2,7 @@
 //! so `cluaiz run model "prompt" > answer.txt` writes only the answer.
 
 use std::io::{IsTerminal, Write};
+use std::time::{Duration, Instant};
 
 use colored::Colorize;
 
@@ -17,7 +18,8 @@ enum Phase {
 
 /// Prints one streamed answer. Thinking is shown dimmed between "Thinking..." and "...done thinking."
 /// (like ollama), and only when stdout is a terminal: piped output is the answer alone. On a terminal
-/// the answer's Markdown is drawn formatted.
+/// the answer's Markdown is drawn formatted. While nothing is printed (prompt reading, hidden thinking,
+/// a tool call being written) a status line on stderr shows what the model is doing.
 pub struct StreamPrinter {
     show_thinking: bool,
     markdown: Option<MarkdownStream>,
@@ -26,6 +28,12 @@ pub struct StreamPrinter {
     phase: Phase,
     ends_with_newline: bool,
     wrote: bool,
+    /// Both stdout and stderr are a terminal: the status line can be drawn
+    live: bool,
+    status_shown: bool,
+    started: Instant,
+    last_output: Instant,
+    ticks: usize,
 }
 
 impl StreamPrinter {
@@ -38,6 +46,54 @@ impl StreamPrinter {
             phase: Phase::Start,
             ends_with_newline: true,
             wrote: false,
+            live: terminal && std::io::stderr().is_terminal(),
+            status_shown: false,
+            started: Instant::now(),
+            last_output: Instant::now(),
+            ticks: 0,
+        }
+    }
+
+    /// Called a few times a second while generating: after a pause in the output, draws the status
+    /// line (on a line of its own); the next output clears it.
+    pub fn tick(&mut self) {
+        self.ticks += 1;
+        if !self.live || self.last_output.elapsed() < Duration::from_millis(700) {
+            return;
+        }
+        if !self.status_shown {
+            if let Some(md) = self.markdown.as_mut().filter(|_| self.phase == Phase::Answer) {
+                md.break_line();
+            } else if !self.ends_with_newline {
+                self.write("\n");
+            }
+            self.ends_with_newline = true;
+        }
+        let spin = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"][self.ticks % 10];
+        let call = cluaiz_core::live::call()
+            .or_else(|| self.calls.as_ref().and_then(CallFilter::partial))
+            .filter(|_| self.calls.is_some());
+        let what = match call {
+            Some((name, arguments)) => format!("{} {}  {} chars", name.bold(), argument_preview(&arguments), arguments.len()),
+            None => match cluaiz_core::live::tokens() {
+                0 => "Reading the prompt".to_string(),
+                n => format!("Writing  {n} tokens"),
+            },
+        };
+        // One line only (a wrapped status could not be cleared): the plain text is cut to the width
+        let cols = crossterm::terminal::size().map(|(c, _)| c as usize).unwrap_or(80);
+        let what: String = what.chars().take(cols.saturating_sub(16)).collect();
+        eprint!("\r\x1b[2K{} {}  {}", spin.cyan(), what, format!("{}s", self.started.elapsed().as_secs()).dimmed());
+        let _ = std::io::stderr().flush();
+        self.status_shown = true;
+    }
+
+    fn clear_status(&mut self) {
+        self.last_output = Instant::now();
+        if self.status_shown {
+            eprint!("\r\x1b[2K");
+            let _ = std::io::stderr().flush();
+            self.status_shown = false;
         }
     }
 
@@ -45,6 +101,7 @@ impl StreamPrinter {
         if !self.show_thinking || text.is_empty() {
             return;
         }
+        self.clear_status();
         if self.phase == Phase::Start {
             self.write(&format!("{}\n", "Thinking...".dimmed()));
             self.phase = Phase::Thinking;
@@ -77,6 +134,7 @@ impl StreamPrinter {
         if text.is_empty() {
             return;
         }
+        self.clear_status();
         if self.phase == Phase::Thinking {
             self.close_thinking();
         }
@@ -93,6 +151,7 @@ impl StreamPrinter {
 
     /// Ends the answer on a fresh line.
     pub fn finish(&mut self) {
+        self.clear_status();
         if let Some(rest) = self.calls.as_mut().map(CallFilter::finish) {
             self.show(&rest);
         }
@@ -159,11 +218,50 @@ impl CallFilter {
         }
     }
 
+    /// The call being written (inline form): its name and arguments' text so far
+    fn partial(&self) -> Option<(String, String)> {
+        if !self.inside {
+            return None;
+        }
+        let name = string_value(&self.held, "name")?;
+        let arguments = self.held.split_once("\"arguments\"").map(|(_, rest)| rest.to_string()).unwrap_or_default();
+        Some((name, arguments))
+    }
+
     /// What is still held back: shown when it was not a block after all
     fn finish(&mut self) -> String {
         let rest = std::mem::take(&mut self.held);
         std::mem::replace(&mut self.inside, false).then(String::new).unwrap_or(rest)
     }
+}
+
+/// The value of `"key": "..."` in JSON text that may still be incomplete
+fn string_value(json: &str, key: &str) -> Option<String> {
+    let after = json.split_once(&format!("\"{key}\""))?.1.trim_start().strip_prefix(':')?.trim_start().strip_prefix('"')?;
+    let mut out = String::new();
+    let mut chars = after.chars();
+    while let Some(c) = chars.next() {
+        match c {
+            '"' => break,
+            '\\' => {
+                if let Some(next) = chars.next() {
+                    out.push(if next == 'n' { ' ' } else { next });
+                }
+            }
+            c => out.push(c),
+        }
+    }
+    Some(out)
+}
+
+/// What a call works on, from its arguments so far: the path, command or pattern
+fn argument_preview(arguments: &str) -> String {
+    let value = ["path", "command", "pattern"].iter().find_map(|key| string_value(arguments, key)).unwrap_or_default();
+    let mut short: String = value.chars().take(50).collect();
+    if short.len() < value.len() {
+        short.push('…');
+    }
+    short
 }
 
 /// Plan the model was loaded with (stderr). `-v` adds the full planner banner.
