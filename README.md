@@ -12,7 +12,7 @@ A local AI engine in Rust: chat, vision, speech and embeddings on your own hardw
 <p align="center">
   <img src="https://img.shields.io/badge/Status-Pre--release_v0.1.0-orange?style=for-the-badge" alt="Status">
   <img src="https://img.shields.io/badge/License-Apache_2.0-blue.svg?style=for-the-badge" alt="License">
-  <img src="https://img.shields.io/badge/Built_with-Rust-e43716.svg?style=for-the-badge&logo=rust" alt="Rust">
+  <img src="https://img.shields.io/badge/Built_with-Rust-e43716?style=for-the-badge&logo=rust&logoColor=white" alt="Rust">
   <img src="https://img.shields.io/badge/Platform-Win_|_Mac_|_Linux-lightgrey?style=for-the-badge" alt="Platform">
 </p>
 
