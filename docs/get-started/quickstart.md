@@ -74,20 +74,34 @@ Ensure your local machine has the following tools installed and registered in yo
 
 ---
 
-## 🕯️ 3. Post-Installation: The First Boot
+## 🕯️ 3. First Steps
 
-Once installed, execute `cluaiz` in your terminal to begin the node initialization sequence:
+Open a new terminal (so the updated PATH is read) and check the install:
 
 ```bash
-cluaiz
+cluaiz --version
+cluaiz status          # the CPU, GPU and memory the planner sees
 ```
 
-### The Onboarding Sequence
+Download a model and make it the default chat model:
 
-On the first run, the interface executes a structured terminal onboarding process:
+```bash
+cluaiz pull unsloth/Qwen3-4B-GGUF
+cluaiz list                                        # the installed id, e.g. qwen3-4b-gguf-Q4_K_M
+cluaiz model set-chat qwen3-4b-gguf-Q4_K_M
+```
 
-1.  **Workspace Seeding:** The bootstrapper generates persistent configuration profiles (`IDENTITY.md`, `USER.md`, and `SOUL.md`) under `~/.cluaiz/workspace/`.
-2.  **Sentinel Generation:** The system mounts a temporary `.ignition_lock` file in the configuration sandbox. If the terminal process crashes or is closed during this phase, subsequent boots detect the lock file and resume setup at the exact step left off.
-3.  **Operator Profile:** The interface prompts for your operator username and generation purpose (`RESEARCH` for deep-quant optimization vs. `PRODUCTION` for maximum token-per-second throughput).
-4.  **Hardware Audit:** The engine queries core processors to determine physical thread pools, local VRAM/RAM pools, and dynamic accelerator driver support (CUDA, Metal).
-5.  **Activation:** Upon successful compilation and validation of config state, the `.ignition_lock` file is permanently deleted, and the terminal launches the active TUI Dashboard.
+Then use it:
+
+```bash
+cluaiz run                                         # chat in the terminal
+cluaiz run qwen3-4b-gguf-Q4_K_M "Explain a KV cache in two sentences."
+cd path/to/a/project && cluaiz agent               # an agent that reads, edits and runs things in this folder
+cluaiz serve                                       # the API for other apps
+```
+
+With a default chat model set, plain `cluaiz` in a terminal opens the agent in the current folder.
+
+*   [Terminal chat (`cluaiz run`)](../cmd/chat.md): formatted answers, chat commands, options.
+*   [Coding agent (`cluaiz agent`)](../cmd/agent.md): tools, what it asks before doing, limits.
+*   [Command reference](../cmd/commands_reference.md): every command.

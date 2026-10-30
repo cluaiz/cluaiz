@@ -304,8 +304,8 @@ impl Tools {
         row("Run", command);
         let mode = match ExecutionPolicy::evaluate(command, &self.root, SecurityMode::RequireApproval) {
             PolicyDecision::Deny { reason } => return Err(format!("refused: {reason}")),
-            PolicyDecision::Allow => SecurityMode::RequireApproval,
-            PolicyDecision::AskConfirmation { .. } => {
+            PolicyDecision::Allow if !chains(command) => SecurityMode::RequireApproval,
+            PolicyDecision::Allow | PolicyDecision::AskConfirmation { .. } => {
                 self.ask("run_command", "")?;
                 SecurityMode::AlwaysAllow
             }
@@ -405,6 +405,12 @@ impl Tools {
     }
 }
 
+/// The policy reads the start of a line: `ls; rm -r src` or `echo x > file` start read-only. A line
+/// that chains, pipes or redirects asks like any other change.
+fn chains(command: &str) -> bool {
+    [">", "<", ";", "|", "&", "`", "$(", "\n"].iter().any(|c| command.contains(c))
+}
+
 /// `● Read src/main.rs`
 fn row(action: &str, target: &str) {
     eprintln!("{} {} {}", "●".cyan(), action.bold(), target);
@@ -459,6 +465,15 @@ mod tests {
         assert_eq!(t.run("list_dir", "{}").await, "src/");
         assert!(t.run("nope", "{}").await.starts_with("Error: there is no tool named 'nope'"));
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_read_only_start_does_not_cover_the_rest_of_the_line() {
+        assert!(!chains("git status"));
+        assert!(!chains("Get-ChildItem src"));
+        for line in ["ls; rm -r src", "echo hi > notes.txt", "cat a | tee b", "dir && del x", "echo $(whoami)"] {
+            assert!(chains(line), "{line}");
+        }
     }
 
     #[test]
