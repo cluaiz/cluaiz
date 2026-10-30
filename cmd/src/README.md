@@ -43,6 +43,8 @@ cluaiz agent -m qwen3 --dir ../app --yes "..."  # model, folder, no questions
 - Reads inside the folder run at once. A read outside it, every write or edit, and every command
   that is not read-only ask `[y]es / [n]o / [a]lways this session`. `--yes` or `/yes` allows them all.
   Commands go through `cluaiz_agents::ExecutionPolicy`: destructive patterns are refused even then.
+  The policy reads the start of a line, so a read-only start that chains, pipes or redirects
+  (`ls; del x`, `echo hi > file`) asks too. User guide: [docs/cmd/agent.md](../../docs/cmd/agent.md).
   With no terminal to ask (piped stdin) a call that needs asking is refused unless `--yes`.
 - The tools are sent the way an API request's `tools` are: the model's own template renders them
   (or the inline `<tool_call>` form when it cannot), and calls come back as `<tool_call>` blocks

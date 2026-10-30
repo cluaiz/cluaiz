@@ -77,13 +77,21 @@ cluaiz run unsloth/Qwen3-4B-GGUF
 cluaiz run unsloth/Qwen3-4B-GGUF "Explain a KV cache in two sentences."
 ```
 
-**3. See what the planner chooses** on this machine before loading:
+**3. Let it work in a folder:** the agent reads, searches and edits files and runs commands there, asking
+before every change ([guide](docs/cmd/agent.md)):
+
+```bash
+cd path/to/your/project
+cluaiz agent -m qwen3-4b-gguf-Q4_K_M
+```
+
+**4. See what the planner chooses** on this machine before loading:
 
 ```bash
 cluaiz show unsloth/Qwen3-4B-GGUF
 ```
 
-**4. Serve it to other apps** and call the OpenAI-compatible API:
+**5. Serve it to other apps** and call the OpenAI-compatible API:
 
 ```bash
 cluaiz serve
@@ -189,7 +197,8 @@ Reference: [`docs/api/README.md`](docs/api/README.md) and [`docs/api/cep/README.
 
 | Command | Purpose |
 | :--- | :--- |
-| `cluaiz run <model> ["prompt"]` | Chat in the terminal, or answer one prompt |
+| `cluaiz run <model> ["prompt"]` | Chat in the terminal, or answer one prompt ([guide](docs/cmd/chat.md)) |
+| `cluaiz agent ["task"]` | Coding agent in a folder: reads, searches, edits files, runs commands; asks before changes ([guide](docs/cmd/agent.md)) |
 | `cluaiz pull`, `list`, `rm`, `show` | Download, list, remove, inspect models (with the plan) |
 | `cluaiz serve`, `ps` | Start the API server; show the loaded model |
 | `cluaiz bench <model>` | Prompt and generation speed (llama-bench) |
@@ -523,7 +532,9 @@ sequenceDiagram
 
 | Topic | Page |
 | :--- | :--- |
-| Command line | `cluaiz --help`, `cluaiz <command> --help` |
+| Command line | [`docs/cmd/commands_reference.md`](docs/cmd/commands_reference.md), `cluaiz --help` |
+| Terminal chat | [`docs/cmd/chat.md`](docs/cmd/chat.md) |
+| Coding agent | [`docs/cmd/agent.md`](docs/cmd/agent.md) |
 | HTTP API | [`docs/api/README.md`](docs/api/README.md) |
 | CEP (engine protocol) | [`docs/api/cep/README.md`](docs/api/cep/README.md) |
 | Model families and formats | [`RELEASE.md`](RELEASE.md) |

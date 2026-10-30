@@ -24,9 +24,9 @@
 
 | Command | Description |
 |---------|-------------|
-| `cluaiz` | Launches the interactive Main Menu TUI |
-| `cluaiz menu` | Explicitly open the Main Menu TUI |
-| `cluaiz help` | Show the rich formatted help screen (loads commands.json) |
+| `cluaiz` | In a terminal with a default chat model: the [agent](agent.md) in the current folder. Otherwise the help |
+| `cluaiz --help`, `cluaiz help` | Every command; `cluaiz <command> --help` for its flags |
+| `cluaiz -v`, `-V`, `--version` | The version (`-v` with a command means verbose: engine logs on stderr, `-vv` debug) |
 | `cluaiz serve` | Start the Engine API on `http://<api_host>:<api_port>` |
 | `cluaiz mcp-server` | MCP over stdio for MCP clients; forwards to the running Engine's `/mcp` (read-only methods) |
 
@@ -36,9 +36,9 @@
 
 | Command | Flags / Args | Description |
 |---------|-------------|-------------|
-| `cluaiz run` | _(no args)_ | Opens the Dashboard TUI |
-| `cluaiz run <model-id>` | `--interactive true/false` | Pull + execute a model. Downloads if not cached. |
-| `cluaiz run <model-id> --interactive false` | | Run in non-interactive single-pass mode |
+| `cluaiz run` | _(no args)_ | Chat with the active chat model |
+| `cluaiz run <model-id>` | load / sampling / thinking flags | Chat with a model; downloads it first when it is not installed ([guide](chat.md)) |
+| `cluaiz run <model-id> "prompt"` | `-p`, `-f`, `-i`, `-n` | Answer one prompt and exit (`-i`: keep chatting). Piped stdin is the prompt |
 | `cluaiz pull <model-id>` | | Download and register a model into local vault |
 | `cluaiz list` | | List all downloaded models in the vault |
 | `cluaiz rm <model-id>` | | Remove a model from the local vault |
@@ -48,12 +48,32 @@
 **Examples:**
 ```bash
 cluaiz run gemma4:e2b
-cluaiz run bonsai:8b --interactive false
+cluaiz run bonsai:8b "Summarise this in one line" < notes.txt
 cluaiz pull qwen3:8b
 cluaiz pull unsloth/Qwen3.5-4B-GGUF
 cluaiz rm gemma4:e2b
 cluaiz model set-chat gemma4:e2b
 cluaiz model set-vector bge_m3:unknown:onnx:fp32
+```
+
+---
+
+## 🛠️ AGENT COMMANDS
+
+| Command | Flags / Args | Description |
+|---------|-------------|-------------|
+| `cluaiz agent` | `-m <model>`, `--dir <path>` | Coding agent in the current folder (or `--dir`): reads, searches and edits files, runs commands |
+| `cluaiz agent "task"` | `-p`, `-i` | Do one task and exit (`-i`: keep chatting). Piped stdin is the task |
+| `cluaiz agent --yes` | | Allow every change and command without asking (destructive commands stay refused) |
+
+Inside the agent: `/yes`, `/ask`, `/clear`, `/bye`, `/?`. Tools, approvals and limits:
+[agent guide](agent.md).
+
+**Examples:**
+```bash
+cluaiz agent
+cluaiz agent -m qwen3 --dir ../website "find where the footer year is set and update it to 2026"
+cat task.txt | cluaiz agent --yes
 ```
 
 ---
