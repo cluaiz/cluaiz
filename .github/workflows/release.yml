@@ -76,6 +76,10 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      - name: Test Windows runtime isolation
+        if: runner.os == 'Windows'
+        run: python test/workflows/test_clean_windows_runtime.py
+
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.name }}

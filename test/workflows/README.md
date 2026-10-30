@@ -35,3 +35,7 @@ The first run can download several GB of Docker images, so it takes a while.
 
 `python test/workflows/test_installer_banner.py` checks Cog spacing, Windows/shell parity and the existing CLUAIZ wordmark.
 `python test/workflows/test_installer_progress.py` exercises the actual downloader against a tiny local HTTP fixture: live percentage, unknown size, redirects, HTTP errors, interrupted bodies and plain logs. It uses available Windows PowerShell/PowerShell7/POSIX shells; `CLUAIZ_TEST_SH` can select a shell. No real Cluaiz installation, GPU pack or user PATH change occurs. Logs go to `.agent/installer-logo-proof`.
+
+## Windows release runtime isolation
+
+`python test/workflows/test_clean_windows_runtime.py` starts real Windows PowerShell child processes through the release smoke-test launcher. It checks removal of developer PATH entries, the executable's working directory, preservation of other environment values, missing arguments and failure exit codes. It changes only the child environment; the user's PATH and installed Engine are untouched. The Windows release job runs it before building the core.
