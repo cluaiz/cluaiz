@@ -1,5 +1,5 @@
-//! `cluaiz`: run, serve and manage local models from a plain terminal (stdin / stdout, no screen
-//! takeover), with llama.cpp's flag names for loading and sampling.
+//! `cluaiz`: run, serve and manage local models. The agent uses an interactive terminal interface
+//! when available; redirected tasks retain plain output and the existing loading/sampling flags.
 
 use std::io::IsTerminal;
 
@@ -245,13 +245,13 @@ fn open_log_file() -> Option<std::fs::File> {
 
 /// Engine logs (tracing) go to the log file, and to stderr with -v / for `serve`. stdout stays the
 /// command's own output.
-fn init_logging(verbose: u8, serving: bool) {
+fn init_logging(verbose: u8, serving: bool, screen: bool) {
     use tracing_subscriber::{filter::{LevelFilter, Targets}, prelude::*};
-    let console = match (verbose, serving) {
+    let console = if screen { LevelFilter::OFF } else { match (verbose, serving) {
         (0, false) => LevelFilter::OFF,
         (0, true) | (1, _) => LevelFilter::INFO,
         _ => LevelFilter::DEBUG,
-    };
+    } };
     let file_level = if verbose >= 2 { LevelFilter::DEBUG } else { LevelFilter::INFO };
     // ONNX Runtime reports every memory-arena step at INFO; below -vv only its warnings are kept
     let ort_level = if verbose >= 2 { LevelFilter::DEBUG } else { LevelFilter::WARN };
@@ -318,7 +318,12 @@ async fn main() -> Result<()> {
         return Ok(());
     }
     let cli = Cli::parse_from(cli::args::normalize_llama_flags(raw));
-    init_logging(cli.verbose, matches!(cli.command, Some(CliCommand::Serve { .. })));
+    let screen = match &cli.command {
+        Some(CliCommand::Agent(args)) => args.screen_enabled(),
+        None => agent::AgentArgs::default().screen_enabled(),
+        _ => false,
+    };
+    init_logging(cli.verbose, matches!(cli.command, Some(CliCommand::Serve { .. })), screen);
 
     // 🚀 Cluaiz BOOTSTRAP (Local Dev-Sync & Registry Verification)
     let is_dev_sync = std::env::args().any(|arg| arg == "dev-sync");

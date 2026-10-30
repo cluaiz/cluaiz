@@ -21,6 +21,7 @@ cluaiz-plan = { path = "../engine/plan" }
 cluaiz-runtime = { path = "../engine/runtime", default-features = false }
 cluaiz-agents = { path = "../agents" }
 cluaiz-security = { path = "../security" }
+cluaiz-terminal = { path = "../terminal" }
 onnx-engine = { path = "../engine/onnx" }
 
 
@@ -48,6 +49,9 @@ walkdir = "2"
 
 [build-dependencies]
 winres = "0.1"
+
+[dev-dependencies]
+tempfile = "3"
 
 [features]
 # Each GPU feature builds that ggml backend as a library beside the binary; the binary itself

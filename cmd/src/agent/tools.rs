@@ -5,12 +5,15 @@
 //! destructive patterns are refused even with `--yes`.
 
 use std::collections::HashSet;
-use std::io::{BufRead, IsTerminal, Write};
-use std::path::{Component, Path, PathBuf};
+use std::io::IsTerminal;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
 
-use cluaiz_agents::{CancelHandle, ExecutionPolicy, PolicyDecision, SandboxTerminalRunner, SecurityMode};
-use colored::Colorize;
+use super::display::{Display, Event};
+use cluaiz_agents::{
+    CancelHandle, ExecutionPolicy, PolicyDecision, SandboxTerminalRunner, SecurityMode,
+};
+use cluaiz_terminal::ApprovalResponse;
 use serde_json::{json, Value};
 
 /// Most characters of one tool result the model gets (a small context fills fast)
@@ -19,7 +22,17 @@ const READ_LINES: usize = 400;
 const SEARCH_HITS: usize = 100;
 const LIST_ENTRIES: usize = 300;
 /// Folders a search never walks into
-const SKIP_DIRS: &[&str] = &[".git", "target", "node_modules", ".venv", "venv", "__pycache__", "dist", "build", ".next"];
+const SKIP_DIRS: &[&str] = &[
+    ".git",
+    "target",
+    "node_modules",
+    ".venv",
+    "venv",
+    "__pycache__",
+    "dist",
+    "build",
+    ".next",
+];
 
 pub struct Tools {
     root: PathBuf,
@@ -27,15 +40,33 @@ pub struct Tools {
     pub allow_all: bool,
     /// Tools the user allowed for the rest of the session ("always")
     always: HashSet<String>,
+    display: Display,
+    pub cancelled: bool,
 }
 
 impl Tools {
     pub fn new(root: PathBuf, allow_all: bool) -> Self {
-        Self { root, allow_all, always: HashSet::new() }
+        let root = root.canonicalize().unwrap_or(root);
+        Self {
+            root,
+            allow_all,
+            always: HashSet::new(),
+            display: Display::default(),
+            cancelled: false,
+        }
+    }
+
+    pub fn set_display(&mut self, display: Display) {
+        self.display = display;
     }
 
     pub fn root(&self) -> &Path {
         &self.root
+    }
+
+    pub fn require_approval(&mut self) {
+        self.allow_all = false;
+        self.always.clear();
     }
 
     /// Function schemas, as an API request's `tools`
@@ -109,10 +140,33 @@ impl Tools {
     /// Runs one call and returns what the model gets back. The call's row and a one-line summary are
     /// printed on stderr.
     pub async fn run(&mut self, name: &str, arguments: &str) -> String {
+        self.cancelled = false;
+        if self.display.closing() || self.display.interrupted() {
+            self.cancelled = true;
+            return "Error: cancelled before tool execution".into();
+        }
         let args: Value = match serde_json::from_str(arguments) {
             Ok(v @ Value::Object(_)) => v,
-            _ => return format!("Error: the arguments are not a JSON object: {arguments}"),
+            _ => {
+                let error = "Tool arguments are not a complete JSON object; nothing executed";
+                self.display
+                    .emit(Event::ToolStart(name.into(), String::new()));
+                self.display.emit(Event::ToolEnd {
+                    ok: false,
+                    summary: error.into(),
+                    content: String::new(),
+                });
+                return format!("Error: {error}");
+            }
         };
+        let target = args
+            .get("path")
+            .or_else(|| args.get("command"))
+            .or_else(|| args.get("pattern"))
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        self.display
+            .emit(Event::ToolStart(name.into(), target.into()));
         let text = |key: &str| args.get(key).and_then(Value::as_str).map(str::to_string);
         let number = |key: &str| args.get(key).and_then(Value::as_u64).map(|n| n as usize);
 
@@ -141,25 +195,36 @@ impl Tools {
                 None => Err("give a command".into()),
             },
             other => {
-                row(other, "");
                 Err(format!("there is no tool named '{other}'. Tools: read_file, list_dir, search, write_file, edit_file, run_command"))
             }
         };
         match result {
             Ok((summary, output)) => {
-                done(&summary);
+                self.display.emit(Event::ToolEnd {
+                    ok: true,
+                    summary,
+                    content: output.clone(),
+                });
                 clip(&output)
             }
             Err(e) => {
-                done(&format!("{} {}", "error:".red(), e));
+                self.display.emit(Event::ToolEnd {
+                    ok: false,
+                    summary: e.clone(),
+                    content: String::new(),
+                });
                 format!("Error: {e}")
             }
         }
     }
 
-    fn read_file(&mut self, path: &str, offset: Option<usize>, limit: Option<usize>) -> Result<(String, String), String> {
-        let file = self.resolve(path);
-        row("Read", &self.show(&file));
+    fn read_file(
+        &mut self,
+        path: &str,
+        offset: Option<usize>,
+        limit: Option<usize>,
+    ) -> Result<(String, String), String> {
+        let file = self.resolve(path)?;
         self.allow_outside("read_file", &file)?;
         let bytes = std::fs::read(&file).map_err(|e| format!("{}: {e}", self.show(&file)))?;
         if bytes.iter().take(8000).any(|b| *b == 0) {
@@ -169,12 +234,21 @@ impl Tools {
         let lines: Vec<&str> = text.lines().collect();
         let first = offset.unwrap_or(1).max(1);
         let limit = limit.unwrap_or(READ_LINES).max(1);
-        let shown: Vec<String> =
-            lines.iter().enumerate().skip(first - 1).take(limit).map(|(i, l)| format!("{:>5}\t{}", i + 1, l)).collect();
+        let shown: Vec<String> = lines
+            .iter()
+            .enumerate()
+            .skip(first - 1)
+            .take(limit)
+            .map(|(i, l)| format!("{:>5}\t{}", i + 1, l))
+            .collect();
         let mut out = shown.join("\n");
         let last = first - 1 + shown.len();
         if last < lines.len() {
-            out.push_str(&format!("\n({} more lines: read with offset {})", lines.len() - last, last + 1));
+            out.push_str(&format!(
+                "\n({} more lines: read with offset {})",
+                lines.len() - last,
+                last + 1
+            ));
         }
         if lines.is_empty() {
             out = "(empty file)".into();
@@ -183,28 +257,43 @@ impl Tools {
     }
 
     fn list_dir(&mut self, path: &str) -> Result<(String, String), String> {
-        let dir = self.resolve(path);
-        row("List", &self.show(&dir));
+        let dir = self.resolve(path)?;
         self.allow_outside("list_dir", &dir)?;
-        let mut entries: Vec<(bool, String)> = std::fs::read_dir(&dir)
-            .map_err(|e| format!("{}: {e}", self.show(&dir)))?
-            .flatten()
-            .map(|e| (e.path().is_dir(), e.file_name().to_string_lossy().to_string()))
-            .collect();
-        entries.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.to_lowercase().cmp(&b.1.to_lowercase())));
+        let entries = directory_entries(&dir).map_err(|error| error.to_string())?;
         let total = entries.len();
-        let mut out: Vec<String> = entries.into_iter().take(LIST_ENTRIES).map(|(d, n)| if d { format!("{n}/") } else { n }).collect();
+        let mut out: Vec<String> = entries
+            .into_iter()
+            .take(LIST_ENTRIES)
+            .map(|(d, n)| if d { format!("{n}/") } else { n })
+            .collect();
         if total > LIST_ENTRIES {
-            out.push(format!("({} more)", total - LIST_ENTRIES));
+            out.push("(more entries; narrow the folder)".into());
         }
-        Ok((format!("{total} entries"), if out.is_empty() { "(empty folder)".into() } else { out.join("\n") }))
+        Ok((
+            format!(
+                "{}{} entries",
+                total.min(LIST_ENTRIES),
+                if total > LIST_ENTRIES { "+" } else { "" }
+            ),
+            if out.is_empty() {
+                "(empty folder)".into()
+            } else {
+                out.join("\n")
+            },
+        ))
     }
 
-    fn search(&mut self, pattern: &str, path: &str, glob: Option<String>) -> Result<(String, String), String> {
-        let start = self.resolve(path);
-        row("Search", &format!("{} in {}", pattern, self.show(&start)));
+    fn search(
+        &mut self,
+        pattern: &str,
+        path: &str,
+        glob: Option<String>,
+    ) -> Result<(String, String), String> {
+        let start = self.resolve(path)?;
         self.allow_outside("search", &start)?;
-        let re = regex::Regex::new(pattern).or_else(|_| regex::Regex::new(&regex::escape(pattern))).map_err(|e| e.to_string())?;
+        let re = regex::Regex::new(pattern)
+            .or_else(|_| regex::Regex::new(&regex::escape(pattern)))
+            .map_err(|e| e.to_string())?;
         let name_matches = |name: &str| match glob.as_deref() {
             Some(g) => match g.strip_prefix('*') {
                 Some(suffix) => name.ends_with(suffix),
@@ -214,17 +303,25 @@ impl Tools {
         };
         let mut hits = Vec::new();
         let mut more = 0usize;
-        let walker = walkdir::WalkDir::new(&start)
-            .into_iter()
-            .filter_entry(|e| e.depth() == 0 || !(e.file_type().is_dir() && SKIP_DIRS.contains(&e.file_name().to_string_lossy().as_ref())));
+        let walker = walkdir::WalkDir::new(&start).into_iter().filter_entry(|e| {
+            e.depth() == 0
+                || !(e.file_type().is_dir()
+                    && SKIP_DIRS.contains(&e.file_name().to_string_lossy().as_ref()))
+        });
         for entry in walker.flatten() {
             if !entry.file_type().is_file() || !name_matches(&entry.file_name().to_string_lossy()) {
                 continue;
             }
-            if entry.metadata().map(|m| m.len() > 2_000_000).unwrap_or(true) {
+            if entry
+                .metadata()
+                .map(|m| m.len() > 2_000_000)
+                .unwrap_or(true)
+            {
                 continue;
             }
-            let Ok(bytes) = std::fs::read(entry.path()) else { continue };
+            let Ok(bytes) = std::fs::read(entry.path()) else {
+                continue;
+            };
             if bytes.iter().take(8000).any(|b| *b == 0) {
                 continue;
             }
@@ -244,36 +341,63 @@ impl Tools {
         if more > 0 {
             hits.push(format!("({more} more matches: narrow the search)"));
         }
-        Ok((format!("{count} matches"), if hits.is_empty() { "No matches.".into() } else { hits.join("\n") }))
+        Ok((
+            format!("{count} matches"),
+            if hits.is_empty() {
+                "No matches.".into()
+            } else {
+                hits.join("\n")
+            },
+        ))
     }
 
     fn write_file(&mut self, path: &str, content: &str) -> Result<(String, String), String> {
-        let file = self.resolve(path);
+        let file = self.resolve(path)?;
         let exists = file.exists();
-        row(if exists { "Write" } else { "Create" }, &self.show(&file));
         let lines = content.lines().count();
-        for line in content.lines().take(12) {
-            eprintln!("    {}", format!("+ {line}").green());
-        }
-        if lines > 12 {
-            eprintln!("    {}", format!("… {} more lines", lines - 12).dimmed());
-        }
-        self.ask("write_file", "")?;
+        let diff = content
+            .lines()
+            .map(|line| format!("+ {line}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        self.display.emit(Event::Diff(diff.clone()));
+        self.ask(
+            "write_file",
+            &format!(
+                "{} {}\n{diff}",
+                if exists { "replace" } else { "create" },
+                cluaiz_api::cep::roots::display(&file)
+            ),
+        )?;
+        self.check_running()?;
         if let Some(parent) = file.parent() {
             std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
         std::fs::write(&file, content).map_err(|e| format!("{}: {e}", self.show(&file)))?;
         let what = if exists { "replaced" } else { "created" };
-        Ok((format!("{what}, {lines} lines"), format!("{} {what} ({lines} lines).", self.show(&file))))
+        Ok((
+            format!("{what}, {lines} lines"),
+            format!("{} {what} ({lines} lines).", self.show(&file)),
+        ))
     }
 
-    fn edit_file(&mut self, path: &str, old: &str, new: &str, replace_all: bool) -> Result<(String, String), String> {
-        let file = self.resolve(path);
-        row("Edit", &self.show(&file));
-        let text = std::fs::read_to_string(&file).map_err(|e| format!("{}: {e}", self.show(&file)))?;
+    fn edit_file(
+        &mut self,
+        path: &str,
+        old: &str,
+        new: &str,
+        replace_all: bool,
+    ) -> Result<(String, String), String> {
+        let file = self.resolve(path)?;
+        self.allow_outside("edit_file", &file)?;
+        let text =
+            std::fs::read_to_string(&file).map_err(|e| format!("{}: {e}", self.show(&file)))?;
         // A file with Windows line breaks matches text the model wrote with plain ones
         let (old, new) = if !text.contains(old) && text.contains("\r\n") {
-            (old.replace("\r\n", "\n").replace('\n', "\r\n"), new.replace("\r\n", "\n").replace('\n', "\r\n"))
+            (
+                old.replace("\r\n", "\n").replace('\n', "\r\n"),
+                new.replace("\r\n", "\n").replace('\n', "\r\n"),
+            )
         } else {
             (old.to_string(), new.to_string())
         };
@@ -282,52 +406,96 @@ impl Tools {
         }
         let found = text.matches(&old).count();
         if found == 0 {
-            return Err("old_text is not in the file; read the file and copy the text exactly".into());
+            return Err(
+                "old_text is not in the file; read the file and copy the text exactly".into(),
+            );
         }
         if found > 1 && !replace_all {
             return Err(format!("old_text is in the file {found} times; add the lines around it, or set replace_all"));
         }
-        for line in old.lines().take(12) {
-            eprintln!("    {}", format!("- {line}").red());
+        let diff = old
+            .lines()
+            .map(|line| format!("- {line}"))
+            .chain(new.lines().map(|line| format!("+ {line}")))
+            .collect::<Vec<_>>()
+            .join("\n");
+        self.display.emit(Event::Diff(diff.clone()));
+        self.ask(
+            "edit_file",
+            &format!("edit {}\n{diff}", cluaiz_api::cep::roots::display(&file)),
+        )?;
+        self.check_running()?;
+        if std::fs::read_to_string(&file).map_err(|error| error.to_string())? != text {
+            return Err(
+                "File changed while awaiting approval; read it again before editing".into(),
+            );
         }
-        for line in new.lines().take(12) {
-            eprintln!("    {}", format!("+ {line}").green());
-        }
-        self.ask("edit_file", "")?;
-        let updated = if replace_all { text.replace(&old, &new) } else { text.replacen(&old, &new, 1) };
+        let updated = if replace_all {
+            text.replace(&old, &new)
+        } else {
+            text.replacen(&old, &new, 1)
+        };
         std::fs::write(&file, updated).map_err(|e| format!("{}: {e}", self.show(&file)))?;
         let n = if replace_all { found } else { 1 };
-        Ok((format!("{n} replaced"), format!("{} edited ({n} replaced).", self.show(&file))))
+        Ok((
+            format!("{n} replaced"),
+            format!("{} edited ({n} replaced).", self.show(&file)),
+        ))
     }
 
-    async fn run_command(&mut self, command: &str, timeout: usize) -> Result<(String, String), String> {
-        row("Run", command);
-        let mode = match ExecutionPolicy::evaluate(command, &self.root, SecurityMode::RequireApproval) {
-            PolicyDecision::Deny { reason } => return Err(format!("refused: {reason}")),
-            PolicyDecision::Allow if !chains(command) => SecurityMode::RequireApproval,
-            PolicyDecision::Allow | PolicyDecision::AskConfirmation { .. } => {
-                self.ask("run_command", "")?;
-                SecurityMode::AlwaysAllow
-            }
-        };
+    async fn run_command(
+        &mut self,
+        command: &str,
+        timeout: usize,
+    ) -> Result<(String, String), String> {
+        let mode =
+            match ExecutionPolicy::evaluate(command, &self.root, SecurityMode::RequireApproval) {
+                PolicyDecision::Deny { reason } => return Err(format!("refused: {reason}")),
+                PolicyDecision::Allow if !chains(command) => SecurityMode::RequireApproval,
+                PolicyDecision::Allow | PolicyDecision::AskConfirmation { .. } => {
+                    self.ask(
+                        "run_command",
+                        &format!(
+                            "{}\nin {}",
+                            command,
+                            cluaiz_api::cep::roots::display(&self.root)
+                        ),
+                    )?;
+                    SecurityMode::AlwaysAllow
+                }
+            };
         // Ctrl+C stops the command (the handler sets the cancel signal while this runs)
         let (cancel, cancel_rx) = CancelHandle::new();
-        cluaiz_core::GLOBAL_CANCEL_SIGNAL.store(false, Ordering::SeqCst);
+        self.check_running()?;
         crate::chat::GENERATING.store(true, Ordering::SeqCst);
+        let display = self.display.clone();
         let watcher = tokio::spawn(async move {
             loop {
                 tokio::time::sleep(std::time::Duration::from_millis(100)).await;
-                if cluaiz_core::GLOBAL_CANCEL_SIGNAL.load(Ordering::SeqCst) {
+                if display.closing()
+                    || display.interrupted()
+                    || cluaiz_core::GLOBAL_CANCEL_SIGNAL.load(Ordering::SeqCst)
+                {
                     cancel.cancel();
                     break;
                 }
             }
         });
-        let result = SandboxTerminalRunner::execute_advanced(command, &self.root, mode, None, None, Some(timeout as u64), Some(cancel_rx)).await;
+        let result = SandboxTerminalRunner::execute_advanced(
+            command,
+            &self.root,
+            mode,
+            None,
+            None,
+            Some(timeout as u64),
+            Some(cancel_rx),
+        )
+        .await;
         watcher.abort();
         crate::chat::GENERATING.store(false, Ordering::SeqCst);
         cluaiz_core::GLOBAL_CANCEL_SIGNAL.store(false, Ordering::SeqCst);
         let run = result.map_err(|e| e.to_string())?;
+        self.cancelled = run.cancelled;
         let mut out = format!("Exit code {}", run.exit_code);
         if run.cancelled {
             out.push_str(" (stopped)");
@@ -342,24 +510,20 @@ impl Tools {
             out.push_str(&format!("\nstderr:\n{}", run.stderr.trim_end()));
         }
         let lines = run.stdout.lines().count() + run.stderr.lines().count();
-        let state = if run.cancelled { "stopped".to_string() } else { format!("exit {}", run.exit_code) };
+        let state = if run.cancelled {
+            "stopped".to_string()
+        } else {
+            format!("exit {}", run.exit_code)
+        };
+        if run.cancelled || run.exit_code != 0 {
+            return Err(out);
+        }
         Ok((format!("{state}, {lines} lines of output"), out))
     }
 
-    /// A path relative to the working folder, `..` resolved without touching the disk
-    fn resolve(&self, path: &str) -> PathBuf {
-        let joined = self.root.join(path.trim());
-        let mut out = PathBuf::new();
-        for part in joined.components() {
-            match part {
-                Component::ParentDir => {
-                    out.pop();
-                }
-                Component::CurDir => {}
-                other => out.push(other),
-            }
-        }
-        out
+    /// Shared canonical resolver also handles not-yet-created output paths.
+    fn resolve(&self, path: &str) -> Result<PathBuf, String> {
+        cluaiz_api::cep::roots::resolve(path, &self.root, true).map_err(|error| error.to_string())
     }
 
     /// The path as shown: relative inside the working folder
@@ -367,7 +531,7 @@ impl Tools {
         match path.strip_prefix(&self.root) {
             Ok(rel) if rel.as_os_str().is_empty() => ".".into(),
             Ok(rel) => rel.display().to_string().replace('\\', "/"),
-            Err(_) => path.display().to_string(),
+            Err(_) => cluaiz_api::cep::roots::display(path),
         }
     }
 
@@ -375,7 +539,25 @@ impl Tools {
         if path.starts_with(&self.root) {
             return Ok(());
         }
-        self.ask(tool, "outside the working folder")
+        self.ask(
+            tool,
+            &format!(
+                "outside the working folder: {}",
+                cluaiz_api::cep::roots::display(path)
+            ),
+        )
+    }
+
+    fn check_running(&mut self) -> Result<(), String> {
+        if self.display.closing()
+            || self.display.interrupted()
+            || cluaiz_core::GLOBAL_CANCEL_SIGNAL.load(Ordering::SeqCst)
+        {
+            self.cancelled = true;
+            Err("Cancelled before execution; nothing changed".into())
+        } else {
+            Ok(())
+        }
     }
 
     /// The user's answer to one call; Err is what the model is told when it is not allowed.
@@ -383,24 +565,23 @@ impl Tools {
         if self.allow_all || self.always.contains(tool) {
             return Ok(());
         }
-        if !std::io::stdin().is_terminal() {
-            return Err("not allowed: there is no terminal to ask the user (cluaiz agent --yes allows it)".into());
+        if !self.display.screen_enabled() && !std::io::stdin().is_terminal() {
+            return Err(
+                "not allowed: there is no terminal to ask the user (cluaiz agent --yes allows it)"
+                    .into(),
+            );
         }
-        let why = if why.is_empty() { String::new() } else { format!(" ({why})") };
-        let answer = tokio::task::block_in_place(|| {
-            eprint!("  {}{} {} ", "Allow?".yellow().bold(), why, "[y]es / [n]o / [a]lways this session:".dimmed());
-            let _ = std::io::stderr().flush();
-            let mut line = String::new();
-            let _ = std::io::stdin().lock().read_line(&mut line);
-            line.trim().to_lowercase()
-        });
-        match answer.as_str() {
-            "y" | "yes" => Ok(()),
-            "a" | "always" => {
+        let answer = tokio::task::block_in_place(|| self.display.approve(tool, why));
+        match answer {
+            ApprovalResponse::Allow => Ok(()),
+            ApprovalResponse::Session => {
                 self.always.insert(tool.to_string());
                 Ok(())
             }
-            _ => Err("the user did not allow this; ask them what to do instead".into()),
+            ApprovalResponse::Feedback(text) => {
+                Err(format!("The user did not allow this and said: {text}"))
+            }
+            ApprovalResponse::Deny => Err("the user did not allow this; nothing executed".into()),
         }
     }
 }
@@ -408,17 +589,28 @@ impl Tools {
 /// The policy reads the start of a line: `ls; rm -r src` or `echo x > file` start read-only. A line
 /// that chains, pipes or redirects asks like any other change.
 fn chains(command: &str) -> bool {
-    [">", "<", ";", "|", "&", "`", "$(", "\n"].iter().any(|c| command.contains(c))
+    [">", "<", ";", "|", "&", "`", "$(", "\n"]
+        .iter()
+        .any(|c| command.contains(c))
 }
 
-/// `● Read src/main.rs`
-fn row(action: &str, target: &str) {
-    eprintln!("{} {} {}", "●".cyan(), action.bold(), target);
-}
-
-/// `  ⎿ 120 lines`
-fn done(summary: &str) {
-    eprintln!("  {} {}", "⎿".dimmed(), summary.dimmed());
+/// Bounded directory enumeration shared by the tool formatter and passive completion.
+pub(super) fn directory_entries(dir: &Path) -> std::io::Result<Vec<(bool, String)>> {
+    let mut entries: Vec<_> = std::fs::read_dir(dir)?
+        .flatten()
+        .take(LIST_ENTRIES + 1)
+        .map(|entry| {
+            (
+                entry.file_type().is_ok_and(|kind| kind.is_dir()),
+                entry.file_name().to_string_lossy().into_owned(),
+            )
+        })
+        .collect();
+    entries.sort_by(|a, b| {
+        b.0.cmp(&a.0)
+            .then(a.1.to_lowercase().cmp(&b.1.to_lowercase()))
+    });
+    Ok(entries)
 }
 
 /// A long result keeps its start and end
@@ -434,7 +626,12 @@ fn clip(text: &str) -> String {
     while !text.is_char_boundary(tail) {
         tail += 1;
     }
-    format!("{}\n… ({} characters left out) …\n{}", &text[..head], tail - head, &text[tail..])
+    format!(
+        "{}\n… ({} characters left out) …\n{}",
+        &text[..head],
+        tail - head,
+        &text[tail..]
+    )
 }
 
 #[cfg(test)]
@@ -445,7 +642,11 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("cluaiz-agent-tools-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("src")).unwrap();
-        std::fs::write(dir.join("src/main.rs"), "fn main() {\r\n    println!(\"hi\");\r\n}\r\n").unwrap();
+        std::fs::write(
+            dir.join("src/main.rs"),
+            "fn main() {\r\n    println!(\"hi\");\r\n}\r\n",
+        )
+        .unwrap();
         (Tools::new(dir.clone(), true), dir)
     }
 
@@ -454,16 +655,28 @@ mod tests {
         let (mut t, dir) = tools();
         let read = t.run("read_file", r#"{"path": "src/main.rs"}"#).await;
         assert!(read.starts_with("    1\tfn main() {"), "{read}");
-        let found = t.run("search", r#"{"pattern": "println", "glob": "*.rs"}"#).await;
+        let found = t
+            .run("search", r#"{"pattern": "println", "glob": "*.rs"}"#)
+            .await;
         assert_eq!(found, "src/main.rs:2: println!(\"hi\");");
         // Plain line breaks match the file's Windows ones
         let edit = t.run("edit_file", r#"{"path": "src/main.rs", "old_text": "{\n    println!(\"hi\");", "new_text": "{\n    println!(\"bye\");"}"#).await;
         assert_eq!(edit, "src/main.rs edited (1 replaced).");
-        assert!(std::fs::read_to_string(dir.join("src/main.rs")).unwrap().contains("println!(\"bye\");\r\n"));
-        let twice = t.run("edit_file", r#"{"path": "src/main.rs", "old_text": "nothing like this", "new_text": "x"}"#).await;
+        assert!(std::fs::read_to_string(dir.join("src/main.rs"))
+            .unwrap()
+            .contains("println!(\"bye\");\r\n"));
+        let twice = t
+            .run(
+                "edit_file",
+                r#"{"path": "src/main.rs", "old_text": "nothing like this", "new_text": "x"}"#,
+            )
+            .await;
         assert!(twice.starts_with("Error: old_text is not in the file"));
         assert_eq!(t.run("list_dir", "{}").await, "src/");
-        assert!(t.run("nope", "{}").await.starts_with("Error: there is no tool named 'nope'"));
+        assert!(t
+            .run("nope", "{}")
+            .await
+            .starts_with("Error: there is no tool named 'nope'"));
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -471,15 +684,76 @@ mod tests {
     fn a_read_only_start_does_not_cover_the_rest_of_the_line() {
         assert!(!chains("git status"));
         assert!(!chains("Get-ChildItem src"));
-        for line in ["ls; rm -r src", "echo hi > notes.txt", "cat a | tee b", "dir && del x", "echo $(whoami)"] {
+        for line in [
+            "ls; rm -r src",
+            "echo hi > notes.txt",
+            "cat a | tee b",
+            "dir && del x",
+            "echo $(whoami)",
+        ] {
             assert!(chains(line), "{line}");
         }
     }
 
     #[test]
     fn paths_resolve_inside_the_folder() {
-        let t = Tools::new(PathBuf::from("/work/app"), false);
-        assert_eq!(t.resolve("src/../lib.rs"), PathBuf::from("/work/app/lib.rs"));
-        assert!(!t.resolve("../../etc/passwd").starts_with("/work/app"));
+        let dir = std::env::temp_dir().join(format!("cluaiz-paths-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let t = Tools::new(dir.clone(), false);
+        assert_eq!(t.resolve("src/../lib.rs").unwrap(), t.root.join("lib.rs"));
+        assert!(!t.resolve("../outside").unwrap().starts_with(&t.root));
+        std::fs::remove_dir_all(dir).unwrap();
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_denied_write_and_feedback_do_not_mutate_files() {
+        use std::sync::{atomic::AtomicBool, mpsc, Arc};
+        let dir = tempfile::tempdir().unwrap();
+        for response in [
+            ApprovalResponse::Deny,
+            ApprovalResponse::Feedback("Keep My API".into()),
+        ] {
+            let (sender, receiver) = mpsc::sync_channel(16);
+            let mut t = Tools::new(dir.path().into(), false);
+            t.set_display(Display::screen(sender, Arc::new(AtomicBool::new(false))));
+            let responder = std::thread::spawn(move || {
+                let mut response = Some(response);
+                while let Ok(event) = receiver.recv() {
+                    if let Event::Approval { reason, reply, .. } = event {
+                        assert!(reason.contains("new.txt"));
+                        assert!(reason.contains("+ proposed content"));
+                        reply.send(response.take().unwrap()).unwrap();
+                        // Keep receiving ToolEnd so the bounded channel stays connected.
+                    } else if matches!(event, Event::ToolEnd { .. }) {
+                        break;
+                    }
+                }
+            });
+            let result = t
+                .run(
+                    "write_file",
+                    r#"{"path":"new.txt","content":"proposed content"}"#,
+                )
+                .await;
+            assert!(result.starts_with("Error:"), "{result}");
+            assert!(!dir.path().join("new.txt").exists());
+            if result.contains("said:") {
+                assert!(result.contains("Keep My API"));
+            }
+            responder.join().unwrap();
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn test_invalid_arguments_do_not_write_and_failed_command_is_error() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut t = Tools::new(dir.path().into(), true);
+        for args in ["{", "[]", "null"] {
+            assert!(t.run("write_file", args).await.starts_with("Error:"));
+        }
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 0);
+        let result = t.run("run_command", r#"{"command":"exit 7"}"#).await;
+        assert!(result.starts_with("Error:"), "{result}");
+        assert!(result.contains("Exit code 7"), "{result}");
     }
 }

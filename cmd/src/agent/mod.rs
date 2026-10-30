@@ -4,7 +4,13 @@
 //! model's own template renders them, `<tool_call>` blocks come back), on the same loaded model and
 //! settings as `cluaiz run`.
 
+mod commands;
+mod completion;
+mod display;
+mod terminal;
+mod terminal_state;
 pub mod tools;
+mod validation;
 
 use std::io::{self, IsTerminal, Read};
 use std::path::PathBuf;
@@ -18,7 +24,16 @@ use colored::Colorize;
 use crate::chat::{print, ChatOptions, Session};
 use crate::cli::args::{LoadArgs, SampleArgs, ThinkArgs};
 use crate::cli::models::{self, Lookup};
+use display::{Display, Event};
 use tools::Tools;
+
+#[derive(Clone, Copy, Debug, Default, clap::ValueEnum)]
+pub enum UiMode {
+    #[default]
+    Auto,
+    Plain,
+    Tui,
+}
 
 /// Calls one request may make before the agent stops and asks the user
 const MAX_STEPS: usize = 40;
@@ -27,11 +42,19 @@ const MAX_PROJECT_NOTES: usize = 8_000;
 
 #[derive(clap::Args, Default)]
 pub struct AgentArgs {
+    /// Terminal interface: auto for interactive terminals, plain for scripts
+    #[arg(long, value_enum, default_value = "auto")]
+    pub ui: UiMode,
     /// Task to do, then exit (no task: chat; piped stdin is the task)
     #[arg(trailing_var_arg = true)]
     pub words: Vec<String>,
     /// Task to do, then exit
-    #[arg(short = 'p', long = "prompt", value_name = "TEXT", conflicts_with = "words")]
+    #[arg(
+        short = 'p',
+        long = "prompt",
+        value_name = "TEXT",
+        conflicts_with = "words"
+    )]
     pub prompt: Option<String>,
     /// Installed model id or path to a .gguf file (default: the active chat model)
     #[arg(short = 'm', long = "model", value_name = "MODEL")]
@@ -49,7 +72,12 @@ pub struct AgentArgs {
     #[arg(long = "system-prompt", value_name = "TEXT")]
     pub system_prompt: Option<String>,
     /// Most tokens per answer (default: what the context leaves)
-    #[arg(short = 'n', long = "n-predict", visible_alias = "predict", value_name = "N")]
+    #[arg(
+        short = 'n',
+        long = "n-predict",
+        visible_alias = "predict",
+        value_name = "N"
+    )]
     pub n_predict: Option<usize>,
     #[command(flatten)]
     pub load: LoadArgs,
@@ -59,17 +87,23 @@ pub struct AgentArgs {
     pub think: ThinkArgs,
 }
 
-const HELP: &str = "\
-Commands:
-  /yes        Allow every change and command for the rest of the session
-  /ask        Ask again before each change and command
-  /clear      Forget the conversation
-  /bye        Exit (also Ctrl+D)
-  /?          This help
-
-Use \"\"\" to begin and end a multi-line message. Ctrl+C stops an answer or a command.";
+impl AgentArgs {
+    pub fn screen_enabled(&self) -> bool {
+        !matches!(self.ui, UiMode::Plain)
+            && (self.interactive
+                || self.prompt.is_none() && self.words.is_empty()
+                || matches!(self.ui, UiMode::Tui))
+            && cluaiz_terminal::terminal::is_interactive()
+    }
+}
 
 pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
+    let screen_enabled = args.screen_enabled();
+    if matches!(args.ui, UiMode::Tui) && !screen_enabled {
+        return Err(eyre!(
+            "Interactive terminal required; use --ui plain for redirected output"
+        ));
+    }
     let name = args
         .model
         .clone()
@@ -83,7 +117,10 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
         Some(dir) => dir.clone(),
         None => std::env::current_dir()?,
     };
-    let dir = dunce(dir.canonicalize().map_err(|e| eyre!("{}: {}", dir.display(), e))?);
+    let dir = dunce(
+        dir.canonicalize()
+            .map_err(|e| eyre!("{}: {}", dir.display(), e))?,
+    );
 
     let mut task = match (&args.prompt, args.words.is_empty()) {
         (Some(p), _) => Some(p.clone()),
@@ -100,9 +137,11 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
     let mut options = ChatOptions::new(&args.load, &args.sample, &args.think);
     options.max_tokens = args.n_predict;
     options.verbose = verbose;
-    crate::chat::install_interrupt_handler();
+    if !screen_enabled {
+        crate::chat::install_interrupt_handler();
+    }
     let session = Session::open(Arc::new(EngineHost::new()), path, id, options).await?;
-    if interactive || verbose {
+    if (interactive || verbose) && !screen_enabled {
         print::plan(&session).await;
     }
 
@@ -111,7 +150,11 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
         tools: Tools::new(dir, args.yes),
         session,
         history: Vec::new(),
+        display: Display::default(),
     };
+    if screen_enabled {
+        return terminal::run(agent, task, interactive).await;
+    }
     if interactive {
         eprintln!("{} {}", "Working in".dimmed(), agent.tools.root().display());
         eprintln!("{}", "Type a task, /? for help, /bye to exit.".dimmed());
@@ -135,23 +178,10 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
         if text.is_empty() {
             continue;
         }
-        match text {
-            "/bye" | "/exit" => return Ok(()),
-            "/?" | "/help" => println!("{HELP}"),
-            "/clear" => {
-                agent.history.clear();
-                println!("Conversation cleared.");
-            }
-            "/yes" => {
-                agent.tools.allow_all = true;
-                println!("Changes and commands now run without asking.");
-            }
-            "/ask" => {
-                agent.tools.allow_all = false;
-                println!("Each change and command asks first.");
-            }
-            _ if text.starts_with('/') => eprintln!("{} unknown command {} (/? for help)", "error:".red(), text),
-            _ => {
+        match agent.command(text) {
+            Some(true) => return Ok(()),
+            Some(false) => {}
+            None => {
                 if let Err(e) = agent.turn(text).await {
                     eprintln!("{} {}", "error:".red(), e);
                 }
@@ -166,11 +196,58 @@ struct Agent {
     tools: Tools,
     system: String,
     history: Vec<ChatMessage>,
+    display: Display,
 }
 
 impl Agent {
+    fn status(&self) -> String {
+        format!(
+            "Context {} tokens · {} · /help  /theme  @files",
+            self.session.plan.context_window,
+            if self.tools.allow_all {
+                "Session changes allowed"
+            } else {
+                "Ask before changes"
+            }
+        )
+    }
+
+    /// Commands use the same implementation in both terminal modes.
+    fn command(&mut self, text: &str) -> Option<bool> {
+        let message = match text {
+            "/bye" | "/exit" => return Some(true),
+            "/?" | "/help" => commands::help(),
+            "/theme" => {
+                self.display.emit(Event::Themes);
+                return Some(false);
+            }
+            "/clear" => {
+                self.history.clear();
+                "Conversation cleared.".into()
+            }
+            "/yes" => {
+                self.tools.allow_all = true;
+                "Changes and commands now run without asking (existing hard denials still apply)."
+                    .into()
+            }
+            "/ask" => {
+                self.tools.require_approval();
+                "Each change and command asks first.".into()
+            }
+            _ if text.starts_with('/') => format!("Unknown command {text}; use /help"),
+            _ => return None,
+        };
+        self.display.emit(Event::Message("Agent".into(), message));
+        Some(false)
+    }
+
     /// One request: answers and tool calls until an answer has no call.
     async fn turn(&mut self, text: &str) -> Result<()> {
+        if self.display.closing() {
+            return Ok(());
+        }
+        self.display.begin_turn();
+        cluaiz_core::GLOBAL_CANCEL_SIGNAL.store(false, std::sync::atomic::Ordering::SeqCst);
         self.history.push(ChatMessage::new("user", text));
         let schemas = Tools::schemas();
         for _ in 0..MAX_STEPS {
@@ -178,20 +255,44 @@ impl Agent {
                 let mut messages = Vec::with_capacity(self.history.len() + 1);
                 messages.push(ChatMessage::new("system", self.system.clone()));
                 messages.extend(self.history.iter().cloned());
-                let mut out = print::StreamPrinter::new(self.session.options.show_thinking).hiding_tool_calls();
-                match self.session.generate(messages, Some(&schemas), &mut out).await {
+                let mut out = self.display.output(self.session.options.show_thinking);
+                match self
+                    .session
+                    .generate(messages, Some(&schemas), &mut *out)
+                    .await
+                {
                     Ok(done) => break done,
-                    Err(e) if e.to_string().contains("exceeds the available context") && self.make_room() => {
-                        eprintln!("{}", "Context full: the oldest part of the conversation was left out.".dimmed());
+                    Err(e)
+                        if e.to_string().contains("exceeds the available context")
+                            && self.make_room() =>
+                    {
+                        self.display.emit(Event::Message(
+                            "Context".into(),
+                            "Context full: the oldest part of the conversation was left out."
+                                .into(),
+                        ));
                     }
                     Err(e) => return Err(e),
                 }
             };
-            if self.session.options.verbose || report.cancelled {
+            if self.session.options.verbose && !self.display.screen_enabled() {
                 print::stats(&report);
             }
-            let (said, calls) = cluaiz_core::tool_calls::split_calls(&answer);
-            if calls.is_empty() || report.cancelled {
+            if report.cancelled || self.display.interrupted() {
+                let said = answer
+                    .split(cluaiz_core::tool_calls::OPEN)
+                    .next()
+                    .unwrap_or_default();
+                self.history.push(ChatMessage::new("assistant", said));
+                self.display.emit(Event::Message(
+                    "Stopped".into(),
+                    "Generation cancelled.".into(),
+                ));
+                return Ok(());
+            }
+            let (said, calls) =
+                validation::calls(&answer, report.stop).map_err(|error| eyre!(error))?;
+            if calls.is_empty() {
                 self.history.push(ChatMessage::new("assistant", said));
                 return Ok(());
             }
@@ -201,13 +302,23 @@ impl Agent {
                 kept.push('\n');
                 kept.push_str(&cluaiz_core::tool_calls::canonical_call(name, arguments));
             }
-            self.history.push(ChatMessage::new("assistant", kept.trim().to_string()));
+            self.history
+                .push(ChatMessage::new("assistant", kept.trim().to_string()));
             for (name, arguments) in &calls {
+                if self.display.closing() || self.display.interrupted() {
+                    return Ok(());
+                }
                 let result = self.tools.run(name, arguments).await;
                 self.history.push(ChatMessage::new("tool", result));
+                if self.tools.cancelled {
+                    return Ok(());
+                }
             }
         }
-        eprintln!("{}", format!("Stopped after {MAX_STEPS} steps; say how to go on.").yellow());
+        self.display.emit(Event::Message(
+            "Stopped".into(),
+            format!("Stopped after {MAX_STEPS} steps; say how to go on."),
+        ));
         Ok(())
     }
 
@@ -218,7 +329,11 @@ impl Agent {
             self.history.drain(..next + 1);
             return true;
         }
-        match self.history.iter_mut().find(|m| m.role == "tool" && m.content.len() > 200) {
+        match self
+            .history
+            .iter_mut()
+            .find(|m| m.role == "tool" && m.content.len() > 200)
+        {
             Some(result) => {
                 result.content = "(This result was left out: the context was full. Run the tool again for less, e.g. a few lines.)".into();
                 true
