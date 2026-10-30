@@ -7,6 +7,7 @@ pub mod units;
 pub mod contracts;
 pub mod chat;
 pub mod tool_calls;
+pub mod live;
 pub mod media;
 pub mod media_limits;
 pub mod processing;

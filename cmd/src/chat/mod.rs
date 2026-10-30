@@ -167,6 +167,7 @@ impl Session {
         let mut filter = StreamingReasoningFilter::new(start_tag, end_tag, false, no_thinking);
 
         cluaiz_core::GLOBAL_CANCEL_SIGNAL.store(false, Ordering::SeqCst);
+        cluaiz_core::live::start();
         GENERATING.store(true, Ordering::SeqCst);
         let result = self.stream(&prompt, max_tokens, &mut filter, out).await;
         GENERATING.store(false, Ordering::SeqCst);
@@ -201,11 +202,18 @@ impl Session {
                 answer.push_str(&c);
             }
         };
-        while let Some(token) = rx.recv().await {
-            if let Some(error) = cluaiz_runtime::stream_error(&token) {
-                return Err(eyre!("{}", error));
+        let mut tick = tokio::time::interval(std::time::Duration::from_millis(120));
+        loop {
+            tokio::select! {
+                token = rx.recv() => {
+                    let Some(token) = token else { break };
+                    if let Some(error) = cluaiz_runtime::stream_error(&token) {
+                        return Err(eyre!("{}", error));
+                    }
+                    emit(filter.process_token(&token), out);
+                }
+                _ = tick.tick() => out.tick(),
             }
-            emit(filter.process_token(&token), out);
         }
         emit(filter.flush_final(), out);
         Ok(answer)

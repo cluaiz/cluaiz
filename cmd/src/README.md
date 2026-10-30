@@ -34,6 +34,12 @@ cluaiz agent -m qwen3 --dir ../app --yes "..."  # model, folder, no questions
   `.git`, `target`, `node_modules`, ...), `write_file`, `edit_file` (exact text, once unless
   `replace_all`), `run_command` (PowerShell on Windows, `sh` elsewhere).
 - Each call is one row (`● Read src/main.rs`, `⎿ 120 lines`); a change shows its `-` / `+` lines.
+- While nothing is printed, a status line on stderr says what the model is doing: reading the
+  prompt, tokens written (hidden thinking), or the call being written with its path or command
+  (`⠦ write_file shapes.py  1840 chars  21s`). The Engine holds a call back until generation ends;
+  `cluaiz_core::live` carries its progress. `cluaiz run` shows the same line.
+- A full context does not end the conversation: the oldest earlier request is left out (then the
+  oldest long tool result of this one) and the answer is asked again.
 - Reads inside the folder run at once. A read outside it, every write or edit, and every command
   that is not read-only ask `[y]es / [n]o / [a]lways this session`. `--yes` or `/yes` allows them all.
   Commands go through `cluaiz_agents::ExecutionPolicy`: destructive patterns are refused even then.

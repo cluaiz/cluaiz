@@ -748,6 +748,7 @@ pub(crate) fn stream_tokens_with_media(
         let mut utf8_buffer = Vec::new();
 
         let mut n_gen = 0;
+        cluaiz_core::live::start();
 
         // Room for thinking = context left after the prompt minus the answer's reserve, so whatever budget
         // was chosen, the answer still fits; Low/Medium/High are shares of it (settings, Auto = High)
@@ -899,6 +900,10 @@ pub(crate) fn stream_tokens_with_media(
                             break;
                         }
                         let parsed = native_parser.as_ref().and_then(|parser| parser.parse(&generated, true).ok());
+                        // The call being written is not sent yet: a terminal shows it as progress
+                        if let Some(call) = parsed.as_ref().and_then(|p| p["tool_calls"].as_array()).and_then(|calls| calls.last()) {
+                            cluaiz_core::live::set_call(call["name"].as_str().unwrap_or_default(), call["arguments"].as_str().unwrap_or_default());
+                        }
                         if let Some(delta) = parsed.as_ref().and_then(|p| p["content"].as_str()).and_then(|c| content_stream.delta(c)) {
                             if !callback(delta) {
                                 report.stop = "cancel";
@@ -921,6 +926,7 @@ pub(crate) fn stream_tokens_with_media(
                 }
             }
 
+            cluaiz_core::live::token();
             if in_think_block {
                 think_tokens_count += 1;
                 thought = true;
