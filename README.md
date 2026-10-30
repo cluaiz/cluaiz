@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="" srcset="assets/cluaiz-light.webp">
-    <img alt="Cluaiz Banner" src="assets/cluaiz-light.webp" width="40%">
+    <source media="" srcset="assets/cluaiz-cog.webp">
+    <img alt="Cluaiz Cog" src="assets/cluaiz-cog.webp" width="40%">
   </picture>
 </p>
 
