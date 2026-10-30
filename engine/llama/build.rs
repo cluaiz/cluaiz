@@ -91,16 +91,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .define("LLAMA_BUILD_EXAMPLES", "OFF")
         .define("LLAMA_BUILD_TESTS",    "OFF")
         .define("LLAMA_BUILD_SERVER",   "OFF")
-        // FIX 2: Disable llama-bench and all standalone tools.
-        // llama-bench pulls in cpp-httplib which links OpenSSL.
-        // On macOS x64, OpenSSL is not in the default linker path → LNK error.
-        // We only need the static libraries (llama.a, ggml.a, etc.), not any binaries.
+        // Cluaiz uses its own CLI and Rust/rustls downloader, not llama.cpp's tools or HTTPS client.
         .define("LLAMA_BUILD_TOOLS",    "OFF")
         .define("LLAMA_BUILD_MTMD",     "ON")
         // Shared media owns file decoding. Do not enable mtmd's FFmpeg subprocess path.
         .define("MTMD_VIDEO",           "OFF")
         .define("LLAMA_BUILD_APP",      "OFF")
         .define("LLAMA_BUILD_COMMON",   "ON")
+        .define("LLAMA_OPENSSL",        "OFF")
         .define("LLAMA_STATIC",         if dynamic_backends { "OFF" } else { "ON" })
         .define("BUILD_SHARED_LIBS",    if dynamic_backends { "ON" } else { "OFF" })
         .define("GGML_BACKEND_DL",      if dynamic_backends { "ON" } else { "OFF" })

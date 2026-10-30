@@ -26,6 +26,8 @@ The display driver of the GPU itself is never shipped: it comes from NVIDIA, AMD
 
 The installers (`install.sh`, `install.ps1`) read `SHA256SUMS.txt` from the release, download only the files for the machine, and refuse any file whose checksum does not match.
 
+On Windows, each smoke-test Engine command runs through `run_clean_windows.ps1`: only the package folder and Windows system DLL locations are available, without developer tools on PATH. This catches runtime libraries accidentally supplied by the build runner. Cluaiz downloads models through Rust/rustls; its native llama.cpp build disables the separate OpenSSL-based HTTPS helper.
+
 The older split workflows (`cluaize-cmd`, `-engine`, `-kernel-*`, `publish-registry`) and their registry scripts were removed: they built package names that no longer exist and never produced a release.
 
 ---

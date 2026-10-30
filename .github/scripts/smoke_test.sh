@@ -10,22 +10,32 @@ model="$2"
 exe="$dir/cluaiz"
 [ -f "$dir/cluaiz.exe" ] && exe="$dir/cluaiz.exe"
 
+windows=false
+case "$(uname -s)" in MINGW* | MSYS* | CYGWIN*) windows=true ;; esac
+run_engine() {
+  if $windows; then
+    powershell.exe -NoProfile -File .github/scripts/run_clean_windows.ps1 "$(cygpath -aw "$exe")" "$@"
+  else
+    "$exe" "$@"
+  fi
+}
+
 export CLUAIZ_HOME="${RUNNER_TEMP:-$(mktemp -d)}/cluaiz-smoke-home"
 # No terminal in CI: answer the download confirmation with its default
 export CLUAIZ_NONINTERACTIVE=1
 rm -rf "$CLUAIZ_HOME"
 
-"$exe" --version
-"$exe" status
+run_engine --version
+run_engine status
 # `run` takes the registered ID: given the download name of a model that is already installed, it
 # only prints that ID (cmd/src/cli/run.rs)
 pull_log="${RUNNER_TEMP:-/tmp}/cluaiz-smoke-pull.log"
-"$exe" pull "$model" | tee "$pull_log"
+run_engine pull "$model" | tee "$pull_log"
 id=$(awk '/Registered ID:/ { gsub(/\033\[[0-9;]*m|\r/, ""); print $NF }' "$pull_log")
 [ -n "$id" ] || { echo "pull did not print the registered ID"; exit 1; }
 
 log="${RUNNER_TEMP:-/tmp}/cluaiz-smoke-run.log"
-"$exe" -v run "$id" -n 32 "Reply with one short sentence: what is the capital of France?" 2>"$log" | tee "${log%.log}.out"
+run_engine -v run "$id" -n 32 "Reply with one short sentence: what is the capital of France?" 2>"$log" | tee "${log%.log}.out"
 
 # The CPU backend was loaded from the folder and the model answered
 grep -q "Backends loaded" "$log" || { echo "backends were not loaded"; cat "$log"; exit 1; }
