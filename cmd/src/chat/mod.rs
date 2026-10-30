@@ -3,6 +3,7 @@
 //! the API behave the same.
 
 pub mod markdown;
+pub mod output;
 pub mod print;
 pub mod repl;
 
@@ -60,6 +61,7 @@ pub struct TurnReport {
     pub timings: Option<GenerationTimings>,
     pub thinking: Option<ThinkingReport>,
     pub cancelled: bool,
+    pub stop: &'static str,
 }
 
 /// True while an answer is streaming: Ctrl+C then stops the answer instead of the program.
@@ -130,7 +132,7 @@ impl Session {
     /// are function schemas the model may call, rendered by its own template as for an API request's
     /// `tools`; its calls come back in the answer as `<tool_call>` blocks. Returns the answer without
     /// its thinking.
-    pub async fn generate(&self, messages: Vec<ChatMessage>, tools: Option<&serde_json::Value>, out: &mut print::StreamPrinter) -> Result<(String, TurnReport)> {
+    pub async fn generate(&self, messages: Vec<ChatMessage>, tools: Option<&serde_json::Value>, out: &mut dyn output::Output) -> Result<(String, TurnReport)> {
         let settings = Settings::current();
         let opt = &settings.optimization;
         let n_ctx = cluaiz_core::active_context_tokens().unwrap_or(self.plan.context_window) as usize;
@@ -178,12 +180,13 @@ impl Session {
             timings: self.host.last_timings().await,
             thinking: self.host.last_thinking().await,
             cancelled,
+            stop: self.host.last_context().await.map(|report| report.stop).unwrap_or("unknown"),
         };
         Ok((answer, report))
     }
 
     /// Streams one generation; returns the answer text (thinking excluded).
-    async fn stream(&self, prompt: &str, max_tokens: usize, filter: &mut StreamingReasoningFilter, out: &mut print::StreamPrinter) -> Result<String> {
+    async fn stream(&self, prompt: &str, max_tokens: usize, filter: &mut StreamingReasoningFilter, out: &mut dyn output::Output) -> Result<String> {
         let mut rx = match self.host.dispatch_stream(prompt, max_tokens).await {
             HostResponse::TokenStream(rx) => rx,
             HostResponse::Completed(text) => {
@@ -193,7 +196,7 @@ impl Session {
             HostResponse::Error(e) => return Err(eyre!(e)),
         };
         let mut answer = String::new();
-        let mut emit = |(content, reasoning): (Option<String>, Option<String>), out: &mut print::StreamPrinter| {
+        let mut emit = |(content, reasoning): (Option<String>, Option<String>), out: &mut dyn output::Output| {
             if let Some(r) = reasoning {
                 out.reasoning(&r);
             }

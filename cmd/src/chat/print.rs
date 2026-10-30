@@ -187,16 +187,16 @@ impl StreamPrinter {
 /// Text of a stream with its `<tool_call>` blocks left out. A tail that may be the start of a block
 /// is held back until the next text shows whether it is one.
 #[derive(Default)]
-struct CallFilter {
+pub(crate) struct CallFilter {
     held: String,
     inside: bool,
 }
 
 impl CallFilter {
-    const OPEN: &'static str = "<tool_call>";
-    const CLOSE: &'static str = "</tool_call>";
+    const OPEN: &'static str = cluaiz_core::tool_calls::OPEN;
+    const CLOSE: &'static str = cluaiz_core::tool_calls::CLOSE;
 
-    fn pass(&mut self, text: &str) -> String {
+    pub(crate) fn pass(&mut self, text: &str) -> String {
         self.held.push_str(text);
         let mut shown = String::new();
         loop {
@@ -219,7 +219,7 @@ impl CallFilter {
     }
 
     /// The call being written (inline form): its name and arguments' text so far
-    fn partial(&self) -> Option<(String, String)> {
+    pub(crate) fn partial(&self) -> Option<(String, String)> {
         if !self.inside {
             return None;
         }
@@ -229,7 +229,7 @@ impl CallFilter {
     }
 
     /// What is still held back: shown when it was not a block after all
-    fn finish(&mut self) -> String {
+    pub(crate) fn finish(&mut self) -> String {
         let rest = std::mem::take(&mut self.held);
         std::mem::replace(&mut self.inside, false).then(String::new).unwrap_or(rest)
     }
