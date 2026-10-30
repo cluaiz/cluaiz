@@ -15,6 +15,8 @@
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 
 $Repo = 'cluaiz/cluaiz'
 $InstallDir = if ($env:CLUAIZ_INSTALL_DIR) { $env:CLUAIZ_INSTALL_DIR } else { Join-Path $HOME '.cluaiz\bin' }
@@ -25,14 +27,28 @@ $CYAN = "$E[36m"; $GRAY = "$E[90m"; $GREEN = "$E[32m"; $NC = "$E[0m"
 function Write-Step ([string]$msg) { Write-Host ("  " + $GRAY + "* " + $msg + $NC) }
 function Complete-Step ([string]$msg) { Write-Host ("  " + $GREEN + "[DONE] " + $NC + $msg) }
 
-# --- Logo (Standard ASCII - Clean on all consoles) ---
+# --- Mascot (High-Detail Braille) ---
 Write-Host ""
-Write-Host "     ______ _             _     " -ForegroundColor Cyan
-Write-Host "    / ____/| |           (_)    " -ForegroundColor Cyan
-Write-Host "   | |     | | _   _ ____ _ ____" -ForegroundColor Cyan
-Write-Host "   | |     | || | | | _  | |_  /" -ForegroundColor Cyan
-Write-Host "   | |____ | || |_| |(_| | |/ / " -ForegroundColor Cyan
-Write-Host "    \_____/|_| \__,_|\__,_|_/___|" -ForegroundColor Cyan
+Write-Host "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣠⣶⣾⣾⣿⣿⣿⣿⣿⣿⣿⣿⣶⣦⣦⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀" -ForegroundColor Cyan
+Write-Host "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀" -ForegroundColor Cyan
+Write-Host "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀" -ForegroundColor Cyan
+Write-Host "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣺⣿⣿⣿⡿⠛⠋⠈⠀⠀⠀⠀⠈⠉⠋⠀⠀⠀⠀ ⠀⠈⠋⠻⣿⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀" -ForegroundColor Cyan
+Write-Host "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⣿⣿⡟⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀   ⠀⠈⠻⣿⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀" -ForegroundColor Cyan
+Write-Host "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣰⣿⣿⡏⠀⠀⠀⠀⠀⣠⣠⡀⠀⠀⠀⠀⠀⠀ ⠀⣀⣠⣀⠀⠀⠀   ⠀⠸⣿⣿⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀" -ForegroundColor Cyan
+Write-Host "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠠⣾⣿⣿⡂⠀⠀⠀⠀⣺⣿⣿⣷⡂⠀⠀⠀⠀ ⠀⠀⣾⣿⣿⡆⠀⠀⠀⠀ ⠀⣻⣿⣿⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀" -ForegroundColor Cyan
+Write-Host "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⣿⣿⡏⠀⠀⠀⠀⠀⢺⣿⣿⣿⡂⠀⠀⠀ ⠀⠀⠈⣿⣿⣿⡏⠀⠀⠀  ⠀⣺⣿⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀" -ForegroundColor Cyan
+Write-Host "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣾⣿⣿⡯⠀⠀⠀⠀⠀⠈⠻⠻⠋⢠⣶⣶⣦⣶⣶⡆⠘⠻⠛⠂⠀⠀⠀ ⠀⠀⣺⣿⣿⣿⡂⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀" -ForegroundColor Cyan
+Write-Host "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣺⣿⣿⣿⣿⡂⠀⠀⠀⠀⠀⠀⠀ ⠀⠈⠻⡿⣿⡿⠛⠀⠀⠀⠀⠀⠀⠀⠀  ⠀⣠⣿⣿⣿⣿⣧⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀" -ForegroundColor Cyan
+Write-Host "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣰⣿⣿⣿⣿⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀    ⠀⣠⣾⣿⣿⣿⣿⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀" -ForegroundColor Cyan
+Write-Host "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣦⣢⣠⣀⣀⡀⡀⡀⡀⡀⣀⣀⣀⣠⣠⣦⣶⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀" -ForegroundColor Cyan
+Write-Host "⠀⠀⠀⠀⠀⠀⠀⠀⠀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀" -ForegroundColor Cyan
+Write-Host "⠀⠀⠀⠀⠀⠀⠀⠀⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡂⠀⠀⠀⠀⠀⠀⠀⠀" -ForegroundColor Cyan
+Write-Host "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠛⠻⡿⠿⡿⠛⠋⢻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠛⠻⡿⠿⡿⠿⠋⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀" -ForegroundColor Cyan
+Write-Host "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ⠀⠈⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠋⠀⠀⠈⠙⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀" -ForegroundColor Cyan
+Write-Host "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ⠀⠀⠈⢿⣿⣿⣿⣿⣿⣿⡿⠂⠀⠀⠀⠀⠀⠈⠻⣿⣿⣿⣿⣿⣿⣿⡋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀" -ForegroundColor Cyan
+Write-Host "⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ⠀⠀⠀⠈⠛⠻⠻⠛⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠛⠻⠻⠛⠋⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "                     [ C L U A I Z ]" -ForegroundColor Cyan
 Write-Host ""
 Write-Host "  >_ Installing cluaiz..." -ForegroundColor Gray
 Write-Host ""
