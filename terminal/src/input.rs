@@ -28,6 +28,13 @@ impl Composer {
         self.editor.lines().len()
     }
 
+    /// Completion only replaces a tail. Editing in the middle must preserve the suffix.
+    pub fn cursor_at_end(&self) -> bool {
+        let cursor = self.editor.cursor();
+        let (row, col) = (cursor.0, cursor.1);
+        row + 1 == self.editor.lines().len() && col == self.editor.lines()[row].chars().count()
+    }
+
     /// Paste is insertion only. Embedded newlines and command prefixes cannot submit.
     pub fn insert(&mut self, text: &str) -> Result<(), &'static str> {
         if text.len().saturating_add(self.byte_len()) > self.limits.input_bytes {
@@ -72,6 +79,14 @@ impl Composer {
         let text = self.text();
         *self = Self::new(self.limits);
         text
+    }
+
+    /// Replaces a draft atomically, including an oversized completion.
+    pub fn replace(&mut self, text: &str) -> Result<(), &'static str> {
+        let mut replacement = Self::new(self.limits);
+        replacement.insert(text)?;
+        *self = replacement;
+        Ok(())
     }
 
     fn byte_len(&self) -> usize {

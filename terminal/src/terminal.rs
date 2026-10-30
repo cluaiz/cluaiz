@@ -56,6 +56,18 @@ impl Screen {
         self.terminal.draw(draw).map(|_| ())
     }
 
+    /// Reads from the same Crossterm backend used by this screen, with a bounded wait.
+    pub fn read_event(
+        &self,
+        timeout: std::time::Duration,
+    ) -> io::Result<Option<crossterm::event::Event>> {
+        if crossterm::event::poll(timeout)? {
+            crossterm::event::read().map(Some)
+        } else {
+            Ok(None)
+        }
+    }
+
     /// Restores the original screen and input behavior before returning to the caller.
     pub fn close(mut self) -> io::Result<()> {
         self._mode.close()
