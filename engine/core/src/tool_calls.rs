@@ -65,7 +65,7 @@ pub fn openai_messages(messages: &[(String, String)]) -> Vec<Value> {
 
 /// The text around an assistant message's `<tool_call>` blocks, and each call's name and
 /// arguments (a JSON string). Blocks that are not a call stay in the text.
-fn split_calls(content: &str) -> (String, Vec<(String, String)>) {
+pub fn split_calls(content: &str) -> (String, Vec<(String, String)>) {
     let mut text = String::new();
     let mut calls = Vec::new();
     let mut rest = content;

@@ -7,6 +7,7 @@ use clap::{Parser, Subcommand};
 use color_eyre::Result;
 use colored::Colorize;
 
+mod agent;
 mod assets;
 mod chat;
 mod cli;
@@ -16,21 +17,24 @@ mod ui;
 use crate::core::bootstrapper::Bootstrapper;
 
 #[derive(Parser)]
-#[command(name = "cluaiz", bin_name = "cluaiz", about = "Run and serve local AI models", version, arg_required_else_help = true)]
+#[command(name = "cluaiz", bin_name = "cluaiz", about = "Run and serve local AI models", version)]
 pub struct Cli {
     /// Engine logs on stderr: -v info (with the full plan), -vv debug. The log file always has them.
     /// `cluaiz -v` alone prints the version.
     #[arg(short, long, global = true, action = clap::ArgAction::Count)]
     verbose: u8,
 
+    /// No command on a terminal: the agent in the current folder (with the active chat model)
     #[command(subcommand)]
-    command: CliCommand,
+    command: Option<CliCommand>,
 }
 
 #[derive(Subcommand)]
 enum CliCommand {
     /// Chat with a model, or answer one prompt (`cluaiz run <model> "<prompt>"`)
     Run(cli::run::RunArgs),
+    /// Coding agent in this folder: reads, searches and edits files, runs commands (asks first)
+    Agent(agent::AgentArgs),
     /// Show a model's details and the plan it would get on this machine
     Show(cli::show::ShowArgs),
     /// List installed models
@@ -314,7 +318,7 @@ async fn main() -> Result<()> {
         return Ok(());
     }
     let cli = Cli::parse_from(cli::args::normalize_llama_flags(raw));
-    init_logging(cli.verbose, matches!(cli.command, CliCommand::Serve { .. }));
+    init_logging(cli.verbose, matches!(cli.command, Some(CliCommand::Serve { .. })));
 
     // 🚀 Cluaiz BOOTSTRAP (Local Dev-Sync & Registry Verification)
     let is_dev_sync = std::env::args().any(|arg| arg == "dev-sync");
@@ -325,7 +329,23 @@ async fn main() -> Result<()> {
 
     let verbose = cli.verbose > 0;
 
-    match cli.command {
+    let command = match cli.command {
+        Some(command) => command,
+        // Bare `cluaiz`: the agent when there is a terminal and a chat model, else the help
+        None if std::io::stdin().is_terminal() && std::io::stdout().is_terminal() && cli::models::default_chat_model().is_some() => {
+            CliCommand::Agent(agent::AgentArgs::default())
+        }
+        None => {
+            let _ = <Cli as clap::CommandFactory>::command().print_help();
+            return Ok(());
+        }
+    };
+    match command {
+        CliCommand::Agent(args) => {
+            if let Err(e) = agent::execute(args, verbose).await {
+                fail("agent", e);
+            }
+        }
         CliCommand::Run(args) => {
             if let Err(e) = cli::run::execute(args, verbose).await {
                 fail("run", e);

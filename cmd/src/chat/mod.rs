@@ -63,7 +63,7 @@ pub struct TurnReport {
 }
 
 /// True while an answer is streaming: Ctrl+C then stops the answer instead of the program.
-static GENERATING: AtomicBool = AtomicBool::new(false);
+pub static GENERATING: AtomicBool = AtomicBool::new(false);
 
 /// Ctrl+C stops the running answer; at the prompt it exits (llama-cli behaviour).
 pub fn install_interrupt_handler() {
@@ -113,16 +113,27 @@ impl Session {
 
     /// Sends `text` as the next user message and streams the answer into `out`.
     pub async fn send(&mut self, text: &str, out: &mut print::StreamPrinter) -> Result<TurnReport> {
-        let settings = Settings::current();
-        let opt = &settings.optimization;
-        let n_ctx = cluaiz_core::active_context_tokens().unwrap_or(self.plan.context_window) as usize;
-
         let mut messages = Vec::with_capacity(self.history.len() + 2);
         if let Some(system) = self.options.system.as_ref().filter(|s| !s.is_empty()) {
             messages.push(ChatMessage::new("system", system.clone()));
         }
         messages.extend(self.history.iter().cloned());
         messages.push(ChatMessage::new("user", text));
+
+        let (answer, report) = self.generate(messages, None, out).await?;
+        self.history.push(ChatMessage::new("user", text));
+        self.history.push(ChatMessage::new("assistant", answer));
+        Ok(report)
+    }
+
+    /// One answer to `messages` (system prompt and history included), streamed into `out`. `tools`
+    /// are function schemas the model may call, rendered by its own template as for an API request's
+    /// `tools`; its calls come back in the answer as `<tool_call>` blocks. Returns the answer without
+    /// its thinking.
+    pub async fn generate(&self, messages: Vec<ChatMessage>, tools: Option<&serde_json::Value>, out: &mut print::StreamPrinter) -> Result<(String, TurnReport)> {
+        let settings = Settings::current();
+        let opt = &settings.optimization;
+        let n_ctx = cluaiz_core::active_context_tokens().unwrap_or(self.plan.context_window) as usize;
 
         // No max_tokens: until the model ends or the context does; the engine fits the history
         let max_tokens = self.options.max_tokens.unwrap_or(n_ctx).min(n_ctx);
@@ -138,6 +149,13 @@ impl Session {
             grammar: None,
             response_format: None,
         };
+        let mut prompt = envelope.to_prompt();
+        if let Some(tools) = tools {
+            if let Ok(mut value) = serde_json::from_str::<serde_json::Value>(&prompt) {
+                value["tools"] = tools.clone();
+                prompt = value.to_string();
+            }
+        }
 
         // Tags from llama.cpp's template engine (read at load); no tags = the model has no thinking format
         let (start_tag, end_tag) = {
@@ -150,19 +168,17 @@ impl Session {
 
         cluaiz_core::GLOBAL_CANCEL_SIGNAL.store(false, Ordering::SeqCst);
         GENERATING.store(true, Ordering::SeqCst);
-        let result = self.stream(&envelope.to_prompt(), max_tokens, &mut filter, out).await;
+        let result = self.stream(&prompt, max_tokens, &mut filter, out).await;
         GENERATING.store(false, Ordering::SeqCst);
         let cancelled = cluaiz_core::GLOBAL_CANCEL_SIGNAL.swap(false, Ordering::SeqCst);
         out.finish();
         let answer = result?;
-
-        self.history.push(ChatMessage::new("user", text));
-        self.history.push(ChatMessage::new("assistant", answer));
-        Ok(TurnReport {
+        let report = TurnReport {
             timings: self.host.last_timings().await,
             thinking: self.host.last_thinking().await,
             cancelled,
-        })
+        };
+        Ok((answer, report))
     }
 
     /// Streams one generation; returns the answer text (thinking excluded).

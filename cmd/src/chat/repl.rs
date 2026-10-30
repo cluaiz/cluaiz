@@ -47,7 +47,7 @@ fn read_line(prompt: &str) -> Option<String> {
 }
 
 /// A message: one line, or several between `"""` marks.
-fn read_message() -> Option<String> {
+pub(crate) fn read_message() -> Option<String> {
     let first = read_line(&format!("{} ", ">>>".bold()))?;
     let Some(rest) = first.trim_start().strip_prefix("\"\"\"") else {
         return Some(first);
