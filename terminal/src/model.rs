@@ -1,0 +1,33 @@
+//! Caller-supplied display context and bounded presentation preferences.
+
+/// Header content supplied by the client; the UI does not probe models or workspaces.
+#[derive(Default)]
+pub struct Metadata {
+    pub title: String,
+    pub workspace: String,
+    pub status: String,
+}
+
+/// Resource limits, independent of a model's token/context budget.
+#[derive(Clone, Copy)]
+pub struct Limits {
+    pub input_bytes: usize,
+    pub retained_entries: usize,
+    pub entry_bytes: usize,
+    pub edit_history: usize,
+}
+
+impl Default for Limits {
+    fn default() -> Self {
+        const INPUT_BYTES: usize = 128 * 1024;
+        const RETAINED_ENTRIES: usize = 128;
+        const ENTRY_BYTES: usize = 128 * 1024;
+        const EDIT_HISTORY: usize = 32;
+        Self {
+            input_bytes: INPUT_BYTES,
+            retained_entries: RETAINED_ENTRIES,
+            entry_bytes: ENTRY_BYTES,
+            edit_history: EDIT_HISTORY,
+        }
+    }
+}
