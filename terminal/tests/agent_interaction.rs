@@ -155,3 +155,14 @@ fn test_oversized_completion_keeps_draft_without_dispatch() {
     assert_eq!(app.handle(key(KeyCode::Enter)), Action::None);
     assert_eq!(app.draft(), "/th");
 }
+
+#[test]
+fn test_long_single_line_draft_grows_inside_the_bounded_composer() {
+    let mut app = app();
+    let text = format!("start-{}-end", "x".repeat(160));
+    app.set_draft(&text).unwrap();
+    let view = draw(&mut app, 80, 24);
+    assert!(view.contains("start-"), "{view}");
+    assert!(view.contains("-end"), "{view}");
+    assert_eq!(app.draft(), text);
+}
