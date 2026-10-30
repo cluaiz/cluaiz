@@ -59,9 +59,10 @@ cluaiz agent
 With a default chat model set, plain `cluaiz` (no command) in a terminal opens the agent in the
 current folder. Without one, it prints the help.
 
-At start the agent prints the model's plan (GPU / RAM placement, context size) and the folder it
-works in, then waits for your task at the `>>>` prompt. Type `/bye` or press Ctrl+D (Ctrl+Z then
-Enter on Windows) to leave.
+An interactive session opens in the same terminal tab, with the actual model, working folder,
+context budget, transcript and bottom input. Type `/bye` or press Ctrl+Q to restore the shell.
+No new terminal application is installed. Use `cluaiz agent --ui plain` for the previous `>>>`
+interface. A one-shot task or redirected output uses plain mode automatically.
 
 ## What the agent can do
 
@@ -102,8 +103,13 @@ The agent never changes anything without your answer, unless you allow it.
 | Answer | Effect |
 | :--- | :--- |
 | `y` | This call runs |
-| `n` (or anything else) | This call does not run; the model is told you did not allow it and usually asks what to do instead |
+| `n`, empty answer or Esc in the UI | This call does not run |
 | `a` | This call runs, and every later call of the same tool runs without asking until you exit |
+| Other text | Nothing executes; the model receives your instructions with their original case |
+
+In the terminal UI the prompt shows the resolved path or full command, and the proposed file
+change. PgUp/PgDn read a long operation; allow is blocked until its last line is visible. Your
+draft is preserved while answering the prompt. Closing the UI denies a pending request.
 
 What runs without asking:
 
@@ -137,6 +143,25 @@ Commands that run without asking get an environment with secret variables (API k
 removed. Commands you allowed run with your normal environment.
 
 ## Reading the screen
+
+The interactive screen keeps model words, thinking (unless hidden), tool names, proposed changes
+and actual results in stable entries. Failed commands show their exit code as an error. You can
+type while generation runs; one further message can wait in the queue. Esc requests cancellation
+and clears that queued message. It does not roll back a completed file change or external command.
+Commands currently return stdout/stderr when they finish, rather than streaming each output line.
+
+Type `/` for the existing command menu. Arrows choose; Tab inserts; Enter selects a command.
+Type `@` to suggest files in the working folder. A filename selection only inserts its path; it
+does not submit, read the file, or grant access. Explicit content access goes through the file tool.
+Suggestions do not list directories outside the workspace, including symlink targets outside it.
+
+F2 or `/theme` previews Auto, Dark, Light, High contrast and No color. Enter applies the theme for
+this session; Esc cancels the preview. Alt+Enter, Shift+Enter (when delivered by the terminal) or
+Ctrl+J insert a newline. PgUp/PgDn scroll output; Ctrl+End returns to the latest entry. Ctrl+Q exits.
+The transcript is a bounded in-memory view; an eviction notice is shown if older entries are removed.
+
+The examples below describe **plain mode**. Rich Markdown styling is not yet shared with the
+interactive renderer; the interactive view currently retains the source Markdown as readable text.
 
 Every tool call is one row, with a one-line result below it:
 
@@ -173,10 +198,11 @@ something and there is no row for it, it did not.
 | `/yes` | Allow every change and command for the rest of the session |
 | `/ask` | Ask again before each change and command |
 | `/clear` | Forget the conversation (the folder and the model stay) |
-| `/bye`, `/exit` | Leave (also Ctrl+D) |
+| `/bye`, `/exit` | Leave (Ctrl+Q in the UI; Ctrl+D in plain mode) |
 | `/?`, `/help` | Show these commands |
+| `/theme` | Open the terminal UI theme picker |
 
-Start and end a message with `"""` to type several lines. Ctrl+C stops the answer being written, or
+In plain mode, start and end a message with `"""` to type several lines. Ctrl+C stops the answer being written, or
 the command being run, and leaves you at the prompt; at the prompt it exits.
 
 ## One task from a script
@@ -238,9 +264,10 @@ cluaiz agent [OPTIONS] [TASK]...
 | `-C, --dir <PATH>` | Folder to work in (default: the current folder) |
 | `-y, --yes` | Allow every change and command without asking (destructive commands stay refused) |
 | `-i, --interactive` | Keep chatting after the task |
+| `--ui auto/plain/tui` | Auto selects the UI for interactive sessions; plain preserves line output; tui requires an interactive terminal |
 | `--system-prompt <TEXT>` | Added to the agent's instructions |
 | `-n, --n-predict <N>` | Most tokens per answer |
-| `-v`, `-vv` | Engine logs on stderr (info with the full plan, or debug) |
+| `-v`, `-vv` | Detailed file logging; console logs in plain mode. UI mode suppresses console tracing so logs do not overwrite input |
 | Load flags | `-c`, `-ngl`, `--n-cpu-moe`, `-ctk`, `-ctv`, `-fa`, `-b`, `-ub`, `-t`, `-tb`, `--mmap`, `--no-mmap`, `-nkvo`, `--no-op-offload`, `--vram-buffer` (as `cluaiz run`) |
 | Sampling flags | `--temp`, `--top-k`, `--top-p`, `--min-p`, `--repeat-penalty`, `--presence-penalty`, `--frequency-penalty`, `-s` |
 | Thinking flags | `--think on/off/auto`, `--reasoning-effort`, `--reasoning-budget`, `--reasoning-budget-message`, `--hide-thinking` |
@@ -255,6 +282,10 @@ cluaiz agent [OPTIONS] [TASK]...
 - A request stops after 40 tool calls; say how to go on and it continues.
 - The conversation is not saved: closing the agent forgets it.
 - No model switch inside the agent: start it again with another `-m`.
+- The API and CLI have not yet been moved to one shared agent controller. This terminal frontend
+  calls the existing CLI loop; it does not create a second CLI tool executor or load another host.
+- Durable sessions, daemon attachment, task views, shared Markdown styling and checkpoints/undo
+  remain later implementation stages. Native keyboard/font behavior on macOS/Linux is unverified.
 - `search` is a regular expression over file text; to find files by name the model runs a command
   such as `Get-ChildItem -Recurse -Filter *.py` or `find . -name '*.py'`.
 

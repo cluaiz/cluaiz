@@ -1,7 +1,7 @@
 # `cmd/src`: the `cluaiz` command-line interface
 
-A plain terminal program: it reads stdin and writes stdout / stderr, with no full-screen UI, so it behaves
-the same in Windows cmd / PowerShell, macOS Terminal and Linux shells. Load and sampling flags use
+A terminal program: interactive `agent` sessions use a same-tab terminal UI; scripts and `--ui plain`
+retain line-oriented output. No desktop shell or second executable is required. Load and sampling flags use
 llama.cpp's names (`llama-cli`, `llama-bench`); chat commands follow `ollama run`.
 
 ## Commands
@@ -33,6 +33,13 @@ cluaiz agent -m qwen3 --dir ../app --yes "..."  # model, folder, no questions
 - Tools (`agent/tools.rs`): `read_file`, `list_dir`, `search` (regex over the folder, skipping
   `.git`, `target`, `node_modules`, ...), `write_file`, `edit_file` (exact text, once unless
   `replace_all`), `run_command` (PowerShell on Windows, `sh` elsewhere).
+- `agent/terminal.rs` owns one UI worker and bounded event/input queues over the existing turn
+  loop. `display.rs` adapts that loop to either the old printer or terminal events; `terminal_state.rs`
+  projects them into stable entries. `chat/output.rs` is the shared generation output boundary.
+- `/` suggestions use `agent/commands.rs`; `@` filenames use the existing canonical CEP roots
+  resolver and bounded directory enumeration off the screen thread. Paths outside the workspace
+  are not passively listed. Choosing a filename inserts a reference; the existing read tool performs
+  any later content access. Theme/approval/completion widgets live in the `terminal` library.
 - Each call is one row (`● Read src/main.rs`, `⎿ 120 lines`); a change shows its `-` / `+` lines.
 - While nothing is printed, a status line on stderr says what the model is doing: reading the
   prompt, tokens written (hidden thinking), or the call being written with its path or command
