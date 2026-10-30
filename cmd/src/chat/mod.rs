@@ -2,6 +2,7 @@
 //! the same envelope and context rules as an API request (`cluaiz_core::ChatEnvelope`), so the CLI and
 //! the API behave the same.
 
+pub mod markdown;
 pub mod print;
 pub mod repl;
 

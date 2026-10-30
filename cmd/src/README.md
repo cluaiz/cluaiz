@@ -35,6 +35,12 @@ cluaiz run qwen3                                              # chat
 
 - stdout carries only the answer. Thinking is printed (dimmed) only when stdout is a terminal;
   `--hide-thinking` hides it there too. Plan summary and speed go to stderr.
+- On a terminal the answer's Markdown is drawn formatted (`chat/markdown.rs`): each line is redrawn
+  when it ends (headings, bold, italic, code, links, lists, quotes, simple `$math$`), a table is
+  redrawn aligned after its last row, and code blocks get a gutter. Piped output stays the model's
+  own Markdown.
+- `-v` with a command shows engine logs (`-vv` debug); `cluaiz -v` alone prints the version, as
+  `-V` / `--version` do.
 - Load flags: `-c`, `-ngl`, `--n-cpu-moe`, `-ctk`, `-ctv`, `-fa`, `-b`, `-ub`, `-t`, `-tb`, `--mmap`,
   `--no-mmap`, `-nkvo`, `--no-op-offload`, `--vram-buffer`. They are applied over `settings.json` exactly
   like an API request's `"llama"` object (`LlamaLoadParams`). A missing flag = settings / planner.
