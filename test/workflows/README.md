@@ -30,3 +30,8 @@ and runs the CI/CD pipeline in it, to confirm that the code really compiles ther
 ```
 
 The first run can download several GB of Docker images, so it takes a while.
+
+## Installer banners and live progress
+
+`python test/workflows/test_installer_banner.py` checks Cog spacing, Windows/shell parity and the existing CLUAIZ wordmark.
+`python test/workflows/test_installer_progress.py` exercises the actual downloader against a tiny local HTTP fixture: live percentage, unknown size, redirects, HTTP errors, interrupted bodies and plain logs. It uses available Windows PowerShell/PowerShell7/POSIX shells; `CLUAIZ_TEST_SH` can select a shell. No real Cluaiz installation, GPU pack or user PATH change occurs. Logs go to `.agent/installer-logo-proof`.
