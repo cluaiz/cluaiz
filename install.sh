@@ -20,9 +20,91 @@ INSTALL_DIR="${CLUAIZ_INSTALL_DIR:-$HOME/.cluaiz/bin}"
 GPU="${CLUAIZ_GPU:-auto}"
 
 BOLD='\033[1m'; WHITE='\033[1;37m'; CYAN='\033[0;36m'; GRAY='\033[0;90m'; GREEN='\033[0;32m'; RED='\033[0;31m'; NC='\033[0m'
-step() { printf "  ${GRAY}* %s${NC}\n" "$1"; }
+install_step=0
+interactive=0
+if [ -t 1 ] && [ "${TERM:-dumb}" != dumb ]; then interactive=1; fi
+step() { install_step=$((install_step + 1)); printf "\n  ${CYAN}[%s/7]${NC} %s\n" "$install_step" "$1"; }
 done_step() { printf "  ${GREEN}[DONE]${NC} %s\n" "$1"; }
 fail() { printf "\n  ${RED}[ERROR] %s${NC}\n" "$1" >&2; exit 1; }
+
+# Bootstrap equivalent of cmd/src/ui/spinner.rs: no installed CLI is available yet.
+transfer_view() {
+  awk -v got="$1" -v total="$2" -v elapsed="$3" -v complete="$4" -v tick="$5" '
+    function bytes(n, u) {
+      u=1; while(n>=1024 && u<5){n/=1024;u++}
+      return sprintf("%.1f %s",n,units[u])
+    }
+    BEGIN {
+      split("B KiB MiB GiB TiB",units," ")
+      split("⠋ ⠙ ⠹ ⠸ ⠼ ⠴ ⠦ ⠧ ⠇ ⠏",frames," ")
+      frame=complete ? " " : frames[tick%10+1]
+      rate=elapsed>0 ? got/elapsed : 0
+      if(complete && total<=0)total=got
+      if(total>0){
+        percent=int(100*got/total);if(percent>100)percent=100
+        filled=int(percent/5);bar=""
+        for(i=0;i<20;i++)bar=bar (i<filled ? "#" : "-")
+        left=total-got;if(left<0)left=0
+        eta=rate>0 ? sprintf("%.0fs",int(left/rate+0.999999)) : "--"
+        printf "  %s [%s] %3d%% | %s / %s\n",frame,bar,percent,bytes(got),bytes(total)
+        printf "  Left %s | %s/s | File ETA ~%s\n",bytes(left),bytes(rate),eta
+      }else{
+        printf "  %s [--------------------] --%% | %s / unknown\n",frames[tick%10+1],bytes(got)
+        printf "  Left unknown | %s/s | File ETA --\n",bytes(rate)
+      }
+    }'
+}
+
+download_file() {
+  dl_url=$1; dl_out=$2; dl_name=$3
+  dl_headers="$dl_out.headers"; dl_errors="$dl_out.stderr"
+  dl_start=$(date +%s); dl_tick=0; dl_drawn=0; dl_next_log=0
+  printf '  %s\n' "$dl_name"
+  curl -fLsS --connect-timeout 30 --speed-limit 1 --speed-time 120 \
+    --dump-header "$dl_headers" --output "$dl_out" --url "$dl_url" 2>"$dl_errors" &
+  download_pid=$!
+  while kill -0 "$download_pid" 2>/dev/null; do
+    draw_download 0
+    dl_tick=$((dl_tick + 1))
+    sleep 0.25
+  done
+  dl_code=0
+  wait "$download_pid" || dl_code=$?
+  download_pid=''
+  if [ "$dl_code" -ne 0 ]; then
+    cat "$dl_errors" >&2
+    fail "download of $dl_name failed (curl $dl_code)"
+  fi
+  draw_download 1
+  rm -f "$dl_headers" "$dl_errors"
+}
+
+draw_download() {
+  dl_finished=$1
+  dl_now=$(date +%s); dl_elapsed=$((dl_now - dl_start))
+  if [ "$interactive" -eq 0 ] && [ "$dl_elapsed" -lt "$dl_next_log" ] && [ "$dl_finished" -eq 0 ]; then return; fi
+  dl_got=0
+  if [ -f "$dl_out" ]; then dl_got=$(wc -c <"$dl_out" | tr -d ' '); fi
+  dl_total=0
+  if [ -f "$dl_headers" ]; then
+    # Reset at every response: a redirect length must not become the final total.
+    dl_total=$(awk 'BEGIN{n=0} /^HTTP\//{n=0} tolower($1)=="content-length:"{n=$2;gsub("\r","",n)} END{print n}' "$dl_headers")
+  fi
+  if [ "$interactive" -eq 1 ] && [ "$dl_drawn" -eq 1 ]; then printf '\033[2A'; fi
+  if [ "$interactive" -eq 1 ]; then
+    transfer_view "$dl_got" "$dl_total" "$dl_elapsed" "$dl_finished" "$dl_tick" | while IFS= read -r dl_line; do printf '\r\033[2K%s\n' "$dl_line"; done
+  else
+    transfer_view "$dl_got" "$dl_total" "$dl_elapsed" "$dl_finished" "$dl_tick"
+  fi
+  dl_drawn=1; dl_next_log=$((dl_elapsed + 5))
+}
+
+cleanup() {
+  if [ -n "${download_pid:-}" ]; then kill "$download_pid" 2>/dev/null || true; wait "$download_pid" 2>/dev/null || true; fi
+  if [ -n "${tmp:-}" ] && [ "${tmp%/*}" = "${scratch_parent:-}" ]; then
+    case "$tmp" in "$scratch_parent"/cluaiz-install.*) rm -rf -- "$tmp" ;; esac
+  fi
+}
 
 # ── Mascot (High-Detail Braille) ─────────────────────────────────────────────────────────────
 # Keep artwork gaps as U+2800 (not ASCII spaces), in sync with install.ps1.
@@ -55,6 +137,7 @@ printf "  ${WHITE}         ╚═════╝╚══════╝ ╚═�
 printf "\n  ${GRAY}Installing cluaiz...${NC}\n\n"
 
 need() { command -v "$1" >/dev/null 2>&1 || fail "'$1' is needed; install it and run this again"; }
+step 'Checking this system'
 need curl
 need tar
 if command -v sha256sum >/dev/null 2>&1; then SHA="sha256sum"
@@ -100,6 +183,13 @@ if [ "$GPU" = "auto" ]; then
   fi
 fi
 [ "$os" = "mac" ] && GPU="cpu" # Metal is inside the macOS core
+done_step "Platform $platform, requested GPU: $GPU"
+scratch_parent=$(cd "${TMPDIR:-/tmp}" && pwd -P)
+tmp=$(mktemp -d "$scratch_parent/cluaiz-install.XXXXXXXX")
+download_pid=''
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 # ── Release ───────────────────────────────────────────────────────────────────────────────────
 step "Finding the release"
@@ -108,8 +198,8 @@ if [ -n "${CLUAIZ_VERSION:-}" ]; then
 else
   # The newest release, pre-releases included
   # sed reads the whole answer (grep -m1 stopped early and curl printed "Failure writing output")
-  tag=$(curl -fsSL "https://api.github.com/repos/$REPO/releases?per_page=1" |
-    sed -n -E 's/.*"tag_name": *"([^"]+)".*/\1/p' | head -n 1)
+  download_file "https://api.github.com/repos/$REPO/releases?per_page=1" "$tmp/release.json" 'Release metadata'
+  tag=$(sed -n -E 's/.*"tag_name": *"([^"]+)".*/\1/p' "$tmp/release.json" | head -n 1)
   [ -n "$tag" ] || fail "no release found on github.com/$REPO"
 fi
 version=${tag#v}
@@ -117,9 +207,8 @@ base="https://github.com/$REPO/releases/download/$tag"
 if [ "$os" = "mac" ]; then gpu_text="Metal, inside the core"; else gpu_text="$GPU"; fi
 done_step "Release $tag ($platform, GPU: $gpu_text)"
 
-tmp=$(mktemp -d)
-trap 'rm -rf "$tmp"' EXIT
-curl -fsSL "$base/SHA256SUMS.txt" -o "$tmp/SHA256SUMS.txt" || fail "cannot download SHA256SUMS.txt of $tag"
+step 'Reading the package manifest'
+download_file "$base/SHA256SUMS.txt" "$tmp/SHA256SUMS.txt" 'SHA256SUMS.txt'
 
 files="cluaiz-$version-$platform.tar.gz"
 case "$GPU" in
@@ -160,6 +249,7 @@ esac
 [ "$GPU" = vulkan ] && files="$files cluaiz-$version-$platform-llama-vulkan.tar.gz"
 
 # ── Download, check, unpack ───────────────────────────────────────────────────────────────────
+available=''; package_count=0
 for file in $files; do
   if ! grep -q " \*\{0,1\}$file\$" "$tmp/SHA256SUMS.txt"; then
     case "$file" in
@@ -167,23 +257,34 @@ for file in $files; do
       *) printf "  ${GRAY}- %s is not in this release; models run on the CPU instead${NC}\n" "$file"; continue ;;
     esac
   fi
-  step "Downloading $file"
-  curl -fL --progress-bar "$base/$file" -o "$tmp/$file" || fail "download of $file failed"
+  available="$available $file"; package_count=$((package_count + 1))
+done
+step "Downloading packages (0/$package_count verified)"
+verified=0
+for file in $available; do
+  printf '  Package %s/%s: %s\n' "$((verified + 1))" "$package_count" "$file"
+  download_file "$base/$file" "$tmp/$file" "$file"
+  printf '  Checking SHA-256: %s\n' "$file"
   expected=$(grep " \*\{0,1\}$file\$" "$tmp/SHA256SUMS.txt" | cut -d' ' -f1)
   actual=$(cd "$tmp" && $SHA "$file" | cut -d' ' -f1)
   [ "$expected" = "$actual" ] || fail "$file does not match SHA256SUMS.txt (expected $expected, got $actual)"
-  done_step "$file (checksum OK)"
+  verified=$((verified + 1))
+  done_step "$file (checksum OK; $verified/$package_count verified)"
 done
 
 step "Installing into $INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"
-for file in $files; do
-  [ -f "$tmp/$file" ] && tar -xzf "$tmp/$file" -C "$INSTALL_DIR"
+unpacked=0
+for file in $available; do
+  printf '  Extracting %s/%s: %s\n' "$((unpacked + 1))" "$package_count" "$file"
+  tar -xzf "$tmp/$file" -C "$INSTALL_DIR"
+  unpacked=$((unpacked + 1))
 done
 chmod +x "$INSTALL_DIR/cluaiz"
 done_step "Installed into $INSTALL_DIR"
 
 # ── PATH ──────────────────────────────────────────────────────────────────────────────────────
+step 'Preparing runtime and PATH'
 case ":$PATH:" in
   *":$INSTALL_DIR:"*) ;;
   *)
@@ -197,6 +298,9 @@ case ":$PATH:" in
     ;;
 esac
 
+done_step 'Runtime and PATH ready'
+
+step 'Verifying the installed Engine'
 "$INSTALL_DIR/cluaiz" --version
-printf "\n  ${GREEN}[DONE] Cluaiz is installed.${NC}\n"
+printf "\n  ${GREEN}[DONE] Cluaiz is installed (7/7 stages complete).${NC}\n"
 printf "  ${GRAY}Next: cluaiz pull <model>   then   cluaiz run <model>${NC}\n\n"
