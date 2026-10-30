@@ -28,6 +28,30 @@ impl Composer {
         self.editor.lines().len()
     }
 
+    /// Layout follows wrapped rows, rather than letting a long single line hide above the cursor.
+    pub fn display_rows(&mut self, width: u16, maximum: usize) -> usize {
+        use ratatui::{
+            buffer::Buffer,
+            layout::Rect,
+            widgets::{Block, Widget},
+        };
+        // Ask the editor's own Unicode wrapping map. A second wrapping implementation can
+        // disagree at punctuation/long words and hide the first row of a seemingly fitting draft.
+        let maximum = maximum.clamp(1, u16::MAX as usize);
+        self.editor.set_block(Block::default());
+        let area = Rect::new(0, 0, width.max(1), maximum as u16);
+        (&self.editor).render(area, &mut Buffer::empty(area));
+        let mut previous = self.editor.screen_to_data(0, 0);
+        for row in 1..maximum {
+            let position = self.editor.screen_to_data(row, 0);
+            if position == previous {
+                return row;
+            }
+            previous = position;
+        }
+        maximum
+    }
+
     /// Completion only replaces a tail. Editing in the middle must preserve the suffix.
     pub fn cursor_at_end(&self) -> bool {
         let cursor = self.editor.cursor();

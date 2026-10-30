@@ -25,7 +25,11 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         );
         return;
     }
-    let input_height = app.composer.line_count().clamp(1, MAX_COMPOSER_LINES) as u16 + 2;
+    let input_height = app
+        .composer
+        .display_rows(area.width.saturating_sub(2), MAX_COMPOSER_LINES)
+        .clamp(1, MAX_COMPOSER_LINES) as u16
+        + 2;
     let [header, transcript, notice, composer, footer] = Layout::vertical([
         Constraint::Length(if area.height >= 14 { 3 } else { 2 }),
         Constraint::Min(1),
