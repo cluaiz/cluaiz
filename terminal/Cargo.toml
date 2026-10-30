@@ -1,0 +1,12 @@
+[package]
+name = "cluaiz-terminal"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+description = "Terminal presentation primitives for Cluaiz clients"
+
+[dependencies]
+crossterm = "0.29"
+ratatui = { version = "0.30.2", default-features = false, features = ["crossterm"] }
+ratatui-textarea = "0.9.3"
+textwrap = { version = "=0.16.2", default-features = false, features = ["unicode-width", "unicode-linebreak"] }

@@ -15,6 +15,7 @@ members = [
     "cep",
     "ffi",
     "cmd",
+    "terminal",
     "tools/cluaiz-builder",
     "test/plugin_testing",
 ]
