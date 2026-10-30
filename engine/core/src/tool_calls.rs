@@ -5,8 +5,8 @@
 
 use serde_json::{json, Value};
 
-const OPEN: &str = "<tool_call>";
-const CLOSE: &str = "</tool_call>";
+pub const OPEN: &str = "<tool_call>";
+pub const CLOSE: &str = "</tool_call>";
 
 /// The inline (Hermes) way of offering tools, for models whose template does not render them
 pub const TOOLS_HEADER: &str = "# Available Tools\nYou have access to the following tools:\n";
