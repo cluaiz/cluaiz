@@ -5,6 +5,7 @@ use std::io::{IsTerminal, Write};
 
 use colored::Colorize;
 
+use super::markdown::MarkdownStream;
 use super::{Session, TurnReport};
 
 #[derive(PartialEq)]
@@ -15,9 +16,11 @@ enum Phase {
 }
 
 /// Prints one streamed answer. Thinking is shown dimmed between "Thinking..." and "...done thinking."
-/// (like ollama), and only when stdout is a terminal: piped output is the answer alone.
+/// (like ollama), and only when stdout is a terminal: piped output is the answer alone. On a terminal
+/// the answer's Markdown is drawn formatted.
 pub struct StreamPrinter {
     show_thinking: bool,
+    markdown: Option<MarkdownStream>,
     phase: Phase,
     ends_with_newline: bool,
     wrote: bool,
@@ -25,7 +28,14 @@ pub struct StreamPrinter {
 
 impl StreamPrinter {
     pub fn new(show_thinking: bool) -> Self {
-        Self { show_thinking: show_thinking && std::io::stdout().is_terminal(), phase: Phase::Start, ends_with_newline: true, wrote: false }
+        let terminal = std::io::stdout().is_terminal();
+        Self {
+            show_thinking: show_thinking && terminal,
+            markdown: terminal.then(MarkdownStream::new),
+            phase: Phase::Start,
+            ends_with_newline: true,
+            wrote: false,
+        }
     }
 
     pub fn reasoning(&mut self, text: &str) {
@@ -52,7 +62,13 @@ impl StreamPrinter {
             self.close_thinking();
         }
         self.phase = Phase::Answer;
-        self.write(text);
+        match self.markdown.as_mut() {
+            Some(md) => {
+                md.push(text);
+                self.wrote = true;
+            }
+            None => self.write(text),
+        }
         self.ends_with_newline = text.ends_with('\n');
     }
 
@@ -60,6 +76,10 @@ impl StreamPrinter {
     pub fn finish(&mut self) {
         if self.phase == Phase::Thinking {
             self.close_thinking();
+        }
+        if let Some(md) = self.markdown.as_mut() {
+            md.finish();
+            self.ends_with_newline = true;
         }
         if self.wrote && !self.ends_with_newline {
             self.write("\n");

@@ -19,6 +19,7 @@ use crate::core::bootstrapper::Bootstrapper;
 #[command(name = "cluaiz", bin_name = "cluaiz", about = "Run and serve local AI models", version, arg_required_else_help = true)]
 pub struct Cli {
     /// Engine logs on stderr: -v info (with the full plan), -vv debug. The log file always has them.
+    /// `cluaiz -v` alone prints the version.
     #[arg(short, long, global = true, action = clap::ArgAction::Count)]
     verbose: u8,
 
@@ -306,7 +307,13 @@ async fn main() -> Result<()> {
         colored::control::set_override(false);
     }
 
-    let cli = Cli::parse_from(cli::args::normalize_llama_flags(std::env::args()));
+    // `cluaiz -v` alone is the version (as in ollama); with a command, -v is verbose
+    let raw: Vec<String> = std::env::args().collect();
+    if raw.len() == 2 && raw[1] == "-v" {
+        print!("{}", <Cli as clap::CommandFactory>::command().render_version());
+        return Ok(());
+    }
+    let cli = Cli::parse_from(cli::args::normalize_llama_flags(raw));
     init_logging(cli.verbose, matches!(cli.command, CliCommand::Serve { .. }));
 
     // 🚀 Cluaiz BOOTSTRAP (Local Dev-Sync & Registry Verification)
