@@ -169,6 +169,13 @@ impl ExecutionPlan {
         } else {
             "dense".to_string()
         };
+        let recurrent = geometry.recurrent_layers.iter().filter(|r| **r).count();
+        let moe_line = if recurrent > 0 {
+            format!("{} | hybrid: {} attention layers with a KV cache, {} linear-attention layers with a {:.1} MB state",
+                moe_line, geometry.block_count as usize - recurrent, recurrent, geometry.recurrent_state_bytes as f64 / 1e6)
+        } else {
+            moe_line
+        };
         let swa = match geometry.sliding_window {
             Some(win) if !geometry.swa_layers.is_empty() => format!(", sliding window {} on {} layers", win, geometry.swa_layers.iter().filter(|s| **s).count()),
             _ => String::new(),

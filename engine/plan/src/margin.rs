@@ -14,8 +14,11 @@ use std::collections::HashMap;
 use std::sync::RwLock;
 
 /// Share of the GPU's total memory left for the desktop and other apps once a model's real size
-/// is known (0.20 GB on a 4 GB GPU)
+/// is known (0.20 GB on a 4 GB GPU), kept within [`DEVICE_RESERVE_MIN_GB`, `DEVICE_RESERVE_MAX_GB`]:
+/// what other apps add after a load does not grow with the GPU (5% of 128 GB would be 6.4 GB)
 pub const DEVICE_RESERVE_SHARE: f64 = 0.05;
+pub const DEVICE_RESERVE_MIN_GB: f64 = 0.15;
+pub const DEVICE_RESERVE_MAX_GB: f64 = 1.0;
 
 /// Measured gap per model + load settings, in GB (negative: the estimate was too high)
 static LEARNED: RwLock<Option<HashMap<String, f64>>> = RwLock::new(None);
@@ -108,7 +111,9 @@ pub fn restore(mut measured: HashMap<String, f64>) {
 
 /// GB kept free for the desktop on this GPU once the model's real size is known
 pub fn reserve_gb(hardware: &SystemInfo) -> f64 {
-    hardware.gpus.first().map_or(0.0, |g| g.vram_total_gb * DEVICE_RESERVE_SHARE)
+    hardware.gpus.first().map_or(0.0, |g| {
+        (g.vram_total_gb * DEVICE_RESERVE_SHARE).clamp(DEVICE_RESERVE_MIN_GB, DEVICE_RESERVE_MAX_GB)
+    })
 }
 
 /// Where the VRAM buffer of a plan comes from, for the plan report

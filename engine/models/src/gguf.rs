@@ -35,6 +35,13 @@ pub struct ModelGeometry {
     /// Last N layers reuse earlier layers' KV and allocate none (`<arch>.attention.shared_kv_layers`)
     #[serde(default)]
     pub shared_kv_layers: u32,
+    /// true = recurrent layer (linear attention / SSM): a fixed state instead of a KV cache, marked
+    /// as llama.cpp marks them (`<arch>.attention.recurrent_layers`, else `full_attention_interval`)
+    #[serde(default)]
+    pub recurrent_layers: Vec<bool>,
+    /// Bytes of one recurrent layer's state for one sequence (conv + SSM state, f32)
+    #[serde(default)]
+    pub recurrent_state_bytes: u64,
     pub expert_count: Option<u32>,
     pub expert_used_count: Option<u32>,
     pub file_size_bytes: u64,
@@ -83,6 +90,10 @@ impl ModelGeometry {
         self.head_count_kv_per_layer.get(layer).copied().unwrap_or(self.head_count_kv) as u64
     }
 
+    pub fn is_recurrent(&self, layer: usize) -> bool {
+        self.recurrent_layers.get(layer).copied().unwrap_or(false)
+    }
+
     fn is_swa(&self, layer: usize) -> bool {
         self.sliding_window.unwrap_or(0) > 0 && self.swa_layers.get(layer).copied().unwrap_or(false)
     }
@@ -98,10 +109,14 @@ impl ModelGeometry {
     }
 
     /// KV cache bytes of one layer, the way llama.cpp sizes it: full layers hold the padded context,
-    /// sliding-window layers hold min(context, window + ubatch), both padded to 256 cells.
+    /// sliding-window layers hold min(context, window + ubatch), both padded to 256 cells; a
+    /// recurrent layer holds its fixed state, whatever the context.
     pub fn kv_layer_bytes(&self, layer: usize, n_ctx: u32, quant: cluaiz_core::KvCacheQuantization, ubatch: u32) -> u64 {
         if layer >= self.kv_layer_count() {
             return 0;
+        }
+        if self.is_recurrent(layer) {
+            return self.recurrent_state_bytes;
         }
         let pad = |n: u32| n.div_ceil(KV_CELL_PAD) * KV_CELL_PAD;
         let full_cells = pad(n_ctx) as u64;
