@@ -25,6 +25,12 @@ pub enum PolicyDecision {
 pub struct ExecutionPolicy;
 
 impl ExecutionPolicy {
+    /// A line that chains, pipes, redirects or substitutes: `ls; rm -r x`, `echo x > file`,
+    /// `cat a | tee b`, `echo $(whoami)`. Its read-only start says nothing about the rest.
+    pub fn chains(command: &str) -> bool {
+        [">", "<", ";", "|", "&", "`", "$(", "\n"].iter().any(|c| command.contains(c))
+    }
+
     /// Evaluates a command against the active SecurityMode
     pub fn evaluate(command: &str, cwd: &Path, security_mode: SecurityMode) -> PolicyDecision {
         let trimmed = command.trim();
@@ -82,7 +88,7 @@ impl ExecutionPolicy {
                         || lower.starts_with(&format!("{}\\", p))
                 });
 
-                if is_read_only {
+                if is_read_only && !Self::chains(trimmed) {
                     PolicyDecision::Allow
                 } else {
                     PolicyDecision::AskConfirmation {
@@ -101,6 +107,15 @@ impl ExecutionPolicy {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_read_only_start_does_not_cover_a_chained_line() {
+        let cwd = std::env::temp_dir();
+        assert_eq!(ExecutionPolicy::evaluate("git status", &cwd, SecurityMode::RequireApproval), PolicyDecision::Allow);
+        for line in ["ls; rm -r src", "echo hi > notes.txt", "cat a | tee b", "dir && del x", "echo $(whoami)"] {
+            assert!(matches!(ExecutionPolicy::evaluate(line, &cwd, SecurityMode::RequireApproval), PolicyDecision::AskConfirmation { .. }), "{line}");
+        }
+    }
 
     #[test]
     fn test_hard_denied_destructive_commands_all_os() {

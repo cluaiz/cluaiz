@@ -2,6 +2,25 @@
 //! with a pattern for what it works on, `run_command(git *)`, `edit_file(src/*)`. `*` matches any
 //! text. A denied call is refused before anything asks; an allowed one runs without asking.
 
+/// A folder's agent permissions in `.cluaiz/agent.json`:
+/// `{"mode": "accept-edits", "allow": ["run_command(cargo test*)"], "deny": ["run_command(git push*)"]}`
+#[derive(Debug, Default, serde::Deserialize)]
+#[serde(default)]
+pub struct Project {
+    pub mode: Option<super::tools::Mode>,
+    pub allow: Vec<String>,
+    pub deny: Vec<String>,
+}
+
+impl Project {
+    pub fn load(root: &std::path::Path) -> Self {
+        std::fs::read_to_string(root.join(".cluaiz").join("agent.json"))
+            .ok()
+            .and_then(|text| serde_json::from_str(&text).ok())
+            .unwrap_or_default()
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct Rules {
     allowed: Vec<Rule>,
