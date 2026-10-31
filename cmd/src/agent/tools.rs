@@ -38,6 +38,8 @@ pub struct Tools {
     root: PathBuf,
     /// `--yes`: no questions
     pub allow_all: bool,
+    /// Strict approval mode asks for workspace reads as well as changes and commands.
+    pub strict: bool,
     /// Tools the user allowed for the rest of the session ("always")
     always: HashSet<String>,
     display: Display,
@@ -50,6 +52,7 @@ impl Tools {
         Self {
             root,
             allow_all,
+            strict: false,
             always: HashSet::new(),
             display: Display::default(),
             cancelled: false,
@@ -64,8 +67,17 @@ impl Tools {
         &self.root
     }
 
+    /// A human attachment uses the same canonical path and read authorization as file tools.
+    pub fn attachment_path(&mut self, source: &str) -> Result<PathBuf, String> {
+        let path = cluaiz_api::cep::roots::resolve(source, &self.root, false)
+            .map_err(|e| format!("{e:?}"))?;
+        self.authorize_read("attachment", &path)?;
+        Ok(path)
+    }
+
     pub fn require_approval(&mut self) {
         self.allow_all = false;
+        self.strict = false;
         self.always.clear();
     }
 
@@ -225,7 +237,7 @@ impl Tools {
         limit: Option<usize>,
     ) -> Result<(String, String), String> {
         let file = self.resolve(path)?;
-        self.allow_outside("read_file", &file)?;
+        self.authorize_read("read_file", &file)?;
         let bytes = std::fs::read(&file).map_err(|e| format!("{}: {e}", self.show(&file)))?;
         if bytes.iter().take(8000).any(|b| *b == 0) {
             return Err("a binary file, not text".into());
@@ -258,7 +270,7 @@ impl Tools {
 
     fn list_dir(&mut self, path: &str) -> Result<(String, String), String> {
         let dir = self.resolve(path)?;
-        self.allow_outside("list_dir", &dir)?;
+        self.authorize_read("list_dir", &dir)?;
         let entries = directory_entries(&dir).map_err(|error| error.to_string())?;
         let total = entries.len();
         let mut out: Vec<String> = entries
@@ -290,7 +302,7 @@ impl Tools {
         glob: Option<String>,
     ) -> Result<(String, String), String> {
         let start = self.resolve(path)?;
-        self.allow_outside("search", &start)?;
+        self.authorize_read("search", &start)?;
         let re = regex::Regex::new(pattern)
             .or_else(|_| regex::Regex::new(&regex::escape(pattern)))
             .map_err(|e| e.to_string())?;
@@ -451,7 +463,12 @@ impl Tools {
         let mode =
             match ExecutionPolicy::evaluate(command, &self.root, SecurityMode::RequireApproval) {
                 PolicyDecision::Deny { reason } => return Err(format!("refused: {reason}")),
-                PolicyDecision::Allow if !chains(command) => SecurityMode::RequireApproval,
+                PolicyDecision::Allow if !chains(command) => {
+                    if self.strict {
+                        self.ask("run_command", command)?;
+                    }
+                    SecurityMode::RequireApproval
+                }
                 PolicyDecision::Allow | PolicyDecision::AskConfirmation { .. } => {
                     self.ask(
                         "run_command",
@@ -548,6 +565,14 @@ impl Tools {
         )
     }
 
+    fn authorize_read(&mut self, tool: &str, path: &Path) -> Result<(), String> {
+        if self.strict {
+            self.ask(tool, &cluaiz_api::cep::roots::display(path))
+        } else {
+            self.allow_outside(tool, path)
+        }
+    }
+
     fn check_running(&mut self) -> Result<(), String> {
         if self.display.closing()
             || self.display.interrupted()
@@ -635,125 +660,5 @@ fn clip(text: &str) -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn tools() -> (Tools, PathBuf) {
-        let dir = std::env::temp_dir().join(format!("cluaiz-agent-tools-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(dir.join("src")).unwrap();
-        std::fs::write(
-            dir.join("src/main.rs"),
-            "fn main() {\r\n    println!(\"hi\");\r\n}\r\n",
-        )
-        .unwrap();
-        (Tools::new(dir.clone(), true), dir)
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn files_are_read_searched_and_edited() {
-        let (mut t, dir) = tools();
-        let read = t.run("read_file", r#"{"path": "src/main.rs"}"#).await;
-        assert!(read.starts_with("    1\tfn main() {"), "{read}");
-        let found = t
-            .run("search", r#"{"pattern": "println", "glob": "*.rs"}"#)
-            .await;
-        assert_eq!(found, "src/main.rs:2: println!(\"hi\");");
-        // Plain line breaks match the file's Windows ones
-        let edit = t.run("edit_file", r#"{"path": "src/main.rs", "old_text": "{\n    println!(\"hi\");", "new_text": "{\n    println!(\"bye\");"}"#).await;
-        assert_eq!(edit, "src/main.rs edited (1 replaced).");
-        assert!(std::fs::read_to_string(dir.join("src/main.rs"))
-            .unwrap()
-            .contains("println!(\"bye\");\r\n"));
-        let twice = t
-            .run(
-                "edit_file",
-                r#"{"path": "src/main.rs", "old_text": "nothing like this", "new_text": "x"}"#,
-            )
-            .await;
-        assert!(twice.starts_with("Error: old_text is not in the file"));
-        assert_eq!(t.run("list_dir", "{}").await, "src/");
-        assert!(t
-            .run("nope", "{}")
-            .await
-            .starts_with("Error: there is no tool named 'nope'"));
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[test]
-    fn a_read_only_start_does_not_cover_the_rest_of_the_line() {
-        assert!(!chains("git status"));
-        assert!(!chains("Get-ChildItem src"));
-        for line in [
-            "ls; rm -r src",
-            "echo hi > notes.txt",
-            "cat a | tee b",
-            "dir && del x",
-            "echo $(whoami)",
-        ] {
-            assert!(chains(line), "{line}");
-        }
-    }
-
-    #[test]
-    fn paths_resolve_inside_the_folder() {
-        let dir = std::env::temp_dir().join(format!("cluaiz-paths-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        let t = Tools::new(dir.clone(), false);
-        assert_eq!(t.resolve("src/../lib.rs").unwrap(), t.root.join("lib.rs"));
-        assert!(!t.resolve("../outside").unwrap().starts_with(&t.root));
-        std::fs::remove_dir_all(dir).unwrap();
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_denied_write_and_feedback_do_not_mutate_files() {
-        use std::sync::{atomic::AtomicBool, mpsc, Arc};
-        let dir = tempfile::tempdir().unwrap();
-        for response in [
-            ApprovalResponse::Deny,
-            ApprovalResponse::Feedback("Keep My API".into()),
-        ] {
-            let (sender, receiver) = mpsc::sync_channel(16);
-            let mut t = Tools::new(dir.path().into(), false);
-            t.set_display(Display::screen(sender, Arc::new(AtomicBool::new(false))));
-            let responder = std::thread::spawn(move || {
-                let mut response = Some(response);
-                while let Ok(event) = receiver.recv() {
-                    if let Event::Approval { reason, reply, .. } = event {
-                        assert!(reason.contains("new.txt"));
-                        assert!(reason.contains("+ proposed content"));
-                        reply.send(response.take().unwrap()).unwrap();
-                        // Keep receiving ToolEnd so the bounded channel stays connected.
-                    } else if matches!(event, Event::ToolEnd { .. }) {
-                        break;
-                    }
-                }
-            });
-            let result = t
-                .run(
-                    "write_file",
-                    r#"{"path":"new.txt","content":"proposed content"}"#,
-                )
-                .await;
-            assert!(result.starts_with("Error:"), "{result}");
-            assert!(!dir.path().join("new.txt").exists());
-            if result.contains("said:") {
-                assert!(result.contains("Keep My API"));
-            }
-            responder.join().unwrap();
-        }
-    }
-
-    #[tokio::test(flavor = "multi_thread")]
-    async fn test_invalid_arguments_do_not_write_and_failed_command_is_error() {
-        let dir = tempfile::tempdir().unwrap();
-        let mut t = Tools::new(dir.path().into(), true);
-        for args in ["{", "[]", "null"] {
-            assert!(t.run("write_file", args).await.starts_with("Error:"));
-        }
-        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 0);
-        let result = t.run("run_command", r#"{"command":"exit 7"}"#).await;
-        assert!(result.starts_with("Error:"), "{result}");
-        assert!(result.contains("Exit code 7"), "{result}");
-    }
-}
+#[path = "../../tests/agent/tools.rs"]
+mod tests;
