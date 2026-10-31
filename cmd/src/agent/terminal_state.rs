@@ -21,6 +21,8 @@ pub struct State {
     progress_id: String,
     tool_preparing: bool,
     thinking: bool,
+    /// The context after the last answer (tokens, size): the live footer adds the tokens being generated
+    context: Option<(usize, usize)>,
 }
 
 #[cfg(test)]
@@ -43,6 +45,15 @@ mod tests {
     }
 
     #[test]
+    fn the_footer_shows_the_context_and_speed_live() {
+        let mut state = state();
+        state.apply(Event::Context { used: 1000, size: 8000, speed: Some("20.0 tok/s · 3.0s".into()) });
+        assert_eq!(state.app.context_usage.as_deref(), Some("Context 12% · 1000 / 8000 · 20.0 tok/s · 3.0s"));
+        state.apply(Event::GenerationProgress { tokens: 50, seconds: 2, millis: 2000 });
+        assert_eq!(state.app.context_usage.as_deref(), Some("Context 13% · 1050 / 8000 · 25.0 tok/s · 2s"));
+    }
+
+    #[test]
     fn test_progress_follows_thinking_and_tool_in_conversation_order() {
         let mut state = state();
         state.apply(Event::User("question".into()));
@@ -51,6 +62,7 @@ mod tests {
         state.apply(Event::GenerationProgress {
             tokens: 12,
             seconds: 2,
+            millis: 2000,
         });
         let rows = state.app.transcript.visible_animated(
             100,
@@ -195,6 +207,7 @@ impl State {
             progress_id: String::new(),
             tool_preparing: false,
             thinking: false,
+            context: None,
         }
     }
 
@@ -305,7 +318,10 @@ impl State {
             Event::Phase(text) => {
                 self.progress(&text);
             }
-            Event::GenerationProgress { tokens, seconds } => {
+            Event::GenerationProgress { tokens, seconds, millis } => {
+                if let Some((used, size)) = self.context {
+                    self.app.context_usage = Some(context_line(used + tokens, size, live_speed(tokens, millis), seconds));
+                }
                 if !self.tool_preparing {
                     if !self.reasoning.is_empty() && self.answer.trim().is_empty() {
                         Self::entry(
@@ -457,7 +473,18 @@ impl State {
                 self.app.activity = None;
                 self.app.metadata.status = status;
             }
-            Event::Usage(usage) => self.app.context_usage = Some(usage),
+            Event::Usage(usage) => {
+                self.context = None;
+                self.app.context_usage = Some(usage)
+            }
+            Event::Context { used, size, speed } => {
+                self.context = Some((used, size));
+                let percent = used * 100 / size.max(1);
+                self.app.context_usage = Some(match speed {
+                    Some(speed) => format!("Context {percent}% · {used} / {size} · {speed}"),
+                    None => format!("Context {percent}% · {used} / {size}"),
+                });
+            }
             Event::Finished => {
                 self.end_thinking();
                 self.finished = true;
@@ -470,4 +497,18 @@ impl State {
             let _ = reply.send(ApprovalResponse::Deny);
         }
     }
+}
+
+/// The footer while an answer runs: the context grows by the tokens generated so far
+fn context_line(used: usize, size: usize, speed: Option<f64>, seconds: u64) -> String {
+    let percent = used * 100 / size.max(1);
+    match speed {
+        Some(speed) => format!("Context {percent}% · {used} / {size} · {speed:.1} tok/s · {seconds}s"),
+        None => format!("Context {percent}% · {used} / {size} · {seconds}s"),
+    }
+}
+
+/// Tokens per second so far; none in the first half second, when it means nothing yet
+fn live_speed(tokens: usize, millis: u64) -> Option<f64> {
+    (millis >= 500 && tokens > 0).then(|| tokens as f64 * 1000.0 / millis as f64)
 }
