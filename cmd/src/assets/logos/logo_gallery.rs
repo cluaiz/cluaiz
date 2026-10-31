@@ -1,5 +1,14 @@
-/// Compact Cog pet for the interactive agent header (six rows, no scaling/cropping).
-pub const COG_TERMINAL: &str = "    ⣠⣶⣿⣿⣶⣄\n  ⣰⣿⠋⠀⠀⠀⠀⠙⣿⣆\n ⣸⣿⠀⣿⠀⠀⣿⠀⣿⣇\n⠻⣿⣄⠀⠰⠶⠆⠀⣠⣿⠟\n  ⠈⠻⣿⣶⣶⣿⠟⠁\n    ⠻⠟⠀⠀⠻⠟";
+/// Owner-supplied Cog artwork for the interactive agent intro, without scaling.
+pub const COG_TERMINAL: &str = r#"⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⣀⣠⣤⣤⣀⣀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⢠⣾⠿⠛⠛⠛⠛⠻⣷⡀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⣾⠀⠀⣠⡀⠀⣠⡀ ⠈⣷⡀⠀⠀⠀⠀
+⠀⠀⠀⠀  ⣿⡀     ⠲⠶  ⠀    ⣾⣇⠀⠀⠀⠀
+⠀⠀⠀⣴⣿⣿⣿⣶⣦⣦⣤⣦⣶⣿⣿⣿⣦⡀⠀⠀
+⠀⠀⠀⠉⠋⠉⣿⣿⣿⠛⠻⣿⣿⣿⠋⠋⠉⠀⠀⠀
+⠀⠀⠀⠀⠀⠀ ⠈⠉⠀⠀⠀⠈⠉⠁⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀"#;
 
 pub const LOGO_VARIANTS: &[&str] = &[
     // 1. Tiny - Minimalist Line

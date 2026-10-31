@@ -60,7 +60,7 @@ No HTTP request is needed for the local CLI path. There is one EngineHost for th
   output; `--ui plain` selects it explicitly. `--ui tui` refuses redirected/dumb terminals.
 - The screen worker is the sole UI writer. Generation publishes coalesced text and measured phase
   facts through a bounded queue. File discovery runs off the screen thread with one active lookup.
-- Header art uses the gallery's six-row `COG_TERMINAL`, with a text-only fallback
+- Header art uses the gallery's owner-supplied `COG_TERMINAL`, with a text-only fallback
   in tiny windows. Empty-input `?` opens compact shortcut columns; Esc/Backspace close, typing closes
   and retains that character. Typed user/error events and
   separate answer/reasoning/tool events keep presentation roles independent of message text.
