@@ -41,6 +41,51 @@ fn frame(app: &mut App, width: u16, height: u16) -> String {
 }
 
 #[test]
+fn test_logo_preserves_first_row_padding_and_only_skips_blank_edge_lines() {
+    let mut app = App::new(
+        Metadata {
+            title: "model".into(),
+            brand: "\n  \n    TOP\n  SIDE\nBOTTOM\n  \n",
+            ..Metadata::default()
+        },
+        Limits::default(),
+    );
+    let view = frame(&mut app, 100, 24);
+    let rows: Vec<_> = view.lines().collect();
+    assert!(rows[0].starts_with("    TOP"), "{}", rows[0]);
+    assert!(rows[1].starts_with("  SIDE"));
+    assert!(rows[2].starts_with("BOTTOM"));
+}
+
+#[test]
+fn test_running_thinking_stays_open_until_completed_then_manual_details_work() {
+    use cluaiz_terminal::transcript::Role;
+    let mut app = app();
+    app.transcript
+        .upsert_role(
+            "thought",
+            Role::ThinkingRunning,
+            "Thinking",
+            "live reasoning",
+        )
+        .unwrap();
+    app.transcript.set_active(Some("thought"));
+    app.activity = Some("⠋".into());
+    assert!(frame(&mut app, 80, 24).contains("live reasoning"));
+    app.handle(ctrl('o'));
+    assert!(frame(&mut app, 80, 24).contains("live reasoning"));
+    app.transcript
+        .upsert_role("thought", Role::Thinking, "Thinking", "live reasoning")
+        .unwrap();
+    app.transcript.set_active(None);
+    let done = frame(&mut app, 80, 24);
+    assert!(!done.contains("live reasoning"));
+    assert!(!done.contains("⠋"));
+    app.handle(ctrl('o'));
+    assert!(frame(&mut app, 80, 24).contains("live reasoning"));
+}
+
+#[test]
 fn test_intro_scrolls_away_and_returns_once_without_repinning_on_resize() {
     let mut app = App::new(
         Metadata {

@@ -24,6 +24,7 @@ pub enum Role {
     User,
     Assistant,
     Thinking,
+    ThinkingRunning,
     Tool,
     ToolRunning,
     Error,
@@ -136,7 +137,7 @@ impl Transcript {
             label: display_text(label),
             content: display_text(content),
             role,
-            expanded: role == Role::ToolRunning,
+            expanded: matches!(role, Role::ThinkingRunning | Role::ToolRunning),
             intro: None,
         };
         match self.entries.iter().position(|old| old.id == id) {
@@ -147,7 +148,10 @@ impl Transcript {
                 {
                     return Ok(());
                 }
-                let completed = self.entries[index].role == Role::ToolRunning && role == Role::Tool;
+                let completed = matches!(
+                    (self.entries[index].role, role),
+                    (Role::ToolRunning, Role::Tool) | (Role::ThinkingRunning, Role::Thinking)
+                );
                 let expanded = self.entries[index].expanded;
                 self.entries[index] = entry;
                 self.entries[index].expanded = !completed && expanded;
@@ -208,7 +212,7 @@ impl Transcript {
                 let role = self.entries[row.entry].role;
                 let style = match role {
                     Role::Intro | Role::User => palette.base,
-                    Role::Thinking => palette.muted.italic(),
+                    Role::Thinking | Role::ThinkingRunning => palette.muted.italic(),
                     Role::Tool | Role::ToolRunning | Role::Notice => palette.muted,
                     Role::Error => palette.accent.bold(),
                     Role::Assistant => palette.base,
@@ -340,7 +344,7 @@ impl Transcript {
                 Role::Assistant => "● ",
                 Role::Thinking | Role::Tool if entry.expanded => "▾ ",
                 Role::Thinking | Role::Tool => "▸ ",
-                Role::ToolRunning => "▾ ",
+                Role::ThinkingRunning | Role::ToolRunning => "▾ ",
                 Role::Error => "! ",
                 Role::Notice => "",
             };

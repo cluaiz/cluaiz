@@ -64,8 +64,9 @@ No HTTP request is needed for the local CLI path. There is one EngineHost for th
   in tiny windows. Empty-input `?` opens compact shortcut columns; Esc/Backspace close, typing closes
   and retains that character. Typed user/error events and
   separate answer/reasoning/tool events keep presentation roles independent of message text.
-  Answers have no repeated assistant label. Reasoning is collapsed initially; Ctrl+O expands retained reasoning when it was enabled during
-  generation. This does not enable thinking hidden with `--hide-thinking`.
+  Answers have no repeated assistant label. Running reasoning is expanded; its answer, tool, error
+  or end-of-generation transition collapses the completed step. Ctrl+O expands retained completed
+  reasoning when it was enabled during generation. This cannot recover `--hide-thinking` output.
 - Completed tools collapse to their real result/error summary. Clicking that header reopens retained
   details; running tools remain open. The existing spinner supplies frames to the screen writer.
 - Cog/model/workspace/starting settings form one scrollable intro, not a fixed header. Actual

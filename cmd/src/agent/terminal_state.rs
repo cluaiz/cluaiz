@@ -20,6 +20,7 @@ pub struct State {
     tool_name: String,
     progress_id: String,
     tool_preparing: bool,
+    thinking: bool,
 }
 
 #[cfg(test)]
@@ -62,12 +63,15 @@ mod tests {
             .map(ToString::to_string)
             .collect::<Vec<_>>()
             .join("\n");
-        assert!(view.contains("⠋ ▸ Thinking · 12 tokens · 2s"), "{view}");
+        assert!(view.contains("⠋ ▾ Thinking · 12 tokens · 2s"), "{view}");
+        assert!(view.contains("reasoning body"));
         assert!(!view.contains("Preparing response"));
         state.apply(Event::PreparingTool(
             "Preparing search · 18 bytes · 3s".into(),
         ));
+        assert!(!text(&mut state).contains("reasoning body"));
         state.apply(Event::ToolStart("search".into(), "needle".into()));
+        assert!(text(&mut state).contains("needle"));
         state.apply(Event::ToolEnd {
             ok: true,
             summary: "1 match".into(),
@@ -83,8 +87,30 @@ mod tests {
         assert!(view.find("search · Result").unwrap() < view.find("actual answer").unwrap());
         assert!(!view.contains("Preparing search"));
         assert!(!view.contains("Writing response"));
+        assert!(!view.contains("retained result"));
         state.app.transcript.toggle_thinking();
         assert!(text(&mut state).contains("retained result"));
+    }
+
+    #[test]
+    fn test_all_reasoning_chunks_close_on_answer_ready_or_error_and_can_reopen() {
+        for ending in [
+            Event::Content("answer".into()),
+            Event::Ready("ready".into()),
+            Event::Error("stopped".into()),
+        ] {
+            let mut state = state();
+            state.apply(Event::StartAnswer);
+            state.apply(Event::Reasoning(format!(
+                "{}reasoning-tail-marker",
+                "part ".repeat(7000)
+            )));
+            assert!(text(&mut state).contains("reasoning-tail-marker"));
+            state.apply(ending);
+            assert!(!text(&mut state).contains("reasoning-tail-marker"));
+            state.app.transcript.toggle_thinking();
+            assert!(text(&mut state).contains("reasoning-tail-marker"));
+        }
     }
 
     #[test]
@@ -168,6 +194,7 @@ impl State {
             tool_name: String::new(),
             progress_id: String::new(),
             tool_preparing: false,
+            thinking: false,
         }
     }
 
@@ -196,6 +223,19 @@ impl State {
         self.active(&self.progress_id.clone());
     }
 
+    fn end_thinking(&mut self) {
+        if self.thinking {
+            Self::entry(
+                &mut self.app,
+                &self.reasoning_id,
+                Role::Thinking,
+                "Thinking",
+                &self.reasoning,
+            );
+            self.thinking = false;
+        }
+    }
+
     /// Splits large source text at UTF-8 boundaries so it is not silently clipped by entry limits.
     fn entry(app: &mut App, id: &str, role: Role, label: &str, body: &str) {
         const DISPLAY_CHUNK: usize = 32 * 1024;
@@ -222,6 +262,7 @@ impl State {
     pub fn apply(&mut self, event: Event) {
         match event {
             Event::StartAnswer => {
+                self.end_thinking();
                 self.stop_progress();
                 self.tool_preparing = false;
                 self.answer_id = self.id("answer");
@@ -234,6 +275,7 @@ impl State {
                 if text.trim().is_empty() && self.answer.is_empty() {
                     return;
                 }
+                self.end_thinking();
                 self.stop_progress();
                 self.answer.push_str(&text);
                 if !self.answer.trim().is_empty() {
@@ -249,11 +291,12 @@ impl State {
             }
             Event::Reasoning(text) => {
                 self.stop_progress();
+                self.thinking = true;
                 self.reasoning.push_str(&text);
                 Self::entry(
                     &mut self.app,
                     &self.reasoning_id,
-                    Role::Thinking,
+                    Role::ThinkingRunning,
                     "Thinking",
                     &self.reasoning,
                 );
@@ -268,7 +311,7 @@ impl State {
                         Self::entry(
                             &mut self.app,
                             &self.reasoning_id,
-                            Role::Thinking,
+                            Role::ThinkingRunning,
                             &format!("Thinking · {tokens} tokens · {seconds}s"),
                             &self.reasoning,
                         );
@@ -286,6 +329,7 @@ impl State {
                 }
             }
             Event::PreparingTool(label) => {
+                self.end_thinking();
                 self.stop_progress();
                 if !self.tool_preparing {
                     self.tool_id = self.id("tool");
@@ -311,6 +355,7 @@ impl State {
                 Self::entry(&mut self.app, &id, Role::User, "You", &body);
             }
             Event::Error(body) => {
+                self.end_thinking();
                 self.stop_progress();
                 if self.tool_preparing {
                     Self::entry(
@@ -326,6 +371,7 @@ impl State {
                 Self::entry(&mut self.app, &id, Role::Error, "Error", &body);
             }
             Event::ToolStart(name, target) => {
+                self.end_thinking();
                 self.stop_progress();
                 if !self.tool_preparing {
                     self.tool_id = self.id("tool");
@@ -395,6 +441,7 @@ impl State {
             Event::Themes => self.app.open_themes(),
             Event::Permission(strict) => self.app.strict = strict,
             Event::Ready(status) => {
+                self.end_thinking();
                 self.stop_progress();
                 if self.tool_preparing {
                     Self::entry(
@@ -411,6 +458,7 @@ impl State {
                 self.app.metadata.status = status;
             }
             Event::Finished => {
+                self.end_thinking();
                 self.finished = true;
             }
         }

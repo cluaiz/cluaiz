@@ -43,8 +43,9 @@ flowchart LR
   and exposes an omitted count; this is not a durable-history store.
 - `Transcript::upsert_role` accepts an explicit user/assistant/thinking/tool/error/notice role.
   Markers retain meaning in No color mode; current theme styles are applied to cached rows. Thinking
-  starts collapsed. Running tools show details; completed tools collapse to their result summary.
-  Ctrl+O toggles retained thinking/tool details together; clicking one header toggles only that entry.
+  stays expanded while running, just like running tools. The running-to-completed transition
+  collapses details while retaining the full source. Running details stay open; Ctrl+O and header
+  clicks toggle completed thinking/tool details. Clicking one completed header toggles only that entry.
   Assistant answers have no repeated role heading. Secondary entries are dim in every theme.
 - `Transcript::set_assistant_layout` accepts the client's pure Markdown layout function. The CMD
   client reuses its existing formatter; this library does not own a second Markdown parser.
@@ -55,6 +56,7 @@ flowchart LR
   intro entry at construction. It scrolls with conversation, returns when scrolling back and can
   be evicted by the same retention limit. Later metadata status changes do not repin that intro.
   Artwork stays owned by the caller; the composer/help remain outside the scrollable region.
+  Blank edge lines are removed from artwork; the first visible row's left padding is preserved.
 - `Transcript::set_active` selects an entry by stable ID. `visible_animated` prefixes only its first
   header row with the caller's current spinner frame; animation does not rebuild the wrapping cache.
   `remove` clears temporary preparation/writing rows. Completed results stay in retained entries.
