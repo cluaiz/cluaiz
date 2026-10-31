@@ -59,7 +59,8 @@ flowchart LR
   Empty whitespace/Braille edge lines are removed from artwork; the first visible row's left padding is preserved.
 - The intro draws the brand art above the title, folder and status (never side by side), and
   falls back to `compact_brand`, then to text only, when the art does not fit.
-- `mascot` holds the mascot art (`ART`, `ART_BLINK`), its colours (`color`) and `banner`: the art on
+- `mascot` holds the mascot art (`ART`, `ART_BLINK`), the ">_ CLUAIZ" `WORDMARK`, both together
+  (`BRAND`, `BRAND_BLINK`), its colours (`color`) and `banner`: the art on
   stderr, drawn row by row with one blink, that `serve`, `run`, `show`, `pull`, `bench`, `status` and
   `calibrate` print at start. Nothing is printed when stderr is not a terminal or `NO_COLOR` is set.
 - Optional `Metadata::brand_blink` supplies a second frame of the same cell geometry. A left click
