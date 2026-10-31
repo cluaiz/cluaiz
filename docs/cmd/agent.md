@@ -167,7 +167,8 @@ The transcript is a bounded in-memory view; an eviction notice is shown if older
 
 In rich mode, `?` on empty input opens compact shortcut columns. Esc, Backspace or `?` closes help;
 typing closes it and keeps your character. Main answers have no repeated assistant heading. Thinking
-and tool information are dim. Completed tool results collapse to one summary; click the header to
+and tool information are dim. Running thinking/tools stay expanded until their step ends, then
+auto-collapse while retaining their full content. Completed tool results collapse to one summary; click the header to
 reopen one result, or press Ctrl+O to expand/collapse retained details together. Reasoning hidden by
 `--hide-thinking` cannot be recovered by the display toggle.
 
