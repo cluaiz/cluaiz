@@ -312,6 +312,30 @@ would need asking is refused when there is no terminal to ask.
 The answer goes to stdout and the tool rows and status to stderr, so `cluaiz agent "..." > answer.md`
 keeps only the answer.
 
+## Headless: scripts, CI and other programs
+
+`--output-format json` or `stream-json` runs one task without a terminal UI, like `claude -p`:
+
+```sh
+cluaiz agent -p "fix the failing test in calc.py" --output-format json \
+  --allowed-tools "read_file,list_dir,search,edit_file(src/*),run_command(pytest*)"
+```
+
+- `json`: one JSON object on stdout at the end: `result` (the final answer), `files_changed`,
+  `refused_calls`, `is_error` / `error`, `session_id` (go on with `--resume <id>`), `model`,
+  `exit_code`, and `events` (every text chunk, tool call, tool result, diff and notice in order).
+- `stream-json`: the same events as they happen, one JSON line each (`{"type":"text",...}`,
+  `tool_call`, `tool_result`, `diff`, `notice`, `usage`, `thinking`, `error`), then the result object
+  as the last line.
+- No one can be asked in a headless run: a call that would ask is refused (the model is told to go on
+  without it) unless `--allowed-tools` or `--yes` allows it.
+- `--allowed-tools` / `--disallowed-tools` take comma-separated rules: a tool name (`read_file`), or a
+  tool with a pattern for its command or file (`run_command(git *)`, `edit_file(src/*)`; `*` matches
+  any text; file patterns are relative to the working folder). A disallowed call is refused even
+  with `--yes`. Both work in the interactive agent too: an allowed call does not ask.
+- `--max-steps N` limits the tool calls of the task (default 40).
+- Exit code: `0` done, `1` error, `2` the task finished but a call was refused, `130` cancelled.
+
 ## Project notes: AGENTS.md
 
 If the working folder has an `AGENTS.md` file, its first 8,000 characters are added to the agent's

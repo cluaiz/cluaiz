@@ -11,11 +11,12 @@ mod display;
 mod terminal;
 mod terminal_state;
 mod checkpoints;
+mod rules;
 pub mod sessions;
 pub mod tools;
 mod validation;
 
-use std::io::{self, IsTerminal, Read};
+use std::io::{self, IsTerminal, Read, Write};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -81,6 +82,19 @@ pub struct AgentArgs {
     /// Go on with a saved conversation of this folder (its id: see /sessions)
     #[arg(long, value_name = "ID")]
     pub resume: Option<String>,
+    /// Output of a task: text, json (one result object at the end) or stream-json (one JSON
+    /// event per line, then the result)
+    #[arg(long = "output-format", value_enum, default_value_t = OutputFormat::Text)]
+    pub output_format: OutputFormat,
+    /// Calls that run without asking, e.g. "read_file,run_command(git *),edit_file(src/*)"
+    #[arg(long = "allowed-tools", value_name = "RULES")]
+    pub allowed_tools: Vec<String>,
+    /// Calls that are always refused, e.g. "run_command(git push*)"
+    #[arg(long = "disallowed-tools", value_name = "RULES")]
+    pub disallowed_tools: Vec<String>,
+    /// Most tool calls for one request (default 40)
+    #[arg(long = "max-steps", value_name = "N")]
+    pub max_steps: Option<usize>,
     /// Added to the agent's system prompt (-sys)
     #[arg(long = "system-prompt", value_name = "TEXT")]
     pub system_prompt: Option<String>,
@@ -110,8 +124,17 @@ impl AgentArgs {
     }
 }
 
+#[derive(clap::ValueEnum, Clone, Copy, Debug, Default, PartialEq)]
+pub enum OutputFormat {
+    #[default]
+    Text,
+    Json,
+    StreamJson,
+}
+
 pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
-    let screen_enabled = args.screen_enabled();
+    let headless = args.output_format != OutputFormat::Text;
+    let screen_enabled = args.screen_enabled() && !headless;
     if matches!(args.ui, UiMode::Tui) && !screen_enabled {
         return Err(eyre!(
             "Interactive terminal required; use --ui plain for redirected output"
@@ -146,6 +169,9 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
         task = Some(piped.trim().to_string()).filter(|t| !t.is_empty());
     }
     let interactive = args.interactive || task.is_none();
+    if headless && (interactive || task.is_none()) {
+        return Err(eyre!("--output-format json / stream-json runs one task: give it (cluaiz agent -p \"...\" --output-format json)"));
+    }
 
     let mut options = ChatOptions::new(&args.load, &args.sample, &args.think);
     options.max_tokens = args.n_predict;
@@ -168,7 +194,14 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
         session_id: sessions::new_id(),
         usage: None,
         compact_next: false,
+        max_steps: args.max_steps.unwrap_or(MAX_STEPS).max(1),
     };
+    agent.tools.rules = rules::Rules::new(&args.allowed_tools, &args.disallowed_tools, agent.tools.root());
+    if headless {
+        let display = Display::json(args.output_format == OutputFormat::StreamJson);
+        agent.tools.set_display(display.clone());
+        agent.display = display;
+    }
     if args.continue_last || args.resume.is_some() {
         let saved = sessions::load(agent.tools.root(), args.resume.as_deref())
             .ok_or_else(|| eyre!("no saved conversation {}in this folder (see /sessions)", args.resume.as_deref().map(|id| format!("{id} ")).unwrap_or_default()))?;
@@ -187,6 +220,12 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
         eprintln!("{}", context_note(agent.session.plan.context_window).dimmed());
         eprintln!("{} {}", "Working in".dimmed(), agent.tools.root().display());
         eprintln!("{}", "Type a task, /? for help, /bye to exit.".dimmed());
+    }
+    if headless {
+        let task = task.unwrap_or_default();
+        let outcome = agent.turn(&task).await;
+        let code = agent.finish_headless(outcome, args.output_format);
+        std::process::exit(code);
     }
     if let Some(task) = task {
         if interactive {
@@ -230,6 +269,8 @@ struct Agent {
     session_id: String,
     /// How full the context was after the last answer (tokens, context size)
     usage: Option<(usize, usize)>,
+    /// Most tool calls for one request
+    max_steps: usize,
     /// The Engine left out old messages to fit: compact before the next request
     compact_next: bool,
 }
@@ -356,6 +397,50 @@ impl Agent {
         result
     }
 
+    /// The headless result (json: one object with every event; stream-json: the last line) and the
+    /// exit code: 0 done, 1 error, 2 a call was refused, 130 cancelled
+    fn finish_headless(&mut self, outcome: Result<()>, format: OutputFormat) -> i32 {
+        let answer = self
+            .history
+            .iter()
+            .rev()
+            .find(|m| m.role == "assistant")
+            .map(|m| m.content.iter().filter_map(|part| match part {
+                PreparedPart::Text { text } => Some(cluaiz_core::tool_calls::split_calls(text).0),
+                _ => None,
+            }).collect::<String>())
+            .unwrap_or_default();
+        let root = self.tools.root().to_path_buf();
+        let files: Vec<String> = self.tools.checkpoints.last_files().iter()
+            .map(|path| path.strip_prefix(&root).unwrap_or(path).display().to_string().replace('\\', "/"))
+            .collect();
+        let cancelled = cluaiz_core::GLOBAL_CANCEL_SIGNAL.load(std::sync::atomic::Ordering::SeqCst) || self.display.interrupted();
+        let (code, error) = match &outcome {
+            Err(error) => (1, Some(format!("{error:#}"))),
+            Ok(()) if cancelled => (130, None),
+            Ok(()) if self.tools.refused => (2, None),
+            Ok(()) => (0, None),
+        };
+        let mut result = serde_json::json!({
+            "type": "result",
+            "result": answer.trim(),
+            "is_error": code == 1,
+            "error": error,
+            "refused_calls": self.tools.refused,
+            "files_changed": files,
+            "session_id": self.session_id,
+            "model": self.session.model_id,
+            "exit_code": code,
+        });
+        if format == OutputFormat::Json {
+            result["events"] = serde_json::Value::Array(self.display.json_events());
+        }
+        let mut out = std::io::stdout().lock();
+        let _ = writeln!(out, "{result}");
+        let _ = out.flush();
+        code
+    }
+
     /// Remembers how full the context is and shows it in the footer
     fn note_usage(&mut self, report: &crate::chat::TurnReport) {
         if report.dropped > 0 {
@@ -436,7 +521,7 @@ impl Agent {
             .check_decoded_bytes(retained)?;
         self.history.push(user);
         let schemas = self.tools.all_schemas();
-        for _ in 0..MAX_STEPS {
+        for _ in 0..self.max_steps {
             if self.display.closing()
                 || self.display.interrupted()
                 || cluaiz_core::GLOBAL_CANCEL_SIGNAL.load(std::sync::atomic::Ordering::SeqCst)
@@ -510,7 +595,7 @@ impl Agent {
         }
         self.display.emit(Event::Message(
             "Stopped".into(),
-            format!("Stopped after {MAX_STEPS} steps; say how to go on."),
+            format!("Stopped after {} steps; say how to go on.", self.max_steps),
         ));
         Ok(())
     }

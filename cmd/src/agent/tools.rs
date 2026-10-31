@@ -49,6 +49,10 @@ pub struct Tools {
     installed_schemas: Vec<Value>,
     /// Files this request and the last one changed (for the summary, /undo and /diff)
     pub checkpoints: super::checkpoints::Checkpoints,
+    /// `--allowed-tools` / `--disallowed-tools`
+    pub rules: super::rules::Rules,
+    /// A call was refused because nobody allowed it (headless exit code 2)
+    pub refused: bool,
 }
 
 /// Most characters of installed tool schemas sent with every request (a small context fills fast)
@@ -68,6 +72,8 @@ impl Tools {
             installed: Vec::new(),
             installed_schemas: Vec::new(),
             checkpoints: Default::default(),
+            rules: Default::default(),
+            refused: false,
         }
     }
 
@@ -667,14 +673,21 @@ impl Tools {
 
     /// The user's answer to one call; Err is what the model is told when it is not allowed.
     fn ask(&mut self, tool: &str, why: &str) -> Result<(), String> {
+        match self.rules.check(tool, why) {
+            super::rules::Verdict::Deny(reason) => {
+                self.refused = true;
+                return Err(reason);
+            }
+            super::rules::Verdict::Allow => return Ok(()),
+            super::rules::Verdict::Ask => {}
+        }
         if self.allow_all || self.always.contains(tool) {
             return Ok(());
         }
         if !self.display.screen_enabled() && !std::io::stdin().is_terminal() {
-            return Err(
-                "not allowed: there is no terminal to ask the user (cluaiz agent --yes allows it)"
-                    .into(),
-            );
+            self.refused = true;
+            // Told to the model: what to do now, not which flags the user could have passed
+            return Err("not allowed: nobody can approve this call in this run; finish the task without it, or say what you would need".into());
         }
         let answer = tokio::task::block_in_place(|| self.display.approve(tool, why));
         match answer {
