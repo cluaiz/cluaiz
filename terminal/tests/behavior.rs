@@ -58,6 +58,70 @@ fn test_logo_preserves_first_row_padding_and_only_skips_blank_edge_lines() {
 }
 
 #[test]
+fn test_brand_click_blinks_only_the_visible_logo_without_moving_details() {
+    use crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
+    let click = |column, row| {
+        Event::Mouse(MouseEvent {
+            kind: MouseEventKind::Down(MouseButton::Left),
+            column,
+            row,
+            modifiers: KeyModifiers::NONE,
+        })
+    };
+    for theme in Theme::ALL {
+        let mut app = App::new(
+            Metadata {
+                title: "Session details".into(),
+                brand: "████████\n██ █ ███\n████████",
+                brand_blink: "████████\n██ ▄ ▄██\n████████",
+                ..Metadata::default()
+            },
+            Limits::default(),
+        );
+        app.theme = theme;
+        let before = frame(&mut app, 80, 24);
+        app.handle(click(30, 0)); // Session details are not a logo click target.
+        assert_eq!(frame(&mut app, 80, 24), before);
+        assert!(!app.transcript.advance_animation());
+        app.handle(click(2, 1));
+        let blink = frame(&mut app, 80, 24);
+        assert!(blink.contains("██ ▄ ▄██"));
+        assert_eq!(before.lines().next(), blink.lines().next());
+        app.handle(Event::Resize(90, 24));
+        assert!(frame(&mut app, 90, 24).contains("██ █ ███"));
+        assert!(!app.transcript.advance_animation());
+        app.handle(click(2, 1));
+        app.transcript
+            .upsert("long", "Output", &"line\n".repeat(40))
+            .unwrap();
+        assert!(!frame(&mut app, 90, 24).contains("██ ▄ ▄██"));
+        app.transcript.scroll(-100);
+        assert!(frame(&mut app, 90, 24).contains("██ ▄ ▄██"));
+    }
+}
+
+#[test]
+fn test_brand_blink_rejects_geometry_changes_and_tiny_window_fallback() {
+    let mut app = App::new(
+        Metadata {
+            title: "Session details".into(),
+            brand: "████████\n██ █ ███\n████████",
+            brand_blink: "short",
+            ..Metadata::default()
+        },
+        Limits::default(),
+    );
+    let before = frame(&mut app, 80, 24);
+    app.transcript.click(1, 1);
+    assert_eq!(frame(&mut app, 80, 24), before);
+    assert!(!app.transcript.advance_animation());
+    let tiny = frame(&mut app, 24, 10);
+    app.transcript.click(0, 0);
+    assert_eq!(frame(&mut app, 24, 10), tiny);
+    assert!(!app.transcript.advance_animation());
+}
+
+#[test]
 fn test_running_thinking_stays_open_until_completed_then_manual_details_work() {
     use cluaiz_terminal::transcript::Role;
     let mut app = app();
@@ -511,7 +575,7 @@ fn test_brand_falls_back_without_cropping_or_losing_draft() {
     let mut app = App::new(
         Metadata {
             title: "UI fixture".into(),
-            brand: "FULL ART\nSECOND ROW\nTHIRD ROW",
+            brand: "FULL ART ......................\nSECOND ROW\nTHIRD ROW",
             compact_brand: "pet",
             ..Metadata::default()
         },
@@ -522,7 +586,9 @@ fn test_brand_falls_back_without_cropping_or_losing_draft() {
     let narrow = frame(&mut app, 24, 9);
     assert!(!narrow.contains("FULL ART"));
     assert!(narrow.contains("draft kept"));
-    assert!(frame(&mut app, 46, 24).contains("pet"));
+    // The art sits above the details now, so only a window narrower than the art falls back
+    assert!(frame(&mut app, 46, 24).contains("THIRD ROW"));
+    assert!(frame(&mut app, 26, 40).contains("pet"));
     assert_eq!(app.draft(), "draft kept");
 }
 

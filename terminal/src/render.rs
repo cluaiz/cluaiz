@@ -251,6 +251,7 @@ pub(crate) fn header(
     metadata: &crate::Metadata,
     area: Rect,
     palette: crate::theme::Palette,
+    brand_override: Option<&str>,
 ) -> Vec<Line<'static>> {
     let mut details = vec![Line::from(display_text(&metadata.title))
         .style(palette.accent.add_modifier(Modifier::BOLD))];
@@ -259,7 +260,10 @@ pub(crate) fn header(
     }
     details.push(Line::from(display_text(&metadata.status)).style(palette.muted));
     // Use the caller's original art, never scale/crop it or allocate another logo asset.
-    for art in [metadata.brand, metadata.compact_brand] {
+    for art in [
+        brand_override.unwrap_or(metadata.brand),
+        metadata.compact_brand,
+    ] {
         let art = display_text(art);
         let blank_line = |line: &&str| {
             line.chars()
@@ -278,48 +282,29 @@ pub(crate) fn header(
             .map(|line| Line::from(*line).width())
             .max()
             .unwrap_or(0);
-        const DETAILS_MIN_WIDTH: usize = 40;
-        const BRAND_GAP: usize = 3;
-        if lines.is_empty()
-            || lines.len() > usize::from(area.height / 2)
-            || width + BRAND_GAP + DETAILS_MIN_WIDTH > usize::from(area.width)
-        {
-            continue;
-        }
-        let detail_width = usize::from(area.width).saturating_sub(width + BRAND_GAP);
+        // The art on top, the details below it: side by side, long paths pushed the art around
         let details: Vec<_> = details
             .iter()
             .flat_map(|detail| {
-                textwrap::wrap(&detail.to_string(), detail_width)
+                textwrap::wrap(&detail.to_string(), usize::from(area.width.max(1)))
                     .into_iter()
                     .map(|part| Line::from(part.into_owned()).style(detail.style))
                     .collect::<Vec<_>>()
             })
             .collect();
-        if details.len() > usize::from(area.height / 2) {
+        if lines.is_empty()
+            || width > usize::from(area.width)
+            || lines.len() + 1 + details.len() > usize::from(area.height / 2)
+        {
             continue;
         }
-        return (0..lines.len().max(details.len()))
-            .map(|index| {
-                let line = lines.get(index).copied().unwrap_or_default();
-                let mut spans = vec![
-                    Span::styled(line.to_owned(), palette.base),
-                    Span::raw(
-                        " ".repeat(width.saturating_sub(Line::from(line).width()) + BRAND_GAP),
-                    ),
-                ];
-                if let Some(detail) = details.get(index) {
-                    spans.extend(
-                        detail
-                            .spans
-                            .iter()
-                            .cloned()
-                            .map(|span| span.style(detail.style)),
-                    );
-                }
-                Line::from(spans)
-            })
+        let mut header: Vec<Line<'static>> = lines
+            .iter()
+            .map(|line| Line::from(Span::styled((*line).to_owned(), palette.base)))
             .collect();
+        header.push(Line::default());
+        header.extend(details);
+        return header;
     }
     details
 }

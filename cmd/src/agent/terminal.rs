@@ -32,8 +32,10 @@ pub async fn run(mut agent: Agent, first: Option<String>, keep_open: bool) -> Re
         title: format!("Cluaiz · {}", agent.session.model_id),
         workspace: cluaiz_api::cep::roots::display(agent.tools.root()),
         status: agent.status(),
-        brand: crate::assets::logos::logo_gallery::COG_TERMINAL,
-        compact_brand: "",
+        // The mascot on a tall window, the small Cog when it does not fit
+        brand: cluaiz_terminal::mascot::ART,
+        compact_brand: crate::assets::logos::logo_gallery::COG_SOLID,
+        brand_blink: cluaiz_terminal::mascot::ART_BLINK,
     };
     let root = agent.tools.root().to_owned();
     let media = agent.session.options.settings()?.media;
@@ -219,7 +221,7 @@ fn screen_inner(
             tick = tick.wrapping_add(1);
             state.app.activity = (state.busy && !state.app.approval_pending())
                 .then(|| crate::ui::spinner::frame(tick).to_owned());
-            dirty |= state.busy;
+            dirty |= state.app.transcript.advance_animation() || state.busy;
         }
         if !state.busy && input.is_some() {
             if let Some(text) = pending.take() {
@@ -327,6 +329,15 @@ fn screen_inner(
                     Some("A turn is already queued; change modes after it starts".into())
             }
             Action::Submit(text) if !closing.load(Ordering::SeqCst) => {
+                if text.trim() == "/play" {
+                    if state.busy {
+                        state.app.notice = Some("The playground opens when the agent is idle".into());
+                    } else {
+                        screen.takeover(cluaiz_terminal::mascot::play)?;
+                    }
+                    dirty = true;
+                    continue;
+                }
                 if let Some(path) = text.strip_prefix("/attach ") {
                     start_paste(
                         Ingress::Text(path.to_owned()),

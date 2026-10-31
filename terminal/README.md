@@ -57,6 +57,18 @@ flowchart LR
   be evicted by the same retention limit. Later metadata status changes do not repin that intro.
   Artwork stays owned by the caller; the composer/help remain outside the scrollable region.
   Empty whitespace/Braille edge lines are removed from artwork; the first visible row's left padding is preserved.
+- The intro draws the brand art above the title, folder and status (never side by side), and
+  falls back to `compact_brand`, then to text only, when the art does not fit.
+- `mascot` holds the mascot art (`ART`, `ART_BLINK`) and `play`, a playground for `cluaiz play` and
+  `/play`: stars / rain / matrix backdrops (`3`), a mascot that hops when clicked, and a runner game
+  (`2`, Space or click to jump, `P` pause, `R` restart, `Q` / Esc back). It draws into a `Screen`
+  through `Screen::takeover`, which repaints the caller's view afterwards; it needs 79 x 25 cells.
+- Optional `Metadata::brand_blink` supplies a second frame of the same cell geometry. A left click
+  inside visible intro artwork starts a 180 ms blink. Session text, overlays and fallback text do
+  not trigger it. The caller invokes `Transcript::advance_animation` on its existing UI tick;
+  its final `true` requests the restoring redraw, then subsequent idle ticks return `false`.
+  Only intro rows are substituted; cached layout and scroll anchors stay unchanged. Resize/theme
+  changes cancel the blink. Different frame geometry is rejected rather than moving session text.
 - `Transcript::set_active` selects an entry by stable ID. `visible_animated` prefixes only its first
   header row with the caller's current spinner frame; animation does not rebuild the wrapping cache.
   `remove` clears temporary preparation/writing rows. Completed results stay in retained entries.

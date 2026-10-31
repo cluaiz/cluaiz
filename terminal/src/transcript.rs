@@ -7,6 +7,7 @@ use crate::{
 };
 use ratatui::{style::Stylize, text::Line};
 use std::collections::VecDeque;
+use std::time::{Duration, Instant};
 
 struct Entry {
     id: String,
@@ -52,6 +53,7 @@ pub struct Transcript {
     assistant_layout: Option<fn(&str, usize) -> Vec<String>>,
     active: Option<String>,
     palette: Option<Palette>,
+    brand_blink: Option<(Instant, Vec<Line<'static>>)>,
 }
 
 impl Transcript {
@@ -70,6 +72,7 @@ impl Transcript {
             assistant_layout: None,
             active: None,
             palette: None,
+            brand_blink: None,
         }
     }
 
@@ -193,6 +196,9 @@ impl Transcript {
         let width = usize::from(width.max(1));
         let resized = self.height != usize::from(height);
         self.height = usize::from(height);
+        if self.width != width || resized || self.palette != Some(palette) {
+            self.brand_blink = None;
+        }
         if self.dirty || self.width != width || resized || self.palette != Some(palette) {
             self.capture_anchor();
             self.reflow(width, palette);
@@ -217,7 +223,15 @@ impl Transcript {
                     Role::Error => palette.accent.bold(),
                     Role::Assistant => palette.base,
                 };
-                let mut line = row.text.clone().style(row.text.style.patch(style));
+                let text = if role == Role::Intro {
+                    self.brand_blink
+                        .as_ref()
+                        .and_then(|(_, lines)| lines.get(row.logical))
+                        .unwrap_or(&row.text)
+                } else {
+                    &row.text
+                };
+                let mut line = text.clone().style(text.style.patch(style));
                 if row.logical == 0
                     && (index == 0 || self.rows[index - 1].entry != row.entry)
                     && self.active.as_deref() == Some(self.entries[row.entry].id.as_str())
@@ -253,6 +267,54 @@ impl Transcript {
     }
 
     /// Mouse hit-testing uses rendered row identity; model text cannot become an action.
+    pub fn click(&mut self, visible_row: usize, column: usize) {
+        let Some(row) = self.rows.get(self.top.saturating_add(visible_row)) else {
+            return;
+        };
+        if let Some(metadata) = &self.entries[row.entry].intro {
+            // Only a row of the art itself (drawn above the details) is a click target
+            let text: String = row.text.spans.iter().map(|span| span.content.as_ref()).collect();
+            let art_row = !text.trim().is_empty()
+                && metadata.brand.lines().any(|line| line.trim_end() == text.trim_end());
+            if metadata.brand_blink.is_empty()
+                || !art_row
+                || row.text.spans.is_empty()
+                || column >= row.text.spans[0].width()
+            {
+                return;
+            }
+            let Some(palette) = self.palette else { return };
+            let area = ratatui::layout::Rect::new(0, 0, self.width as u16, self.height as u16);
+            let original = crate::render::header(metadata, area, palette, None);
+            let blink = crate::render::header(metadata, area, palette, Some(metadata.brand_blink));
+            // Never move details or change scroll geometry for an incompatible frame.
+            let shape = |line: &Line<'_>| {
+                (
+                    line.width(),
+                    line.spans.len(),
+                    line.spans.first().map(|span| span.width()),
+                )
+            };
+            if original.iter().map(shape).eq(blink.iter().map(shape)) {
+                self.brand_blink = Some((Instant::now(), blink));
+            }
+            return;
+        }
+        self.toggle_row(visible_row);
+    }
+
+    /// Reuses the caller's existing UI tick, including one final redraw on expiry.
+    pub fn advance_animation(&mut self) -> bool {
+        let Some((started, _)) = &self.brand_blink else {
+            return false;
+        };
+        if started.elapsed() >= Duration::from_millis(180) {
+            self.brand_blink = None;
+        }
+        true
+    }
+
+    /// Toggle a completed tool/thinking entry without affecting running work.
     pub fn toggle_row(&mut self, visible_row: usize) {
         let Some(row) = self.rows.get(self.top.saturating_add(visible_row)) else {
             return;
@@ -312,6 +374,7 @@ impl Transcript {
                     metadata,
                     ratatui::layout::Rect::new(0, 0, width as u16, self.height as u16),
                     palette,
+                    None,
                 )
                 .into_iter()
                 .enumerate()
@@ -404,5 +467,22 @@ impl Transcript {
         }
         self.width = width;
         self.dirty = false;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn blink_tick_restores_once_and_then_goes_idle() {
+        let mut transcript = Transcript::new(Limits::default());
+        transcript.brand_blink = Some((Instant::now(), vec![Line::from("blink")]));
+        assert!(transcript.advance_animation());
+        assert!(transcript.brand_blink.is_some());
+        transcript.brand_blink.as_mut().unwrap().0 = Instant::now() - Duration::from_secs(1);
+        assert!(transcript.advance_animation());
+        assert!(transcript.brand_blink.is_none());
+        assert!(!transcript.advance_animation());
     }
 }
