@@ -96,7 +96,7 @@ fn processes(plan: Option<cluaiz_plan::ExecutionPlan>) -> Value {
                 "pid":std::process::id().to_string(), "model_id":plan.model_id,
                 "vram_gb":plan.vram_budget_gb, "context_size":plan.context_window,
                 "tier":format!("{:?}",plan.selected_tier), "n_gpu_layers":plan.n_gpu_layers,
-                "engine":"llama-engine (static rlib)"
+                "engine":"llama-engine (static rlib)", "plan":plan
             })
         })
         .collect();

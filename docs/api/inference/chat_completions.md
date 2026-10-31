@@ -721,6 +721,20 @@ Decodes sampled RGB frames at native timestamps relative to the first decoded fr
 }
 ```
 
+A `tools` entry of `"type": "function"` is a function **the client runs** (OpenAI function calling):
+the model sees it like any tool, and when the model calls it the Engine runs nothing. The call
+comes back to the client:
+
+- Streaming: a chunk with `delta.tool_calls` (`id`, `type: "function"`, `function.name`,
+  `function.arguments` as a JSON string), then `finish_reason: "tool_calls"`.
+- Non-streaming: `message.tool_calls` and `finish_reason: "tool_calls"`.
+
+The client runs the function and sends the conversation again with its result as a
+`"role": "tool"` message. Entries given as an installed tool id (`"tools": ["search"]` or
+`{"id": "search"}`) are still run by the Engine. One call per answer is returned. `cluaiz run` and
+`cluaiz agent` use this to run their file and command tools on the user's side while the model
+stays loaded in `cluaiz serve`.
+
 ---
 
 ## 🔎 Tools on demand

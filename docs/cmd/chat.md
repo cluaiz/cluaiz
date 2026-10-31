@@ -15,6 +15,12 @@ The model can be an installed id (`cluaiz list`), a path to a `.gguf` file, or a
 Face id, which is downloaded first. With no model, the active chat model is used
 (`cluaiz model set-chat <id>`).
 
+## Using a running `cluaiz serve`
+
+If `cluaiz serve` is running, `cluaiz run` uses the model loaded there instead of loading it again
+(`Using <model> in the running server at ...`). The server's settings decide placement and context.
+`--local`, or any load flag (`-c`, `-ngl`, ...), loads the model in this process instead.
+
 ## What you see
 
 **Formatted answers.** On a terminal the answer's Markdown is drawn as it streams: each line is

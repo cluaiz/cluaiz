@@ -290,6 +290,20 @@ The agent's own instructions tell the model the folder, the operating system and
 the tools instead of guessing, never to claim it did something it did not, to read a file before
 editing it, and to end with a short summary.
 
+## Using a running `cluaiz serve`
+
+When `cluaiz serve` is running, `cluaiz agent` (and `cluaiz run`) do not load the model a second
+time: they ask the server to load it and send each turn to it. The first line says
+`Using <model> in the running server at http://localhost:<port>`. Two copies of a model would split
+the GPU memory and give each a smaller context.
+
+- The server's settings decide the placement and context. To load the model in the agent's own
+  process instead, pass `--local`, or any load flag (`-c`, `-ngl`, ...), which the server's copy
+  would not follow.
+- Tools still run on your side, in the agent, asking first: the server returns each call unrun.
+- Attachments (pasted images, files) need the model in the agent's process: use `--local`.
+- In this mode the status line cannot see the server's progress while a tool call is being written.
+
 ## Choosing a model and a context size
 
 The agent uses the same model loading, planner and settings as `cluaiz run`

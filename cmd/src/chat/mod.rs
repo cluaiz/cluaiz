@@ -5,6 +5,7 @@
 pub mod markdown;
 pub mod output;
 pub mod print;
+pub mod remote;
 pub mod repl;
 
 use std::path::PathBuf;
@@ -36,6 +37,8 @@ pub struct ChatOptions {
     pub show_thinking: bool,
     /// Speed after each answer, full plan on load
     pub verbose: bool,
+    /// Load the model in this process even when `cluaiz serve` is running
+    pub local: bool,
 }
 
 impl ChatOptions {
@@ -92,6 +95,8 @@ pub struct Session {
     pub load_ms: u128,
     pub options: ChatOptions,
     pub history: Vec<ChatMessage>,
+    /// The running server that holds the model, when this session uses it
+    pub remote: Option<remote::Remote>,
 }
 
 impl Session {
@@ -102,8 +107,25 @@ impl Session {
         model_id: String,
         options: ChatOptions,
     ) -> Result<Self> {
-        let settings = options.settings()?;
         let started = std::time::Instant::now();
+        // A running server already holds models: use it, unless this run asks for its own load
+        // (--local, or load flags such as -c / -ngl that the server's copy would not follow)
+        let own_load = format!("{:?}", options.load) != format!("{:?}", LoadArgs::default());
+        if !options.local && !own_load {
+            if let Some((remote, plan)) = remote::Remote::attach(&model_id).await {
+                return Ok(Self {
+                    host,
+                    model_id,
+                    model_path,
+                    plan,
+                    load_ms: started.elapsed().as_millis(),
+                    options,
+                    history: Vec::new(),
+                    remote: Some(remote),
+                });
+            }
+        }
+        let settings = options.settings()?;
         let _spin = crate::ui::spinner::Spinner::start("Loading model…");
         let plan = host
             .ensure_loaded(&model_id, &model_path, &settings)
@@ -118,11 +140,24 @@ impl Session {
             load_ms: started.elapsed().as_millis(),
             options,
             history: Vec::new(),
+            remote: None,
         })
     }
 
     /// Switches to another model; the conversation is kept.
     pub async fn switch(&mut self, model_path: PathBuf, model_id: String) -> Result<()> {
+        if self.remote.is_some() {
+            let started = std::time::Instant::now();
+            let (remote, plan) = remote::Remote::attach(&model_id)
+                .await
+                .ok_or_else(|| eyre!("the running server could not load {model_id}"))?;
+            self.remote = Some(remote);
+            self.plan = plan;
+            self.load_ms = started.elapsed().as_millis();
+            self.model_id = model_id;
+            self.model_path = model_path;
+            return Ok(());
+        }
         let settings = self.options.settings()?;
         let started = std::time::Instant::now();
         let _spin = crate::ui::spinner::Spinner::start("Switching model…");
@@ -183,6 +218,9 @@ impl Session {
         tools: Option<&serde_json::Value>,
         out: &mut dyn output::Output,
     ) -> Result<(String, TurnReport)> {
+        if let Some(remote) = &self.remote {
+            return remote.generate(&self.model_id, &self.options, messages, tools, out).await;
+        }
         let settings = self.options.settings()?;
         let opt = &settings.optimization;
         let n_ctx =

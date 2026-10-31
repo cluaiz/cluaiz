@@ -31,6 +31,9 @@ pub struct RunArgs {
     /// Keep chatting after answering the prompt
     #[arg(short = 'i', long)]
     pub interactive: bool,
+    /// Load the model in this process even when `cluaiz serve` is running (default: use the server)
+    #[arg(long)]
+    pub local: bool,
     /// When downloading: pick any files of the repository, not only the model formats
     #[arg(short = 'a', long = "all")]
     pub all: bool,
@@ -97,6 +100,7 @@ pub async fn execute(args: RunArgs, verbose: bool) -> Result<()> {
     options.system = args.system_prompt;
     options.max_tokens = args.n_predict;
     options.verbose = verbose;
+    options.local = args.local;
     let interactive = args.interactive || prompt.is_none();
     crate::chat::start(path, id, options, prompt, interactive).await
 }

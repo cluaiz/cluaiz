@@ -70,6 +70,9 @@ pub struct AgentArgs {
     /// Keep chatting after doing the task
     #[arg(short = 'i', long)]
     pub interactive: bool,
+    /// Load the model in this process even when `cluaiz serve` is running (default: use the server)
+    #[arg(long)]
+    pub local: bool,
     /// Added to the agent's system prompt (-sys)
     #[arg(long = "system-prompt", value_name = "TEXT")]
     pub system_prompt: Option<String>,
@@ -139,6 +142,7 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
     let mut options = ChatOptions::new(&args.load, &args.sample, &args.think);
     options.max_tokens = args.n_predict;
     options.verbose = verbose;
+    options.local = args.local;
     if !screen_enabled {
         crate::chat::install_interrupt_handler();
     }
