@@ -9,6 +9,8 @@ pub struct Metadata {
     /// Caller-owned brand art, used only when it fits without clipping the composer.
     pub brand: &'static str,
     pub compact_brand: &'static str,
+    /// Optional click frame. It must preserve the primary artwork's row/cell dimensions.
+    pub brand_blink: &'static str,
 }
 
 /// Resource limits, independent of a model's token/context budget.

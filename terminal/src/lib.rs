@@ -6,6 +6,7 @@ pub mod app;
 pub mod approval;
 pub mod input;
 pub mod keymap;
+pub mod mascot;
 pub mod model;
 pub mod render;
 pub mod terminal;

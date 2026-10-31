@@ -214,9 +214,10 @@ impl App {
                 {
                     const SCROLL_ROWS: isize = 3;
                     match mouse.kind {
-                        MouseEventKind::Down(MouseButton::Left) => self
-                            .transcript
-                            .toggle_row(usize::from(mouse.row - self.transcript_area.y)),
+                        MouseEventKind::Down(MouseButton::Left) => self.transcript.click(
+                            usize::from(mouse.row - self.transcript_area.y),
+                            usize::from(mouse.column - self.transcript_area.x),
+                        ),
                         MouseEventKind::ScrollUp => self.transcript.scroll(-SCROLL_ROWS),
                         MouseEventKind::ScrollDown => self.transcript.scroll(SCROLL_ROWS),
                         _ => {}
