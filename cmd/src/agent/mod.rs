@@ -616,6 +616,12 @@ impl Agent {
             .limits
             .check_decoded_bytes(retained)?;
         self.history.push(user);
+        // No measured context yet (first request, or just compacted): start the live footer from an
+        // estimate (about 4 bytes a token); the answer's end replaces it with the measured one
+        if self.usage.is_none() {
+            let bytes = PreparedPart::request_bytes(&self.history).unwrap_or(0) as usize + self.system.len();
+            self.display.emit(Event::Context { used: bytes / 4, size: self.session.plan.context_window as usize, speed: None });
+        }
         let schemas = self.tools.all_schemas();
         for _ in 0..self.max_steps {
             if self.display.closing()
