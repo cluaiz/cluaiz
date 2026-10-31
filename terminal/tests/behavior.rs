@@ -8,6 +8,7 @@ fn app() -> App {
             title: "UI fixture".into(),
             workspace: "workspace".into(),
             status: "No Engine connected".into(),
+            ..Metadata::default()
         },
         Limits::default(),
     )
@@ -191,6 +192,123 @@ fn test_all_themes_render_across_resize_without_losing_draft() {
             assert_eq!(app.draft(), draft);
         }
     }
+}
+
+#[test]
+fn test_question_help_is_contextual_and_paste_stays_literal() {
+    let mut app = app();
+    app.handle(Event::Key(KeyEvent::new(
+        KeyCode::Char('?'),
+        KeyModifiers::SHIFT,
+    )));
+    assert!(frame(&mut app, 80, 24).contains("Shortcuts"));
+    app.handle(Event::Key(KeyEvent {
+        kind: KeyEventKind::Repeat,
+        ..KeyEvent::new(KeyCode::Char('?'), KeyModifiers::SHIFT)
+    }));
+    assert!(frame(&mut app, 80, 24).contains("Shortcuts"));
+    assert!(app.draft().is_empty());
+    app.handle(key(KeyCode::Esc));
+    assert!(!frame(&mut app, 80, 24).contains("Shortcuts"));
+    app.set_draft("why").unwrap();
+    app.handle(key(KeyCode::Char('?')));
+    assert_eq!(app.draft(), "why?");
+    app.set_draft("").unwrap();
+    app.handle(Event::Paste("?".into()));
+    assert_eq!(app.draft(), "?");
+    assert!(!frame(&mut app, 80, 24).contains("Shortcuts"));
+}
+
+#[test]
+fn test_help_scrolls_in_small_windows_and_never_submits() {
+    let mut app = app();
+    app.handle(key(KeyCode::Char('?')));
+    let mut contents = frame(&mut app, 40, 12);
+    for _ in 0..8 {
+        assert_eq!(app.handle(key(KeyCode::PageDown)), Action::None);
+        contents.push_str(&frame(&mut app, 40, 12));
+    }
+    assert!(contents.contains("Send your message"));
+    assert!(contents.contains("Exit and return to your shell"));
+    assert_eq!(app.handle(key(KeyCode::Enter)), Action::None);
+    assert_eq!(app.handle(ctrl('q')), Action::Exit);
+}
+
+#[test]
+fn test_thinking_collapses_without_losing_source_or_answer() {
+    use cluaiz_terminal::transcript::Role;
+    let mut app = app();
+    app.transcript
+        .upsert_role("u", Role::User, "You", "question")
+        .unwrap();
+    app.transcript
+        .upsert_role("t", Role::Thinking, "Thinking", "private reasoning नमस्ते")
+        .unwrap();
+    app.transcript
+        .upsert_role("a", Role::Assistant, "Cluaiz", "final answer")
+        .unwrap();
+    let collapsed = frame(&mut app, 80, 24);
+    assert!(collapsed.contains("> You"));
+    assert!(collapsed.contains("● Cluaiz"));
+    assert!(collapsed.contains("Ctrl+O: expand"));
+    assert!(!collapsed.contains("private reasoning"));
+    app.set_draft("unfinished question").unwrap();
+    app.handle(ctrl('o'));
+    let expanded = frame(&mut app, 80, 24);
+    assert!(expanded.contains("private reasoning नमस्ते"));
+    assert!(expanded.contains("final answer"));
+    assert_eq!(app.draft(), "unfinished question");
+    app.handle(ctrl('o'));
+    assert!(!frame(&mut app, 80, 24).contains("private reasoning"));
+}
+
+#[test]
+fn test_role_styles_follow_theme_without_label_detection() {
+    use cluaiz_terminal::transcript::Role;
+    let mut app = app();
+    // Identical labels must not decide which style or marker an entry receives.
+    app.transcript
+        .upsert_role("u", Role::User, "same", "user")
+        .unwrap();
+    app.transcript
+        .upsert_role("a", Role::Assistant, "same", "answer")
+        .unwrap();
+    for theme in Theme::ALL {
+        let rows = app.transcript.visible_styled(80, 24, theme.palette());
+        let user = rows.iter().find(|row| row.to_string() == "user").unwrap();
+        let answer = rows.iter().find(|row| row.to_string() == "answer").unwrap();
+        assert_eq!(user.style, theme.palette().accent);
+        assert_eq!(answer.style, theme.palette().base);
+        assert!(rows.iter().any(|row| row.to_string() == "> same"));
+        assert!(rows.iter().any(|row| row.to_string() == "● same"));
+    }
+}
+
+#[test]
+fn test_brand_falls_back_without_cropping_or_losing_draft() {
+    let mut app = app();
+    app.metadata.brand = "FULL ART\nSECOND ROW\nTHIRD ROW";
+    app.metadata.compact_brand = "SMALL ART\nSECOND ROW";
+    app.set_draft("draft kept").unwrap();
+    assert!(frame(&mut app, 100, 24).contains("THIRD ROW"));
+    let narrow = frame(&mut app, 24, 9);
+    assert!(!narrow.contains("FULL ART"));
+    assert!(narrow.contains("draft kept"));
+    app.metadata.brand = "too wide";
+    app.metadata.compact_brand = "pet";
+    assert!(frame(&mut app, 46, 24).contains("pet"));
+    assert_eq!(app.draft(), "draft kept");
+}
+
+#[test]
+fn test_brand_header_wraps_long_workspace_and_status() {
+    let mut app = app();
+    app.metadata.brand = "pet\npet\npet\npet\npet\npet\npet\npet";
+    app.metadata.workspace = format!("{} workspace-end", "folder/".repeat(13));
+    app.metadata.status = format!("{} status-end", "context ".repeat(11));
+    let view = frame(&mut app, 80, 24);
+    assert!(view.contains("workspace-end"));
+    assert!(view.contains("status-end"));
 }
 
 #[test]

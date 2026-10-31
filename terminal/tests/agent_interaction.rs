@@ -49,6 +49,27 @@ fn test_approval_feedback_keeps_case_and_restores_busy_draft() {
 }
 
 #[test]
+fn test_approval_takes_focus_from_help_and_question_stays_feedback() {
+    let mut app = app();
+    app.handle(key(KeyCode::Char('?')));
+    assert!(draw(&mut app, 80, 24).contains("Shortcuts"));
+    app.request_approval(Approval {
+        title: "write_file".into(),
+        detail: "target".into(),
+    })
+    .unwrap();
+    let view = draw(&mut app, 80, 24);
+    assert!(view.contains("Permission required"));
+    assert!(!view.contains("Shortcuts"));
+    app.handle(key(KeyCode::Char('?')));
+    assert_eq!(app.draft(), "?");
+    assert_eq!(
+        app.handle(key(KeyCode::Enter)),
+        Action::Approval(ApprovalResponse::Feedback("?".into()))
+    );
+}
+
+#[test]
 fn test_long_approval_cannot_allow_hidden_operation() {
     let mut app = app();
     app.request_approval(Approval {

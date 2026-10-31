@@ -4,6 +4,8 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Command {
+    Help,
+    Thinking,
     Themes,
     Submit,
     Newline,
@@ -19,6 +21,14 @@ pub(crate) fn command(key: KeyEvent) -> Command {
     use Command::*;
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
     match key.code {
+        KeyCode::Char('?')
+            if !key
+                .modifiers
+                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) =>
+        {
+            Help
+        }
+        KeyCode::Char('o') if ctrl => Thinking,
         KeyCode::F(2) => Themes,
         KeyCode::Char('q') if ctrl => Exit,
         KeyCode::Char('c') if ctrl => Escape,
@@ -38,3 +48,22 @@ pub(crate) fn command(key: KeyEvent) -> Command {
         _ => Edit,
     }
 }
+
+/// Only controls implemented by this UI; execution commands come from the caller.
+pub(crate) const SHORTCUTS: &[(&str, &str)] = &[
+    ("? / Esc", "Open help on empty input / close help"),
+    ("Enter", "Send your message"),
+    (
+        "Ctrl+J / Alt+Enter",
+        "New line (Shift+Enter when supported)",
+    ),
+    ("/ / @", "Command / workspace filename suggestions"),
+    ("Tab / arrows", "Choose a suggestion"),
+    ("Ctrl+O", "Expand or collapse thinking"),
+    ("F2", "Preview themes"),
+    ("PgUp / PgDn", "Scroll conversation or open help"),
+    ("Ctrl+End", "Return to latest output"),
+    ("Ctrl+Z / Ctrl+Y", "Undo / redo draft edits"),
+    ("Esc / Ctrl+C", "Interrupt; Esc denies a pending operation"),
+    ("Ctrl+Q", "Exit and return to your shell"),
+];

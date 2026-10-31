@@ -41,6 +41,11 @@ flowchart LR
   entries return an error instead of silently shortening content. The caller supplies a preview
   and a full-output mechanism when needed. Exceeding entry retention evicts older display entries
   and exposes an omitted count; this is not a durable-history store.
+- `Transcript::upsert_role` accepts an explicit user/assistant/thinking/tool/error/notice role.
+  Markers retain meaning in No color mode; current theme styles are applied to cached rows. Thinking
+  starts collapsed and Ctrl+O toggles its retained source without adding it to the user's draft.
+- Metadata may supply original and compact brand art. The renderer uses a complete fitting variant
+  beside header details, or text alone in a tiny viewport. Artwork stays owned by the caller.
 - `render(Frame, &mut App)` also works with Ratatui's TestBackend without opening a real screen.
 - `Screen::open/draw/close` owns the real alternate screen. Redirected or dumb terminals return
   Unsupported; the caller must choose plain output. A second active screen is rejected.
@@ -72,6 +77,8 @@ flowchart LR
 | Key | Behavior |
 | --- | --- |
 | Enter | Returns a Submit action for nonblank draft; release/repeat does not resubmit. |
+| ? on empty input | Opens shortcut help. PgUp/PgDn scroll it; ? or Esc closes it. In a draft or permission response, ? remains text. Pasted ? never opens help. |
+| Ctrl+O | Expands/collapses retained thinking; does not change model thinking settings. |
 | Alt+Enter, Shift+Enter, Ctrl+J | Inserts a newline. Modifier delivery depends on the terminal. |
 | F2 | Opens theme preview. Arrows preview; Enter applies for this App instance; Esc restores the original. |
 | Arrow keys, Home, End | Editor navigation through the widget. |
@@ -120,5 +127,5 @@ do not constitute a full Engine/CLI native build or API regression pass.
 - Input and display limits return notices/errors. The caller owns durable logs and old-history loading.
 - Tiny windows show a recoverable resize notice. Wrapped content is rebuilt on width/content changes;
   when reading older output the logical source line is retained, not an exact byte/pixel position.
-- Mouse capture, selection/export UI, Markdown styling, persistent theme/history, daemon attach,
+- Clipboard image/file attachment ingress, mouse capture, selection/export UI, Markdown styling, persistent theme/history, daemon attach,
   installed MCP/plugin/skill integration and background task views remain later milestones.

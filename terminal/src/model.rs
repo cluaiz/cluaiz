@@ -6,6 +6,9 @@ pub struct Metadata {
     pub title: String,
     pub workspace: String,
     pub status: String,
+    /// Caller-owned brand art, used only when it fits without clipping the composer.
+    pub brand: &'static str,
+    pub compact_brand: &'static str,
 }
 
 /// Resource limits, independent of a model's token/context budget.
