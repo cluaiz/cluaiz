@@ -1,7 +1,7 @@
 //! Bounded display projection with cached wrapping and logical-line scroll anchors.
 
 use crate::{
-    model::Limits,
+    model::{Limits, Metadata},
     sanitize::display_text,
     theme::{Palette, Theme},
 };
@@ -14,11 +14,13 @@ struct Entry {
     content: String,
     role: Role,
     expanded: bool,
+    intro: Option<Metadata>,
 }
 
 /// Semantic display kind supplied by the client, independent of labels and model output.
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub enum Role {
+    Intro,
     User,
     Assistant,
     Thinking,
@@ -47,6 +49,8 @@ pub struct Transcript {
     limits: Limits,
     omitted: usize,
     assistant_layout: Option<fn(&str, usize) -> Vec<String>>,
+    active: Option<String>,
+    palette: Option<Palette>,
 }
 
 impl Transcript {
@@ -63,6 +67,42 @@ impl Transcript {
             limits,
             omitted: 0,
             assistant_layout: None,
+            active: None,
+            palette: None,
+        }
+    }
+
+    /// Session metadata is an ordinary retained entry: it scrolls and can be evicted.
+    pub(crate) fn intro(&mut self, metadata: &Metadata) {
+        if self.limits.retained_entries > 0
+            && !(metadata.title.is_empty()
+                && metadata.brand.is_empty()
+                && metadata.workspace.is_empty()
+                && metadata.status.is_empty())
+        {
+            self.entries.push_back(Entry {
+                id: "session-intro".into(),
+                label: String::new(),
+                content: String::new(),
+                role: Role::Intro,
+                expanded: true,
+                intro: Some(metadata.clone()),
+            });
+            self.dirty = true;
+        }
+    }
+
+    /// Activity is keyed by actual entry identity, never a label parsed from model text.
+    pub fn set_active(&mut self, id: Option<&str>) {
+        self.active = id.map(str::to_owned);
+    }
+
+    /// Remove transient preparation/writing rows; durable results use upsert instead.
+    pub fn remove(&mut self, id: &str) {
+        if self.entries.iter().any(|entry| entry.id == id) {
+            self.capture_anchor();
+            self.entries.retain(|entry| entry.id != id);
+            self.dirty = true;
         }
     }
 
@@ -97,9 +137,16 @@ impl Transcript {
             content: display_text(content),
             role,
             expanded: role == Role::ToolRunning,
+            intro: None,
         };
         match self.entries.iter().position(|old| old.id == id) {
             Some(index) => {
+                if self.entries[index].role == role
+                    && self.entries[index].label == entry.label
+                    && self.entries[index].content == entry.content
+                {
+                    return Ok(());
+                }
                 let completed = self.entries[index].role == Role::ToolRunning && role == Role::Tool;
                 let expanded = self.entries[index].expanded;
                 self.entries[index] = entry;
@@ -129,11 +176,23 @@ impl Transcript {
         height: u16,
         palette: Palette,
     ) -> Vec<Line<'static>> {
+        self.visible_animated(width, height, palette, None)
+    }
+
+    pub fn visible_animated(
+        &mut self,
+        width: u16,
+        height: u16,
+        palette: Palette,
+        glyph: Option<&str>,
+    ) -> Vec<Line<'static>> {
         let width = usize::from(width.max(1));
+        let resized = self.height != usize::from(height);
         self.height = usize::from(height);
-        if self.dirty || self.width != width {
+        if self.dirty || self.width != width || resized || self.palette != Some(palette) {
             self.capture_anchor();
-            self.reflow(width);
+            self.reflow(width, palette);
+            self.palette = Some(palette);
         }
         self.top = if self.follow {
             self.max_top()
@@ -142,18 +201,29 @@ impl Transcript {
         };
         self.rows
             .iter()
+            .enumerate()
             .skip(self.top)
             .take(self.height)
-            .map(|row| {
+            .map(|(index, row)| {
                 let role = self.entries[row.entry].role;
                 let style = match role {
-                    Role::User => palette.base,
+                    Role::Intro | Role::User => palette.base,
                     Role::Thinking => palette.muted.italic(),
                     Role::Tool | Role::ToolRunning | Role::Notice => palette.muted,
                     Role::Error => palette.accent.bold(),
                     Role::Assistant => palette.base,
                 };
-                row.text.clone().style(row.text.style.patch(style))
+                let mut line = row.text.clone().style(row.text.style.patch(style));
+                if row.logical == 0
+                    && (index == 0 || self.rows[index - 1].entry != row.entry)
+                    && self.active.as_deref() == Some(self.entries[row.entry].id.as_str())
+                {
+                    if let Some(glyph) = glyph {
+                        line.spans
+                            .insert(0, ratatui::text::Span::raw(format!("{glyph} ")));
+                    }
+                }
+                line
             })
             .collect()
     }
@@ -230,10 +300,42 @@ impl Transcript {
         }
     }
 
-    fn reflow(&mut self, width: usize) {
+    fn reflow(&mut self, width: usize, palette: Palette) {
         self.rows.clear();
         for (index, entry) in self.entries.iter().enumerate() {
+            if let Some(metadata) = &entry.intro {
+                for (logical, text) in crate::render::header(
+                    metadata,
+                    ratatui::layout::Rect::new(0, 0, width as u16, self.height as u16),
+                    palette,
+                )
+                .into_iter()
+                .enumerate()
+                {
+                    for text in if text.width() > width {
+                        textwrap::wrap(&text.to_string(), width)
+                            .into_iter()
+                            .map(|part| Line::from(part.into_owned()).style(text.style))
+                            .collect()
+                    } else {
+                        vec![text]
+                    } {
+                        self.rows.push(Row {
+                            entry: index,
+                            logical,
+                            text,
+                        });
+                    }
+                }
+                self.rows.push(Row {
+                    entry: index,
+                    logical: usize::MAX,
+                    text: Line::default(),
+                });
+                continue;
+            }
             let prefix = match entry.role {
+                Role::Intro => "",
                 Role::User => "> ",
                 Role::Assistant => "● ",
                 Role::Thinking | Role::Tool if entry.expanded => "▾ ",
@@ -248,7 +350,7 @@ impl Transcript {
                 entry.label,
                 if collapsed { " · Ctrl+O / click" } else { "" }
             );
-            for part in textwrap::wrap(&label, width)
+            for part in textwrap::wrap(&label, width.saturating_sub(2).max(1))
                 .into_iter()
                 .filter(|_| entry.role != Role::Assistant)
             {

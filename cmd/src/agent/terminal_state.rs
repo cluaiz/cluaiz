@@ -18,6 +18,8 @@ pub struct State {
     reasoning: String,
     tool: String,
     tool_name: String,
+    progress_id: String,
+    tool_preparing: bool,
 }
 
 #[cfg(test)]
@@ -37,6 +39,52 @@ mod tests {
             .map(ToString::to_string)
             .collect::<Vec<_>>()
             .join("\n")
+    }
+
+    #[test]
+    fn test_progress_follows_thinking_and_tool_in_conversation_order() {
+        let mut state = state();
+        state.apply(Event::User("question".into()));
+        state.apply(Event::StartAnswer);
+        state.apply(Event::Reasoning("reasoning body".into()));
+        state.apply(Event::GenerationProgress {
+            tokens: 12,
+            seconds: 2,
+        });
+        let rows = state.app.transcript.visible_animated(
+            100,
+            60,
+            cluaiz_terminal::Theme::Auto.palette(),
+            Some("⠋"),
+        );
+        let view = rows
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(view.contains("⠋ ▸ Thinking · 12 tokens · 2s"), "{view}");
+        assert!(!view.contains("Preparing response"));
+        state.apply(Event::PreparingTool(
+            "Preparing search · 18 bytes · 3s".into(),
+        ));
+        state.apply(Event::ToolStart("search".into(), "needle".into()));
+        state.apply(Event::ToolEnd {
+            ok: true,
+            summary: "1 match".into(),
+            content: "retained result".into(),
+        });
+        state.apply(Event::StartAnswer);
+        state.apply(Event::Content("actual answer".into()));
+        state.apply(Event::Ready("ready".into()));
+        let view = text(&mut state);
+        assert_eq!(view.matches("search · Result: 1 match").count(), 1);
+        assert!(view.find("question").unwrap() < view.find("Thinking").unwrap());
+        assert!(view.find("Thinking").unwrap() < view.find("search · Result").unwrap());
+        assert!(view.find("search · Result").unwrap() < view.find("actual answer").unwrap());
+        assert!(!view.contains("Preparing search"));
+        assert!(!view.contains("Writing response"));
+        state.app.transcript.toggle_thinking();
+        assert!(text(&mut state).contains("retained result"));
     }
 
     #[test]
@@ -118,12 +166,34 @@ impl State {
             reasoning: String::new(),
             tool: String::new(),
             tool_name: String::new(),
+            progress_id: String::new(),
+            tool_preparing: false,
         }
     }
 
     fn id(&mut self, prefix: &str) -> String {
         self.sequence += 1;
         format!("{prefix}-{}", self.sequence)
+    }
+
+    fn active(&mut self, id: &str) {
+        self.app.transcript.set_active(Some(&format!("{id}-0")));
+    }
+
+    fn stop_progress(&mut self) {
+        self.app
+            .transcript
+            .remove(&format!("{}-0", self.progress_id));
+        self.progress_id.clear();
+        self.app.transcript.set_active(None);
+    }
+
+    fn progress(&mut self, label: &str) {
+        if self.progress_id.is_empty() {
+            self.progress_id = self.id("progress");
+        }
+        Self::entry(&mut self.app, &self.progress_id, Role::Notice, label, "");
+        self.active(&self.progress_id.clone());
     }
 
     /// Splits large source text at UTF-8 boundaries so it is not silently clipped by entry limits.
@@ -152,13 +222,19 @@ impl State {
     pub fn apply(&mut self, event: Event) {
         match event {
             Event::StartAnswer => {
+                self.stop_progress();
+                self.tool_preparing = false;
                 self.answer_id = self.id("answer");
                 self.reasoning_id = self.id("reasoning");
                 self.answer.clear();
                 self.reasoning.clear();
-                self.app.metadata.status = "Generating…  Esc: interrupt".into();
+                self.progress("Preparing response");
             }
             Event::Content(text) => {
+                if text.trim().is_empty() && self.answer.is_empty() {
+                    return;
+                }
+                self.stop_progress();
                 self.answer.push_str(&text);
                 if !self.answer.trim().is_empty() {
                     Self::entry(
@@ -168,9 +244,11 @@ impl State {
                         "Cluaiz",
                         &self.answer,
                     );
+                    self.progress("Writing response");
                 }
             }
             Event::Reasoning(text) => {
+                self.stop_progress();
                 self.reasoning.push_str(&text);
                 Self::entry(
                     &mut self.app,
@@ -179,22 +257,80 @@ impl State {
                     "Thinking",
                     &self.reasoning,
                 );
+                self.active(&self.reasoning_id.clone());
             }
-            Event::Phase(text) => self.app.metadata.status = text,
+            Event::Phase(text) => {
+                self.progress(&text);
+            }
+            Event::GenerationProgress { tokens, seconds } => {
+                if !self.tool_preparing {
+                    if !self.reasoning.is_empty() && self.answer.trim().is_empty() {
+                        Self::entry(
+                            &mut self.app,
+                            &self.reasoning_id,
+                            Role::Thinking,
+                            &format!("Thinking · {tokens} tokens · {seconds}s"),
+                            &self.reasoning,
+                        );
+                        self.active(&self.reasoning_id.clone());
+                    } else {
+                        self.progress(&format!(
+                            "{} · {tokens} tokens · {seconds}s",
+                            if self.answer.is_empty() {
+                                "Generating"
+                            } else {
+                                "Writing"
+                            }
+                        ));
+                    }
+                }
+            }
+            Event::PreparingTool(label) => {
+                self.stop_progress();
+                if !self.tool_preparing {
+                    self.tool_id = self.id("tool");
+                }
+                self.tool_preparing = true;
+                self.tool_name = label;
+                Self::entry(
+                    &mut self.app,
+                    &self.tool_id,
+                    Role::ToolRunning,
+                    &self.tool_name,
+                    "",
+                );
+                self.active(&self.tool_id.clone());
+            }
             Event::Message(label, body) => {
                 let id = self.id("message");
                 Self::entry(&mut self.app, &id, Role::Notice, &label, &body);
             }
             Event::User(body) => {
+                self.stop_progress();
                 let id = self.id("user");
                 Self::entry(&mut self.app, &id, Role::User, "You", &body);
             }
             Event::Error(body) => {
+                self.stop_progress();
+                if self.tool_preparing {
+                    Self::entry(
+                        &mut self.app,
+                        &self.tool_id,
+                        Role::Notice,
+                        "Tool call not executed",
+                        &body,
+                    );
+                    self.tool_preparing = false;
+                }
                 let id = self.id("error");
                 Self::entry(&mut self.app, &id, Role::Error, "Error", &body);
             }
             Event::ToolStart(name, target) => {
-                self.tool_id = self.id("tool");
+                self.stop_progress();
+                if !self.tool_preparing {
+                    self.tool_id = self.id("tool");
+                }
+                self.tool_preparing = false;
                 self.tool_name = name;
                 self.tool = target;
                 Self::entry(
@@ -204,6 +340,7 @@ impl State {
                     &self.tool_name,
                     &format!("{}\nPreparing", self.tool),
                 );
+                self.active(&self.tool_id.clone());
             }
             Event::Diff(diff) => {
                 self.tool.push_str(&format!("\nProposed change:\n{diff}"));
@@ -220,6 +357,7 @@ impl State {
                 summary,
                 content,
             } => {
+                self.app.transcript.set_active(None);
                 self.tool.push_str(&format!(
                     "\n{}: {summary}",
                     if ok { "Result" } else { "Error" }
@@ -244,7 +382,6 @@ impl State {
                 reason,
                 reply,
             } => {
-                self.app.metadata.status = "Waiting for your permission".into();
                 let request = Approval {
                     title: tool,
                     detail: reason,
@@ -258,6 +395,17 @@ impl State {
             Event::Themes => self.app.open_themes(),
             Event::Permission(strict) => self.app.strict = strict,
             Event::Ready(status) => {
+                self.stop_progress();
+                if self.tool_preparing {
+                    Self::entry(
+                        &mut self.app,
+                        &self.tool_id,
+                        Role::Notice,
+                        "Tool preparation stopped",
+                        "",
+                    );
+                    self.tool_preparing = false;
+                }
                 self.busy = false;
                 self.app.activity = None;
                 self.app.metadata.status = status;

@@ -51,7 +51,14 @@ flowchart LR
 - `App` keeps attachment labels, not bytes. Clipboard/removal/mode actions go to the client, which
   owns payloads and execution. `begin_paste` blocks submission until that asynchronous paste returns.
 - Metadata may supply original and compact brand art. The renderer uses a complete fitting variant
-  beside header details, or text alone in a tiny viewport. Artwork stays owned by the caller.
+  beside starting details, or text alone in a tiny viewport. App snapshots this metadata into one
+  intro entry at construction. It scrolls with conversation, returns when scrolling back and can
+  be evicted by the same retention limit. Later metadata status changes do not repin that intro.
+  Artwork stays owned by the caller; the composer/help remain outside the scrollable region.
+- `Transcript::set_active` selects an entry by stable ID. `visible_animated` prefixes only its first
+  header row with the caller's current spinner frame; animation does not rebuild the wrapping cache.
+  `remove` clears temporary preparation/writing rows. Completed results stay in retained entries.
+  Intro rows are laid out with the existing header formatter on resize/palette changes.
 - `render(Frame, &mut App)` also works with Ratatui's TestBackend without opening a real screen.
 - `Screen::open/draw/close` owns the real alternate screen. Redirected or dumb terminals return
   Unsupported; the caller must choose plain output. A second active screen is rejected.

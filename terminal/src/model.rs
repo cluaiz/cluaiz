@@ -1,7 +1,7 @@
 //! Caller-supplied display context and bounded presentation preferences.
 
 /// Header content supplied by the client; the UI does not probe models or workspaces.
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Metadata {
     pub title: String,
     pub workspace: String,

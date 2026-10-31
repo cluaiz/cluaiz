@@ -41,6 +41,52 @@ fn frame(app: &mut App, width: u16, height: u16) -> String {
 }
 
 #[test]
+fn test_intro_scrolls_away_and_returns_once_without_repinning_on_resize() {
+    let mut app = App::new(
+        Metadata {
+            title: "Starting model".into(),
+            brand: "Cog pet",
+            status: "Starting settings".into(),
+            ..Metadata::default()
+        },
+        Limits::default(),
+    );
+    assert!(frame(&mut app, 80, 24).contains("Cog pet"));
+    for index in 0..20 {
+        app.transcript
+            .upsert(&format!("turn-{index}"), "Message", "Conversation content")
+            .unwrap();
+    }
+    app.metadata.status = "Current work must not overwrite the intro".into();
+    assert!(!frame(&mut app, 80, 24).contains("Cog pet"));
+    assert!(!frame(&mut app, 60, 20).contains("Cog pet"));
+    app.transcript.scroll(-10000);
+    let beginning = frame(&mut app, 80, 24);
+    assert_eq!(beginning.matches("Cog pet").count(), 1);
+    assert!(beginning.contains("Starting settings"));
+    assert!(!beginning.contains("Current work"));
+}
+
+#[test]
+fn test_animation_belongs_to_only_the_active_entry_and_keeps_reading_position() {
+    use cluaiz_terminal::transcript::Role;
+    let mut app = app();
+    app.transcript
+        .upsert_role("done", Role::Tool, "old tool result", "old output")
+        .unwrap();
+    app.transcript
+        .upsert_role("running", Role::ToolRunning, "read_file", "file path")
+        .unwrap();
+    app.transcript.set_active(Some("running"));
+    app.activity = Some("⠋".into());
+    let view = frame(&mut app, 80, 24);
+    assert!(view.lines().any(|line| line.contains("⠋ ▾ read_file")));
+    assert_eq!(view.matches("⠋").count(), 1);
+    app.transcript.set_active(None);
+    assert!(!frame(&mut app, 80, 24).contains("⠋"));
+}
+
+#[test]
 fn test_paste_is_text_without_implicit_submission() {
     let mut app = app();
     let text = "/theme\n!command\nनमस्ते";
@@ -417,26 +463,36 @@ fn test_role_styles_follow_theme_without_label_detection() {
 
 #[test]
 fn test_brand_falls_back_without_cropping_or_losing_draft() {
-    let mut app = app();
-    app.metadata.brand = "FULL ART\nSECOND ROW\nTHIRD ROW";
-    app.metadata.compact_brand = "SMALL ART\nSECOND ROW";
+    let mut app = App::new(
+        Metadata {
+            title: "UI fixture".into(),
+            brand: "FULL ART\nSECOND ROW\nTHIRD ROW",
+            compact_brand: "pet",
+            ..Metadata::default()
+        },
+        Limits::default(),
+    );
     app.set_draft("draft kept").unwrap();
     assert!(frame(&mut app, 100, 24).contains("THIRD ROW"));
     let narrow = frame(&mut app, 24, 9);
     assert!(!narrow.contains("FULL ART"));
     assert!(narrow.contains("draft kept"));
-    app.metadata.brand = "too wide";
-    app.metadata.compact_brand = "pet";
     assert!(frame(&mut app, 46, 24).contains("pet"));
     assert_eq!(app.draft(), "draft kept");
 }
 
 #[test]
 fn test_brand_header_wraps_long_workspace_and_status() {
-    let mut app = app();
-    app.metadata.brand = "pet\npet\npet\npet\npet\npet\npet\npet";
-    app.metadata.workspace = format!("{} workspace-end", "folder/".repeat(13));
-    app.metadata.status = format!("{} status-end", "context ".repeat(11));
+    let mut app = App::new(
+        Metadata {
+            title: "UI fixture".into(),
+            brand: "pet\npet\npet\npet\npet\npet\npet\npet",
+            workspace: format!("{} workspace-end", "folder/".repeat(13)),
+            status: format!("{} status-end", "context ".repeat(11)),
+            ..Metadata::default()
+        },
+        Limits::default(),
+    );
     let view = frame(&mut app, 80, 24);
     assert!(view.contains("workspace-end"));
     assert!(view.contains("status-end"));
@@ -520,6 +576,7 @@ fn test_reading_older_output_does_not_jump_on_append() {
 #[test]
 fn test_resize_anchor_keeps_the_same_logical_line() {
     let mut app = app();
+    app.transcript = cluaiz_terminal::transcript::Transcript::new(Limits::default());
     let content = (0..20)
         .map(|index| format!("logical-{index}: {}", "text ".repeat(24)))
         .collect::<Vec<_>>()

@@ -55,7 +55,7 @@ impl Theme {
 }
 
 /// Resolved widget styles. Status meaning also uses text, never color alone.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct Palette {
     pub base: Style,
     pub muted: Style,

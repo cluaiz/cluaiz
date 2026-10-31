@@ -22,6 +22,11 @@ pub enum Event {
     Content(String),
     Reasoning(String),
     Phase(String),
+    GenerationProgress {
+        tokens: usize,
+        seconds: u64,
+    },
+    PreparingTool(String),
     Message(String, String),
     User(String),
     Error(String),
@@ -169,13 +174,13 @@ struct ScreenOutput {
 
 impl ScreenOutput {
     fn flush(&mut self) {
-        if !self.text.is_empty() {
-            self.display
-                .emit(Event::Content(std::mem::take(&mut self.text)));
-        }
         if !self.reasoning.is_empty() {
             self.display
                 .emit(Event::Reasoning(std::mem::take(&mut self.reasoning)));
+        }
+        if !self.text.is_empty() {
+            self.display
+                .emit(Event::Content(std::mem::take(&mut self.text)));
         }
     }
 }
@@ -201,18 +206,17 @@ impl Output for ScreenOutput {
             cluaiz_core::GLOBAL_CANCEL_SIGNAL.store(true, Ordering::SeqCst);
         }
         let phase = match cluaiz_core::live::call() {
-            Some((name, args)) => format!(
+            Some((name, args)) => Event::PreparingTool(format!(
                 "Preparing {name} · {} bytes · {}s",
                 args.len(),
                 self.started.elapsed().as_secs()
-            ),
-            None => format!(
-                "Generating · {} tokens · {}s",
-                cluaiz_core::live::tokens(),
-                self.started.elapsed().as_secs()
-            ),
+            )),
+            None => Event::GenerationProgress {
+                tokens: cluaiz_core::live::tokens(),
+                seconds: self.started.elapsed().as_secs(),
+            },
         };
-        self.display.emit(Event::Phase(phase));
+        self.display.emit(phase);
     }
     fn finish(&mut self) {
         self.text.push_str(&self.filter.finish());
