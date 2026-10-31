@@ -278,8 +278,7 @@ impl Transcript {
                 && metadata.brand.lines().any(|line| line.trim_end() == text.trim_end());
             if metadata.brand_blink.is_empty()
                 || !art_row
-                || row.text.spans.is_empty()
-                || column >= row.text.spans[0].width()
+                || column >= row.text.width()
             {
                 return;
             }

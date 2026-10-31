@@ -14,7 +14,6 @@ pub const COMMANDS: &[(&str, &str)] = &[
     ),
     ("/think", "Toggle model thinking; accepts on / off / auto"),
     ("/clear", "Clear this agent's conversation"),
-    ("/play", "Open the mascot playground (Q to come back)"),
     ("/bye", "Close the agent and return to the shell"),
 ];
 

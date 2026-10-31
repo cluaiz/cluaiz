@@ -33,8 +33,6 @@ pub struct Cli {
 enum CliCommand {
     /// Chat with a model, or answer one prompt (`cluaiz run <model> "<prompt>"`)
     Run(cli::run::RunArgs),
-    /// The mascot playground: animated backdrops and a runner game (Q to quit)
-    Play,
     /// Coding agent in this folder: reads, searches and edits files, runs commands (asks first)
     Agent(agent::AgentArgs),
     /// Show a model's details and the plan it would get on this machine
@@ -347,16 +345,19 @@ async fn main() -> Result<()> {
             return Ok(());
         }
     };
+    if let Some(what) = match &command {
+        CliCommand::Serve { .. } => Some("serve"),
+        CliCommand::Run(_) => Some("run"),
+        CliCommand::Show(_) => Some("show"),
+        CliCommand::Pull { .. } => Some("pull"),
+        CliCommand::Bench(_) => Some("bench"),
+        CliCommand::Status => Some("status"),
+        CliCommand::Calibrate => Some("calibrate"),
+        _ => None,
+    } {
+        cluaiz_terminal::mascot::banner(&[&format!("Cluaiz {} · {}", env!("CARGO_PKG_VERSION"), what)]);
+    }
     match command {
-        CliCommand::Play => {
-            let result = cluaiz_terminal::Screen::open().and_then(|mut screen| {
-                screen.takeover(cluaiz_terminal::mascot::play)?;
-                screen.close()
-            });
-            if let Err(e) = result {
-                fail("play", e);
-            }
-        }
         CliCommand::Agent(args) => {
             if let Err(e) = agent::execute(args, verbose).await {
                 fail("agent", e);
