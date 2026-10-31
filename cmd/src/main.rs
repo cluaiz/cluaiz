@@ -8,7 +8,6 @@ use color_eyre::Result;
 use colored::Colorize;
 
 mod agent;
-mod assets;
 mod chat;
 mod cli;
 mod core;
