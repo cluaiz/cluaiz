@@ -33,6 +33,9 @@ pub struct ChatEnvelope<Content = String> {
     pub chat_template_kwargs: Option<serde_json::Value>,
     pub grammar: Option<String>,
     pub response_format: Option<serde_json::Value>,
+    /// Native tool schemas survive text/media conversion; omitted for callers without tools.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tools: Option<serde_json::Value>,
 }
 
 impl ChatEnvelope {
@@ -61,6 +64,7 @@ impl<Content> ChatEnvelope<Content> {
             chat_template_kwargs: self.chat_template_kwargs,
             grammar: self.grammar,
             response_format: self.response_format,
+            tools: self.tools,
         })
     }
 }
@@ -77,18 +81,26 @@ impl OutputConstraint {
     /// From a request's `grammar` (wins) and `response_format`: `{"type": "json_object"}` (any
     /// object, or its `schema`), `{"type": "json_schema", "json_schema": {"schema": …}}` (OpenAI),
     /// also with the schema directly under `json_schema`. `text` and unknown types: none.
-    pub fn from_request(grammar: Option<&str>, response_format: Option<&serde_json::Value>) -> Option<Self> {
+    pub fn from_request(
+        grammar: Option<&str>,
+        response_format: Option<&serde_json::Value>,
+    ) -> Option<Self> {
         if let Some(grammar) = grammar.filter(|g| !g.trim().is_empty()) {
             return Some(Self::Gbnf(grammar.to_string()));
         }
         let format = response_format?;
         match format.get("type").and_then(|t| t.as_str()) {
             Some("json_object") => Some(Self::JsonSchema(
-                format.get("schema").cloned().unwrap_or_else(|| serde_json::json!({ "type": "object" })),
+                format
+                    .get("schema")
+                    .cloned()
+                    .unwrap_or_else(|| serde_json::json!({ "type": "object" })),
             )),
             Some("json_schema") => {
                 let spec = format.get("json_schema")?;
-                Some(Self::JsonSchema(spec.get("schema").cloned().unwrap_or_else(|| spec.clone())))
+                Some(Self::JsonSchema(
+                    spec.get("schema").cloned().unwrap_or_else(|| spec.clone()),
+                ))
             }
             _ => None,
         }
@@ -168,16 +180,38 @@ mod tests {
     #[test]
     fn output_constraints_follow_llama_server() {
         use serde_json::json;
-        assert_eq!(OutputConstraint::from_request(Some("root ::= \"a\""), Some(&json!({"type": "json_object"}))),
-            Some(OutputConstraint::Gbnf("root ::= \"a\"".into())));
-        assert_eq!(OutputConstraint::from_request(None, Some(&json!({"type": "json_object"}))),
-            Some(OutputConstraint::JsonSchema(json!({"type": "object"}))));
+        assert_eq!(
+            OutputConstraint::from_request(
+                Some("root ::= \"a\""),
+                Some(&json!({"type": "json_object"}))
+            ),
+            Some(OutputConstraint::Gbnf("root ::= \"a\"".into()))
+        );
+        assert_eq!(
+            OutputConstraint::from_request(None, Some(&json!({"type": "json_object"}))),
+            Some(OutputConstraint::JsonSchema(json!({"type": "object"})))
+        );
         let schema = json!({"type": "object", "properties": {"title": {"type": "string"}}});
-        assert_eq!(OutputConstraint::from_request(None, Some(&json!({"type": "json_schema", "json_schema": {"name": "card", "schema": schema}}))),
-            Some(OutputConstraint::JsonSchema(schema.clone())));
-        assert_eq!(OutputConstraint::from_request(None, Some(&json!({"type": "json_schema", "json_schema": schema}))),
-            Some(OutputConstraint::JsonSchema(schema)));
-        assert_eq!(OutputConstraint::from_request(Some("  "), Some(&json!({"type": "text"}))), None);
+        assert_eq!(
+            OutputConstraint::from_request(
+                None,
+                Some(
+                    &json!({"type": "json_schema", "json_schema": {"name": "card", "schema": schema}})
+                )
+            ),
+            Some(OutputConstraint::JsonSchema(schema.clone()))
+        );
+        assert_eq!(
+            OutputConstraint::from_request(
+                None,
+                Some(&json!({"type": "json_schema", "json_schema": schema}))
+            ),
+            Some(OutputConstraint::JsonSchema(schema))
+        );
+        assert_eq!(
+            OutputConstraint::from_request(Some("  "), Some(&json!({"type": "text"}))),
+            None
+        );
         assert_eq!(OutputConstraint::from_request(None, None), None);
     }
 
@@ -251,11 +285,18 @@ mod tests {
             chat_template_kwargs: None,
             grammar: None,
             response_format: None,
+            tools: None,
         };
         let v: serde_json::Value = serde_json::from_str(&env.to_prompt()).unwrap();
         assert_eq!(v["messages"][0]["content"], "hi");
         assert_eq!(v["think_mode"], "auto");
         assert_eq!(v["reasoning_effort"], "low");
         assert!(v["samplers"]["temp"].is_null());
+        assert!(v.get("tools").is_none());
+        let mut with_tools = env;
+        with_tools.tools =
+            Some(serde_json::json!([{"type":"function","function":{"name":"read_file"}}]));
+        let v: serde_json::Value = serde_json::from_str(&with_tools.to_prompt()).unwrap();
+        assert_eq!(v["tools"][0]["function"]["name"], "read_file");
     }
 }

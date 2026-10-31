@@ -94,6 +94,7 @@ pub(crate) async fn prepare_authorized_audio(
         chat_template_kwargs: None,
         grammar: None,
         response_format: None,
+        tools: None,
     };
     let prepared =
         prepare_authorized_media(state, request, settings, false, cancellation, None)

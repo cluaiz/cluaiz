@@ -157,6 +157,64 @@ async fn prepare_part(
             include_audio,
         } => (source, None, include_audio),
     };
+    let source = resolver.resolve(&source, authorize_local).await?;
+    prepare_resolved(source, resolver, input_kind, video_audio, retained, target).await
+}
+
+/// Human-selected files use the registered content detector and the same bounded decoders.
+/// This does not execute files, and authorization runs before their contents are read.
+pub async fn prepare_attachment(
+    input: &str,
+    resolver: &SourceResolver,
+    retained: u64,
+    supported: &[cluaiz_core::Modality],
+    authorize_local: impl Fn(&Path) -> Result<()> + Send + Sync,
+) -> Result<Vec<PreparedPart>> {
+    if resolver.cancellation().load(Ordering::Acquire) {
+        anyhow::bail!("Media preparation cancelled");
+    }
+    let source = resolver.resolve(input, authorize_local).await?;
+    let mime = source.format.mime_type.as_str();
+    let kind = if mime.starts_with("image/") {
+        Some(cluaiz_core::Modality::Image)
+    } else if mime.starts_with("audio/") {
+        Some(cluaiz_core::Modality::Audio)
+    } else if mime.starts_with("video/") {
+        None
+    } else {
+        Some(cluaiz_core::Modality::Text)
+    };
+    let required = kind.unwrap_or(cluaiz_core::Modality::Image);
+    if !supported.contains(&required) {
+        anyhow::bail!(
+            "Selected model does not support {} input",
+            source.format.mime_type
+        );
+    }
+    prepare_resolved(
+        source,
+        resolver,
+        kind,
+        supported.contains(&cluaiz_core::Modality::Audio),
+        retained,
+        AttachmentRef {
+            message_index: 0,
+            part_index: 0,
+            frame_index: None,
+        },
+    )
+    .await
+}
+
+async fn prepare_resolved(
+    source: crate::source::ResolvedSource,
+    resolver: &SourceResolver,
+    input_kind: Option<cluaiz_core::Modality>,
+    video_audio: bool,
+    retained: u64,
+    target: AttachmentRef,
+) -> Result<Vec<PreparedPart>> {
+    let limits = resolver.limits();
     let remaining = limits
         .max_decoded_bytes()
         .checked_sub(retained)
@@ -166,7 +224,6 @@ async fn prepare_part(
     if let Some(p) = &resolver.progress {
         p.emit(Stage::Reading, State::Running, Some(target), None);
     }
-    let source = resolver.resolve(&source, authorize_local).await?;
     let bytes = source.read_bytes(limits).await?;
     let format = source.format.clone();
     // From here on the worker owns its bytes. Temporary source files can be dropped;

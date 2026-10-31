@@ -56,6 +56,7 @@ fn envelope(parts: Vec<PreparedPart>) -> ChatEnvelope<Vec<PreparedPart>> {
         chat_template_kwargs: None,
         grammar: None,
         response_format: None,
+        tools: None,
     }
 }
 

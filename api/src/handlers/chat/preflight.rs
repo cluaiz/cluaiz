@@ -1010,6 +1010,7 @@ impl PreparedChatContext {
             chat_template_kwargs: request.chat_template_kwargs.clone(),
             grammar: request.grammar.clone(),
             response_format: request.response_format.clone(),
+            tools: None,
         };
         let cancel_signal = progress
             .as_ref()

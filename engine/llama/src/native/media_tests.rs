@@ -29,6 +29,7 @@ fn request(parts: Vec<PreparedPart>) -> ChatEnvelope<Vec<PreparedPart>> {
         chat_template_kwargs: None,
         grammar: Some("grammar".into()),
         response_format: None,
+        tools: Some(serde_json::json!([])),
     }
 }
 
@@ -73,6 +74,7 @@ fn test_media_template_preserves_literal_marker_and_rejects_loss_reorder() -> Re
     )?;
     assert!(text.messages[0].content.starts_with("literal <__media__> "));
     assert_eq!(text.samplers.seed, Some(9));
+    assert_eq!(text.tools, Some(serde_json::json!([])));
     assert_eq!(text.grammar.as_deref(), Some("grammar"));
     assert_eq!(
         marker_ranges(&text.messages[0].content, &input.markers)?.len(),
