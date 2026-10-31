@@ -87,7 +87,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("note नमस्ते.md"), "content is not needed").unwrap();
         let root = dir.path().canonicalize().unwrap();
-        assert_eq!(suggestions(&root, "/th").1[0].value, "/theme");
+        assert_eq!(suggestions(&root, "/the").1[0].value, "/theme");
         assert_eq!(
             suggestions(&root, "read @no").1[0].value,
             "@\"note नमस्ते.md\""

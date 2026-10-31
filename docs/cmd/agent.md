@@ -255,6 +255,13 @@ the six built-in tools, with the same descriptions the API uses:
 - If a tool fails (for example a plugin whose program did not download), the row shows the error
   and the model is told.
 
+## Settings popups
+
+`/model`, `/mode` (or `/permissions`, Shift+Tab), `/think` (or Ctrl+O) and `/effort` open a popup with
+the options and what each does, like `/theme`: arrows to choose, Enter to apply, Esc to cancel. The
+same settings can be typed directly: `/mode plan`, `/think off`, `/effort high`, `/model <id>`.
+`/model` switches the model and keeps the conversation.
+
 ## Commands inside the agent
 
 | Command | What it does |

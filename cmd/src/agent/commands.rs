@@ -3,23 +3,18 @@
 use cluaiz_terminal::app::Suggestion;
 
 pub const COMMANDS: &[(&str, &str)] = &[
-    ("/help", "Show commands and keyboard controls"),
-    ("/theme", "Choose the terminal theme"),
-    ("/yes", "Allow tool changes for this session"),
-    ("/ask", "Ask before tool changes again"),
-    ("/mode", "ask | accept-edits | plan (read only) | full"),
-    ("/strict", "Require approval for every built-in tool"),
-    (
-        "/permissions",
-        "Explain current approval and sandbox boundaries",
-    ),
-    ("/think", "Toggle model thinking; accepts on / off / auto"),
-    ("/clear", "Clear this agent's conversation"),
+    ("/model", "Change the model"),
+    ("/mode", "Permissions: ask, accept edits, plan, full, strict"),
+    ("/think", "Thinking: auto, on, off"),
+    ("/effort", "Thinking effort: auto, low, medium, high, max"),
+    ("/theme", "Colours of this screen"),
+    ("/clear", "Start a new conversation"),
     ("/compact", "Replace the conversation with a summary to free context"),
     ("/undo", "Put back the files the last request changed"),
     ("/diff", "git diff of the files the last request changed"),
     ("/sessions", "Saved conversations of this folder (--continue / --resume <id>)"),
-    ("/bye", "Close the agent and return to the shell"),
+    ("/help", "Commands and keyboard shortcuts"),
+    ("/bye", "Close the agent"),
 ];
 
 pub fn help() -> String {

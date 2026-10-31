@@ -333,6 +333,17 @@ impl Agent {
                 }
             }
             "/compact" => return None,
+            _ if text.starts_with("/model ") => return None,
+            _ if text.starts_with("/effort") => {
+                let level = text.trim_start_matches("/effort").trim();
+                match cluaiz_core::ThinkingBudget::parse(level) {
+                    Ok(effort) => {
+                        self.session.options.effort = Some(effort);
+                        format!("Thinking effort: {level}.")
+                    }
+                    Err(_) => "Choose: /effort auto | low | medium | high | max (or a number of tokens)".into(),
+                }
+            }
             _ if text.starts_with("/mode") => {
                 use clap::ValueEnum;
                 match tools::Mode::from_str(text.trim_start_matches("/mode").trim(), true) {
@@ -399,6 +410,8 @@ impl Agent {
     async fn turn_prepared(&mut self, text: &str, parts: Vec<PreparedPart>) -> Result<()> {
         let result = if text.trim() == "/compact" {
             self.compact().await
+        } else if let Some(id) = text.trim().strip_prefix("/model ") {
+            self.switch_model(id.trim()).await
         } else {
             self.request(text, parts).await
         };
@@ -469,6 +482,17 @@ impl Agent {
             self.usage = Some((used, size));
             self.display.emit(Event::Usage(format!("Context {}% · {used} / {size}", used * 100 / size)));
         }
+    }
+
+    /// `/model <id>`: the conversation goes on with another installed model
+    async fn switch_model(&mut self, id: &str) -> Result<()> {
+        let (path, id) = models::resolve_installed(id)?;
+        self.display.emit(Event::Message("Model".into(), format!("Loading {id}…")));
+        self.session.switch(path, id.clone()).await?;
+        self.usage = None;
+        self.display.emit(Event::Message("Model".into(), format!("Now using {id}.")));
+        self.display.emit(Event::Ready(self.status()));
+        Ok(())
     }
 
     /// `/compact`: the model writes a summary of the conversation, which then replaces it

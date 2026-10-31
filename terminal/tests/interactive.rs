@@ -35,7 +35,8 @@ fn test_interactive_preview_restores_terminal() -> Result<(), Box<dyn std::error
             Action::Clipboard
             | Action::Permissions
             | Action::ThinkingMode
-            | Action::RemoveAttachment(_) => {
+            | Action::RemoveAttachment(_)
+            | Action::Choose { .. } => {
                 app.notice =
                     Some("This developer preview has no client adapter; use cluaiz agent".into());
             }
