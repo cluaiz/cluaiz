@@ -111,6 +111,14 @@ impl Transcript {
     }
 
     /// Remove transient preparation/writing rows; durable results use upsert instead.
+    /// Opens the entries whose id starts with `prefix` (a long body is kept in several entries)
+    pub fn expand_prefix(&mut self, prefix: &str) {
+        for entry in self.entries.iter_mut().filter(|entry| entry.id.starts_with(prefix)) {
+            entry.expanded = true;
+        }
+        self.dirty = true;
+    }
+
     pub fn remove(&mut self, id: &str) {
         if self.entries.iter().any(|entry| entry.id == id) {
             self.capture_anchor();
