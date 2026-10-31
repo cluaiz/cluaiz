@@ -205,8 +205,14 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
     let allowed: Vec<String> = project.allow.iter().cloned().chain(args.allowed_tools.iter().cloned()).collect();
     let denied: Vec<String> = project.deny.iter().cloned().chain(args.disallowed_tools.iter().cloned()).collect();
     agent.tools.rules = rules::Rules::new(&allowed, &denied, agent.tools.root());
-    if let Some(mode) = if args.yes { Some(tools::Mode::Full) } else { args.mode.or(project.mode) } {
-        agent.tools.set_mode(mode);
+    // The mode: --yes / --mode, else the folder's agent.json, else the App's global security mode
+    match if args.yes { Some(tools::Mode::Full) } else { args.mode.or(project.mode) } {
+        Some(mode) => agent.tools.set_mode(mode),
+        None => {
+            let (mode, strict) = tools::Mode::from_global(&cluaiz_security::PermissionSchema::load().agent_security_mode);
+            agent.tools.set_mode(mode);
+            agent.tools.strict = strict;
+        }
     }
     if headless {
         let display = Display::json(args.output_format == OutputFormat::StreamJson);
@@ -292,7 +298,7 @@ impl Agent {
             "{} · {} · Think {}",
             context_note(self.session.plan.context_window),
             if self.tools.strict {
-                "Strict · all tools ask"
+                "Strict Approval"
             } else {
                 self.tools.mode.label()
             },
@@ -346,13 +352,28 @@ impl Agent {
             }
             _ if text.starts_with("/mode") => {
                 use clap::ValueEnum;
-                match tools::Mode::from_str(text.trim_start_matches("/mode").trim(), true) {
+                let value = text.trim_start_matches("/mode").trim();
+                // The App's three modes: saved globally, so the App and every agent use them too
+                if matches!(value, "full_access" | "sandboxed" | "strict") {
+                    let mut permissions = cluaiz_security::PermissionSchema::load();
+                    permissions.agent_security_mode = value.to_owned();
+                    let saved = permissions.save();
+                    let (mode, strict) = tools::Mode::from_global(value);
+                    self.tools.set_mode(mode);
+                    self.tools.strict = strict;
+                    self.display.emit(Event::Ready(self.status()));
+                    return match saved {
+                        Ok(()) => { self.display.emit(Event::Message("Agent".into(), format!("Security mode: {} (saved for the App and every agent).", self.status_mode()))); Some(false) }
+                        Err(error) => { self.display.emit(Event::Message("Agent".into(), format!("Mode set for this session; not saved: {error}"))); Some(false) }
+                    };
+                }
+                match tools::Mode::from_str(value, true) {
                     Ok(mode) => {
                         self.tools.set_mode(mode);
                         self.display.emit(Event::Ready(self.status()));
                         format!("Mode: {}.", mode.label())
                     }
-                    Err(_) => format!("Mode now: {}. Choose one: /mode ask | accept-edits | plan | full", self.tools.mode.label()),
+                    Err(_) => format!("Mode now: {}. Choose: /mode full_access | sandboxed | strict (saved), or plan | accept-edits (this session)", self.status_mode()),
                 }
             }
             "/undo" => {
@@ -482,6 +503,11 @@ impl Agent {
             self.usage = Some((used, size));
             self.display.emit(Event::Usage(format!("Context {}% · {used} / {size}", used * 100 / size)));
         }
+    }
+
+    /// The mode as the App names it
+    fn status_mode(&self) -> &'static str {
+        if self.tools.strict { "Strict Approval" } else { self.tools.mode.label() }
     }
 
     /// `/model <id>`: the conversation goes on with another installed model

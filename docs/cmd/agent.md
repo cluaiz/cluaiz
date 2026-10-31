@@ -147,14 +147,19 @@ removed. Commands you allowed run with your normal environment.
 
 ### Modes
 
-| Mode | What runs without asking |
-| :--- | :--- |
-| `ask` (default) | Reads in the folder and read-only commands; every change and other command asks |
-| `accept-edits` | Also file writes and edits; commands still ask |
-| `plan` | Read only: writes, edits and commands are refused and the model writes a plan for you instead |
-| `full` | Everything (same as `--yes` / `/yes`); destructive commands stay refused |
+The agent uses the App's security mode (Settings → Security & Access, `agent_security_mode` in
+`permission.json`), so the App, the API and the terminal agent follow one setting:
 
-Pick one with `--mode <mode>` or inside the agent with `/mode <mode>` (`/ask` and `/yes` still work).
+| Mode (App name) | `/mode` value | What runs without asking |
+| :--- | :--- | :--- |
+| Full Access | `full_access` | Every tool and file change (destructive commands stay refused) |
+| Workspace-Gated (default) | `sandboxed` | Reads in the folder and read-only commands; changes, other commands and outside access ask |
+| Strict Approval | `strict` | Nothing: every tool call asks, reads too |
+
+Choosing one of these in the `/mode` popup saves it for the App and every agent. Two more modes
+are for one session only and change nothing saved: `plan` (read only: changes and commands are
+refused, the model writes a plan) and `accept-edits` (file changes run, commands ask). `--mode`
+and `--yes` (Full Access) also apply to one run only.
 
 ### A folder's own permissions
 

@@ -785,12 +785,22 @@ pub enum Mode {
 }
 
 impl Mode {
+    /// The App's security mode (`agent_security_mode` in permission.json) as an agent mode:
+    /// full_access = Full, sandboxed = Ask; strict is Ask plus `strict`
+    pub fn from_global(value: &str) -> (Self, bool) {
+        match value {
+            "full_access" => (Mode::Full, false),
+            "strict" => (Mode::Ask, true),
+            _ => (Mode::Ask, false),
+        }
+    }
+
     pub fn label(self) -> &'static str {
         match self {
-            Mode::Ask => "Ask before changes",
-            Mode::AcceptEdits => "Edits allowed, commands ask",
-            Mode::Plan => "Plan mode: read only",
-            Mode::Full => "Session changes allowed",
+            Mode::Ask => "Workspace-Gated",
+            Mode::AcceptEdits => "Accept edits (this session)",
+            Mode::Plan => "Plan, read only (this session)",
+            Mode::Full => "Full Access",
         }
     }
 }
