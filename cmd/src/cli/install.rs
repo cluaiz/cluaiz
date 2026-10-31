@@ -72,8 +72,6 @@ impl ResolveUi for Terminal {
 /// Finds what `model_id` means: a catalog id, a Hugging Face repo (`owner/name`, `hf://`, a URL),
 /// optionally with `:QUANT`. Asks for the variant when there is a choice.
 pub async fn resolve(model_id: &str, all: bool) -> Result<Resolved> {
-    let logo = crate::assets::logos::logo_gallery::LOGO_VARIANTS[9];
-    println!("{}", logo.cyan());
     println!("\n  {} [cluaiz] Initializing Kernel for '{}'...", "⚙️".yellow(), model_id.bold());
     cluaiz_models::fetcher::resolve(model_id, all, &Terminal).await.map_err(|e| color_eyre::eyre::eyre!(e))
 }

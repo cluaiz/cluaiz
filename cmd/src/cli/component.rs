@@ -53,10 +53,6 @@ async fn handle_cache_command(component_type: &str, command: crate::ComponentCac
 }
 
 async fn install_component(component_type: &str, component_name: &str) -> Result<()> {
-    // 🎨 Render Sovereign ASCII Logo Banner
-    let logo = crate::assets::logos::logo_gallery::LOGO_VARIANTS[9];
-    println!("\n{}", logo.cyan());
-
     println!("┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓");
     println!("┃ {} {}                        ", "📦 CLUAIZ TOOLS INSTALLER —".bold().cyan(), component_type.to_uppercase().bold().yellow());
     println!("┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫");
