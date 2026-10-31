@@ -68,14 +68,6 @@ impl Screen {
         }
     }
 
-    /// Hands the screen to `f` (the mascot playground draws anything it likes), then repaints the
-    /// caller's view from scratch.
-    pub fn takeover<T>(&mut self, f: impl FnOnce(&mut Stdout) -> io::Result<T>) -> io::Result<T> {
-        let result = f(&mut io::stdout());
-        self.terminal.clear()?;
-        result
-    }
-
     /// Restores the original screen and input behavior before returning to the caller.
     pub fn close(mut self) -> io::Result<()> {
         self._mode.close()

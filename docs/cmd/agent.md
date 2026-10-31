@@ -220,7 +220,6 @@ something and there is no row for it, it did not.
 | `/permissions` | Explain Ask, Strict and session grants, including their OS sandbox limitation |
 | `/think on`, `/think off`, `/think auto`, `/think` | Change actual thinking settings; no argument toggles on/off |
 | `/clear` | Forget the conversation (the folder and the model stay) |
-| `/play` | Open the mascot playground: backdrops, click the mascot to make it hop, a runner game (`2`, Space to jump). `Q` comes back. Only while the agent is idle; also `cluaiz play` |
 | `/bye`, `/exit` | Leave (Ctrl+Q in the UI; Ctrl+D in plain mode) |
 | `/?`, `/help` | Show these commands |
 | `/theme` | Open the terminal UI theme picker |

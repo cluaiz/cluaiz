@@ -300,7 +300,7 @@ pub(crate) fn header(
         }
         let mut header: Vec<Line<'static>> = lines
             .iter()
-            .map(|line| Line::from(Span::styled((*line).to_owned(), palette.base)))
+            .map(|line| brand_line(line, palette.base))
             .collect();
         header.push(Line::default());
         header.extend(details);
@@ -354,4 +354,21 @@ fn centered(area: Rect, width: u16, height: u16) -> Rect {
     Layout::vertical([Constraint::Length(height.min(area.height))])
         .flex(Flex::Center)
         .areas::<1>(column)[0]
+}
+
+/// One row of brand art: mascot glyphs in their own colours, anything else in the theme's text style
+fn brand_line(line: &str, base: Style) -> Line<'static> {
+    // Runs of one colour share a span
+    let mut spans: Vec<Span<'static>> = Vec::new();
+    for glyph in line.chars() {
+        let style = match crate::mascot::color(glyph) {
+            Some((r, g, b)) => base.fg(ratatui::style::Color::Rgb(r, g, b)),
+            None => base,
+        };
+        match spans.last_mut() {
+            Some(last) if last.style == style => last.content.to_mut().push(glyph),
+            _ => spans.push(Span::styled(glyph.to_string(), style)),
+        }
+    }
+    Line::from(spans)
 }

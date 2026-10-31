@@ -59,10 +59,9 @@ flowchart LR
   Empty whitespace/Braille edge lines are removed from artwork; the first visible row's left padding is preserved.
 - The intro draws the brand art above the title, folder and status (never side by side), and
   falls back to `compact_brand`, then to text only, when the art does not fit.
-- `mascot` holds the mascot art (`ART`, `ART_BLINK`) and `play`, a playground for `cluaiz play` and
-  `/play`: stars / rain / matrix backdrops (`3`), a mascot that hops when clicked, and a runner game
-  (`2`, Space or click to jump, `P` pause, `R` restart, `Q` / Esc back). It draws into a `Screen`
-  through `Screen::takeover`, which repaints the caller's view afterwards; it needs 79 x 25 cells.
+- `mascot` holds the mascot art (`ART`, `ART_BLINK`), its colours (`color`) and `banner`: the art on
+  stderr, drawn row by row with one blink, that `serve`, `run`, `show`, `pull`, `bench`, `status` and
+  `calibrate` print at start. Nothing is printed when stderr is not a terminal or `NO_COLOR` is set.
 - Optional `Metadata::brand_blink` supplies a second frame of the same cell geometry. A left click
   inside visible intro artwork starts a 180 ms blink. Session text, overlays and fallback text do
   not trigger it. The caller invokes `Transcript::advance_animation` on its existing UI tick;

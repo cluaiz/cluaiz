@@ -329,15 +329,6 @@ fn screen_inner(
                     Some("A turn is already queued; change modes after it starts".into())
             }
             Action::Submit(text) if !closing.load(Ordering::SeqCst) => {
-                if text.trim() == "/play" {
-                    if state.busy {
-                        state.app.notice = Some("The playground opens when the agent is idle".into());
-                    } else {
-                        screen.takeover(cluaiz_terminal::mascot::play)?;
-                    }
-                    dirty = true;
-                    continue;
-                }
                 if let Some(path) = text.strip_prefix("/attach ") {
                     start_paste(
                         Ingress::Text(path.to_owned()),
