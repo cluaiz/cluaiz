@@ -100,6 +100,7 @@ async fn pdf_preparation(pdf: &str, mut settings: cluaiz_core::ActiveUserSetting
         chat_template_kwargs: None,
         grammar: None,
         response_format: None,
+        tools: None,
     };
     let resolver = cluaiz_media::source::SourceResolver::from_environment(settings.media)?
         .with_document_images(true);

@@ -29,6 +29,7 @@ fn request(parts: Vec<InputPart>) -> ChatEnvelope<Vec<InputPart>> {
         chat_template_kwargs: Some(serde_json::json!({"enable_thinking": true})),
         grammar: Some("root ::= \"ok\"".into()),
         response_format: Some(serde_json::json!({"type": "json_object"})),
+        tools: Some(serde_json::json!([])),
     }
 }
 
@@ -65,9 +66,67 @@ async fn test_document_image_policy_keeps_source_code_as_text() -> Result<()> {
         |_| Ok(()),
     )
     .await?;
+    assert_eq!(prepared.tools, Some(serde_json::json!([])));
     assert!(
         matches!(&prepared.messages[1].content[..], [PreparedPart::Text { text }]
         if text.contains("const value = 7;"))
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_auto_attachment_decodes_pixels_and_rejects_unsupported_model() -> Result<()> {
+    let dir = tempfile::tempdir()?;
+    let resolver = resolver(dir.path(), 256);
+    let source = inline("image/png", &png());
+    let image_inputs = [cluaiz_core::Modality::Image];
+    let parts = prepare_attachment(&source, &resolver, 0, &image_inputs, |_| Ok(())).await?;
+    let [PreparedPart::Image { image }] = &parts[..] else {
+        anyhow::bail!("Expected one decoded image");
+    };
+    assert_eq!((image.width(), image.height()), (1, 1));
+    assert_eq!(image.pixels(), &[12, 34, 56]);
+    let text_only = [cluaiz_core::Modality::Text];
+    let error = prepare_attachment(&source, &resolver, 0, &text_only, |_| Ok(())).await;
+    assert!(error
+        .err()
+        .unwrap()
+        .to_string()
+        .contains("does not support image/png"));
+    let cancelled = resolver.cancellation();
+    cancelled.store(true, Ordering::Release);
+    assert!(
+        prepare_attachment(&source, &resolver, 0, &image_inputs, |_| Ok(()))
+            .await
+            .is_err()
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_auto_attachment_reuses_document_decoder_and_refuses_unauthorized_path() -> Result<()>
+{
+    let dir = tempfile::tempdir()?;
+    let path = dir.path().join("note.md");
+    std::fs::write(&path, "# Heading\nreal attachment marker")?;
+    let source = path.to_string_lossy();
+    let resolver = resolver(dir.path(), 256);
+    let supported = [cluaiz_core::Modality::Text];
+    assert!(
+        prepare_attachment(&source, &resolver, 0, &supported, |_| anyhow::bail!(
+            "not authorized"
+        ))
+        .await
+        .is_err()
+    );
+    let parts = prepare_attachment(&source, &resolver, 0, &supported, |_| Ok(())).await?;
+    assert!(
+        matches!(&parts[..], [PreparedPart::Text { text }] if text.contains("real attachment marker"))
+    );
+    assert!(
+        prepare_attachment(&source, &resolver, 250, &supported, |_| Ok(()))
+            .await
+            .is_err()
     );
     Ok(())
 }

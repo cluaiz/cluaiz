@@ -431,6 +431,7 @@ async fn vision(
         chat_template_kwargs: None,
         grammar: None,
         response_format: None,
+        tools: None,
     };
     let maximum = options
         .max_tokens

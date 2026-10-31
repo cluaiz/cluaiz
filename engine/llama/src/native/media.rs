@@ -469,6 +469,7 @@ impl MediaInput {
                 chat_template_kwargs: request.chat_template_kwargs,
                 grammar: request.grammar,
                 response_format: request.response_format,
+                tools: request.tools,
             },
             input,
         ))

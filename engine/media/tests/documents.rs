@@ -109,6 +109,7 @@ async fn test_document_request_prepares_real_text_in_order_and_drops_source() ->
         chat_template_kwargs: None,
         grammar: None,
         response_format: None,
+        tools: None,
     };
     let resolver = cluaiz_media::source::SourceResolver::new(
         dir.path().to_path_buf(),

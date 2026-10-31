@@ -98,6 +98,7 @@ async fn test_all_requested_text_code_extensions_prepare_actual_text() -> Result
             chat_template_kwargs: None,
             grammar: None,
             response_format: None,
+            tools: None,
         };
         let prepared = cluaiz_media::request::prepare_chat(envelope, &resolver, |_| Ok(())).await?;
         assert!(

@@ -166,6 +166,7 @@ mod tests {
                 chat_template_kwargs: None,
                 grammar: None,
                 response_format: None,
+                tools: None,
             };
             let response = host
                 .dispatch_prepared_with_progress(

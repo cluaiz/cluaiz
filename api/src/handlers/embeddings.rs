@@ -176,6 +176,7 @@ pub async fn generate_embeddings(
                 chat_template_kwargs: None,
                 grammar: None,
                 response_format: None,
+                tools: None,
             };
             let request = match prepare_authorized_media(
                 &state, request, &settings, false, None, None,

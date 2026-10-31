@@ -62,6 +62,14 @@ flowchart LR
 
 ## Files and failure behavior
 
+- `request::prepare_attachment` lets native clients supply a human-selected source without a second
+  decoder. SourceResolver authorizes canonical local paths before reading, detects format through
+  the same registry, checks the selected package's input modalities, and delegates to the existing
+  image/audio/document/video preparation. Remaining decoded-byte budget includes retained history.
+  PDF page rendering follows the resolver's document-image policy; sampled video includes audio
+  only when the supplied capabilities permit it. This helper prepares buffers, not model answers.
+  Cancellation and unsupported inputs return errors. Typed request conversion retains optional tools.
+
 - `src/lib.rs`: actual source/format modules; callers import core contracts from their owning module.
 - `src/source.rs`: bounded source reads, reusable HTTP client and temporary-file lifetime.
 - `src/formats.rs`: extensible signature registry and MIME validation.

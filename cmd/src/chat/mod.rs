@@ -11,7 +11,10 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use cluaiz_core::{ActiveUserSettings, ChatEnvelope, ChatMessage, FeatureState, SamplerDefaults, Settings, ThinkingBudget};
+use cluaiz_core::{
+    ActiveUserSettings, ChatEnvelope, ChatMessage, FeatureState, SamplerDefaults, Settings,
+    ThinkingBudget,
+};
 use cluaiz_models::StreamingReasoningFilter;
 use cluaiz_plan::ExecutionPlan;
 use cluaiz_runtime::{EngineHost, GenerationTimings, HostResponse, ThinkingReport};
@@ -51,7 +54,9 @@ impl ChatOptions {
     /// settings.json with this run's load flags on top
     pub fn settings(&self) -> Result<ActiveUserSettings> {
         let mut settings = Settings::current();
-        self.load.apply(&mut settings.optimization).map_err(|e| eyre!(e))?;
+        self.load
+            .apply(&mut settings.optimization)
+            .map_err(|e| eyre!(e))?;
         Ok(settings)
     }
 }
@@ -91,13 +96,29 @@ pub struct Session {
 
 impl Session {
     /// Loads (or reuses) the model with the options' load flags.
-    pub async fn open(host: Arc<EngineHost>, model_path: PathBuf, model_id: String, options: ChatOptions) -> Result<Self> {
+    pub async fn open(
+        host: Arc<EngineHost>,
+        model_path: PathBuf,
+        model_id: String,
+        options: ChatOptions,
+    ) -> Result<Self> {
         let settings = options.settings()?;
         let started = std::time::Instant::now();
         let _spin = crate::ui::spinner::Spinner::start("Loading model…");
-        let plan = host.ensure_loaded(&model_id, &model_path, &settings).await.map_err(|e| eyre!("{}", e))?;
+        let plan = host
+            .ensure_loaded(&model_id, &model_path, &settings)
+            .await
+            .map_err(|e| eyre!("{}", e))?;
         drop(_spin);
-        Ok(Self { host, model_id, model_path, plan, load_ms: started.elapsed().as_millis(), options, history: Vec::new() })
+        Ok(Self {
+            host,
+            model_id,
+            model_path,
+            plan,
+            load_ms: started.elapsed().as_millis(),
+            options,
+            history: Vec::new(),
+        })
     }
 
     /// Switches to another model; the conversation is kept.
@@ -105,7 +126,11 @@ impl Session {
         let settings = self.options.settings()?;
         let started = std::time::Instant::now();
         let _spin = crate::ui::spinner::Spinner::start("Switching model…");
-        self.plan = self.host.ensure_loaded(&model_id, &model_path, &settings).await.map_err(|e| eyre!("{}", e))?;
+        self.plan = self
+            .host
+            .ensure_loaded(&model_id, &model_path, &settings)
+            .await
+            .map_err(|e| eyre!("{}", e))?;
         drop(_spin);
         self.load_ms = started.elapsed().as_millis();
         self.model_id = model_id;
@@ -132,10 +157,36 @@ impl Session {
     /// are function schemas the model may call, rendered by its own template as for an API request's
     /// `tools`; its calls come back in the answer as `<tool_call>` blocks. Returns the answer without
     /// its thinking.
-    pub async fn generate(&self, messages: Vec<ChatMessage>, tools: Option<&serde_json::Value>, out: &mut dyn output::Output) -> Result<(String, TurnReport)> {
-        let settings = Settings::current();
+    pub async fn generate(
+        &self,
+        messages: Vec<ChatMessage>,
+        tools: Option<&serde_json::Value>,
+        out: &mut dyn output::Output,
+    ) -> Result<(String, TurnReport)> {
+        cluaiz_core::GLOBAL_CANCEL_SIGNAL.store(false, Ordering::SeqCst);
+        let messages = messages
+            .into_iter()
+            .map(|message| ChatMessage {
+                role: message.role,
+                content: vec![cluaiz_core::media::PreparedPart::Text {
+                    text: message.content,
+                }],
+            })
+            .collect();
+        self.generate_prepared(messages, tools, out).await
+    }
+
+    /// Text and attachments use the same native request, options, tool schemas and output filter.
+    pub async fn generate_prepared(
+        &self,
+        messages: Vec<ChatMessage<Vec<cluaiz_core::media::PreparedPart>>>,
+        tools: Option<&serde_json::Value>,
+        out: &mut dyn output::Output,
+    ) -> Result<(String, TurnReport)> {
+        let settings = self.options.settings()?;
         let opt = &settings.optimization;
-        let n_ctx = cluaiz_core::active_context_tokens().unwrap_or(self.plan.context_window) as usize;
+        let n_ctx =
+            cluaiz_core::active_context_tokens().unwrap_or(self.plan.context_window) as usize;
 
         // No max_tokens: until the model ends or the context does; the engine fits the history
         let max_tokens = self.options.max_tokens.unwrap_or(n_ctx).min(n_ctx);
@@ -146,18 +197,16 @@ impl Session {
             samplers: self.options.samplers.clone(),
             think_mode: think.name().to_string(),
             reasoning_effort: self.options.effort.unwrap_or(opt.reasoning_effort),
-            reasoning_budget_message: self.options.budget_message.clone().or_else(|| opt.reasoning_budget_message.clone()),
+            reasoning_budget_message: self
+                .options
+                .budget_message
+                .clone()
+                .or_else(|| opt.reasoning_budget_message.clone()),
             chat_template_kwargs: None,
             grammar: None,
             response_format: None,
+            tools: tools.cloned(),
         };
-        let mut prompt = envelope.to_prompt();
-        if let Some(tools) = tools {
-            if let Ok(mut value) = serde_json::from_str::<serde_json::Value>(&prompt) {
-                value["tools"] = tools.clone();
-                prompt = value.to_string();
-            }
-        }
 
         // Tags from llama.cpp's template engine (read at load); no tags = the model has no thinking format
         let (start_tag, end_tag) = {
@@ -168,10 +217,20 @@ impl Session {
         let no_thinking = think == FeatureState::Off || (start_tag.is_none() && end_tag.is_none());
         let mut filter = StreamingReasoningFilter::new(start_tag, end_tag, false, no_thinking);
 
-        cluaiz_core::GLOBAL_CANCEL_SIGNAL.store(false, Ordering::SeqCst);
         cluaiz_core::live::start();
         GENERATING.store(true, Ordering::SeqCst);
-        let result = self.stream(&prompt, max_tokens, &mut filter, out).await;
+        let response = self
+            .host
+            .dispatch_prepared(
+                envelope,
+                max_tokens,
+                &self.model_path,
+                &settings,
+                None,
+                None,
+            )
+            .await;
+        let result = self.stream(response, &mut filter, out).await;
         GENERATING.store(false, Ordering::SeqCst);
         let cancelled = cluaiz_core::GLOBAL_CANCEL_SIGNAL.swap(false, Ordering::SeqCst);
         out.finish();
@@ -180,14 +239,24 @@ impl Session {
             timings: self.host.last_timings().await,
             thinking: self.host.last_thinking().await,
             cancelled,
-            stop: self.host.last_context().await.map(|report| report.stop).unwrap_or("unknown"),
+            stop: self
+                .host
+                .last_context()
+                .await
+                .map(|report| report.stop)
+                .unwrap_or("unknown"),
         };
         Ok((answer, report))
     }
 
     /// Streams one generation; returns the answer text (thinking excluded).
-    async fn stream(&self, prompt: &str, max_tokens: usize, filter: &mut StreamingReasoningFilter, out: &mut dyn output::Output) -> Result<String> {
-        let mut rx = match self.host.dispatch_stream(prompt, max_tokens).await {
+    async fn stream(
+        &self,
+        response: HostResponse,
+        filter: &mut StreamingReasoningFilter,
+        out: &mut dyn output::Output,
+    ) -> Result<String> {
+        let mut rx = match response {
             HostResponse::TokenStream(rx) => rx,
             HostResponse::Completed(text) => {
                 out.content(&text);
@@ -196,7 +265,8 @@ impl Session {
             HostResponse::Error(e) => return Err(eyre!(e)),
         };
         let mut answer = String::new();
-        let mut emit = |(content, reasoning): (Option<String>, Option<String>), out: &mut dyn output::Output| {
+        let mut emit = |(content, reasoning): (Option<String>, Option<String>),
+                        out: &mut dyn output::Output| {
             if let Some(r) = reasoning {
                 out.reasoning(&r);
             }
@@ -224,7 +294,13 @@ impl Session {
 }
 
 /// `cluaiz run`: answers `prompt` once, or chats (`interactive`, or no prompt).
-pub async fn start(model_path: PathBuf, model_id: String, options: ChatOptions, prompt: Option<String>, interactive: bool) -> Result<()> {
+pub async fn start(
+    model_path: PathBuf,
+    model_id: String,
+    options: ChatOptions,
+    prompt: Option<String>,
+    interactive: bool,
+) -> Result<()> {
     install_interrupt_handler();
     let one_shot = prompt.is_some() && !interactive;
     let host = Arc::new(EngineHost::new());
@@ -245,4 +321,3 @@ pub async fn start(model_path: PathBuf, model_id: String, options: ChatOptions, 
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
     repl::run(&mut session, &mut state, &tx, &mut rx, prompt).await
 }
-
