@@ -20,6 +20,10 @@ pub const DEVICE_RESERVE_SHARE: f64 = 0.05;
 pub const DEVICE_RESERVE_MIN_GB: f64 = 0.15;
 pub const DEVICE_RESERVE_MAX_GB: f64 = 1.0;
 
+/// Key prefix of a dry-run correction. It is relative to the estimate, so a change to the estimate
+/// (v2: hybrid models count KV only for attention layers) needs new ones: older ones are dropped
+const CORRECTION: &str = "proj2:";
+
 /// Measured gap per model + load settings, in GB (negative: the estimate was too high)
 static LEARNED: RwLock<Option<HashMap<String, f64>>> = RwLock::new(None);
 
@@ -48,7 +52,7 @@ pub fn learned(geometry: &ModelGeometry, settings: &ActiveUserSettings) -> Optio
 
 /// llama.cpp's dry run minus the planner's estimate for this model's GPU bytes, if it was run here
 pub fn correction(geometry: &ModelGeometry, settings: &ActiveUserSettings) -> Option<f64> {
-    learned_key(&format!("proj:{}", key(geometry, settings)))
+    learned_key(&format!("{CORRECTION}{}", key(geometry, settings)))
 }
 
 /// Keeps a correction (replaces an earlier one: the dry run is exact, not a peak)
@@ -57,7 +61,7 @@ pub fn record_correction(geometry: &ModelGeometry, settings: &ActiveUserSettings
         return;
     }
     if let Ok(mut guard) = LEARNED.write() {
-        guard.get_or_insert_with(HashMap::new).insert(format!("proj:{}", key(geometry, settings)), gb);
+        guard.get_or_insert_with(HashMap::new).insert(format!("{CORRECTION}{}", key(geometry, settings)), gb);
     }
 }
 
@@ -103,7 +107,7 @@ pub fn snapshot() -> HashMap<String, f64> {
 
 /// Measurements read back from disk (replaces what is held); entries of an older format are dropped
 pub fn restore(mut measured: HashMap<String, f64>) {
-    measured.retain(|key, _| ["pool:", "proj:", "onnx:", "speech:"].iter().any(|prefix| key.starts_with(prefix)));
+    measured.retain(|key, _| ["pool:", CORRECTION, "onnx:", "speech:"].iter().any(|prefix| key.starts_with(prefix)));
     if let Ok(mut guard) = LEARNED.write() {
         *guard = Some(measured);
     }
