@@ -27,26 +27,18 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     }
     let input_height = app
         .composer
-        .display_rows(area.width.saturating_sub(2), MAX_COMPOSER_LINES)
+        .display_rows(area.width, MAX_COMPOSER_LINES)
         .clamp(1, MAX_COMPOSER_LINES) as u16
         + 2;
     let header_text = header(app, area);
     let help: Vec<_> = if app.help_open {
-        crate::keymap::SHORTCUTS
-            .iter()
-            .flat_map(|(keys, action)| {
-                textwrap::wrap(&format!("{keys}  {action}"), usize::from(area.width))
-                    .into_iter()
-                    .map(|part| Line::from(part.into_owned()))
-                    .collect::<Vec<_>>()
-            })
-            .collect()
+        help_rows(area.width)
     } else {
         Vec::new()
     };
     let footer_height = if app.help_open {
         (help.len() as u16 + 1)
-            .min(area.height / 2)
+            .min(area.height / 3)
             .min(
                 area.height
                     .saturating_sub(header_text.len() as u16 + input_height + 2),
@@ -55,15 +47,17 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     } else {
         1
     };
-    let [header, transcript, notice, composer, footer] = Layout::vertical([
+    let [header, transcript, notice, attachments, composer, footer] = Layout::vertical([
         Constraint::Length(header_text.len() as u16),
         Constraint::Min(1),
         Constraint::Length(1),
+        Constraint::Length(app.attachments.len().min(3) as u16),
         Constraint::Length(input_height.min(area.height.saturating_sub(5))),
         Constraint::Length(footer_height),
     ])
     .areas(area);
     frame.render_widget(Paragraph::new(header_text), header);
+    app.transcript_area = transcript;
     let rows = app
         .transcript
         .visible_styled(transcript.width, transcript.height, palette);
@@ -164,6 +158,21 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         }
     });
     frame.render_widget(Paragraph::new(message).style(palette.muted), notice);
+    app.attachment_area = attachments;
+    app.attachment_scroll = app.attachment_scroll.min(
+        app.attachments
+            .len()
+            .saturating_sub(usize::from(attachments.height)),
+    );
+    let chips = app
+        .attachments
+        .iter()
+        .enumerate()
+        .skip(app.attachment_scroll)
+        .take(usize::from(attachments.height))
+        .map(|(index, label)| Line::from(format!("[{} · {}] ×", index + 1, display_text(label))))
+        .collect::<Vec<_>>();
+    frame.render_widget(Paragraph::new(chips).style(palette.accent), attachments);
     app.composer.editor.set_style(palette.base);
     app.composer.editor.set_cursor_line_style(Style::default());
     app.composer
@@ -172,7 +181,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     app.composer.editor.set_placeholder_style(palette.muted);
     app.composer.editor.set_block(
         Block::default()
-            .borders(Borders::ALL)
+            .borders(Borders::TOP | Borders::BOTTOM)
             .border_style(palette.muted),
     );
     frame.render_widget(&app.composer.editor, composer);
@@ -248,10 +257,12 @@ fn header(app: &App, area: Rect) -> Vec<Line<'static>> {
     if area.height >= 14 {
         details.push(Line::from(display_text(&app.metadata.workspace)).style(palette.muted));
     }
-    details.push(Line::from(display_text(&app.metadata.status)).style(palette.muted));
-    if app.help_open {
-        return details;
-    }
+    let status = if let Some(glyph) = &app.activity {
+        format!("{glyph} {}", app.metadata.status)
+    } else {
+        app.metadata.status.clone()
+    };
+    details.push(Line::from(display_text(&status)).style(palette.muted));
     // Use the caller's original art, never scale/crop it or allocate another logo asset.
     for art in [app.metadata.brand, app.metadata.compact_brand] {
         let art = display_text(art);
@@ -309,6 +320,44 @@ fn header(app: &App, area: Rect) -> Vec<Line<'static>> {
             .collect();
     }
     details
+}
+
+fn help_rows(width: u16) -> Vec<Line<'static>> {
+    const MIN_COLUMN: usize = 36;
+    const COLUMN_GAP: usize = 2;
+    let columns = (usize::from(width) / MIN_COLUMN).clamp(1, 3);
+    let column_width = usize::from(width) / columns;
+    let rows = crate::keymap::SHORTCUTS.len().div_ceil(columns);
+    let mut result = Vec::new();
+    for row in 0..rows {
+        let cells: Vec<Vec<String>> = (0..columns)
+            .map(|column| {
+                crate::keymap::SHORTCUTS
+                    .get(column * rows + row)
+                    .map(|(key, action)| {
+                        textwrap::wrap(
+                            &format!("{key}  {action}"),
+                            column_width.saturating_sub(COLUMN_GAP).max(1),
+                        )
+                        .into_iter()
+                        .map(|part| part.into_owned())
+                        .collect()
+                    })
+                    .unwrap_or_default()
+            })
+            .collect();
+        let height = cells.iter().map(Vec::len).max().unwrap_or(0);
+        for line in 0..height {
+            let mut spans = Vec::new();
+            for cell in &cells {
+                let text = cell.get(line).cloned().unwrap_or_default();
+                let padding = column_width.saturating_sub(Line::from(text.as_str()).width());
+                spans.extend([Span::raw(text), Span::raw(" ".repeat(padding))]);
+            }
+            result.push(Line::from(spans));
+        }
+    }
+    result
 }
 
 fn centered(area: Rect, width: u16, height: u16) -> Rect {

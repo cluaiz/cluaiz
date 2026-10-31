@@ -6,6 +6,10 @@ use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 pub(crate) enum Command {
     Help,
     Thinking,
+    Permissions,
+    Clipboard,
+    RemoveAttachment,
+    ThinkingMode,
     Themes,
     Submit,
     Newline,
@@ -21,13 +25,13 @@ pub(crate) fn command(key: KeyEvent) -> Command {
     use Command::*;
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
     match key.code {
-        KeyCode::Char('?')
-            if !key
-                .modifiers
-                .intersects(KeyModifiers::CONTROL | KeyModifiers::ALT) =>
-        {
-            Help
-        }
+        KeyCode::Char('t') if key.modifiers.contains(KeyModifiers::ALT) => ThinkingMode,
+        KeyCode::Char('v') if ctrl || key.modifiers.contains(KeyModifiers::ALT) => Clipboard,
+        KeyCode::Backspace if key.modifiers.contains(KeyModifiers::ALT) => RemoveAttachment,
+        KeyCode::BackTab => Permissions,
+        KeyCode::Tab if key.modifiers.contains(KeyModifiers::SHIFT) => Permissions,
+        KeyCode::Char('?') if !key.modifiers.contains(KeyModifiers::ALT) => Help,
+        KeyCode::Char('/') if ctrl => Help,
         KeyCode::Char('o') if ctrl => Thinking,
         KeyCode::F(2) => Themes,
         KeyCode::Char('q') if ctrl => Exit,
@@ -51,19 +55,20 @@ pub(crate) fn command(key: KeyEvent) -> Command {
 
 /// Only controls implemented by this UI; execution commands come from the caller.
 pub(crate) const SHORTCUTS: &[(&str, &str)] = &[
-    ("? / Esc", "Open help on empty input / close help"),
-    ("Enter", "Send your message"),
-    (
-        "Ctrl+J / Alt+Enter",
-        "New line (Shift+Enter when supported)",
-    ),
-    ("/ / @", "Command / workspace filename suggestions"),
-    ("Tab / arrows", "Choose a suggestion"),
-    ("Ctrl+O", "Expand or collapse thinking"),
-    ("F2", "Preview themes"),
-    ("PgUp / PgDn", "Scroll conversation or open help"),
-    ("Ctrl+End", "Return to latest output"),
-    ("Ctrl+Z / Ctrl+Y", "Undo / redo draft edits"),
-    ("Esc / Ctrl+C", "Interrupt; Esc denies a pending operation"),
-    ("Ctrl+Q", "Exit and return to your shell"),
+    ("?", "Shortcuts"),
+    ("Enter", "Send"),
+    ("Ctrl+J / Alt+Enter", "New line"),
+    ("/", "Commands"),
+    ("@", "Workspace files"),
+    ("Tab / arrows", "Suggestions"),
+    ("Ctrl+O", "Thinking / tool details"),
+    ("Alt+T", "Thinking on / off"),
+    ("Shift+Tab", "Ask / strict approvals"),
+    ("Alt+V / Ctrl+V", "Paste image / file / text"),
+    ("Alt+Backspace", "Remove last attachment"),
+    ("F2", "Theme"),
+    ("PgUp / PgDn", "Scroll"),
+    ("Ctrl+End", "Latest output"),
+    ("Ctrl+Z / Ctrl+Y", "Undo / redo"),
+    ("Ctrl+Q", "Exit"),
 ];

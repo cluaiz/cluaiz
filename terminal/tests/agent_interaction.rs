@@ -26,6 +26,29 @@ fn draw(app: &mut App, width: u16, height: u16) -> String {
 }
 
 #[test]
+fn test_suggestions_do_not_capture_permission_or_newline_shortcuts() {
+    let mut app = app();
+    app.set_draft("/th").unwrap();
+    app.set_suggestions(
+        0,
+        vec![cluaiz_terminal::app::Suggestion {
+            value: "/theme".into(),
+            description: "Theme".into(),
+        }],
+    );
+    assert_eq!(
+        app.handle(Event::Key(KeyEvent::new(KeyCode::Tab, KeyModifiers::SHIFT))),
+        Action::Permissions
+    );
+    assert_eq!(app.draft(), "/th");
+    assert_eq!(
+        app.handle(Event::Key(KeyEvent::new(KeyCode::Enter, KeyModifiers::ALT))),
+        Action::None
+    );
+    assert_eq!(app.draft(), "/th\n");
+}
+
+#[test]
 fn test_approval_feedback_keeps_case_and_restores_busy_draft() {
     let mut app = app();
     app.set_draft("Next question नमस्ते").unwrap();

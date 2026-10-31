@@ -43,7 +43,13 @@ flowchart LR
   and exposes an omitted count; this is not a durable-history store.
 - `Transcript::upsert_role` accepts an explicit user/assistant/thinking/tool/error/notice role.
   Markers retain meaning in No color mode; current theme styles are applied to cached rows. Thinking
-  starts collapsed and Ctrl+O toggles its retained source without adding it to the user's draft.
+  starts collapsed. Running tools show details; completed tools collapse to their result summary.
+  Ctrl+O toggles retained thinking/tool details together; clicking one header toggles only that entry.
+  Assistant answers have no repeated role heading. Secondary entries are dim in every theme.
+- `Transcript::set_assistant_layout` accepts the client's pure Markdown layout function. The CMD
+  client reuses its existing formatter; this library does not own a second Markdown parser.
+- `App` keeps attachment labels, not bytes. Clipboard/removal/mode actions go to the client, which
+  owns payloads and execution. `begin_paste` blocks submission until that asynchronous paste returns.
 - Metadata may supply original and compact brand art. The renderer uses a complete fitting variant
   beside header details, or text alone in a tiny viewport. Artwork stays owned by the caller.
 - `render(Frame, &mut App)` also works with Ratatui's TestBackend without opening a real screen.
@@ -58,7 +64,7 @@ flowchart LR
 
 | File | Responsibility |
 | --- | --- |
-| `src/terminal.rs` | TTY detection, exclusive ownership, raw mode, bracketed paste and restoration. |
+| `src/terminal.rs` | TTY detection, exclusive ownership, raw mode, bracketed paste, mouse capture and restoration. |
 | `src/app.rs` | UI-only reducer, theme-picker focus, submit/cancel/exit actions. |
 | `src/input.rs` | Maintained textarea adapter, bounded UTF-8 draft, newline and undo/redo. |
 | `src/keymap.rs` | Application keys; execution shortcuts are not registered here. |
@@ -76,9 +82,14 @@ flowchart LR
 
 | Key | Behavior |
 | --- | --- |
-| Enter | Returns a Submit action for nonblank draft; release/repeat does not resubmit. |
-| ? on empty input | Opens shortcut help. PgUp/PgDn scroll it; ? or Esc closes it. In a draft or permission response, ? remains text. Pasted ? never opens help. |
-| Ctrl+O | Expands/collapses retained thinking; does not change model thinking settings. |
+| Enter | Returns Submit for text or attached files; waits during asynchronous paste. Release/repeat does not resubmit. |
+| ? on empty input, Ctrl+? or Ctrl+/ | Opens compact shortcut columns. PgUp/PgDn scroll; ?/Esc/Backspace close. Typing closes help and keeps the first character. Modifier delivery depends on the host. |
+| Ctrl+O, click a detail header | Expands/collapses retained thinking and completed tool output; does not change model settings. |
+| Alt+T | Requests actual thinking-mode change from the client. |
+| Shift+Tab | Requests Ask/Strict permission-mode change without consuming the draft. |
+| Alt+V / Ctrl+V | Requests clipboard ingress. Hosts may intercept Ctrl+V; Alt+V is a fallback. |
+| Click an attachment chip / Alt+Backspace | Requests removal of that attachment / the last attachment. |
+| Mouse wheel | Scrolls output, or the attachment list when hovering its region. |
 | Alt+Enter, Shift+Enter, Ctrl+J | Inserts a newline. Modifier delivery depends on the terminal. |
 | F2 | Opens theme preview. Arrows preview; Enter applies for this App instance; Esc restores the original. |
 | Arrow keys, Home, End | Editor navigation through the widget. |
@@ -88,7 +99,8 @@ flowchart LR
 | Esc / Ctrl+C | Closes the theme overlay first, otherwise returns Cancel; the caller decides cancellation. |
 | Ctrl+Q | Returns Exit. The caller closes the screen. |
 
-Paste is text insertion, including `/` or `!` prefixes. It never dispatches a command. Pasted
+In the library, Paste is text insertion, including `/` or `!` prefixes. The CMD adapter first
+recognizes file/encoded-media paste and handles it as attachment input. Pasting never executes it. Pasted
 control characters cannot issue screen/clipboard/title instructions. Escape-sequence payload text
 may remain visible literally; this is not a terminal emulator. Draft limits reject the whole insertion
 and retain the old text. Text is not trimmed when submitting. Theme/draft state is currently in RAM.
@@ -127,5 +139,5 @@ do not constitute a full Engine/CLI native build or API regression pass.
 - Input and display limits return notices/errors. The caller owns durable logs and old-history loading.
 - Tiny windows show a recoverable resize notice. Wrapped content is rebuilt on width/content changes;
   when reading older output the logical source line is retained, not an exact byte/pixel position.
-- Clipboard image/file attachment ingress, mouse capture, selection/export UI, Markdown styling, persistent theme/history, daemon attach,
-  installed MCP/plugin/skill integration and background task views remain later milestones.
+- Native clipboard access belongs to the CMD client. Selection/export UI, persistent theme/history,
+  daemon attach, installed MCP/plugin/skill integration and background task views remain later milestones.
