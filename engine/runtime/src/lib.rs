@@ -10,7 +10,7 @@ pub mod media_support;
 pub mod onnx_host;
 pub mod speech_host;
 mod speech_plan;
-mod vram_use;
+pub mod vram_use;
 
 pub use host::{stream_error, EngineHost, HostResponse, ModelDescription, PlacementRefused};
 
