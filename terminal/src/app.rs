@@ -67,6 +67,8 @@ pub struct App {
     pub(crate) approval_scroll: usize,
     pub(crate) approval_page: usize,
     pub(crate) approval_bottom: bool,
+    /// The highlighted answer of the permission box: 0 yes, 1 always for this tool, 2 no
+    pub(crate) approval_choice: usize,
     saved_draft: Option<String>,
     pub(crate) suggestions: Vec<Suggestion>,
     pub(crate) selected: usize,
@@ -100,6 +102,7 @@ impl App {
             approval_scroll: 0,
             approval_page: 1,
             approval_bottom: false,
+            approval_choice: 0,
             saved_draft: None,
             suggestions: Vec::new(),
             selected: 0,
@@ -158,6 +161,7 @@ impl App {
         self.help_open = false;
         self.suggestions.clear();
         self.approval = Some(approval);
+        self.approval_choice = 0;
         self.approval_scroll = 0;
         self.approval_bottom = false;
         Ok(())
@@ -308,9 +312,30 @@ impl App {
             }
         }
         if self.approval.is_some() {
+            match key.code {
+                KeyCode::Up if self.composer.text().is_empty() => {
+                    self.approval_choice = self.approval_choice.saturating_sub(1);
+                    return Action::None;
+                }
+                KeyCode::Down if self.composer.text().is_empty() => {
+                    self.approval_choice = (self.approval_choice + 1).min(2);
+                    return Action::None;
+                }
+                _ => {}
+            }
             match intent {
                 Command::Submit if key.kind == KeyEventKind::Press => {
-                    let response = ApprovalResponse::parse(&self.composer.take());
+                    // Typed text answers (y / a / n, or what to do instead); else the highlighted option
+                    let typed = self.composer.take();
+                    let response = if typed.trim().is_empty() {
+                        match self.approval_choice {
+                            0 => ApprovalResponse::Allow,
+                            1 => ApprovalResponse::Session,
+                            _ => ApprovalResponse::Deny,
+                        }
+                    } else {
+                        ApprovalResponse::parse(&typed)
+                    };
                     if matches!(
                         response,
                         ApprovalResponse::Allow | ApprovalResponse::Session

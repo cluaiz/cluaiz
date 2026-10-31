@@ -101,6 +101,15 @@ impl Transcript {
         self.active = id.map(str::to_owned);
     }
 
+    /// `cls` / `clear`: empties the view, keeping the intro; the conversation itself is the client's
+    pub fn clear_view(&mut self) {
+        self.capture_anchor();
+        self.entries.retain(|entry| entry.intro.is_some());
+        self.anchor = None;
+        self.follow = true;
+        self.dirty = true;
+    }
+
     /// Remove transient preparation/writing rows; durable results use upsert instead.
     pub fn remove(&mut self, id: &str) {
         if self.entries.iter().any(|entry| entry.id == id) {
