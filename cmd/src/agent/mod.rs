@@ -4,6 +4,7 @@
 //! model's own template renders them, `<tool_call>` blocks come back), on the same loaded model and
 //! settings as `cluaiz run`.
 
+mod attachments;
 mod commands;
 mod completion;
 mod display;
@@ -16,6 +17,7 @@ use std::io::{self, IsTerminal, Read};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use cluaiz_core::media::PreparedPart;
 use cluaiz_core::ChatMessage;
 use cluaiz_runtime::EngineHost;
 use color_eyre::{eyre::eyre, Result};
@@ -195,20 +197,27 @@ struct Agent {
     session: Session,
     tools: Tools,
     system: String,
-    history: Vec<ChatMessage>,
+    history: Vec<ChatMessage<Vec<PreparedPart>>>,
     display: Display,
 }
 
 impl Agent {
     fn status(&self) -> String {
         format!(
-            "Context {} tokens · {} · /help  /theme  @files",
+            "Context {} · {} · Think {}",
             self.session.plan.context_window,
-            if self.tools.allow_all {
+            if self.tools.strict {
+                "Strict · all tools ask"
+            } else if self.tools.allow_all {
                 "Session changes allowed"
             } else {
                 "Ask before changes"
-            }
+            },
+            self.session
+                .options
+                .think
+                .unwrap_or(cluaiz_core::Settings::current().optimization.think_mode)
+                .name()
         )
     }
 
@@ -226,6 +235,7 @@ impl Agent {
                 "Conversation cleared.".into()
             }
             "/yes" => {
+                self.tools.strict = false;
                 self.tools.allow_all = true;
                 "Changes and commands now run without asking (existing hard denials still apply)."
                     .into()
@@ -233,6 +243,20 @@ impl Agent {
             "/ask" => {
                 self.tools.require_approval();
                 "Each change and command asks first.".into()
+            }
+            "/strict" => {
+                self.tools.require_approval();
+                self.tools.strict = true;
+                "Strict approvals: every built-in tool asks, including workspace reads. This is an approval policy, not OS process isolation.".into()
+            }
+            "/permissions" => "Ask: workspace reads run; changes/commands ask.\nStrict: every built-in tool asks.\n/ask · /strict · /yes (session grants).\nThese policies do not provide an OS sandbox.".into(),
+            "/think" | "/think on" | "/think off" | "/think auto" => {
+                use cluaiz_core::FeatureState;
+                let current = self.session.options.think.unwrap_or(cluaiz_core::Settings::current().optimization.think_mode);
+                let mode = match text { "/think on" => FeatureState::On, "/think off" => FeatureState::Off,
+                    "/think auto" => FeatureState::Auto, _ if current == FeatureState::Off => FeatureState::On, _ => FeatureState::Off };
+                self.session.options.think = Some(mode);
+                format!("Thinking {} for the next request (subject to the selected model's capabilities).", mode.name())
             }
             _ if text.starts_with('/') => format!("Unknown command {text}; use /help"),
             _ => return None,
@@ -243,22 +267,55 @@ impl Agent {
 
     /// One request: answers and tool calls until an answer has no call.
     async fn turn(&mut self, text: &str) -> Result<()> {
+        self.display.begin_turn();
+        cluaiz_core::GLOBAL_CANCEL_SIGNAL.store(false, std::sync::atomic::Ordering::SeqCst);
+        self.turn_prepared(text, Vec::new()).await
+    }
+
+    async fn turn_prepared(&mut self, text: &str, mut parts: Vec<PreparedPart>) -> Result<()> {
         if self.display.closing() {
             return Ok(());
         }
-        self.display.begin_turn();
-        cluaiz_core::GLOBAL_CANCEL_SIGNAL.store(false, std::sync::atomic::Ordering::SeqCst);
-        self.history.push(ChatMessage::new("user", text));
+        parts.insert(
+            0,
+            PreparedPart::Text {
+                text: text.to_owned(),
+            },
+        );
+        let user = ChatMessage {
+            role: "user".into(),
+            content: parts,
+        };
+        let retained = PreparedPart::request_bytes(&self.history)
+            .map_err(|error| eyre!("{error:#}"))?
+            .checked_add(
+                PreparedPart::request_bytes(std::slice::from_ref(&user))
+                    .map_err(|error| eyre!("{error:#}"))?,
+            )
+            .ok_or_else(|| eyre!("Chat attachment byte count overflow"))?;
+        self.session
+            .options
+            .settings()?
+            .media
+            .limits
+            .check_decoded_bytes(retained)?;
+        self.history.push(user);
         let schemas = Tools::schemas();
         for _ in 0..MAX_STEPS {
+            if self.display.closing()
+                || self.display.interrupted()
+                || cluaiz_core::GLOBAL_CANCEL_SIGNAL.load(std::sync::atomic::Ordering::SeqCst)
+            {
+                return Err(eyre!("Request cancelled before generation"));
+            }
             let (answer, report) = loop {
                 let mut messages = Vec::with_capacity(self.history.len() + 1);
-                messages.push(ChatMessage::new("system", self.system.clone()));
+                messages.push(message("system", self.system.clone()));
                 messages.extend(self.history.iter().cloned());
                 let mut out = self.display.output(self.session.options.show_thinking);
                 match self
                     .session
-                    .generate(messages, Some(&schemas), &mut *out)
+                    .generate_prepared(messages, Some(&schemas), &mut *out)
                     .await
                 {
                     Ok(done) => break done,
@@ -283,7 +340,7 @@ impl Agent {
                     .split(cluaiz_core::tool_calls::OPEN)
                     .next()
                     .unwrap_or_default();
-                self.history.push(ChatMessage::new("assistant", said));
+                self.history.push(message("assistant", said.to_owned()));
                 self.display.emit(Event::Message(
                     "Stopped".into(),
                     "Generation cancelled.".into(),
@@ -293,7 +350,7 @@ impl Agent {
             let (said, calls) =
                 validation::calls(&answer, report.stop).map_err(|error| eyre!(error))?;
             if calls.is_empty() {
-                self.history.push(ChatMessage::new("assistant", said));
+                self.history.push(message("assistant", said));
                 return Ok(());
             }
             // Kept in the Engine's form, as the API keeps a conversation with calls
@@ -303,13 +360,13 @@ impl Agent {
                 kept.push_str(&cluaiz_core::tool_calls::canonical_call(name, arguments));
             }
             self.history
-                .push(ChatMessage::new("assistant", kept.trim().to_string()));
+                .push(message("assistant", kept.trim().to_string()));
             for (name, arguments) in &calls {
                 if self.display.closing() || self.display.interrupted() {
                     return Ok(());
                 }
                 let result = self.tools.run(name, arguments).await;
-                self.history.push(ChatMessage::new("tool", result));
+                self.history.push(message("tool", result));
                 if self.tools.cancelled {
                     return Ok(());
                 }
@@ -329,17 +386,27 @@ impl Agent {
             self.history.drain(..next + 1);
             return true;
         }
-        match self
-            .history
-            .iter_mut()
-            .find(|m| m.role == "tool" && m.content.len() > 200)
-        {
+        match self.history.iter_mut().find(|m| {
+            m.role == "tool"
+                && m.content
+                    .iter()
+                    .map(PreparedPart::retained_bytes)
+                    .sum::<usize>()
+                    > 200
+        }) {
             Some(result) => {
-                result.content = "(This result was left out: the context was full. Run the tool again for less, e.g. a few lines.)".into();
+                result.content = vec![PreparedPart::Text { text: "(This result was left out: the context was full. Run the tool again for less, e.g. a few lines.)".into() }];
                 true
             }
             None => false,
         }
+    }
+}
+
+fn message(role: &str, text: String) -> ChatMessage<Vec<PreparedPart>> {
+    ChatMessage {
+        role: role.into(),
+        content: vec![PreparedPart::Text { text }],
     }
 }
 

@@ -94,7 +94,8 @@ mod tests {
         state.apply(Event::Error("operation failed".into()));
         let view = text(&mut state);
         assert!(view.contains("> You"));
-        assert!(view.contains("● Cluaiz"));
+        assert!(view.contains("final answer"));
+        assert!(!view.contains("Cluaiz"));
         assert!(view.contains("! Error"));
         assert!(!view.contains("reasoning detail"));
         state.app.transcript.toggle_thinking();
@@ -199,7 +200,7 @@ impl State {
                 Self::entry(
                     &mut self.app,
                     &self.tool_id,
-                    Role::Tool,
+                    Role::ToolRunning,
                     &self.tool_name,
                     &format!("{}\nPreparing", self.tool),
                 );
@@ -209,7 +210,7 @@ impl State {
                 Self::entry(
                     &mut self.app,
                     &self.tool_id,
-                    Role::Tool,
+                    Role::ToolRunning,
                     &self.tool_name,
                     &self.tool,
                 );
@@ -229,8 +230,12 @@ impl State {
                 Self::entry(
                     &mut self.app,
                     &self.tool_id,
-                    if ok { Role::Tool } else { Role::Error },
-                    &self.tool_name,
+                    Role::Tool,
+                    &format!(
+                        "{} · {}: {summary}",
+                        self.tool_name,
+                        if ok { "Result" } else { "Error" }
+                    ),
                     &self.tool,
                 );
             }
@@ -251,8 +256,10 @@ impl State {
                 }
             }
             Event::Themes => self.app.open_themes(),
+            Event::Permission(strict) => self.app.strict = strict,
             Event::Ready(status) => {
                 self.busy = false;
+                self.app.activity = None;
                 self.app.metadata.status = status;
             }
             Event::Finished => {

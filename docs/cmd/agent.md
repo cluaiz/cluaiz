@@ -160,8 +160,21 @@ this session; Esc cancels the preview. Alt+Enter, Shift+Enter (when delivered by
 Ctrl+J insert a newline. PgUp/PgDn scroll output; Ctrl+End returns to the latest entry. Ctrl+Q exits.
 The transcript is a bounded in-memory view; an eviction notice is shown if older entries are removed.
 
-The examples below describe **plain mode**. Rich Markdown styling is not yet shared with the
-interactive renderer; the interactive view currently retains the source Markdown as readable text.
+In rich mode, `?` on empty input opens compact shortcut columns. Esc, Backspace or `?` closes help;
+typing closes it and keeps your character. Main answers have no repeated assistant heading. Thinking
+and tool information are dim. Completed tool results collapse to one summary; click the header to
+reopen one result, or press Ctrl+O to expand/collapse retained details together. Reasoning hidden by
+`--hide-thinking` cannot be recovered by the display toggle.
+
+Alt+T changes the next request's thinking setting, subject to model support. `/think on`, `/think off`
+and `/think auto` choose it explicitly. This changes model settings; Ctrl+O only changes visibility.
+Shift+Tab toggles Ask/Strict approvals without submitting your draft. `/strict` clears old grants and
+asks before every built-in tool, including workspace reads. `/ask` restores the ordinary approval
+policy; `/permissions` explains both. These modes do not create an OS process sandbox.
+
+The examples below describe **plain mode**. The rich screen reuses the same inline/table Markdown
+formatter without stdout writes; it lays out headings, lists, tables and literal code-block content.
+It does not provide an editor's syntax highlighting or a file-diff viewer.
 
 Every tool call is one row, with a one-line result below it:
 
@@ -197,10 +210,33 @@ something and there is no row for it, it did not.
 | :--- | :--- |
 | `/yes` | Allow every change and command for the rest of the session |
 | `/ask` | Ask again before each change and command |
+| `/strict` | Clear session grants and ask before every built-in tool, including reads |
+| `/permissions` | Explain Ask, Strict and session grants, including their OS sandbox limitation |
+| `/think on`, `/think off`, `/think auto`, `/think` | Change actual thinking settings; no argument toggles on/off |
 | `/clear` | Forget the conversation (the folder and the model stay) |
 | `/bye`, `/exit` | Leave (Ctrl+Q in the UI; Ctrl+D in plain mode) |
 | `/?`, `/help` | Show these commands |
 | `/theme` | Open the terminal UI theme picker |
+
+### Files and clipboard in rich mode
+
+- Drop a file into the terminal, paste a quoted absolute file path, or type `/attach <path>`.
+  This rich-mode command attaches a file rather than executing it. Multiple quoted dropped paths
+  keep their order. Directories are rejected.
+- Alt+V reads clipboard image, copied files or text. Ctrl+V also works when the terminal sends the
+  key; some hosts paste text themselves. Clipboard format support depends on the OS and terminal.
+- Attachments appear as filename/image labels above the input. Click a label to remove it, or use
+  Alt+Backspace for the last one. Enter waits while paste is being prepared. Mode/slash commands
+  retain pending files. Ordinary text paste remains draft text, never an automatic shell command.
+- Recognized encoded media becomes a label instead of filling the input with Base64. The shared
+  media source resolver and format registry validate it; malformed/oversized data returns an error.
+- Text/source documents use shared extraction; image, audio and sampled-video inputs also require a
+  compatible installed model and companion assets. Vision-capable packages use PDF page rendering;
+  text-only packages use extraction. Unsupported input returns an error, rather than a fake answer.
+  This does not mean every file type or every GGUF supports these inputs.
+- Selected file contents pass through the same canonical-path authorization as reads before they
+  are opened. In Strict mode this also asks for workspace attachments. Media bytes remain in typed
+  conversation memory for follow-up turns, subject to configured byte limits and context eviction.
 
 In plain mode, start and end a message with `"""` to type several lines. Ctrl+C stops the answer being written, or
 the command being run, and leaves you at the prompt; at the prompt it exits.
@@ -284,7 +320,7 @@ cluaiz agent [OPTIONS] [TASK]...
 - No model switch inside the agent: start it again with another `-m`.
 - The API and CLI have not yet been moved to one shared agent controller. This terminal frontend
   calls the existing CLI loop; it does not create a second CLI tool executor or load another host.
-- Durable sessions, daemon attachment, task views, shared Markdown styling and checkpoints/undo
+- Durable sessions, shared App/CLI chat history, daemon attachment, task views and checkpoints/undo
   remain later implementation stages. Native keyboard/font behavior on macOS/Linux is unverified.
 - `search` is a regular expression over file text; to find files by name the model runs a command
   such as `Get-ChildItem -Recurse -Filter *.py` or `find . -name '*.py'`.

@@ -7,6 +7,12 @@ pub const COMMANDS: &[(&str, &str)] = &[
     ("/theme", "Choose the terminal theme"),
     ("/yes", "Allow tool changes for this session"),
     ("/ask", "Ask before tool changes again"),
+    ("/strict", "Require approval for every built-in tool"),
+    (
+        "/permissions",
+        "Explain current approval and sandbox boundaries",
+    ),
+    ("/think", "Toggle model thinking; accepts on / off / auto"),
     ("/clear", "Clear this agent's conversation"),
     ("/bye", "Close the agent and return to the shell"),
 ];

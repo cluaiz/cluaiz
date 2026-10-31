@@ -8,6 +8,28 @@ use std::io::Write;
 use crossterm::{cursor, queue, terminal};
 use unicode_width::UnicodeWidthStr;
 
+/// Screen adapter over the existing inline/table formatter. No terminal writes or ANSI escapes.
+pub fn display_lines(source: &str, width: usize) -> Vec<String> {
+    let mut format = MarkdownStream::new();
+    format.color = false;
+    let mut result = Vec::new();
+    for line in source.lines() {
+        let trimmed = line.trim_start();
+        if !format.code && trimmed.starts_with('|') { format.table.push(line.to_owned()); continue; }
+        if !format.table.is_empty() {
+            let table = std::mem::take(&mut format.table);
+            result.extend(format.render_table(&table, width).lines().map(str::to_owned));
+        }
+        if let Some(language) = trimmed.strip_prefix("```") {
+            format.code = !format.code;
+            if format.code && !language.trim().is_empty() { result.push(format!("  {}", language.trim())); }
+        } else if format.code { result.push(format!("  │ {line}")); }
+        else { result.push(format.render_line(line, width)); }
+    }
+    if !format.table.is_empty() { result.extend(format.render_table(&format.table, width).lines().map(str::to_owned)); }
+    result
+}
+
 pub struct MarkdownStream {
     color: bool,
     /// Raw text of the line being streamed (already on screen)
@@ -409,6 +431,14 @@ fn split_cells(line: &str) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn screen_layout_reuses_markdown_without_ansi_or_changing_code() {
+        let rows = super::display_lines("# Heading\n- **important**\n```rust\nlet text = \"**literal**\";\n```", 80);
+        assert!(rows.iter().any(|line| line == "Heading"));
+        assert!(rows.iter().any(|line| line.contains("• important")));
+        assert!(rows.iter().any(|line| line.contains("**literal**")));
+        assert!(rows.iter().all(|line| !line.contains('\x1b')));
+    }
     use super::*;
 
     fn plain() -> MarkdownStream {

@@ -38,6 +38,7 @@ pub enum Event {
         reply: mpsc::SyncSender<ApprovalResponse>,
     },
     Themes,
+    Permission(bool),
     Ready(String),
     Finished,
 }

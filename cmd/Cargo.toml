@@ -32,6 +32,8 @@ clap = { version = "4", features = ["derive"] }
 inquire = "0.7"
 colored = "2.1"
 indicatif = "0.18"
+arboard = "3.6.1"
+base64 = "0.22"
 reqwest = { version = "0.12", default-features = false, features = ["json", "blocking", "rustls-tls", "stream"] }
 anyhow = "1.0"
 color-eyre = "0.6"

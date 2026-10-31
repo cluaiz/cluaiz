@@ -14,6 +14,10 @@ flowchart TD
     Screen --> Actions["Submit / permission answer / interrupt / exit"]
     Plain --> Turn["Agent::turn"]
     Actions --> Turn
+    Screen --> Paste["One clipboard / file ingress worker"]
+    Paste --> Media["Existing source authorization and media decoders"]
+    Media --> Typed["PreparedPart history with tool schemas"]
+    Typed --> Turn
     Turn --> Session["Existing chat::Session and EngineHost"]
     Session --> Validate["Shared tool parser + stop/argument validation"]
     Validate --> Tools["Existing Tools::run"]
@@ -41,6 +45,7 @@ core is pending. This frontend does not imply installed MCP/plugin/skill or daem
 | `tools.rs` | Existing six tools; canonical path integration, approvals and command exit results. |
 | `display.rs` | Plain/screen output adapters, bounded event messages and permission response bridge. |
 | `terminal.rs` | Same-tab screen worker, bounded queues, asynchronous filename lookup and input actions. |
+| `attachments.rs` | Clipboard/file ingress and typed input; shared format registry, source resolver and decoders perform preparation. |
 | `terminal_state.rs` | Updates actual model/tool entries without manufacturing answers or executing tools. |
 | `commands.rs` | One command name/description list for help and slash suggestions. |
 | `completion.rs` | Bounded passive filename suggestions inside the canonical workspace. No file-content reads. |
@@ -55,11 +60,23 @@ No HTTP request is needed for the local CLI path. There is one EngineHost for th
   output; `--ui plain` selects it explicitly. `--ui tui` refuses redirected/dumb terminals.
 - The screen worker is the sole UI writer. Generation publishes coalesced text and measured phase
   facts through a bounded queue. File discovery runs off the screen thread with one active lookup.
-- Header art comes from the existing Cog gallery (full/compact variants), with a text-only fallback
-  when neither fits. Empty-input `?` opens scrollable shortcut help. Typed user/error events and
+- Header art uses the gallery's six-row `COG_TERMINAL`, with a text-only fallback
+  in tiny windows. Empty-input `?` opens compact shortcut columns; Esc/Backspace close, typing closes
+  and retains that character. Typed user/error events and
   separate answer/reasoning/tool events keep presentation roles independent of message text.
-  Reasoning is collapsed initially; Ctrl+O expands retained reasoning when it was enabled during
+  Answers have no repeated assistant label. Reasoning is collapsed initially; Ctrl+O expands retained reasoning when it was enabled during
   generation. This does not enable thinking hidden with `--hide-thinking`.
+- Completed tools collapse to their real result/error summary. Clicking that header reopens retained
+  details; running tools remain open. The existing spinner supplies frames to the screen writer.
+- Alt+T or `/think on/off/auto` changes actual request settings for the next generation. Shift+Tab
+  toggles Ask/Strict approvals; `/strict` clears previous grants and asks for workspace reads too.
+  This is an approval policy, not OS process isolation. `/permissions` explains the boundary.
+- Alt+V (Ctrl+V when delivered), file drops and `/attach <path>` in rich mode add removable labels.
+  Clipboard reads run in one bounded worker; ordinary text remains editor text. Raw recognized media
+  Base64 becomes an attachment source. Files are canonicalized and authorized before content reads.
+  The same SourceResolver/registered decoders produce typed PreparedPart history, dispatched through
+  the existing EngineHost with tool schemas retained. Unsupported selected-model modalities fail.
+  Pending paste blocks Enter; slash commands preserve pending files. No attachment is shell-executed.
 - `@` inserts a reference. The model must call the existing read tool to access its contents.
   Canonical paths prevent a symlink from being mistaken for an inside-workspace target.
 - Changes require approval unless the caller explicitly enabled a session grant. The prompt names
@@ -80,6 +97,9 @@ cargo test --release -p cluaiz-terminal
 
 These commands do not establish all-platform behavior. Live model checks need an installed
 tool-capable model and a test-owned workspace/home. Developer fixtures stay in test targets.
-Shared Markdown styling, durable sessions, checkpoints, installed tools, task views and the API
+The screen uses the existing Markdown inline/table formatter without terminal writes or ANSI.
+Native clipboard format availability varies by OS/host. Decoding a format does not prove that every
+model can understand it; package capabilities and installed companions still apply.
+Durable sessions, checkpoints, installed tools, task views and the API
 controller migration remain later plan stages. Shell output currently appears after completion;
 there is no live subprocess stdout view or interactive child PTY in this frontend yet.
