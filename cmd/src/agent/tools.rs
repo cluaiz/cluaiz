@@ -44,7 +44,14 @@ pub struct Tools {
     always: HashSet<String>,
     display: Display,
     pub cancelled: bool,
+    /// Enabled skills, plugins and MCP servers from `~/.cluaiz/tools`, offered next to the built-ins
+    installed: Vec<String>,
+    installed_schemas: Vec<Value>,
 }
+
+/// Most characters of installed tool schemas sent with every request (a small context fills fast)
+const INSTALLED_SCHEMA_CHARS: usize = 12_000;
+const BUILT_IN: &[&str] = &["read_file", "list_dir", "search", "write_file", "edit_file", "run_command"];
 
 impl Tools {
     pub fn new(root: PathBuf, allow_all: bool) -> Self {
@@ -56,7 +63,77 @@ impl Tools {
             always: HashSet::new(),
             display: Display::default(),
             cancelled: false,
+            installed: Vec::new(),
+            installed_schemas: Vec::new(),
         }
+    }
+
+    /// Offers the enabled installed tools (the same registry and schemas the API uses) and returns
+    /// the instructions of installed skills for the system prompt. Tools run in the working folder.
+    pub async fn load_installed(&mut self) -> String {
+        cluaiz_agents::ToolsEngine::set_workspace_dir(self.root.clone());
+        let ids: Vec<String> = cluaiz_agents::ToolsEngine::list_all_tools()
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|tool| tool.enabled)
+            .map(|tool| tool.id)
+            .collect();
+        if ids.is_empty() {
+            return String::new();
+        }
+        let compiled = cluaiz_agents::ToolsEngine::compile_prompt_tools(&ids).await;
+        let (schemas, left_out) = compiled.schemas_within(INSTALLED_SCHEMA_CHARS, "");
+        if !left_out.is_empty() {
+            self.display.emit(Event::Message(
+                "Tools".into(),
+                format!("{} installed tool(s) left out to save context: {}", left_out.len(), left_out.join(", ")),
+            ));
+        }
+        self.installed_schemas = schemas
+            .into_iter()
+            .filter(|schema| {
+                schema["function"]["name"].as_str().is_some_and(|name| !BUILT_IN.contains(&name))
+            })
+            .collect();
+        self.installed = compiled.active_tool_ids;
+        compiled.skill_instructions
+    }
+
+    /// Names of the installed tools offered to the model
+    pub fn installed_names(&self) -> Vec<String> {
+        self.installed_schemas
+            .iter()
+            .filter_map(|schema| schema["function"]["name"].as_str().map(str::to_owned))
+            .collect()
+    }
+
+    /// Built-in schemas, then the installed ones
+    pub fn all_schemas(&self) -> Value {
+        let mut all = Self::schemas().as_array().cloned().unwrap_or_default();
+        all.extend(self.installed_schemas.iter().cloned());
+        Value::Array(all)
+    }
+
+    /// One call of an installed skill, plugin or MCP tool, asked first like a command
+    async fn run_installed(&mut self, name: &str, arguments: &str) -> Result<(String, String), String> {
+        let target = cluaiz_agents::ToolsEngine::resolve_function_target(name, &self.installed)
+            .ok_or_else(|| {
+                format!(
+                    "there is no tool named '{name}'. Tools: {}",
+                    BUILT_IN.iter().map(|n| n.to_string()).chain(self.installed_names()).collect::<Vec<_>>().join(", ")
+                )
+            })?;
+        let what = format!("{} {}", target.category, target.component_id);
+        self.ask(&format!("{}:{}", target.category, target.component_id), &what)?;
+        let output = cluaiz_agents::ToolsEngine::execute_tool_by_name(
+            &target.category,
+            &target.component_id,
+            target.sub_function.as_deref(),
+            arguments,
+        )
+        .await
+        .map_err(|error| format!("{error:#}"))?;
+        Ok((format!("{what}: {} characters", output.len()), output))
     }
 
     pub fn set_display(&mut self, display: Display) {
@@ -206,9 +283,7 @@ impl Tools {
                 Some(command) => self.run_command(&command, number("timeout").unwrap_or(120).clamp(1, 600)).await,
                 None => Err("give a command".into()),
             },
-            other => {
-                Err(format!("there is no tool named '{other}'. Tools: read_file, list_dir, search, write_file, edit_file, run_command"))
-            }
+            other => self.run_installed(other, arguments).await,
         };
         match result {
             Ok((summary, output)) => {

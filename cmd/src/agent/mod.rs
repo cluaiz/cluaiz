@@ -154,6 +154,11 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
         history: Vec::new(),
         display: Display::default(),
     };
+    // Installed skills, plugins and MCP servers, with the skills' instructions
+    let skills = agent.tools.load_installed().await;
+    if !skills.trim().is_empty() {
+        agent.system.push_str(&format!("\n\n{}", skills.trim()));
+    }
     if screen_enabled {
         return terminal::run(agent, task, interactive).await;
     }
@@ -301,7 +306,7 @@ impl Agent {
             .limits
             .check_decoded_bytes(retained)?;
         self.history.push(user);
-        let schemas = Tools::schemas();
+        let schemas = self.tools.all_schemas();
         for _ in 0..MAX_STEPS {
             if self.display.closing()
                 || self.display.interrupted()
