@@ -317,7 +317,7 @@ fn screen_inner(
             Action::ThinkingMode => open_setting(&mut state.app, "think"),
             Action::Choose { key, value } if pending.is_none() => {
                 pending = Some(Input {
-                    text: if value == "strict" { "/strict".into() } else { format!("/{key} {value}") },
+                    text: format!("/{key} {value}"),
                     attachments: Vec::new(),
                 });
                 state.app.notice = None;
@@ -399,15 +399,15 @@ fn open_setting(app: &mut App, key: &str) {
     };
     match key {
         "mode" | "permissions" => {
+            // The App's three security modes (saved globally), then one for this session only
             let options = vec![
-                option("ask", "Every change and command asks first"),
-                option("accept-edits", "File changes run; commands still ask"),
-                option("plan", "Read only: the model writes a plan instead of changing anything"),
-                option("full", "Everything runs without asking (destructive commands stay refused)"),
-                option("strict", "Even reads in the folder ask"),
+                option("full_access", "Full Access: tools and file changes run without asking"),
+                option("sandboxed", "Workspace-Gated (recommended): folder reads run, the rest asks"),
+                option("strict", "Strict Approval: every tool call asks, reads too"),
+                option("plan", "Plan, this session only: read only, the model writes a plan"),
             ];
-            let selected = current(&options, &["Ask before", "Edits allowed", "Plan mode", "Session changes", "Strict"]);
-            app.open_choice("mode", "Permissions", options, selected);
+            let selected = current(&options, &["Full Access", "Workspace-Gated", "Strict Approval", "Plan"]);
+            app.open_choice("mode", "Security mode", options, selected);
         }
         "think" => {
             let options = vec![

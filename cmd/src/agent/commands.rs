@@ -4,7 +4,7 @@ use cluaiz_terminal::app::Suggestion;
 
 pub const COMMANDS: &[(&str, &str)] = &[
     ("/model", "Change the model"),
-    ("/mode", "Permissions: ask, accept edits, plan, full, strict"),
+    ("/mode", "Security mode: Full Access, Workspace-Gated, Strict Approval (as in the App), Plan"),
     ("/think", "Thinking: auto, on, off"),
     ("/effort", "Thinking effort: auto, low, medium, high, max"),
     ("/theme", "Colours of this screen"),

@@ -222,7 +222,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             .map(|o| Line::from(display_text(&o.value)).width() + Line::from(display_text(&o.description)).width() + 8)
             .max()
             .unwrap_or(30)
-            .clamp(40, 90) as u16;
+            .clamp(40, usize::from(area.width.saturating_sub(4)).max(40)) as u16;
         let popup = centered(area, width, choice.options.len().min(12) as u16 + 4);
         frame.render_widget(Clear, popup);
         frame.render_widget(Block::bordered().title(format!(" {} ", display_text(&choice.title))).style(palette.base), popup);
