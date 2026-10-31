@@ -325,6 +325,11 @@ fn screen_inner(
             Action::Choose { .. } => {
                 state.app.notice = Some("A message is already queued; choose again after it starts".into())
             }
+            // A shell habit: clears the screen here, the model never sees it
+            Action::Submit(text) if matches!(text.trim(), "cls" | "clear") => {
+                state.app.transcript.clear_view();
+                state.app.notice = Some("Screen cleared; the conversation is kept (/clear starts a new one)".into());
+            }
             Action::Submit(text) if SETTINGS.contains(&text.trim()) => {
                 open_setting(&mut state.app, text.trim().trim_start_matches('/'));
             }
