@@ -32,9 +32,9 @@ pub async fn run(mut agent: Agent, first: Option<String>, keep_open: bool) -> Re
         title: format!("Cluaiz · {}", agent.session.model_id),
         workspace: cluaiz_api::cep::roots::display(agent.tools.root()),
         status: agent.status(),
-        // The mascot on a tall window, the small Cog when it does not fit
+        // The mascot whenever it fits, else the wordmark
         brand: cluaiz_terminal::mascot::ART,
-        compact_brand: crate::assets::logos::logo_gallery::COG_SOLID,
+        compact_brand: crate::assets::logos::logo_gallery::WORDMARK,
         brand_blink: cluaiz_terminal::mascot::ART_BLINK,
     };
     let root = agent.tools.root().to_owned();

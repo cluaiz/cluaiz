@@ -61,7 +61,7 @@ No HTTP request is needed for the local CLI path. There is one EngineHost for th
 - The screen worker is the sole UI writer. Generation publishes coalesced text and measured phase
   facts through a bounded queue. File discovery runs off the screen thread with one active lookup.
 - Header: the mascot (`cluaiz_terminal::mascot::ART`, 15 rows) above the title, folder and status;
-  the seven-row `COG_SOLID` when the mascot does not fit, text only in tiny windows. Clicking the
+  the three-row `WORDMARK` (">_ CLUAIZ") when the mascot does not fit, text only in tiny windows. Clicking the
   art blinks it. `/play` (idle only) hands the screen to the mascot playground and repaints after. Empty-input `?` opens compact shortcut columns; Esc/Backspace close, typing closes
   and retains that character. Typed user/error events and
   separate answer/reasoning/tool events keep presentation roles independent of message text.
