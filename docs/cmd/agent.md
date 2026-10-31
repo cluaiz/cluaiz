@@ -278,6 +278,7 @@ same settings can be typed directly: `/mode plan`, `/think off`, `/effort high`,
 | `/think on`, `/think off`, `/think auto`, `/think` | Change actual thinking settings; no argument toggles on/off |
 | `/clear` | Start a new conversation (the old one stays saved; the folder and the model stay) |
 | `/compact` | The model summarizes the conversation and the summary replaces it: frees context, keeps the thread |
+| `/plan` | Where the model runs: blocks on GPU and in RAM, context and KV cache, VRAM and RAM, and why (the header shows the placement in short) |
 | `/sessions` | The saved conversations of this folder, newest first, with their ids |
 | `/undo` | Put back the files the last request changed (new files are deleted); the model is told |
 | `/diff` | `git diff` of the files the last request changed (in a git repository) |

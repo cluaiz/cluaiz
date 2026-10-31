@@ -9,6 +9,7 @@ pub const COMMANDS: &[(&str, &str)] = &[
     ("/effort", "Thinking effort: auto, low, medium, high, max"),
     ("/theme", "Colours of this screen"),
     ("/clear", "Start a new conversation"),
+    ("/plan", "Where the model runs: GPU / RAM blocks, context, KV cache, memory, and why"),
     ("/compact", "Replace the conversation with a summary to free context"),
     ("/undo", "Put back the files the last request changed"),
     ("/diff", "git diff of the files the last request changed"),

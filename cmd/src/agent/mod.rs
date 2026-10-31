@@ -295,7 +295,8 @@ struct Agent {
 impl Agent {
     fn status(&self) -> String {
         format!(
-            "{} · {} · Think {}",
+            "{} · {} · {} · Think {}",
+            plan_note(&self.session.plan),
             context_note(self.session.plan.context_window),
             if self.tools.strict {
                 "Strict Approval"
@@ -324,6 +325,11 @@ impl Agent {
                 // The cleared conversation stays saved; the next request starts a new one
                 self.session_id = sessions::new_id();
                 "Conversation cleared.".into()
+            }
+            "/plan" => {
+                let plan = &self.session.plan;
+                format!("{}
+context    {}", plan.summary(), plan.context_reason)
             }
             "/sessions" => {
                 let saved = sessions::list(self.tools.root());
@@ -830,6 +836,12 @@ fn compact_transcript(history: &[ChatMessage<Vec<PreparedPart>>], budget: usize)
 
 /// Below this context a written file or a long tool result often does not fit
 const SMALL_CONTEXT: u32 = 8192;
+
+/// Where the model runs, in one line for the header ("Full GPU · 36/36 blocks on GPU"); /plan has all
+fn plan_note(plan: &cluaiz_plan::ExecutionPlan) -> String {
+    let (gpu, _) = plan.block_split();
+    format!("{} · {gpu}/{} blocks on GPU", plan.placement_label(), plan.total_layers)
+}
 
 /// "Context N", with what to do when N is too small for agent work
 fn context_note(tokens: u32) -> String {
