@@ -145,11 +145,10 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
             "Interactive terminal required; use --ui plain for redirected output"
         ));
     }
-    let name = args
-        .model
-        .clone()
-        .or_else(models::default_chat_model)
-        .ok_or_else(|| eyre!("no model given and no active chat model (see `cluaiz list`, `cluaiz agent -m <model>`)"))?;
+    let name = match args.model.clone() {
+        Some(name) => name,
+        None => models::chat_model_or_choose()?,
+    };
     let (path, id) = match models::lookup(&name) {
         Lookup::Found(path, id) => (path, id),
         _ => models::resolve_installed(&name)?,

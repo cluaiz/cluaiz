@@ -327,7 +327,9 @@ async fn main() -> Result<()> {
     let cli = Cli::parse_from(cli::args::normalize_llama_flags(raw));
 
     // Bare `cluaiz`: the agent when there is a terminal and a chat model, else the help
-    let agent_by_default = std::io::stdin().is_terminal() && std::io::stdout().is_terminal() && cli::models::default_chat_model().is_some();
+    let agent_by_default = std::io::stdin().is_terminal()
+        && std::io::stdout().is_terminal()
+        && cluaiz_models::registry::InstalledStateRegistry::load().installed_models.values().any(|m| m.category == "chat");
     if cli.command.is_none() && !agent_by_default {
         cli::help::print::<Cli>();
         ghost_note();
