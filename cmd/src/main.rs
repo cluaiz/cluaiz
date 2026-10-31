@@ -281,20 +281,21 @@ fn fail(context: &str, error: impl std::fmt::Display) -> ! {
     std::process::exit(1);
 }
 
+/// A build run from outside the install folder while an installed copy exists: one dim line, so
+/// the user knows which binary answered
+fn ghost_note() {
+    let Ok(current) = std::env::current_exe() else { return };
+    let bin = cluaiz_core::EnvironmentManager::current().local_dir.join("bin");
+    // Only when an installed copy exists too: a binary installed elsewhere on purpose
+    // (CLUAIZ_INSTALL_DIR) is not a stray build
+    if !current.starts_with(&bin) && bin.join(current.file_name().unwrap_or_default()).is_file() {
+        let shown = cluaiz_api::cep::roots::display(&current);
+        eprintln!("{}", format!("Running the build at {shown}; the installed `cluaiz` is in {}", bin.display()).dimmed());
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
-    // 🚀 SOVEREIGN GHOST EXECUTION GUARD
-    if let Ok(current_exe) = std::env::current_exe() {
-        let global_bin_dir = cluaiz_core::EnvironmentManager::current().local_dir.join("bin");
-        // Only when an installed copy exists there too: a binary installed elsewhere on purpose
-        // (CLUAIZ_INSTALL_DIR) is not a stray build
-        let installed = global_bin_dir.join(current_exe.file_name().unwrap_or_default());
-        if !current_exe.starts_with(&global_bin_dir) && installed.is_file() {
-            eprintln!("  {} [Ghost Execution Detected] You are running a local binary at {:?}", "⚠️".yellow().bold(), current_exe);
-            eprintln!("  {} To use the System, run the global 'cluaiz' command.\n", "💡".cyan());
-        }
-    }
-
     // ══ FORCE UTF-8 FOR WINDOWS CONSOLE ══
     #[cfg(windows)]
     unsafe {
@@ -320,9 +321,33 @@ async fn main() -> Result<()> {
     // The grouped help with the mascot (a command's own help stays clap's)
     if raw.len() == 2 && matches!(raw[1].as_str(), "-h" | "--help" | "help") {
         cli::help::print::<Cli>();
+        ghost_note();
         return Ok(());
     }
     let cli = Cli::parse_from(cli::args::normalize_llama_flags(raw));
+
+    // Bare `cluaiz`: the agent when there is a terminal and a chat model, else the help
+    let agent_by_default = std::io::stdin().is_terminal() && std::io::stdout().is_terminal() && cli::models::default_chat_model().is_some();
+    if cli.command.is_none() && !agent_by_default {
+        cli::help::print::<Cli>();
+        ghost_note();
+        return Ok(());
+    }
+    // The banner comes first: start-up work and its logs follow it, never above it
+    let banner = match &cli.command {
+        Some(CliCommand::Serve { .. }) => Some("serve"),
+        Some(CliCommand::Run(_)) => Some("run"),
+        Some(CliCommand::Show(_)) => Some("show"),
+        Some(CliCommand::Pull { .. }) => Some("pull"),
+        Some(CliCommand::Bench(_)) => Some("bench"),
+        Some(CliCommand::Status) => Some("status"),
+        Some(CliCommand::Calibrate) => Some("calibrate"),
+        _ => None,
+    };
+    if let Some(what) = banner {
+        cluaiz_terminal::mascot::banner(&[&format!("Cluaiz {} · {}", env!("CARGO_PKG_VERSION"), what)]);
+    }
+    ghost_note();
     let screen = match &cli.command {
         Some(CliCommand::Agent(args)) => args.screen_enabled(),
         None => agent::AgentArgs::default().screen_enabled(),
@@ -332,36 +357,18 @@ async fn main() -> Result<()> {
 
     // 🚀 Cluaiz BOOTSTRAP (Local Dev-Sync & Registry Verification)
     let is_dev_sync = std::env::args().any(|arg| arg == "dev-sync");
-    if let Err(e) = Bootstrapper::ignite(is_dev_sync).await {
+    // A spinner while it runs; `serve` shows its start-up log lines instead
+    let starting = (banner.is_some() && banner != Some("serve")).then(|| crate::ui::spinner::Spinner::start("Starting…"));
+    let ignited = Bootstrapper::ignite(is_dev_sync).await;
+    drop(starting);
+    if let Err(e) = ignited {
         eprintln!("\n  {} [Cluaiz] Bootstrap Failed: {}\n", "❌".red(), e);
         std::process::exit(1);
     }
 
     let verbose = cli.verbose > 0;
 
-    let command = match cli.command {
-        Some(command) => command,
-        // Bare `cluaiz`: the agent when there is a terminal and a chat model, else the help
-        None if std::io::stdin().is_terminal() && std::io::stdout().is_terminal() && cli::models::default_chat_model().is_some() => {
-            CliCommand::Agent(agent::AgentArgs::default())
-        }
-        None => {
-            cli::help::print::<Cli>();
-            return Ok(());
-        }
-    };
-    if let Some(what) = match &command {
-        CliCommand::Serve { .. } => Some("serve"),
-        CliCommand::Run(_) => Some("run"),
-        CliCommand::Show(_) => Some("show"),
-        CliCommand::Pull { .. } => Some("pull"),
-        CliCommand::Bench(_) => Some("bench"),
-        CliCommand::Status => Some("status"),
-        CliCommand::Calibrate => Some("calibrate"),
-        _ => None,
-    } {
-        cluaiz_terminal::mascot::banner(&[&format!("Cluaiz {} · {}", env!("CARGO_PKG_VERSION"), what)]);
-    }
+    let command = cli.command.unwrap_or_else(|| CliCommand::Agent(agent::AgentArgs::default()));
     match command {
         CliCommand::Agent(args) => {
             if let Err(e) = agent::execute(args, verbose).await {
