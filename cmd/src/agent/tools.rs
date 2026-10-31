@@ -462,11 +462,9 @@ impl Tools {
         let file = self.resolve(path)?;
         let exists = file.exists();
         let lines = content.lines().count();
-        let diff = content
-            .lines()
-            .map(|line| format!("+ {line}"))
-            .collect::<Vec<_>>()
-            .join("\n");
+        // What it replaces: the diff shows removed lines too, not the whole file as added
+        let old = if exists { std::fs::read_to_string(&file).unwrap_or_default() } else { String::new() };
+        let diff = super::line_diff::lines(&old, content);
         self.display.emit(Event::Diff(diff.clone()));
         self.ask(
             "write_file",
@@ -521,12 +519,7 @@ impl Tools {
         if found > 1 && !replace_all {
             return Err(format!("old_text is in the file {found} times; add the lines around it, or set replace_all"));
         }
-        let diff = old
-            .lines()
-            .map(|line| format!("- {line}"))
-            .chain(new.lines().map(|line| format!("+ {line}")))
-            .collect::<Vec<_>>()
-            .join("\n");
+        let diff = super::line_diff::lines(&old, &new);
         self.display.emit(Event::Diff(diff.clone()));
         self.ask(
             "edit_file",
