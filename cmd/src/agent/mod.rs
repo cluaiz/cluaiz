@@ -158,6 +158,7 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
         return terminal::run(agent, task, interactive).await;
     }
     if interactive {
+        eprintln!("{}", context_note(agent.session.plan.context_window).dimmed());
         eprintln!("{} {}", "Working in".dimmed(), agent.tools.root().display());
         eprintln!("{}", "Type a task, /? for help, /bye to exit.".dimmed());
     }
@@ -204,8 +205,8 @@ struct Agent {
 impl Agent {
     fn status(&self) -> String {
         format!(
-            "Context {} · {} · Think {}",
-            self.session.plan.context_window,
+            "{} · {} · Think {}",
+            context_note(self.session.plan.context_window),
             if self.tools.strict {
                 "Strict · all tools ask"
             } else if self.tools.allow_all {
@@ -410,6 +411,18 @@ fn message(role: &str, text: String) -> ChatMessage<Vec<PreparedPart>> {
     }
 }
 
+/// Below this context a written file or a long tool result often does not fit
+const SMALL_CONTEXT: u32 = 8192;
+
+/// "Context N", with what to do when N is too small for agent work
+fn context_note(tokens: u32) -> String {
+    if tokens < SMALL_CONTEXT {
+        format!("Context {tokens} (small: long files will not fit; close other model processes or start with -c 16384)")
+    } else {
+        format!("Context {tokens}")
+    }
+}
+
 fn system_prompt(dir: &std::path::Path, extra: Option<&str>) -> String {
     let shell = if cfg!(windows) { "PowerShell" } else { "sh" };
     let mut prompt = format!(
@@ -441,5 +454,16 @@ fn dunce(path: PathBuf) -> PathBuf {
     match text.strip_prefix(r"\\?\") {
         Some(rest) if !rest.starts_with("UNC\\") => PathBuf::from(rest),
         _ => path,
+    }
+}
+
+#[cfg(test)]
+mod context_tests {
+    use super::context_note;
+
+    #[test]
+    fn a_small_context_says_what_to_do() {
+        assert_eq!(context_note(16384), "Context 16384");
+        assert!(context_note(4096).contains("-c 16384"));
     }
 }
