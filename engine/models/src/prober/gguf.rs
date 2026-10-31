@@ -528,6 +528,38 @@ impl GgufProber {
             .unwrap_or_default();
         let shared_kv_layers = get_u32("attention.shared_kv_layers").unwrap_or(0);
 
+        // Hybrid models (Qwen3.5, Qwen3-Next): linear-attention layers keep a fixed state, not a KV
+        // cache. Marked the way llama.cpp marks them (the listed array, else every layer of the trunk
+        // but each `full_attention_interval`-th; next-token-prediction layers are attention), and only
+        // when the state size is known (ssm.* keys); otherwise every layer counts as full attention
+        let trunk = block_count.saturating_sub(get_u32("nextn_predict_layers").unwrap_or(0));
+        let (recurrent_layers, recurrent_state_bytes) =
+            match (get_u32("ssm.conv_kernel"), get_u32("ssm.inner_size"), get_u32("ssm.state_size")) {
+                (Some(d_conv), Some(d_inner), Some(d_state)) if d_inner > 0 && d_state > 0 => {
+                    let listed = header
+                        .int_arrays
+                        .get(&key("attention.recurrent_layers"))
+                        .map(|arr| arr.iter().map(|v| *v != 0).collect::<Vec<_>>());
+                    let layers = listed.or_else(|| {
+                        get_u32("full_attention_interval").filter(|i| *i > 0).map(|interval| {
+                            (0..block_count).map(|i| i < trunk && (i + 1) % interval != 0).collect()
+                        })
+                    });
+                    match layers {
+                        // llama.cpp n_embd_r + n_embd_s, both f32: conv state (d_conv - 1 columns of
+                        // the inner size and the B/C groups) and the SSM state (d_state x d_inner)
+                        Some(layers) => {
+                            let groups = get_u32("ssm.group_count").unwrap_or(0) as u64;
+                            let conv = d_conv.saturating_sub(1) as u64
+                                * (d_inner as u64 + 2 * groups * d_state as u64);
+                            (layers, (conv + d_state as u64 * d_inner as u64) * 4)
+                        }
+                        None => (Vec::new(), 0),
+                    }
+                }
+                _ => (Vec::new(), 0),
+            };
+
         let mut weights = crate::gguf::WeightBytes {
             layer: vec![0; block_count as usize],
             layer_experts: vec![0; block_count as usize],
@@ -586,6 +618,8 @@ impl GgufProber {
             sliding_window,
             swa_layers,
             shared_kv_layers,
+            recurrent_layers,
+            recurrent_state_bytes,
             expert_count: get_u32("expert_count"),
             expert_used_count: get_u32("expert_used_count"),
             file_size_bytes: std::fs::metadata(path)?.len(),

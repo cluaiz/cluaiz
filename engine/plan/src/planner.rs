@@ -17,6 +17,12 @@ pub const AUTO_CONTEXT_FLOOR: u32 = 4096;
 /// CTX rule 3a: when the floor does not fit fully on the GPU, Auto takes this many tokens on the
 /// GPU before it splits the model (owner's rule: speed first, a smaller context before RAM).
 pub const AUTO_CONTEXT_MIN: u32 = 2048;
+/// Auto on the GPU stops here: enough for chats and agent work, and the rest of the VRAM stays
+/// free for other models (Max or a number gives more)
+pub const AUTO_CONTEXT_TARGET: u32 = 16384;
+/// Auto context of a model split between GPU and RAM: twice the floor costs about one block on the
+/// GPU, and a 4096-token context is used up by an agent's tools and one file
+pub const AUTO_SPLIT_CONTEXT: u32 = 8192;
 /// BUFFER rule: Cluaiz may use up to this share of total RAM, other apps included (>= 5% always free).
 pub const RAM_CEILING_FRACTION: f64 = 0.95;
 /// llama.cpp pads the context to 256 cells, so planned sizes stay on that grid.
@@ -122,45 +128,68 @@ pub fn resolve_context(geometry: &ModelGeometry, budget: &DeviceBudget, settings
         ContextSetting::Custom(n) => exact(n.min(native_ctx), "Custom"),
         ContextSetting::Max => exact(native_ctx, "Max (native)"),
         ContextSetting::Auto => {
-            // Only the preferred option (first KV type, first buffer) grows the context beyond the floor.
-            // Fallbacks (512 MiB buffer, Q8 KV) exist to reach the floor, so they stop there;
-            // otherwise less free memory could give a bigger context than more free memory.
-            let options: Vec<(KvCacheQuantization, f64)> = kv_options.iter()
-                .flat_map(|&kv| budget.buffers_gb.iter().map(move |&buf| (kv, buf)))
-                .collect();
-            for (i, &(kv, buf)) in options.iter().enumerate() {
-                let ceiling = if i == 0 { native_ctx } else { floor_ctx };
+            // The model stays on the GPU first; the KV cache gets smaller before the context does:
+            //   1. KV F16 when the whole target fits
+            //   2. KV Q8 (near lossless), the largest context up to the target, at least the floor
+            //   3. KV Q4, the floor (only to stay on the GPU, so it never gives more than Q8 would)
+            //   4. CTX rule 3a: below the floor down to AUTO_CONTEXT_MIN, most compact KV
+            //   5. split between GPU and RAM
+            // Each step tries the buffers in order. A step that needs less memory never gives a bigger
+            // context than the one before it, so more free VRAM never gives a worse plan.
+            // A KV type the user set is the only one tried.
+            let target = native_ctx.min(AUTO_CONTEXT_TARGET);
+            let auto_kv = opt.kv_cache_quantization == KvCacheQuantization::Auto;
+            let steps: Vec<(KvCacheQuantization, u32, u32)> = if auto_kv {
+                vec![
+                    (KvCacheQuantization::Kv16, target, target),
+                    (KvCacheQuantization::Kv8, target, floor_ctx),
+                    (KvCacheQuantization::Kv4, floor_ctx, floor_ctx),
+                ]
+            } else {
+                vec![(most_compact, target, floor_ctx)]
+            };
+            let ladder_compact = steps.last().map(|s| s.0).unwrap_or(most_compact);
+            // The first buffer runs the ladder; a smaller fallback buffer (512 MiB) only reaches the
+            // floor, or less free memory could give a bigger context than more
+            let mut tries: Vec<(KvCacheQuantization, u32, u32, f64)> =
+                steps.iter().map(|&(kv, ceiling, least)| (kv, ceiling, least, first_buffer)).collect();
+            for &buf in budget.buffers_gb.iter().skip(1) {
+                tries.extend(steps.iter().map(|&(kv, _, _)| (kv, floor_ctx, floor_ctx, buf)));
+            }
+            for (i, &(kv, ceiling, least, buf)) in tries.iter().enumerate() {
                 let ctx = largest_fitting_context(ceiling, |c| fits(c, kv, buf));
-                if ctx >= floor_ctx {
+                if ctx >= least {
                     return ContextChoice {
                         n_ctx: ctx, kv_quant: kv, buffer_gb: buf, fits_on_device: true,
                         reason: if i == 0 {
-                            format!("Auto: largest that fits = {} tokens, KV {:?}, buffer {:.2} GB", ctx, kv, buf)
+                            format!("Auto: {} tokens, KV {:?}, buffer {:.2} GB", ctx, kv, buf)
                         } else {
-                            let (kv0, buf0) = options[0];
-                            format!("Auto: {} tokens with KV {:?} + buffer {:.2} GB (did not fit with KV {:?} + buffer {:.2} GB)",
-                                ctx, kv, buf, kv0, buf0)
+                            format!("Auto: {} tokens with KV {:?} + buffer {:.2} GB, to stay on the GPU ({} tokens with KV {:?} did not fit)",
+                                ctx, kv, buf, steps[0].1, steps[0].0)
                         },
                     };
                 }
             }
             // CTX rule 3a: below the floor, down to AUTO_CONTEXT_MIN, while the model still runs
-            // fully on the GPU (most compact KV first: the point is to stay on the GPU)
+            // fully on the GPU (most compact KV: the point is to stay on the GPU)
             for &buf in &budget.buffers_gb {
-                let ctx = largest_fitting_context(floor_ctx, |c| fits(c, most_compact, buf));
+                let ctx = largest_fitting_context(floor_ctx, |c| fits(c, ladder_compact, buf));
                 if ctx >= min_ctx {
                     return ContextChoice {
-                        n_ctx: ctx, kv_quant: most_compact, buffer_gb: buf, fits_on_device: true,
+                        n_ctx: ctx, kv_quant: ladder_compact, buffer_gb: buf, fits_on_device: true,
                         reason: format!("Auto: {} tokens, KV {:?} + buffer {:.2} GB, to stay on the GPU ({} did not fit)",
-                            ctx, most_compact, buf, floor_ctx),
+                            ctx, ladder_compact, buf, floor_ctx),
                     };
                 }
             }
-            // The model is split (or on the CPU): the floor, never more (CTX rule 3)
+            // The model is split (or on the CPU): a fixed context, KV Q8 (each GPU block keeps its KV,
+            // so a smaller KV would buy little speed for its quality)
+            let split_ctx = native_ctx.min(AUTO_SPLIT_CONTEXT);
+            let split_kv = if auto_kv { KvCacheQuantization::Kv8 } else { most_compact };
             ContextChoice {
-                n_ctx: floor_ctx, kv_quant: most_compact, buffer_gb: first_buffer, fits_on_device: false,
-                reason: format!("Auto: {} tokens, KV {:?}; model does not fit on one device, so it is split and the context stays at the floor",
-                    floor_ctx, most_compact),
+                n_ctx: split_ctx, kv_quant: split_kv, buffer_gb: first_buffer, fits_on_device: false,
+                reason: format!("Auto: {} tokens, KV {:?}; the model does not fit on one device, so it is split",
+                    split_ctx, split_kv),
             }
         }
     }
@@ -196,6 +225,28 @@ impl Planner {
         geometry: &ModelGeometry,
         hardware: &SystemInfo,
         settings: &ActiveUserSettings,
+    ) -> ExecutionPlan {
+        // A split model gets AUTO_SPLIT_CONTEXT; when RAM is too short for it, the floor
+        let plan = Self::plan(model_id, geometry, hardware, settings, false);
+        let floor_ctx = geometry.context_length.max(1).min(AUTO_CONTEXT_FLOOR);
+        if !plan.is_feasible()
+            && settings.optimization.context_setting() == ContextSetting::Auto
+            && plan.context_window > floor_ctx
+        {
+            let smaller = Self::plan(model_id, geometry, hardware, settings, true);
+            if smaller.is_feasible() {
+                return smaller;
+            }
+        }
+        plan
+    }
+
+    fn plan(
+        model_id: &str,
+        geometry: &ModelGeometry,
+        hardware: &SystemInfo,
+        settings: &ActiveUserSettings,
+        split_at_floor: bool,
     ) -> ExecutionPlan {
         let opt = &settings.optimization;
         let ubatch = opt.resolved_ubatch_size();
@@ -236,6 +287,10 @@ impl Planner {
         if !gpu_allowed && opt.context_setting() == ContextSetting::Auto && choice.n_ctx > floor_ctx {
             choice.n_ctx = floor_ctx;
             choice.reason = format!("Auto on the CPU: {} tokens, KV {:?} (the floor; RAM is not filled with context)", floor_ctx, choice.kv_quant);
+        } else if split_at_floor && !choice.fits_on_device && opt.context_setting() == ContextSetting::Auto {
+            choice.n_ctx = floor_ctx;
+            choice.reason = format!("Auto: {} tokens, KV {:?}; the model is split and RAM is too short for {} tokens",
+                floor_ctx, choice.kv_quant, AUTO_SPLIT_CONTEXT);
         }
         let ctx = choice.n_ctx;
         let kv = choice.kv_quant;
@@ -535,13 +590,35 @@ mod tests {
     }
 
     #[test]
-    fn auto_small_model_gets_at_least_4096_in_f16() {
+    fn auto_small_model_stays_on_the_gpu_with_q8_before_a_smaller_context() {
+        // 16384 tokens of F16 KV do not fit; Q8 KV gives more than the floor on the GPU
         let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
         let g = qwen3_like(1.08);
         let c = resolve_context(&g, &gpu_budget(&g, 2.95, &s), &s);
         assert!(c.fits_on_device, "{}", c.reason);
-        assert_eq!(c.kv_quant, KvCacheQuantization::Kv16);
-        assert!(c.n_ctx >= AUTO_CONTEXT_FLOOR, "got {}", c.n_ctx);
+        assert_eq!(c.kv_quant, KvCacheQuantization::Kv8);
+        assert!(c.n_ctx > AUTO_CONTEXT_FLOOR, "got {}", c.n_ctx);
+    }
+
+    #[test]
+    fn auto_with_plenty_of_vram_takes_the_target_in_f16_not_the_native_limit() {
+        let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
+        let g = qwen3_like(1.08);
+        let c = resolve_context(&g, &gpu_budget(&g, 12.0, &s), &s);
+        assert_eq!((c.n_ctx, c.kv_quant), (AUTO_CONTEXT_TARGET, KvCacheQuantization::Kv16), "{}", c.reason);
+    }
+
+    #[test]
+    fn auto_uses_q4_kv_only_to_keep_the_floor_on_the_gpu() {
+        let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
+        let g = qwen3_like(2.33);
+        let fixed = g.weights.full_gpu() + g.logits_buffer_bytes(512);
+        let kv = |ctx, q| g.kv_cache_bytes(ctx, q, 512);
+        // Room for 4096 tokens of Q4 KV, not of Q8
+        let free = bytes_to_gib(fixed + kv(4096, KvCacheQuantization::Kv4)) + MIN_SAFE_VRAM_BUFFER_GB + 0.001;
+        assert!(fixed + kv(4096, KvCacheQuantization::Kv8) > gib_to_bytes(free - MIN_SAFE_VRAM_BUFFER_GB));
+        let c = resolve_context(&g, &gpu_budget(&g, free, &s), &s);
+        assert_eq!((c.n_ctx, c.kv_quant, c.fits_on_device), (AUTO_CONTEXT_FLOOR, KvCacheQuantization::Kv4, true), "{}", c.reason);
     }
 
     #[test]
@@ -549,7 +626,7 @@ mod tests {
         let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
         let g = qwen3_like(2.33);
         let c = resolve_context(&g, &gpu_budget(&g, 2.0, &s), &s);
-        assert_eq!(c.n_ctx, AUTO_CONTEXT_FLOOR);
+        assert_eq!((c.n_ctx, c.kv_quant), (AUTO_SPLIT_CONTEXT, KvCacheQuantization::Kv8), "{}", c.reason);
         assert!(!c.fits_on_device);
     }
 
@@ -692,17 +769,19 @@ mod tests {
     }
 
     #[test]
-    fn split_model_keeps_the_floor_and_never_grows_its_context_in_ram() {
+    fn split_model_gets_the_split_context_and_never_grows_it_in_ram() {
         let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
         let g = qwen3_like(4.5);
         for ram in [5.0, 8.0, 12.0, 22.0] {
             let plan = Planner::create_plan("m", &g, &hw(2.8, ram), &s);
             assert!(plan.is_feasible(), "{}", plan.explanation);
-            assert_eq!(plan.context_window, AUTO_CONTEXT_FLOOR, "ram {ram}: {}", plan.context_reason);
+            // Too little RAM for the split context: the floor instead of no plan
+            let want = if ram < 6.0 { AUTO_CONTEXT_FLOOR } else { AUTO_SPLIT_CONTEXT };
+            assert_eq!(plan.context_window, want, "ram {ram}: {}", plan.context_reason);
         }
         // Custom stays exact
-        let custom = settings(ContextSetting::Custom(8192), KvCacheQuantization::Auto);
-        assert_eq!(Planner::create_plan("m", &g, &hw(2.8, 12.0), &custom).context_window, 8192);
+        let custom = settings(ContextSetting::Custom(6144), KvCacheQuantization::Auto);
+        assert_eq!(Planner::create_plan("m", &g, &hw(2.8, 12.0), &custom).context_window, 6144);
     }
 
     #[test]
@@ -710,18 +789,18 @@ mod tests {
         let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
         let g = qwen3_like(2.33);
         let fixed = g.weights.full_gpu() + g.logits_buffer_bytes(512);
-        let kv = |ctx| g.kv_cache_bytes(ctx, KvCacheQuantization::Kv8, 512);
-        // Room for 3072 tokens of Q8 KV with the smaller buffer, not for 4096
+        let kv = |ctx| g.kv_cache_bytes(ctx, KvCacheQuantization::Kv4, 512);
+        // Room for 3072 tokens of Q4 KV with the smaller buffer, not for 4096
         let free = bytes_to_gib(fixed + kv(3072)) + MIN_SAFE_VRAM_BUFFER_GB + 0.001;
         let c = resolve_context(&g, &gpu_budget(&g, free, &s), &s);
         assert!(c.fits_on_device, "{}", c.reason);
         assert!((AUTO_CONTEXT_MIN..AUTO_CONTEXT_FLOOR).contains(&c.n_ctx), "{}", c.reason);
         let plan = Planner::create_plan("m", &g, &hw(free, 8.0), &s);
         assert_eq!(plan.selected_tier, PlacementTier::GpuOnly, "{}", plan.explanation);
-        // Not even 2048 fits: split at the floor
+        // Not even 2048 fits: split
         let free = bytes_to_gib(fixed + kv(1024)) + MIN_SAFE_VRAM_BUFFER_GB;
         let c = resolve_context(&g, &gpu_budget(&g, free, &s), &s);
-        assert!(!c.fits_on_device && c.n_ctx == AUTO_CONTEXT_FLOOR, "{}", c.reason);
+        assert!(!c.fits_on_device && c.n_ctx == AUTO_SPLIT_CONTEXT, "{}", c.reason);
     }
 
     #[test]
@@ -730,13 +809,14 @@ mod tests {
         // A size no other test uses: the measurements are process-wide
         let g = qwen3_like(2.3317);
         let fixed = g.weights.full_gpu() + g.logits_buffer_bytes(512);
-        let kv = g.kv_cache_bytes(4096, KvCacheQuantization::Kv8, 512);
-        let hardware = hw(bytes_to_gib(fixed + kv) + 0.30, 8.0);
+        // Room for the floor with Q4 KV and 0.40 GB more: not enough with the 512 MiB rule
+        let kv = g.kv_cache_bytes(4096, KvCacheQuantization::Kv4, 512);
+        let hardware = hw(bytes_to_gib(fixed + kv) + 0.40, 8.0);
         // Not measured: the 1024 / 512 MiB rule splits it
         let before = Planner::create_plan("m", &g, &hardware, &s);
         assert_ne!(before.selected_tier, PlacementTier::GpuOnly, "{}", before.explanation);
         // Measured: it took 0.18 GB more than the estimate; with the 0.20 GB reserve it runs fully
-        // on the GPU (with a context between 2048 and 4096)
+        // on the GPU
         crate::margin::record(&g, &s, 0.18);
         let after = Planner::create_plan("m", &g, &hardware, &s);
         assert_eq!(after.selected_tier, PlacementTier::GpuOnly, "{}", after.explanation);
@@ -779,5 +859,41 @@ mod tests {
         assert_eq!(plan.context_window, AUTO_CONTEXT_FLOOR, "{}", plan.context_reason);
         s.optimization.set_context_setting(ContextSetting::Custom(16384));
         assert_eq!(Planner::create_plan("m", &qwen3_like(1.08), &hw(2.95, 8.0), &s).context_window, 16384);
+    }
+
+    #[test]
+    fn the_desktop_reserve_is_5_percent_within_its_limits() {
+        let gpu = |total: f64| {
+            let mut h = hw(1.0, 8.0);
+            h.gpus[0].vram_total_gb = total;
+            crate::margin::reserve_gb(&h)
+        };
+        assert_eq!(gpu(2.0), 0.15);
+        assert!((gpu(4.0) - 0.20).abs() < 1e-9);
+        assert!((gpu(8.0) - 0.40).abs() < 1e-9);
+        assert_eq!(gpu(24.0), 1.0);
+        assert_eq!(gpu(128.0), 1.0);
+    }
+
+    #[test]
+    fn a_hybrid_model_counts_kv_only_for_its_attention_layers() {
+        // Qwen3.5 4B: 32 layers + 1 next-token layer, every 4th trunk layer is attention
+        let mut g = qwen3_like(2.59);
+        g.block_count = 33;
+        g.head_count_kv_per_layer = vec![4; 33];
+        g.key_length = 256;
+        g.value_length = 256;
+        g.recurrent_layers = (0..33).map(|i| i < 32 && (i + 1) % 4 != 0).collect();
+        g.recurrent_state_bytes = (3 * (4096 + 2 * 16 * 128) + 128 * 4096) * 4;
+        let attention = g.recurrent_layers.iter().filter(|r| !**r).count() as u64;
+        assert_eq!(attention, 9);
+        let per_token = 4 * (256 + 256) * 2;
+        assert_eq!(
+            g.kv_cache_bytes(4096, KvCacheQuantization::Kv16, 512),
+            attention * per_token * 4096 + 24 * g.recurrent_state_bytes
+        );
+        // The state does not grow with the context
+        let grows = |q| g.kv_cache_bytes(8192, q, 512) - g.kv_cache_bytes(4096, q, 512);
+        assert_eq!(grows(KvCacheQuantization::Kv16), attention * per_token * 4096);
     }
 }
