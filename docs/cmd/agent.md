@@ -221,8 +221,8 @@ the six built-in tools, with the same descriptions the API uses:
   first** (`[a]lways` allows that tool for the session; `--yes` allows all). It runs in the working
   folder through the same executor as the API.
 - Their descriptions are sent with every request, so they use context. At most 12,000 characters
-  of them are sent; the rest is left out and a line says which. Switch off tools you do not need:
-  `cluaiz plugin config <id>` / the App's Tools page.
+  of them are sent; the rest is left out and a line says which. Switch off tools you do not need
+  on the App's Tools page, or remove them (`cluaiz plugin remove <id>`, likewise `skill` / `mcp`).
 - If a tool fails (for example a plugin whose program did not download), the row shows the error
   and the model is told.
 
