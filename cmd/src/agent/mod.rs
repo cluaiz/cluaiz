@@ -504,7 +504,11 @@ impl Agent {
         }
         if let Some((used, size)) = report.context.filter(|(_, size)| *size > 0) {
             self.usage = Some((used, size));
-            self.display.emit(Event::Usage(format!("Context {}% · {used} / {size}", used * 100 / size)));
+            // As llama.cpp measured it: generation speed, and the time with the prompt read
+            let speed = report.timings.as_ref().filter(|t| t.predicted_n > 0).map(|t| {
+                format!("{:.1} tok/s · {:.1}s", t.predicted_per_second, (t.prompt_ms + t.predicted_ms) / 1000.0)
+            });
+            self.display.emit(Event::Context { used, size, speed });
         }
     }
 

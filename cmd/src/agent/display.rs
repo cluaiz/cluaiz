@@ -26,6 +26,8 @@ pub enum Event {
     GenerationProgress {
         tokens: usize,
         seconds: u64,
+        /// The same time in milliseconds, for the live speed
+        millis: u64,
     },
     PreparingTool(String),
     Message(String, String),
@@ -48,6 +50,12 @@ pub enum Event {
     Ready(String),
     /// How full the context is ("Context 62% · 2540 / 4096")
     Usage(String),
+    /// Tokens in the context after an answer, of the context size, and the answer's speed
+    Context {
+        used: usize,
+        size: usize,
+        speed: Option<String>,
+    },
     Finished,
 }
 
@@ -138,6 +146,7 @@ impl Display {
                 Event::Message(label, text) => json!({"type": "notice", "label": label, "text": text}),
                 Event::Error(text) => json!({"type": "error", "text": text}),
                 Event::Usage(text) => json!({"type": "usage", "text": text}),
+                Event::Context { used, size, speed } => json!({"type": "usage", "context_tokens": used, "context_size": size, "speed": speed}),
                 _ => return,
             };
             self.json_line(value);
@@ -265,6 +274,7 @@ impl Output for ScreenOutput {
             None => Event::GenerationProgress {
                 tokens: cluaiz_core::live::tokens(),
                 seconds: self.started.elapsed().as_secs(),
+                millis: self.started.elapsed().as_millis() as u64,
             },
         };
         self.display.emit(phase);

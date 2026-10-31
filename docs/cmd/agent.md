@@ -423,6 +423,10 @@ The agent uses the same model loading, planner and settings as `cluaiz run`
   filled) is not run and not kept in the conversation; the turn ends with "Incomplete or invalid
   tool call; nothing executed" or "Generation limit reached while preparing tool calls". Nothing was
   written. Ask for a shorter file, or for the file in parts, or start with a bigger `-c`.
+- **Footer.** How full the context is, the generation speed and the time. While an answer runs
+  it counts live (`Context 31% · 2590 / 8192 · 24.8 tok/s · 6s`: the last answer's context plus the
+  tokens generated so far); when it ends, llama.cpp's figures replace it (`… · 25.1 tok/s · 6.4s`,
+  the time with the prompt read).
 - **Auto-compact.** The footer shows how full the context is (`Context 62% · 2540 / 4096`). When an
   answer leaves it 80% full or more, or the Engine had to leave out old messages to fit, the next
   request first compacts the conversation (as `/compact` does) and says so. If a request still does
