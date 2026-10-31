@@ -165,6 +165,8 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
         history: Vec::new(),
         display: Display::default(),
         session_id: sessions::new_id(),
+        usage: None,
+        compact_next: false,
     };
     if args.continue_last || args.resume.is_some() {
         let saved = sessions::load(agent.tools.root(), args.resume.as_deref())
@@ -225,6 +227,10 @@ struct Agent {
     display: Display,
     /// The saved conversation this one writes to (`~/.cluaiz/sessions`)
     session_id: String,
+    /// How full the context was after the last answer (tokens, context size)
+    usage: Option<(usize, usize)>,
+    /// The Engine left out old messages to fit: compact before the next request
+    compact_next: bool,
 }
 
 impl Agent {
@@ -329,6 +335,17 @@ impl Agent {
         result
     }
 
+    /// Remembers how full the context is and shows it in the footer
+    fn note_usage(&mut self, report: &crate::chat::TurnReport) {
+        if report.dropped > 0 {
+            self.compact_next = true;
+        }
+        if let Some((used, size)) = report.context.filter(|(_, size)| *size > 0) {
+            self.usage = Some((used, size));
+            self.display.emit(Event::Usage(format!("Context {}% · {used} / {size}", used * 100 / size)));
+        }
+    }
+
     /// `/compact`: the model writes a summary of the conversation, which then replaces it
     async fn compact(&mut self) -> Result<()> {
         if self.history.is_empty() {
@@ -349,6 +366,9 @@ impl Agent {
             message("user", format!("Summary of our conversation so far (it replaced the full history):\n{}", summary.trim())),
             message("assistant", "Understood. I will continue from this summary.".into()),
         ];
+        self.usage = None;
+        self.compact_next = false;
+        self.display.emit(Event::Usage("Context compacted".into()));
         self.display.emit(Event::Message("Compact".into(), format!("{before} messages replaced by this summary.")));
         Ok(())
     }
@@ -356,6 +376,19 @@ impl Agent {
     async fn request(&mut self, text: &str, mut parts: Vec<PreparedPart>) -> Result<()> {
         if self.display.closing() {
             return Ok(());
+        }
+        // Like Claude Code: a nearly full context is compacted before the next request, so the
+        // Engine does not have to drop the oldest messages unseen
+        let full = self.usage.is_some_and(|(used, size)| size > 0 && used * 100 >= size * AUTO_COMPACT_PCT);
+        if (full || self.compact_next) && self.history.len() >= 4 {
+            let why = match self.usage {
+                Some((used, size)) if full => format!("Context {}% full", used * 100 / size),
+                _ => "The oldest messages no longer fit".to_owned(),
+            };
+            self.display.emit(Event::Message("Compact".into(), format!("{why}: summarizing the conversation before this request.")));
+            if let Err(error) = self.compact().await {
+                self.display.emit(Event::Message("Compact".into(), format!("{error}; going on without it.")));
+            }
         }
         parts.insert(
             0,
@@ -416,6 +449,7 @@ impl Agent {
             if self.session.options.verbose && !self.display.screen_enabled() {
                 print::stats(&report);
             }
+            self.note_usage(&report);
             if report.cancelled || self.display.interrupted() {
                 let said = answer
                     .split(cluaiz_core::tool_calls::OPEN)
@@ -490,6 +524,9 @@ fn message(role: &str, text: String) -> ChatMessage<Vec<PreparedPart>> {
         content: vec![PreparedPart::Text { text }],
     }
 }
+
+/// The share of the context after which the next request first compacts the conversation
+const AUTO_COMPACT_PCT: usize = 80;
 
 /// What `/compact` asks the model for
 const COMPACT_REQUEST: &str = "Summarize this conversation so the work can go on from the summary alone: the goal, what was decided, files read or changed (with paths), commands run and their results, and the open next steps. Be concise; use a short list. Do not call tools.";

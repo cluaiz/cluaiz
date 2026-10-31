@@ -42,6 +42,8 @@ pub struct App {
     pub transcript: Transcript,
     pub notice: Option<String>,
     pub activity: Option<String>,
+    /// How full the model's context is, shown in the footer (e.g. "Context 62%")
+    pub context_usage: Option<String>,
     pub strict: bool,
     pub attachments: Vec<String>,
     pub pasting: bool,
@@ -73,6 +75,7 @@ impl App {
             transcript,
             notice: None,
             activity: None,
+            context_usage: None,
             strict: false,
             attachments: Vec::new(),
             pasting: false,
