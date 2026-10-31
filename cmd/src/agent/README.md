@@ -60,8 +60,8 @@ No HTTP request is needed for the local CLI path. There is one EngineHost for th
   output; `--ui plain` selects it explicitly. `--ui tui` refuses redirected/dumb terminals.
 - The screen worker is the sole UI writer. Generation publishes coalesced text and measured phase
   facts through a bounded queue. File discovery runs off the screen thread with one active lookup.
-- Header: the mascot (`cluaiz_terminal::mascot::ART`, 15 rows) above the title, folder and status;
-  the three-row `WORDMARK` (">_ CLUAIZ") when the mascot does not fit, text only in tiny windows. Clicking the
+- Header: the mascot (`cluaiz_terminal::mascot::BRAND`: 15 rows, then the ">_ CLUAIZ" wordmark) above the title, folder and status;
+  the wordmark alone (`mascot::WORDMARK`) when the mascot does not fit, text only in tiny windows. Clicking the
   art blinks it. The art is drawn in the mascot's own colours (`cluaiz_terminal::mascot::color`). Empty-input `?` opens compact shortcut columns; Esc/Backspace close, typing closes
   and retains that character. Typed user/error events and
   separate answer/reasoning/tool events keep presentation roles independent of message text.

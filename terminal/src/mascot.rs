@@ -9,6 +9,13 @@ pub const ART: &str = "              ░▒▓▓▓▓▓▓▓▓▓▒░\n  
 /// The same mascot with its eyes closed (same rows and widths)
 pub const ART_BLINK: &str = "              ░▒▓▓▓▓▓▓▓▓▓▒░\n            ▒▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▒\n         ▒▓▓▒░              ░▒▓░\n        ▓▓                     ▒▒\n       ▓▓     ───       ───     ▒▒\n      ░▓▓                       ▒▒░\n      ▓▓▓         ▒▓▓▓▒         ▒▒▒\n     ░▓▓▓▓          ░          ▒▒▒▒░\n     ▓▓▓▓▓▒                   ▒▓▒▒▒▒\n   ░▓▓▓▓▓▓▓▓▒░            ░░▒▒▒▒▒▒▒░\n  ▓▓▓▓▓▓▓▓▓▓▓▓▓▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒\n    ░░░░ ▒▒▒▒▒▒▒▒▒▒▒░▒▒▒▒▒▒▒▒▒░  ░░░\n          ▓▒▒▒▒▒▒░░   ░▒▒▒▒▒▒▒▒\n          ▒▓▒▒▒▒░       ▒▒▒▒▒▒░\n            ░░░          ░░░░";
 
+/// The ">_ CLUAIZ" wordmark, written under the mascot (and alone where the mascot does not fit)
+pub const WORDMARK: &str = "░▀▄░░░░░░░░█▀▀░█░░░█░█░█▀█░▀█▀░▀▀█\n░░▄▀░░░░░░░█░░░█░░░█░█░█▀█░░█░░▄▀░\n░▀░░░▀▀▀░░░▀▀▀░▀▀▀░▀▀▀░▀░▀░▀▀▀░▀▀▀";
+/// The mascot with the wordmark under it: the agent intro and the start banner
+pub const BRAND: &str = "              ░▒▓▓▓▓▓▓▓▓▓▒░\n            ▒▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▒\n         ▒▓▓▒░              ░▒▓░\n        ▓▓                     ▒▒\n       ▓▓     ░▓▓░      ▓▓░     ▒▒\n      ░▓▓      ▓▓       ▒▓      ▒▒░\n      ▓▓▓         ▒▓▓▓▒         ▒▒▒\n     ░▓▓▓▓          ░          ▒▒▒▒░\n     ▓▓▓▓▓▒                   ▒▓▒▒▒▒\n   ░▓▓▓▓▓▓▓▓▒░            ░░▒▒▒▒▒▒▒░\n  ▓▓▓▓▓▓▓▓▓▓▓▓▓▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒\n    ░░░░ ▒▒▒▒▒▒▒▒▒▒▒░▒▒▒▒▒▒▒▒▒░  ░░░\n          ▓▒▒▒▒▒▒░░   ░▒▒▒▒▒▒▒▒\n          ▒▓▒▒▒▒░       ▒▒▒▒▒▒░\n            ░░░          ░░░░\n\n ░▀▄░░░░░░░░█▀▀░█░░░█░█░█▀█░▀█▀░▀▀█\n ░░▄▀░░░░░░░█░░░█░░░█░█░█▀█░░█░░▄▀░\n ░▀░░░▀▀▀░░░▀▀▀░▀▀▀░▀▀▀░▀░▀░▀▀▀░▀▀▀";
+/// `BRAND` with the eyes closed (same rows and widths)
+pub const BRAND_BLINK: &str = "              ░▒▓▓▓▓▓▓▓▓▓▒░\n            ▒▓▓▓▓▓▓▓▓▓▓▓▓▓▓▓▒\n         ▒▓▓▒░              ░▒▓░\n        ▓▓                     ▒▒\n       ▓▓     ───       ───     ▒▒\n      ░▓▓                       ▒▒░\n      ▓▓▓         ▒▓▓▓▒         ▒▒▒\n     ░▓▓▓▓          ░          ▒▒▒▒░\n     ▓▓▓▓▓▒                   ▒▓▒▒▒▒\n   ░▓▓▓▓▓▓▓▓▒░            ░░▒▒▒▒▒▒▒░\n  ▓▓▓▓▓▓▓▓▓▓▓▓▓▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒\n    ░░░░ ▒▒▒▒▒▒▒▒▒▒▒░▒▒▒▒▒▒▒▒▒░  ░░░\n          ▓▒▒▒▒▒▒░░   ░▒▒▒▒▒▒▒▒\n          ▒▓▒▒▒▒░       ▒▒▒▒▒▒░\n            ░░░          ░░░░\n\n ░▀▄░░░░░░░░█▀▀░█░░░█░█░█▀█░▀█▀░▀▀█\n ░░▄▀░░░░░░░█░░░█░░░█░█░█▀█░░█░░▄▀░\n ░▀░░░▀▀▀░░░▀▀▀░▀▀▀░▀▀▀░▀░▀░▀▀▀░▀▀▀";
+
 /// The colour of one glyph of the art: bright face, lighter body, dim shadow
 pub fn color(glyph: char) -> Option<(u8, u8, u8)> {
     match glyph {
@@ -39,21 +46,21 @@ fn paint(row: &str) -> String {
     out
 }
 
-/// The mascot on stderr, row by row, then one blink; `lines` follow it (dimmed). Only on a terminal
+/// The mascot and the wordmark on stderr, row by row, then one blink; `lines` follow it (dimmed). Only on a terminal
 /// with colours: piped or `NO_COLOR` output gets nothing, so scripts and logs stay clean.
 pub fn banner(lines: &[&str]) {
     let mut err = io::stderr();
     if !err.is_terminal() || std::env::var_os("NO_COLOR").is_some() {
         return;
     }
-    let rows: Vec<&str> = ART.lines().collect();
+    let rows: Vec<&str> = BRAND.lines().collect();
     for row in &rows {
         let _ = writeln!(err, "{}", paint(row));
         let _ = err.flush();
         std::thread::sleep(Duration::from_millis(12));
     }
     // Blink: the eye rows only, then back
-    let blink: Vec<&str> = ART_BLINK.lines().collect();
+    let blink: Vec<&str> = BRAND_BLINK.lines().collect();
     let eyes = rows.iter().zip(&blink).enumerate().filter(|(_, (open, shut))| open != shut).map(|(i, _)| i);
     let eyes: Vec<usize> = eyes.collect();
     for (frame, wait) in [(&blink, 260), (&rows, 140)] {
@@ -77,6 +84,7 @@ mod tests {
     #[test]
     fn the_blink_keeps_every_row_width() {
         assert_eq!(ART.lines().count(), 15);
+        assert_eq!(BRAND.lines().count(), BRAND_BLINK.lines().count());
         for (open, shut) in ART.lines().zip(ART_BLINK.lines()) {
             assert_eq!(open.chars().count(), shut.chars().count(), "{open}");
         }
