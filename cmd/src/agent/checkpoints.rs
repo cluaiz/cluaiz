@@ -75,12 +75,9 @@ impl Checkpoints {
 }
 
 /// Lines added and removed between two texts: what is left after the common start and end
+/// (added, removed), the same count as the change the agent showed
 fn changed_lines(before: &str, now: &str) -> (usize, usize) {
-    let a: Vec<&str> = before.lines().collect();
-    let b: Vec<&str> = now.lines().collect();
-    let start = a.iter().zip(&b).take_while(|(x, y)| x == y).count();
-    let end = a[start..].iter().rev().zip(b[start..].iter().rev()).take_while(|(x, y)| x == y).count();
-    (b.len() - start - end, a.len() - start - end)
+    super::line_diff::count(before, now)
 }
 
 #[cfg(test)]

@@ -11,6 +11,7 @@ mod display;
 mod terminal;
 mod terminal_state;
 mod checkpoints;
+mod line_diff;
 mod rules;
 pub mod sessions;
 pub mod tools;
