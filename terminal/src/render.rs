@@ -61,19 +61,7 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     frame.render_widget(Paragraph::new(rows).style(palette.base), transcript);
     if let Some(approval) = &app.approval {
         let width = transcript.width.saturating_sub(2).max(1) as usize;
-        let detail = format!(
-            "{}\n{}",
-            display_text(&approval.title),
-            display_text(&approval.detail)
-        );
-        let lines: Vec<_> = detail
-            .split('\n')
-            .flat_map(|line| {
-                textwrap::wrap(line, width)
-                    .into_iter()
-                    .map(|part| Line::from(part.into_owned()))
-            })
-            .collect();
+        let lines = approval_lines(&display_text(&approval.title), &display_text(&approval.detail), width, palette);
         // The answers stay visible under the operation: 3 options and a hint
         const ANSWER_ROWS: usize = 5;
         let prompt_height = transcript
@@ -99,12 +87,12 @@ pub fn render(frame: &mut Frame, app: &mut App) {
                     .take(visible)
                     .collect::<Vec<_>>(),
             )
-            .block(Block::bordered().title(if app.approval_bottom {
+            .block(Block::bordered().border_style(palette.accent).title(if app.approval_bottom {
                 " Permission required "
             } else {
                 " Permission · PgDn: read more "
             }))
-            .style(palette.accent),
+            .style(palette.base),
             prompt,
         );
         let inner = prompt.inner(ratatui::layout::Margin::new(1, 1));
@@ -402,6 +390,74 @@ fn help_rows(width: u16) -> Vec<Line<'static>> {
     result
 }
 
+/// The operation in the permission box: what it does (title), then each part under a label, so a
+/// command never blends into its folder: the command highlighted, paths plain, diff lines coloured
+fn approval_lines(tool: &str, detail: &str, width: usize, palette: crate::theme::Palette) -> Vec<Line<'static>> {
+    const LABEL: usize = 9;
+    let mut action = tool.replace('_', " ");
+    if let Some(first) = action.get_mut(..1) {
+        first.make_ascii_uppercase();
+    }
+    let mut lines = vec![Line::from(vec![
+        Span::styled(action, palette.accent.add_modifier(Modifier::BOLD)),
+        Span::styled(format!("  ({tool})"), palette.muted),
+    ])];
+    let value_width = width.saturating_sub(LABEL).max(8);
+    let mut push = |label: &str, value: &str, style: Style| {
+        for (index, part) in textwrap::wrap(value, value_width).into_iter().enumerate() {
+            let label = if index == 0 { label } else { "" };
+            lines.push(Line::from(vec![
+                Span::styled(format!("{label:<LABEL$}"), palette.muted),
+                Span::styled(part.into_owned(), style),
+            ]));
+        }
+    };
+    let command = palette.base.add_modifier(Modifier::BOLD | Modifier::REVERSED);
+    let path = palette.base.add_modifier(Modifier::BOLD);
+    let mut rows = detail.split('\n').peekable();
+    if tool == "run_command" {
+        let mut first = true;
+        while let Some(row) = rows.next() {
+            // The last "in <folder>" row is where it runs; every row before it is the command
+            if rows.peek().is_none() && !first {
+                if let Some(folder) = row.strip_prefix("in ") {
+                    push("Folder", folder, path);
+                    break;
+                }
+            }
+            push(if first { "Command" } else { "" }, &format!(" {row} "), command);
+            first = false;
+        }
+        return lines;
+    }
+    if let Some(first) = rows.next() {
+        let split = ["create ", "replace ", "edit ", "read ", "outside the working folder: "]
+            .iter()
+            .find_map(|verb| first.strip_prefix(verb).map(|rest| (verb.trim_end_matches([' ', ':']), rest)));
+        match split {
+            Some(("outside the working folder", rest)) => push("Outside", rest, path),
+            Some((verb, rest)) => {
+                let mut verb = verb.to_owned();
+                verb[..1].make_ascii_uppercase();
+                push(&verb, rest, path)
+            }
+            None if tool.ends_with("_file") || tool.starts_with("list") => push("Path", first, path),
+            None => push("", first, path),
+        }
+    }
+    for row in rows {
+        let style = match row.chars().next() {
+            Some('+') => palette.base.fg(ratatui::style::Color::Green),
+            Some('-') => palette.base.fg(ratatui::style::Color::Red),
+            _ => palette.base,
+        };
+        for part in textwrap::wrap(row, width.max(8)) {
+            lines.push(Line::styled(part.into_owned(), style));
+        }
+    }
+    lines
+}
+
 fn centered(area: Rect, width: u16, height: u16) -> Rect {
     let [column] = Layout::horizontal([Constraint::Length(width.min(area.width))])
         .flex(Flex::Center)
@@ -426,4 +482,27 @@ fn brand_line(line: &str, base: Style) -> Line<'static> {
         }
     }
     Line::from(spans)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::approval_lines;
+
+    fn text(tool: &str, detail: &str) -> Vec<String> {
+        let palette = crate::theme::Theme::default().palette();
+        approval_lines(tool, detail, 60, palette)
+            .iter()
+            .map(|line| line.spans.iter().map(|span| span.content.as_ref()).collect::<String>().trim_end().to_owned())
+            .collect()
+    }
+
+    #[test]
+    fn approval_box_separates_the_command_from_its_folder() {
+        assert_eq!(
+            text("run_command", "mkdir testdir\nin /work"),
+            ["Run command  (run_command)", "Command   mkdir testdir", "Folder   /work"]
+        );
+        assert_eq!(text("read_file", "/work/README.md"), ["Read file  (read_file)", "Path     /work/README.md"]);
+        assert_eq!(text("edit_file", "edit a.rs\n- x\n+ y"), ["Edit file  (edit_file)", "Edit     a.rs", "- x", "+ y"]);
+    }
 }
