@@ -1,4 +1,5 @@
 pub mod args;
+pub mod help;
 pub mod bench;
 pub mod component;
 pub mod component_config;

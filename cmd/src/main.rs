@@ -111,7 +111,7 @@ enum CliCommand {
     /// Manage temporary storage and media of the running server
     #[command(alias = "store")]
     Storage(cli::storage::StorageCli),
-    /// 🛠️ Sync compiled development artifacts (engines, drivers) to ~/.cluaiz manually
+    /// Sync compiled development artifacts (engines, drivers) to ~/.cluaiz manually
     DevSync {
         /// Target to sync (all, core, driver)
         #[arg(default_value = "all")]
@@ -317,6 +317,11 @@ async fn main() -> Result<()> {
         print!("{}", <Cli as clap::CommandFactory>::command().render_version());
         return Ok(());
     }
+    // The grouped help with the mascot (a command's own help stays clap's)
+    if raw.len() == 2 && matches!(raw[1].as_str(), "-h" | "--help" | "help") {
+        cli::help::print::<Cli>();
+        return Ok(());
+    }
     let cli = Cli::parse_from(cli::args::normalize_llama_flags(raw));
     let screen = match &cli.command {
         Some(CliCommand::Agent(args)) => args.screen_enabled(),
@@ -341,7 +346,7 @@ async fn main() -> Result<()> {
             CliCommand::Agent(agent::AgentArgs::default())
         }
         None => {
-            let _ = <Cli as clap::CommandFactory>::command().print_help();
+            cli::help::print::<Cli>();
             return Ok(());
         }
     };

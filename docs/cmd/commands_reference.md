@@ -25,7 +25,7 @@
 | Command | Description |
 |---------|-------------|
 | `cluaiz` | In a terminal with a default chat model: the [agent](agent.md) in the current folder. Otherwise the help |
-| `cluaiz --help`, `cluaiz help` | Every command; `cluaiz <command> --help` for its flags |
+| `cluaiz --help`, `cluaiz -h`, `cluaiz help` | The mascot banner and every command in groups (chat and agent, models, server, this machine, tools, documents, settings); `cluaiz <command> --help` for its flags |
 | `cluaiz -v`, `-V`, `--version` | The version (`-v` with a command means verbose: engine logs on stderr, `-vv` debug) |
 | `cluaiz serve` | Start the Engine API on `http://<api_host>:<api_port>` |
 | `cluaiz mcp-server` | MCP over stdio for MCP clients; forwards to the running Engine's `/mcp` (read-only methods) |
