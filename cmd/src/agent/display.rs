@@ -13,6 +13,7 @@ use std::{
         mpsc, Arc,
     },
     time::Instant,
+    sync::Mutex,
 };
 
 const CHUNK_BYTES: usize = 4096;
@@ -55,6 +56,15 @@ pub struct Display {
     sender: Option<mpsc::SyncSender<Event>>,
     closing: Arc<AtomicBool>,
     interrupted: Arc<AtomicBool>,
+    /// Headless output: every event as JSON (`stream` prints each line at once, else they are kept
+    /// for the final result)
+    json: Option<Json>,
+}
+
+#[derive(Clone)]
+struct Json {
+    stream: bool,
+    events: Arc<Mutex<Vec<serde_json::Value>>>,
 }
 
 impl Display {
@@ -63,6 +73,29 @@ impl Display {
             sender: Some(sender),
             closing,
             interrupted: Arc::default(),
+            json: None,
+        }
+    }
+
+    /// `--output-format json` (events kept) or `stream-json` (one JSON line per event on stdout)
+    pub fn json(stream: bool) -> Self {
+        Self { json: Some(Json { stream, events: Arc::default() }), ..Self::default() }
+    }
+
+    /// The JSON events kept so far (`--output-format json`)
+    pub fn json_events(&self) -> Vec<serde_json::Value> {
+        self.json.as_ref().map(|json| json.events.lock().map(|e| e.clone()).unwrap_or_default()).unwrap_or_default()
+    }
+
+    /// Writes one JSON line on stdout (stream-json) or keeps it (json)
+    pub fn json_line(&self, value: serde_json::Value) {
+        let Some(json) = &self.json else { return };
+        if json.stream {
+            let mut out = std::io::stdout().lock();
+            let _ = writeln!(out, "{value}");
+            let _ = out.flush();
+        } else if let Ok(mut events) = json.events.lock() {
+            events.push(value);
         }
     }
 
@@ -94,6 +127,22 @@ impl Display {
             }
             return;
         }
+        if self.json.is_some() {
+            use serde_json::json;
+            let value = match event {
+                Event::Content(text) => json!({"type": "text", "text": text}),
+                Event::Reasoning(text) => json!({"type": "thinking", "text": text}),
+                Event::ToolStart(name, target) => json!({"type": "tool_call", "name": name, "target": target}),
+                Event::ToolEnd { ok, summary, .. } => json!({"type": "tool_result", "ok": ok, "summary": summary}),
+                Event::Diff(text) => json!({"type": "diff", "text": text}),
+                Event::Message(label, text) => json!({"type": "notice", "label": label, "text": text}),
+                Event::Error(text) => json!({"type": "error", "text": text}),
+                Event::Usage(text) => json!({"type": "usage", "text": text}),
+                _ => return,
+            };
+            self.json_line(value);
+            return;
+        }
         match event {
             Event::User(body) => eprintln!("You: {body}"),
             Event::Error(body) => eprintln!("Error: {body}"),
@@ -115,7 +164,7 @@ impl Display {
     }
 
     pub fn output(&self, thinking: bool) -> Box<dyn Output> {
-        if self.sender.is_some() {
+        if self.sender.is_some() || self.json.is_some() {
             self.emit(Event::StartAnswer);
             Box::new(ScreenOutput {
                 display: self.clone(),
