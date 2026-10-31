@@ -74,8 +74,8 @@ async fn files_are_read_searched_and_edited() {
 
 #[test]
 fn a_read_only_start_does_not_cover_the_rest_of_the_line() {
-    assert!(!chains("git status"));
-    assert!(!chains("Get-ChildItem src"));
+    assert!(!cluaiz_agents::ExecutionPolicy::chains("git status"));
+    assert!(!cluaiz_agents::ExecutionPolicy::chains("Get-ChildItem src"));
     for line in [
         "ls; rm -r src",
         "echo hi > notes.txt",
@@ -83,7 +83,7 @@ fn a_read_only_start_does_not_cover_the_rest_of_the_line() {
         "dir && del x",
         "echo $(whoami)",
     ] {
-        assert!(chains(line), "{line}");
+        assert!(cluaiz_agents::ExecutionPolicy::chains(line), "{line}");
     }
 }
 

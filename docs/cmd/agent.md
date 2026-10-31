@@ -143,6 +143,33 @@ another program), a call that needs asking is refused and the model is told so, 
 Commands that run without asking get an environment with secret variables (API keys, tokens)
 removed. Commands you allowed run with your normal environment.
 
+### Modes
+
+| Mode | What runs without asking |
+| :--- | :--- |
+| `ask` (default) | Reads in the folder and read-only commands; every change and other command asks |
+| `accept-edits` | Also file writes and edits; commands still ask |
+| `plan` | Read only: writes, edits and commands are refused and the model writes a plan for you instead |
+| `full` | Everything (same as `--yes` / `/yes`); destructive commands stay refused |
+
+Pick one with `--mode <mode>` or inside the agent with `/mode <mode>` (`/ask` and `/yes` still work).
+
+### A folder's own permissions
+
+`<folder>/.cluaiz/agent.json` sets the default mode and rules for that project; `--mode`,
+`--allowed-tools` and `--disallowed-tools` add to it for one run:
+
+```json
+{
+  "mode": "accept-edits",
+  "allow": ["run_command(cargo test*)", "run_command(git status*)"],
+  "deny": ["run_command(git push*)", "edit_file(.env)"]
+}
+```
+
+Rules use the same form as `--allowed-tools` (see [Headless](#headless-scripts-ci-and-other-programs)).
+A denied call is refused in every mode.
+
 ## Reading the screen
 
 The interactive screen keeps model words, thinking (unless hidden), tool names, proposed changes

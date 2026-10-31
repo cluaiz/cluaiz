@@ -7,6 +7,7 @@ pub const COMMANDS: &[(&str, &str)] = &[
     ("/theme", "Choose the terminal theme"),
     ("/yes", "Allow tool changes for this session"),
     ("/ask", "Ask before tool changes again"),
+    ("/mode", "ask | accept-edits | plan (read only) | full"),
     ("/strict", "Require approval for every built-in tool"),
     (
         "/permissions",

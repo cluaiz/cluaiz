@@ -40,6 +40,8 @@ pub struct Tools {
     pub allow_all: bool,
     /// Strict approval mode asks for workspace reads as well as changes and commands.
     pub strict: bool,
+    /// What runs without asking: ask, accept-edits, plan (read only) or full (`--mode`, `/mode`)
+    pub mode: Mode,
     /// Tools the user allowed for the rest of the session ("always")
     always: HashSet<String>,
     display: Display,
@@ -66,6 +68,7 @@ impl Tools {
             root,
             allow_all,
             strict: false,
+            mode: if allow_all { Mode::Full } else { Mode::Ask },
             always: HashSet::new(),
             display: Display::default(),
             cancelled: false,
@@ -164,7 +167,15 @@ impl Tools {
     pub fn require_approval(&mut self) {
         self.allow_all = false;
         self.strict = false;
+        self.mode = Mode::Ask;
         self.always.clear();
+    }
+
+    /// `--mode` / `/mode`: full also allows every call, the others ask again from now on
+    pub fn set_mode(&mut self, mode: Mode) {
+        self.require_approval();
+        self.mode = mode;
+        self.allow_all = mode == Mode::Full;
     }
 
     /// Function schemas, as an API request's `tools`
@@ -549,13 +560,13 @@ impl Tools {
         let mode =
             match ExecutionPolicy::evaluate(command, &self.root, SecurityMode::RequireApproval) {
                 PolicyDecision::Deny { reason } => return Err(format!("refused: {reason}")),
-                PolicyDecision::Allow if !chains(command) => {
+                PolicyDecision::Allow => {
                     if self.strict {
                         self.ask("run_command", command)?;
                     }
                     SecurityMode::RequireApproval
                 }
-                PolicyDecision::Allow | PolicyDecision::AskConfirmation { .. } => {
+                PolicyDecision::AskConfirmation { .. } => {
                     self.ask(
                         "run_command",
                         &format!(
@@ -681,6 +692,14 @@ impl Tools {
             super::rules::Verdict::Allow => return Ok(()),
             super::rules::Verdict::Ask => {}
         }
+        let edit = matches!(tool, "write_file" | "edit_file");
+        match self.mode {
+            Mode::Plan if edit || tool == "run_command" || tool.contains(':') => {
+                return Err("plan mode: nothing is changed or run now. Read what you need, then write the plan (files, changes, commands) for the user to approve".into());
+            }
+            Mode::AcceptEdits if edit && !self.strict => return Ok(()),
+            _ => {}
+        }
         if self.allow_all || self.always.contains(tool) {
             return Ok(());
         }
@@ -704,13 +723,6 @@ impl Tools {
     }
 }
 
-/// The policy reads the start of a line: `ls; rm -r src` or `echo x > file` start read-only. A line
-/// that chains, pipes or redirects asks like any other change.
-fn chains(command: &str) -> bool {
-    [">", "<", ";", "|", "&", "`", "$(", "\n"]
-        .iter()
-        .any(|c| command.contains(c))
-}
 
 /// Bounded directory enumeration shared by the tool formatter and passive completion.
 pub(super) fn directory_entries(dir: &Path) -> std::io::Result<Vec<(bool, String)>> {
@@ -755,3 +767,30 @@ fn clip(text: &str) -> String {
 #[cfg(test)]
 #[path = "../../tests/agent/tools.rs"]
 mod tests;
+
+/// What runs without asking. Reads in the working folder and read-only commands always run;
+/// destructive commands and `--disallowed-tools` are always refused.
+#[derive(clap::ValueEnum, Clone, Copy, Debug, Default, PartialEq, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum Mode {
+    /// Every change and command asks
+    #[default]
+    Ask,
+    /// File writes and edits run; commands ask
+    AcceptEdits,
+    /// Read only: changes and commands are refused, the model writes a plan instead
+    Plan,
+    /// Everything runs without asking
+    Full,
+}
+
+impl Mode {
+    pub fn label(self) -> &'static str {
+        match self {
+            Mode::Ask => "Ask before changes",
+            Mode::AcceptEdits => "Edits allowed, commands ask",
+            Mode::Plan => "Plan mode: read only",
+            Mode::Full => "Session changes allowed",
+        }
+    }
+}

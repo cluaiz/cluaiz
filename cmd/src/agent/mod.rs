@@ -67,9 +67,14 @@ pub struct AgentArgs {
     /// Folder to work in (default: the current folder)
     #[arg(short = 'C', long = "dir", value_name = "PATH")]
     pub dir: Option<PathBuf>,
-    /// Allow every file change and command without asking (destructive commands stay refused)
+    /// Allow every file change and command without asking (destructive commands stay refused);
+    /// the same as --mode full
     #[arg(short = 'y', long)]
     pub yes: bool,
+    /// What runs without asking: ask (default), accept-edits (file changes run, commands ask),
+    /// plan (read only: the model writes a plan) or full. Default: the folder's .cluaiz/agent.json
+    #[arg(long, value_enum)]
+    pub mode: Option<tools::Mode>,
     /// Keep chatting after doing the task
     #[arg(short = 'i', long)]
     pub interactive: bool,
@@ -196,7 +201,14 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
         compact_next: false,
         max_steps: args.max_steps.unwrap_or(MAX_STEPS).max(1),
     };
-    agent.tools.rules = rules::Rules::new(&args.allowed_tools, &args.disallowed_tools, agent.tools.root());
+    // The folder's own permissions (.cluaiz/agent.json), then this run's flags on top
+    let project = rules::Project::load(agent.tools.root());
+    let allowed: Vec<String> = project.allow.iter().cloned().chain(args.allowed_tools.iter().cloned()).collect();
+    let denied: Vec<String> = project.deny.iter().cloned().chain(args.disallowed_tools.iter().cloned()).collect();
+    agent.tools.rules = rules::Rules::new(&allowed, &denied, agent.tools.root());
+    if let Some(mode) = if args.yes { Some(tools::Mode::Full) } else { args.mode.or(project.mode) } {
+        agent.tools.set_mode(mode);
+    }
     if headless {
         let display = Display::json(args.output_format == OutputFormat::StreamJson);
         agent.tools.set_display(display.clone());
@@ -282,10 +294,8 @@ impl Agent {
             context_note(self.session.plan.context_window),
             if self.tools.strict {
                 "Strict · all tools ask"
-            } else if self.tools.allow_all {
-                "Session changes allowed"
             } else {
-                "Ask before changes"
+                self.tools.mode.label()
             },
             self.session
                 .options
@@ -324,6 +334,17 @@ impl Agent {
                 }
             }
             "/compact" => return None,
+            _ if text.starts_with("/mode") => {
+                use clap::ValueEnum;
+                match tools::Mode::from_str(text.trim_start_matches("/mode").trim(), true) {
+                    Ok(mode) => {
+                        self.tools.set_mode(mode);
+                        self.display.emit(Event::Ready(self.status()));
+                        format!("Mode: {}.", mode.label())
+                    }
+                    Err(_) => format!("Mode now: {}. Choose one: /mode ask | accept-edits | plan | full", self.tools.mode.label()),
+                }
+            }
             "/undo" => {
                 let root = self.tools.root().to_path_buf();
                 let show = |path: &std::path::Path| path.strip_prefix(&root).unwrap_or(path).display().to_string().replace('\\', "/");
@@ -339,8 +360,7 @@ impl Agent {
             }
             "/diff" => diff(self.tools.root(), &self.tools.checkpoints.last_files()),
             "/yes" => {
-                self.tools.strict = false;
-                self.tools.allow_all = true;
+                self.tools.set_mode(tools::Mode::Full);
                 "Changes and commands now run without asking (existing hard denials still apply)."
                     .into()
             }
