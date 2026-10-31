@@ -30,24 +30,43 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         .display_rows(area.width.saturating_sub(2), MAX_COMPOSER_LINES)
         .clamp(1, MAX_COMPOSER_LINES) as u16
         + 2;
+    let header_text = header(app, area);
+    let help: Vec<_> = if app.help_open {
+        crate::keymap::SHORTCUTS
+            .iter()
+            .flat_map(|(keys, action)| {
+                textwrap::wrap(&format!("{keys}  {action}"), usize::from(area.width))
+                    .into_iter()
+                    .map(|part| Line::from(part.into_owned()))
+                    .collect::<Vec<_>>()
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
+    let footer_height = if app.help_open {
+        (help.len() as u16 + 1)
+            .min(area.height / 2)
+            .min(
+                area.height
+                    .saturating_sub(header_text.len() as u16 + input_height + 2),
+            )
+            .max(2)
+    } else {
+        1
+    };
     let [header, transcript, notice, composer, footer] = Layout::vertical([
-        Constraint::Length(if area.height >= 14 { 3 } else { 2 }),
+        Constraint::Length(header_text.len() as u16),
         Constraint::Min(1),
         Constraint::Length(1),
         Constraint::Length(input_height.min(area.height.saturating_sub(5))),
-        Constraint::Length(1),
+        Constraint::Length(footer_height),
     ])
     .areas(area);
-    let mut header_text = vec![Line::from(vec![Span::styled(
-        display_text(&app.metadata.title),
-        palette.accent.add_modifier(Modifier::BOLD),
-    )])];
-    if area.height >= 14 {
-        header_text.push(Line::from(display_text(&app.metadata.workspace)).style(palette.muted));
-    }
-    header_text.push(Line::from(display_text(&app.metadata.status)).style(palette.muted));
     frame.render_widget(Paragraph::new(header_text), header);
-    let rows = app.transcript.visible(transcript.width, transcript.height);
+    let rows = app
+        .transcript
+        .visible_styled(transcript.width, transcript.height, palette);
     frame.render_widget(Paragraph::new(rows).style(palette.base), transcript);
     if let Some(approval) = &app.approval {
         let width = transcript.width.saturating_sub(2).max(1) as usize;
@@ -162,11 +181,31 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     } else if app.approval.is_some() {
         "y/a/n + Enter | PgDn | Esc"
     } else if area.width < 65 {
-        "F2: theme | Ctrl+Q: exit"
+        "?: help | Ctrl+Q: exit"
     } else {
-        "F2: theme | Alt+Enter/Ctrl+J: newline | PgUp/PgDn | Ctrl+Q: exit"
+        "?: help | Ctrl+O: thinking | F2: theme | Ctrl+Q: exit"
     };
     frame.render_widget(Paragraph::new(shortcuts).style(palette.muted), footer);
+    if app.help_open {
+        let visible = usize::from(footer.height.saturating_sub(1));
+        app.help_page = visible.saturating_sub(1).max(1);
+        app.help_scroll = app.help_scroll.min(help.len().saturating_sub(visible));
+        frame.render_widget(
+            Paragraph::new(
+                help.into_iter()
+                    .skip(app.help_scroll)
+                    .take(visible)
+                    .collect::<Vec<_>>(),
+            )
+            .block(
+                Block::default()
+                    .borders(Borders::TOP)
+                    .title("Shortcuts · PgUp/PgDn · Esc: close"),
+            )
+            .style(palette.muted),
+            footer,
+        );
+    }
     if let Some(picker) = &app.picker {
         let popup = centered(area, 56, 8);
         frame.render_widget(Clear, popup);
@@ -200,6 +239,76 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         };
         frame.render_widget(Paragraph::new(help).style(palette.muted), hint);
     }
+}
+
+fn header(app: &App, area: Rect) -> Vec<Line<'static>> {
+    let palette = app.theme.palette();
+    let mut details = vec![Line::from(display_text(&app.metadata.title))
+        .style(palette.accent.add_modifier(Modifier::BOLD))];
+    if area.height >= 14 {
+        details.push(Line::from(display_text(&app.metadata.workspace)).style(palette.muted));
+    }
+    details.push(Line::from(display_text(&app.metadata.status)).style(palette.muted));
+    if app.help_open {
+        return details;
+    }
+    // Use the caller's original art, never scale/crop it or allocate another logo asset.
+    for art in [app.metadata.brand, app.metadata.compact_brand] {
+        let art = display_text(art);
+        let lines: Vec<_> = art
+            .trim_matches(|c: char| c.is_whitespace())
+            .lines()
+            .map(str::trim_end)
+            .collect();
+        let width = lines
+            .iter()
+            .map(|line| Line::from(*line).width())
+            .max()
+            .unwrap_or(0);
+        const DETAILS_MIN_WIDTH: usize = 40;
+        const BRAND_GAP: usize = 3;
+        if lines.is_empty()
+            || lines.len() > usize::from(area.height / 2)
+            || width + BRAND_GAP + DETAILS_MIN_WIDTH > usize::from(area.width)
+        {
+            continue;
+        }
+        let detail_width = usize::from(area.width).saturating_sub(width + BRAND_GAP);
+        let details: Vec<_> = details
+            .iter()
+            .flat_map(|detail| {
+                textwrap::wrap(&detail.to_string(), detail_width)
+                    .into_iter()
+                    .map(|part| Line::from(part.into_owned()).style(detail.style))
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+        if details.len() > usize::from(area.height / 2) {
+            continue;
+        }
+        return (0..lines.len().max(details.len()))
+            .map(|index| {
+                let line = lines.get(index).copied().unwrap_or_default();
+                let mut spans = vec![
+                    Span::styled(line.to_owned(), palette.base),
+                    Span::raw(
+                        " ".repeat(width.saturating_sub(Line::from(line).width()) + BRAND_GAP),
+                    ),
+                ];
+                if let Some(detail) = details.get(index) {
+                    spans.extend(
+                        detail
+                            .spans
+                            .iter()
+                            .cloned()
+                            .map(|span| span.style(detail.style)),
+                    );
+                }
+                Line::from(spans)
+            })
+            .collect();
+    }
+    details
 }
 
 fn centered(area: Rect, width: u16, height: u16) -> Rect {

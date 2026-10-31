@@ -10,6 +10,7 @@ fn test_interactive_preview_restores_terminal() -> Result<(), Box<dyn std::error
         title: "Cluaiz | UI preview".into(),
         workspace: std::env::current_dir()?.display().to_string(),
         status: "P1 presentation preview | No Engine, model or tools connected".into(),
+        ..Metadata::default()
     };
     let mut app = App::new(metadata, Limits::default());
     for index in 1..=24 {

@@ -1,6 +1,7 @@
 //! Projects actual agent events into display entries. This is not a second agent controller.
 
 use super::display::Event;
+use cluaiz_terminal::transcript::Role;
 use cluaiz_terminal::{App, Approval, ApprovalResponse};
 use std::sync::mpsc;
 
@@ -82,6 +83,23 @@ mod tests {
         assert!(view.contains("read_file"));
         assert!(!view.contains("Cluaiz"), "{view}");
     }
+
+    #[test]
+    fn test_actual_event_roles_and_collapsed_reasoning_keep_answer_separate() {
+        let mut state = state();
+        state.apply(Event::User("question".into()));
+        state.apply(Event::StartAnswer);
+        state.apply(Event::Reasoning("reasoning detail".into()));
+        state.apply(Event::Content("final answer".into()));
+        state.apply(Event::Error("operation failed".into()));
+        let view = text(&mut state);
+        assert!(view.contains("> You"));
+        assert!(view.contains("● Cluaiz"));
+        assert!(view.contains("! Error"));
+        assert!(!view.contains("reasoning detail"));
+        state.app.transcript.toggle_thinking();
+        assert!(text(&mut state).contains("reasoning detail"));
+    }
 }
 
 impl State {
@@ -108,7 +126,7 @@ impl State {
     }
 
     /// Splits large source text at UTF-8 boundaries so it is not silently clipped by entry limits.
-    fn entry(app: &mut App, id: &str, label: &str, body: &str) {
+    fn entry(app: &mut App, id: &str, role: Role, label: &str, body: &str) {
         const DISPLAY_CHUNK: usize = 32 * 1024;
         let mut rest = body;
         let mut part = 0;
@@ -118,7 +136,7 @@ impl State {
                 end -= 1;
             }
             let key = format!("{id}-{part}");
-            if let Err(error) = app.transcript.upsert(&key, label, &rest[..end]) {
+            if let Err(error) = app.transcript.upsert_role(&key, role, label, &rest[..end]) {
                 app.notice = Some(error.into());
                 break;
             }
@@ -142,7 +160,13 @@ impl State {
             Event::Content(text) => {
                 self.answer.push_str(&text);
                 if !self.answer.trim().is_empty() {
-                    Self::entry(&mut self.app, &self.answer_id, "Cluaiz", &self.answer);
+                    Self::entry(
+                        &mut self.app,
+                        &self.answer_id,
+                        Role::Assistant,
+                        "Cluaiz",
+                        &self.answer,
+                    );
                 }
             }
             Event::Reasoning(text) => {
@@ -150,6 +174,7 @@ impl State {
                 Self::entry(
                     &mut self.app,
                     &self.reasoning_id,
+                    Role::Thinking,
                     "Thinking",
                     &self.reasoning,
                 );
@@ -157,7 +182,15 @@ impl State {
             Event::Phase(text) => self.app.metadata.status = text,
             Event::Message(label, body) => {
                 let id = self.id("message");
-                Self::entry(&mut self.app, &id, &label, &body);
+                Self::entry(&mut self.app, &id, Role::Notice, &label, &body);
+            }
+            Event::User(body) => {
+                let id = self.id("user");
+                Self::entry(&mut self.app, &id, Role::User, "You", &body);
+            }
+            Event::Error(body) => {
+                let id = self.id("error");
+                Self::entry(&mut self.app, &id, Role::Error, "Error", &body);
             }
             Event::ToolStart(name, target) => {
                 self.tool_id = self.id("tool");
@@ -166,13 +199,20 @@ impl State {
                 Self::entry(
                     &mut self.app,
                     &self.tool_id,
+                    Role::Tool,
                     &self.tool_name,
                     &format!("{}\nPreparing", self.tool),
                 );
             }
             Event::Diff(diff) => {
                 self.tool.push_str(&format!("\nProposed change:\n{diff}"));
-                Self::entry(&mut self.app, &self.tool_id, &self.tool_name, &self.tool);
+                Self::entry(
+                    &mut self.app,
+                    &self.tool_id,
+                    Role::Tool,
+                    &self.tool_name,
+                    &self.tool,
+                );
             }
             Event::ToolEnd {
                 ok,
@@ -186,7 +226,13 @@ impl State {
                 if !content.is_empty() {
                     self.tool.push_str(&format!("\n{content}"));
                 }
-                Self::entry(&mut self.app, &self.tool_id, &self.tool_name, &self.tool);
+                Self::entry(
+                    &mut self.app,
+                    &self.tool_id,
+                    if ok { Role::Tool } else { Role::Error },
+                    &self.tool_name,
+                    &self.tool,
+                );
             }
             Event::Approval {
                 tool,

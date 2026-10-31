@@ -45,6 +45,9 @@ pub struct App {
     saved_draft: Option<String>,
     pub(crate) suggestions: Vec<Suggestion>,
     pub(crate) selected: usize,
+    pub(crate) help_open: bool,
+    pub(crate) help_scroll: usize,
+    pub(crate) help_page: usize,
     completion_start: usize,
 }
 
@@ -64,6 +67,9 @@ impl App {
             saved_draft: None,
             suggestions: Vec::new(),
             selected: 0,
+            help_open: false,
+            help_scroll: 0,
+            help_page: 1,
             completion_start: 0,
         }
     }
@@ -80,6 +86,7 @@ impl App {
     }
 
     pub fn open_themes(&mut self) {
+        self.help_open = false;
         let selected = Theme::ALL
             .iter()
             .position(|theme| *theme == self.theme)
@@ -95,6 +102,7 @@ impl App {
             return Err("An approval is already pending");
         }
         self.saved_draft = Some(self.composer.take());
+        self.help_open = false;
         self.suggestions.clear();
         self.approval = Some(approval);
         self.approval_scroll = 0;
@@ -149,6 +157,7 @@ impl App {
         let key = match event {
             Event::Key(key) if key.kind != KeyEventKind::Release => key,
             Event::Paste(text) if self.picker.is_none() => {
+                self.help_open = false;
                 self.notice = self.composer.insert(&text).err().map(str::to_owned);
                 return Action::None;
             }
@@ -163,6 +172,21 @@ impl App {
         }
         if self.picker.is_some() {
             self.pick_theme(key.code, intent);
+            return Action::None;
+        }
+        if self.help_open {
+            match intent {
+                Command::Help if key.kind == KeyEventKind::Press => self.help_open = false,
+                Command::Escape => self.help_open = false,
+                Command::PageUp => {
+                    self.help_scroll = self.help_scroll.saturating_sub(self.help_page)
+                }
+                Command::PageDown => {
+                    self.help_scroll = self.help_scroll.saturating_add(self.help_page)
+                }
+                Command::Themes => self.open_themes(),
+                _ => {}
+            }
             return Action::None;
         }
         if self.approval.is_some() {
@@ -219,6 +243,21 @@ impl App {
             }
         }
         match intent {
+            Command::Help
+                if self.approval.is_none()
+                    && self.draft().is_empty()
+                    && key.kind == KeyEventKind::Press =>
+            {
+                self.suggestions.clear();
+                self.help_scroll = 0;
+                self.help_open = true;
+            }
+            Command::Help => {
+                self.notice = self.composer.edit(key).err().map(str::to_owned);
+            }
+            Command::Thinking if key.kind == KeyEventKind::Press => {
+                self.transcript.toggle_thinking()
+            }
             Command::Themes => {
                 self.open_themes();
             }

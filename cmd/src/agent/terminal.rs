@@ -30,6 +30,8 @@ pub async fn run(mut agent: Agent, first: Option<String>, keep_open: bool) -> Re
         title: format!("Cluaiz · {}", agent.session.model_id),
         workspace: cluaiz_api::cep::roots::display(agent.tools.root()),
         status: agent.status(),
+        brand: crate::assets::logos::COG,
+        compact_brand: crate::assets::logos::COG_COMPACT,
     };
     let root = agent.tools.root().to_owned();
     let ui_closing = closing.clone();
@@ -66,9 +68,9 @@ pub async fn run(mut agent: Agent, first: Option<String>, keep_open: bool) -> Re
 }
 
 async fn process(agent: &mut Agent, display: &Display, text: &str) {
-    display.emit(Event::Message("You".into(), text.into()));
+    display.emit(Event::User(text.into()));
     if let Err(error) = agent.turn(text).await {
-        display.emit(Event::Message("Error".into(), error.to_string()));
+        display.emit(Event::Error(error.to_string()));
     }
 }
 

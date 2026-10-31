@@ -55,6 +55,11 @@ No HTTP request is needed for the local CLI path. There is one EngineHost for th
   output; `--ui plain` selects it explicitly. `--ui tui` refuses redirected/dumb terminals.
 - The screen worker is the sole UI writer. Generation publishes coalesced text and measured phase
   facts through a bounded queue. File discovery runs off the screen thread with one active lookup.
+- Header art comes from the existing Cog gallery (full/compact variants), with a text-only fallback
+  when neither fits. Empty-input `?` opens scrollable shortcut help. Typed user/error events and
+  separate answer/reasoning/tool events keep presentation roles independent of message text.
+  Reasoning is collapsed initially; Ctrl+O expands retained reasoning when it was enabled during
+  generation. This does not enable thinking hidden with `--hide-thinking`.
 - `@` inserts a reference. The model must call the existing read tool to access its contents.
   Canonical paths prevent a symlink from being mistaken for an inside-workspace target.
 - Changes require approval unless the caller explicitly enabled a session grant. The prompt names

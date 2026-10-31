@@ -23,6 +23,8 @@ pub enum Event {
     Reasoning(String),
     Phase(String),
     Message(String, String),
+    User(String),
+    Error(String),
     ToolStart(String, String),
     Diff(String),
     ToolEnd {
@@ -85,6 +87,8 @@ impl Display {
             return;
         }
         match event {
+            Event::User(body) => eprintln!("You: {body}"),
+            Event::Error(body) => eprintln!("Error: {body}"),
             Event::Message(label, body) => eprintln!("{label}: {body}"),
             Event::ToolStart(name, target) => {
                 eprintln!("{} {} {}", "●".cyan(), name.bold(), target)
