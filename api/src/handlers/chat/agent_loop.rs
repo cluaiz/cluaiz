@@ -188,6 +188,8 @@ pub async fn execute_streaming_loop(
             }
         }
 
+        // A call of a client function ended the answer (finish_reason "tool_calls")
+        let mut client_call = false;
         while max_iters > 0 {
             max_iters -= 1;
             let mut tool_executed = false;
@@ -235,6 +237,25 @@ pub async fn execute_streaming_loop(
                     let raw_json = &tool_call.raw_json;
                     let raw_fn_name = tool_call.raw_fn_name.as_str();
                     let payload_str = tool_call.payload_str;
+
+                    // A function the client runs itself: the call goes back as OpenAI `tool_calls`
+                    if ctx.client_tools.iter().any(|name| name == raw_fn_name) {
+                        call_text_guard.clear();
+                        client_call = true;
+                        yield Ok::<_, Infallible>(Event::default().data(json!({
+                            "id": req_id_stream.clone(),
+                            "object": "chat.completion.chunk",
+                            "created": Utc::now().timestamp(),
+                            "model": ctx.resolved_model_name.clone(),
+                            "choices": [{"index": 0, "delta": {"tool_calls": [{
+                                "index": 0,
+                                "id": format!("call_{}", Utc::now().timestamp_millis()),
+                                "type": "function",
+                                "function": {"name": raw_fn_name, "arguments": payload_str}
+                            }]}}]
+                        }).to_string()));
+                        break;
+                    }
 
                     // find_tools / load_tool / unload_tool are answered by the engine itself
                     // A tool called by its id before it was loaded is answered as load_tool
@@ -600,7 +621,11 @@ pub async fn execute_streaming_loop(
 
         // OpenAI's closing chunk: why the answer ended ("length" = max_tokens or the context)
         let context_report = state_clone.host.last_context().await;
-        let finish_reason = context_report.as_ref().map_or("stop", |report| report.finish_reason());
+        let finish_reason = if client_call {
+            "tool_calls"
+        } else {
+            context_report.as_ref().map_or("stop", |report| report.finish_reason())
+        };
         yield Ok::<_, Infallible>(Event::default().data(json!({
             "id": req_id_stream.clone(),
             "object": "chat.completion.chunk",

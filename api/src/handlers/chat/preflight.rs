@@ -43,6 +43,9 @@ pub struct PreparedChatContext {
     pub loaded_tool_ids: Vec<String>,
     /// Characters `load_tool` results may use; None when the model was not given the tool meta-tools
     pub tool_load_room: Option<usize>,
+    /// Functions the client runs itself (OpenAI `tools` of type "function"): a call to one is
+    /// returned to the client as `tool_calls` instead of being run here
+    pub client_tools: Vec<String>,
     /// Chat id and key of the current user message, for recording this turn in the chat's
     /// ledger (None for private chats and requests without a session)
     pub ledger_turn: Option<(String, String)>,
@@ -522,6 +525,22 @@ impl PreparedChatContext {
             }
         }
 
+        // OpenAI function definitions: rendered for the model like any tool, run by the client
+        let client_schemas: Vec<serde_json::Value> = request
+            .tools
+            .iter()
+            .flatten()
+            .filter(|tool| {
+                tool.get("type").and_then(|t| t.as_str()) == Some("function")
+                    && tool.get("function").is_some_and(|f| f.get("name").is_some_and(|n| n.is_string()))
+            })
+            .cloned()
+            .collect();
+        let client_tools: Vec<String> = client_schemas
+            .iter()
+            .filter_map(|tool| tool["function"]["name"].as_str().map(str::to_owned))
+            .collect();
+
         let last_message = request
             .messages
             .last()
@@ -755,6 +774,20 @@ impl PreparedChatContext {
             template_tools = super::tool_turns::unique_functions(template_tools);
             if system_tools.is_empty() && !template_tools.is_empty() {
                 system_tools = workspace_note.trim_start().to_string();
+            }
+        }
+
+        if !client_schemas.is_empty() {
+            if native_tools {
+                template_tools.extend(client_schemas.iter().cloned());
+                template_tools = super::tool_turns::unique_functions(template_tools);
+            } else {
+                let block = cluaiz_core::tool_calls::inline_tools(&client_schemas);
+                system_tools = [system_tools, block]
+                    .into_iter()
+                    .filter(|part| !part.is_empty())
+                    .collect::<Vec<_>>()
+                    .join("\n\n");
             }
         }
 
@@ -1178,6 +1211,7 @@ impl PreparedChatContext {
             plan_report,
             active_tool_ids: tool_ids_to_compile,
             tool_load_room,
+            client_tools,
             json_prompt,
             prepared_media,
             media_lease,

@@ -66,7 +66,7 @@ Send a Bearer token when API authentication is enabled. Authentication failures 
 ## How it works
 
 1. Read the host current_plan if one exists
-2. Project at most that plan into active_processes
+2. Project at most that plan into active_processes; each entry also carries the whole plan as `plan` (the `ExecutionPlan` of `system.plan`: placement, context, memory), which `cluaiz run` / `cluaiz agent` read when they use the running server
 3. Attach the shared hardware snapshot
 
 ```mermaid

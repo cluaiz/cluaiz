@@ -28,6 +28,8 @@ pub async fn execute_non_streaming(
         tool_events.push(super::preflight::tool_event(cluaiz_agents::LOAD_TOOL_NAME, &payload, &step.result));
     }
     let mut final_raw_text = String::new();
+    // A call of a client function ends the answer: OpenAI `tool_calls`, finish_reason "tool_calls"
+    let mut client_call: Option<serde_json::Value> = None;
 
     while max_iters > 0 {
         max_iters -= 1;
@@ -76,6 +78,20 @@ pub async fn execute_non_streaming(
             let raw_json = &tool_call.raw_json;
             let raw_fn_name = tool_call.raw_fn_name.as_str();
             let payload_str = tool_call.payload_str;
+
+            if ctx.client_tools.iter().any(|name| name == raw_fn_name) {
+                client_call = Some(json!([{
+                    "id": format!("call_{}", Utc::now().timestamp_millis()),
+                    "type": "function",
+                    "function": {"name": raw_fn_name, "arguments": payload_str}
+                }]));
+                final_raw_text = turn_content
+                    .split(cluaiz_core::tool_calls::OPEN)
+                    .next()
+                    .unwrap_or_default()
+                    .to_string();
+                break;
+            }
 
             // find_tools / load_tool / unload_tool are answered by the engine itself
             // A tool called by its id before it was loaded is answered as load_tool
@@ -215,12 +231,17 @@ pub async fn execute_non_streaming(
     if let Some(ref r_text) = reasoning_opt {
         message_json["reasoning_content"] = json!(r_text);
     }
+    if let Some(calls) = &client_call {
+        message_json["tool_calls"] = calls.clone();
+    }
 
     // The engine's own count and stop reason for the last generation ("length" = max_tokens or context)
     let context_report = state.host.last_context().await;
-    let finish_reason = context_report
-        .as_ref()
-        .map_or("stop", |report| report.finish_reason());
+    let finish_reason = if client_call.is_some() {
+        "tool_calls"
+    } else {
+        context_report.as_ref().map_or("stop", |report| report.finish_reason())
+    };
 
     let mut response = json!({
         "id": ctx.request_id.clone(),
