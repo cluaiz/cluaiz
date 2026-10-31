@@ -289,6 +289,11 @@ The agent uses the same model loading, planner and settings as `cluaiz run`
   another program (for example `cluaiz serve` with a model loaded) is using the GPU, the agent may
   get only 4,096 tokens, which fills after a few files. Close other model processes, or ask for
   more with `-c 16384` (part of the model may then run from RAM, which is slower).
+  Below 8,192 tokens the header (or the first lines in plain mode) says so: `Context 4096 (small: ...)`.
+- **A tool call cut off by the context** (the model was still writing a file when the context
+  filled) is not run and not kept in the conversation; the turn ends with "Incomplete or invalid
+  tool call; nothing executed" or "Generation limit reached while preparing tool calls". Nothing was
+  written. Ask for a shorter file, or for the file in parts, or start with a bigger `-c`.
 - **When the context is full** the agent does not stop: it leaves out the oldest earlier request,
   then (if still needed) replaces the oldest long tool result with a short note, and asks the model
   again. A dim line says so. The model may then need to read a file again.
