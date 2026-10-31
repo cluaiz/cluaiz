@@ -12,6 +12,7 @@ pub const COMMANDS: &[(&str, &str)] = &[
     ("/compact", "Replace the conversation with a summary to free context"),
     ("/undo", "Put back the files the last request changed"),
     ("/diff", "git diff of the files the last request changed"),
+    ("/code", "Open the folder in VS Code with the changed files (/code <path>: that file)"),
     ("/sessions", "Saved conversations of this folder (--continue / --resume <id>)"),
     ("!<command>", "Run a shell command yourself; the agent sees its output"),
     ("/help", "Commands and keyboard shortcuts"),
