@@ -78,6 +78,8 @@ pub async fn execute(args: ShowArgs, verbose: bool) -> Result<()> {
 
     let mut settings = cluaiz_core::Settings::current();
     args.load.apply(&mut settings.optimization).map_err(|e| eyre!(e))?;
+    // What models really took on this GPU, as a load uses it (else every model gets the 1 GB rule)
+    cluaiz_runtime::vram_use::load();
     let hw = cluaiz_hw::HardwareProber::with_live_memory();
     let plan = Planner::create_plan(&id, &geometry, &hw, &settings);
     section("Plan on this machine now");
