@@ -433,6 +433,9 @@ impl Agent {
             self.compact().await
         } else if let Some(id) = text.trim().strip_prefix("/model ") {
             self.switch_model(id.trim()).await
+        } else if let Some(command) = text.trim().strip_prefix('!') {
+            self.user_command(command.trim()).await;
+            Ok(())
         } else {
             self.request(text, parts).await
         };
@@ -519,6 +522,25 @@ impl Agent {
         self.display.emit(Event::Message("Model".into(), format!("Now using {id}.")));
         self.display.emit(Event::Ready(self.status()));
         Ok(())
+    }
+
+    /// `!<command>`: the user runs a command in the folder (like Claude Code's shell mode); the
+    /// output is shown and kept in the conversation, so the next request can use it
+    async fn user_command(&mut self, command: &str) {
+        if command.is_empty() {
+            self.display.emit(Event::Message("Shell".into(), "Type a command after !, for example: !git status".into()));
+            return;
+        }
+        let (ok, out) = self.tools.run_user_command(command).await;
+        const SHOWN: usize = 40;
+        let lines: Vec<&str> = out.lines().collect();
+        let mut shown = lines.iter().take(SHOWN).copied().collect::<Vec<_>>().join("\n");
+        if lines.len() > SHOWN {
+            shown.push_str(&format!("\n… {} more lines (the agent sees them all)", lines.len() - SHOWN));
+        }
+        self.display.emit(Event::Message(format!("! {command}{}", if ok { "" } else { "  (failed)" }), shown));
+        self.history.push(message("user", format!("(I ran this command myself in the working folder.)\n$ {command}\n{}", tools::clip(&out))));
+        self.history.push(message("assistant", "Noted.".into()));
     }
 
     /// `/compact`: the model writes a summary of the conversation, which then replaces it
