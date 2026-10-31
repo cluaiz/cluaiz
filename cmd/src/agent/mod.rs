@@ -10,6 +10,7 @@ mod completion;
 mod display;
 mod terminal;
 mod terminal_state;
+mod checkpoints;
 pub mod sessions;
 pub mod tools;
 mod validation;
@@ -282,6 +283,20 @@ impl Agent {
                 }
             }
             "/compact" => return None,
+            "/undo" => {
+                let root = self.tools.root().to_path_buf();
+                let show = |path: &std::path::Path| path.strip_prefix(&root).unwrap_or(path).display().to_string().replace('\\', "/");
+                match self.tools.checkpoints.undo(show) {
+                    Ok(done) => {
+                        // The model is told, so it does not build on the undone change
+                        self.history.push(message("user", format!("(The user undid your last file changes. {done}. Read the files again before changing them.)")));
+                        self.history.push(message("assistant", "Understood.".into()));
+                        done
+                    }
+                    Err(nothing) => nothing,
+                }
+            }
+            "/diff" => diff(self.tools.root(), &self.tools.checkpoints.last_files()),
             "/yes" => {
                 self.tools.strict = false;
                 self.tools.allow_all = true;
@@ -327,6 +342,12 @@ impl Agent {
         } else {
             self.request(text, parts).await
         };
+        // What the request changed, one line; /undo puts it back
+        let root = self.tools.root().to_path_buf();
+        let show = |path: &std::path::Path| path.strip_prefix(&root).unwrap_or(path).display().to_string().replace('\\', "/");
+        if let Some(changed) = self.tools.checkpoints.finish(show) {
+            self.display.emit(Event::Message("Files".into(), format!("{changed}   (/undo puts them back, /diff shows them)")));
+        }
         if !self.history.is_empty() {
             if let Err(error) = sessions::save(self.tools.root(), &self.session_id, &self.session.model_id, &self.history) {
                 self.display.emit(Event::Message("Session".into(), format!("Not saved: {error}")));
@@ -522,6 +543,27 @@ fn message(role: &str, text: String) -> ChatMessage<Vec<PreparedPart>> {
     ChatMessage {
         role: role.into(),
         content: vec![PreparedPart::Text { text }],
+    }
+}
+
+/// `git diff` of the files the last request changed (all changes when it changed none), or
+/// `git status` when the folder is not a repository
+fn diff(root: &std::path::Path, files: &[std::path::PathBuf]) -> String {
+    let git = |args: &[&str], paths: &[std::path::PathBuf]| {
+        std::process::Command::new("git")
+            .current_dir(root)
+            .args(args)
+            .arg("--")
+            .args(paths)
+            .output()
+            .ok()
+            .filter(|out| out.status.success())
+            .map(|out| String::from_utf8_lossy(&out.stdout).trim_end().to_owned())
+    };
+    match git(&["diff", "--no-color", "--stat", "--patch"], files) {
+        Some(text) if !text.is_empty() => text.chars().take(20_000).collect(),
+        Some(_) => "No uncommitted changes in these files.".into(),
+        None => "Not a git repository (or git is not installed): /undo still restores the last request's files.".into(),
     }
 }
 

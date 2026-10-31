@@ -47,6 +47,8 @@ pub struct Tools {
     /// Enabled skills, plugins and MCP servers from `~/.cluaiz/tools`, offered next to the built-ins
     installed: Vec<String>,
     installed_schemas: Vec<Value>,
+    /// Files this request and the last one changed (for the summary, /undo and /diff)
+    pub checkpoints: super::checkpoints::Checkpoints,
 }
 
 /// Most characters of installed tool schemas sent with every request (a small context fills fast)
@@ -65,6 +67,7 @@ impl Tools {
             cancelled: false,
             installed: Vec::new(),
             installed_schemas: Vec::new(),
+            checkpoints: Default::default(),
         }
     }
 
@@ -460,6 +463,7 @@ impl Tools {
         if let Some(parent) = file.parent() {
             std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
+        self.checkpoints.before_write(&file);
         std::fs::write(&file, content).map_err(|e| format!("{}: {e}", self.show(&file)))?;
         let what = if exists { "replaced" } else { "created" };
         Ok((
@@ -522,6 +526,7 @@ impl Tools {
         } else {
             text.replacen(&old, &new, 1)
         };
+        self.checkpoints.before_write(&file);
         std::fs::write(&file, updated).map_err(|e| format!("{}: {e}", self.show(&file)))?;
         let n = if replace_all { found } else { 1 };
         Ok((

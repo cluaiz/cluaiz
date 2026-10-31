@@ -238,6 +238,8 @@ the six built-in tools, with the same descriptions the API uses:
 | `/clear` | Start a new conversation (the old one stays saved; the folder and the model stay) |
 | `/compact` | The model summarizes the conversation and the summary replaces it: frees context, keeps the thread |
 | `/sessions` | The saved conversations of this folder, newest first, with their ids |
+| `/undo` | Put back the files the last request changed (new files are deleted); the model is told |
+| `/diff` | `git diff` of the files the last request changed (in a git repository) |
 | `/bye`, `/exit` | Leave (Ctrl+Q in the UI; Ctrl+D in plain mode) |
 | `/?`, `/help` | Show these commands |
 | `/theme` | Open the terminal UI theme picker |
@@ -264,6 +266,19 @@ the six built-in tools, with the same descriptions the API uses:
 
 In plain mode, start and end a message with `"""` to type several lines. Ctrl+C stops the answer being written, or
 the command being run, and leaves you at the prompt; at the prompt it exits.
+
+## What changed
+
+After a request that wrote or edited files, one line lists them:
+
+```text
+Files: Changed: calc.py (+1 −1), tests/test_calc.py (new, 12 lines)   (/undo puts them back, /diff shows them)
+```
+
+`/undo` restores the content each file had before that request (a file it created is deleted)
+and tells the model, so it reads them again before going on. `/diff` shows `git diff` of those
+files. Files changed by commands (`run_command`) are not in this record. The agent does not
+commit by itself: ask it to, and the `git commit` command asks you first like any other command.
 
 ## Saved conversations
 
