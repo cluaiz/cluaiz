@@ -2,6 +2,7 @@
 //! (the same registry lookup the API uses for a request's `model`).
 
 use cluaiz_models::registry::InstalledStateRegistry;
+use std::io::IsTerminal;
 use std::path::{Path, PathBuf};
 
 pub enum Lookup {
@@ -44,4 +45,33 @@ pub fn resolve_installed(name: &str) -> color_eyre::Result<(PathBuf, String)> {
 /// The model `cluaiz run` uses when none is given: the active chat model in permission.json.
 pub fn default_chat_model() -> Option<String> {
     cluaiz_security::PermissionSchema::load().get_active_chat_model()
+}
+
+/// The chat model when none is given: the active one (settings), else the only installed one, else
+/// the user picks one in a list. A model chosen here becomes the active one, so it is asked once.
+pub fn chat_model_or_choose() -> color_eyre::Result<String> {
+    use color_eyre::eyre::eyre;
+    if let Some(active) = default_chat_model().filter(|id| matches!(lookup(id), Lookup::Found(..))) {
+        return Ok(active);
+    }
+    let mut installed: Vec<String> = InstalledStateRegistry::load()
+        .installed_models
+        .into_values()
+        .filter(|entry| entry.category == "chat" && entry.primary_path().is_some_and(|p| p.is_file()))
+        .map(|entry| entry.id)
+        .collect();
+    installed.sort();
+    let chosen = match installed.len() {
+        0 => return Err(eyre!("no chat model installed yet: download one with `cluaiz pull <model>` (for example `cluaiz pull unsloth/Qwen3-4B-GGUF`)")),
+        1 => installed.remove(0),
+        _ if std::io::stdin().is_terminal() && std::io::stderr().is_terminal() => {
+            inquire::Select::new("Which model? (saved as the default; change it with `cluaiz model set-chat`)", installed)
+                .prompt()
+                .map_err(|e| eyre!("no model chosen: {e}"))?
+        }
+        _ => return Err(eyre!("no default chat model: pass -m <model>, or set one with `cluaiz model set-chat <id>` (installed: {})", installed.join(", "))),
+    };
+    cluaiz_security::PermissionSchema::set_active_chat_model(chosen.clone());
+    eprintln!("Using {chosen} (now the default chat model)");
+    Ok(chosen)
 }

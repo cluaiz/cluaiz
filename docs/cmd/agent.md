@@ -49,7 +49,9 @@ pass `--dir`:
 cluaiz agent -m qwen3.8-4b-distill-gguf-Q4_K_M --dir D:\projects\website
 ```
 
-Set a default chat model once and you can leave out `-m`:
+Without `-m` the agent uses the default chat model. When none is set it takes the only installed
+chat model, or shows the installed ones to pick from, and saves the choice as the default (asked
+once). To set it yourself:
 
 ```sh
 cluaiz model set-chat qwen3.8-4b-distill-gguf-Q4_K_M

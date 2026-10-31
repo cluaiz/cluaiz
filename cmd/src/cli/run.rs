@@ -48,9 +48,9 @@ pub struct RunArgs {
 /// `cluaiz run`: chat with a model, or answer one prompt. A model that is not installed goes through
 /// the download flow below (unchanged), which ends with the command to run it.
 pub async fn execute(args: RunArgs, verbose: bool) -> Result<()> {
-    let name = match args.model.clone().or_else(models::default_chat_model) {
+    let name = match args.model.clone() {
         Some(name) => name,
-        None => color_eyre::eyre::bail!("no model given and no active chat model (see `cluaiz list`)"),
+        None => models::chat_model_or_choose()?,
     };
     let (path, id) = match models::lookup(&name) {
         Lookup::Found(path, id) => (path, id),
