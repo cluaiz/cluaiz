@@ -578,6 +578,19 @@ impl Tools {
                     SecurityMode::AlwaysAllow
                 }
             };
+        self.execute(command, mode, timeout).await
+    }
+
+    /// `!<command>` typed by the user: runs without asking (they typed it) and returns the exit and
+    /// output, which the conversation keeps so the model knows what happened
+    pub async fn run_user_command(&mut self, command: &str) -> (bool, String) {
+        match self.execute(command, SecurityMode::AlwaysAllow, 600).await {
+            Ok((_, out)) => (true, out),
+            Err(out) => (false, out),
+        }
+    }
+
+    async fn execute(&mut self, command: &str, mode: SecurityMode, timeout: usize) -> Result<(String, String), String> {
         // Ctrl+C stops the command (the handler sets the cancel signal while this runs)
         let (cancel, cancel_rx) = CancelHandle::new();
         self.check_running()?;
@@ -744,7 +757,7 @@ pub(super) fn directory_entries(dir: &Path) -> std::io::Result<Vec<(bool, String
 }
 
 /// A long result keeps its start and end
-fn clip(text: &str) -> String {
+pub(crate) fn clip(text: &str) -> String {
     if text.len() <= MAX_RESULT {
         return text.to_string();
     }

@@ -185,11 +185,16 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         .editor
         .set_cursor_style(palette.base.add_modifier(Modifier::REVERSED));
     app.composer.editor.set_placeholder_style(palette.muted);
-    app.composer.editor.set_block(
-        Block::default()
-            .borders(Borders::TOP | Borders::BOTTOM)
-            .border_style(palette.muted),
-    );
+    // `!command` is shell mode: the line runs as a command in the folder, not as a message
+    let shell = app.approval.is_none() && app.composer.text().starts_with('!');
+    let block = Block::default()
+        .borders(Borders::TOP | Borders::BOTTOM)
+        .border_style(if shell { palette.accent } else { palette.muted });
+    app.composer.editor.set_block(if shell {
+        block.title(Span::styled(" ! shell mode · runs in the folder, the agent sees the output ", palette.accent))
+    } else {
+        block
+    });
     frame.render_widget(&app.composer.editor, composer);
     let shortcuts = if app.approval.is_some() && area.width >= 65 {
         "↑↓ + Enter: answer | y/a/n or instructions + Enter | Esc: deny | PgUp/PgDn"

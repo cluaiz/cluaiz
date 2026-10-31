@@ -13,6 +13,7 @@ pub const COMMANDS: &[(&str, &str)] = &[
     ("/undo", "Put back the files the last request changed"),
     ("/diff", "git diff of the files the last request changed"),
     ("/sessions", "Saved conversations of this folder (--continue / --resume <id>)"),
+    ("!<command>", "Run a shell command yourself; the agent sees its output"),
     ("/help", "Commands and keyboard shortcuts"),
     ("/bye", "Close the agent"),
 ];
