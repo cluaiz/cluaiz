@@ -116,6 +116,8 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         );
         frame.render_widget(Clear, menu);
         let start = app.selected.saturating_sub(count.saturating_sub(1));
+        // Two columns: the command, then what it does (dimmed), lined up
+        let width = app.suggestions.iter().map(|item| Line::from(display_text(&item.value)).width()).max().unwrap_or(0);
         let items = app
             .suggestions
             .iter()
@@ -123,21 +125,18 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             .skip(start)
             .take(count)
             .map(|(index, item)| {
-                ListItem::new(format!(
-                    "{} {}  {}",
-                    if index == app.selected { ">" } else { " " },
-                    display_text(&item.value),
-                    display_text(&item.description)
-                ))
-                .style(if index == app.selected {
-                    palette.accent.add_modifier(Modifier::BOLD)
-                } else {
-                    palette.base
-                })
+                let selected = index == app.selected;
+                let name = display_text(&item.value);
+                let pad = " ".repeat(width.saturating_sub(Line::from(name.as_str()).width()) + 3);
+                ListItem::new(Line::from(vec![
+                    Span::styled(format!("{} {name}{pad}", if selected { ">" } else { " " }),
+                        if selected { palette.accent.add_modifier(Modifier::BOLD) } else { palette.base }),
+                    Span::styled(display_text(&item.description), palette.muted),
+                ]))
             });
         frame.render_widget(
             List::new(items)
-                .block(Block::bordered().title(" Arrows / Tab / Enter "))
+                .block(Block::bordered().title(" Commands · ↑↓ choose · Enter run · Esc close "))
                 .style(palette.base),
             menu,
         );
@@ -215,6 +214,34 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             .style(palette.muted),
             footer,
         );
+    }
+    if let Some(choice) = &app.choice {
+        let width = choice
+            .options
+            .iter()
+            .map(|o| Line::from(display_text(&o.value)).width() + Line::from(display_text(&o.description)).width() + 8)
+            .max()
+            .unwrap_or(30)
+            .clamp(40, 90) as u16;
+        let popup = centered(area, width, choice.options.len().min(12) as u16 + 4);
+        frame.render_widget(Clear, popup);
+        frame.render_widget(Block::bordered().title(format!(" {} ", display_text(&choice.title))).style(palette.base), popup);
+        let inner = popup.inner(ratatui::layout::Margin::new(1, 1));
+        let [choices, hint] = Layout::vertical([Constraint::Min(1), Constraint::Length(1)]).areas(inner);
+        let label = choice.options.iter().map(|o| Line::from(display_text(&o.value)).width()).max().unwrap_or(0);
+        let start = choice.selected.saturating_sub(usize::from(choices.height).saturating_sub(1));
+        let items = choice.options.iter().enumerate().skip(start).map(|(index, option)| {
+            let selected = index == choice.selected;
+            let name = display_text(&option.value);
+            let pad = " ".repeat(label.saturating_sub(Line::from(name.as_str()).width()) + 3);
+            ListItem::new(Line::from(vec![
+                Span::styled(format!("{} {name}{pad}", if selected { ">" } else { " " }),
+                    if selected { palette.accent.add_modifier(Modifier::BOLD) } else { palette.base }),
+                Span::styled(display_text(&option.description), palette.muted),
+            ]))
+        });
+        frame.render_widget(List::new(items), choices);
+        frame.render_widget(Paragraph::new("↑↓ choose · Enter apply · Esc cancel").style(palette.muted), hint);
     }
     if let Some(picker) = &app.picker {
         let popup = centered(area, 56, 8);

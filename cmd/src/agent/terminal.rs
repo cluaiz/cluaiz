@@ -312,21 +312,21 @@ fn screen_inner(
                 files.remove(index);
                 state.app.attachments.remove(index);
             }
-            Action::Permissions if pending.is_none() => {
+            // The shortcuts open the same popups as /mode and /think
+            Action::Permissions => open_setting(&mut state.app, "mode"),
+            Action::ThinkingMode => open_setting(&mut state.app, "think"),
+            Action::Choose { key, value } if pending.is_none() => {
                 pending = Some(Input {
-                    text: if state.app.strict { "/ask" } else { "/strict" }.into(),
+                    text: if value == "strict" { "/strict".into() } else { format!("/{key} {value}") },
                     attachments: Vec::new(),
                 });
+                state.app.notice = None;
             }
-            Action::ThinkingMode if pending.is_none() => {
-                pending = Some(Input {
-                    text: "/think".into(),
-                    attachments: Vec::new(),
-                })
+            Action::Choose { .. } => {
+                state.app.notice = Some("A message is already queued; choose again after it starts".into())
             }
-            Action::Permissions | Action::ThinkingMode => {
-                state.app.notice =
-                    Some("A turn is already queued; change modes after it starts".into())
+            Action::Submit(text) if SETTINGS.contains(&text.trim()) => {
+                open_setting(&mut state.app, text.trim().trim_start_matches('/'));
             }
             Action::Submit(text) if !closing.load(Ordering::SeqCst) => {
                 if let Some(path) = text.strip_prefix("/attach ") {
@@ -384,6 +384,67 @@ fn screen_inner(
     }
     state.deny_pending();
     screen.close()
+}
+
+/// Commands that open a popup of options instead of running at once
+const SETTINGS: &[&str] = &["/mode", "/permissions", "/think", "/effort", "/model"];
+
+/// The popup of one setting; the chosen option comes back as `/<key> <value>` (`Action::Choose`)
+fn open_setting(app: &mut App, key: &str) {
+    use cluaiz_terminal::app::Suggestion;
+    let option = |value: &str, description: &str| Suggestion { value: value.into(), description: description.into() };
+    let status = app.metadata.status.clone();
+    let current = |options: &[Suggestion], marks: &[&str]| {
+        marks.iter().position(|mark| status.contains(mark)).unwrap_or(0).min(options.len().saturating_sub(1))
+    };
+    match key {
+        "mode" | "permissions" => {
+            let options = vec![
+                option("ask", "Every change and command asks first"),
+                option("accept-edits", "File changes run; commands still ask"),
+                option("plan", "Read only: the model writes a plan instead of changing anything"),
+                option("full", "Everything runs without asking (destructive commands stay refused)"),
+                option("strict", "Even reads in the folder ask"),
+            ];
+            let selected = current(&options, &["Ask before", "Edits allowed", "Plan mode", "Session changes", "Strict"]);
+            app.open_choice("mode", "Permissions", options, selected);
+        }
+        "think" => {
+            let options = vec![
+                option("auto", "The model decides when to think"),
+                option("on", "Think before every answer"),
+                option("off", "Answer at once"),
+            ];
+            let selected = current(&options, &["Think auto", "Think on", "Think off"]);
+            app.open_choice("think", "Thinking", options, selected);
+        }
+        "effort" => {
+            let options = vec![
+                option("auto", "The model's own budget"),
+                option("low", "Short thinking, faster answers"),
+                option("medium", "Balanced"),
+                option("high", "Long thinking for hard tasks"),
+                option("max", "As long as the context allows"),
+            ];
+            app.open_choice("effort", "Thinking effort", options, 0);
+        }
+        "model" => {
+            let mut models: Vec<String> = cluaiz_models::registry::InstalledStateRegistry::load()
+                .installed_models
+                .into_values()
+                .filter(|entry| entry.category == "chat")
+                .map(|entry| entry.id)
+                .collect();
+            models.sort();
+            let selected = models.iter().position(|id| app.metadata.title.ends_with(id.as_str())).unwrap_or(0);
+            let options = models.iter().map(|id| option(id, if app.metadata.title.ends_with(id.as_str()) { "in use" } else { "" })).collect();
+            app.open_choice("model", "Model", options, selected);
+            if app.metadata.title.is_empty() {
+                app.notice = Some("No chat model installed: cluaiz pull <model>".into());
+            }
+        }
+        _ => {}
+    }
 }
 
 fn start_paste(

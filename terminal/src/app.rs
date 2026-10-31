@@ -23,6 +23,16 @@ pub enum Action {
     ThinkingMode,
     RemoveAttachment(usize),
     Approval(ApprovalResponse),
+    /// An option picked in a choice popup (`open_choice`): its key and the option's value
+    Choose { key: String, value: String },
+}
+
+/// A popup with one setting's options (permissions, thinking, effort, model, ...)
+pub(crate) struct Choice {
+    pub key: String,
+    pub title: String,
+    pub options: Vec<Suggestion>,
+    pub selected: usize,
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -52,6 +62,7 @@ pub struct App {
     pub(crate) transcript_area: Rect,
     pub(crate) composer: Composer,
     pub(crate) picker: Option<ThemePicker>,
+    pub(crate) choice: Option<Choice>,
     pub(crate) approval: Option<Approval>,
     pub(crate) approval_scroll: usize,
     pub(crate) approval_page: usize,
@@ -84,6 +95,7 @@ impl App {
             transcript_area: Rect::default(),
             composer: Composer::new(limits),
             picker: None,
+            choice: None,
             approval: None,
             approval_scroll: 0,
             approval_page: 1,
@@ -102,7 +114,19 @@ impl App {
         self.composer.text()
     }
     pub fn theme_picker_open(&self) -> bool {
-        self.picker.is_some()
+        self.picker.is_some() || self.choice.is_some()
+    }
+
+    /// Opens a popup listing `options` (value, description) for the setting `key`; Enter returns
+    /// `Action::Choose`, Esc closes it
+    pub fn open_choice(&mut self, key: &str, title: &str, options: Vec<Suggestion>, selected: usize) {
+        if options.is_empty() {
+            return;
+        }
+        self.help_open = false;
+        self.suggestions.clear();
+        let selected = selected.min(options.len() - 1);
+        self.choice = Some(Choice { key: key.into(), title: title.into(), options, selected });
     }
 
     pub fn begin_paste(&mut self) {
@@ -245,6 +269,20 @@ impl App {
         }
         if self.picker.is_some() {
             self.pick_theme(key.code, intent);
+            return Action::None;
+        }
+        if let Some(choice) = self.choice.as_mut() {
+            match key.code {
+                KeyCode::Up => choice.selected = choice.selected.saturating_sub(1),
+                KeyCode::Down => choice.selected = (choice.selected + 1).min(choice.options.len() - 1),
+                KeyCode::Esc => self.choice = None,
+                KeyCode::Enter if key.kind == KeyEventKind::Press => {
+                    let choice = self.choice.take().expect("open choice");
+                    let value = choice.options[choice.selected].value.clone();
+                    return Action::Choose { key: choice.key, value };
+                }
+                _ => {}
+            }
             return Action::None;
         }
         if self.help_open {
