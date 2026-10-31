@@ -8,7 +8,8 @@ use crate::{
     theme::Theme,
     transcript::Transcript,
 };
-use crossterm::event::{Event, KeyCode, KeyEventKind};
+use crossterm::event::{Event, KeyCode, KeyEventKind, MouseButton, MouseEventKind};
+use ratatui::layout::{Position, Rect};
 
 /// Actions leave the UI without running model, network or filesystem operations.
 #[derive(Debug, PartialEq, Eq)]
@@ -17,6 +18,10 @@ pub enum Action {
     Submit(String),
     Cancel,
     Exit,
+    Clipboard,
+    Permissions,
+    ThinkingMode,
+    RemoveAttachment(usize),
     Approval(ApprovalResponse),
 }
 
@@ -36,6 +41,13 @@ pub struct App {
     pub theme: Theme,
     pub transcript: Transcript,
     pub notice: Option<String>,
+    pub activity: Option<String>,
+    pub strict: bool,
+    pub attachments: Vec<String>,
+    pub pasting: bool,
+    pub(crate) attachment_area: Rect,
+    pub(crate) attachment_scroll: usize,
+    pub(crate) transcript_area: Rect,
     pub(crate) composer: Composer,
     pub(crate) picker: Option<ThemePicker>,
     pub(crate) approval: Option<Approval>,
@@ -58,6 +70,13 @@ impl App {
             theme: Theme::Auto,
             transcript: Transcript::new(limits),
             notice: None,
+            activity: None,
+            strict: false,
+            attachments: Vec::new(),
+            pasting: false,
+            attachment_area: Rect::default(),
+            attachment_scroll: 0,
+            transcript_area: Rect::default(),
             composer: Composer::new(limits),
             picker: None,
             approval: None,
@@ -79,6 +98,11 @@ impl App {
     }
     pub fn theme_picker_open(&self) -> bool {
         self.picker.is_some()
+    }
+
+    pub fn begin_paste(&mut self) {
+        self.help_open = false;
+        self.pasting = true;
     }
 
     pub fn set_draft(&mut self, text: &str) -> Result<(), &'static str> {
@@ -155,6 +179,49 @@ impl App {
     /// Release events never submit; repeat events may edit but cannot submit twice.
     pub fn handle(&mut self, event: Event) -> Action {
         let key = match event {
+            Event::Mouse(mouse) => {
+                if self.approval.is_none()
+                    && self.picker.is_none()
+                    && self
+                        .attachment_area
+                        .contains(Position::new(mouse.column, mouse.row))
+                {
+                    match mouse.kind {
+                        MouseEventKind::Down(MouseButton::Left) => {
+                            return Action::RemoveAttachment(
+                                self.attachment_scroll
+                                    + usize::from(mouse.row - self.attachment_area.y),
+                            )
+                        }
+                        MouseEventKind::ScrollUp => {
+                            self.attachment_scroll = self.attachment_scroll.saturating_sub(1)
+                        }
+                        MouseEventKind::ScrollDown => {
+                            self.attachment_scroll = self.attachment_scroll.saturating_add(1)
+                        }
+                        _ => {}
+                    }
+                    return Action::None;
+                }
+                if self.approval.is_none()
+                    && self.picker.is_none()
+                    && !self.help_open
+                    && self
+                        .transcript_area
+                        .contains(Position::new(mouse.column, mouse.row))
+                {
+                    const SCROLL_ROWS: isize = 3;
+                    match mouse.kind {
+                        MouseEventKind::Down(MouseButton::Left) => self
+                            .transcript
+                            .toggle_row(usize::from(mouse.row - self.transcript_area.y)),
+                        MouseEventKind::ScrollUp => self.transcript.scroll(-SCROLL_ROWS),
+                        MouseEventKind::ScrollDown => self.transcript.scroll(SCROLL_ROWS),
+                        _ => {}
+                    }
+                }
+                return Action::None;
+            }
             Event::Key(key) if key.kind != KeyEventKind::Release => key,
             Event::Paste(text) if self.picker.is_none() => {
                 self.help_open = false;
@@ -176,18 +243,25 @@ impl App {
         }
         if self.help_open {
             match intent {
-                Command::Help if key.kind == KeyEventKind::Press => self.help_open = false,
-                Command::Escape => self.help_open = false,
+                Command::Help | Command::Escape => {
+                    if key.kind == KeyEventKind::Press {
+                        self.help_open = false;
+                    }
+                    return Action::None;
+                }
                 Command::PageUp => {
-                    self.help_scroll = self.help_scroll.saturating_sub(self.help_page)
+                    self.help_scroll = self.help_scroll.saturating_sub(self.help_page);
+                    return Action::None;
                 }
                 Command::PageDown => {
-                    self.help_scroll = self.help_scroll.saturating_add(self.help_page)
+                    self.help_scroll = self.help_scroll.saturating_add(self.help_page);
+                    return Action::None;
                 }
-                Command::Themes => self.open_themes(),
-                _ => {}
+                _ => self.help_open = false,
             }
-            return Action::None;
+            if key.code == KeyCode::Backspace {
+                return Action::None;
+            }
         }
         if self.approval.is_some() {
             match intent {
@@ -225,11 +299,11 @@ impl App {
                     self.selected = (self.selected + 1).min(self.suggestions.len() - 1);
                     return Action::None;
                 }
-                KeyCode::Tab => {
+                KeyCode::Tab if intent != Command::Permissions => {
                     self.complete();
                     return Action::None;
                 }
-                KeyCode::Enter if key.kind == KeyEventKind::Press => {
+                KeyCode::Enter if intent == Command::Submit && key.kind == KeyEventKind::Press => {
                     if self.complete().is_some_and(|value| value.starts_with('/')) {
                         return Action::Submit(self.composer.take());
                     }
@@ -243,6 +317,22 @@ impl App {
             }
         }
         match intent {
+            Command::ThinkingMode if self.approval.is_none() && key.kind == KeyEventKind::Press => {
+                return Action::ThinkingMode
+            }
+            Command::Clipboard if self.approval.is_none() && key.kind == KeyEventKind::Press => {
+                return Action::Clipboard
+            }
+            Command::RemoveAttachment
+                if self.approval.is_none() && key.kind == KeyEventKind::Press =>
+            {
+                if !self.attachments.is_empty() {
+                    return Action::RemoveAttachment(self.attachments.len() - 1);
+                }
+            }
+            Command::Permissions if self.approval.is_none() && key.kind == KeyEventKind::Press => {
+                return Action::Permissions;
+            }
             Command::Help
                 if self.approval.is_none()
                     && self.draft().is_empty()
@@ -262,7 +352,12 @@ impl App {
                 self.open_themes();
             }
             Command::Submit if key.kind == KeyEventKind::Press => {
-                if !self.draft().trim().is_empty() {
+                if self.pasting {
+                    self.notice =
+                        Some("Wait for the attachment preparation to finish before sending".into());
+                    return Action::None;
+                }
+                if !self.draft().trim().is_empty() || !self.attachments.is_empty() {
                     return Action::Submit(self.composer.take());
                 }
             }

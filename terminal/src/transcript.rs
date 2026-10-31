@@ -13,6 +13,7 @@ struct Entry {
     label: String,
     content: String,
     role: Role,
+    expanded: bool,
 }
 
 /// Semantic display kind supplied by the client, independent of labels and model output.
@@ -22,6 +23,7 @@ pub enum Role {
     Assistant,
     Thinking,
     Tool,
+    ToolRunning,
     Error,
     #[default]
     Notice,
@@ -44,7 +46,7 @@ pub struct Transcript {
     anchor: Option<(String, usize)>,
     limits: Limits,
     omitted: usize,
-    expanded_thinking: bool,
+    assistant_layout: Option<fn(&str, usize) -> Vec<String>>,
 }
 
 impl Transcript {
@@ -60,7 +62,7 @@ impl Transcript {
             anchor: None,
             limits,
             omitted: 0,
-            expanded_thinking: false,
+            assistant_layout: None,
         }
     }
 
@@ -94,9 +96,15 @@ impl Transcript {
             label: display_text(label),
             content: display_text(content),
             role,
+            expanded: role == Role::ToolRunning,
         };
         match self.entries.iter().position(|old| old.id == id) {
-            Some(index) => self.entries[index] = entry,
+            Some(index) => {
+                let completed = self.entries[index].role == Role::ToolRunning && role == Role::Tool;
+                let expanded = self.entries[index].expanded;
+                self.entries[index] = entry;
+                self.entries[index].expanded = !completed && expanded;
+            }
             None => {
                 self.entries.push_back(entry);
                 if self.entries.len() > self.limits.retained_entries {
@@ -139,9 +147,9 @@ impl Transcript {
             .map(|row| {
                 let role = self.entries[row.entry].role;
                 let style = match role {
-                    Role::User => palette.accent,
+                    Role::User => palette.base,
                     Role::Thinking => palette.muted.italic(),
-                    Role::Tool | Role::Notice => palette.muted,
+                    Role::Tool | Role::ToolRunning | Role::Notice => palette.muted,
                     Role::Error => palette.accent.bold(),
                     Role::Assistant => palette.base,
                 };
@@ -152,8 +160,38 @@ impl Transcript {
 
     pub fn toggle_thinking(&mut self) {
         self.capture_anchor();
-        self.expanded_thinking = !self.expanded_thinking;
+        let expand = self
+            .entries
+            .iter()
+            .any(|entry| matches!(entry.role, Role::Thinking | Role::Tool) && !entry.expanded);
+        for entry in &mut self.entries {
+            if matches!(entry.role, Role::Thinking | Role::Tool) {
+                entry.expanded = expand;
+            }
+        }
         self.dirty = true;
+    }
+
+    /// The client may reuse its Markdown layout without introducing a second parser here.
+    pub fn set_assistant_layout(&mut self, layout: fn(&str, usize) -> Vec<String>) {
+        self.assistant_layout = Some(layout);
+        self.dirty = true;
+    }
+
+    /// Mouse hit-testing uses rendered row identity; model text cannot become an action.
+    pub fn toggle_row(&mut self, visible_row: usize) {
+        let Some(row) = self.rows.get(self.top.saturating_add(visible_row)) else {
+            return;
+        };
+        if row.logical != 0 {
+            return;
+        }
+        let index = row.entry;
+        if matches!(self.entries[index].role, Role::Thinking | Role::Tool) {
+            self.capture_anchor();
+            self.entries[index].expanded = !self.entries[index].expanded;
+            self.dirty = true;
+        }
     }
 
     /// Moves within rendered rows. Positive values move toward newer output.
@@ -198,25 +236,39 @@ impl Transcript {
             let prefix = match entry.role {
                 Role::User => "> ",
                 Role::Assistant => "● ",
-                Role::Thinking => "· ",
-                Role::Tool => "↳ ",
+                Role::Thinking | Role::Tool if entry.expanded => "▾ ",
+                Role::Thinking | Role::Tool => "▸ ",
+                Role::ToolRunning => "▾ ",
                 Role::Error => "! ",
                 Role::Notice => "",
             };
-            let collapsed = entry.role == Role::Thinking && !self.expanded_thinking;
+            let collapsed = matches!(entry.role, Role::Thinking | Role::Tool) && !entry.expanded;
             let label = format!(
                 "{prefix}{}{}",
                 entry.label,
-                if collapsed { " · Ctrl+O: expand" } else { "" }
+                if collapsed { " · Ctrl+O / click" } else { "" }
             );
-            for part in textwrap::wrap(&label, width) {
+            for part in textwrap::wrap(&label, width)
+                .into_iter()
+                .filter(|_| entry.role != Role::Assistant)
+            {
                 self.rows.push(Row {
                     entry: index,
                     logical: 0,
                     text: Line::from(part.into_owned()).bold(),
                 });
             }
-            for (logical, line) in entry.content.split('\n').enumerate().filter(|_| !collapsed) {
+            let formatted = if entry.role == Role::Assistant {
+                self.assistant_layout
+                    .map(|layout| layout(&entry.content, width))
+            } else {
+                None
+            };
+            let lines: Vec<_> = formatted
+                .as_ref()
+                .map(|rows| rows.iter().map(String::as_str).collect())
+                .unwrap_or_else(|| entry.content.split('\n').collect());
+            for (logical, line) in lines.into_iter().enumerate().filter(|_| !collapsed) {
                 for part in textwrap::wrap(line, width) {
                     self.rows.push(Row {
                         entry: index,

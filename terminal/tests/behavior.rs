@@ -220,6 +220,137 @@ fn test_question_help_is_contextual_and_paste_stays_literal() {
 }
 
 #[test]
+fn test_help_typing_keeps_first_character_and_backspace_closes() {
+    let mut app = app();
+    app.handle(ctrl('?'));
+    assert!(frame(&mut app, 120, 30).contains("Shortcuts"));
+    app.handle(key(KeyCode::Char('h')));
+    assert_eq!(app.draft(), "h");
+    assert!(!frame(&mut app, 120, 30).contains("Esc: close"));
+    app.set_draft("").unwrap();
+    app.handle(key(KeyCode::Char('?')));
+    app.handle(key(KeyCode::Backspace));
+    assert!(app.draft().is_empty());
+    assert!(!frame(&mut app, 120, 30).contains("Esc: close"));
+}
+
+#[test]
+fn test_completed_tool_collapses_and_mouse_reopens_its_full_output() {
+    use cluaiz_terminal::transcript::Role;
+    use crossterm::event::{MouseButton, MouseEvent, MouseEventKind};
+    let mut app = app();
+    app.transcript
+        .upsert_role("tool", Role::ToolRunning, "read_file", "full result नमस्ते")
+        .unwrap();
+    assert!(frame(&mut app, 80, 24).contains("full result नमस्ते"));
+    app.transcript
+        .upsert_role(
+            "tool",
+            Role::Tool,
+            "read_file · Result: 1 line",
+            "full result नमस्ते",
+        )
+        .unwrap();
+    let view = frame(&mut app, 80, 24);
+    assert!(!view.contains("full result नमस्ते"));
+    let row = view
+        .lines()
+        .position(|line| line.contains("read_file"))
+        .unwrap();
+    let click = Event::Mouse(MouseEvent {
+        kind: MouseEventKind::Down(MouseButton::Left),
+        column: 2,
+        row: row as u16,
+        modifiers: KeyModifiers::NONE,
+    });
+    assert_eq!(app.handle(click.clone()), Action::None);
+    assert!(frame(&mut app, 80, 24).contains("full result नमस्ते"));
+    app.handle(click);
+    assert!(!frame(&mut app, 80, 24).contains("full result नमस्ते"));
+}
+
+#[test]
+fn test_secondary_content_is_dim_but_answer_is_bright_for_every_theme() {
+    use cluaiz_terminal::transcript::Role;
+    use ratatui::style::Modifier;
+    for theme in Theme::ALL {
+        let palette = theme.palette();
+        assert!(palette.muted.add_modifier.contains(Modifier::DIM));
+        assert!(!palette.base.add_modifier.contains(Modifier::DIM));
+        let mut app = app();
+        app.transcript
+            .upsert_role("a", Role::Assistant, "hidden label", "answer")
+            .unwrap();
+        app.transcript
+            .upsert_role("t", Role::ToolRunning, "tool", "secondary")
+            .unwrap();
+        let rows = app.transcript.visible_styled(80, 24, palette);
+        assert!(!rows
+            .iter()
+            .any(|row| row.to_string().contains("hidden label")));
+        assert!(rows
+            .iter()
+            .find(|row| row.to_string() == "secondary")
+            .unwrap()
+            .style
+            .add_modifier
+            .contains(Modifier::DIM));
+    }
+}
+
+#[test]
+fn test_inflight_paste_does_not_submit_a_turn_without_its_attachment() {
+    let mut app = app();
+    app.set_draft("question about the pasted file").unwrap();
+    app.begin_paste();
+    assert_eq!(app.handle(key(KeyCode::Enter)), Action::None);
+    assert_eq!(app.draft(), "question about the pasted file");
+    app.pasting = false;
+    assert_eq!(
+        app.handle(key(KeyCode::Enter)),
+        Action::Submit("question about the pasted file".into())
+    );
+}
+
+#[test]
+fn test_permission_shortcut_keeps_draft_and_uses_confirmed_mode() {
+    let mut app = app();
+    app.set_draft("next question").unwrap();
+    assert_eq!(app.handle(key(KeyCode::BackTab)), Action::Permissions);
+    assert_eq!(app.draft(), "next question");
+    app.strict = true;
+    assert_eq!(app.handle(key(KeyCode::BackTab)), Action::Permissions);
+}
+
+#[test]
+fn test_attachment_controls_do_not_submit_or_delete_the_draft() {
+    let mut app = app();
+    app.attachments.push("image.png".into());
+    app.set_draft("question").unwrap();
+    assert_eq!(
+        app.handle(Event::Key(KeyEvent::new(
+            KeyCode::Char('v'),
+            KeyModifiers::ALT
+        ))),
+        Action::Clipboard
+    );
+    assert_eq!(
+        app.handle(Event::Key(KeyEvent::new(
+            KeyCode::Backspace,
+            KeyModifiers::ALT
+        ))),
+        Action::RemoveAttachment(0)
+    );
+    assert_eq!(app.draft(), "question");
+    assert!(frame(&mut app, 80, 24).contains("image.png"));
+    app.set_draft("").unwrap();
+    assert_eq!(
+        app.handle(key(KeyCode::Enter)),
+        Action::Submit(String::new())
+    );
+}
+
+#[test]
 fn test_help_scrolls_in_small_windows_and_never_submits() {
     let mut app = app();
     app.handle(key(KeyCode::Char('?')));
@@ -228,8 +359,8 @@ fn test_help_scrolls_in_small_windows_and_never_submits() {
         assert_eq!(app.handle(key(KeyCode::PageDown)), Action::None);
         contents.push_str(&frame(&mut app, 40, 12));
     }
-    assert!(contents.contains("Send your message"));
-    assert!(contents.contains("Exit and return to your shell"));
+    assert!(contents.contains("Enter  Send"));
+    assert!(contents.contains("Ctrl+Q  Exit"));
     assert_eq!(app.handle(key(KeyCode::Enter)), Action::None);
     assert_eq!(app.handle(ctrl('q')), Action::Exit);
 }
@@ -249,8 +380,8 @@ fn test_thinking_collapses_without_losing_source_or_answer() {
         .unwrap();
     let collapsed = frame(&mut app, 80, 24);
     assert!(collapsed.contains("> You"));
-    assert!(collapsed.contains("● Cluaiz"));
-    assert!(collapsed.contains("Ctrl+O: expand"));
+    assert!(!collapsed.contains("Cluaiz"));
+    assert!(collapsed.contains("Ctrl+O / click"));
     assert!(!collapsed.contains("private reasoning"));
     app.set_draft("unfinished question").unwrap();
     app.handle(ctrl('o'));
@@ -277,10 +408,10 @@ fn test_role_styles_follow_theme_without_label_detection() {
         let rows = app.transcript.visible_styled(80, 24, theme.palette());
         let user = rows.iter().find(|row| row.to_string() == "user").unwrap();
         let answer = rows.iter().find(|row| row.to_string() == "answer").unwrap();
-        assert_eq!(user.style, theme.palette().accent);
+        assert_eq!(user.style, theme.palette().base);
         assert_eq!(answer.style, theme.palette().base);
         assert!(rows.iter().any(|row| row.to_string() == "> same"));
-        assert!(rows.iter().any(|row| row.to_string() == "● same"));
+        assert!(!rows.iter().any(|row| row.to_string() == "● same"));
     }
 }
 

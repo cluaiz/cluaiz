@@ -32,6 +32,13 @@ fn test_interactive_preview_restores_terminal() -> Result<(), Box<dyn std::error
                     Some("Input captured for this preview only; no AI or command executed".into());
             }
             Action::Cancel => app.notice = Some("No Engine attached; the draft was kept".into()),
+            Action::Clipboard
+            | Action::Permissions
+            | Action::ThinkingMode
+            | Action::RemoveAttachment(_) => {
+                app.notice =
+                    Some("This developer preview has no client adapter; use cluaiz agent".into());
+            }
             Action::Approval(_) => {}
             Action::None => {}
         }

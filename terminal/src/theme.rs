@@ -1,6 +1,6 @@
 //! Semantic roles shared by every widget; Auto preserves terminal foreground/background.
 
-use ratatui::style::{Color, Style};
+use ratatui::style::{Color, Modifier, Style};
 
 /// Presentation preference. Execution and model settings are not part of a theme.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -37,7 +37,7 @@ impl Theme {
     /// Resolves roles once for a frame without terminal palette queries.
     pub fn palette(self) -> Palette {
         let (foreground, background, muted, accent) = match self {
-            Self::Auto => (Color::Reset, Color::Reset, Color::Reset, Color::Cyan),
+            Self::Auto => (Color::Reset, Color::Reset, Color::Gray, Color::Cyan),
             Self::Dark => (Color::White, Color::Black, Color::Gray, Color::Cyan),
             Self::Light => (Color::Black, Color::White, Color::DarkGray, Color::Blue),
             Self::Contrast => (Color::White, Color::Black, Color::White, Color::Yellow),
@@ -45,7 +45,10 @@ impl Theme {
         };
         Palette {
             base: Style::default().fg(foreground).bg(background),
-            muted: Style::default().fg(muted).bg(background),
+            muted: Style::default()
+                .fg(muted)
+                .bg(background)
+                .add_modifier(Modifier::DIM),
             accent: Style::default().fg(accent).bg(background),
         }
     }

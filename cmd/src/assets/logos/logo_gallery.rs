@@ -1,3 +1,6 @@
+/// Compact Cog pet for the interactive agent header (six rows, no scaling/cropping).
+pub const COG_TERMINAL: &str = "    ⣠⣶⣿⣿⣶⣄\n  ⣰⣿⠋⠀⠀⠀⠀⠙⣿⣆\n ⣸⣿⠀⣿⠀⠀⣿⠀⣿⣇\n⠻⣿⣄⠀⠰⠶⠆⠀⣠⣿⠟\n  ⠈⠻⣿⣶⣶⣿⠟⠁\n    ⠻⠟⠀⠀⠻⠟";
+
 pub const LOGO_VARIANTS: &[&str] = &[
     // 1. Tiny - Minimalist Line
     r#" [ C L U A I Z ] "#,
@@ -324,6 +327,7 @@ r#"
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀ ⠀⠀⠀⠈⠛⠻⠻⠛⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠛⠻⠻⠛⠋⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 
                                                                           "#,
+    COG_TERMINAL,
 ];
 
 
