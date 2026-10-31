@@ -528,10 +528,13 @@ impl Agent {
             return Ok(());
         }
         let before = self.history.len();
-        let mut messages = Vec::with_capacity(self.history.len() + 2);
-        messages.push(message("system", self.system.clone()));
-        messages.extend(self.history.iter().cloned());
-        messages.push(message("user", COMPACT_REQUEST.into()));
+        // The conversation goes in as one text that fits: sent as messages, a history that no
+        // longer fits loses its middle in the Engine and the model is left with nothing to summarize
+        let size = self.usage.map_or(SMALL_CONTEXT as usize, |(_, size)| size);
+        let messages = vec![
+            message("system", "You summarize a coding agent's conversation for the agent itself.".into()),
+            message("user", format!("{COMPACT_REQUEST}\n\n<conversation>\n{}\n</conversation>", compact_transcript(&self.history, size * 3 / 2))),
+        ];
         let mut out = self.display.output(false);
         let (summary, report) = self.session.generate_prepared(messages, None, &mut *out).await?;
         if report.cancelled || summary.trim().is_empty() {
@@ -727,6 +730,40 @@ const AUTO_COMPACT_PCT: usize = 80;
 /// What `/compact` asks the model for
 const COMPACT_REQUEST: &str = "Summarize this conversation so the work can go on from the summary alone: the goal, what was decided, files read or changed (with paths), commands run and their results, and the open next steps. Be concise; use a short list. Do not call tools.";
 
+/// The history as `role: text` blocks within `budget` characters for the compact request: long
+/// messages keep their start, and when it all does not fit the newest messages are kept
+fn compact_transcript(history: &[ChatMessage<Vec<PreparedPart>>], budget: usize) -> String {
+    const MESSAGE_CHARS: usize = 1500;
+    let mut blocks = Vec::new();
+    let mut used = 0;
+    for entry in history.iter().rev() {
+        let text: String = entry
+            .content
+            .iter()
+            .map(|part| match part {
+                PreparedPart::Text { text } => text.as_str(),
+                PreparedPart::Image { .. } => "[image]",
+                PreparedPart::Audio { .. } => "[audio]",
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        let text = text.trim();
+        let text = match text.char_indices().nth(MESSAGE_CHARS) {
+            Some((cut, _)) => format!("{}… ({} more characters)", &text[..cut], text.len() - cut),
+            None => text.to_owned(),
+        };
+        let block = format!("{}: {text}", entry.role);
+        if used + block.len() > budget && !blocks.is_empty() {
+            blocks.push("(earlier messages left out)".to_owned());
+            break;
+        }
+        used += block.len();
+        blocks.push(block);
+    }
+    blocks.reverse();
+    blocks.join("\n\n")
+}
+
 /// Below this context a written file or a long tool result often does not fit
 const SMALL_CONTEXT: u32 = 8192;
 
@@ -781,5 +818,22 @@ mod context_tests {
     fn a_small_context_says_what_to_do() {
         assert_eq!(context_note(16384), "Context 16384");
         assert!(context_note(4096).contains("-c 16384"));
+    }
+
+    #[test]
+    fn the_compact_request_carries_the_conversation_that_fits() {
+        use super::{compact_transcript, message};
+        let history = vec![
+            message("user", "read the readme".into()),
+            message("tool", "x".repeat(5000)),
+            message("assistant", "Cluaiz is a local AI engine.".into()),
+        ];
+        let all = compact_transcript(&history, 10_000);
+        assert!(all.starts_with("user: read the readme"));
+        assert!(all.contains("(3500 more characters)"));
+        assert!(all.ends_with("assistant: Cluaiz is a local AI engine."));
+        let newest = compact_transcript(&history, 1000);
+        assert!(newest.starts_with("(earlier messages left out)"));
+        assert!(newest.ends_with("local AI engine."));
     }
 }
