@@ -323,6 +323,17 @@ async fn main() -> Result<()> {
         ghost_note();
         return Ok(());
     }
+    // The window / tab title names the command ("Cluaiz · pull"), not the exe path the shell shows;
+    // the shell puts its own title back when cluaiz exits
+    if std::io::stdout().is_terminal() {
+        let commands = <Cli as clap::CommandFactory>::command();
+        let command = raw
+            .iter()
+            .skip(1)
+            .find_map(|arg| commands.find_subcommand(arg).map(|found| found.get_name().to_owned()))
+            .unwrap_or_else(|| "agent".to_owned());
+        let _ = crossterm::execute!(std::io::stdout(), crossterm::terminal::SetTitle(format!("Cluaiz · {command}")));
+    }
     let cli = Cli::parse_from(cli::args::normalize_llama_flags(raw));
 
     // Bare `cluaiz`: the agent when there is a terminal and a chat model, else the help
