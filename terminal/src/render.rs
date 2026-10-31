@@ -191,6 +191,10 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     } else {
         "?: help | Ctrl+O: thinking | F2: theme | Ctrl+Q: exit"
     };
+    let shortcuts = match &app.context_usage {
+        Some(usage) if app.approval.is_none() => format!("{usage} | {shortcuts}"),
+        _ => shortcuts.to_owned(),
+    };
     frame.render_widget(Paragraph::new(shortcuts).style(palette.muted), footer);
     if app.help_open {
         let visible = usize::from(footer.height.saturating_sub(1));

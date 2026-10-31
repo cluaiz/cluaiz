@@ -87,16 +87,19 @@ impl Remote {
         GENERATING.store(false, Ordering::SeqCst);
         let cancelled = cluaiz_core::GLOBAL_CANCEL_SIGNAL.swap(false, Ordering::SeqCst);
         out.finish();
-        let (answer, finish) = result?;
+        let (answer, finish, context) = result?;
         let stop = match finish.as_str() {
             "length" => "limit",
             _ if cancelled => "cancel",
             _ => "eos",
         };
-        Ok((answer, TurnReport { timings: None, thinking: None, cancelled, stop }))
+        let used = context.as_ref().and_then(|plan| Some((plan["used_tokens"].as_u64()? as usize + plan["protected_tokens"].as_u64().unwrap_or(0) as usize, plan["n_ctx"].as_u64()? as usize)));
+        let dropped = context.as_ref().and_then(|plan| plan["dropped_messages"].as_u64()).unwrap_or(0) as usize;
+        Ok((answer, TurnReport { timings: None, thinking: None, cancelled, stop, context: used, dropped }))
     }
 
-    async fn stream(&self, body: Value, out: &mut dyn output::Output) -> Result<(String, String)> {
+    /// The answer, why it ended, and the server's context plan (`context_report.plan`) when sent
+    async fn stream(&self, body: Value, out: &mut dyn output::Output) -> Result<(String, String, Option<Value>)> {
         let mut response = server::request_with_timeout(reqwest::Method::POST, "/v1/chat/completions", Duration::from_secs(24 * 3600))
             .json(&body)
             .send()
@@ -113,6 +116,7 @@ impl Remote {
         }
         let mut answer = String::new();
         let mut finish = String::from("stop");
+        let mut plan = None;
         let mut pending = String::new();
         let mut tick = tokio::time::interval(Duration::from_millis(120));
         loop {
@@ -133,9 +137,12 @@ impl Remote {
                 let line: String = pending.drain(..=end).collect();
                 let Some(data) = line.trim().strip_prefix("data:").map(str::trim) else { continue };
                 if data == "[DONE]" {
-                    return Ok((answer, finish));
+                    return Ok((answer, finish, plan));
                 }
                 let Ok(event) = serde_json::from_str::<Value>(data) else { continue };
+                if event["context_report"]["plan"].is_object() {
+                    plan = Some(event["context_report"]["plan"].clone());
+                }
                 if let Some(message) = event["error"]["message"].as_str() {
                     return Err(eyre!("{message}"));
                 }
@@ -161,6 +168,6 @@ impl Remote {
                 }
             }
         }
-        Ok((answer, finish))
+        Ok((answer, finish, plan))
     }
 }

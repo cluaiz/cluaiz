@@ -457,6 +457,7 @@ impl State {
                 self.app.activity = None;
                 self.app.metadata.status = status;
             }
+            Event::Usage(usage) => self.app.context_usage = Some(usage),
             Event::Finished => {
                 self.end_thinking();
                 self.finished = true;

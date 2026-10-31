@@ -45,6 +45,8 @@ pub enum Event {
     Themes,
     Permission(bool),
     Ready(String),
+    /// How full the context is ("Context 62% · 2540 / 4096")
+    Usage(String),
     Finished,
 }
 

@@ -341,35 +341,10 @@ The agent uses the same model loading, planner and settings as `cluaiz run`
   filled) is not run and not kept in the conversation; the turn ends with "Incomplete or invalid
   tool call; nothing executed" or "Generation limit reached while preparing tool calls". Nothing was
   written. Ask for a shorter file, or for the file in parts, or start with a bigger `-c`.
-- **When the context is full** the agent does not stop: it leaves out the oldest earlier request,
-  then (if still needed) replaces the oldest long tool result with a short note, and asks the model
-  again. A dim line says so. The model may then need to read a file again.
-
-## All options
-
-```text
-cluaiz agent [OPTIONS] [TASK]...
-```
-
-| Option | Meaning |
-| :--- | :--- |
-| `TASK...`, `-p, --prompt <TEXT>` | Task to do, then exit. No task: chat. Piped stdin is the task |
-| `-m, --model <MODEL>` | Installed model id or a `.gguf` path (default: the active chat model) |
-| `-C, --dir <PATH>` | Folder to work in (default: the current folder) |
-| `-y, --yes` | Allow every change and command without asking (destructive commands stay refused) |
-| `-i, --interactive` | Keep chatting after the task |
-| `--ui auto/plain/tui` | Auto selects the UI for interactive sessions; plain preserves line output; tui requires an interactive terminal |
-| `--system-prompt <TEXT>` | Added to the agent's instructions |
-| `-n, --n-predict <N>` | Most tokens per answer |
-| `-v`, `-vv` | Detailed file logging; console logs in plain mode. UI mode suppresses console tracing so logs do not overwrite input |
-| Load flags | `-c`, `-ngl`, `--n-cpu-moe`, `-ctk`, `-ctv`, `-fa`, `-b`, `-ub`, `-t`, `-tb`, `--mmap`, `--no-mmap`, `-nkvo`, `--no-op-offload`, `--vram-buffer` (as `cluaiz run`) |
-| Sampling flags | `--temp`, `--top-k`, `--top-p`, `--min-p`, `--repeat-penalty`, `--presence-penalty`, `--frequency-penalty`, `-s` |
-| Thinking flags | `--think on/off/auto`, `--reasoning-effort`, `--reasoning-budget`, `--reasoning-budget-message`, `--hide-thinking` |
-
-`cluaiz agent --help` prints the full list.
-
-## Limits
-
+- **Auto-compact.** The footer shows how full the context is (`Context 62% · 2540 / 4096`). When an
+  answer leaves it 80% full or more, or the Engine had to leave out old messages to fit, the next
+  request first compacts the conversation (as `/compact` does) and says so. If a request still does
+  not fit, the oldest earlier request is left out, then the oldest long tool result becomes a note.
 - A request stops after 40 tool calls; say how to go on and it continues.
 - No model switch inside the agent: start it again with another `-m`.
 - The API and CLI have not yet been moved to one shared agent controller. This terminal frontend

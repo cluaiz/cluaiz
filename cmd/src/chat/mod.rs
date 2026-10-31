@@ -70,6 +70,10 @@ pub struct TurnReport {
     pub thinking: Option<ThinkingReport>,
     pub cancelled: bool,
     pub stop: &'static str,
+    /// Tokens in the context when the answer ended, of the context size
+    pub context: Option<(usize, usize)>,
+    /// Oldest messages the Engine left out so the request fitted
+    pub dropped: usize,
 }
 
 /// True while an answer is streaming: Ctrl+C then stops the answer instead of the program.
@@ -273,16 +277,14 @@ impl Session {
         let cancelled = cluaiz_core::GLOBAL_CANCEL_SIGNAL.swap(false, Ordering::SeqCst);
         out.finish();
         let answer = result?;
+        let context = self.host.last_context().await;
         let report = TurnReport {
             timings: self.host.last_timings().await,
             thinking: self.host.last_thinking().await,
             cancelled,
-            stop: self
-                .host
-                .last_context()
-                .await
-                .map(|report| report.stop)
-                .unwrap_or("unknown"),
+            stop: context.as_ref().map(|report| report.stop).unwrap_or("unknown"),
+            context: context.as_ref().map(|report| (report.n_tokens, report.n_ctx)),
+            dropped: context.as_ref().map_or(0, |report| report.dropped_messages),
         };
         Ok((answer, report))
     }
