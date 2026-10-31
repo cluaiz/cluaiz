@@ -14,6 +14,8 @@ pub const COMMANDS: &[(&str, &str)] = &[
     ),
     ("/think", "Toggle model thinking; accepts on / off / auto"),
     ("/clear", "Clear this agent's conversation"),
+    ("/compact", "Replace the conversation with a summary to free context"),
+    ("/sessions", "Saved conversations of this folder (--continue / --resume <id>)"),
     ("/bye", "Close the agent and return to the shell"),
 ];
 

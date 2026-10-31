@@ -235,7 +235,9 @@ the six built-in tools, with the same descriptions the API uses:
 | `/strict` | Clear session grants and ask before every built-in tool, including reads |
 | `/permissions` | Explain Ask, Strict and session grants, including their OS sandbox limitation |
 | `/think on`, `/think off`, `/think auto`, `/think` | Change actual thinking settings; no argument toggles on/off |
-| `/clear` | Forget the conversation (the folder and the model stay) |
+| `/clear` | Start a new conversation (the old one stays saved; the folder and the model stay) |
+| `/compact` | The model summarizes the conversation and the summary replaces it: frees context, keeps the thread |
+| `/sessions` | The saved conversations of this folder, newest first, with their ids |
 | `/bye`, `/exit` | Leave (Ctrl+Q in the UI; Ctrl+D in plain mode) |
 | `/?`, `/help` | Show these commands |
 | `/theme` | Open the terminal UI theme picker |
@@ -262,6 +264,21 @@ the six built-in tools, with the same descriptions the API uses:
 
 In plain mode, start and end a message with `"""` to type several lines. Ctrl+C stops the answer being written, or
 the command being run, and leaves you at the prompt; at the prompt it exits.
+
+## Saved conversations
+
+Every conversation is saved after each request, per working folder, in
+`~/.cluaiz/sessions/<folder>-<hash>/<id>.json` (text only: attachments are saved as a note).
+
+```sh
+cluaiz agent --continue             # go on with the last conversation in this folder
+cluaiz agent --resume 20261031-155143
+cluaiz agent --continue "now add tests for it"
+```
+
+`/sessions` lists them. `/compact` keeps a long conversation going in a small context: the model
+writes a short summary (goal, decisions, files, commands, next steps) and it replaces the history.
+The session keeps its first title.
 
 ## One task from a script
 
@@ -354,7 +371,6 @@ cluaiz agent [OPTIONS] [TASK]...
 ## Limits
 
 - A request stops after 40 tool calls; say how to go on and it continues.
-- The conversation is not saved: closing the agent forgets it.
 - No model switch inside the agent: start it again with another `-m`.
 - The API and CLI have not yet been moved to one shared agent controller. This terminal frontend
   calls the existing CLI loop; it does not create a second CLI tool executor or load another host.

@@ -47,6 +47,7 @@ serde_yaml = "0.9"
 ctrlc = "3.5.2"
 unicode-width = "0.2"
 regex = "1"
+chrono = "0.4"
 walkdir = "2"
 
 [build-dependencies]
