@@ -284,7 +284,7 @@ same settings can be typed directly: `/mode plan`, `/think off`, `/effort high`,
 | `/bye`, `/exit` | Leave (Ctrl+Q in the UI; Ctrl+D in plain mode) |
 | `/?`, `/help` | Show these commands |
 | `/theme` | Open the terminal UI theme picker |
-| `!<command>` | Shell mode: runs the command yourself in the working folder, without asking (you typed it). The output is shown (first 40 lines) and kept in the conversation, so the next request can use it |
+| `!<command>` | Shell mode: runs the command yourself in the working folder, without asking (you typed it). All of the output is shown in a row that its header (or Ctrl+O) folds, and it is kept in the conversation, so the next request can use it |
 | `cls`, `clear` | Clear the screen only; the conversation is kept |
 
 ### Files and clipboard in rich mode

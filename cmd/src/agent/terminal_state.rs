@@ -45,6 +45,18 @@ mod tests {
     }
 
     #[test]
+    fn shell_output_is_shown_whole_and_folds() {
+        let mut state = state();
+        let output: String = (1..=30).map(|n| format!("line {n}\n")).collect();
+        state.apply(Event::Shell { command: "ls".into(), ok: true, output });
+        let view = text(&mut state);
+        assert!(view.contains("! ls · 30 lines"), "{view}");
+        assert!(view.contains("line 1") && view.contains("line 30"), "{view}");
+        state.app.transcript.toggle_thinking();
+        assert!(!text(&mut state).contains("line 30"));
+    }
+
+    #[test]
     fn the_footer_shows_the_context_and_speed_live() {
         let mut state = state();
         state.apply(Event::Context { used: 1000, size: 8000, speed: Some("20.0 tok/s · 3.0s".into()) });
@@ -360,6 +372,14 @@ impl State {
                     "",
                 );
                 self.active(&self.tool_id.clone());
+            }
+            Event::Shell { command, ok, output } => {
+                // All of the output, open; its header (or Ctrl+O) folds it
+                let id = self.id("shell");
+                let lines = output.lines().count();
+                let label = format!("! {command} · {}{lines} lines", if ok { "" } else { "failed · " });
+                Self::entry(&mut self.app, &id, Role::Tool, &label, output.trim_end());
+                self.app.transcript.expand_prefix(&format!("{id}-"));
             }
             Event::Message(label, body) => {
                 let id = self.id("message");

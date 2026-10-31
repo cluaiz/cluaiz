@@ -50,6 +50,12 @@ pub enum Event {
     Ready(String),
     /// How full the context is ("Context 62% · 2540 / 4096")
     Usage(String),
+    /// A `!command` the user ran: all of its output
+    Shell {
+        command: String,
+        ok: bool,
+        output: String,
+    },
     /// Tokens in the context after an answer, of the context size, and the answer's speed
     Context {
         used: usize,
@@ -146,6 +152,7 @@ impl Display {
                 Event::Message(label, text) => json!({"type": "notice", "label": label, "text": text}),
                 Event::Error(text) => json!({"type": "error", "text": text}),
                 Event::Usage(text) => json!({"type": "usage", "text": text}),
+                Event::Shell { command, ok, output } => json!({"type": "shell", "command": command, "ok": ok, "output": output}),
                 Event::Context { used, size, speed } => json!({"type": "usage", "context_tokens": used, "context_size": size, "speed": speed}),
                 _ => return,
             };
@@ -160,6 +167,8 @@ impl Display {
                 eprintln!("{} {} {}", "●".cyan(), name.bold(), target)
             }
             Event::Diff(text) => eprintln!("{text}"),
+            Event::Shell { command, output, .. } => eprintln!("! {command}
+{output}"),
             Event::Themes => {
                 eprintln!("Use an interactive terminal with --ui tui to select a theme.")
             }

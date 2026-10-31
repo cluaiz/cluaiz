@@ -536,13 +536,7 @@ impl Agent {
             return;
         }
         let (ok, out) = self.tools.run_user_command(command).await;
-        const SHOWN: usize = 40;
-        let lines: Vec<&str> = out.lines().collect();
-        let mut shown = lines.iter().take(SHOWN).copied().collect::<Vec<_>>().join("\n");
-        if lines.len() > SHOWN {
-            shown.push_str(&format!("\n… {} more lines (the agent sees them all)", lines.len() - SHOWN));
-        }
-        self.display.emit(Event::Message(format!("! {command}{}", if ok { "" } else { "  (failed)" }), shown));
+        self.display.emit(Event::Shell { command: command.to_owned(), ok, output: out.clone() });
         self.history.push(message("user", format!("(I ran this command myself in the working folder.)\n$ {command}\n{}", tools::clip(&out))));
         self.history.push(message("assistant", "Noted.".into()));
     }
