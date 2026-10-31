@@ -66,8 +66,9 @@ interface. A one-shot task or redirected output uses plain mode automatically.
 
 ## What the agent can do
 
-The tools are built into `cluaiz` itself. Nothing is downloaded for them, and they are not the
-skills, plugins or MCP servers in `~/.cluaiz/tools`.
+Six tools are built into `cluaiz` itself; nothing is downloaded for them. The skills, plugins and
+MCP servers you installed (`cluaiz skill / plugin / mcp install`, switched on) are offered too: see
+[Installed tools](#installed-tools).
 
 | Tool | What it does | Asks first? |
 | :--- | :--- | :--- |
@@ -210,6 +211,21 @@ The model's own words are drawn with their Markdown formatting: headings, **bold
 Only the rows marked `●` are things that really happened. If the model says it ran or read
 something and there is no row for it, it did not.
 
+## Installed tools
+
+Every enabled skill, plugin and MCP server in `~/.cluaiz/tools` is offered to the model next to
+the six built-in tools, with the same descriptions the API uses:
+
+- A skill's instructions are added to the agent's instructions.
+- A call of an installed tool shows its row like any other (`● math_evaluate`) and **always asks
+  first** (`[a]lways` allows that tool for the session; `--yes` allows all). It runs in the working
+  folder through the same executor as the API.
+- Their descriptions are sent with every request, so they use context. At most 12,000 characters
+  of them are sent; the rest is left out and a line says which. Switch off tools you do not need:
+  `cluaiz plugin config <id>` / the App's Tools page.
+- If a tool fails (for example a plugin whose program did not download), the row shows the error
+  and the model is told.
+
 ## Commands inside the agent
 
 | Command | What it does |
@@ -323,9 +339,6 @@ cluaiz agent [OPTIONS] [TASK]...
 
 ## Limits
 
-- The skills, plugins and MCP servers you installed (`cluaiz skill / plugin / mcp install`) are not
-  offered to the terminal agent yet. They work through the API (`/v1/chat/completions` with tools)
-  and the App.
 - A request stops after 40 tool calls; say how to go on and it continues.
 - The conversation is not saved: closing the agent forgets it.
 - No model switch inside the agent: start it again with another `-m`.

@@ -58,8 +58,11 @@ cluaiz agent -m qwen3 --dir ../app --yes "..."  # model, folder, no questions
   (`cluaiz_core::tool_calls`). The conversation keeps calls and results in the Engine's form.
 - The system prompt names the folder, the OS and the shell, and adds the folder's `AGENTS.md`
   (first 8,000 characters) and `--system-prompt`. A request stops after 40 tool steps.
-- Installed skills, plugins and MCP servers are not offered to the CLI agent yet; the API's
-  `/v1/chat/completions` agent loop has them.
+- Installed skills, plugins and MCP servers (enabled in `~/.cluaiz/config/tools_registry.json`)
+  are offered next to the built-ins: schemas from `ToolsEngine::compile_prompt_tools` (at most
+  12,000 characters; the rest is left out with a notice), skill instructions added to the system
+  prompt, calls resolved with `resolve_function_target` and run by `execute_tool_by_name` in the
+  working folder, each asked first like a command. The agent loop itself is still the CLI's own.
 
 ## `run`
 
