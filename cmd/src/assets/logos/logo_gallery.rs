@@ -10,6 +10,9 @@ pub const COG_TERMINAL: &str = r#"⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀�
 ⠀⠀⠀⠀⠀⠀ ⠈⠉⠀⠀⠀⠈⠉⠁⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀"#;
 
+/// The ">_ CLUAIZ" wordmark (gallery variant 17): the intro art when the mascot does not fit.
+pub const WORDMARK: &str = "░▀▄░░░░░░░░█▀▀░█░░░█░█░█▀█░▀█▀░▀▀█\n░░▄▀░░░░░░░█░░░█░░░█░█░█▀█░░█░░▄▀░\n░▀░░░▀▀▀░░░▀▀▀░▀▀▀░▀▀▀░▀░▀░▀▀▀░▀▀▀";
+
 /// Compact solid Cog frames; colours come from the terminal theme.
 pub const COG_SOLID: &str = "   ▄▄▄████████▄▄▄   
  ▄████████████████▄ 
