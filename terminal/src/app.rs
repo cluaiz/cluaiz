@@ -65,10 +65,12 @@ pub struct App {
 
 impl App {
     pub fn new(metadata: Metadata, limits: Limits) -> Self {
+        let mut transcript = Transcript::new(limits);
+        transcript.intro(&metadata);
         Self {
             metadata,
             theme: Theme::Auto,
-            transcript: Transcript::new(limits),
+            transcript,
             notice: None,
             activity: None,
             strict: false,

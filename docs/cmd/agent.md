@@ -150,6 +150,11 @@ type while generation runs; one further message can wait in the queue. Esc reque
 and clears that queued message. It does not roll back a completed file change or external command.
 Commands currently return stdout/stderr when they finish, rather than streaming each output line.
 
+Cog, model and working-folder details appear once as a starting entry. They scroll upward with the
+conversation; PgUp returns to them. Input stays at the bottom. Loading appears alongside the active
+thinking or tool entry, or as a temporary preparation/writing row below the current output. A tool's
+preparation row becomes its running operation and then its result; it is not a fixed header status.
+
 Type `/` for the existing command menu. Arrows choose; Tab inserts; Enter selects a command.
 Type `@` to suggest files in the working folder. A filename selection only inserts its path; it
 does not submit, read the file, or grant access. Explicit content access goes through the file tool.

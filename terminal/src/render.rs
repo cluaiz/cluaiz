@@ -30,7 +30,6 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         .display_rows(area.width, MAX_COMPOSER_LINES)
         .clamp(1, MAX_COMPOSER_LINES) as u16
         + 2;
-    let header_text = header(app, area);
     let help: Vec<_> = if app.help_open {
         help_rows(area.width)
     } else {
@@ -39,16 +38,12 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     let footer_height = if app.help_open {
         (help.len() as u16 + 1)
             .min(area.height / 3)
-            .min(
-                area.height
-                    .saturating_sub(header_text.len() as u16 + input_height + 2),
-            )
+            .min(area.height.saturating_sub(input_height + 2))
             .max(2)
     } else {
         1
     };
-    let [header, transcript, notice, attachments, composer, footer] = Layout::vertical([
-        Constraint::Length(header_text.len() as u16),
+    let [transcript, notice, attachments, composer, footer] = Layout::vertical([
         Constraint::Min(1),
         Constraint::Length(1),
         Constraint::Length(app.attachments.len().min(3) as u16),
@@ -56,11 +51,13 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         Constraint::Length(footer_height),
     ])
     .areas(area);
-    frame.render_widget(Paragraph::new(header_text), header);
     app.transcript_area = transcript;
-    let rows = app
-        .transcript
-        .visible_styled(transcript.width, transcript.height, palette);
+    let rows = app.transcript.visible_animated(
+        transcript.width,
+        transcript.height,
+        palette,
+        app.activity.as_deref(),
+    );
     frame.render_widget(Paragraph::new(rows).style(palette.base), transcript);
     if let Some(approval) = &app.approval {
         let width = transcript.width.saturating_sub(2).max(1) as usize;
@@ -250,21 +247,19 @@ pub fn render(frame: &mut Frame, app: &mut App) {
     }
 }
 
-fn header(app: &App, area: Rect) -> Vec<Line<'static>> {
-    let palette = app.theme.palette();
-    let mut details = vec![Line::from(display_text(&app.metadata.title))
+pub(crate) fn header(
+    metadata: &crate::Metadata,
+    area: Rect,
+    palette: crate::theme::Palette,
+) -> Vec<Line<'static>> {
+    let mut details = vec![Line::from(display_text(&metadata.title))
         .style(palette.accent.add_modifier(Modifier::BOLD))];
     if area.height >= 14 {
-        details.push(Line::from(display_text(&app.metadata.workspace)).style(palette.muted));
+        details.push(Line::from(display_text(&metadata.workspace)).style(palette.muted));
     }
-    let status = if let Some(glyph) = &app.activity {
-        format!("{glyph} {}", app.metadata.status)
-    } else {
-        app.metadata.status.clone()
-    };
-    details.push(Line::from(display_text(&status)).style(palette.muted));
+    details.push(Line::from(display_text(&metadata.status)).style(palette.muted));
     // Use the caller's original art, never scale/crop it or allocate another logo asset.
-    for art in [app.metadata.brand, app.metadata.compact_brand] {
+    for art in [metadata.brand, metadata.compact_brand] {
         let art = display_text(art);
         let lines: Vec<_> = art
             .trim_matches(|c: char| c.is_whitespace())

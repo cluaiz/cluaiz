@@ -68,6 +68,11 @@ No HTTP request is needed for the local CLI path. There is one EngineHost for th
   generation. This does not enable thinking hidden with `--hide-thinking`.
 - Completed tools collapse to their real result/error summary. Clicking that header reopens retained
   details; running tools remain open. The existing spinner supplies frames to the screen writer.
+- Cog/model/workspace/starting settings form one scrollable intro, not a fixed header. Actual
+  Reasoning events animate that thinking entry. A typed tool-preparation event starts one tool row;
+  ToolStart reuses it and ToolEnd replaces it with the retained result. Generic preparation/writing
+  rows disappear at completion. Reasoning is flushed before content to retain conversation order.
+  Live work never overwrites the starting metadata to display progress at the top of the screen.
 - Alt+T or `/think on/off/auto` changes actual request settings for the next generation. Shift+Tab
   toggles Ask/Strict approvals; `/strict` clears previous grants and asks for workspace reads too.
   This is an approval policy, not OS process isolation. `/permissions` explains the boundary.
