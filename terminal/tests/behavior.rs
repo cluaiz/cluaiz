@@ -45,7 +45,7 @@ fn test_logo_preserves_first_row_padding_and_only_skips_blank_edge_lines() {
     let mut app = App::new(
         Metadata {
             title: "model".into(),
-            brand: "\n  \n    TOP\n  SIDE\nBOTTOM\n  \n",
+            brand: "\n  \n⠀⠀\n ⠀ \n    TOP\n  SIDE\nBOTTOM\n  \n⠀⠀\n ⠀ \n",
             ..Metadata::default()
         },
         Limits::default(),

@@ -261,12 +261,16 @@ pub(crate) fn header(
     // Use the caller's original art, never scale/crop it or allocate another logo asset.
     for art in [metadata.brand, metadata.compact_brand] {
         let art = display_text(art);
+        let blank_line = |line: &&str| {
+            line.chars()
+                .all(|character| character.is_whitespace() || character == '\u{2800}')
+        };
         let mut lines: Vec<_> = art
             .lines()
-            .skip_while(|line| line.trim().is_empty())
+            .skip_while(blank_line)
             .map(str::trim_end)
             .collect();
-        while lines.last().is_some_and(|line| line.is_empty()) {
+        while lines.last().is_some_and(blank_line) {
             lines.pop();
         }
         let width = lines

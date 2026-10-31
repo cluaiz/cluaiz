@@ -56,7 +56,7 @@ flowchart LR
   intro entry at construction. It scrolls with conversation, returns when scrolling back and can
   be evicted by the same retention limit. Later metadata status changes do not repin that intro.
   Artwork stays owned by the caller; the composer/help remain outside the scrollable region.
-  Blank edge lines are removed from artwork; the first visible row's left padding is preserved.
+  Empty whitespace/Braille edge lines are removed from artwork; the first visible row's left padding is preserved.
 - `Transcript::set_active` selects an entry by stable ID. `visible_animated` prefixes only its first
   header row with the caller's current spinner frame; animation does not rebuild the wrapping cache.
   `remove` clears temporary preparation/writing rows. Completed results stay in retained entries.
