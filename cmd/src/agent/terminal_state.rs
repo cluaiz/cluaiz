@@ -21,6 +21,8 @@ pub struct State {
     progress_id: String,
     tool_preparing: bool,
     thinking: bool,
+    /// The running tool showed a change (write / edit): its row stays open when it ends
+    diff: bool,
     /// The context after the last answer (tokens, size): the live footer adds the tokens being generated
     context: Option<(usize, usize)>,
 }
@@ -42,6 +44,20 @@ mod tests {
             .map(ToString::to_string)
             .collect::<Vec<_>>()
             .join("\n")
+    }
+
+    #[test]
+    fn a_made_change_stays_open_and_coloured() {
+        let mut state = state();
+        state.apply(Event::ToolStart("edit_file".into(), "src/a.rs".into()));
+        state.apply(Event::Diff("- old line
++ new line".into()));
+        state.apply(Event::ToolEnd { ok: true, summary: "1 replaced".into(), content: String::new() });
+        let rows = state.app.transcript.visible(120, 60);
+        let removed = rows.iter().find(|row| row.to_string() == "- old line").expect("diff open");
+        let added = rows.iter().find(|row| row.to_string() == "+ new line").expect("diff open");
+        assert_eq!(format!("{:?}", removed.style.fg), "Some(Red)");
+        assert_eq!(format!("{:?}", added.style.fg), "Some(Green)");
     }
 
     #[test]
@@ -219,6 +235,7 @@ impl State {
             progress_id: String::new(),
             tool_preparing: false,
             thinking: false,
+            diff: false,
             context: None,
         }
     }
@@ -413,6 +430,7 @@ impl State {
                     self.tool_id = self.id("tool");
                 }
                 self.tool_preparing = false;
+                self.diff = false;
                 self.tool_name = name;
                 self.tool = target;
                 Self::entry(
@@ -425,7 +443,8 @@ impl State {
                 self.active(&self.tool_id.clone());
             }
             Event::Diff(diff) => {
-                self.tool.push_str(&format!("\nProposed change:\n{diff}"));
+                self.diff = true;
+                self.tool.push_str(&format!("\nChange:\n{diff}"));
                 Self::entry(
                     &mut self.app,
                     &self.tool_id,
@@ -447,10 +466,12 @@ impl State {
                 if !content.is_empty() {
                     self.tool.push_str(&format!("\n{content}"));
                 }
+                // A made change stays open, coloured; the rest fold away
+                let role = if ok && std::mem::take(&mut self.diff) { Role::Change } else { Role::Tool };
                 Self::entry(
                     &mut self.app,
                     &self.tool_id,
-                    Role::Tool,
+                    role,
                     &format!(
                         "{} · {}: {summary}",
                         self.tool_name,

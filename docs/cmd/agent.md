@@ -281,6 +281,7 @@ same settings can be typed directly: `/mode plan`, `/think off`, `/effort high`,
 | `/sessions` | The saved conversations of this folder, newest first, with their ids |
 | `/undo` | Put back the files the last request changed (new files are deleted); the model is told |
 | `/diff` | `git diff` of the files the last request changed (in a git repository) |
+| `/code`, `/code <path>` | Open the folder in VS Code with the files the last request changed (their changes are in its Source Control view), or that file or folder. Needs VS Code's `code` command on PATH |
 | `/bye`, `/exit` | Leave (Ctrl+Q in the UI; Ctrl+D in plain mode) |
 | `/?`, `/help` | Show these commands |
 | `/theme` | Open the terminal UI theme picker |

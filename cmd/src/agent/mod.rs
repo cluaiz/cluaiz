@@ -390,6 +390,10 @@ impl Agent {
                 }
             }
             "/diff" => diff(self.tools.root(), &self.tools.checkpoints.last_files()),
+            _ if text == "/code" || text.starts_with("/code ") => {
+                let target = text.trim_start_matches("/code").trim();
+                open_in_vscode(self.tools.root(), target, &self.tools.checkpoints.last_files())
+            }
             "/yes" => {
                 self.tools.set_mode(tools::Mode::Full);
                 "Changes and commands now run without asking (existing hard denials still apply)."
@@ -720,6 +724,40 @@ fn message(role: &str, text: String) -> ChatMessage<Vec<PreparedPart>> {
     ChatMessage {
         role: role.into(),
         content: vec![PreparedPart::Text { text }],
+    }
+}
+
+/// `/code`: the folder in VS Code with the files the last request changed (their changes are in
+/// its Source Control view); `/code <path>` opens that file or folder
+fn open_in_vscode(root: &std::path::Path, target: &str, changed: &[PathBuf]) -> String {
+    let paths: Vec<PathBuf> = if target.is_empty() {
+        std::iter::once(root.to_path_buf()).chain(changed.iter().filter(|p| p.is_file()).cloned()).collect()
+    } else {
+        vec![root.join(target)]
+    };
+    if let Some(missing) = paths.iter().find(|path| !path.exists()) {
+        return format!("Not found: {}", missing.display());
+    }
+    // `code` is a .cmd script on Windows, so it runs through cmd
+    let mut command = if cfg!(windows) {
+        let mut command = std::process::Command::new("cmd");
+        command.args(["/C", "code"]);
+        command
+    } else {
+        std::process::Command::new("code")
+    };
+    let status = command
+        .args(&paths)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status();
+    match status {
+        Ok(status) if status.success() => match paths.len() {
+            1 => format!("Opened {} in VS Code.", paths[0].display()),
+            n => format!("Opened the folder in VS Code with the {} changed files (Source Control shows the changes).", n - 1),
+        },
+        _ => "VS Code's `code` command was not found. In VS Code: Ctrl+Shift+P, \"Shell Command: Install 'code' command in PATH\" (on Windows the installer adds it), then open a new terminal.".into(),
     }
 }
 

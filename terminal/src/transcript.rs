@@ -28,6 +28,8 @@ pub enum Role {
     ThinkingRunning,
     Tool,
     ToolRunning,
+    /// A finished file change: open, its `+` / `-` lines coloured; it folds like a tool row
+    Change,
     Error,
     #[default]
     Notice,
@@ -157,7 +159,7 @@ impl Transcript {
             label: display_text(label),
             content: display_text(content),
             role,
-            expanded: matches!(role, Role::ThinkingRunning | Role::ToolRunning),
+            expanded: matches!(role, Role::ThinkingRunning | Role::ToolRunning | Role::Change),
             intro: None,
         };
         match self.entries.iter().position(|old| old.id == id) {
@@ -238,7 +240,7 @@ impl Transcript {
                     Role::Thinking | Role::ThinkingRunning => palette.muted.italic(),
                     Role::Tool | Role::ToolRunning | Role::Notice => palette.muted,
                     Role::Error => palette.accent.bold(),
-                    Role::Assistant => palette.base,
+                    Role::Assistant | Role::Change => palette.base,
                 };
                 let text = if role == Role::Intro {
                     self.brand_blink
@@ -248,7 +250,12 @@ impl Transcript {
                 } else {
                     &row.text
                 };
-                let mut line = text.clone().style(text.style.patch(style));
+                // A change keeps its own line colours (green added, red removed)
+                let mut line = if role == Role::Change {
+                    text.clone().style(style.patch(text.style))
+                } else {
+                    text.clone().style(text.style.patch(style))
+                };
                 if row.logical == 0
                     && (index == 0 || self.rows[index - 1].entry != row.entry)
                     && self.active.as_deref() == Some(self.entries[row.entry].id.as_str())
@@ -268,9 +275,9 @@ impl Transcript {
         let expand = self
             .entries
             .iter()
-            .any(|entry| matches!(entry.role, Role::Thinking | Role::Tool) && !entry.expanded);
+            .any(|entry| matches!(entry.role, Role::Thinking | Role::Tool | Role::Change) && !entry.expanded);
         for entry in &mut self.entries {
-            if matches!(entry.role, Role::Thinking | Role::Tool) {
+            if matches!(entry.role, Role::Thinking | Role::Tool | Role::Change) {
                 entry.expanded = expand;
             }
         }
@@ -339,7 +346,7 @@ impl Transcript {
             return;
         }
         let index = row.entry;
-        if matches!(self.entries[index].role, Role::Thinking | Role::Tool) {
+        if matches!(self.entries[index].role, Role::Thinking | Role::Tool | Role::Change) {
             self.capture_anchor();
             self.entries[index].expanded = !self.entries[index].expanded;
             self.dirty = true;
@@ -421,13 +428,13 @@ impl Transcript {
                 Role::Intro => "",
                 Role::User => "> ",
                 Role::Assistant => "● ",
-                Role::Thinking | Role::Tool if entry.expanded => "▾ ",
-                Role::Thinking | Role::Tool => "▸ ",
+                Role::Thinking | Role::Tool | Role::Change if entry.expanded => "▾ ",
+                Role::Thinking | Role::Tool | Role::Change => "▸ ",
                 Role::ThinkingRunning | Role::ToolRunning => "▾ ",
                 Role::Error => "! ",
                 Role::Notice => "",
             };
-            let collapsed = matches!(entry.role, Role::Thinking | Role::Tool) && !entry.expanded;
+            let collapsed = matches!(entry.role, Role::Thinking | Role::Tool | Role::Change) && !entry.expanded;
             let label = format!(
                 "{prefix}{}{}",
                 entry.label,
@@ -454,11 +461,20 @@ impl Transcript {
                 .map(|rows| rows.iter().map(String::as_str).collect())
                 .unwrap_or_else(|| entry.content.split('\n').collect());
             for (logical, line) in lines.into_iter().enumerate().filter(|_| !collapsed) {
+                let colour = match (entry.role, line.as_bytes()) {
+                    (Role::Change, [b'+', b' ', ..]) => Some(ratatui::style::Color::Green),
+                    (Role::Change, [b'-', b' ', ..]) => Some(ratatui::style::Color::Red),
+                    _ => None,
+                };
                 for part in textwrap::wrap(line, width) {
+                    let text = Line::from(part.into_owned());
                     self.rows.push(Row {
                         entry: index,
                         logical: logical + 1,
-                        text: Line::from(part.into_owned()),
+                        text: match colour {
+                            Some(colour) => text.style(ratatui::style::Style::default().fg(colour)),
+                            None => text,
+                        },
                     });
                 }
             }
