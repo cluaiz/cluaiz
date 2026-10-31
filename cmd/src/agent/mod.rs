@@ -10,6 +10,7 @@ mod completion;
 mod display;
 mod terminal;
 mod terminal_state;
+pub mod sessions;
 pub mod tools;
 mod validation;
 
@@ -73,6 +74,12 @@ pub struct AgentArgs {
     /// Load the model in this process even when `cluaiz serve` is running (default: use the server)
     #[arg(long)]
     pub local: bool,
+    /// Go on with the last conversation in this folder
+    #[arg(long = "continue", conflicts_with = "resume")]
+    pub continue_last: bool,
+    /// Go on with a saved conversation of this folder (its id: see /sessions)
+    #[arg(long, value_name = "ID")]
+    pub resume: Option<String>,
     /// Added to the agent's system prompt (-sys)
     #[arg(long = "system-prompt", value_name = "TEXT")]
     pub system_prompt: Option<String>,
@@ -157,7 +164,14 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
         session,
         history: Vec::new(),
         display: Display::default(),
+        session_id: sessions::new_id(),
     };
+    if args.continue_last || args.resume.is_some() {
+        let saved = sessions::load(agent.tools.root(), args.resume.as_deref())
+            .ok_or_else(|| eyre!("no saved conversation {}in this folder (see /sessions)", args.resume.as_deref().map(|id| format!("{id} ")).unwrap_or_default()))?;
+        agent.history = sessions::history(&saved);
+        agent.session_id = saved.id;
+    }
     // Installed skills, plugins and MCP servers, with the skills' instructions
     let skills = agent.tools.load_installed().await;
     if !skills.trim().is_empty() {
@@ -209,6 +223,8 @@ struct Agent {
     system: String,
     history: Vec<ChatMessage<Vec<PreparedPart>>>,
     display: Display,
+    /// The saved conversation this one writes to (`~/.cluaiz/sessions`)
+    session_id: String,
 }
 
 impl Agent {
@@ -242,8 +258,24 @@ impl Agent {
             }
             "/clear" => {
                 self.history.clear();
+                // The cleared conversation stays saved; the next request starts a new one
+                self.session_id = sessions::new_id();
                 "Conversation cleared.".into()
             }
+            "/sessions" => {
+                let saved = sessions::list(self.tools.root());
+                if saved.is_empty() {
+                    "No saved conversations in this folder yet.".into()
+                } else {
+                    let rows: Vec<String> = saved
+                        .iter()
+                        .take(15)
+                        .map(|s| format!("{}  {}  {:>3} messages  {}{}", s.id, s.updated, s.messages.len(), s.title, if s.id == self.session_id { "  (this one)" } else { "" }))
+                        .collect();
+                    format!("{}\nGo on with one: cluaiz agent --resume <id>   (the last one: --continue)", rows.join("\n"))
+                }
+            }
+            "/compact" => return None,
             "/yes" => {
                 self.tools.strict = false;
                 self.tools.allow_all = true;
@@ -282,7 +314,46 @@ impl Agent {
         self.turn_prepared(text, Vec::new()).await
     }
 
-    async fn turn_prepared(&mut self, text: &str, mut parts: Vec<PreparedPart>) -> Result<()> {
+    /// One request, then the conversation is saved (also after an error: what happened stays)
+    async fn turn_prepared(&mut self, text: &str, parts: Vec<PreparedPart>) -> Result<()> {
+        let result = if text.trim() == "/compact" {
+            self.compact().await
+        } else {
+            self.request(text, parts).await
+        };
+        if !self.history.is_empty() {
+            if let Err(error) = sessions::save(self.tools.root(), &self.session_id, &self.session.model_id, &self.history) {
+                self.display.emit(Event::Message("Session".into(), format!("Not saved: {error}")));
+            }
+        }
+        result
+    }
+
+    /// `/compact`: the model writes a summary of the conversation, which then replaces it
+    async fn compact(&mut self) -> Result<()> {
+        if self.history.is_empty() {
+            self.display.emit(Event::Message("Compact".into(), "Nothing to compact yet.".into()));
+            return Ok(());
+        }
+        let before = self.history.len();
+        let mut messages = Vec::with_capacity(self.history.len() + 2);
+        messages.push(message("system", self.system.clone()));
+        messages.extend(self.history.iter().cloned());
+        messages.push(message("user", COMPACT_REQUEST.into()));
+        let mut out = self.display.output(false);
+        let (summary, report) = self.session.generate_prepared(messages, None, &mut *out).await?;
+        if report.cancelled || summary.trim().is_empty() {
+            return Err(eyre!("Compact stopped; the conversation is unchanged"));
+        }
+        self.history = vec![
+            message("user", format!("Summary of our conversation so far (it replaced the full history):\n{}", summary.trim())),
+            message("assistant", "Understood. I will continue from this summary.".into()),
+        ];
+        self.display.emit(Event::Message("Compact".into(), format!("{before} messages replaced by this summary.")));
+        Ok(())
+    }
+
+    async fn request(&mut self, text: &str, mut parts: Vec<PreparedPart>) -> Result<()> {
         if self.display.closing() {
             return Ok(());
         }
@@ -419,6 +490,9 @@ fn message(role: &str, text: String) -> ChatMessage<Vec<PreparedPart>> {
         content: vec![PreparedPart::Text { text }],
     }
 }
+
+/// What `/compact` asks the model for
+const COMPACT_REQUEST: &str = "Summarize this conversation so the work can go on from the summary alone: the goal, what was decided, files read or changed (with paths), commands run and their results, and the open next steps. Be concise; use a short list. Do not call tools.";
 
 /// Below this context a written file or a long tool result often does not fit
 const SMALL_CONTEXT: u32 = 8192;
