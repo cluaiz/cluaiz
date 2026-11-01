@@ -200,3 +200,50 @@ fn a_call_row_shows_every_argument() {
     assert_eq!(call("write_file", r#"{"path":"hi.txt","content":"a\nb"}"#), "hi.txt · 2 lines");
     assert_eq!(call("run_command", r#"{"command":"cargo test","timeout":300}"#), "cargo test · timeout 300s");
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn remember_asks_even_in_full_access_and_saves_only_a_confirmed_fact() {
+    use std::sync::{mpsc, Arc};
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(dir.path().join(".git")).unwrap();
+    let (sender, receiver) = mpsc::sync_channel(64);
+    // Full Access: everything else runs without asking
+    let mut tools = Tools::new(dir.path().into(), true);
+    tools.set_display(Display::screen(sender, Arc::default()));
+    let responder = std::thread::spawn(move || {
+        let mut asked = Vec::new();
+        let mut answers = vec![ApprovalResponse::Deny, ApprovalResponse::Allow].into_iter();
+        let mut ended = 0;
+        while let Ok(event) = receiver.recv() {
+            match event {
+                Event::Approval { reason, rule, reply, .. } => {
+                    asked.push((reason, rule));
+                    reply.send(answers.next().unwrap_or(ApprovalResponse::Deny)).unwrap();
+                }
+                Event::ToolEnd { .. } => {
+                    ended += 1;
+                    if ended == 3 {
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        asked
+    });
+    let call = r#"{"name": "Test command", "fact": "Run the tests with cargo test --release -p cmd."}"#;
+    let refused = tools.run("remember", call).await;
+    assert!(refused.starts_with("Error:"), "{refused}");
+    let file = dir.path().join(".agents/memory/test-command.md");
+    assert!(!file.exists(), "a refused fact is not written");
+    let saved = tools.run("remember", call).await;
+    assert!(saved.contains("test-command.md"), "{saved}");
+    // read_item finds it in the same session
+    assert!(tools.run("read_item", r#"{"name": "test-command"}"#).await.contains("cargo test --release -p cmd"));
+    let asked = responder.join().unwrap();
+    assert_eq!(asked.len(), 2);
+    assert!(asked[0].0.contains("cargo test --release -p cmd") && asked[0].0.contains("test-command.md"), "{}", asked[0].0);
+    // Never offered as a rule to always allow
+    assert!(asked.iter().all(|(_, rule)| rule.is_none()));
+    assert!(std::fs::read_to_string(&file).unwrap().contains("status: confirmed"));
+}

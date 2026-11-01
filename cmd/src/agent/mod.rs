@@ -651,6 +651,7 @@ context    {}", plan.summary(), plan.context_reason)
     /// within the share of the context they may use, the installed skills, `--system-prompt`
     fn rebuild_system(&mut self) {
         let dir = dunce(self.tools.root().to_path_buf());
+        self.tools.memory_source = format!("cluaiz agent, model {}", self.session.model_id);
         let budget = cluaiz_agents::workspace::budget_for(self.session.plan.context_window as usize);
         self.layout = self.tools.workspace.prompt(budget);
         self.system = system_prompt(&dir, &self.layout.text, &self.installed_text, self.extra.as_deref());

@@ -92,7 +92,8 @@ So the agent can, for example:
   session with `a`).
 
 It cannot see your screen, open windows, use the internet by itself (only through a command you
-allow, such as `curl`), or remember anything after you exit.
+allow, such as `curl`). The conversation itself is gone after you exit (unless you resume it);
+what should stay goes into the project's memory (see [Project memory](#project-memory-agentsmemory)).
 
 ## What it asks before doing
 
@@ -318,7 +319,7 @@ same settings can be typed directly: `/mode plan`, `/think off`, `/effort high`,
 | `/clear` | Start a new conversation (the old one stays saved; the folder and the model stay) |
 | `/compact` | The model summarizes the conversation and the summary replaces it: frees context, keeps the thread |
 | `/plan` | Where the model runs: blocks on GPU and in RAM, context and KV cache, VRAM and RAM, and why (the header shows the placement in short) |
-| `/memory` | The AGENTS.md files in use and how much of each fits (see [Instructions](#instructions-agentsmd)) |
+| `/memory` | The AGENTS.md files, rules, workflows and memory facts in use and how much of each fits (see [Instructions](#instructions-agentsmd)) |
 | `/init` | The model reads the project and writes its `AGENTS.md` (see [Instructions](#instructions-agentsmd)) |
 | `/<workflow>` | Runs a workflow of the project, `.agents/workflows/<workflow>.md` (see [Workflows](#workflows-your-own--commands)) |
 | `/skills` | The SKILL.md skills the model can use, with where each was found (see [Skills](#skills-skillmd)) |
@@ -492,7 +493,8 @@ A project keeps all its agent files in one folder, `.agents/` at its root (the o
 ├── AGENTS.md              instructions, always read
 ├── rules/*.md             rules
 ├── workflows/*.md         step-by-step procedures
-└── skills/<name>/SKILL.md skills (see below)
+├── skills/<name>/SKILL.md skills (see below)
+└── memory/*.md            facts the model saved and you confirmed (see below)
 ```
 
 Your own rules, workflows and skills for every project go in `~/.agents/` with the same folders.
@@ -545,6 +547,39 @@ description: Cut a release
   Qwen3.8-4B, `--think off` described the steps without running them; with thinking it ran each
   step with the tools.
 
+### Project memory: `.agents/memory/`
+
+The conversation is not memory. What should be known in the next chat, on another computer or by
+another AI goes into the project, one short fact per file:
+
+```markdown
+---
+name: test-command
+description: In this project the tests run with npm run check (not npm test).
+status: confirmed
+source: cluaiz agent, model qwen3.8-4b-distill-gguf-Q4_K_M
+created: 2026-11-01T16:00:00Z
+---
+In this project the tests run with npm run check (not npm test).
+```
+
+- The model proposes a fact with the `remember` tool (when you say "remember ...", or when it
+  learns something that stays true: a decision, a convention, a command that works). You see the
+  fact and the file it goes to, and say yes or no. Nothing is saved without your yes, also with
+  `--yes` and in Full Access, and "always allow" is not offered: memory outlives the session, so a
+  sentence the model read in a file or web page must not become memory unseen.
+- In a run nobody can answer (a script, `--output-format json`), nothing is saved and the model is
+  told so.
+- A newer fact on the same subject, or with the same name, replaces the older one: the new fact
+  gets its own file (`supersedes: <old>`), the old file stays and is marked `status: superseded`
+  and `superseded_by: <new>`. Only live facts reach the model.
+- Every live fact is a line of the index (`- test-command (memory): ...`), so a new session has
+  it; `read_item` reads one in full. A fact saved now can be read with `read_item` at once and is
+  in the index from the next session on.
+- The files are plain Markdown: edit them, delete them, or commit them with the project. A fact
+  is at most 2,000 characters. `/memory` lists the live facts and how many were replaced.
+- The tool's description is the managed prompt `workspace.remember`.
+
 ### How the project's files reach the model
 
 The project's files take a share of the system prompt that follows the model's context: about a
@@ -552,7 +587,8 @@ quarter of it (the context size in tokens, as characters; 48,000 characters at m
 4,096-token context that is about 4,000 characters, with 32,768 tokens about 32,000. Within it:
 
 1. **The index** comes first, because without it the model cannot find anything: one line per
-   `model_decision` and `glob` rule, workflow and skill, with its name, kind and description.
+   `model_decision` and `glob` rule, workflow and skill, and per live memory fact, with its name,
+   kind and description (for a fact, the fact itself).
 2. **Instructions:** the AGENTS.md files, the nearest first. A file that does not fit whole is
    cut, with a note on how to read the rest.
 3. **Always-on rules,** each whole. A rule is never cut: one that does not fit goes into the index
@@ -568,7 +604,7 @@ their own; naming it in the request ("read the cerd rule") makes them use it.
 
 The headings and notes the agent adds around these files are managed prompts
 (`workspace.instructions`, `workspace.rules`, `workspace.index`, `workspace.cut`,
-`workspace.read_item`), changed like `agent.system`.
+`workspace.read_item`, `workspace.remember`), changed like `agent.system`.
 
 ## Skills: SKILL.md
 

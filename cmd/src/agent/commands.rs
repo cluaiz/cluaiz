@@ -16,7 +16,7 @@ pub const COMMANDS: &[(&str, &str)] = &[
     ("/diff", "git diff of the files the last request changed"),
     ("/code", "Open the folder in VS Code with the changed files (/code <path>: that file)"),
     ("/init", "The model reads this project and writes its AGENTS.md"),
-    ("/memory", "AGENTS.md instructions, rules and workflows in use (~/.cluaiz/AGENTS.md, .agents/)"),
+    ("/memory", "AGENTS.md instructions, rules, workflows and memory facts in use (~/.cluaiz/AGENTS.md, .agents/)"),
     ("/skills", "The SKILL.md skills the model can use (.agents/skills, ~/.agents/skills)"),
     ("/rules", "Allow and deny rules in use, from ~/.cluaiz/config/agent.json, .agents/settings.json, .agents/settings.local.json"),
     ("/sessions", "Saved conversations of this folder (--continue / --resume <id>)"),

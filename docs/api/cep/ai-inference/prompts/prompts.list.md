@@ -99,9 +99,10 @@ Lists every prompt.
 | `agent.compact_system` | The system prompt of the `/compact` request | none |
 | `workspace.instructions` | Heading of the project's AGENTS.md files in the agent's system prompt | none |
 | `workspace.rules` | Heading of the project's always-on rules | none |
-| `workspace.index` | Heading of the index of rules, workflows and skills read on demand | none |
+| `workspace.index` | Heading of the index of rules, workflows and skills read on demand, and of the project's memory facts | none |
 | `workspace.cut` | Note after an instruction file that did not fit whole | `name` |
 | `workspace.read_item` | Description of the `read_item` tool | none |
+| `workspace.remember` | Description of the `remember` tool, which proposes a fact for the project's memory (`.agents/memory/`) | none |
 | `workflow.run` | What `/<workflow>` sends: run the workflow's steps in order | `name`, `steps`, `arguments` |
 | `chat.notes_pinned` | Heading of the pinned notes in a chat's system prompt | none |
 | `chat.notes_record` | Heading of the notes that travel with the current message | none |
