@@ -32,12 +32,7 @@ pub fn load(dir: &Path, home: Option<&Path>) -> Vec<Instruction> {
     if let Some(home) = home {
         found.push(("~/.cluaiz/AGENTS.md".into(), home.join("AGENTS.md")));
     }
-    // The repository root and the folders below it down to `dir`; outside a repository only `dir`,
-    // so the files of unrelated parent folders (the home folder) are never read
-    let root = dir.ancestors().find(|folder| folder.join(".git").exists()).unwrap_or(dir);
-    let mut folders: Vec<&Path> = dir.ancestors().take_while(|folder| *folder != root).collect();
-    folders.push(root);
-    folders.reverse();
+    let (root, folders) = project_folders(dir);
     for folder in folders {
         let Some(name) = NAMES.iter().find(|name| folder.join(name).is_file()) else { continue };
         let relative = folder.strip_prefix(root).unwrap_or(folder);
@@ -66,7 +61,18 @@ pub fn load(dir: &Path, home: Option<&Path>) -> Vec<Instruction> {
     loaded
 }
 
-fn same_file(a: &Path, b: &Path) -> bool {
+/// The repository root (the folder with `.git`) and the folders from it down to `dir`, root first;
+/// outside a repository only `dir`, so files of unrelated parent folders (the home folder) are
+/// never read
+pub fn project_folders(dir: &Path) -> (&Path, Vec<&Path>) {
+    let root = dir.ancestors().find(|folder| folder.join(".git").exists()).unwrap_or(dir);
+    let mut folders: Vec<&Path> = dir.ancestors().take_while(|folder| *folder != root).collect();
+    folders.push(root);
+    folders.reverse();
+    (root, folders)
+}
+
+pub fn same_file(a: &Path, b: &Path) -> bool {
     match (a.canonicalize(), b.canonicalize()) {
         (Ok(a), Ok(b)) => a == b,
         _ => a == b,

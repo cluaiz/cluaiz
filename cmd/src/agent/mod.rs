@@ -12,6 +12,7 @@ mod terminal;
 mod terminal_state;
 mod checkpoints;
 mod instructions;
+mod skills;
 mod line_diff;
 mod rules;
 pub mod sessions;
@@ -336,6 +337,7 @@ impl Agent {
 context    {}", plan.summary(), plan.context_reason)
             }
             "/memory" => instructions::summary(&self.instructions),
+            "/skills" => self.tools.skills_summary(),
             "/sessions" => {
                 let saved = sessions::list(self.tools.root());
                 if saved.is_empty() {
