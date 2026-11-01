@@ -49,8 +49,8 @@ pub struct Tools {
     /// Enabled skills, plugins and MCP servers from `~/.cluaiz/tools`, offered next to the built-ins
     installed: Vec<String>,
     installed_schemas: Vec<Value>,
-    /// SKILL.md skills of the project and the user, read with use_skill
-    skills: Vec<cluaiz_agents::workspace::Item>,
+    /// The project's agent files (AGENTS.md, rules, workflows, skills); the model reads one with read_item
+    pub workspace: cluaiz_agents::workspace::Workspace,
     /// Files this request and the last one changed (for the summary, /undo and /diff)
     pub checkpoints: super::checkpoints::Checkpoints,
     /// `--allowed-tools` / `--disallowed-tools`
@@ -77,7 +77,7 @@ impl Tools {
             cancelled: false,
             installed: Vec::new(),
             installed_schemas: Vec::new(),
-            skills: Vec::new(),
+            workspace: Default::default(),
             checkpoints: Default::default(),
             rules,
             refused: false,
@@ -95,10 +95,9 @@ impl Tools {
             .filter(|tool| tool.enabled)
             .map(|tool| tool.id)
             .collect();
-        self.skills = super::instructions::scan(&self.root, &ids).skills;
-        let own = super::skills::prompt(&self.skills);
+        self.workspace = super::instructions::scan(&self.root, &ids);
         if ids.is_empty() {
-            return own;
+            return String::new();
         }
         let compiled = cluaiz_agents::ToolsEngine::compile_prompt_tools(&ids).await;
         let (schemas, left_out) = compiled.schemas_within(INSTALLED_SCHEMA_CHARS, "");
@@ -115,16 +114,17 @@ impl Tools {
             })
             .collect();
         self.installed = compiled.active_tool_ids;
-        [compiled.skill_instructions, own]
-            .into_iter()
-            .filter(|part| !part.trim().is_empty())
-            .collect::<Vec<_>>()
-            .join("\n\n")
+        compiled.skill_instructions
+    }
+
+    /// The project's agent files read again (after /init wrote one)
+    pub fn rescan_workspace(&mut self) {
+        self.workspace = super::instructions::scan(&self.root, &self.installed);
     }
 
     /// What /skills shows
     pub fn skills_summary(&self) -> String {
-        super::skills::summary(&self.skills, &self.root, super::instructions::user_home().as_deref())
+        super::skills::summary(&self.workspace.skills, &self.root, super::instructions::user_home().as_deref())
     }
 
     /// Names of the installed tools offered to the model
@@ -138,14 +138,8 @@ impl Tools {
     /// Built-in schemas, then the installed ones
     pub fn all_schemas(&self) -> Value {
         let mut all = Self::schemas().as_array().cloned().unwrap_or_default();
-        if !self.skills.is_empty() {
-            all.push(json!({ "type": "function", "function": {
-                "name": "use_skill",
-                "description": "Read the instructions of one of the skills listed in the system prompt. Call it before a task the skill is for, then follow them.",
-                "parameters": { "type": "object", "properties": {
-                    "name": { "type": "string", "description": "The skill's name, as listed" }
-                }, "required": ["name"] }
-            }}));
+        if let Some(schema) = self.workspace.read_item_schema() {
+            all.push(schema);
         }
         all.extend(self.installed_schemas.iter().cloned());
         Value::Array(all)
@@ -322,12 +316,13 @@ impl Tools {
                 Some(command) => self.run_command(&command, number("timeout").unwrap_or(120).clamp(1, 600)).await,
                 None => Err("give a command".into()),
             },
-            "use_skill" if !self.skills.is_empty() => match text("name") {
-                Some(skill) => match self.rules.check("use_skill", &skill) {
+            // `use_skill` is the name this tool had before rules and workflows joined the index
+            cluaiz_agents::workspace::READ_ITEM | "use_skill" => match text("name") {
+                Some(item) => match self.rules.check(cluaiz_agents::workspace::READ_ITEM, &item) {
                     super::rules::Verdict::Deny(reason) => Err(reason),
-                    _ => super::skills::read(&self.skills, &skill),
+                    _ => self.workspace.read_item(&item, text("kind").as_deref()),
                 },
-                None => Err("give the skill's name".into()),
+                None => Err("give the name, as listed".into()),
             },
             other => self.run_installed(other, arguments).await,
         };
@@ -823,7 +818,7 @@ fn describe_call(name: &str, args: &Value) -> String {
             (offset, limit) => format!("{} · lines from {}, at most {}", text("path"), offset.unwrap_or(1), limit.unwrap_or(READ_LINES as u64)),
         },
         "list_dir" => if text("path").is_empty() { ".".into() } else { text("path").to_owned() },
-        "use_skill" => text("name").to_owned(),
+        "read_item" | "use_skill" => text("name").to_owned(),
         "write_file" => format!("{} · {} lines", text("path"), text("content").lines().count()),
         "edit_file" => {
             let all = args.get("replace_all").and_then(Value::as_bool).unwrap_or(false);

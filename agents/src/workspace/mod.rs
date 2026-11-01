@@ -15,8 +15,10 @@
 //! the files each time; nobody writes or maintains it.
 
 mod instructions;
+mod prompt;
 
 pub use instructions::{Instruction, BUDGET};
+pub use prompt::{budget_for, Part, Placement, WorkspacePrompt, READ_ITEM};
 
 use std::path::{Path, PathBuf};
 
@@ -125,7 +127,7 @@ impl Workspace {
     pub fn scan(dir: &Path, homes: Homes, installed: &[String]) -> Self {
         let (root, folders) = project_folders(dir);
         let mut workspace = Workspace { root: root.to_path_buf(), ..Default::default() };
-        workspace.instructions = instructions::load(dir, homes.cluaiz, BUDGET, &mut workspace.problems);
+        workspace.instructions = instructions::load(dir, homes.cluaiz, usize::MAX, &mut workspace.problems);
 
         // Nearest first: the working folder up to the root, then the user's own
         let mut places: Vec<(PathBuf, String)> = Vec::new();
