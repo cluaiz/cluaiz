@@ -27,6 +27,7 @@ Fixed. It now prints 4.0, the average of [2, 4, 6].
 - [Commands inside the agent](#commands-inside-the-agent)
 - [One task from a script](#one-task-from-a-script)
 - [Instructions: AGENTS.md](#instructions-agentsmd)
+- [Skills: SKILL.md](#skills-skillmd)
 - [Choosing a model and a context size](#choosing-a-model-and-a-context-size)
 - [All options](#all-options)
 - [Limits](#limits)
@@ -280,6 +281,7 @@ same settings can be typed directly: `/mode plan`, `/think off`, `/effort high`,
 | `/compact` | The model summarizes the conversation and the summary replaces it: frees context, keeps the thread |
 | `/plan` | Where the model runs: blocks on GPU and in RAM, context and KV cache, VRAM and RAM, and why (the header shows the placement in short) |
 | `/memory` | The AGENTS.md files in use and how much of each fits (see [Instructions](#instructions-agentsmd)) |
+| `/skills` | The SKILL.md skills the model can use, with where each was found (see [Skills](#skills-skillmd)) |
 | `/sessions` | The saved conversations of this folder, newest first, with their ids |
 | `/undo` | Put back the files the last request changed (new files are deleted); the model is told |
 | `/diff` | `git diff` of the files the last request changed (in a git repository) |
@@ -402,6 +404,34 @@ read when the agent starts. `--system-prompt "..."` adds instructions for one ru
 The agent's own instructions tell the model the folder, the operating system and the shell, to use
 the tools instead of guessing, never to claim it did something it did not, to read a file before
 editing it, and to end with a short summary.
+
+## Skills: SKILL.md
+
+A skill is a folder with a `SKILL.md` file: `name` and `description` in its front matter, the
+instructions under it, and any scripts or templates it refers to next to it. It is the Agent Skills
+format, so the same folder works in Codex, Cursor, GitHub Copilot and Antigravity.
+
+```markdown
+---
+name: react-app
+description: Create a new React app or add React pages
+---
+Create React apps with: npm create vite@latest <name> -- --template react
+```
+
+The agent finds skills in, nearest first (a nearer skill hides a farther one of the same name):
+
+1. `.agents/skills/<skill>/SKILL.md` in the working folder and in each folder up to the repository
+   root.
+2. `~/.cluaiz/tools/skills/<skill>/SKILL.md`, for a skill written there by hand (installed skills are
+   offered as [installed tools](#installed-tools)).
+3. `~/.agents/skills/<skill>/SKILL.md`: your skills for every project and every agent.
+
+Only each skill's name and description go into the prompt (3,000 characters for the list), so a
+small context stays free. The model reads the instructions of the skill a task needs with the
+`use_skill` tool, which never asks; `--disallowed-tools "use_skill"` turns it off. `/skills` lists
+the skills. Small models do not always pick a skill on their own; naming it in the request ("use
+the react-app skill") makes them use it.
 
 ## Using a running `cluaiz serve`
 
