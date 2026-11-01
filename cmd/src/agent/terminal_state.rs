@@ -73,6 +73,16 @@ mod tests {
     }
 
     #[test]
+    fn a_call_being_written_shows_its_arguments_as_text() {
+        // Cut off in the middle of the file's text, as it streams
+        let preview = super::call_preview(r#"{"path": "hi.txt", "content": "<html>\n  <p>say \"hi\"</p>\n  <bo"#);
+        assert_eq!(preview, "path: hi.txt\ncontent:\n<html>\n  <p>say \"hi\"</p>\n  <bo");
+        assert_eq!(super::call_preview(r#"{"command":"cargo test","timeout":300}"#), "command: cargo test\ntimeout: 300");
+        assert_eq!(super::call_preview(r#"{"pat"#), "pat: ");
+        assert_eq!(super::call_preview(""), "");
+    }
+
+    #[test]
     fn the_footer_shows_the_context_and_speed_live() {
         let mut state = state();
         state.apply(Event::Context { used: 1000, size: 8000, speed: Some("20.0 tok/s · 3.0s".into()) });
@@ -108,6 +118,7 @@ mod tests {
         assert!(!view.contains("Preparing response"));
         state.apply(Event::PreparingTool(
             "Preparing search · 18 bytes · 3s".into(),
+            r#"{"pattern":"needle"}"#.into(),
         ));
         assert!(!text(&mut state).contains("reasoning body"));
         state.apply(Event::ToolStart("search".into(), "needle".into()));
@@ -373,7 +384,7 @@ impl State {
                     }
                 }
             }
-            Event::PreparingTool(label) => {
+            Event::PreparingTool(label, args) => {
                 self.end_thinking();
                 self.stop_progress();
                 if !self.tool_preparing {
@@ -381,12 +392,13 @@ impl State {
                 }
                 self.tool_preparing = true;
                 self.tool_name = label;
+                // What the model is writing into the call, as it writes it
                 Self::entry(
                     &mut self.app,
                     &self.tool_id,
                     Role::ToolRunning,
                     &self.tool_name,
-                    "",
+                    &call_preview(&args),
                 );
                 self.active(&self.tool_id.clone());
             }
@@ -538,6 +550,79 @@ impl State {
             let _ = reply.send(ApprovalResponse::Deny);
         }
     }
+}
+
+/// The arguments of a call still being written, readable: one `name: value` per field, string
+/// values unescaped (a file's text shows as text, a long one under its name); the last value may
+/// be cut off
+fn call_preview(args: &str) -> String {
+    let mut fields: Vec<(String, String)> = Vec::new();
+    let mut chars = args.chars().peekable();
+    let mut key: Option<String> = None;
+    // Into the object first
+    while chars.next_if(|c| *c != '{').is_some() {}
+    chars.next();
+    loop {
+        while chars.next_if(|c| c.is_whitespace() || *c == ',' || *c == ':').is_some() {}
+        let Some(&c) = chars.peek() else { break };
+        if c == '}' {
+            break;
+        }
+        let value = if c == '"' {
+            chars.next();
+            let mut text = String::new();
+            while let Some(c) = chars.next() {
+                match c {
+                    '"' => break,
+                    '\\' => match chars.next() {
+                        Some('n') => text.push('\n'),
+                        Some('t') => text.push('\t'),
+                        Some('r') | None => {}
+                        Some('u') => {
+                            let hex: String = chars.by_ref().take(4).collect();
+                            if let Some(ch) = u32::from_str_radix(&hex, 16).ok().and_then(char::from_u32) {
+                                text.push(ch);
+                            }
+                        }
+                        Some(other) => text.push(other),
+                    },
+                    c => text.push(c),
+                }
+            }
+            text
+        } else {
+            // A number, true / false, or a nested value: as written, to the next field
+            let mut raw = String::new();
+            let mut depth = 0i32;
+            while let Some(&c) = chars.peek() {
+                if depth == 0 && (c == ',' || c == '}') {
+                    break;
+                }
+                depth += match c { '{' | '[' => 1, '}' | ']' => -1, _ => 0 };
+                raw.push(c);
+                chars.next();
+            }
+            raw.trim().to_owned()
+        };
+        match key.take() {
+            None => key = Some(value),
+            Some(name) => fields.push((name, value)),
+        }
+    }
+    if let Some(name) = key {
+        fields.push((name, String::new()));
+    }
+    fields
+        .iter()
+        .map(|(name, value)| {
+            if value.contains('\n') {
+                format!("{name}:\n{value}")
+            } else {
+                format!("{name}: {value}")
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// The footer while an answer runs: the context grows by the tokens generated so far
