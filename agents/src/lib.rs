@@ -12,6 +12,7 @@ pub mod registry;
 pub mod skills;
 pub mod telemetry;
 pub mod tool_search;
+pub mod workspace;
 
 use std::path::{Path, PathBuf};
 use std::sync::{LazyLock, RwLock};

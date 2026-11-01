@@ -1,82 +1,23 @@
-//! The instructions the agent follows, from AGENTS.md files (the convention Codex, Cursor, Copilot,
-//! Gemini CLI and Antigravity read too): `~/.cluaiz/AGENTS.md` for every project, then one file per
-//! folder from the repository root down to the working folder, so a nearer file adds to and
-//! overrides a farther one. A folder without AGENTS.md may have CLAUDE.md or GEMINI.md instead
-//! (a project set up for those tools). All of them share one size budget; the nearest come first.
+//! The project's agent files in the agent: the AGENTS.md instructions in the system prompt, and
+//! what /memory shows. Finding the files is `cluaiz_agents::workspace` (shared with the Engine):
+//! `~/.cluaiz/AGENTS.md`, then per folder from the repository root down `.agents/AGENTS.md` and the
+//! folder's own `AGENTS.md` (or `CLAUDE.md` / `GEMINI.md`); rules, workflows and skills in
+//! `.agents/`.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-/// The file a folder's instructions are in, in this order (the first one found counts)
-const NAMES: [&str; 3] = ["AGENTS.md", "CLAUDE.md", "GEMINI.md"];
-/// Most characters of all instructions together in the system prompt
-pub const BUDGET: usize = 8_000;
+use cluaiz_agents::workspace::{Homes, Instruction, Kind, Trigger, Workspace, BUDGET};
 
-pub struct Instruction {
-    /// For the prompt and /memory: "~/.cluaiz/AGENTS.md", "AGENTS.md", "src/AGENTS.md"
-    pub label: String,
-    /// The part that is in the prompt
-    pub text: String,
-    /// Characters in the file
-    pub total: usize,
+/// The agent files for work in `dir`
+pub fn scan(dir: &Path, installed: &[String]) -> Workspace {
+    let cluaiz = cluaiz_core::EnvironmentManager::current().global_dir;
+    let user = user_home();
+    Workspace::scan(dir, Homes { cluaiz: Some(&cluaiz), user: user.as_deref() }, installed)
 }
 
-impl Instruction {
-    pub fn cut(&self) -> bool {
-        self.text.chars().count() < self.total
-    }
-}
-
-/// The instruction files for work in `dir`, farthest first; `home` is the Cluaiz home
-pub fn load(dir: &Path, home: Option<&Path>) -> Vec<Instruction> {
-    let mut found: Vec<(String, PathBuf)> = Vec::new();
-    if let Some(home) = home {
-        found.push(("~/.cluaiz/AGENTS.md".into(), home.join("AGENTS.md")));
-    }
-    let (root, folders) = project_folders(dir);
-    for folder in folders {
-        let Some(name) = NAMES.iter().find(|name| folder.join(name).is_file()) else { continue };
-        let relative = folder.strip_prefix(root).unwrap_or(folder);
-        let label = relative.join(name).display().to_string().replace('\\', "/");
-        let path = folder.join(name);
-        if !found.iter().any(|(_, seen)| same_file(seen, &path)) {
-            found.push((label, path));
-        }
-    }
-
-    // The nearest files take the budget first
-    let mut left = BUDGET;
-    let mut loaded = Vec::new();
-    for (label, path) in found.into_iter().rev() {
-        let Ok(text) = std::fs::read_to_string(&path) else { continue };
-        let text = text.trim();
-        if text.is_empty() {
-            continue;
-        }
-        let total = text.chars().count();
-        let kept: String = text.chars().take(left).collect();
-        left -= kept.chars().count();
-        loaded.push(Instruction { label, text: kept, total });
-    }
-    loaded.reverse();
-    loaded
-}
-
-/// The repository root (the folder with `.git`) and the folders from it down to `dir`, root first;
-/// outside a repository only `dir`, so files of unrelated parent folders (the home folder) are
-/// never read
-pub fn project_folders(dir: &Path) -> (&Path, Vec<&Path>) {
-    let root = dir.ancestors().find(|folder| folder.join(".git").exists()).unwrap_or(dir);
-    let mut folders: Vec<&Path> = dir.ancestors().take_while(|folder| *folder != root).collect();
-    folders.push(root);
-    folders.reverse();
-    (root, folders)
-}
-
-pub fn same_file(a: &Path, b: &Path) -> bool {
-    match (a.canonicalize(), b.canonicalize()) {
-        (Ok(a), Ok(b)) => a == b,
-        _ => a == b,
-    }
+/// The user's home folder (for `~/.agents/`)
+pub fn user_home() -> Option<std::path::PathBuf> {
+    std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(std::path::PathBuf::from)
 }
 
 /// The instructions as a block of the system prompt (empty without any)
@@ -94,30 +35,61 @@ pub fn prompt(loaded: &[Instruction]) -> String {
     block
 }
 
-/// What /memory shows: each file and how much of it is in the prompt
-pub fn summary(loaded: &[Instruction], dir: &Path, home: Option<&Path>) -> String {
-    // Where the files go, so they can be found and written
+fn trigger_name(trigger: Option<Trigger>) -> &'static str {
+    match trigger {
+        Some(Trigger::AlwaysOn) | None => "always on",
+        Some(Trigger::ModelDecision) => "when it fits",
+        Some(Trigger::Glob) => "for matching files",
+        Some(Trigger::Manual) => "when named",
+    }
+}
+
+/// What /memory shows: the instruction files and how much of each is in the prompt, the rules and
+/// workflows found, files that could not be used, and where the files go
+pub fn summary(workspace: &Workspace, home: Option<&Path>) -> String {
+    let display = |path: &Path| cluaiz_api::cep::roots::display(path);
     let mut places = Vec::new();
     if let Some(home) = home {
-        places.push(format!("  For every project:  {}", cluaiz_api::cep::roots::display(&home.join("AGENTS.md"))));
+        places.push(format!("  For every project:  {}", display(&home.join("AGENTS.md"))));
     }
-    places.push(format!("  For this project:   {}", cluaiz_api::cep::roots::display(&dir.join("AGENTS.md"))));
+    let agents = workspace.root.join(".agents");
+    places.push(format!("  For this project:   {}", display(&agents.join("AGENTS.md"))));
+    places.push(format!("  Rules:              {}", display(&agents.join("rules"))));
+    places.push(format!("  Workflows:          {}", display(&agents.join("workflows"))));
+    places.push(format!("  Skills:             {}", display(&agents.join("skills"))));
+
+    let mut lines = Vec::new();
+    let loaded = &workspace.instructions;
     if loaded.is_empty() {
-        return format!(
-            "No AGENTS.md instructions yet. Write them in:\n{}\nor type /init: the model reads this project and writes its AGENTS.md.",
-            places.join("\n")
-        );
+        lines.push("No AGENTS.md instructions yet (type /init: the model reads this project and writes one).".to_string());
+    } else {
+        let width = loaded.iter().map(|file| file.label.len()).max().unwrap_or(0);
+        lines.push(format!("Instructions in the prompt ({BUDGET} characters at most, nearest file first):"));
+        for file in loaded {
+            let used = file.text.chars().count();
+            let size = match (used, file.cut()) {
+                (0, _) => format!("left out: no room ({} characters)", file.total),
+                (_, true) => format!("{used} of {} characters (cut)", file.total),
+                _ => format!("{used} characters"),
+            };
+            lines.push(format!("  {:<width$}  {size}", file.label));
+        }
     }
-    let width = loaded.iter().map(|file| file.label.len()).max().unwrap_or(0);
-    let mut lines = vec![format!("Instructions in the prompt ({BUDGET} characters at most, nearest file first):")];
-    for file in loaded {
-        let used = file.text.chars().count();
-        let size = match (used, file.cut()) {
-            (0, _) => format!("left out: no room ({} characters)", file.total),
-            (_, true) => format!("{used} of {} characters (cut)", file.total),
-            _ => format!("{used} characters"),
-        };
-        lines.push(format!("  {:<width$}  {size}", file.label));
+    for (kind, title) in [(Kind::Rule, "Rules"), (Kind::Workflow, "Workflows")] {
+        let items: Vec<_> = workspace.index().filter(|item| item.kind == kind).collect();
+        if items.is_empty() {
+            continue;
+        }
+        lines.push(format!("{title}:"));
+        let width = items.iter().map(|item| item.name.len()).max().unwrap_or(0);
+        for item in items {
+            let when = if kind == Kind::Rule { format!("{}  ", trigger_name(item.trigger)) } else { String::new() };
+            let description: String = item.description.chars().take(70).collect();
+            lines.push(format!("  {:<width$}  {when}{description}  [{}]", item.name, item.source));
+        }
+    }
+    for problem in &workspace.problems {
+        lines.push(format!("! {problem}"));
     }
     lines.push("Edits take effect in a new agent session. The files:".into());
     lines.extend(places);
@@ -128,77 +100,29 @@ pub fn summary(loaded: &[Instruction], dir: &Path, home: Option<&Path>) -> Strin
 mod tests {
     use super::*;
 
-    fn tree(name: &str) -> PathBuf {
-        let root = std::env::temp_dir().join(format!("cluaiz-instructions-{name}-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&root);
-        std::fs::create_dir_all(&root).unwrap();
-        root
-    }
-
     #[test]
-    fn test_files_from_home_and_repository_root_down_to_the_folder() {
-        let base = tree("order");
-        let home = base.join("home");
-        let repo = base.join("repo");
-        let app = repo.join("apps").join("web");
-        std::fs::create_dir_all(&home).unwrap();
-        std::fs::create_dir_all(&app).unwrap();
+    fn test_prompt_keeps_the_order_and_summary_shows_rules_and_places() {
+        let base = std::env::temp_dir().join(format!("cluaiz-instructions-summary-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        let (home, repo) = (base.join("home"), base.join("repo"));
         std::fs::create_dir_all(repo.join(".git")).unwrap();
-        std::fs::write(home.join("AGENTS.md"), "Answer briefly.").unwrap();
-        std::fs::write(repo.join("AGENTS.md"), "Use npm.").unwrap();
-        // A folder set up for another tool: its file counts when AGENTS.md is not there
-        std::fs::write(repo.join("apps").join("CLAUDE.md"), "Apps use React.").unwrap();
-        std::fs::write(app.join("AGENTS.md"), "This app uses Vite.").unwrap();
-        std::fs::write(app.join("GEMINI.md"), "ignored: AGENTS.md comes first").unwrap();
-
-        let loaded = load(&app, Some(&home));
-        let labels: Vec<_> = loaded.iter().map(|file| file.label.as_str()).collect();
-        assert_eq!(labels, ["~/.cluaiz/AGENTS.md", "AGENTS.md", "apps/CLAUDE.md", "apps/web/AGENTS.md"]);
-        let block = prompt(&loaded);
-        assert!(block.find("Answer briefly").unwrap() < block.find("This app uses Vite").unwrap());
-        assert!(!block.contains("ignored"));
-        let _ = std::fs::remove_dir_all(base);
-    }
-
-    #[test]
-    fn test_outside_a_repository_only_the_folder_counts() {
-        let base = tree("norepo");
-        let dir = base.join("work");
-        std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(base.join("AGENTS.md"), "a parent folder's file").unwrap();
-        std::fs::write(dir.join("AGENTS.md"), "Work notes.").unwrap();
-        let loaded = load(&dir, None);
-        assert_eq!(loaded.len(), 1);
-        assert_eq!(loaded[0].text, "Work notes.");
-        let _ = std::fs::remove_dir_all(base);
-    }
-
-    #[test]
-    fn test_the_nearest_file_keeps_its_text_when_the_budget_runs_out() {
-        let base = tree("budget");
-        let home = base.join("home");
-        let dir = base.join("work");
+        std::fs::create_dir_all(repo.join(".agents/rules")).unwrap();
         std::fs::create_dir_all(&home).unwrap();
-        std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(home.join("AGENTS.md"), "h".repeat(3_000)).unwrap();
-        std::fs::write(dir.join("AGENTS.md"), "p".repeat(BUDGET - 1_000)).unwrap();
-        let loaded = load(&dir, Some(&home));
-        assert_eq!(loaded[1].text.len(), BUDGET - 1_000);
-        assert!(!loaded[1].cut());
-        assert_eq!(loaded[0].text.len(), 1_000);
-        assert!(loaded[0].cut());
-        assert!(summary(&loaded, &dir, Some(&home)).contains("1000 of 3000 characters (cut)"));
-        let _ = std::fs::remove_dir_all(base);
-    }
+        std::fs::write(home.join("AGENTS.md"), "Answer briefly.").unwrap();
+        std::fs::write(repo.join(".agents/AGENTS.md"), "This app uses Vite.").unwrap();
+        std::fs::write(repo.join(".agents/rules/style.md"), "---\ntrigger: model_decision\ndescription: Code style\n---\nTabs.").unwrap();
 
-    #[test]
-    fn test_no_files_tells_where_to_write_them() {
-        let base = tree("none");
-        assert!(load(&base, None).is_empty());
-        assert!(prompt(&[]).is_empty());
-        let text = summary(&[], &base, Some(&base.join("home")));
-        assert!(text.contains(&cluaiz_api::cep::roots::display(&base.join("AGENTS.md"))));
-        assert!(text.contains("/init"));
+        let workspace = Workspace::scan(&repo, Homes { cluaiz: Some(&home), user: None }, &[]);
+        let block = prompt(&workspace.instructions);
+        assert!(block.find("Answer briefly").unwrap() < block.find("This app uses Vite").unwrap());
+        let text = summary(&workspace, Some(&home));
+        assert!(text.contains(".agents/AGENTS.md"));
+        assert!(text.contains("style") && text.contains("when it fits") && text.contains("Code style"));
+        assert!(text.contains(&cluaiz_api::cep::roots::display(&repo.join(".agents").join("rules"))));
+
+        let empty = Workspace::scan(&base.join("none"), Homes::default(), &[]);
+        assert!(prompt(&empty.instructions).is_empty());
+        assert!(summary(&empty, None).contains("/init"));
         let _ = std::fs::remove_dir_all(base);
     }
 }

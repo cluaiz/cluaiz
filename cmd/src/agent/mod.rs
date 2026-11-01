@@ -190,10 +190,11 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
         print::plan(&session).await;
     }
 
-    let instructions = instructions::load(&dir, Some(&cluaiz_core::EnvironmentManager::current().global_dir));
+    // The project's agent files (.agents/, AGENTS.md); skills are listed again with the installed ones
+    let workspace = instructions::scan(&dir, &[]);
     let mut agent = Agent {
-        system: system_prompt(&dir, &instructions, args.system_prompt.as_deref()),
-        instructions,
+        system: system_prompt(&dir, &workspace.instructions, args.system_prompt.as_deref()),
+        workspace,
         tools: Tools::new(dir, args.yes),
         session,
         history: Vec::new(),
@@ -296,7 +297,7 @@ struct Agent {
     tools: Tools,
     system: String,
     /// The AGENTS.md files in the system prompt (/memory)
-    instructions: Vec<instructions::Instruction>,
+    workspace: cluaiz_agents::workspace::Workspace,
     history: Vec<ChatMessage<Vec<PreparedPart>>>,
     display: Display,
     /// The saved conversation this one writes to (`~/.cluaiz/sessions`)
@@ -352,8 +353,7 @@ impl Agent {
 context    {}", plan.summary(), plan.context_reason)
             }
             "/memory" => instructions::summary(
-                &self.instructions,
-                self.tools.root(),
+                &self.workspace,
                 Some(&cluaiz_core::EnvironmentManager::current().global_dir),
             ),
             "/init" if self.tools.root().join("AGENTS.md").is_file() => format!(
@@ -609,23 +609,23 @@ context    {}", plan.summary(), plan.context_reason)
         self.history.push(message("assistant", "Noted.".into()));
     }
 
-    /// `/compact`: the model writes a summary of the conversation, which then replaces it
     /// After `/init`: the AGENTS.md files are read again and replace the old ones in the prompt
     fn reload_instructions(&mut self) {
         let dir = dunce(self.tools.root().to_path_buf());
-        let loaded = instructions::load(&dir, Some(&cluaiz_core::EnvironmentManager::current().global_dir));
-        let before = system_prompt(&dir, &self.instructions, None);
+        let workspace = instructions::scan(&dir, &[]);
+        let before = system_prompt(&dir, &self.workspace.instructions, None);
         let Some(rest) = self.system.strip_prefix(&before).map(str::to_owned) else {
             self.display.emit(Event::Message("Agent".into(), "AGENTS.md is used from the next agent session.".into()));
             return;
         };
-        self.system = system_prompt(&dir, &loaded, None) + &rest;
-        if loaded.len() != self.instructions.len() {
+        self.system = system_prompt(&dir, &workspace.instructions, None) + &rest;
+        if workspace.instructions.len() != self.workspace.instructions.len() {
             self.display.emit(Event::Message("Agent".into(), "AGENTS.md is in use now (see /memory).".into()));
         }
-        self.instructions = loaded;
+        self.workspace = workspace;
     }
 
+    /// `/compact`: the model writes a summary of the conversation, which then replaces it
     async fn compact(&mut self) -> Result<()> {
         if self.history.is_empty() {
             self.display.emit(Event::Message("Compact".into(), "Nothing to compact yet.".into()));
@@ -930,7 +930,7 @@ fn context_note(tokens: u32) -> String {
     }
 }
 
-fn system_prompt(dir: &std::path::Path, instructions: &[instructions::Instruction], extra: Option<&str>) -> String {
+fn system_prompt(dir: &std::path::Path, instructions: &[cluaiz_agents::workspace::Instruction], extra: Option<&str>) -> String {
     let shell = if cfg!(windows) { "PowerShell" } else { "sh" };
     // The agent's own instructions: managed prompt `agent.system` (cluaiz_core::prompts)
     let mut prompt = cluaiz_core::prompts::render(
