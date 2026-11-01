@@ -79,7 +79,7 @@ async fn answer(state: &Arc<AppState>, method: &str, params: Map<String, Value>)
             Ok(json!({
                 "protocolVersion": version,
                 "capabilities": { "tools": { "listChanged": false } },
-                "serverInfo": { "name": "cluaiz-engine", "title": "Cluaiz Engine", "version": env!("CARGO_PKG_VERSION") },
+                "serverInfo": { "name": "cluaiz-engine", "title": "Cluaiz Engine", "version": cluaiz_core::VERSION },
             }))
         }
         "ping" => Ok(json!({})),

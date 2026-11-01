@@ -82,11 +82,16 @@ impl Bootstrapper {
         // 🎯 3. CLI Lifecycle Check
         let cli_info = &master_registry["components"]["cli"];
         let latest_cli = cli_info["version"].as_str().unwrap_or("");
-        let current_cli = env!("CARGO_PKG_VERSION");
+        let current_cli = cluaiz_core::VERSION;
         
         // Only a real newer release (x.y.z above this build); stderr, so command output stays clean
-        if is_newer_version(latest_cli, current_cli) {
-            eprintln!("  {} [cluaiz] Update Available: {} -> {}", "🚀".green(), current_cli, latest_cli);
+        if cluaiz_api::update::is_newer(latest_cli, current_cli) {
+            eprintln!(
+                "  {} [cluaiz] Update available: {} -> {} (run `cluaiz self update`)",
+                "🚀".green(),
+                current_cli,
+                latest_cli
+            );
         } else if latest_cli != current_cli {
             tracing::debug!("[cluaiz] Registry CLI version '{}' (this build {})", latest_cli, current_cli);
         }
@@ -372,29 +377,5 @@ impl Bootstrapper {
                 .args(&["-NoProfile", "-Command", &script])
                 .output();
         }
-    }
-}
-
-/// True when `latest` is a higher x.y.z version than `current`. Anything that is not a plain version
-/// number (e.g. a dev build tag) is never "newer".
-fn is_newer_version(latest: &str, current: &str) -> bool {
-    let parse = |v: &str| -> Option<Vec<u64>> { v.trim().trim_start_matches('v').split('.').map(|p| p.parse().ok()).collect() };
-    match (parse(latest), parse(current)) {
-        (Some(l), Some(c)) => l > c,
-        _ => false,
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::is_newer_version;
-
-    #[test]
-    fn only_real_newer_versions_count() {
-        assert!(is_newer_version("0.2.0", "0.1.0"));
-        assert!(is_newer_version("v0.1.1", "0.1.0"));
-        assert!(!is_newer_version("0.1.0", "0.1.0"));
-        assert!(!is_newer_version("dev-release", "0.1.0"));
-        assert!(!is_newer_version("0.0.9", "0.1.0"));
     }
 }

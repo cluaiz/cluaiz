@@ -8,7 +8,7 @@ pub async fn health_check() -> Json<Value> {
     Json(json!({
         "status": "alive",
         "engine": "Cluaiz Engine",
-        "version": env!("CARGO_PKG_VERSION"),
+        "version": cluaiz_core::VERSION,
         "message": "Cluaiz Engine is alive and operational."
     }))
 }

@@ -8,6 +8,7 @@ pub mod handlers;
 pub mod native;
 pub mod routes;
 pub mod state;
+pub mod update;
 pub mod url_resolver;
 pub mod utils;
 

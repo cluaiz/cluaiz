@@ -13,6 +13,7 @@ pub mod models;
 pub mod ps;
 pub mod pull;
 pub mod rm;
+pub mod self_cmd;
 pub mod run;
 pub mod show;
 pub mod status;

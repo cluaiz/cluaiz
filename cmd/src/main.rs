@@ -16,7 +16,7 @@ mod ui;
 use crate::core::bootstrapper::Bootstrapper;
 
 #[derive(Parser)]
-#[command(name = "cluaiz", bin_name = "cluaiz", about = "Run and serve local AI models", version)]
+#[command(name = "cluaiz", bin_name = "cluaiz", about = "Run and serve local AI models", version = cluaiz_core::VERSION)]
 pub struct Cli {
     /// Engine logs on stderr: -v info (with the full plan), -vv debug. The log file always has them.
     /// `cluaiz -v` alone prints the version.
@@ -53,6 +53,12 @@ enum CliCommand {
     },
     /// Show the model the running server has loaded
     Ps,
+    /// Update or uninstall Cluaiz itself (`cluaiz self update`, `cluaiz self uninstall`)
+    #[command(name = "self")]
+    SelfCmd {
+        #[command(subcommand)]
+        command: cli::self_cmd::SelfCommand,
+    },
     /// MCP server over stdio for MCP clients (Claude Desktop, Cursor), backed by the running server
     McpServer,
     /// Start the API server
@@ -357,7 +363,7 @@ async fn main() -> Result<()> {
         _ => None,
     };
     if let Some(what) = banner {
-        cluaiz_terminal::mascot::banner(&[&format!("Cluaiz {} · {}", env!("CARGO_PKG_VERSION"), what)]);
+        cluaiz_terminal::mascot::banner(&[&format!("Cluaiz {} · {}", cluaiz_core::VERSION, what)]);
     }
     ghost_note();
     let screen = match &cli.command {
@@ -412,6 +418,11 @@ async fn main() -> Result<()> {
             if let Err(e) = crate::cli::rm::execute(&model_id).await {
                 eprintln!("\n  {} [Cluaiz] Removal Error: {}\n", "❌".red(), e);
                 std::process::exit(1);
+            }
+        }
+        CliCommand::SelfCmd { command } => {
+            if let Err(e) = cli::self_cmd::execute(command).await {
+                fail("self", e);
             }
         }
         CliCommand::Ps => {

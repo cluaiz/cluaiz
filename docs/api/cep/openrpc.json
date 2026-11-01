@@ -4696,6 +4696,55 @@
     {
       "errors": [
         {
+          "code": -32010,
+          "data": {
+            "type": "update_check_failed"
+          },
+          "message": "GitHub could not be reached or returned no release"
+        }
+      ],
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": {
+              "current": "0.1.1",
+              "latest": {
+                "prerelease": true,
+                "published_at": "2026-11-01T08:00:00Z",
+                "tag": "v0.1.2",
+                "url": "https://github.com/cluaiz/cluaiz/releases/tag/v0.1.2",
+                "version": "0.1.2"
+              },
+              "update_available": true
+            }
+          }
+        }
+      ],
+      "name": "system.update_check",
+      "paramStructure": "by-name",
+      "params": [],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Whether a newer Cluaiz release is published: this Engine's version and the newest release on GitHub. Installs nothing (`cluaiz self update` does)",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "errors": [
+        {
           "code": -32004,
           "data": {
             "type": "task_not_found"

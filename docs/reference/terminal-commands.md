@@ -91,6 +91,18 @@ This is the definitive engineering reference for the `cluaiz` binary. It details
 * **Execution Flow:** Probes active Neural Engines and memory-mapped files. Detects if a daemon crashed and auto-heals stale Process IDs.
 * **API Mapping:** CEP `system.ps`.
 
+### `cluaiz self update`
+* **Usage:** `cluaiz self update [--check] [--to <version>]`
+* **Description:** Update Cluaiz to the newest release (pre-releases included, as the installers do). `--check` only says whether one is out; `--to 0.1.2` installs that release, an older one too.
+* **Execution Flow:** Reads the newest release from GitHub and compares it with this version. It then downloads that release's own installer (`install.ps1` / `install.sh` from the release tag) and runs it into the folder this `cluaiz` runs from, so the GPU pack is chosen and every file is checked against `SHA256SUMS.txt` exactly as on a first install. Models and settings stay. On Windows the installer opens in its own window once the command has exited, because a running `cluaiz.exe` and its DLLs are locked. It stops with a message when a Cluaiz server (the App or `cluaiz serve`) is running, and it refuses a development build (one inside a Cargo workspace).
+* **API Mapping:** CEP `system.update_check` (the check only; there is no update method in the API).
+
+### `cluaiz self uninstall`
+* **Usage:** `cluaiz self uninstall [--keep-models] [-y]`
+* **Description:** Remove Cluaiz from this machine.
+* **Execution Flow:** Shows what goes (the Cluaiz home `~/.cluaiz` or `CLUAIZ_HOME`, with the size of the models, and the program folder) and asks first; `-y` does not ask, and without a terminal `-y` is required. It removes the PATH entry the installer added (Windows: the user PATH; Linux and macOS: the installer's `# Cluaiz` block in `.bashrc`, `.zshrc` and `.profile`, only when the line is unchanged), then the files. `--keep-models` keeps `models/` and the model list, so a later install finds them. On Windows the program folder is deleted right after the command exits. A running Cluaiz server must be stopped first. The Cluaiz App is a separate program and is not removed.
+* **API Mapping:** None, on purpose: a remote caller must not be able to delete the Engine.
+
 ### `cluaiz status`
 * **Usage:** `cluaiz status`
 * **Description:** Show hardware status and silicon health metrics.

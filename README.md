@@ -69,6 +69,9 @@ powershell -c "irm https://cluaiz.com/install.ps1 | iex"
 curl -fsSL https://cluaiz.com/install.sh | bash
 ```
 
+Update later with `cluaiz self update` (models and settings stay); remove everything with `cluaiz self uninstall`
+(`--keep-models` keeps the models).
+
 **2. Chat with a model** (an installed model, a registry name or a Hugging Face repository; it is downloaded on
 first use):
 
