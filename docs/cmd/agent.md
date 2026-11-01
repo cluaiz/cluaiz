@@ -575,8 +575,9 @@ In this project the tests run with npm run check (not npm test).
 - The model proposes a fact with the `remember` tool (when you say "remember ...", or when it
   learns something that stays true: a decision, a convention, a command that works). You see the
   fact and the file it goes to, and say yes or no. Nothing is saved without your yes, also with
-  `--yes` and in Full Access, and "always allow" is not offered: memory outlives the session, so a
-  sentence the model read in a file or web page must not become memory unseen.
+  `--yes` and in Full Access, and "always allow in this folder" is not offered (only "do not ask
+  again this session"): memory outlives the session, so a sentence the model read in a file or
+  web page must not become memory unseen.
 - In a run nobody can answer (a script, `--output-format json`), nothing is saved and the model is
   told so.
 - A newer fact on the same subject, or with the same name, replaces the older one: the new fact
@@ -588,6 +589,11 @@ In this project the tests run with npm run check (not npm test).
 - The files are plain Markdown: edit them, delete them, or commit them with the project. A fact
   is at most 2,000 characters. `/memory` lists the live facts and how many were replaced.
 - The tool's description is the managed prompt `workspace.remember`.
+- The App reads the same files through CEP: [`workspace.index`](../api/cep/filesystem/workspace/workspace.index.md),
+  [`workspace.item`](../api/cep/filesystem/workspace/workspace.item.md),
+  [`workspace.memory`](../api/cep/filesystem/workspace/workspace.memory.md) and
+  [`workspace.remember`](../api/cep/filesystem/workspace/workspace.remember.md) (after the user
+  confirms; not offered to MCP clients).
 
 ### How the project's files reach the model
 

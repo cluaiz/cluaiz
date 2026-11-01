@@ -152,6 +152,10 @@
           { "slug": "cep-fs-rename", "title": "fs.rename", "file_path": "docs/api/cep/filesystem/fs/fs.rename.md" },
           { "slug": "cep-fs-write", "title": "fs.write", "file_path": "docs/api/cep/filesystem/fs/fs.write.md" },
           { "slug": "cep-workspace-get", "title": "workspace.get", "file_path": "docs/api/cep/filesystem/workspace/workspace.get.md" },
+          { "slug": "cep-workspace-index", "title": "workspace.index", "file_path": "docs/api/cep/filesystem/workspace/workspace.index.md" },
+          { "slug": "cep-workspace-item", "title": "workspace.item", "file_path": "docs/api/cep/filesystem/workspace/workspace.item.md" },
+          { "slug": "cep-workspace-memory", "title": "workspace.memory", "file_path": "docs/api/cep/filesystem/workspace/workspace.memory.md" },
+          { "slug": "cep-workspace-remember", "title": "workspace.remember", "file_path": "docs/api/cep/filesystem/workspace/workspace.remember.md" },
           { "slug": "cep-workspace-set", "title": "workspace.set", "file_path": "docs/api/cep/filesystem/workspace/workspace.set.md" }
         ]
       },
