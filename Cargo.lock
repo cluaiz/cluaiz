@@ -832,7 +832,7 @@ dependencies = [
 
 [[package]]
 name = "cluaiz-agents"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -856,7 +856,7 @@ dependencies = [
 
 [[package]]
 name = "cluaiz-api"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -915,7 +915,7 @@ dependencies = [
 
 [[package]]
 name = "cluaiz-cep"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "schemars",
@@ -931,7 +931,7 @@ dependencies = [
 
 [[package]]
 name = "cluaiz-context"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "chrono",
  "serde",
@@ -940,7 +940,7 @@ dependencies = [
 
 [[package]]
 name = "cluaiz-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -956,7 +956,7 @@ dependencies = [
 
 [[package]]
 name = "cluaiz-ffi"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "cluaiz-api",
  "cluaiz-cep",
@@ -966,7 +966,7 @@ dependencies = [
 
 [[package]]
 name = "cluaiz-hw"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "cluaiz-core",
@@ -982,7 +982,7 @@ dependencies = [
 
 [[package]]
 name = "cluaiz-media"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "audiopus",
@@ -1012,7 +1012,7 @@ dependencies = [
 
 [[package]]
 name = "cluaiz-models"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1036,7 +1036,7 @@ dependencies = [
 
 [[package]]
 name = "cluaiz-plan"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "cluaiz-core",
@@ -1049,7 +1049,7 @@ dependencies = [
 
 [[package]]
 name = "cluaiz-runtime"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -1069,7 +1069,7 @@ dependencies = [
 
 [[package]]
 name = "cluaiz-security"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1083,7 +1083,7 @@ dependencies = [
 
 [[package]]
 name = "cluaiz-terminal"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "crossterm 0.29.0",
  "ratatui",
@@ -1102,7 +1102,7 @@ dependencies = [
 
 [[package]]
 name = "cmd"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "arboard",
@@ -2812,7 +2812,7 @@ checksum = "4744e383959f0db86ede514b809b1c53251889093803c05267acc7d4e7030d70"
 
 [[package]]
 name = "llama-engine"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -3357,7 +3357,7 @@ dependencies = [
 
 [[package]]
 name = "onnx-engine"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -3605,7 +3605,7 @@ checksum = "19f132c84eca552bf34cab8ec81f1c1dcc229b811638f9d283dceabe58c5569e"
 
 [[package]]
 name = "plugin_testing"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "reqwest 0.13.4",
  "serde",
