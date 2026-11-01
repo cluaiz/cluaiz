@@ -320,7 +320,7 @@ same settings can be typed directly: `/mode plan`, `/think off`, `/effort high`,
 | `/compact` | The model summarizes the conversation and the summary replaces it: frees context, keeps the thread |
 | `/plan` | Where the model runs: blocks on GPU and in RAM, context and KV cache, VRAM and RAM, and why (the header shows the placement in short) |
 | `/memory` | The AGENTS.md files, rules, workflows and memory facts in use and how much of each fits (see [Instructions](#instructions-agentsmd)) |
-| `/init` | The model reads the project and writes its `AGENTS.md` (see [Instructions](#instructions-agentsmd)) |
+| `/init` | The model reads the project and writes `.agents/AGENTS.md`, for code or for documents (see [Instructions](#instructions-agentsmd)) |
 | `/<workflow>` | Runs a workflow of the project, `.agents/workflows/<workflow>.md` (see [Workflows](#workflows-your-own--commands)) |
 | `/skills` | The SKILL.md skills the model can use, with where each was found (see [Skills](#skills-skillmd)) |
 | `/rules` | The agent settings files that were read, and every allow and deny rule in use with its file (see [Agent settings files](#agent-settings-files)) |
@@ -461,13 +461,22 @@ with a note, and the model can read all of it with `read_item` and the file's la
 [How the project's files reach the model](#how-the-projects-files-reach-the-model)). The files are
 read when the agent starts. `--system-prompt "..."` adds instructions for one run.
 
-**`/init`** writes the project's `AGENTS.md` for you, as `/init` does in Codex and Claude Code: the
-model lists the folder, reads the README and the build or package files, and creates `AGENTS.md`
-in the working folder (Project, Build and test, Code style, Rules). It asks before writing the file
-like any other change, and the file is in use for the rest of the session. Read it afterwards: a
-small model can add a command the project does not use. When `AGENTS.md` is already there, `/init`
-says so and changes nothing. `/memory` shows the full paths of both files, also when they are not
-there yet.
+**`/init`** sets the project up for agents, as `/init` does in Codex and Claude Code: the model
+lists the folder, reads the README and the files that say what the project is, and writes
+`.agents/AGENTS.md` at the project root (the repository root, else the working folder).
+
+- For code it writes the sections Project, Build and test, Code style and Rules, from the build
+  or package files. For a folder of documents, notes or spreadsheets (letters, minutes, reports)
+  it reads a few of the documents and writes Project, Conventions (file names, formats, language
+  and tone), Common tasks and Rules.
+- It asks before writing the file like any other change. Once the file is written, the agent
+  makes the empty folders `.agents/rules/`, `workflows/`, `skills/` and `memory/`, so you see
+  where each kind of file goes. The file is in use for the rest of the session.
+- When the project has instructions already (`.agents/AGENTS.md`, `AGENTS.md`, `CLAUDE.md` or
+  `GEMINI.md`), `/init` names them and changes nothing.
+- Read the file afterwards: a small model can add a command the project does not use.
+
+`/memory` shows the full paths of the files, also when they are not there yet.
 
 The agent's own instructions tell the model the folder, the operating system and the shell, to use
 the tools instead of guessing, never to claim it did something it did not, to read a file before

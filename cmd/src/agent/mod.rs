@@ -366,11 +366,10 @@ context    {}", plan.summary(), plan.context_reason)
                 &self.layout,
                 Some(&cluaiz_core::EnvironmentManager::current().global_dir),
             ),
-            "/init" if self.tools.root().join("AGENTS.md").is_file() => format!(
-                "{} is already there. Edit it yourself, or delete it and type /init again.",
-                cluaiz_api::cep::roots::display(&self.tools.root().join("AGENTS.md"))
-            ),
-            "/init" => return None,
+            "/init" => match instructions::init_target(&self.tools.workspace) {
+                Err(already) => already,
+                Ok(_) => return None,
+            },
             "/skills" => self.tools.skills_summary(),
             "/rules" => self.settings.summary(&self.tools.rules),
             "/sessions" => {
@@ -514,9 +513,23 @@ context    {}", plan.summary(), plan.context_reason)
             );
             self.request(&request, parts).await
         } else if text.trim() == "/init" {
-            let result = self.request(&cluaiz_core::prompts::text("agent.init"), parts).await;
-            self.reload_instructions();
-            result
+            match instructions::init_target(&self.tools.workspace) {
+                Err(already) => {
+                    self.display.emit(Event::Message("Agent".into(), already));
+                    Ok(())
+                }
+                Ok(target) => {
+                    // As the model passes it to write_file: relative to the working folder when inside it
+                    let path = target.strip_prefix(self.tools.root()).map(|p| p.display().to_string().replace('\\', "/")).unwrap_or_else(|_| cluaiz_api::cep::roots::display(&target));
+                    let result = self.request(&cluaiz_core::prompts::render("agent.init", &[("path", &path)]), parts).await;
+                    let made = instructions::make_folders(&self.tools.workspace.root);
+                    if !made.is_empty() {
+                        self.display.emit(Event::Message("Agent".into(), format!("Made the empty folders {} for rules, workflows, skills and memory.", made.join(", "))));
+                    }
+                    self.reload_instructions();
+                    result
+                }
+            }
         } else if let Some(id) = text.trim().strip_prefix("/model ") {
             self.switch_model(id.trim()).await
         } else if let Some(command) = text.trim().strip_prefix('!') {

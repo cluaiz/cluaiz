@@ -94,7 +94,7 @@ Lists every prompt.
 | Id | What it is | Variables |
 |---|---|---|
 | `agent.system` | The terminal agent's own instructions, at the start of its system prompt (AGENTS.md files and skills follow it) | `folder`, `os`, `arch`, `shell` |
-| `agent.init` | What `/init` asks the agent to do | none |
+| `agent.init` | What `/init` asks the agent to do: write the project's `.agents/AGENTS.md`, for code or for documents | `path` |
 | `agent.compact` | What `/compact` asks the model for (the conversation follows it) | none |
 | `agent.compact_system` | The system prompt of the `/compact` request | none |
 | `workspace.instructions` | Heading of the project's AGENTS.md files in the agent's system prompt | none |
