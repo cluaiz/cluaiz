@@ -29,7 +29,8 @@ pub enum Event {
         /// The same time in milliseconds, for the live speed
         millis: u64,
     },
-    PreparingTool(String),
+    /// A call being written: its row label and its arguments so far (raw JSON, may be cut off)
+    PreparingTool(String, String),
     Message(String, String),
     User(String),
     Error(String),
@@ -275,11 +276,10 @@ impl Output for ScreenOutput {
             cluaiz_core::GLOBAL_CANCEL_SIGNAL.store(true, Ordering::SeqCst);
         }
         let phase = match cluaiz_core::live::call() {
-            Some((name, args)) => Event::PreparingTool(format!(
-                "Preparing {name} · {} bytes · {}s",
-                args.len(),
-                self.started.elapsed().as_secs()
-            )),
+            Some((name, args)) => Event::PreparingTool(
+                format!("Preparing {name} · {} bytes · {}s", args.len(), self.started.elapsed().as_secs()),
+                args,
+            ),
             None => Event::GenerationProgress {
                 tokens: cluaiz_core::live::tokens(),
                 seconds: self.started.elapsed().as_secs(),
