@@ -172,6 +172,36 @@ impl CatalogEntry {
         }
     }
 
+    /// An entry for something that is not an installed tool (a project's rule, workflow, skill
+    /// or memory fact), matched the same way: on its name, its trigger words and its description
+    pub fn named(id: &str, category: &str, description: &str, triggers: &[&str]) -> Self {
+        let mut trigger_terms = HashSet::new();
+        let mut trigger_phrases = Vec::new();
+        for trigger in triggers {
+            let phrase = terms(trigger);
+            match phrase.len() {
+                0 => {}
+                1 => trigger_terms.extend(phrase),
+                _ => trigger_phrases.push(phrase),
+            }
+        }
+        CatalogEntry {
+            id: id.to_owned(),
+            category: category.to_owned(),
+            name: id.to_owned(),
+            title: String::new(),
+            description: description.to_owned(),
+            id_terms: terms(id),
+            name_terms: terms(id).into_iter().collect(),
+            trigger_terms,
+            trigger_phrases,
+            function_terms: HashSet::new(),
+            function_description_terms: HashSet::new(),
+            description_terms: terms(description).into_iter().collect(),
+            load_cost: 0,
+        }
+    }
+
     /// Estimated tokens `load_tool` adds for this tool
     pub fn load_cost(&self) -> usize {
         self.load_cost

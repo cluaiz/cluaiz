@@ -75,7 +75,9 @@ cluaiz agent -m qwen3 --dir ../app --yes "..."  # model, folder, no questions
   wins), sent to the model with the managed prompt `workflow.run`. The `remember` tool proposes a
   fact for the project's memory; `Tools::remember` always asks (also in Full Access) and then
   `cluaiz_agents::workspace::memory::save` writes `.agents/memory/<name>.md`, marking the facts it
-  replaces.
+  replaces. `Agent::with_context` puts the items that fit a message (`workspace::matching`) in a
+  `<context>` block before it; `Tools::glob_rules` adds a glob rule to the first result of a
+  matching file. `Tools::sent` keeps what the model already has, cleared by `/clear` and `/compact`.
 - The agent settings files (`agent/rules.rs`: `~/.cluaiz/config/agent.json`, the project's
   `.agents/settings.json` and `.agents/settings.local.json`; the first version's
   `.cluaiz/agent*.json` still read with a notice) are layered: every file's rules apply, the nearest mode wins, and a
