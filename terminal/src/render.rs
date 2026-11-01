@@ -63,17 +63,18 @@ pub fn render(frame: &mut Frame, app: &mut App) {
         let width = transcript.width.saturating_sub(2).max(1) as usize;
         let lines = approval_lines(&display_text(&approval.title), &display_text(&approval.detail), width, palette);
         // The answers stay visible under the operation: 3 options and a hint
-        const ANSWER_ROWS: usize = 5;
+        // A blank line, the answers, the key hint
+        let answer_rows = app.approval_answers().len() + 2;
         let prompt_height = transcript
             .height
-            .min((lines.len().saturating_add(2 + ANSWER_ROWS)).min(u16::MAX as usize) as u16);
+            .min((lines.len().saturating_add(2 + answer_rows)).min(u16::MAX as usize) as u16);
         let prompt = Rect::new(
             transcript.x,
             transcript.bottom().saturating_sub(prompt_height),
             transcript.width,
             prompt_height,
         );
-        let visible = (prompt.height.saturating_sub(2) as usize).saturating_sub(ANSWER_ROWS).max(1);
+        let visible = (prompt.height.saturating_sub(2) as usize).saturating_sub(answer_rows).max(1);
         app.approval_page = visible.saturating_sub(1).max(1);
         let max_scroll = lines.len().saturating_sub(visible);
         app.approval_scroll = app.approval_scroll.min(max_scroll);
@@ -96,14 +97,9 @@ pub fn render(frame: &mut Frame, app: &mut App) {
             prompt,
         );
         let inner = prompt.inner(ratatui::layout::Margin::new(1, 1));
-        if inner.height as usize > ANSWER_ROWS {
-            let answers_area = Rect::new(inner.x, inner.bottom() - ANSWER_ROWS as u16, inner.width, ANSWER_ROWS as u16);
-            let tool = display_text(&approval.title);
-            let answers = [
-                "Yes, run it".to_owned(),
-                format!("Yes, and do not ask again for {tool} this session"),
-                "No (or type what to do instead, then Enter)".to_owned(),
-            ];
+        if inner.height as usize > answer_rows {
+            let answers_area = Rect::new(inner.x, inner.bottom() - answer_rows as u16, inner.width, answer_rows as u16);
+            let answers: Vec<String> = app.approval_answers().into_iter().map(|(_, text)| display_text(&text)).collect();
             let mut rows: Vec<Line> = vec![Line::default()];
             for (index, answer) in answers.iter().enumerate() {
                 let selected = index == app.approval_choice;

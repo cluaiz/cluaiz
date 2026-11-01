@@ -210,3 +210,27 @@ fn test_long_single_line_draft_grows_inside_the_bounded_composer() {
     assert!(view.contains("-end"), "{view}");
     assert_eq!(app.draft(), text);
 }
+
+#[test]
+fn test_always_allow_in_this_folder_is_offered_only_with_a_rule() {
+    let mut app = app();
+    app.request_approval(Approval {
+        title: "run_command".into(),
+        detail: "git status".into(),
+    })
+    .unwrap();
+    assert!(!draw(&mut app, 100, 24).contains("always allow"));
+    app.handle(key(KeyCode::Esc));
+
+    app.request_approval(Approval {
+        title: "run_command".into(),
+        detail: "git status".into(),
+    })
+    .unwrap();
+    app.offer_rule("run_command(git status*)".into());
+    let view = draw(&mut app, 100, 24);
+    assert!(view.contains("Yes, and always allow run_command(git status*) in this folder"), "{view}");
+    app.handle(key(KeyCode::Down));
+    app.handle(key(KeyCode::Down));
+    assert_eq!(app.handle(key(KeyCode::Enter)), Action::Approval(ApprovalResponse::Remember));
+}

@@ -66,6 +66,7 @@ const BUILT_IN: &[&str] = &["read_file", "list_dir", "search", "write_file", "ed
 impl Tools {
     pub fn new(root: PathBuf, allow_all: bool) -> Self {
         let root = root.canonicalize().unwrap_or(root);
+        let rules = super::rules::Rules::new(&root);
         Self {
             root,
             allow_all,
@@ -78,7 +79,7 @@ impl Tools {
             installed_schemas: Vec::new(),
             skills: Vec::new(),
             checkpoints: Default::default(),
-            rules: Default::default(),
+            rules,
             refused: false,
         }
     }
@@ -125,7 +126,8 @@ impl Tools {
 
     /// What /skills shows
     pub fn skills_summary(&self) -> String {
-        super::skills::summary(&self.skills)
+        let user_home = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(PathBuf::from);
+        super::skills::summary(&self.skills, &self.root, user_home.as_deref())
     }
 
     /// Names of the installed tools offered to the model
@@ -747,9 +749,27 @@ impl Tools {
             // Told to the model: what to do now, not which flags the user could have passed
             return Err("not allowed: nobody can approve this call in this run; finish the task without it, or say what you would need".into());
         }
-        let answer = tokio::task::block_in_place(|| self.display.approve(tool, why));
+        let rule = self.rules.suggest(tool, why);
+        let answer = tokio::task::block_in_place(|| self.display.approve(tool, why, rule.as_deref()));
         match answer {
             ApprovalResponse::Allow => Ok(()),
+            ApprovalResponse::Remember => {
+                // Saved for this folder, and in use from now on in this session too
+                if let Some(rule) = rule {
+                    let file = self.root.join(".cluaiz").join("agent.local.json");
+                    match super::rules::save_allow(&file, &rule) {
+                        Ok(()) => {
+                            self.rules.allow(&rule, ".cluaiz/agent.local.json");
+                            self.display.emit(Event::Message(
+                                "Agent".into(),
+                                format!("Saved: {rule} is allowed in this folder ({})", cluaiz_api::cep::roots::display(&file)),
+                            ));
+                        }
+                        Err(error) => self.display.emit(Event::Message("Agent".into(), format!("Allowed once; the rule was not saved: {error}"))),
+                    }
+                }
+                Ok(())
+            }
             ApprovalResponse::Session => {
                 self.always.insert(tool.to_string());
                 Ok(())

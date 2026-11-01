@@ -44,6 +44,8 @@ pub enum Event {
     Approval {
         tool: String,
         reason: String,
+        /// The rule "always allow in this folder" would save, when one fits the call
+        rule: Option<String>,
         reply: mpsc::SyncSender<ApprovalResponse>,
     },
     Themes,
@@ -198,7 +200,7 @@ impl Display {
         }
     }
 
-    pub fn approve(&self, tool: &str, reason: &str) -> ApprovalResponse {
+    pub fn approve(&self, tool: &str, reason: &str, rule: Option<&str>) -> ApprovalResponse {
         if self.closing() {
             return ApprovalResponse::Deny;
         }
@@ -207,6 +209,7 @@ impl Display {
             self.emit(Event::Approval {
                 tool: tool.into(),
                 reason: reason.into(),
+                rule: rule.map(str::to_owned),
                 reply,
             });
             loop {
@@ -223,13 +226,22 @@ impl Display {
         if !std::io::stdin().is_terminal() {
             return ApprovalResponse::Deny;
         }
-        eprint!("  Allow {tool} {reason}? [y]es / [n]o / [a]lways this session, or instructions: ");
+        match rule {
+            Some(rule) => eprint!(
+                "  Allow {tool} {reason}? [y]es / [n]o / [a]lways this session / [r]emember {rule} in this folder, or instructions: "
+            ),
+            None => eprint!("  Allow {tool} {reason}? [y]es / [n]o / [a]lways this session, or instructions: "),
+        }
         let _ = std::io::stderr().flush();
         let mut line = String::new();
         if std::io::stdin().lock().read_line(&mut line).is_err() {
             return ApprovalResponse::Deny;
         }
-        ApprovalResponse::parse(&line)
+        match ApprovalResponse::parse(&line) {
+            // "r" without a rule to save is what was typed
+            ApprovalResponse::Remember if rule.is_none() => ApprovalResponse::Feedback(line.trim().to_owned()),
+            answer => answer,
+        }
     }
 }
 
@@ -331,7 +343,7 @@ mod tests {
         drop(receiver);
         let display = Display::screen(sender, Arc::default());
         assert_eq!(
-            display.approve("write_file", "file"),
+            display.approve("write_file", "file", None),
             ApprovalResponse::Deny
         );
         assert!(display.closing());

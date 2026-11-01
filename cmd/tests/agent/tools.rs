@@ -30,6 +30,48 @@ async fn strict_read_requires_permission_and_denial_does_not_expose_content() {
     assert!(!tools.strict);
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn always_allow_saves_the_rule_for_the_folder_and_stops_asking() {
+    use std::sync::{mpsc, Arc};
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(dir.path().join(".git")).unwrap();
+    let (sender, receiver) = mpsc::sync_channel(64);
+    let mut tools = Tools::new(dir.path().into(), false);
+    tools.set_display(Display::screen(sender, Arc::default()));
+    let responder = std::thread::spawn(move || {
+        let mut asked = Vec::new();
+        let mut ended = 0;
+        while let Ok(event) = receiver.recv() {
+            match event {
+                Event::Approval { rule, reply, .. } => {
+                    asked.push(rule.clone());
+                    reply.send(ApprovalResponse::Remember).unwrap();
+                }
+                Event::ToolEnd { .. } => {
+                    ended += 1;
+                    if ended == 2 {
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        asked
+    });
+    let first = tools.run("write_file", r#"{"path": "notes.txt", "content": "one"}"#).await;
+    assert!(!first.starts_with("Error:"), "{first}");
+    // The same file again: the saved rule allows it without asking
+    let second = tools.run("write_file", r#"{"path": "notes.txt", "content": "two"}"#).await;
+    assert!(!second.starts_with("Error:"), "{second}");
+    let asked = responder.join().unwrap();
+    assert_eq!(asked, [Some("write_file(notes.txt)".to_string())]);
+    let saved = std::fs::read_to_string(dir.path().join(".cluaiz/agent.local.json")).unwrap();
+    assert!(saved.contains("write_file(notes.txt)"), "{saved}");
+    // Kept out of git in this clone only
+    let exclude = std::fs::read_to_string(dir.path().join(".git/info/exclude")).unwrap();
+    assert!(exclude.lines().any(|line| line == "/.cluaiz/agent.local.json"), "{exclude}");
+}
+
 fn tools() -> (Tools, PathBuf) {
     let dir = std::env::temp_dir().join(format!("cluaiz-agent-tools-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);

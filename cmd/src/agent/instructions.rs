@@ -95,11 +95,18 @@ pub fn prompt(loaded: &[Instruction]) -> String {
 }
 
 /// What /memory shows: each file and how much of it is in the prompt
-pub fn summary(loaded: &[Instruction]) -> String {
+pub fn summary(loaded: &[Instruction], dir: &Path, home: Option<&Path>) -> String {
+    // Where the files go, so they can be found and written
+    let mut places = Vec::new();
+    if let Some(home) = home {
+        places.push(format!("  For every project:  {}", cluaiz_api::cep::roots::display(&home.join("AGENTS.md"))));
+    }
+    places.push(format!("  For this project:   {}", cluaiz_api::cep::roots::display(&dir.join("AGENTS.md"))));
     if loaded.is_empty() {
-        return "No instructions loaded. Write rules for this project in AGENTS.md, or for every project in \
-                ~/.cluaiz/AGENTS.md; they are read when the agent starts."
-            .into();
+        return format!(
+            "No AGENTS.md instructions yet. Write them in:\n{}\nor type /init: the model reads this project and writes its AGENTS.md.",
+            places.join("\n")
+        );
     }
     let width = loaded.iter().map(|file| file.label.len()).max().unwrap_or(0);
     let mut lines = vec![format!("Instructions in the prompt ({BUDGET} characters at most, nearest file first):")];
@@ -112,7 +119,8 @@ pub fn summary(loaded: &[Instruction]) -> String {
         };
         lines.push(format!("  {:<width$}  {size}", file.label));
     }
-    lines.push("Edits take effect in a new agent session.".into());
+    lines.push("Edits take effect in a new agent session. The files:".into());
+    lines.extend(places);
     lines.join("\n")
 }
 
@@ -179,7 +187,7 @@ mod tests {
         assert!(!loaded[1].cut());
         assert_eq!(loaded[0].text.len(), 1_000);
         assert!(loaded[0].cut());
-        assert!(summary(&loaded).contains("1000 of 3000 characters (cut)"));
+        assert!(summary(&loaded, &dir, Some(&home)).contains("1000 of 3000 characters (cut)"));
         let _ = std::fs::remove_dir_all(base);
     }
 
@@ -188,7 +196,9 @@ mod tests {
         let base = tree("none");
         assert!(load(&base, None).is_empty());
         assert!(prompt(&[]).is_empty());
-        assert!(summary(&[]).contains("~/.cluaiz/AGENTS.md"));
+        let text = summary(&[], &base, Some(&base.join("home")));
+        assert!(text.contains(&cluaiz_api::cep::roots::display(&base.join("AGENTS.md"))));
+        assert!(text.contains("/init"));
         let _ = std::fs::remove_dir_all(base);
     }
 }

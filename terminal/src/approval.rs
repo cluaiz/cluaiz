@@ -4,6 +4,8 @@
 pub enum ApprovalResponse {
     Allow,
     Session,
+    /// Allowed, and the rule offered with the request is saved for this folder
+    Remember,
     Deny,
     Feedback(String),
 }
@@ -15,6 +17,7 @@ impl ApprovalResponse {
         match input.to_ascii_lowercase().as_str() {
             "y" | "yes" => Self::Allow,
             "a" | "always" => Self::Session,
+            "r" | "remember" => Self::Remember,
             "" | "n" | "no" => Self::Deny,
             _ => Self::Feedback(input.to_owned()),
         }

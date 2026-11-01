@@ -192,6 +192,7 @@ mod tests {
         state.apply(Event::Approval {
             tool: "write_file".into(),
             reason: "file".into(),
+            rule: None,
             reply,
         });
         state.deny_pending();
@@ -495,6 +496,7 @@ impl State {
             Event::Approval {
                 tool,
                 reason,
+                rule,
                 reply,
             } => {
                 let request = Approval {
@@ -502,6 +504,9 @@ impl State {
                     detail: reason,
                 };
                 if self.app.request_approval(request).is_ok() {
+                    if let Some(rule) = rule {
+                        self.app.offer_rule(rule);
+                    }
                     self.approval = Some(reply);
                 } else {
                     let _ = reply.send(ApprovalResponse::Deny);
