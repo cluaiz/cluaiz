@@ -1,7 +1,7 @@
 //! The project's agent files in the agent. Finding them and putting them into the system prompt is
 //! `cluaiz_agents::workspace` (shared with the Engine): `~/.cluaiz/AGENTS.md`, then per folder from
 //! the repository root down `.agents/AGENTS.md` and the folder's own `AGENTS.md` (or `CLAUDE.md` /
-//! `GEMINI.md`); rules, workflows and skills in `.agents/`. This file scans them for the agent and
+//! `GEMINI.md`); rules, workflows, skills and memory in `.agents/`. This file scans them for the agent and
 //! is what /memory shows.
 
 use std::path::Path;
@@ -59,7 +59,8 @@ pub fn summary(workspace: &Workspace, layout: &WorkspacePrompt, home: Option<&Pa
                 Placement::Whole => format!("  {} characters", part.chars),
                 _ => String::new(),
             };
-            lines.push(format!("  {:<width$}  {:<12}  {}{size}", part.name, part.kind, placement_name(part.placement)));
+            let placement = if part.kind == "memory" && part.placement == Placement::Index { "in the index (the fact itself)" } else { placement_name(part.placement) };
+            lines.push(format!("  {:<width$}  {:<12}  {placement}{size}", part.name, part.kind));
         }
     }
     let rules: Vec<_> = workspace.index().filter(|item| item.kind == Kind::Rule).collect();
@@ -69,6 +70,16 @@ pub fn summary(workspace: &Workspace, layout: &WorkspacePrompt, home: Option<&Pa
         for item in rules {
             let description: String = item.description.chars().take(70).collect();
             lines.push(format!("  {:<width$}  {:<18}  {description}  [{}]", item.name, trigger_name(item.trigger), item.source));
+        }
+    }
+    let live: Vec<_> = workspace.memory.iter().filter(|fact| fact.superseded_by.is_none()).collect();
+    if !workspace.memory.is_empty() {
+        let replaced = workspace.memory.len() - live.len();
+        lines.push(format!("Memory: {} fact(s){}", live.len(), if replaced > 0 { format!(", {replaced} replaced by newer ones (kept on disk)") } else { String::new() }));
+        let width = live.iter().map(|item| item.name.len()).max().unwrap_or(0);
+        for item in live {
+            let description: String = item.description.chars().take(90).collect();
+            lines.push(format!("  {:<width$}  {description}", item.name));
         }
     }
     for problem in &workspace.problems {
@@ -83,6 +94,7 @@ pub fn summary(workspace: &Workspace, layout: &WorkspacePrompt, home: Option<&Pa
     lines.push(format!("  Rules:              {}", display(&agents.join("rules"))));
     lines.push(format!("  Workflows:          {}", display(&agents.join("workflows"))));
     lines.push(format!("  Skills:             {}", display(&agents.join("skills"))));
+    lines.push(format!("  Memory:             {} (the model proposes a fact with remember; you confirm it)", display(&agents.join("memory"))));
     lines.join("\n")
 }
 

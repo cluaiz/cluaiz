@@ -211,3 +211,52 @@ fn the_prompt_stays_within_the_budget_and_a_shared_name_is_read_by_kind() {
     assert!(workspace.read_item("short", Some("rule")).unwrap().1.contains("Keep diffs small."));
     let _ = std::fs::remove_dir_all(base);
 }
+
+#[test]
+fn a_confirmed_fact_is_a_file_in_the_project_and_a_newer_one_replaces_it() {
+    let base = base("memory");
+    let (user, repo) = (base.join("user"), base.join("repo"));
+    std::fs::create_dir_all(repo.join(".git")).unwrap();
+    // The user's own folder has no memory of the project
+    write(&user.join(".agents/memory/mine.md"), "Not this project.");
+    let homes = Homes { cluaiz: None, user: Some(&user) };
+    let workspace = Workspace::scan(&repo, homes, &[]);
+    assert!(workspace.memory.is_empty());
+
+    assert_eq!(memory::slug("Deploy Port!"), "deploy-port");
+    assert_eq!(memory::slug("पोर्ट"), "fact");
+    assert!(memory::prepare("x", "  ").is_err());
+    assert!(memory::prepare("x", &"a".repeat(memory::MAX_FACT_CHARS + 1)).is_err());
+
+    let first = memory::save(&workspace, "deploy-port", "The deploy server port is 8011.", "test").unwrap();
+    assert_eq!(first.path, repo.join(".agents/memory/deploy-port.md"));
+    assert!(first.replaced.is_empty());
+    let workspace = Workspace::scan(&repo, homes, &[]);
+    let fact = workspace.find("deploy-port", Some(Kind::Memory)).unwrap();
+    assert_eq!(fact.description, "The deploy server port is 8011.");
+    let text = std::fs::read_to_string(&first.path).unwrap();
+    assert!(text.contains("status: confirmed") && text.contains("source: test") && text.contains("created: "));
+    // In the index, as the fact itself, and read by name
+    assert!(workspace.prompt(4_096).text.contains("- deploy-port (memory): The deploy server port is 8011."));
+    assert!(workspace.read_item("deploy-port", Some("memory")).unwrap().1.contains("port is 8011"));
+
+    // A newer fact on the same subject: a new file; the old one stays, marked
+    let second = memory::save(&workspace, "server-port", "The deploy server port is now 9090.", "test").unwrap();
+    assert_eq!(second.replaced, ["deploy-port"]);
+    let workspace = Workspace::scan(&repo, homes, &[]);
+    assert_eq!(workspace.memory.len(), 2);
+    assert!(workspace.find("deploy-port", None).is_none());
+    assert!(workspace.find("server-port", None).is_some());
+    let old = std::fs::read_to_string(&first.path).unwrap();
+    assert!(old.contains("status: superseded") && old.contains("superseded_by: server-port"));
+    assert!(std::fs::read_to_string(&second.path).unwrap().contains("supersedes: deploy-port"));
+
+    // The same name again: its own file, and the old fact is replaced
+    let third = memory::save(&workspace, "server-port", "Tests use the build profile release.", "test").unwrap();
+    assert_eq!(third.path, repo.join(".agents/memory/server-port-2.md"));
+    assert_eq!(third.replaced, ["server-port"]);
+    // Another subject replaces nothing
+    let workspace = Workspace::scan(&repo, homes, &[]);
+    assert!(memory::replaces(&workspace, "biryani", "A recipe for biryani").is_empty());
+    let _ = std::fs::remove_dir_all(base);
+}

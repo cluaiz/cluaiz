@@ -8,6 +8,9 @@
 //!   in each `.agents/` (and `.agent/`) folder from the working folder up to the repository root,
 //!   then the user's own in `~/.agents/` (skills also in `<CLUAIZ_HOME>/tools/skills/`). A nearer
 //!   item hides a farther one of the same name.
+//! - **Memory** `memory/*.md` in the project's `.agents/` folders: facts the model saved with
+//!   `remember` and the user confirmed (`memory.rs`). Only the live ones are in the index; a
+//!   replaced fact stays on disk, marked `superseded`.
 //!
 //! Every item has a name and a description, from its front matter (`name`, `description`), else
 //! from its file name and first heading. A rule's `trigger` is `always_on` (the default),
@@ -15,9 +18,11 @@
 //! the files each time; nobody writes or maintains it.
 
 mod instructions;
+pub mod memory;
 mod prompt;
 
 pub use instructions::{Instruction, BUDGET};
+pub use memory::REMEMBER;
 pub use prompt::{budget_for, Part, Placement, WorkspacePrompt, READ_ITEM};
 
 use std::path::{Path, PathBuf};
@@ -33,6 +38,8 @@ pub enum Kind {
     Rule,
     Workflow,
     Skill,
+    /// A fact of the project's memory
+    Memory,
 }
 
 impl Kind {
@@ -41,7 +48,22 @@ impl Kind {
             Kind::Rule => "rules",
             Kind::Workflow => "workflows",
             Kind::Skill => "skills",
+            Kind::Memory => "memory",
         }
+    }
+
+    /// As the index and `read_item` name it
+    pub fn name(self) -> &'static str {
+        match self {
+            Kind::Rule => "rule",
+            Kind::Workflow => "workflow",
+            Kind::Skill => "skill",
+            Kind::Memory => "memory",
+        }
+    }
+
+    pub fn parse(value: &str) -> Option<Self> {
+        [Kind::Rule, Kind::Workflow, Kind::Skill, Kind::Memory].into_iter().find(|kind| kind.name().eq_ignore_ascii_case(value.trim()))
     }
 }
 
@@ -84,6 +106,8 @@ pub struct Item {
     pub trigger: Option<Trigger>,
     /// Rules with trigger glob: the file patterns
     pub globs: Vec<String>,
+    /// Memory only: the fact that replaced this one (it is then no longer in the index)
+    pub superseded_by: Option<String>,
 }
 
 impl Item {
@@ -108,6 +132,8 @@ pub struct Workspace {
     pub rules: Vec<Item>,
     pub workflows: Vec<Item>,
     pub skills: Vec<Item>,
+    /// The project's memory, live and replaced facts
+    pub memory: Vec<Item>,
     /// Files that could not be used as they are, and why
     pub problems: Vec<String>,
 }
@@ -140,7 +166,7 @@ impl Workspace {
         if let Some(user) = homes.user {
             places.push((user.join(".agents"), "~/.agents".into()));
         }
-        for kind in [Kind::Rule, Kind::Workflow, Kind::Skill] {
+        for kind in [Kind::Rule, Kind::Workflow, Kind::Skill, Kind::Memory] {
             let mut found: Vec<Item> = Vec::new();
             let mut seen: Vec<PathBuf> = Vec::new();
             let mut kind_places: Vec<(PathBuf, String)> =
@@ -153,6 +179,10 @@ impl Workspace {
                 }
             }
             for (place, source) in kind_places {
+                // Memory belongs to the project, not to the user's own folder
+                if kind == Kind::Memory && source.starts_with('~') {
+                    continue;
+                }
                 if seen.iter().any(|done| same_file(done, &place)) {
                     continue;
                 }
@@ -172,14 +202,15 @@ impl Workspace {
                 Kind::Rule => workspace.rules = found,
                 Kind::Workflow => workspace.workflows = found,
                 Kind::Skill => workspace.skills = found,
+                Kind::Memory => workspace.memory = found,
             }
         }
         workspace
     }
 
-    /// Every rule, workflow and skill: the index the model and the user see
+    /// Every rule, workflow, skill and live memory fact: the index the model and the user see
     pub fn index(&self) -> impl Iterator<Item = &Item> {
-        self.rules.iter().chain(&self.workflows).chain(&self.skills)
+        self.rules.iter().chain(&self.workflows).chain(&self.skills).chain(self.memory.iter().filter(|fact| fact.superseded_by.is_none()))
     }
 
     /// An item by name (any case), of one kind or any
@@ -225,6 +256,10 @@ fn read_item(kind: Kind, file: &Path, source: &str, problems: &mut Vec<String>) 
     let description = field("description").unwrap_or_else(|| first_line(&body));
     let description: String = description.chars().take(DESCRIPTION_CHARS).collect();
 
+    let superseded_by = match kind {
+        Kind::Memory => field("superseded_by").or_else(|| (field("status").as_deref() == Some("superseded")).then(String::new)),
+        _ => None,
+    };
     let (mut trigger, mut globs) = (None, Vec::new());
     if kind == Kind::Rule {
         trigger = Some(match field("trigger") {
@@ -251,7 +286,7 @@ fn read_item(kind: Kind, file: &Path, source: &str, problems: &mut Vec<String>) 
             problems.push(format!("{}: a model_decision rule needs a description; its first line is shown instead", file.display()));
         }
     }
-    Some(Item { kind, name, description, path: file.to_path_buf(), source: source.to_owned(), trigger, globs })
+    Some(Item { kind, name, description, path: file.to_path_buf(), source: source.to_owned(), trigger, globs, superseded_by })
 }
 
 /// `---` YAML front matter (empty when there is none or it does not parse) and the text under it

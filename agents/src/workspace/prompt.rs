@@ -7,8 +7,9 @@
 //!    rest.
 //! 2. **Rules** (`workspace.rules`): every `always_on` rule, whole. A rule is never cut: one that
 //!    does not fit goes to the index instead.
-//! 3. **Index** (`workspace.index`): one line per `model_decision` and `glob` rule, workflow and
-//!    skill (and per always-on rule that did not fit): its name and description. The model reads
+//! 3. **Index** (`workspace.index`): one line per `model_decision` and `glob` rule, workflow,
+//!    skill and live memory fact (and per always-on rule that did not fit): its name and
+//!    description (a fact's description is the fact). The model reads
 //!    one with `read_item`. `manual` rules are left out (the user names them).
 //!
 //! The index is placed first in the budget, because without it the model cannot find anything.
@@ -67,11 +68,7 @@ pub struct WorkspacePrompt {
 }
 
 fn kind_name(kind: Kind) -> &'static str {
-    match kind {
-        Kind::Rule => "rule",
-        Kind::Workflow => "workflow",
-        Kind::Skill => "skill",
-    }
+    kind.name()
 }
 
 impl Workspace {
@@ -204,18 +201,14 @@ impl Workspace {
     /// label (`.agents/AGENTS.md`). Err lists the names it knows.
     pub fn read_item(&self, name: &str, kind: Option<&str>) -> Result<(String, String), String> {
         let wanted = name.trim().trim_start_matches('/');
-        let kind = kind.and_then(|kind| match kind.trim().to_ascii_lowercase().as_str() {
-            "rule" => Some(Kind::Rule),
-            "workflow" => Some(Kind::Workflow),
-            "skill" => Some(Kind::Skill),
-            _ => None,
-        });
+        let kind = kind.and_then(Kind::parse);
         if let Some(item) = self.find(wanted, kind) {
             let body = item.body()?;
             let heading = match item.kind {
                 Kind::Skill => format!("Skill {} (its files are in {})", item.name, item.folder().display()),
                 Kind::Rule => format!("Rule {}", item.name),
                 Kind::Workflow => format!("Workflow {}", item.name),
+                Kind::Memory => format!("Memory {} ({})", item.name, item.path.display()),
             };
             return Ok((format!("{} · {} lines", item.name, body.lines().count()), format!("{heading}:\n\n{body}")));
         }
@@ -242,7 +235,7 @@ impl Workspace {
                     "type": "object",
                     "properties": {
                         "name": { "type": "string", "description": "The name as listed" },
-                        "kind": { "type": "string", "enum": ["rule", "workflow", "skill"], "description": "When two items have the same name: the kind in brackets after it" }
+                        "kind": { "type": "string", "enum": ["rule", "workflow", "skill", "memory"], "description": "When two items have the same name: the kind in brackets after it" }
                     },
                     "required": ["name"]
                 }

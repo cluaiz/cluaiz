@@ -57,6 +57,8 @@ pub struct Tools {
     pub rules: super::rules::Rules,
     /// A call was refused because nobody allowed it (headless exit code 2)
     pub refused: bool,
+    /// Where a fact saved with `remember` came from (the agent and its model)
+    pub memory_source: String,
 }
 
 /// Most characters of installed tool schemas sent with every request (a small context fills fast)
@@ -67,6 +69,7 @@ impl Tools {
     pub fn new(root: PathBuf, allow_all: bool) -> Self {
         let root = root.canonicalize().unwrap_or(root);
         let rules = super::rules::Rules::new(&root);
+        let project = cluaiz_agents::workspace::project_folders(&root).0.to_path_buf();
         Self {
             root,
             allow_all,
@@ -77,10 +80,15 @@ impl Tools {
             cancelled: false,
             installed: Vec::new(),
             installed_schemas: Vec::new(),
-            workspace: Default::default(),
+            // Its files are read by load_installed; the root is known from the start (memory goes there)
+            workspace: cluaiz_agents::workspace::Workspace {
+                root: project,
+                ..Default::default()
+            },
             checkpoints: Default::default(),
             rules,
             refused: false,
+            memory_source: "cluaiz agent".into(),
         }
     }
 
@@ -141,6 +149,7 @@ impl Tools {
         if let Some(schema) = self.workspace.read_item_schema() {
             all.push(schema);
         }
+        all.push(cluaiz_agents::workspace::memory::schema());
         all.extend(self.installed_schemas.iter().cloned());
         Value::Array(all)
     }
@@ -324,6 +333,7 @@ impl Tools {
                 },
                 None => Err("give the name, as listed".into()),
             },
+            cluaiz_agents::workspace::REMEMBER => self.remember(&text("name").unwrap_or_default(), &text("fact").unwrap_or_default()),
             other => self.run_installed(other, arguments).await,
         };
         match result {
@@ -703,6 +713,27 @@ impl Tools {
         }
     }
 
+    /// `remember`: the user sees the fact and where it goes, and confirms it before it is written.
+    /// It always asks (also with --yes and in Full Access): memory outlives the session, so a fact
+    /// from a file or web page the model read must not become memory unseen.
+    fn remember(&mut self, name: &str, fact: &str) -> Result<(String, String), String> {
+        use cluaiz_agents::workspace::memory;
+        let (name, fact) = memory::prepare(name, fact)?;
+        let replaces: Vec<String> = memory::replaces(&self.workspace, &name, &fact).iter().map(|item| item.name.clone()).collect();
+        let mut why = format!("{}\n{fact}", cluaiz_api::cep::roots::display(&memory::path_for(&self.workspace, &name)));
+        if !replaces.is_empty() {
+            why.push_str(&format!("\nreplaces: {}", replaces.join(", ")));
+        }
+        self.check_running()?;
+        self.ask(cluaiz_agents::workspace::REMEMBER, &why)?;
+        let saved = memory::save(&self.workspace, &name, &fact, &self.memory_source)?;
+        // read_item finds it now; the system prompt lists it from the next session on
+        self.rescan_workspace();
+        let shown = cluaiz_api::cep::roots::display(&saved.path);
+        let replaced = if saved.replaced.is_empty() { String::new() } else { format!("; it replaces {}", saved.replaced.join(", ")) };
+        Ok((format!("saved {}{replaced}", saved.name), format!("Saved in the project's memory as {shown}{replaced}.")))
+    }
+
     fn check_running(&mut self) -> Result<(), String> {
         if self.display.closing()
             || self.display.interrupted()
@@ -733,15 +764,20 @@ impl Tools {
             Mode::AcceptEdits if edit && !self.strict => return Ok(()),
             _ => {}
         }
-        if self.allow_all || self.always.contains(tool) {
+        let remember = tool == cluaiz_agents::workspace::REMEMBER;
+        if (self.allow_all && !remember) || self.always.contains(tool) {
             return Ok(());
         }
         if !self.display.screen_enabled() && !std::io::stdin().is_terminal() {
             self.refused = true;
             // Told to the model: what to do now, not which flags the user could have passed
+            if remember {
+                return Err("not saved: nobody can confirm a fact in this run. Tell the user it was not saved; they can save it in an interactive session".into());
+            }
             return Err("not allowed: nobody can approve this call in this run; finish the task without it, or say what you would need".into());
         }
-        let rule = self.rules.suggest(tool, why);
+        // A fact is never allowed by a saved rule: each one is seen
+        let rule = if remember { None } else { self.rules.suggest(tool, why) };
         let answer = tokio::task::block_in_place(|| self.display.approve(tool, why, rule.as_deref()));
         match answer {
             ApprovalResponse::Allow => Ok(()),
@@ -818,7 +854,7 @@ fn describe_call(name: &str, args: &Value) -> String {
             (offset, limit) => format!("{} · lines from {}, at most {}", text("path"), offset.unwrap_or(1), limit.unwrap_or(READ_LINES as u64)),
         },
         "list_dir" => if text("path").is_empty() { ".".into() } else { text("path").to_owned() },
-        "read_item" | "use_skill" => text("name").to_owned(),
+        "read_item" | "use_skill" | "remember" => text("name").to_owned(),
         "write_file" => format!("{} · {} lines", text("path"), text("content").lines().count()),
         "edit_file" => {
             let all = args.get("replace_all").and_then(Value::as_bool).unwrap_or(false);
