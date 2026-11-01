@@ -85,7 +85,9 @@ cluaiz agent -m qwen3 --dir ../app --yes "..."  # model, folder, no questions
   "always allow in this folder" (`ApprovalResponse::Remember`) saves the narrow rule
   `Rules::suggest` gives into `.agents/settings.local.json` and adds that file to `.git/info/exclude`.
   An allow rule never covers a chained command; a deny rule matches any part of one.
-- `/init` asks the model to write the project's `AGENTS.md`, then reloads the instructions.
+- `/init` asks the model to write the project's `.agents/AGENTS.md` (`instructions::init_target`:
+  never over existing instructions; prompt `agent.init` covers code and document folders), then
+  makes the empty `.agents/` folders (`make_folders`) and reloads the instructions.
 
 ## `run`
 
