@@ -815,7 +815,11 @@ pub(crate) fn stream_tokens_with_media(
                 report.stop = "limit";
                 break;
             }
-            if llama.interrupt_signal.load(Ordering::SeqCst) {
+            // Checked on every token: while a tool call is being written nothing reaches the
+            // callback, so a stop asked for then would wait for the whole call
+            if llama.interrupt_signal.load(Ordering::SeqCst)
+                || cancel.unwrap_or(&cluaiz_core::GLOBAL_CANCEL_SIGNAL).load(Ordering::SeqCst)
+            {
                 report.stop = "cancel";
                 break;
             }
