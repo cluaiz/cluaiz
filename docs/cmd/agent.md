@@ -602,9 +602,31 @@ quarter of it (the context size in tokens, as characters; 48,000 characters at m
 index, or left out, and how much of the share is used. Small models do not always read an item on
 their own; naming it in the request ("read the cerd rule") makes them use it.
 
+### What fits a message or a file
+
+Small models seldom call `read_item` on their own, so the agent finds what fits and sends it:
+
+- **With your message.** The rules, workflows, skills and memory facts of the index are matched
+  against what you typed, with the same matcher as the installed tools (whole words; rarer words
+  count more). Only strong evidence counts: the item's name ("use the cerd rule", "make a pdf
+  report" for a skill `pdf-report`). Up to three items go into your turn, before your words, in a
+  `<context>` block: each one's text whole, or, when it does not fit in half the project's share
+  of the context, its name and a note to read it. Items already in the system prompt or sent
+  earlier in the conversation are not sent again. A line `Context: Added for this message: ...`
+  shows what was added. The system prompt does not change.
+- **With a file.** A `glob` rule comes with the result of the first `read_file`, `write_file` or
+  `edit_file` of a matching file in the conversation (a line `Rules: <rule> applies to <file>`
+  shows it). A pattern without `/` matches the file name in any folder (`*.ts`); one with `/` the
+  path from the project root (`docs/**`, `src/*.rs`); `*.{ts,tsx}` is written out.
+- `/clear` and `/compact` forget what was sent, so it is sent again when it fits.
+- In a test with Qwen3.8-4B: "Use the cerd rule: what is 17 times 23?" sent the rule, and the
+  answer ended with the line the rule asks for in 2 of 3 runs; a `*.py` glob rule asking for
+  docstrings starting with `Purpose:` was followed when the model edited `calc.py`.
+
 The headings and notes the agent adds around these files are managed prompts
 (`workspace.instructions`, `workspace.rules`, `workspace.index`, `workspace.cut`,
-`workspace.read_item`, `workspace.remember`), changed like `agent.system`.
+`workspace.read_item`, `workspace.remember`, `workspace.matched`, `workspace.matched_read`,
+`workspace.glob_rule`), changed like `agent.system`.
 
 ## Skills: SKILL.md
 

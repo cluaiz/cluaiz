@@ -205,6 +205,7 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
         compact_next: false,
         max_steps: args.max_steps.unwrap_or(MAX_STEPS).max(1),
         settings: Default::default(),
+        last_message: None,
     };
     // The agent settings files (global, project, local), then this run's flags on top
     agent.settings = rules::Settings::load(Some(&cluaiz_core::EnvironmentManager::current().global_dir), agent.tools.root());
@@ -314,6 +315,8 @@ struct Agent {
     compact_next: bool,
     /// The agent settings files that were read (/rules)
     settings: rules::Settings,
+    /// The user's last message, for a short follow-up when matching the project's items
+    last_message: Option<String>,
 }
 
 impl Agent {
@@ -346,6 +349,8 @@ impl Agent {
             }
             "/clear" => {
                 self.history.clear();
+                self.tools.sent.clear();
+                self.last_message = None;
                 // The cleared conversation stays saved (with its checkpoints); the next request starts a new one
                 self.session_id = sessions::new_id();
                 self.tools.checkpoints = checkpoints::Checkpoints::open(sessions::checkpoints_dir(self.tools.root(), &self.session_id));
@@ -518,7 +523,8 @@ context    {}", plan.summary(), plan.context_reason)
             self.user_command(command.trim()).await;
             Ok(())
         } else {
-            self.request(text, parts).await
+            let text = self.with_context(text);
+            self.request(&text, parts).await
         };
         // What the request changed, one line; /undo puts it back
         let root = self.tools.root().to_path_buf();
@@ -637,6 +643,29 @@ context    {}", plan.summary(), plan.context_reason)
         Some((item.name.clone(), steps, arguments.trim().to_owned()))
     }
 
+    /// The user's message with the project's items that fit it (`cluaiz_agents::workspace::matching`)
+    /// in a `<context>` block before it: rules, workflows, skills and memory facts the model has
+    /// not got yet, whole, within half the workspace's share of the context
+    fn with_context(&mut self, text: &str) -> String {
+        use cluaiz_agents::workspace::Placement;
+        let previous = self.last_message.replace(text.to_owned());
+        let mut known = self.tools.sent.clone();
+        for part in &self.layout.parts {
+            // Whole in the system prompt, or a fact whose index line is the fact itself
+            if part.placement == Placement::Whole || (part.kind == "memory" && part.placement == Placement::Index) {
+                known.insert(format!("{}:{}", part.kind, part.name.to_ascii_lowercase()));
+            }
+        }
+        let workspace = &self.tools.workspace;
+        let items = workspace.matched(text, previous.as_deref(), &known);
+        let names: Vec<String> = items.iter().map(|item| format!("{} ({})", item.name, item.kind.name())).collect();
+        let budget = cluaiz_agents::workspace::budget_for(self.session.plan.context_window as usize) / 2;
+        let Some((block, sent)) = workspace.context_block(&items, budget) else { return text.to_owned() };
+        self.tools.sent.extend(sent);
+        self.display.emit(Event::Message("Context".into(), format!("Added for this message: {}", names.join(", "))));
+        format!("{block}\n\n{text}")
+    }
+
     /// After `/init`: the AGENTS.md files are read again and replace the old ones in the prompt
     fn reload_instructions(&mut self) {
         let before = self.tools.workspace.instructions.len();
@@ -689,6 +718,8 @@ context    {}", plan.summary(), plan.context_reason)
         ];
         self.usage = None;
         self.compact_next = false;
+        // The summary does not carry the project items sent before
+        self.tools.sent.clear();
         self.display.emit(Event::Usage("Context compacted".into()));
         self.display.emit(Event::Message("Compact".into(), format!("{before} messages replaced by this summary.")));
         Ok(())

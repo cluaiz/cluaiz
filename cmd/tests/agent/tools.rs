@@ -247,3 +247,24 @@ async fn remember_asks_even_in_full_access_and_saves_only_a_confirmed_fact() {
     assert!(asked.iter().all(|(_, rule)| rule.is_none()));
     assert!(std::fs::read_to_string(&file).unwrap().contains("status: confirmed"));
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_glob_rule_comes_with_the_first_result_of_a_matching_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let root = dir.path();
+    std::fs::create_dir_all(root.join(".git")).unwrap();
+    std::fs::create_dir_all(root.join(".agents/rules")).unwrap();
+    std::fs::create_dir_all(root.join("web")).unwrap();
+    std::fs::write(root.join(".agents/rules/typescript.md"), "---\ntrigger: glob\nglobs: \"*.ts\"\n---\nUse strict TypeScript; no any.").unwrap();
+    std::fs::write(root.join("web/app.ts"), "let x = 1;\n").unwrap();
+    std::fs::write(root.join("notes.md"), "notes\n").unwrap();
+    let mut tools = Tools::new(root.into(), true);
+    tools.rescan_workspace();
+    let first = tools.run("read_file", r#"{"path": "web/app.ts"}"#).await;
+    assert!(first.contains("let x = 1;") && first.contains("The project's rule typescript applies to web/app.ts") && first.contains("no any"), "{first}");
+    // Once in a conversation
+    let again = tools.run("edit_file", r#"{"path": "web/app.ts", "old_text": "let x = 1;", "new_text": "const x = 1;"}"#).await;
+    assert!(!again.contains("no any"), "{again}");
+    assert!(!tools.run("read_file", r#"{"path": "notes.md"}"#).await.contains("applies to"));
+    assert!(tools.sent.contains("rule:typescript"));
+}

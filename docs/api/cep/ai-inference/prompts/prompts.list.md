@@ -103,6 +103,9 @@ Lists every prompt.
 | `workspace.cut` | Note after an instruction file that did not fit whole | `name` |
 | `workspace.read_item` | Description of the `read_item` tool | none |
 | `workspace.remember` | Description of the `remember` tool, which proposes a fact for the project's memory (`.agents/memory/`) | none |
+| `workspace.matched` | Heading of the `<context>` block of project items that fit the user's message | none |
+| `workspace.matched_read` | In that block, the line for an item too long to add | `name` |
+| `workspace.glob_rule` | Added to a tool result when a glob rule is for the file read or changed | `name`, `path` |
 | `workflow.run` | What `/<workflow>` sends: run the workflow's steps in order | `name`, `steps`, `arguments` |
 | `chat.notes_pinned` | Heading of the pinned notes in a chat's system prompt | none |
 | `chat.notes_record` | Heading of the notes that travel with the current message | none |

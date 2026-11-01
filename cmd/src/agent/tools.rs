@@ -59,6 +59,9 @@ pub struct Tools {
     pub refused: bool,
     /// Where a fact saved with `remember` came from (the agent and its model)
     pub memory_source: String,
+    /// The project's items whose text the model already has in this conversation (`kind:name`):
+    /// read with read_item, sent with a message, or a glob rule added to a file's result
+    pub sent: HashSet<String>,
 }
 
 /// Most characters of installed tool schemas sent with every request (a small context fills fast)
@@ -89,6 +92,7 @@ impl Tools {
             rules,
             refused: false,
             memory_source: "cluaiz agent".into(),
+            sent: HashSet::new(),
         }
     }
 
@@ -335,6 +339,18 @@ impl Tools {
             },
             cluaiz_agents::workspace::REMEMBER => self.remember(&text("name").unwrap_or_default(), &text("fact").unwrap_or_default()),
             other => self.run_installed(other, arguments).await,
+        };
+        // A file a glob rule is for: the rule comes with the result, once in a conversation
+        let result = match (result, name, text("path")) {
+            (Ok((summary, output)), "read_file" | "write_file" | "edit_file", Some(path)) => Ok((summary, format!("{output}{}", self.glob_rules(&path)))),
+            (Ok(done), cluaiz_agents::workspace::READ_ITEM | "use_skill", _) => {
+                let wanted = text("name").unwrap_or_default();
+                if let Some(item) = self.workspace.find(&wanted, text("kind").as_deref().and_then(cluaiz_agents::workspace::Kind::parse)) {
+                    self.sent.insert(cluaiz_agents::workspace::matching::key(item));
+                }
+                Ok(done)
+            }
+            (other, _, _) => other,
         };
         match result {
             Ok((summary, output)) => {
@@ -732,6 +748,29 @@ impl Tools {
         let shown = cluaiz_api::cep::roots::display(&saved.path);
         let replaced = if saved.replaced.is_empty() { String::new() } else { format!("; it replaces {}", saved.replaced.join(", ")) };
         Ok((format!("saved {}{replaced}", saved.name), format!("Saved in the project's memory as {shown}{replaced}.")))
+    }
+
+    /// The text of the glob rules for a file not sent yet in this conversation, for its result
+    fn glob_rules(&mut self, path: &str) -> String {
+        let Ok(full) = self.resolve(path) else { return String::new() };
+        // Without the `\\?\` prefix a canonical Windows path has
+        let plain = |path: &Path| PathBuf::from(path.display().to_string().trim_start_matches(r"\\?\"));
+        let Ok(relative) = plain(&full).strip_prefix(plain(&self.workspace.root)).map(Path::to_path_buf) else { return String::new() };
+        let relative = relative.display().to_string().replace('\\', "/");
+        let mut out = String::new();
+        for rule in self.workspace.rules_for_file(&relative) {
+            let key = cluaiz_agents::workspace::matching::key(rule);
+            if self.sent.contains(&key) {
+                continue;
+            }
+            if let Ok(body) = rule.body() {
+                let heading = cluaiz_core::prompts::render("workspace.glob_rule", &[("name", &rule.name), ("path", &relative)]);
+                out.push_str(&format!("\n\n{heading}\n{body}"));
+                self.sent.insert(key);
+                self.display.emit(Event::Message("Rules".into(), format!("{} applies to {relative}", rule.name)));
+            }
+        }
+        out
     }
 
     fn check_running(&mut self) -> Result<(), String> {

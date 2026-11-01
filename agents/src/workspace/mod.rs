@@ -18,6 +18,7 @@
 //! the files each time; nobody writes or maintains it.
 
 mod instructions;
+pub mod matching;
 pub mod memory;
 mod prompt;
 

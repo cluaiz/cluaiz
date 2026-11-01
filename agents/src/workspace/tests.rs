@@ -260,3 +260,71 @@ fn a_confirmed_fact_is_a_file_in_the_project_and_a_newer_one_replaces_it() {
     assert!(memory::replaces(&workspace, "biryani", "A recipe for biryani").is_empty());
     let _ = std::fs::remove_dir_all(base);
 }
+
+#[test]
+fn glob_rules_apply_to_matching_files() {
+    use matching::glob_matches;
+    assert!(glob_matches("*.ts", "web/src/app.ts"));
+    assert!(!glob_matches("*.ts", "web/src/app.tsx"));
+    assert!(glob_matches("*.{ts,tsx}", "app.tsx"));
+    assert!(glob_matches("docs/**", "docs/api/a.md"));
+    assert!(!glob_matches("docs/**", "src/docs.md"));
+    assert!(glob_matches("src/*.rs", "src/main.rs"));
+    assert!(!glob_matches("src/*.rs", "src/agent/main.rs"));
+    assert!(glob_matches("**/*.rs", "src/agent/main.rs"));
+    assert!(glob_matches("./src/*.rs", r"src\main.rs"));
+
+    let base = base("globs");
+    std::fs::create_dir_all(base.join(".git")).unwrap();
+    write(&base.join(".agents/rules/web.md"), "---\ntrigger: glob\nglobs: \"*.ts, *.tsx\"\n---\nUse strict TypeScript.");
+    write(&base.join(".agents/rules/docs.md"), "---\ntrigger: glob\nglobs: [\"docs/**\"]\ndescription: Docs\n---\nEnglish only.");
+    write(&base.join(".agents/rules/always.md"), "Always.");
+    let workspace = Workspace::scan(&base, Homes::default(), &[]);
+    let names = |path: &str| workspace.rules_for_file(path).iter().map(|rule| rule.name.clone()).collect::<Vec<_>>();
+    assert_eq!(names("web/app.tsx"), ["web"]);
+    assert_eq!(names("docs/guide.md"), ["docs"]);
+    assert!(names("README.md").is_empty());
+    let _ = std::fs::remove_dir_all(base);
+}
+
+#[test]
+fn items_that_fit_a_message_go_into_its_context_block() {
+    let base = base("matching");
+    std::fs::create_dir_all(base.join(".git")).unwrap();
+    let long = "\nShow the numbers.".repeat(25);
+    write(&base.join(".agents/rules/cerd.md"), &format!("---\ntrigger: model_decision\ndescription: Check every result with real data\n---\nRun it and paste the output.{long}"));
+    write(&base.join(".agents/rules/release.md"), "---\ntrigger: manual\ndescription: Release steps\n---\nTag it.");
+    write(&base.join(".agents/skills/pdf-report/SKILL.md"), "---\ndescription: Make a PDF report from a table\n---\nUse the report template.");
+    write(&base.join(".agents/workflows/deploy.md"), "---\ndescription: Deploy the site\n---\n1. Build.\n2. Upload.");
+    let workspace = Workspace::scan(&base, Homes::default(), &[]);
+    memory::save(&workspace, "deploy-port", "The deploy server port is 9090.", "test").unwrap();
+    let workspace = Workspace::scan(&base, Homes::default(), &[]);
+    let known = std::collections::HashSet::new();
+    let names = |message: &str, known: &std::collections::HashSet<String>| {
+        workspace.matched(message, None, known).iter().map(|item| item.name.clone()).collect::<Vec<_>>()
+    };
+    assert_eq!(names("Use the cerd rule for this change", &known), ["cerd"]);
+    assert_eq!(names("make a pdf report of the sales", &known), ["pdf-report"]);
+    // The fact first; the workflow named "deploy" comes along, as its name is said
+    assert_eq!(names("which deploy port does the server use?", &known), ["deploy-port", "deploy"]);
+    // Nothing that only shares a common word
+    assert!(names("hello, how are you?", &known).is_empty());
+    assert!(names("check this", &known).is_empty());
+    // A manual rule only when named
+    assert_eq!(names("follow the release rule now", &known), ["release"]);
+    // Already sent (or whole in the system prompt): not again
+    let sent: std::collections::HashSet<String> = ["rule:cerd".to_string()].into();
+    assert!(names("Use the cerd rule for this change", &sent).is_empty());
+
+    let items = workspace.matched("Use the cerd rule for this change", None, &known);
+    let (block, keys) = workspace.context_block(&items, 2_000).unwrap();
+    assert!(block.starts_with("<context>\n") && block.ends_with("</context>"));
+    assert!(block.contains("## cerd (rule)\nRun it and paste the output."), "{block}");
+    assert_eq!(keys, ["rule:cerd"]);
+    // No room for the text: its name and how to read it, never a cut text
+    let (small, keys) = workspace.context_block(&items, 300).unwrap();
+    assert!(small.contains("read_item") && !small.contains("paste the output"), "{small}");
+    assert!(keys.is_empty());
+    assert!(workspace.context_block(&items, 10).is_none());
+    let _ = std::fs::remove_dir_all(base);
+}
