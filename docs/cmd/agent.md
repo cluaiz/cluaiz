@@ -320,6 +320,7 @@ same settings can be typed directly: `/mode plan`, `/think off`, `/effort high`,
 | `/plan` | Where the model runs: blocks on GPU and in RAM, context and KV cache, VRAM and RAM, and why (the header shows the placement in short) |
 | `/memory` | The AGENTS.md files in use and how much of each fits (see [Instructions](#instructions-agentsmd)) |
 | `/init` | The model reads the project and writes its `AGENTS.md` (see [Instructions](#instructions-agentsmd)) |
+| `/<workflow>` | Runs a workflow of the project, `.agents/workflows/<workflow>.md` (see [Workflows](#workflows-your-own--commands)) |
 | `/skills` | The SKILL.md skills the model can use, with where each was found (see [Skills](#skills-skillmd)) |
 | `/rules` | The agent settings files that were read, and every allow and deny rule in use with its file (see [Agent settings files](#agent-settings-files)) |
 | `/sessions` | The saved conversations of this folder, newest first, with their ids |
@@ -519,7 +520,30 @@ Run cargo fmt before you finish.
 `/memory` lists the instruction files, the rules with their trigger, the workflows, the files that
 could not be used (for example an unknown `trigger`) and where each kind of file goes.
 
-A workflow does not run as a `/` command yet; the model can read one with `read_item`.
+### Workflows: your own `/` commands
+
+A workflow is a Markdown file of steps you write for a task you do often. Its file name is the
+command: `.agents/workflows/release.md` gives `/release`.
+
+```markdown
+---
+description: Cut a release
+---
+1. Set the new version in Cargo.toml.
+2. Run cargo build --release -p cmd and cargo test --release -p cmd.
+3. Commit, then tag v<version>.
+```
+
+- `/release` sends the steps to the model with the managed prompt `workflow.run`; the model does
+  them in order with the tools, and each change or command asks first as usual.
+- Text after the name is passed on: `/release 0.1.2`.
+- `/help` lists the workflows, and typing `/` offers them next to the built-in commands.
+- A workflow named like a built-in command (`/plan`, `/model`, ...) is not offered; the built-in
+  wins. Your own workflows for every project go in `~/.agents/workflows/`.
+- The model can also read a workflow with `read_item` when a request fits its description.
+- Small models follow the steps better with thinking on (the default `auto`): in a test with
+  Qwen3.8-4B, `--think off` described the steps without running them; with thinking it ran each
+  step with the tools.
 
 ### How the project's files reach the model
 
