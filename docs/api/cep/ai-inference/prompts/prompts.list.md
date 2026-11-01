@@ -102,6 +102,7 @@ Lists every prompt.
 | `workspace.index` | Heading of the index of rules, workflows and skills read on demand | none |
 | `workspace.cut` | Note after an instruction file that did not fit whole | `name` |
 | `workspace.read_item` | Description of the `read_item` tool | none |
+| `workflow.run` | What `/<workflow>` sends: run the workflow's steps in order | `name`, `steps`, `arguments` |
 | `chat.notes_pinned` | Heading of the pinned notes in a chat's system prompt | none |
 | `chat.notes_record` | Heading of the notes that travel with the current message | none |
 | `chat.card` | The background request for a message's search card (its JSON keys are fixed by a grammar) | none |

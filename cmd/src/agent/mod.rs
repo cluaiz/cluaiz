@@ -339,7 +339,7 @@ impl Agent {
     fn command(&mut self, text: &str) -> Option<bool> {
         let message = match text {
             "/bye" | "/exit" => return Some(true),
-            "/?" | "/help" => commands::help(),
+            "/?" | "/help" => commands::help(&commands::workflows(&self.tools.workspace)),
             "/theme" => {
                 self.display.emit(Event::Themes);
                 return Some(false);
@@ -481,6 +481,8 @@ context    {}", plan.summary(), plan.context_reason)
                 self.session.options.think = Some(mode);
                 format!("Thinking {} for the next request (subject to the selected model's capabilities).", mode.name())
             }
+            // A project workflow runs as a request (turn_prepared)
+            _ if self.workflow(text).is_some() => return None,
             _ if text.starts_with('/') => format!("Unknown command {text}; use /help"),
             _ => return None,
         };
@@ -500,6 +502,12 @@ context    {}", plan.summary(), plan.context_reason)
         self.tools.checkpoints.begin(text, self.history.len());
         let result = if text.trim() == "/compact" {
             self.compact().await
+        } else if let Some((name, steps, arguments)) = self.workflow(text) {
+            let request = cluaiz_core::prompts::render(
+                "workflow.run",
+                &[("name", &name), ("steps", &steps), ("arguments", if arguments.is_empty() { "nothing" } else { &arguments })],
+            );
+            self.request(&request, parts).await
         } else if text.trim() == "/init" {
             let result = self.request(&cluaiz_core::prompts::text("agent.init"), parts).await;
             self.reload_instructions();
@@ -614,6 +622,19 @@ context    {}", plan.summary(), plan.context_reason)
         self.display.emit(Event::Shell { command: command.to_owned(), ok, output: out.clone() });
         self.history.push(message("user", format!("(I ran this command myself in the working folder.)\n$ {command}\n{}", tools::clip(&out))));
         self.history.push(message("assistant", "Noted.".into()));
+    }
+
+    /// `/<name> [what to add]` of a project workflow (`.agents/workflows/<name>.md`): its name, its
+    /// steps and the added text. A built-in command of the same name wins.
+    fn workflow(&self, text: &str) -> Option<(String, String, String)> {
+        let command = text.trim().strip_prefix('/')?;
+        let (name, arguments) = command.split_once(char::is_whitespace).unwrap_or((command, ""));
+        if name.is_empty() || commands::is_built_in(name) {
+            return None;
+        }
+        let item = self.tools.workspace.find(name, Some(cluaiz_agents::workspace::Kind::Workflow))?;
+        let steps = item.body().ok()?;
+        Some((item.name.clone(), steps, arguments.trim().to_owned()))
     }
 
     /// After `/init`: the AGENTS.md files are read again and replace the old ones in the prompt

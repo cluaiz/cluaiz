@@ -70,7 +70,9 @@ cluaiz agent -m qwen3 --dir ../app --yes "..."  # model, folder, no questions
   `~/.agents/`. `Workspace::prompt` puts them into the system prompt within a share of the
   context (`budget_for`): the index (name and description of on-demand rules, workflows, skills),
   the AGENTS.md files, the always-on rules whole or in the index. The model reads any item with
-  `read_item` (`use_skill` is still accepted). `/memory` shows what went where.
+  `read_item` (`use_skill` is still accepted). `/memory` shows what went where. Each workflow
+  (`.agents/workflows/<name>.md`) is a `/<name>` command (`agent/commands.rs`; a built-in name
+  wins), sent to the model with the managed prompt `workflow.run`.
 - The agent settings files (`agent/rules.rs`: `~/.cluaiz/config/agent.json`, the project's
   `.agents/settings.json` and `.agents/settings.local.json`; the first version's
   `.cluaiz/agent*.json` still read with a notice) are layered: every file's rules apply, the nearest mode wins, and a

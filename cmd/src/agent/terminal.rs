@@ -44,8 +44,9 @@ pub async fn run(mut agent: Agent, first: Option<String>, keep_open: bool) -> Re
     let media = agent.session.options.settings()?.media;
     let ui_closing = closing.clone();
     let control = display.clone();
+    let workflows = super::commands::workflows(&agent.tools.workspace);
     let ui = tokio::task::spawn_blocking(move || {
-        screen(metadata, receiver, input, ui_closing, root, control, media)
+        screen(metadata, receiver, input, ui_closing, root, control, media, workflows)
     });
     if let Some(task) = first {
         process(
@@ -129,8 +130,9 @@ fn screen(
     root: std::path::PathBuf,
     control: Display,
     media: cluaiz_core::media::MediaSettings,
+    workflows: Vec<super::commands::Workflow>,
 ) -> std::io::Result<()> {
-    let result = screen_inner(metadata, receiver, input, &closing, root, &control, media);
+    let result = screen_inner(metadata, receiver, input, &closing, root, &control, media, workflows);
     closing.store(true, Ordering::SeqCst);
     cluaiz_core::GLOBAL_CANCEL_SIGNAL.store(true, Ordering::SeqCst);
     result
@@ -144,7 +146,9 @@ fn screen_inner(
     root: std::path::PathBuf,
     control: &Display,
     media: cluaiz_core::media::MediaSettings,
+    workflows: Vec<super::commands::Workflow>,
 ) -> std::io::Result<()> {
+    let workflows = std::sync::Arc::new(workflows);
     let mut screen = Screen::open()?;
     let mut state = State::new(App::new(metadata, Limits::default()));
     state
@@ -264,12 +268,13 @@ fn screen_inner(
             let directory = root.clone();
             let query = draft.clone();
             let sender = completion_sender.clone();
+            let workflows = workflows.clone();
             completion_job = Some(
                 std::thread::Builder::new()
                     .name("cluaiz-completion".into())
                     .spawn(move || {
                         let (start, suggestions) =
-                            super::completion::suggestions(&directory, &query);
+                            super::completion::suggestions(&directory, &query, &workflows);
                         let _ = sender.try_send((query, start, suggestions));
                     })?,
             );

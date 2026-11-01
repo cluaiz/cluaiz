@@ -3,9 +3,9 @@
 use cluaiz_terminal::app::Suggestion;
 use std::path::Path;
 
-pub fn suggestions(root: &Path, draft: &str) -> (usize, Vec<Suggestion>) {
+pub fn suggestions(root: &Path, draft: &str, workflows: &[super::commands::Workflow]) -> (usize, Vec<Suggestion>) {
     if draft.starts_with('/') && !draft.contains(char::is_whitespace) {
-        return (0, super::commands::suggestions(draft));
+        return (0, super::commands::suggestions(draft, workflows));
     }
     let Some(at) = draft
         .rfind('@')
@@ -87,14 +87,14 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("note नमस्ते.md"), "content is not needed").unwrap();
         let root = dir.path().canonicalize().unwrap();
-        assert_eq!(suggestions(&root, "/the").1[0].value, "/theme");
+        assert_eq!(suggestions(&root, "/the", &[]).1[0].value, "/theme");
         assert_eq!(
-            suggestions(&root, "read @no").1[0].value,
+            suggestions(&root, "read @no", &[]).1[0].value,
             "@\"note नमस्ते.md\""
         );
-        assert!(suggestions(&root, "mail@example.com").1.is_empty());
-        assert!(suggestions(&root, "@../").1.is_empty());
-        assert!(suggestions(&root, "@missing/").1.is_empty());
+        assert!(suggestions(&root, "mail@example.com", &[]).1.is_empty());
+        assert!(suggestions(&root, "@../", &[]).1.is_empty());
+        assert!(suggestions(&root, "@missing/", &[]).1.is_empty());
     }
 
     #[cfg(windows)]
@@ -105,7 +105,7 @@ mod tests {
         std::fs::write(outside.path().join("private.txt"), "private").unwrap();
         // A symlink may need Developer Mode. Do not report coverage if creation fails.
         match std::os::windows::fs::symlink_dir(outside.path(), root.path().join("link")) {
-            Ok(()) => assert!(suggestions(&root.path().canonicalize().unwrap(), "@link/")
+            Ok(()) => assert!(suggestions(&root.path().canonicalize().unwrap(), "@link/", &[])
                 .1
                 .is_empty()),
             Err(error) => eprintln!("symlink scenario unavailable on this host: {error}"),
