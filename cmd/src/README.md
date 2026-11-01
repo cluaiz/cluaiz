@@ -68,6 +68,9 @@ cluaiz agent -m qwen3 --dir ../app --yes "..."  # model, folder, no questions
 - The project's and the user's own SKILL.md skills (`agent/skills.rs`: `.agents/skills` from the
   folder up to the repository root, `~/.cluaiz/tools/skills`, `~/.agents/skills`) are listed by name
   and description; the model reads one with the `use_skill` tool.
+- The agent settings files (`agent/rules.rs`: `~/.cluaiz/config/agent.json`, `.cluaiz/agent.json`,
+  `.cluaiz/agent.local.json`) are layered: every file's rules apply, the nearest mode wins, and a
+  file that is not valid JSON is reported, not used. `/rules` shows them.
 
 ## `run`
 

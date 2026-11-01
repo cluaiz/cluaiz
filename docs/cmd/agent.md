@@ -162,10 +162,16 @@ are for one session only and change nothing saved: `plan` (read only: changes an
 refused, the model writes a plan) and `accept-edits` (file changes run, commands ask). `--mode`
 and `--yes` (Full Access) also apply to one run only.
 
-### A folder's own permissions
+### Agent settings files
 
-`<folder>/.cluaiz/agent.json` sets the default mode and rules for that project; `--mode`,
-`--allowed-tools` and `--disallowed-tools` add to it for one run:
+Three files hold the agent's rules, as Claude Code layers its `settings.json` files. Each one is
+optional:
+
+| File | For | Shared |
+| :--- | :--- | :--- |
+| `~/.cluaiz/config/agent.json` (or `$CLUAIZ_HOME/config/agent.json`) | Every folder | No |
+| `<folder>/.cluaiz/agent.json` | The project | Yes, commit it with the repository |
+| `<folder>/.cluaiz/agent.local.json` | You, in this folder | No: add it to `.gitignore` |
 
 ```json
 {
@@ -175,8 +181,20 @@ and `--yes` (Full Access) also apply to one run only.
 }
 ```
 
+- **Rules:** the rules of all three files apply, then `--allowed-tools` and `--disallowed-tools`
+  for one run. A denied call is refused in every mode, whichever file allows it. The refusal names
+  the rule and the file it came from.
+- **Mode:** the mode of `agent.local.json` is used, else that of `agent.json`. `--mode` and `--yes`
+  win over both. Without any of them the App's security mode is used. The global file sets no mode,
+  because the mode for every folder is the App's security mode (`/mode`). A `mode` there is
+  reported and not used; its rules still apply.
+- **A file that is not valid JSON** is not used. The agent says so when it starts and in `/rules`.
+- **`/rules`** lists the files that were read, and every rule in use with the file it came from.
+
 Rules use the same form as `--allowed-tools` (see [Headless](#headless-scripts-ci-and-other-programs)).
-A denied call is refused in every mode.
+`*` matches any text, so a rule matches the command line as the model wrote it:
+`run_command(git push*)` does not match `sh -c "git push"`. In an interactive session such a
+command asks first, as every command that no rule allows does.
 
 ## Reading the screen
 
@@ -282,6 +300,7 @@ same settings can be typed directly: `/mode plan`, `/think off`, `/effort high`,
 | `/plan` | Where the model runs: blocks on GPU and in RAM, context and KV cache, VRAM and RAM, and why (the header shows the placement in short) |
 | `/memory` | The AGENTS.md files in use and how much of each fits (see [Instructions](#instructions-agentsmd)) |
 | `/skills` | The SKILL.md skills the model can use, with where each was found (see [Skills](#skills-skillmd)) |
+| `/rules` | The agent settings files that were read, and every allow and deny rule in use with its file (see [Agent settings files](#agent-settings-files)) |
 | `/sessions` | The saved conversations of this folder, newest first, with their ids |
 | `/undo` | Put back the files the last request changed (new files are deleted); the model is told. Again: the request before it |
 | `/rewind`, `/rewind <n>` | The checkpoints of this conversation; `<n>` puts the files and the conversation back to before request n |
