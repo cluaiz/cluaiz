@@ -50,7 +50,7 @@ pub struct Tools {
     installed: Vec<String>,
     installed_schemas: Vec<Value>,
     /// SKILL.md skills of the project and the user, read with use_skill
-    skills: Vec<super::skills::Skill>,
+    skills: Vec<cluaiz_agents::workspace::Item>,
     /// Files this request and the last one changed (for the summary, /undo and /diff)
     pub checkpoints: super::checkpoints::Checkpoints,
     /// `--allowed-tools` / `--disallowed-tools`
@@ -95,9 +95,7 @@ impl Tools {
             .filter(|tool| tool.enabled)
             .map(|tool| tool.id)
             .collect();
-        let user_home = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(PathBuf::from);
-        let cluaiz_home = cluaiz_core::EnvironmentManager::current().global_dir;
-        self.skills = super::skills::discover(&self.root, Some(&cluaiz_home), user_home.as_deref(), &ids);
+        self.skills = super::instructions::scan(&self.root, &ids).skills;
         let own = super::skills::prompt(&self.skills);
         if ids.is_empty() {
             return own;
@@ -126,8 +124,7 @@ impl Tools {
 
     /// What /skills shows
     pub fn skills_summary(&self) -> String {
-        let user_home = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(PathBuf::from);
-        super::skills::summary(&self.skills, &self.root, user_home.as_deref())
+        super::skills::summary(&self.skills, &self.root, super::instructions::user_home().as_deref())
     }
 
     /// Names of the installed tools offered to the model

@@ -277,7 +277,7 @@ pub fn save_allow(file: &std::path::Path, rule: &str) -> Result<(), String> {
 /// they are
 fn keep_out_of_git(file: &std::path::Path) {
     let Some(folder) = file.parent().and_then(|cluaiz| cluaiz.parent()) else { return };
-    let (repo, _) = super::instructions::project_folders(folder);
+    let (repo, _) = cluaiz_agents::workspace::project_folders(folder);
     let git = repo.join(".git");
     if !git.is_dir() {
         return;

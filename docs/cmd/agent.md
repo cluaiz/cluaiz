@@ -437,10 +437,16 @@ Antigravity) read as well. Use it to tell the agent how the project is built and
 folders to leave alone, or your style rules. The agent reads, in this order:
 
 1. `~/.cluaiz/AGENTS.md` (or `$CLUAIZ_HOME/AGENTS.md`): your own rules, for every project.
-2. One file per folder from the repository root (the folder with `.git`) down to the working
-   folder: `AGENTS.md`, or `CLAUDE.md` or `GEMINI.md` when a folder has no `AGENTS.md` (a project
-   set up for those tools). Outside a git repository only the working folder counts, so files of
-   unrelated parent folders are never read.
+2. For each folder from the repository root (the folder with `.git`) down to the working folder:
+   - `.agents/AGENTS.md` (or the older `.agent/AGENTS.md`): the project's agent folder, the
+     layout Antigravity uses;
+   - the folder's own `AGENTS.md`, or `CLAUDE.md` or `GEMINI.md` when it has no `AGENTS.md` (a
+     project set up for those tools).
+
+   Outside a git repository only the working folder counts, so files of unrelated parent folders
+   are never read.
+
+Front matter (`---` with `name`, `description`) at the top of a file is left out of the prompt.
 
 A later, nearer file is more specific and wins where two disagree. All of them share 8,000
 characters in the prompt; the nearest file takes its share first, so a long personal file is cut
@@ -469,6 +475,48 @@ Each default ships with the Engine; to use your own text, write
 when it starts, so a change applies from the next session. A project folder cannot replace these
 prompts; a project shapes the agent through `AGENTS.md`.
 
+### The `.agents/` folder
+
+A project keeps all its agent files in one folder, `.agents/` at its root (the older name
+`.agent/` is read too):
+
+```text
+.agents/
+├── AGENTS.md              instructions, always read
+├── rules/*.md             rules
+├── workflows/*.md         step-by-step procedures
+└── skills/<name>/SKILL.md skills (see below)
+```
+
+Your own rules, workflows and skills for every project go in `~/.agents/` with the same folders.
+A nearer item hides a farther one of the same name.
+
+Every item has a name and a description: from its front matter (`name`, `description`), else from
+its file name and its first heading. A rule's front matter can set when it applies, as in
+Antigravity:
+
+```markdown
+---
+trigger: model_decision
+description: Code style for the Rust crates
+---
+Run cargo fmt before you finish.
+```
+
+| `trigger` | Meaning |
+| :--- | :--- |
+| `always_on` (also when there is no `trigger`) | Always applies |
+| `model_decision` | Only its name and description are shown; the model reads it when the task fits (needs a `description`) |
+| `glob` | Applies to files matching `globs` (`"*.ts, *.tsx"` or a list) |
+| `manual` | Only when you name it |
+
+`/memory` lists the instruction files, the rules with their trigger, the workflows, the files that
+could not be used (for example an unknown `trigger`) and where each kind of file goes.
+
+What is in place now: the instruction files go into the prompt; rules and workflows are found and
+listed. Rules do not go into the prompt by their trigger yet, and a workflow does not run as a `/`
+command yet; both are planned next.
+
 ## Skills: SKILL.md
 
 A skill is a folder with a `SKILL.md` file: `name` and `description` in its front matter, the
@@ -485,8 +533,8 @@ Create React apps with: npm create vite@latest <name> -- --template react
 
 The agent finds skills in, nearest first (a nearer skill hides a farther one of the same name):
 
-1. `.agents/skills/<skill>/SKILL.md` in the working folder and in each folder up to the repository
-   root.
+1. `.agents/skills/<skill>/SKILL.md` (or `.agent/skills/`) in the working folder and in each
+   folder up to the repository root.
 2. `~/.cluaiz/tools/skills/<skill>/SKILL.md`, for a skill written there by hand (installed skills are
    offered as [installed tools](#installed-tools)).
 3. `~/.agents/skills/<skill>/SKILL.md`: your skills for every project and every agent.
