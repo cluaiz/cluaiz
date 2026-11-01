@@ -6756,6 +6756,379 @@
           "message": "The path is not a folder, or is drive-relative / root-relative"
         },
         {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The folder is outside the caller's roots (`data.needs: \"roots\"`)"
+        }
+      ],
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": {
+              "instructions": [
+                {
+                  "chars": 1840,
+                  "label": ".agents/AGENTS.md",
+                  "path": "/project/.agents/AGENTS.md"
+                }
+              ],
+              "memory": [
+                {
+                  "description": "The tests run with npm run check.",
+                  "found_in": ".agents/memory",
+                  "kind": "memory",
+                  "name": "test-command",
+                  "path": "/project/.agents/memory/test-command.md",
+                  "status": "confirmed",
+                  "superseded_by": null
+                }
+              ],
+              "problems": [],
+              "root": "/project",
+              "rules": [
+                {
+                  "description": "Code style for the Rust crates",
+                  "found_in": ".agents/rules",
+                  "globs": [],
+                  "kind": "rule",
+                  "name": "style",
+                  "path": "/project/.agents/rules/style.md",
+                  "trigger": "model_decision"
+                }
+              ],
+              "skills": [],
+              "workflows": [
+                {
+                  "description": "Cut a release",
+                  "found_in": ".agents/workflows",
+                  "kind": "workflow",
+                  "name": "release",
+                  "path": "/project/.agents/workflows/release.md"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "name": "workspace.index",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "path",
+          "required": false,
+          "schema": {
+            "description": "The project folder: absolute, or relative to the workspace (default: the workspace)",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "A project's agent files: AGENTS.md instructions, rules with their trigger, workflows, skills and memory facts, with name and description",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "errors": [
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`kind` is not rule, workflow, skill or memory"
+        },
+        {
+          "code": -32004,
+          "data": {
+            "type": "item_not_found"
+          },
+          "message": "Nothing of that name; `error.message` lists the names"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The folder or the item's file is outside the caller's roots"
+        }
+      ],
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "kind",
+              "value": "workflow"
+            },
+            {
+              "name": "name",
+              "value": "release"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "description": "Cut a release",
+              "found_in": ".agents/workflows",
+              "kind": "workflow",
+              "name": "release",
+              "path": "/project/.agents/workflows/release.md",
+              "text": "1. Set the new version in Cargo.toml.\n2. Tag it."
+            }
+          }
+        }
+      ],
+      "name": "workspace.item",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "kind",
+          "required": false,
+          "schema": {
+            "description": "rule, workflow, skill or memory, when two items share a name",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "description": "The item's name, as `workspace.index` lists it (an instruction file by its label, e.g. `.agents/AGENTS.md`)",
+            "type": "string"
+          }
+        },
+        {
+          "name": "path",
+          "required": false,
+          "schema": {
+            "description": "The project folder (default: the workspace)",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "The text of one rule, workflow, skill, memory fact or instruction file of a project, without its front matter",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "errors": [
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The folder is outside the caller's roots"
+        }
+      ],
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": {
+              "facts": [
+                {
+                  "description": "The tests run with npm run check.",
+                  "found_in": ".agents/memory",
+                  "kind": "memory",
+                  "name": "test-command",
+                  "path": "/project/.agents/memory/test-command.md",
+                  "status": "confirmed",
+                  "superseded_by": null,
+                  "text": "The tests run with npm run check."
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "name": "workspace.memory",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "path",
+          "required": false,
+          "schema": {
+            "description": "The project folder: absolute, or relative to the workspace (default: the workspace)",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "A project's memory facts (`.agents/memory/`), live and replaced, with their text",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "errors": [
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`fact` is empty or over 2000 characters"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The folder is outside the caller's roots"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "memory_not_saved"
+          },
+          "message": "The fact file could not be written"
+        }
+      ],
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "fact",
+              "value": "The tests run with npm run check."
+            },
+            {
+              "name": "name",
+              "value": "test-command"
+            },
+            {
+              "name": "source",
+              "value": "Cluaiz App, chat 12"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "path": "/project/.agents/memory/test-command.md",
+              "replaced": [],
+              "saved": "test-command"
+            }
+          }
+        }
+      ],
+      "name": "workspace.remember",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "fact",
+          "required": true,
+          "schema": {
+            "description": "The fact, 1 to 2000 characters",
+            "type": "string"
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "description": "A short name for the subject, e.g. `deploy-port`; it becomes the file name",
+            "type": "string"
+          }
+        },
+        {
+          "name": "path",
+          "required": false,
+          "schema": {
+            "description": "The project folder (default: the workspace)",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "source",
+          "required": false,
+          "schema": {
+            "description": "Where it came from, e.g. `Cluaiz App, chat 12` (default: `cep`)",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Saves a fact the user confirmed in the project's memory (`.agents/memory/<name>.md`); a live fact on the same subject or of the same name is marked superseded",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": false,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "errors": [
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "The path is not a folder, or is drive-relative / root-relative"
+        },
+        {
           "code": -32004,
           "data": {
             "type": "file_not_found"
