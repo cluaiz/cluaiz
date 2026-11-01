@@ -14,6 +14,7 @@ pub const COMMANDS: &[(&str, &str)] = &[
     ("/undo", "Put back the files the last request changed"),
     ("/diff", "git diff of the files the last request changed"),
     ("/code", "Open the folder in VS Code with the changed files (/code <path>: that file)"),
+    ("/memory", "The AGENTS.md instructions in use (~/.cluaiz/AGENTS.md, then the repository's)"),
     ("/sessions", "Saved conversations of this folder (--continue / --resume <id>)"),
     ("!<command>", "Run a shell command yourself; the agent sees its output"),
     ("/help", "Commands and keyboard shortcuts"),
