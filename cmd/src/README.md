@@ -56,8 +56,10 @@ cluaiz agent -m qwen3 --dir ../app --yes "..."  # model, folder, no questions
 - The tools are sent the way an API request's `tools` are: the model's own template renders them
   (or the inline `<tool_call>` form when it cannot), and calls come back as `<tool_call>` blocks
   (`cluaiz_core::tool_calls`). The conversation keeps calls and results in the Engine's form.
-- The system prompt names the folder, the OS and the shell, and adds the folder's `AGENTS.md`
-  (first 8,000 characters) and `--system-prompt`. A request stops after 40 tool steps.
+- The system prompt names the folder, the OS and the shell, and adds the AGENTS.md instructions
+  (`agent/instructions.rs`: `~/.cluaiz/AGENTS.md`, then the repository root down to the folder, with
+  CLAUDE.md / GEMINI.md as fallbacks; 8,000 characters in all, nearest first) and `--system-prompt`.
+  A request stops after 40 tool steps.
 - Installed skills, plugins and MCP servers (enabled in `~/.cluaiz/config/tools_registry.json`)
   are offered next to the built-ins: schemas from `ToolsEngine::compile_prompt_tools` (at most
   12,000 characters; the rest is left out with a notice), skill instructions added to the system

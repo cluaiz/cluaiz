@@ -26,7 +26,7 @@ Fixed. It now prints 4.0, the average of [2, 4, 6].
 - [Reading the screen](#reading-the-screen)
 - [Commands inside the agent](#commands-inside-the-agent)
 - [One task from a script](#one-task-from-a-script)
-- [Project notes: AGENTS.md](#project-notes-agentsmd)
+- [Instructions: AGENTS.md](#instructions-agentsmd)
 - [Choosing a model and a context size](#choosing-a-model-and-a-context-size)
 - [All options](#all-options)
 - [Limits](#limits)
@@ -279,6 +279,7 @@ same settings can be typed directly: `/mode plan`, `/think off`, `/effort high`,
 | `/clear` | Start a new conversation (the old one stays saved; the folder and the model stay) |
 | `/compact` | The model summarizes the conversation and the summary replaces it: frees context, keeps the thread |
 | `/plan` | Where the model runs: blocks on GPU and in RAM, context and KV cache, VRAM and RAM, and why (the header shows the placement in short) |
+| `/memory` | The AGENTS.md files in use and how much of each fits (see [Instructions](#instructions-agentsmd)) |
 | `/sessions` | The saved conversations of this folder, newest first, with their ids |
 | `/undo` | Put back the files the last request changed (new files are deleted); the model is told |
 | `/diff` | `git diff` of the files the last request changed (in a git repository) |
@@ -381,11 +382,22 @@ cluaiz agent -p "fix the failing test in calc.py" --output-format json \
 - `--max-steps N` limits the tool calls of the task (default 40).
 - Exit code: `0` done, `1` error, `2` the task finished but a call was refused, `130` cancelled.
 
-## Project notes: AGENTS.md
+## Instructions: AGENTS.md
 
-If the working folder has an `AGENTS.md` file, its first 8,000 characters are added to the agent's
-instructions. Use it to tell the agent how the project is built and tested, which folders to leave
-alone, or your style rules. `--system-prompt "..."` adds instructions for one run.
+`AGENTS.md` is the plain Markdown file other coding agents (Codex, Cursor, GitHub Copilot, Gemini CLI,
+Antigravity) read as well. Use it to tell the agent how the project is built and tested, which
+folders to leave alone, or your style rules. The agent reads, in this order:
+
+1. `~/.cluaiz/AGENTS.md` (or `$CLUAIZ_HOME/AGENTS.md`): your own rules, for every project.
+2. One file per folder from the repository root (the folder with `.git`) down to the working
+   folder: `AGENTS.md`, or `CLAUDE.md` or `GEMINI.md` when a folder has no `AGENTS.md` (a project
+   set up for those tools). Outside a git repository only the working folder counts, so files of
+   unrelated parent folders are never read.
+
+A later, nearer file is more specific and wins where two disagree. All of them share 8,000
+characters in the prompt; the nearest file takes its share first, so a long personal file is cut
+before the project's own. `/memory` shows which files are in use and what was cut. The files are
+read when the agent starts. `--system-prompt "..."` adds instructions for one run.
 
 The agent's own instructions tell the model the folder, the operating system and the shell, to use
 the tools instead of guessing, never to claim it did something it did not, to read a file before

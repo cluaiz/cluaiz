@@ -11,6 +11,7 @@ mod display;
 mod terminal;
 mod terminal_state;
 mod checkpoints;
+mod instructions;
 mod line_diff;
 mod rules;
 pub mod sessions;
@@ -43,8 +44,6 @@ pub enum UiMode {
 
 /// Calls one request may make before the agent stops and asks the user
 const MAX_STEPS: usize = 40;
-/// Most characters of AGENTS.md put in the system prompt
-const MAX_PROJECT_NOTES: usize = 8_000;
 
 #[derive(clap::Args, Default)]
 pub struct AgentArgs {
@@ -190,8 +189,10 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
         print::plan(&session).await;
     }
 
+    let instructions = instructions::load(&dir, Some(&cluaiz_core::EnvironmentManager::current().global_dir));
     let mut agent = Agent {
-        system: system_prompt(&dir, args.system_prompt.as_deref()),
+        system: system_prompt(&dir, &instructions, args.system_prompt.as_deref()),
+        instructions,
         tools: Tools::new(dir, args.yes),
         session,
         history: Vec::new(),
@@ -281,6 +282,8 @@ struct Agent {
     session: Session,
     tools: Tools,
     system: String,
+    /// The AGENTS.md files in the system prompt (/memory)
+    instructions: Vec<instructions::Instruction>,
     history: Vec<ChatMessage<Vec<PreparedPart>>>,
     display: Display,
     /// The saved conversation this one writes to (`~/.cluaiz/sessions`)
@@ -332,6 +335,7 @@ impl Agent {
                 format!("{}
 context    {}", plan.summary(), plan.context_reason)
             }
+            "/memory" => instructions::summary(&self.instructions),
             "/sessions" => {
                 let saved = sessions::list(self.tools.root());
                 if saved.is_empty() {
@@ -853,7 +857,7 @@ fn context_note(tokens: u32) -> String {
     }
 }
 
-fn system_prompt(dir: &std::path::Path, extra: Option<&str>) -> String {
+fn system_prompt(dir: &std::path::Path, instructions: &[instructions::Instruction], extra: Option<&str>) -> String {
     let shell = if cfg!(windows) { "PowerShell" } else { "sh" };
     let mut prompt = format!(
         "You are Cluaiz Agent, a coding assistant working on the user's computer through the cluaiz command line.\n\
@@ -867,10 +871,11 @@ fn system_prompt(dir: &std::path::Path, extra: Option<&str>) -> String {
         std::env::consts::ARCH,
         shell,
     );
-    // The project's own notes for agents
-    if let Ok(notes) = std::fs::read_to_string(dir.join("AGENTS.md")) {
-        let notes: String = notes.chars().take(MAX_PROJECT_NOTES).collect();
-        prompt.push_str(&format!("\n\nThe project's AGENTS.md:\n{}", notes.trim()));
+    // The user's and the project's AGENTS.md files
+    let notes = instructions::prompt(instructions);
+    if !notes.is_empty() {
+        prompt.push_str("\n\n");
+        prompt.push_str(&notes);
     }
     if let Some(extra) = extra.filter(|e| !e.trim().is_empty()) {
         prompt.push_str(&format!("\n\n{}", extra.trim()));
