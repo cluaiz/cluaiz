@@ -136,7 +136,7 @@ impl Tools {
                 )
             })?;
         let what = format!("{} {}", target.category, target.component_id);
-        self.ask(&format!("{}:{}", target.category, target.component_id), &what)?;
+        self.ask(&format!("{}:{}", target.category, target.component_id), &format!("{what}\narguments: {arguments}"))?;
         let output = cluaiz_agents::ToolsEngine::execute_tool_by_name(
             &target.category,
             &target.component_id,
@@ -160,7 +160,7 @@ impl Tools {
     pub fn attachment_path(&mut self, source: &str) -> Result<PathBuf, String> {
         let path = cluaiz_api::cep::roots::resolve(source, &self.root, false)
             .map_err(|e| format!("{e:?}"))?;
-        self.authorize_read("attachment", &path)?;
+        self.authorize_read("attachment", &path, "")?;
         Ok(path)
     }
 
@@ -268,14 +268,8 @@ impl Tools {
                 return format!("Error: {error}");
             }
         };
-        let target = args
-            .get("path")
-            .or_else(|| args.get("command"))
-            .or_else(|| args.get("pattern"))
-            .and_then(Value::as_str)
-            .unwrap_or_default();
         self.display
-            .emit(Event::ToolStart(name.into(), target.into()));
+            .emit(Event::ToolStart(name.into(), describe_call(name, &args)));
         let text = |key: &str| args.get(key).and_then(Value::as_str).map(str::to_string);
         let number = |key: &str| args.get(key).and_then(Value::as_u64).map(|n| n as usize);
 
@@ -332,7 +326,11 @@ impl Tools {
         limit: Option<usize>,
     ) -> Result<(String, String), String> {
         let file = self.resolve(path)?;
-        self.authorize_read("read_file", &file)?;
+        let range = match (offset, limit) {
+            (None, None) => String::new(),
+            (offset, limit) => format!("lines: from {}, at most {}", offset.unwrap_or(1), limit.unwrap_or(READ_LINES)),
+        };
+        self.authorize_read("read_file", &file, &range)?;
         let bytes = std::fs::read(&file).map_err(|e| format!("{}: {e}", self.show(&file)))?;
         if bytes.iter().take(8000).any(|b| *b == 0) {
             return Err("a binary file, not text".into());
@@ -365,7 +363,7 @@ impl Tools {
 
     fn list_dir(&mut self, path: &str) -> Result<(String, String), String> {
         let dir = self.resolve(path)?;
-        self.authorize_read("list_dir", &dir)?;
+        self.authorize_read("list_dir", &dir, "")?;
         let entries = directory_entries(&dir).map_err(|error| error.to_string())?;
         let total = entries.len();
         let mut out: Vec<String> = entries
@@ -397,7 +395,11 @@ impl Tools {
         glob: Option<String>,
     ) -> Result<(String, String), String> {
         let start = self.resolve(path)?;
-        self.authorize_read("search", &start)?;
+        let details = match &glob {
+            Some(glob) => format!("pattern: {pattern}\nfiles: {glob}"),
+            None => format!("pattern: {pattern}"),
+        };
+        self.authorize_read("search", &start, &details)?;
         let re = regex::Regex::new(pattern)
             .or_else(|_| regex::Regex::new(&regex::escape(pattern)))
             .map_err(|e| e.to_string())?;
@@ -495,7 +497,7 @@ impl Tools {
         replace_all: bool,
     ) -> Result<(String, String), String> {
         let file = self.resolve(path)?;
-        self.allow_outside("edit_file", &file)?;
+        self.allow_outside("edit_file", &file, "")?;
         let text =
             std::fs::read_to_string(&file).map_err(|e| format!("{}: {e}", self.show(&file)))?;
         // A file with Windows line breaks matches text the model wrote with plain ones
@@ -655,24 +657,22 @@ impl Tools {
         }
     }
 
-    fn allow_outside(&mut self, tool: &str, path: &Path) -> Result<(), String> {
+    /// `details`: the call's other arguments, one `name: value` per line under the path
+    fn allow_outside(&mut self, tool: &str, path: &Path, details: &str) -> Result<(), String> {
         if path.starts_with(&self.root) {
             return Ok(());
         }
         self.ask(
             tool,
-            &format!(
-                "outside the working folder: {}",
-                cluaiz_api::cep::roots::display(path)
-            ),
+            &with_details(&format!("outside the working folder: {}", cluaiz_api::cep::roots::display(path)), details),
         )
     }
 
-    fn authorize_read(&mut self, tool: &str, path: &Path) -> Result<(), String> {
+    fn authorize_read(&mut self, tool: &str, path: &Path, details: &str) -> Result<(), String> {
         if self.strict {
-            self.ask(tool, &cluaiz_api::cep::roots::display(path))
+            self.ask(tool, &with_details(&cluaiz_api::cep::roots::display(path), details))
         } else {
-            self.allow_outside(tool, path)
+            self.allow_outside(tool, path, details)
         }
     }
 
@@ -750,6 +750,49 @@ pub(super) fn directory_entries(dir: &Path) -> std::io::Result<Vec<(bool, String
 }
 
 /// A long result keeps its start and end
+/// The first line (what the rules match), then the details
+fn with_details(first: &str, details: &str) -> String {
+    if details.is_empty() { first.to_owned() } else { format!("{first}\n{details}") }
+}
+
+/// A call as its row shows it: every argument, the main one first
+/// (`"todo" in src · files *.rs`, `src/main.rs · lines 40-80`)
+fn describe_call(name: &str, args: &Value) -> String {
+    let text = |key: &str| args.get(key).and_then(Value::as_str).unwrap_or_default();
+    let number = |key: &str| args.get(key).and_then(Value::as_u64);
+    match name {
+        "search" => {
+            let mut out = format!("\"{}\" in {}", text("pattern"), if text("path").is_empty() { "." } else { text("path") });
+            if !text("glob").is_empty() {
+                out.push_str(&format!(" · files {}", text("glob")));
+            }
+            out
+        }
+        "read_file" => match (number("offset"), number("limit")) {
+            (None, None) => text("path").to_owned(),
+            (offset, limit) => format!("{} · lines from {}, at most {}", text("path"), offset.unwrap_or(1), limit.unwrap_or(READ_LINES as u64)),
+        },
+        "list_dir" => if text("path").is_empty() { ".".into() } else { text("path").to_owned() },
+        "write_file" => format!("{} · {} lines", text("path"), text("content").lines().count()),
+        "edit_file" => {
+            let all = args.get("replace_all").and_then(Value::as_bool).unwrap_or(false);
+            format!("{}{}", text("path"), if all { " · every match" } else { "" })
+        }
+        "run_command" => match number("timeout") {
+            Some(seconds) => format!("{} · timeout {seconds}s", text("command")),
+            None => text("command").to_owned(),
+        },
+        // An installed tool: its arguments as they came
+        _ => {
+            let all = args.to_string();
+            match all.char_indices().nth(300) {
+                Some((cut, _)) => format!("{}…", &all[..cut]),
+                None => all,
+            }
+        }
+    }
+}
+
 pub(crate) fn clip(text: &str) -> String {
     if text.len() <= MAX_RESULT {
         return text.to_string();

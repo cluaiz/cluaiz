@@ -408,7 +408,7 @@ fn approval_lines(tool: &str, detail: &str, width: usize, palette: crate::theme:
         Span::styled(format!("  ({tool})"), palette.muted),
     ])];
     let value_width = width.saturating_sub(LABEL).max(8);
-    let mut push = |label: &str, value: &str, style: Style| {
+    let push = |lines: &mut Vec<Line<'static>>, label: &str, value: &str, style: Style| {
         for (index, part) in textwrap::wrap(value, value_width).into_iter().enumerate() {
             let label = if index == 0 { label } else { "" };
             lines.push(Line::from(vec![
@@ -426,11 +426,11 @@ fn approval_lines(tool: &str, detail: &str, width: usize, palette: crate::theme:
             // The last "in <folder>" row is where it runs; every row before it is the command
             if rows.peek().is_none() && !first {
                 if let Some(folder) = row.strip_prefix("in ") {
-                    push("Folder", folder, path);
+                    push(&mut lines, "Folder", folder, path);
                     break;
                 }
             }
-            push(if first { "Command" } else { "" }, &format!(" {row} "), command);
+            push(&mut lines, if first { "Command" } else { "" }, &format!(" {row} "), command);
             first = false;
         }
         return lines;
@@ -440,17 +440,28 @@ fn approval_lines(tool: &str, detail: &str, width: usize, palette: crate::theme:
             .iter()
             .find_map(|verb| first.strip_prefix(verb).map(|rest| (verb.trim_end_matches([' ', ':']), rest)));
         match split {
-            Some(("outside the working folder", rest)) => push("Outside", rest, path),
+            Some(("outside the working folder", rest)) => push(&mut lines, "Outside", rest, path),
             Some((verb, rest)) => {
                 let mut verb = verb.to_owned();
                 verb[..1].make_ascii_uppercase();
-                push(&verb, rest, path)
+                push(&mut lines, &verb, rest, path)
             }
-            None if tool.ends_with("_file") || tool.starts_with("list") => push("Path", first, path),
-            None => push("", first, path),
+            None if tool.ends_with("_file") => push(&mut lines, "File", first, path),
+            None if tool.starts_with("list") || tool == "search" => push(&mut lines, "Folder", first, path),
+            None => push(&mut lines, "", first, path),
         }
     }
+    let detail = palette.base.add_modifier(Modifier::BOLD | Modifier::REVERSED);
     for row in rows {
+        // `name: value` rows under the path: the call's other arguments (pattern, lines, ...)
+        if let Some((name, value)) = row.split_once(": ").filter(|(name, _)| {
+            !name.is_empty() && name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == ' ')
+        }) {
+            let mut label = name.to_owned();
+            label[..1].make_ascii_uppercase();
+            push(&mut lines, &label, &format!(" {value} "), detail);
+            continue;
+        }
         let style = match row.chars().next() {
             Some('+') => palette.base.fg(ratatui::style::Color::Green),
             Some('-') => palette.base.fg(ratatui::style::Color::Red),
@@ -507,7 +518,11 @@ mod tests {
             text("run_command", "mkdir testdir\nin /work"),
             ["Run command  (run_command)", "Command   mkdir testdir", "Folder   /work"]
         );
-        assert_eq!(text("read_file", "/work/README.md"), ["Read file  (read_file)", "Path     /work/README.md"]);
+        assert_eq!(text("read_file", "/work/README.md"), ["Read file  (read_file)", "File     /work/README.md"]);
         assert_eq!(text("edit_file", "edit a.rs\n- x\n+ y"), ["Edit file  (edit_file)", "Edit     a.rs", "- x", "+ y"]);
+        assert_eq!(
+            text("search", "/work\npattern: fn main\nfiles: *.rs"),
+            ["Search  (search)", "Folder   /work", "Pattern   fn main", "Files     *.rs"]
+        );
     }
 }

@@ -148,3 +148,13 @@ async fn test_invalid_arguments_do_not_write_and_failed_command_is_error() {
     assert!(result.starts_with("Error:"), "{result}");
     assert!(result.contains("Exit code 7"), "{result}");
 }
+
+#[test]
+fn a_call_row_shows_every_argument() {
+    let call = |name: &str, args: &str| describe_call(name, &serde_json::from_str(args).unwrap());
+    assert_eq!(call("search", r#"{"pattern":"fn main","path":"src","glob":"*.rs"}"#), "\"fn main\" in src · files *.rs");
+    assert_eq!(call("search", r#"{"pattern":"todo"}"#), "\"todo\" in .");
+    assert_eq!(call("read_file", r#"{"path":"a.rs","offset":40,"limit":20}"#), "a.rs · lines from 40, at most 20");
+    assert_eq!(call("write_file", r#"{"path":"hi.txt","content":"a\nb"}"#), "hi.txt · 2 lines");
+    assert_eq!(call("run_command", r#"{"command":"cargo test","timeout":300}"#), "cargo test · timeout 300s");
+}
