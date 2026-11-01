@@ -117,11 +117,17 @@ pub fn read(skills: &[Skill], name: &str) -> Result<(String, String), String> {
 }
 
 /// What /skills shows
-pub fn summary(skills: &[Skill]) -> String {
+pub fn summary(skills: &[Skill], dir: &Path, user_home: Option<&Path>) -> String {
     if skills.is_empty() {
-        return "No skills. A skill is a folder with a SKILL.md (name and description in its front matter, the \
-                instructions under it) in .agents/skills/ of the project, or in ~/.agents/skills/ for every project."
-            .into();
+        let mut places = vec![format!("  For this project:   {}", cluaiz_api::cep::roots::display(&dir.join(".agents").join("skills")))];
+        if let Some(home) = user_home {
+            places.push(format!("  For every project:  {}", cluaiz_api::cep::roots::display(&home.join(".agents").join("skills"))));
+        }
+        return format!(
+            "No skills yet. A skill is a folder with a SKILL.md (name and description in its front matter, the \
+             instructions under it), for example <folder>/my-skill/SKILL.md, in:\n{}",
+            places.join("\n")
+        );
     }
     let width = skills.iter().map(|skill| skill.name.len()).max().unwrap_or(0);
     let mut lines = vec!["Skills (the model reads one with use_skill when the task fits):".to_string()];

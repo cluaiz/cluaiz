@@ -109,7 +109,17 @@ The agent never changes anything without your answer, unless you allow it.
 | `y` | This call runs |
 | `n`, empty answer or Esc in the UI | This call does not run |
 | `a` | This call runs, and every later call of the same tool runs without asking until you exit |
+| `r` | This call runs, and a rule for it is saved in `.cluaiz/agent.local.json` of the working folder, so it runs without asking from now on, in later sessions too. Offered as "Yes, and always allow `<rule>` in this folder" when a rule fits the call |
 | Other text | Nothing executes; the model receives your instructions with their original case |
+
+The rule `r` saves is narrow. A command with a sub-command keeps its first two words
+(`git status --short` saves `run_command(git status*)`, `cargo test -p cmd` saves
+`run_command(cargo test*)`). Any other command is saved exactly as it was written
+(`python build.py`), and a file change is saved for that one file (`edit_file(src/lib.rs)`). A
+chained command (`a && b`, `a; b`, a pipe or a redirect) gets no rule. When the agent creates
+`agent.local.json` in a git repository, it adds the file to `.git/info/exclude`, so git ignores it
+in this clone without a change to the repository's `.gitignore`. `/rules` shows the saved rules;
+delete a line from the file to ask again.
 
 In the terminal UI the prompt shows the resolved path or full command, and the proposed file
 change. PgUp/PgDn read a long operation; allow is blocked until its last line is visible. Your
@@ -189,12 +199,17 @@ optional:
   because the mode for every folder is the App's security mode (`/mode`). A `mode` there is
   reported and not used; its rules still apply.
 - **A file that is not valid JSON** is not used. The agent says so when it starts and in `/rules`.
-- **`/rules`** lists the files that were read, and every rule in use with the file it came from.
+- **`/rules`** lists the three files with their full paths (also the ones not there yet), and
+  every rule in use with the file it came from.
+- **You do not have to write the files by hand:** answer `r` ("always allow in this folder") when
+  the agent asks, and the rule is saved for you (see [What it asks before doing](#what-it-asks-before-doing)).
 
 Rules use the same form as `--allowed-tools` (see [Headless](#headless-scripts-ci-and-other-programs)).
 `*` matches any text, so a rule matches the command line as the model wrote it:
 `run_command(git push*)` does not match `sh -c "git push"`. In an interactive session such a
-command asks first, as every command that no rule allows does.
+command asks first, as every command that no rule allows does. A deny rule also matches each
+command chained in a line (`git add . && git push` is refused). An allow rule never covers a
+chained or redirected command (`git status; rm -r src`, `git status > out.txt`): that asks.
 
 ## Reading the screen
 
@@ -299,6 +314,7 @@ same settings can be typed directly: `/mode plan`, `/think off`, `/effort high`,
 | `/compact` | The model summarizes the conversation and the summary replaces it: frees context, keeps the thread |
 | `/plan` | Where the model runs: blocks on GPU and in RAM, context and KV cache, VRAM and RAM, and why (the header shows the placement in short) |
 | `/memory` | The AGENTS.md files in use and how much of each fits (see [Instructions](#instructions-agentsmd)) |
+| `/init` | The model reads the project and writes its `AGENTS.md` (see [Instructions](#instructions-agentsmd)) |
 | `/skills` | The SKILL.md skills the model can use, with where each was found (see [Skills](#skills-skillmd)) |
 | `/rules` | The agent settings files that were read, and every allow and deny rule in use with its file (see [Agent settings files](#agent-settings-files)) |
 | `/sessions` | The saved conversations of this folder, newest first, with their ids |
@@ -430,6 +446,14 @@ A later, nearer file is more specific and wins where two disagree. All of them s
 characters in the prompt; the nearest file takes its share first, so a long personal file is cut
 before the project's own. `/memory` shows which files are in use and what was cut. The files are
 read when the agent starts. `--system-prompt "..."` adds instructions for one run.
+
+**`/init`** writes the project's `AGENTS.md` for you, as `/init` does in Codex and Claude Code: the
+model lists the folder, reads the README and the build or package files, and creates `AGENTS.md`
+in the working folder (Project, Build and test, Code style, Rules). It asks before writing the file
+like any other change, and the file is in use for the rest of the session. Read it afterwards: a
+small model can add a command the project does not use. When `AGENTS.md` is already there, `/init`
+says so and changes nothing. `/memory` shows the full paths of both files, also when they are not
+there yet.
 
 The agent's own instructions tell the model the folder, the operating system and the shell, to use
 the tools instead of guessing, never to claim it did something it did not, to read a file before

@@ -32,6 +32,8 @@ pub struct Settings {
     pub layers: Vec<Layer>,
     /// Files that could not be used, and why (shown when the agent starts and in /rules)
     pub problems: Vec<String>,
+    /// Every place a settings file is read from, with its label, whether or not it is there
+    pub places: Vec<(String, std::path::PathBuf)>,
 }
 
 impl Settings {
@@ -44,6 +46,7 @@ impl Settings {
         files.push((root.join(".cluaiz").join("agent.local.json"), ".cluaiz/agent.local.json"));
 
         let mut settings = Settings::default();
+        settings.places = files.iter().map(|(path, label)| (label.to_string(), path.clone())).collect();
         for (index, (path, label)) in files.into_iter().enumerate() {
             let Ok(text) = std::fs::read_to_string(&path) else { continue };
             let mut parsed: Project = match serde_json::from_str(&text) {
@@ -70,30 +73,39 @@ impl Settings {
         self.layers.iter().rev().find_map(|layer| layer.settings.mode)
     }
 
-    /// What /rules shows
+    /// What /rules shows: each settings file with its full path, then the rules in use
     pub fn summary(&self, rules: &Rules) -> String {
-        let mut lines = Vec::new();
-        if self.layers.is_empty() {
-            lines.push(
-                "No agent settings files. Rules for every folder go in ~/.cluaiz/config/agent.json, for this \
-                 project in .cluaiz/agent.json, and your own for this folder in .cluaiz/agent.local.json:\n  {\"allow\": [\"run_command(cargo test*)\"], \"deny\": [\"run_command(git push*)\"]}"
-                    .to_string(),
-            );
-        }
-        for layer in &self.layers {
-            let mut parts = Vec::new();
-            if let Some(mode) = layer.settings.mode {
-                parts.push(format!("mode {}", mode.label()));
-            }
-            parts.push(format!("{} allow, {} deny", layer.settings.allow.len(), layer.settings.deny.len()));
-            lines.push(format!("{}: {}", layer.label, parts.join(", ")));
+        let mut lines = vec!["Agent settings files (rules of all of them apply; the nearest mode is used):".to_string()];
+        let width = self.places.iter().map(|(label, _)| label.len()).max().unwrap_or(0);
+        for (label, path) in &self.places {
+            let state = match self.layers.iter().find(|layer| layer.label == *label) {
+                Some(layer) => {
+                    let mut parts = Vec::new();
+                    if let Some(mode) = layer.settings.mode {
+                        parts.push(format!("mode {}", mode.label()));
+                    }
+                    parts.push(format!("{} allow, {} deny", layer.settings.allow.len(), layer.settings.deny.len()));
+                    parts.join(", ")
+                }
+                None if path.exists() => "not used, see below".to_string(),
+                None => "not there yet".to_string(),
+            };
+            lines.push(format!("  {label:<width$}  {state}"));
+            lines.push(format!("  {:<width$}  {}", "", cluaiz_api::cep::roots::display(path)));
         }
         for problem in &self.problems {
             lines.push(format!("! {problem}"));
         }
         let shown = rules.show();
-        if !shown.is_empty() {
-            lines.push(String::new());
+        lines.push(String::new());
+        if shown.is_empty() {
+            lines.push(
+                "No rules yet. Answer \"Yes, and always allow ... in this folder\" when the agent asks, and the \
+                 rule is saved in .cluaiz/agent.local.json; or write a file: {\"allow\": [\"run_command(cargo test*)\"], \
+                 \"deny\": [\"run_command(git push*)\"]}"
+                    .into(),
+            );
+        } else {
             lines.push(shown);
         }
         lines.join("\n")
@@ -132,8 +144,14 @@ impl Rules {
         }
     }
 
-    /// Rules from one place (`source` names it in a refusal and in /rules)
+    /// The rules of a settings file, one per list item (`source` names it in a refusal and in /rules)
     pub fn add(&mut self, source: &str, allowed: &[String], denied: &[String]) {
+        self.allowed.extend(allowed.iter().filter(|rule| !rule.trim().is_empty()).map(|rule| parse_one(rule, source)));
+        self.denied.extend(denied.iter().filter(|rule| !rule.trim().is_empty()).map(|rule| parse_one(rule, source)));
+    }
+
+    /// `--allowed-tools` / `--disallowed-tools`: comma-separated rules
+    pub fn add_flags(&mut self, source: &str, allowed: &[String], denied: &[String]) {
         self.allowed.extend(allowed.iter().flat_map(|list| parse(list, source)));
         self.denied.extend(denied.iter().flat_map(|list| parse(list, source)));
     }
@@ -150,25 +168,135 @@ impl Rules {
         lines.join("\n")
     }
 
-    /// `what` is the approval text of the call: its first line names the command or the file
-    pub fn check(&self, tool: &str, what: &str) -> Verdict {
-        let first = what.lines().next().unwrap_or_default().trim();
-        // "create src/a.rs" / "edit src/a.rs": the file; a command line as it is
-        let target = match tool {
+    /// What the rules of a call match: a command as the model wrote it (without the `in <folder>`
+    /// line the approval adds), the file of a change relative to the working folder, else the first
+    /// line of the approval text
+    fn target(&self, tool: &str, what: &str) -> String {
+        match tool {
+            "run_command" => match what.rsplit_once('\n') {
+                Some((command, last)) if last.starts_with("in ") => command.trim().to_owned(),
+                _ => what.trim().to_owned(),
+            },
             "write_file" | "edit_file" => {
+                // "create src/a.rs" / "edit src/a.rs"
+                let first = what.lines().next().unwrap_or_default().trim();
                 let path = first.split_once(' ').map_or(first, |(_, path)| path).replace('\\', "/");
                 path.strip_prefix(&self.root).map(str::to_owned).unwrap_or(path)
             }
-            _ => first.to_owned(),
-        };
-        let target = target.as_str();
-        if let Some(rule) = self.denied.iter().find(|rule| rule.matches(tool, target)) {
+            _ => what.lines().next().unwrap_or_default().trim().to_owned(),
+        }
+    }
+
+    /// `what` is the approval text of the call
+    pub fn check(&self, tool: &str, what: &str) -> Verdict {
+        let target = self.target(tool, what);
+        // A deny rule matches the whole command or any command chained in it (`a && git push`)
+        let mut parts = vec![target.as_str()];
+        if tool == "run_command" {
+            parts.extend(target.split(['\n', ';', '|', '&']).map(str::trim).filter(|part| !part.is_empty()));
+        }
+        if let Some(rule) = self.denied.iter().find(|rule| parts.iter().any(|part| rule.matches(tool, part))) {
             return Verdict::Deny(format!("refused by the rule {} in {}", rule.show(), rule.source));
         }
-        if self.allowed.iter().any(|rule| rule.matches(tool, target)) {
+        // An allow rule covers one plain command: a chained one, or one that redirects or runs
+        // another command inside it, asks (`git status*` must not allow `git status; rm -r x`)
+        if tool == "run_command" && chained(&target) {
+            return Verdict::Ask;
+        }
+        if self.allowed.iter().any(|rule| rule.matches(tool, &target)) {
             return Verdict::Allow;
         }
         Verdict::Ask
+    }
+
+    /// The rule "always allow in this folder" saves for this call, or None when no rule should
+    /// cover it (a chained command). A command with a sub-command keeps its first two words
+    /// (`git status*`, `cargo test*`); any other command and every other call are saved exactly.
+    pub fn suggest(&self, tool: &str, what: &str) -> Option<String> {
+        let target = self.target(tool, what);
+        if target.is_empty() || target.contains(['(', ')', '*']) {
+            return None;
+        }
+        if tool != "run_command" {
+            return Some(format!("{tool}({target})"));
+        }
+        if chained(&target) {
+            return None;
+        }
+        let words: Vec<&str> = target.split_whitespace().collect();
+        let sub_command = words.get(1).is_some_and(|word| {
+            word.chars().next().is_some_and(|c| c.is_ascii_alphabetic())
+                && word.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        });
+        Some(if sub_command {
+            format!("run_command({} {}*)", words[0], words[1])
+        } else {
+            format!("run_command({target})")
+        })
+    }
+
+    /// `rule` allowed from now on, as the settings file it was saved in
+    pub fn allow(&mut self, rule: &str, source: &str) {
+        self.allowed.push(parse_one(rule, source));
+    }
+}
+
+/// A command that runs more than one command or redirects: `;`, `&&`, `||`, `|`, `&`, `>`, `<`,
+/// `` ` ``, `$(` or a new line
+fn chained(command: &str) -> bool {
+    command.contains(['\n', ';', '|', '&', '>', '<', '`']) || command.contains("$(")
+}
+
+/// Saves `rule` in the allow list of `file` (a settings file as `Settings::load` reads it), keeping
+/// everything else in it. A file that is not valid JSON is left as it is.
+pub fn save_allow(file: &std::path::Path, rule: &str) -> Result<(), String> {
+    let mut value: serde_json::Value = match std::fs::read_to_string(file) {
+        Ok(text) => serde_json::from_str(&text).map_err(|error| format!("{} is not valid JSON ({error}); nothing was saved", file.display()))?,
+        Err(_) => serde_json::json!({}),
+    };
+    let object = value.as_object_mut().ok_or_else(|| format!("{} is not a JSON object; nothing was saved", file.display()))?;
+    let allow = object.entry("allow").or_insert_with(|| serde_json::json!([]));
+    let list = allow.as_array_mut().ok_or_else(|| format!("\"allow\" in {} is not a list; nothing was saved", file.display()))?;
+    if !list.iter().any(|item| item.as_str() == Some(rule)) {
+        list.push(serde_json::Value::String(rule.to_owned()));
+    }
+    if let Some(parent) = file.parent() {
+        std::fs::create_dir_all(parent).map_err(|error| format!("{}: {error}", parent.display()))?;
+    }
+    let text = serde_json::to_string_pretty(&value).map_err(|error| error.to_string())?;
+    let new = !file.exists();
+    std::fs::write(file, text + "\n").map_err(|error| format!("{}: {error}", file.display()))?;
+    if new {
+        keep_out_of_git(file);
+    }
+    Ok(())
+}
+
+/// A new local settings file is the user's own: like Claude Code's settings.local.json, git is
+/// told to ignore it in this clone only (`.git/info/exclude`), so the repository's files stay as
+/// they are
+fn keep_out_of_git(file: &std::path::Path) {
+    let Some(folder) = file.parent().and_then(|cluaiz| cluaiz.parent()) else { return };
+    let (repo, _) = super::instructions::project_folders(folder);
+    let git = repo.join(".git");
+    if !git.is_dir() {
+        return;
+    }
+    let Ok(relative) = file.strip_prefix(repo) else { return };
+    let line = format!("/{}", relative.display().to_string().replace('\\', "/"));
+    let exclude = git.join("info").join("exclude");
+    let current = std::fs::read_to_string(&exclude).unwrap_or_default();
+    if current.lines().any(|existing| existing.trim() == line) {
+        return;
+    }
+    let mut text = current;
+    if !text.is_empty() && !text.ends_with('\n') {
+        text.push('\n');
+    }
+    text.push_str(&line);
+    text.push('\n');
+    if std::fs::create_dir_all(git.join("info")).is_ok() {
+        let _ = std::fs::write(exclude, text);
     }
 }
 
@@ -185,6 +313,19 @@ impl Rule {
     }
 }
 
+/// One rule: `tool` or `tool(pattern)`
+fn parse_one(text: &str, source: &str) -> Rule {
+    let text = text.trim();
+    match text.split_once('(') {
+        Some((tool, rest)) => Rule {
+            tool: tool.trim().into(),
+            pattern: Some(rest.strip_suffix(')').unwrap_or(rest).trim().into()),
+            source: source.into(),
+        },
+        None => Rule { tool: text.into(), pattern: None, source: source.into() },
+    }
+}
+
 /// `a,b(x, y),c`: commas inside parentheses belong to the pattern
 fn parse(list: &str, source: &str) -> Vec<Rule> {
     let mut rules = Vec::new();
@@ -198,10 +339,7 @@ fn parse(list: &str, source: &str) -> Vec<Rule> {
                 let text = std::mem::take(&mut item);
                 let text = text.trim();
                 if !text.is_empty() {
-                    rules.push(match text.split_once('(') {
-                        Some((tool, rest)) => Rule { tool: tool.trim().into(), pattern: Some(rest.trim_end_matches(')').trim().into()), source: source.into() },
-                        None => Rule { tool: text.into(), pattern: None, source: source.into() },
-                    });
+                    rules.push(parse_one(text, source));
                 }
                 continue;
             }
@@ -244,7 +382,7 @@ mod tests {
     #[test]
     fn rules_allow_deny_and_ask() {
         let mut rules = Rules::new(std::path::Path::new("C:\\w"));
-        rules.add("--allowed-tools", &["read_file,run_command(git *),edit_file(src/*)".into()], &["run_command(git push*)".into()]);
+        rules.add_flags("--allowed-tools", &["read_file,run_command(git *),edit_file(src/*)".into()], &["run_command(git push*)".into()]);
         assert!(matches!(rules.check("edit_file", "edit C:\\w\\src\\lib.rs"), Verdict::Allow));
         assert!(matches!(rules.check("read_file", "read a.txt"), Verdict::Allow));
         assert!(matches!(rules.check("run_command", "git status\nin /w"), Verdict::Allow));
@@ -292,6 +430,46 @@ mod tests {
         assert_eq!(settings.layers.len(), 2);
         assert!(settings.problems.iter().any(|problem| problem.contains("agent.local.json is not used")));
         assert_eq!(settings.mode(), Some(super::super::tools::Mode::Plan));
+        let _ = std::fs::remove_dir_all(base);
+    }
+
+    #[test]
+    fn chained_commands_are_not_allowed_by_a_rule_and_deny_finds_any_part() {
+        let mut rules = Rules::new(std::path::Path::new("C:\\w"));
+        rules.add(".cluaiz/agent.json", &["run_command(git status*)".into()], &["run_command(git push*)".into()]);
+        assert!(matches!(rules.check("run_command", "git status --short\nin C:/w"), Verdict::Allow));
+        assert!(matches!(rules.check("run_command", "git status; rm -r src\nin C:/w"), Verdict::Ask));
+        assert!(matches!(rules.check("run_command", "git status\nrm -r src\nin C:/w"), Verdict::Ask));
+        assert!(matches!(rules.check("run_command", "git status > out.txt\nin C:/w"), Verdict::Ask));
+        assert!(matches!(rules.check("run_command", "git add . && git push origin\nin C:/w"), Verdict::Deny(_)));
+    }
+
+    #[test]
+    fn always_allow_suggests_a_narrow_rule_and_saves_it() {
+        let rules = Rules::new(std::path::Path::new("C:\\w"));
+        assert_eq!(rules.suggest("run_command", "git status --short\nin C:/w").as_deref(), Some("run_command(git status*)"));
+        assert_eq!(rules.suggest("run_command", "cargo test -p cmd\nin C:/w").as_deref(), Some("run_command(cargo test*)"));
+        // No sub-command: only this exact command
+        assert_eq!(rules.suggest("run_command", "python build.py\nin C:/w").as_deref(), Some("run_command(python build.py)"));
+        assert_eq!(rules.suggest("run_command", "ls -la\nin C:/w").as_deref(), Some("run_command(ls -la)"));
+        assert_eq!(rules.suggest("run_command", "git status && git push\nin C:/w"), None);
+        assert_eq!(rules.suggest("edit_file", "edit C:\\w\\src\\lib.rs\n- a\n+ b").as_deref(), Some("edit_file(src/lib.rs)"));
+
+        let base = std::env::temp_dir().join(format!("cluaiz-agent-save-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&base);
+        let file = base.join(".cluaiz").join("agent.local.json");
+        save_allow(&file, "run_command(git status*)").unwrap();
+        save_allow(&file, "run_command(git status*)").unwrap();
+        std::fs::write(&file, r#"{"mode": "plan", "allow": ["run_command(git status*)"], "deny": ["x"]}"#).unwrap();
+        save_allow(&file, "edit_file(src/lib.rs)").unwrap();
+        let saved: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&file).unwrap()).unwrap();
+        assert_eq!(saved["allow"], serde_json::json!(["run_command(git status*)", "edit_file(src/lib.rs)"]));
+        assert_eq!(saved["mode"], "plan");
+        assert_eq!(saved["deny"], serde_json::json!(["x"]));
+        // A broken file is not overwritten
+        std::fs::write(&file, "{ broken").unwrap();
+        assert!(save_allow(&file, "read_file").is_err());
+        assert_eq!(std::fs::read_to_string(&file).unwrap(), "{ broken");
         let _ = std::fs::remove_dir_all(base);
     }
 }

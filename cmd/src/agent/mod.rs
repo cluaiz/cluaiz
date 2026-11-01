@@ -210,8 +210,8 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
     for layer in &agent.settings.layers {
         rules.add(&layer.label, &layer.settings.allow, &layer.settings.deny);
     }
-    rules.add("--allowed-tools", &args.allowed_tools, &[]);
-    rules.add("--disallowed-tools", &[], &args.disallowed_tools);
+    rules.add_flags("--allowed-tools", &args.allowed_tools, &[]);
+    rules.add_flags("--disallowed-tools", &[], &args.disallowed_tools);
     agent.tools.rules = rules;
     // The mode: --yes / --mode, else the nearest agent settings file, else the App's global security mode
     match if args.yes { Some(tools::Mode::Full) } else { args.mode.or(agent.settings.mode()) } {
@@ -351,7 +351,16 @@ impl Agent {
                 format!("{}
 context    {}", plan.summary(), plan.context_reason)
             }
-            "/memory" => instructions::summary(&self.instructions),
+            "/memory" => instructions::summary(
+                &self.instructions,
+                self.tools.root(),
+                Some(&cluaiz_core::EnvironmentManager::current().global_dir),
+            ),
+            "/init" if self.tools.root().join("AGENTS.md").is_file() => format!(
+                "{} is already there. Edit it yourself, or delete it and type /init again.",
+                cluaiz_api::cep::roots::display(&self.tools.root().join("AGENTS.md"))
+            ),
+            "/init" => return None,
             "/skills" => self.tools.skills_summary(),
             "/rules" => self.settings.summary(&self.tools.rules),
             "/sessions" => {
@@ -486,6 +495,10 @@ context    {}", plan.summary(), plan.context_reason)
         self.tools.checkpoints.begin(text, self.history.len());
         let result = if text.trim() == "/compact" {
             self.compact().await
+        } else if text.trim() == "/init" {
+            let result = self.request(INIT_REQUEST, parts).await;
+            self.reload_instructions();
+            result
         } else if let Some(id) = text.trim().strip_prefix("/model ") {
             self.switch_model(id.trim()).await
         } else if let Some(command) = text.trim().strip_prefix('!') {
@@ -597,6 +610,22 @@ context    {}", plan.summary(), plan.context_reason)
     }
 
     /// `/compact`: the model writes a summary of the conversation, which then replaces it
+    /// After `/init`: the AGENTS.md files are read again and replace the old ones in the prompt
+    fn reload_instructions(&mut self) {
+        let dir = dunce(self.tools.root().to_path_buf());
+        let loaded = instructions::load(&dir, Some(&cluaiz_core::EnvironmentManager::current().global_dir));
+        let before = system_prompt(&dir, &self.instructions, None);
+        let Some(rest) = self.system.strip_prefix(&before).map(str::to_owned) else {
+            self.display.emit(Event::Message("Agent".into(), "AGENTS.md is used from the next agent session.".into()));
+            return;
+        };
+        self.system = system_prompt(&dir, &loaded, None) + &rest;
+        if loaded.len() != self.instructions.len() {
+            self.display.emit(Event::Message("Agent".into(), "AGENTS.md is in use now (see /memory).".into()));
+        }
+        self.instructions = loaded;
+    }
+
     async fn compact(&mut self) -> Result<()> {
         if self.history.is_empty() {
             self.display.emit(Event::Message("Compact".into(), "Nothing to compact yet.".into()));
@@ -841,6 +870,12 @@ fn diff(root: &std::path::Path, files: &[std::path::PathBuf]) -> String {
 
 /// The share of the context after which the next request first compacts the conversation
 const AUTO_COMPACT_PCT: usize = 80;
+
+/// What `/init` asks the model for, as Codex and Claude Code's `/init` do
+const INIT_REQUEST: &str = "Create an AGENTS.md file in the working folder: the instructions a coding agent needs to work on this project. \
+First look at the project: list the folder, and read the README and the build or package files (for example Cargo.toml, package.json, pyproject.toml, Makefile). \
+Then write AGENTS.md with write_file. Keep it short (under 60 lines), with these sections: Project (what it is and its main folders), \
+Build and test (the exact commands), Code style, and Rules (what to avoid). Write only what you found in the files; do not invent commands or folders.";
 
 /// What `/compact` asks the model for
 const COMPACT_REQUEST: &str = "Summarize this conversation so the work can go on from the summary alone: the goal, what was decided, files read or changed (with paths), commands run and their results, and the open next steps. Be concise; use a short list. Do not call tools.";

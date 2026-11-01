@@ -69,6 +69,8 @@ pub struct App {
     pub(crate) approval_bottom: bool,
     /// The highlighted answer of the permission box: 0 yes, 1 always for this tool, 2 no
     pub(crate) approval_choice: usize,
+    /// The rule "always in this folder" would save for the pending approval, if one fits it
+    pub(crate) approval_rule: Option<String>,
     saved_draft: Option<String>,
     pub(crate) suggestions: Vec<Suggestion>,
     pub(crate) selected: usize,
@@ -103,6 +105,7 @@ impl App {
             approval_page: 1,
             approval_bottom: false,
             approval_choice: 0,
+            approval_rule: None,
             saved_draft: None,
             suggestions: Vec::new(),
             selected: 0,
@@ -162,9 +165,29 @@ impl App {
         self.suggestions.clear();
         self.approval = Some(approval);
         self.approval_choice = 0;
+        self.approval_rule = None;
         self.approval_scroll = 0;
         self.approval_bottom = false;
         Ok(())
+    }
+
+    /// Offers "always in this folder" for the pending approval, saving `rule`
+    pub fn offer_rule(&mut self, rule: String) {
+        self.approval_rule = Some(rule);
+    }
+
+    /// The answers of the pending approval, in the order they are shown
+    pub(crate) fn approval_answers(&self) -> Vec<(ApprovalResponse, String)> {
+        let tool = self.approval.as_ref().map(|approval| approval.title.clone()).unwrap_or_default();
+        let mut answers = vec![
+            (ApprovalResponse::Allow, "Yes, run it".to_owned()),
+            (ApprovalResponse::Session, format!("Yes, and do not ask again for {tool} this session")),
+        ];
+        if let Some(rule) = &self.approval_rule {
+            answers.push((ApprovalResponse::Remember, format!("Yes, and always allow {rule} in this folder")));
+        }
+        answers.push((ApprovalResponse::Deny, "No (or type what to do instead, then Enter)".to_owned()));
+        answers
     }
 
     pub fn approval_pending(&self) -> bool {
@@ -318,7 +341,7 @@ impl App {
                     return Action::None;
                 }
                 KeyCode::Down if self.composer.text().is_empty() => {
-                    self.approval_choice = (self.approval_choice + 1).min(2);
+                    self.approval_choice = (self.approval_choice + 1).min(self.approval_answers().len() - 1);
                     return Action::None;
                 }
                 _ => {}
@@ -328,17 +351,22 @@ impl App {
                     // Typed text answers (y / a / n, or what to do instead); else the highlighted option
                     let typed = self.composer.take();
                     let response = if typed.trim().is_empty() {
-                        match self.approval_choice {
-                            0 => ApprovalResponse::Allow,
-                            1 => ApprovalResponse::Session,
-                            _ => ApprovalResponse::Deny,
-                        }
+                        self.approval_answers()
+                            .into_iter()
+                            .nth(self.approval_choice)
+                            .map_or(ApprovalResponse::Deny, |(response, _)| response)
                     } else {
-                        ApprovalResponse::parse(&typed)
+                        match ApprovalResponse::parse(&typed) {
+                            // "r" without a rule to save is what was typed
+                            ApprovalResponse::Remember if self.approval_rule.is_none() => {
+                                ApprovalResponse::Feedback(typed.trim().to_owned())
+                            }
+                            response => response,
+                        }
                     };
                     if matches!(
                         response,
-                        ApprovalResponse::Allow | ApprovalResponse::Session
+                        ApprovalResponse::Allow | ApprovalResponse::Session | ApprovalResponse::Remember
                     ) && !self.approval_bottom
                     {
                         self.notice =
