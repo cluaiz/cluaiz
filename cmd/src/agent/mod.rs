@@ -73,7 +73,7 @@ pub struct AgentArgs {
     #[arg(short = 'y', long)]
     pub yes: bool,
     /// What runs without asking: ask (default), accept-edits (file changes run, commands ask),
-    /// plan (read only: the model writes a plan) or full. Default: the folder's .cluaiz/agent.json
+    /// plan (read only: the model writes a plan) or full. Default: the project's .agents/settings.json
     #[arg(long, value_enum)]
     pub mode: Option<tools::Mode>,
     /// Keep chatting after doing the task

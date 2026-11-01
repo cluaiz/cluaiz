@@ -65,11 +65,11 @@ async fn always_allow_saves_the_rule_for_the_folder_and_stops_asking() {
     assert!(!second.starts_with("Error:"), "{second}");
     let asked = responder.join().unwrap();
     assert_eq!(asked, [Some("write_file(notes.txt)".to_string())]);
-    let saved = std::fs::read_to_string(dir.path().join(".cluaiz/agent.local.json")).unwrap();
+    let saved = std::fs::read_to_string(dir.path().join(".agents/settings.local.json")).unwrap();
     assert!(saved.contains("write_file(notes.txt)"), "{saved}");
     // Kept out of git in this clone only
     let exclude = std::fs::read_to_string(dir.path().join(".git/info/exclude")).unwrap();
-    assert!(exclude.lines().any(|line| line == "/.cluaiz/agent.local.json"), "{exclude}");
+    assert!(exclude.lines().any(|line| line == "/.agents/settings.local.json"), "{exclude}");
 }
 
 fn tools() -> (Tools, PathBuf) {

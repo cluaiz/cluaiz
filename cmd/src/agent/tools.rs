@@ -753,10 +753,10 @@ impl Tools {
             ApprovalResponse::Remember => {
                 // Saved for this folder, and in use from now on in this session too
                 if let Some(rule) = rule {
-                    let file = self.root.join(".cluaiz").join("agent.local.json");
+                    let file = super::rules::agents_folder(&self.root).join(super::rules::LOCAL_FILE);
                     match super::rules::save_allow(&file, &rule) {
                         Ok(()) => {
-                            self.rules.allow(&rule, ".cluaiz/agent.local.json");
+                            self.rules.allow(&rule, &format!(".agents/{}", super::rules::LOCAL_FILE));
                             self.display.emit(Event::Message(
                                 "Agent".into(),
                                 format!("Saved: {rule} is allowed in this folder ({})", cluaiz_api::cep::roots::display(&file)),
