@@ -275,16 +275,17 @@ impl Output for ScreenOutput {
         if self.display.closing() || self.display.interrupted() {
             cluaiz_core::GLOBAL_CANCEL_SIGNAL.store(true, Ordering::SeqCst);
         }
-        let phase = match cluaiz_core::live::call() {
-            Some((name, args)) => Event::PreparingTool(
+        // A call being written still generates tokens: the footer keeps counting them
+        if let Some((name, args)) = cluaiz_core::live::call() {
+            self.display.emit(Event::PreparingTool(
                 format!("Preparing {name} · {} bytes · {}s", args.len(), self.started.elapsed().as_secs()),
                 args,
-            ),
-            None => Event::GenerationProgress {
-                tokens: cluaiz_core::live::tokens(),
-                seconds: self.started.elapsed().as_secs(),
-                millis: self.started.elapsed().as_millis() as u64,
-            },
+            ));
+        }
+        let phase = Event::GenerationProgress {
+            tokens: cluaiz_core::live::tokens(),
+            seconds: self.started.elapsed().as_secs(),
+            millis: self.started.elapsed().as_millis() as u64,
         };
         self.display.emit(phase);
     }
