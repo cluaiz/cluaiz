@@ -137,7 +137,7 @@ async fn uninstall(keep_models: bool, yes: bool) -> Result<()> {
     println!("\n  {}", "Cluaiz will be removed:".bold());
     println!("    {}  ({})", home.display(), gb(folder_size(&home)));
     if keep_models {
-        println!("      {} {} ({}) and the model list stay", "keep".green(), models.display(), gb(models_size));
+        println!("      {} the models ({}, {}) and their list", "except".green(), gb(models_size), models.display());
     } else if models_size > 0 {
         println!("      {} the downloaded models ({}); --keep-models keeps them", "including".red(), gb(models_size));
     }
