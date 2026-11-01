@@ -45,6 +45,7 @@ pub async fn execute(command: SelfCommand) -> Result<()> {
 
 async fn self_update(check: bool, to: Option<String>) -> Result<()> {
     let current = cluaiz_core::VERSION;
+    let pinned = to.is_some();
     let target = match to {
         Some(version) => version.trim().trim_start_matches('v').to_string(),
         None => {
@@ -57,12 +58,15 @@ async fn self_update(check: bool, to: Option<String>) -> Result<()> {
             latest.version
         }
     };
-    if check {
-        println!("  Run `cluaiz self update` to install it.");
-        return Ok(());
-    }
     if target.is_empty() {
         return Err(eyre!("--to needs a version, e.g. --to 0.1.2"));
+    }
+    if check {
+        match pinned {
+            true => println!("  Run `cluaiz self update --to {target}` to install {target} (this is {current})."),
+            false => println!("  Run `cluaiz self update` to install it."),
+        }
+        return Ok(());
     }
     let dir = install_dir()?;
     refuse_running_server().await?;
