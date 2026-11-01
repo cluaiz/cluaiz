@@ -28,6 +28,9 @@ pub async fn run(mut agent: Agent, first: Option<String>, keep_open: bool) -> Re
     agent.display = display.clone();
     agent.tools.set_display(display.clone());
     display.emit(Event::Permission(agent.tools.strict));
+    for problem in &agent.settings.problems {
+        display.emit(Event::Message("Agent settings".into(), problem.clone()));
+    }
     let metadata = Metadata {
         title: format!("Cluaiz · {}", agent.session.model_id),
         workspace: cluaiz_api::cep::roots::display(agent.tools.root()),

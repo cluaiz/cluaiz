@@ -202,14 +202,19 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
         usage: None,
         compact_next: false,
         max_steps: args.max_steps.unwrap_or(MAX_STEPS).max(1),
+        settings: Default::default(),
     };
-    // The folder's own permissions (.cluaiz/agent.json), then this run's flags on top
-    let project = rules::Project::load(agent.tools.root());
-    let allowed: Vec<String> = project.allow.iter().cloned().chain(args.allowed_tools.iter().cloned()).collect();
-    let denied: Vec<String> = project.deny.iter().cloned().chain(args.disallowed_tools.iter().cloned()).collect();
-    agent.tools.rules = rules::Rules::new(&allowed, &denied, agent.tools.root());
-    // The mode: --yes / --mode, else the folder's agent.json, else the App's global security mode
-    match if args.yes { Some(tools::Mode::Full) } else { args.mode.or(project.mode) } {
+    // The agent settings files (global, project, local), then this run's flags on top
+    agent.settings = rules::Settings::load(Some(&cluaiz_core::EnvironmentManager::current().global_dir), agent.tools.root());
+    let mut rules = rules::Rules::new(agent.tools.root());
+    for layer in &agent.settings.layers {
+        rules.add(&layer.label, &layer.settings.allow, &layer.settings.deny);
+    }
+    rules.add("--allowed-tools", &args.allowed_tools, &[]);
+    rules.add("--disallowed-tools", &[], &args.disallowed_tools);
+    agent.tools.rules = rules;
+    // The mode: --yes / --mode, else the nearest agent settings file, else the App's global security mode
+    match if args.yes { Some(tools::Mode::Full) } else { args.mode.or(agent.settings.mode()) } {
         Some(mode) => agent.tools.set_mode(mode),
         None => {
             let (mode, strict) = tools::Mode::from_global(&cluaiz_security::PermissionSchema::load().agent_security_mode);
@@ -234,6 +239,11 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
     let skills = agent.tools.load_installed().await;
     if !skills.trim().is_empty() {
         agent.system.push_str(&format!("\n\n{}", skills.trim()));
+    }
+    if !screen_enabled {
+        for problem in &agent.settings.problems {
+            eprintln!("{} {problem}", "Agent settings:".yellow());
+        }
     }
     if screen_enabled {
         return terminal::run(agent, task, interactive).await;
@@ -297,6 +307,8 @@ struct Agent {
     max_steps: usize,
     /// The Engine left out old messages to fit: compact before the next request
     compact_next: bool,
+    /// The agent settings files that were read (/rules)
+    settings: rules::Settings,
 }
 
 impl Agent {
@@ -341,6 +353,7 @@ context    {}", plan.summary(), plan.context_reason)
             }
             "/memory" => instructions::summary(&self.instructions),
             "/skills" => self.tools.skills_summary(),
+            "/rules" => self.settings.summary(&self.tools.rules),
             "/sessions" => {
                 let saved = sessions::list(self.tools.root());
                 if saved.is_empty() {
