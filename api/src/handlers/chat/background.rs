@@ -347,11 +347,6 @@ async fn runnable(state: &Arc<AppState>, job: &EnrichJob) -> Result<(std::path::
     }
 }
 
-const INSTRUCTION: &str = "Write a search card for my previous message and your answer to it (not for this request). \
-Reply with only one JSON object and nothing else: \
-{\"title\": \"what that exchange was about, at most 10 words\", \"motive\": \"why I asked, at most 12 words\", \
-\"summary\": \"at most 2 short sentences\", \"keywords\": [\"up to 6 words, in English and in my language\"]}";
-
 /// The JSON shape of a card as a GBNF grammar, keys in the order the instruction asks for
 /// (`motive` only for a turn's card, not for an episode summary). A JSON schema would lose the
 /// order: request JSON is kept in sorted maps.
@@ -381,7 +376,7 @@ async fn run_enrichment(state: &Arc<AppState>, job: EnrichJob, stop: Arc<AtomicB
     let mut envelope = job.envelope.clone();
     if job.episode.is_none() {
         if let Some(messages) = envelope.get_mut("messages").and_then(Value::as_array_mut) {
-            messages.push(json!({ "role": "user", "content": INSTRUCTION }));
+            messages.push(json!({ "role": "user", "content": cluaiz_core::prompts::text("chat.card") }));
         }
     }
     // No thinking, with the turn's own prompt start (see the engine's `thinking_off_keeps_prefix`):

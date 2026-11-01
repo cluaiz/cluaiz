@@ -8,9 +8,16 @@ use serde_json::{json, Value};
 pub const OPEN: &str = "<tool_call>";
 pub const CLOSE: &str = "</tool_call>";
 
-/// The inline (Hermes) way of offering tools, for models whose template does not render them
-pub const TOOLS_HEADER: &str = "# Available Tools\nYou have access to the following tools:\n";
-pub const TOOLS_CALL_FORMAT: &str = "\n\nWhen you need to call a tool, you MUST output a <tool_call> XML block with a JSON object containing \"name\" and \"arguments\":\n<tool_call>\n{\"name\": \"tool_name\", \"arguments\": {\"arg_name\": \"value\"}}\n</tool_call>\nDo not output conversational filler text before or after the <tool_call> block.";
+/// The inline (Hermes) way of offering tools, for models whose template does not render them:
+/// the heading before the `<tools>` block (managed prompt `tools.header`)
+pub fn tools_header() -> String {
+    format!("{}\n", crate::prompts::text("tools.header"))
+}
+
+/// How to call a tool, after the `<tools>` block (managed prompt `tools.call_format`)
+pub fn tools_call_format() -> String {
+    format!("\n\n{}", crate::prompts::text("tools.call_format"))
+}
 
 /// The `<tools>` block: one function schema per line
 pub fn tools_block(schemas: &[Value]) -> String {
@@ -23,7 +30,7 @@ pub fn tools_block(schemas: &[Value]) -> String {
 
 /// Tools offered inline: header, `<tools>` block and how to call them
 pub fn inline_tools(schemas: &[Value]) -> String {
-    format!("{TOOLS_HEADER}{}{TOOLS_CALL_FORMAT}", tools_block(schemas))
+    format!("{}{}{}", tools_header(), tools_block(schemas), tools_call_format())
 }
 
 /// `(role, content)` messages as OpenAI messages: an assistant message's `<tool_call>` blocks

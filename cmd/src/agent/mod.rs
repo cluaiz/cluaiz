@@ -496,7 +496,7 @@ context    {}", plan.summary(), plan.context_reason)
         let result = if text.trim() == "/compact" {
             self.compact().await
         } else if text.trim() == "/init" {
-            let result = self.request(INIT_REQUEST, parts).await;
+            let result = self.request(&cluaiz_core::prompts::text("agent.init"), parts).await;
             self.reload_instructions();
             result
         } else if let Some(id) = text.trim().strip_prefix("/model ") {
@@ -636,8 +636,15 @@ context    {}", plan.summary(), plan.context_reason)
         // longer fits loses its middle in the Engine and the model is left with nothing to summarize
         let size = self.usage.map_or(SMALL_CONTEXT as usize, |(_, size)| size);
         let messages = vec![
-            message("system", "You summarize a coding agent's conversation for the agent itself.".into()),
-            message("user", format!("{COMPACT_REQUEST}\n\n<conversation>\n{}\n</conversation>", compact_transcript(&self.history, size * 3 / 2))),
+            message("system", cluaiz_core::prompts::text("agent.compact_system")),
+            message(
+                "user",
+                format!(
+                    "{}\n\n<conversation>\n{}\n</conversation>",
+                    cluaiz_core::prompts::text("agent.compact"),
+                    compact_transcript(&self.history, size * 3 / 2)
+                ),
+            ),
         ];
         let mut out = self.display.output(false);
         let (summary, report) = self.session.generate_prepared(messages, None, &mut *out).await?;
@@ -871,15 +878,6 @@ fn diff(root: &std::path::Path, files: &[std::path::PathBuf]) -> String {
 /// The share of the context after which the next request first compacts the conversation
 const AUTO_COMPACT_PCT: usize = 80;
 
-/// What `/init` asks the model for, as Codex and Claude Code's `/init` do
-const INIT_REQUEST: &str = "Create an AGENTS.md file in the working folder: the instructions a coding agent needs to work on this project. \
-First look at the project: list the folder, and read the README and the build or package files (for example Cargo.toml, package.json, pyproject.toml, Makefile). \
-Then write AGENTS.md with write_file. Keep it short (under 60 lines), with these sections: Project (what it is and its main folders), \
-Build and test (the exact commands), Code style, and Rules (what to avoid). Write only what you found in the files; do not invent commands or folders.";
-
-/// What `/compact` asks the model for
-const COMPACT_REQUEST: &str = "Summarize this conversation so the work can go on from the summary alone: the goal, what was decided, files read or changed (with paths), commands run and their results, and the open next steps. Be concise; use a short list. Do not call tools.";
-
 /// The history as `role: text` blocks within `budget` characters for the compact request: long
 /// messages keep their start, and when it all does not fit the newest messages are kept
 fn compact_transcript(history: &[ChatMessage<Vec<PreparedPart>>], budget: usize) -> String {
@@ -934,17 +932,15 @@ fn context_note(tokens: u32) -> String {
 
 fn system_prompt(dir: &std::path::Path, instructions: &[instructions::Instruction], extra: Option<&str>) -> String {
     let shell = if cfg!(windows) { "PowerShell" } else { "sh" };
-    let mut prompt = format!(
-        "You are Cluaiz Agent, a coding assistant working on the user's computer through the cluaiz command line.\n\
-         Working folder: {}\n\
-         System: {} ({}); run_command uses {}.\n\n\
-         - Use the tools to look at files and run commands instead of guessing. Never say you ran or read something you did not.\n\
-         - Read a file before you edit it, and keep edits small. Use paths relative to the working folder.\n\
-         - When the task is done, say briefly what you found or changed.",
-        dir.display(),
-        std::env::consts::OS,
-        std::env::consts::ARCH,
-        shell,
+    // The agent's own instructions: managed prompt `agent.system` (cluaiz_core::prompts)
+    let mut prompt = cluaiz_core::prompts::render(
+        "agent.system",
+        &[
+            ("folder", &dir.display().to_string()),
+            ("os", std::env::consts::OS),
+            ("arch", std::env::consts::ARCH),
+            ("shell", shell),
+        ],
     );
     // The user's and the project's AGENTS.md files
     let notes = instructions::prompt(instructions);

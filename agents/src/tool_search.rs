@@ -524,7 +524,7 @@ impl ToolSearch {
         let mut out = String::new();
         let cards: Vec<&Candidate> = candidates.iter().filter(|c| c.level == Level::Card).collect();
         if !cards.is_empty() {
-            out.push_str("Tools that may help. To use one, call load_tool with its id:\n");
+            out.push_str(&format!("{}\n", cluaiz_core::prompts::text("tools.hint")));
             for candidate in cards {
                 if let Some(entry) = find(&candidate.id) {
                     // An MCP server that keeps crashing is shown, but marked
@@ -551,7 +551,7 @@ impl ToolSearch {
             .map(|e| format!("{} — {}", e.id, short_sentence(&e.summary(), 60)))
             .collect();
         if !titles.is_empty() {
-            out.push_str(&format!("Also installed: {}\n", titles.join("; ")));
+            out.push_str(&format!("{}\n", cluaiz_core::prompts::render("tools.hint_titles", &[("titles", &titles.join("; "))])));
         }
         out
     }

@@ -1,0 +1,146 @@
+---
+method: "prompts.list"
+transport: "POST /v1/cep"
+category: "ai-inference"
+category_title: "AI & Inference Core"
+group: "prompts"
+summary: "Every prompt the Engine sends to a model: id, description, variables, the text in use, and whether it is the user's text"
+scope: "read"
+execution: "sync"
+mcp: true
+owner_only: false
+destructive: false
+idempotent: true
+params: []
+request_payload: |
+  {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "prompts.list",
+    "params": {}
+  }
+response: |
+  {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "result": {
+      "prompts": [
+        {
+          "description": "Tells a chat model with tools which folder they run in.",
+          "id": "tools.workspace",
+          "overridden": false,
+          "text": "Tools run in the project folder {{folder}}. Use paths relative to it (\".\" is the project folder).",
+          "variables": [
+            "folder"
+          ]
+        }
+      ]
+    }
+  }
+errors: []
+---
+
+# prompts.list
+
+List every instruction the Engine itself sends to a model, with the text in use now. Use it to show the prompts in a settings screen, or to check whether a user's text replaced a default.
+
+## Endpoint, execution and permissions
+
+| Property | Contract |
+|---|---|
+| Wire endpoint | `POST /v1/cep`; logical method `prompts.list` |
+| Execution | Synchronous domain result in the JSON-RPC result field |
+| Required scope | `read` |
+| Side effects | Read only |
+
+Send a Bearer token when API authentication is enabled. Authentication failures are HTTP 401; ordinary CEP method errors are JSON-RPC error objects, normally with HTTP 200. See [the common CEP contract](../../README.md).
+
+## How it works
+
+1. Read the default prompts embedded in the Engine
+2. For each, use the user's file `<CLUAIZ_HOME>/prompts/<id>.md` when it exists and can be read
+3. Return them in the order of the defaults
+
+```mermaid
+flowchart TD
+    C["Client request"] --> A["Authentication, principal and typed params"]
+    A --> P0["Read the default prompts embedded in the Engine"]
+    P0 --> P1["For each, use the user's file `<CLUAIZ_HOME>/prompts/<id>.md` when it exists and can be read"]
+    P1 --> P2["Return them in the order of the defaults"]
+    P2 --> R["JSON-RPC result or explicit error"]
+```
+
+## Parameters
+
+None. Send `params: {}`; unknown parameters are rejected.
+
+## Request examples
+
+### 1. Basic request
+
+Lists every prompt.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "prompts.list",
+  "params": {}
+}
+```
+
+## The prompts
+
+| Id | What it is | Variables |
+|---|---|---|
+| `agent.system` | The terminal agent's own instructions, at the start of its system prompt (AGENTS.md files and skills follow it) | `folder`, `os`, `arch`, `shell` |
+| `agent.init` | What `/init` asks the agent to do | none |
+| `agent.compact` | What `/compact` asks the model for (the conversation follows it) | none |
+| `agent.compact_system` | The system prompt of the `/compact` request | none |
+| `chat.notes_pinned` | Heading of the pinned notes in a chat's system prompt | none |
+| `chat.notes_record` | Heading of the notes that travel with the current message | none |
+| `chat.card` | The background request for a message's search card (its JSON keys are fixed by a grammar) | none |
+| `tools.header` | Heading before the inline `<tools>` block | none |
+| `tools.call_format` | How a model writes a `<tool_call>` block | none |
+| `tools.workspace` | Which folder tools run in | `folder` |
+| `tools.hint` | Heading of the suggested tools sent with a message | none |
+| `tools.hint_titles` | The line naming more installed tools | `titles` |
+
+The Engine adds no other instruction of its own. A chat request's own system prompt comes from the client and is not one of these.
+
+## Response
+
+`prompts` holds one object per prompt: `id`, `description` (what it is for and what to keep when changing it), `variables` (the `{{name}}` values the Engine fills in), `text` (in use now) and `overridden` (true: the user's text, false: the default).
+
+## Errors and recovery
+
+| Code / boundary | Meaning | Recovery |
+|---|---|---|
+| HTTP 401 | Missing/invalid token while authentication is enabled | Supply the configured token; a CEP params change cannot repair authentication |
+| `-32602` / typed params | Missing required fields, wrong JSON types or unknown fields | Correct the request against this page; do not retry the same invalid payload |
+| `-32002` / principal | Required scope/owner/root authorization is absent | Inspect `error.data.needs`; use an authorized caller or permitted target |
+
+## cURL
+
+Save one valid request above as `request.json`:
+
+```bash
+curl --fail-with-body http://127.0.0.1:8000/v1/cep \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $CLUAIZ_TOKEN" \
+  --data-binary @request.json
+```
+
+## Limits and related operations
+
+The list of ids is fixed by the Engine build; a client cannot add an id. A project folder cannot replace a prompt: only the user's Cluaiz home can, so a cloned repository cannot change the agent's own instructions.
+
+- [`prompts.get`](prompts.get.md)
+- [`prompts.set`](prompts.set.md)
+- [`prompts.reset`](prompts.reset.md)
+
+## Implementation reference
+
+- [api/src/cep/methods/prompts.rs](../../../../../api/src/cep/methods/prompts.rs)
+- [engine/core/src/prompts.rs](../../../../../engine/core/src/prompts.rs)
+- [engine/core/prompts/](../../../../../engine/core/prompts/)
