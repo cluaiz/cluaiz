@@ -228,6 +228,8 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
         agent.history = sessions::history(&saved);
         agent.session_id = saved.id;
     }
+    // This conversation's checkpoints, with those saved before it was closed
+    agent.tools.checkpoints = checkpoints::Checkpoints::open(sessions::checkpoints_dir(agent.tools.root(), &agent.session_id));
     // Installed skills, plugins and MCP servers, with the skills' instructions
     let skills = agent.tools.load_installed().await;
     if !skills.trim().is_empty() {
@@ -327,8 +329,9 @@ impl Agent {
             }
             "/clear" => {
                 self.history.clear();
-                // The cleared conversation stays saved; the next request starts a new one
+                // The cleared conversation stays saved (with its checkpoints); the next request starts a new one
                 self.session_id = sessions::new_id();
+                self.tools.checkpoints = checkpoints::Checkpoints::open(sessions::checkpoints_dir(self.tools.root(), &self.session_id));
                 "Conversation cleared.".into()
             }
             "/plan" => {
@@ -402,6 +405,27 @@ context    {}", plan.summary(), plan.context_reason)
                     Err(nothing) => nothing,
                 }
             }
+            _ if text == "/rewind" || text.starts_with("/rewind ") => {
+                let root = self.tools.root().to_path_buf();
+                let show = |path: &std::path::Path| path.strip_prefix(&root).unwrap_or(path).display().to_string().replace('\\', "/");
+                match text.trim_start_matches("/rewind").trim() {
+                    "" => self.tools.checkpoints.list(show),
+                    number => match number.parse::<usize>() {
+                        Err(_) => "Use /rewind to list the checkpoints, /rewind <n> to go back to before request n.".into(),
+                        Ok(number) => match self.tools.checkpoints.rewind(number, show) {
+                            Ok((done, messages_before)) => {
+                                // The conversation goes back to the same point as the files
+                                self.history.truncate(messages_before);
+                                if let Err(error) = sessions::save(&root, &self.session_id, &self.session.model_id, &self.history) {
+                                    self.display.emit(Event::Message("Session".into(), format!("Not saved: {error}")));
+                                }
+                                format!("{done}. The conversation is back to before request {number}.")
+                            }
+                            Err(error) => error,
+                        },
+                    },
+                }
+            }
             "/diff" => diff(self.tools.root(), &self.tools.checkpoints.last_files()),
             _ if text == "/code" || text.starts_with("/code ") => {
                 let target = text.trim_start_matches("/code").trim();
@@ -446,6 +470,7 @@ context    {}", plan.summary(), plan.context_reason)
 
     /// One request, then the conversation is saved (also after an error: what happened stays)
     async fn turn_prepared(&mut self, text: &str, parts: Vec<PreparedPart>) -> Result<()> {
+        self.tools.checkpoints.begin(text, self.history.len());
         let result = if text.trim() == "/compact" {
             self.compact().await
         } else if let Some(id) = text.trim().strip_prefix("/model ") {

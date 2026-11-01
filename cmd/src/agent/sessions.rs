@@ -40,6 +40,11 @@ fn dir_for(folder: &Path) -> PathBuf {
         .join(format!("{}-{:08x}", name, hasher.finish() as u32))
 }
 
+/// Where the checkpoints of session `id` are saved (agent/checkpoints.rs)
+pub fn checkpoints_dir(folder: &Path, id: &str) -> PathBuf {
+    dir_for(folder).join(format!("{id}.checkpoints"))
+}
+
 /// A new session id: the start time, sortable
 pub fn new_id() -> String {
     chrono::Local::now().format("%Y%m%d-%H%M%S").to_string()

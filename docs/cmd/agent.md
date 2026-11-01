@@ -283,7 +283,8 @@ same settings can be typed directly: `/mode plan`, `/think off`, `/effort high`,
 | `/memory` | The AGENTS.md files in use and how much of each fits (see [Instructions](#instructions-agentsmd)) |
 | `/skills` | The SKILL.md skills the model can use, with where each was found (see [Skills](#skills-skillmd)) |
 | `/sessions` | The saved conversations of this folder, newest first, with their ids |
-| `/undo` | Put back the files the last request changed (new files are deleted); the model is told |
+| `/undo` | Put back the files the last request changed (new files are deleted); the model is told. Again: the request before it |
+| `/rewind`, `/rewind <n>` | The checkpoints of this conversation; `<n>` puts the files and the conversation back to before request n |
 | `/diff` | `git diff` of the files the last request changed (in a git repository) |
 | `/code`, `/code <path>` | Open the folder in VS Code with the files the last request changed (their changes are in its Source Control view), or that file or folder. Needs VS Code's `code` command on PATH |
 | `/bye`, `/exit` | Leave (Ctrl+Q in the UI; Ctrl+D in plain mode) |
@@ -324,8 +325,18 @@ Files: Changed: calc.py (+1 −1), tests/test_calc.py (new, 12 lines)   (/undo p
 ```
 
 `/undo` restores the content each file had before that request (a file it created is deleted)
-and tells the model, so it reads them again before going on. `/diff` shows `git diff` of those
-files. Files changed by commands (`run_command`) are not in this record. The agent does not
+and tells the model, so it reads them again before going on; a second `/undo` goes one request
+further back. `/rewind` lists every request of the conversation that changed files (a
+checkpoint), newest first; `/rewind <n>` puts the files back to before request n, undoing it and
+every later one, and the conversation goes back to the same point. `/diff` shows `git diff` of the
+last request's files.
+
+Checkpoints are saved with the conversation, in
+`~/.cluaiz/sessions/<folder>-<hash>/<id>.checkpoints/<n>/` (the content of each file before the
+request, byte for byte), so `/undo` and `/rewind` work after the agent is closed and opened again
+with `--continue` or `--resume`. The last 50 checkpoints of a conversation are kept; a file over
+10 MB is not kept (the line after the request says so), and checkpoints of conversations untouched
+for 30 days are removed. Files changed by commands (`run_command`) are not in this record. The agent does not
 commit by itself: ask it to, and the `git commit` command asks you first like any other command.
 
 ## Saved conversations
@@ -479,8 +490,8 @@ The agent uses the same model loading, planner and settings as `cluaiz run`
 - No model switch inside the agent: start it again with another `-m`.
 - The API and CLI have not yet been moved to one shared agent controller. This terminal frontend
   calls the existing CLI loop; it does not create a second CLI tool executor or load another host.
-- Durable sessions, shared App/CLI chat history, daemon attachment, task views and checkpoints/undo
-  remain later implementation stages. Native keyboard/font behavior on macOS/Linux is unverified.
+- Shared App/CLI chat history, daemon attachment and task views remain later implementation
+  stages. Native keyboard/font behavior on macOS/Linux is unverified.
 - `search` is a regular expression over file text; to find files by name the model runs a command
   such as `Get-ChildItem -Recurse -Filter *.py` or `find . -name '*.py'`.
 

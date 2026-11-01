@@ -12,6 +12,7 @@ pub const COMMANDS: &[(&str, &str)] = &[
     ("/plan", "Where the model runs: GPU / RAM blocks, context, KV cache, memory, and why"),
     ("/compact", "Replace the conversation with a summary to free context"),
     ("/undo", "Put back the files the last request changed"),
+    ("/rewind", "Checkpoints of this conversation; /rewind <n> puts files and conversation back to before request n"),
     ("/diff", "git diff of the files the last request changed"),
     ("/code", "Open the folder in VS Code with the changed files (/code <path>: that file)"),
     ("/memory", "The AGENTS.md instructions in use (~/.cluaiz/AGENTS.md, then the repository's)"),
