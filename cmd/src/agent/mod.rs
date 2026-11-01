@@ -190,11 +190,12 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
         print::plan(&session).await;
     }
 
-    // The project's agent files (.agents/, AGENTS.md); skills are listed again with the installed ones
-    let workspace = instructions::scan(&dir, &[]);
+    // The system prompt is built once the project's agent files and the installed tools are known
     let mut agent = Agent {
-        system: system_prompt(&dir, &workspace.instructions, args.system_prompt.as_deref()),
-        workspace,
+        system: String::new(),
+        extra: args.system_prompt.clone(),
+        installed_text: String::new(),
+        layout: Default::default(),
         tools: Tools::new(dir, args.yes),
         session,
         history: Vec::new(),
@@ -236,11 +237,9 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
     }
     // This conversation's checkpoints, with those saved before it was closed
     agent.tools.checkpoints = checkpoints::Checkpoints::open(sessions::checkpoints_dir(agent.tools.root(), &agent.session_id));
-    // Installed skills, plugins and MCP servers, with the skills' instructions
-    let skills = agent.tools.load_installed().await;
-    if !skills.trim().is_empty() {
-        agent.system.push_str(&format!("\n\n{}", skills.trim()));
-    }
+    // The project's agent files, and the installed skills, plugins and MCP servers
+    agent.installed_text = agent.tools.load_installed().await;
+    agent.rebuild_system();
     if !screen_enabled {
         for problem in &agent.settings.problems {
             eprintln!("{} {problem}", "Agent settings:".yellow());
@@ -297,7 +296,12 @@ struct Agent {
     tools: Tools,
     system: String,
     /// The AGENTS.md files in the system prompt (/memory)
-    workspace: cluaiz_agents::workspace::Workspace,
+    /// `--system-prompt`: added at the end of the system prompt for this run
+    extra: Option<String>,
+    /// The installed skills' instructions, in the system prompt
+    installed_text: String,
+    /// What of the project's agent files went into the system prompt (/memory)
+    layout: cluaiz_agents::workspace::WorkspacePrompt,
     history: Vec<ChatMessage<Vec<PreparedPart>>>,
     display: Display,
     /// The saved conversation this one writes to (`~/.cluaiz/sessions`)
@@ -353,7 +357,8 @@ impl Agent {
 context    {}", plan.summary(), plan.context_reason)
             }
             "/memory" => instructions::summary(
-                &self.workspace,
+                &self.tools.workspace,
+                &self.layout,
                 Some(&cluaiz_core::EnvironmentManager::current().global_dir),
             ),
             "/init" if self.tools.root().join("AGENTS.md").is_file() => format!(
@@ -591,6 +596,8 @@ context    {}", plan.summary(), plan.context_reason)
         self.display.emit(Event::Message("Model".into(), format!("Loading {id}…")));
         self.session.switch(path, id.clone()).await?;
         self.usage = None;
+        // Another model has another context: the project's files get another share
+        self.rebuild_system();
         self.display.emit(Event::Message("Model".into(), format!("Now using {id}.")));
         self.display.emit(Event::Ready(self.status()));
         Ok(())
@@ -611,18 +618,21 @@ context    {}", plan.summary(), plan.context_reason)
 
     /// After `/init`: the AGENTS.md files are read again and replace the old ones in the prompt
     fn reload_instructions(&mut self) {
-        let dir = dunce(self.tools.root().to_path_buf());
-        let workspace = instructions::scan(&dir, &[]);
-        let before = system_prompt(&dir, &self.workspace.instructions, None);
-        let Some(rest) = self.system.strip_prefix(&before).map(str::to_owned) else {
-            self.display.emit(Event::Message("Agent".into(), "AGENTS.md is used from the next agent session.".into()));
-            return;
-        };
-        self.system = system_prompt(&dir, &workspace.instructions, None) + &rest;
-        if workspace.instructions.len() != self.workspace.instructions.len() {
+        let before = self.tools.workspace.instructions.len();
+        self.tools.rescan_workspace();
+        self.rebuild_system();
+        if self.tools.workspace.instructions.len() != before {
             self.display.emit(Event::Message("Agent".into(), "AGENTS.md is in use now (see /memory).".into()));
         }
-        self.workspace = workspace;
+    }
+
+    /// The system prompt from its parts: the agent's own instructions, the project's agent files
+    /// within the share of the context they may use, the installed skills, `--system-prompt`
+    fn rebuild_system(&mut self) {
+        let dir = dunce(self.tools.root().to_path_buf());
+        let budget = cluaiz_agents::workspace::budget_for(self.session.plan.context_window as usize);
+        self.layout = self.tools.workspace.prompt(budget);
+        self.system = system_prompt(&dir, &self.layout.text, &self.installed_text, self.extra.as_deref());
     }
 
     /// `/compact`: the model writes a summary of the conversation, which then replaces it
@@ -930,7 +940,7 @@ fn context_note(tokens: u32) -> String {
     }
 }
 
-fn system_prompt(dir: &std::path::Path, instructions: &[cluaiz_agents::workspace::Instruction], extra: Option<&str>) -> String {
+fn system_prompt(dir: &std::path::Path, workspace: &str, installed: &str, extra: Option<&str>) -> String {
     let shell = if cfg!(windows) { "PowerShell" } else { "sh" };
     // The agent's own instructions: managed prompt `agent.system` (cluaiz_core::prompts)
     let mut prompt = cluaiz_core::prompts::render(
@@ -942,11 +952,12 @@ fn system_prompt(dir: &std::path::Path, instructions: &[cluaiz_agents::workspace
             ("shell", shell),
         ],
     );
-    // The user's and the project's AGENTS.md files
-    let notes = instructions::prompt(instructions);
-    if !notes.is_empty() {
-        prompt.push_str("\n\n");
-        prompt.push_str(&notes);
+    // The project's AGENTS.md files, rules and index (cluaiz_agents::workspace), then the installed skills
+    for part in [workspace, installed] {
+        if !part.trim().is_empty() {
+            prompt.push_str("\n\n");
+            prompt.push_str(part.trim());
+        }
     }
     if let Some(extra) = extra.filter(|e| !e.trim().is_empty()) {
         prompt.push_str(&format!("\n\n{}", extra.trim()));

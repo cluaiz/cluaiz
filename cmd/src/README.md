@@ -67,8 +67,10 @@ cluaiz agent -m qwen3 --dir ../app --yes "..."  # model, folder, no questions
   working folder, each asked first like a command. The agent loop itself is still the CLI's own.
 - The project's agent files are found by `cluaiz_agents::workspace` (`agent/instructions.rs` scans
   them): AGENTS.md files, and the rules, workflows and SKILL.md skills of `.agents/` folders and
-  `~/.agents/`. Skills are listed by name and description (`agent/skills.rs`); the model reads one
-  with the `use_skill` tool. `/memory` shows the instructions, rules and workflows.
+  `~/.agents/`. `Workspace::prompt` puts them into the system prompt within a share of the
+  context (`budget_for`): the index (name and description of on-demand rules, workflows, skills),
+  the AGENTS.md files, the always-on rules whole or in the index. The model reads any item with
+  `read_item` (`use_skill` is still accepted). `/memory` shows what went where.
 - The agent settings files (`agent/rules.rs`: `~/.cluaiz/config/agent.json`, the project's
   `.agents/settings.json` and `.agents/settings.local.json`; the first version's
   `.cluaiz/agent*.json` still read with a notice) are layered: every file's rules apply, the nearest mode wins, and a

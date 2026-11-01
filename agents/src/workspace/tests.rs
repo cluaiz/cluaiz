@@ -125,3 +125,89 @@ fn front_matter_is_split_only_when_it_is_closed() {
     assert!(front.is_empty());
     assert_eq!(body, "---\nnot closed\ntext");
 }
+
+fn prompt_fixture(name: &str) -> (PathBuf, Workspace) {
+    let base = base(name);
+    let repo = base.join("repo");
+    std::fs::create_dir_all(repo.join(".git")).unwrap();
+    write(&repo.join(".agents/AGENTS.md"), &format!("Project constitution. {}", "c".repeat(3_000)));
+    write(&repo.join(".agents/rules/short.md"), "# Short rule\nKeep diffs small.");
+    write(&repo.join(".agents/rules/long.md"), &format!("# Long doctrine\n{}", "d".repeat(6_000)));
+    write(&repo.join(".agents/rules/style.md"), "---\ntrigger: model_decision\ndescription: Rust code style\n---\nUse rustfmt.");
+    write(&repo.join(".agents/rules/web.md"), "---\ntrigger: glob\nglobs: \"*.ts\"\ndescription: TypeScript rules\n---\nStrict mode.");
+    write(&repo.join(".agents/rules/release.md"), "---\ntrigger: manual\ndescription: Release steps\n---\nTag it.");
+    write(&repo.join(".agents/workflows/deploy.md"), "---\ndescription: Build and deploy\n---\n1. build");
+    write(&repo.join(".agents/skills/react/SKILL.md"), "---\nname: react-app\ndescription: React app work\n---\nUse vite.");
+    let workspace = Workspace::scan(&repo, Homes::default(), &[]);
+    (base, workspace)
+}
+
+#[test]
+fn a_large_context_gets_everything_whole_and_the_index() {
+    let (base, workspace) = prompt_fixture("prompt-large");
+    let prompt = workspace.prompt(budget_for(32_768));
+    let text = &prompt.text;
+    assert!(text.contains("Project constitution"));
+    assert!(text.contains("## short\n# Short rule\nKeep diffs small."));
+    assert!(text.contains(&"d".repeat(6_000)), "a long always-on rule fits a large context whole");
+    assert!(text.contains("- style (rule): Rust code style"));
+    assert!(text.contains("- web (rule) (for files *.ts): TypeScript rules"));
+    assert!(text.contains("- deploy (workflow): Build and deploy"));
+    assert!(text.contains("- react-app (skill): React app work"));
+    assert!(!text.contains("Release steps"), "a manual rule is only used when the user names it");
+    assert!(text.len() <= prompt.budget);
+    let _ = std::fs::remove_dir_all(base);
+}
+
+#[test]
+fn a_small_context_keeps_the_index_cuts_instructions_and_never_cuts_a_rule() {
+    let (base, workspace) = prompt_fixture("prompt-small");
+    let prompt = workspace.prompt(2_000);
+    let text = &prompt.text;
+    let part = |name: &str| prompt.parts.iter().find(|p| p.name == name).unwrap().placement;
+    // The index is placed first
+    assert_eq!(part("react-app"), Placement::Index);
+    assert_eq!(part("deploy"), Placement::Index);
+    // The instructions are cut and say how to read the rest
+    assert_eq!(part(".agents/AGENTS.md"), Placement::Cut);
+    assert!(text.contains("call read_item with \".agents/AGENTS.md\""));
+    // Rules that do not fit whole are listed in the index, not cut
+    assert_eq!(part("long"), Placement::Index);
+    assert!(text.contains("- long (rule, always on): Long doctrine"));
+    assert!(!text.contains("dddd"));
+    assert_eq!(part("release"), Placement::Left);
+    assert!(text.len() <= prompt.budget, "{} > {}", text.len(), prompt.budget);
+
+    // read_item reads any of them whole, and an instruction file by its label
+    let (summary, rule) = workspace.read_item("long", None).unwrap();
+    assert!(summary.starts_with("long"));
+    assert!(rule.contains(&"d".repeat(6_000)));
+    assert!(workspace.read_item(".agents/AGENTS.md", None).unwrap().1.contains(&"c".repeat(3_000)));
+    assert!(workspace.read_item("/deploy", None).unwrap().1.starts_with("Workflow deploy:"));
+    assert!(workspace.read_item("nothing", None).unwrap_err().contains("react-app"));
+    assert!(workspace.read_item_schema().is_some());
+    let _ = std::fs::remove_dir_all(base);
+}
+
+#[test]
+fn an_empty_folder_adds_nothing() {
+    let base = base("prompt-empty");
+    let workspace = Workspace::scan(&base, Homes::default(), &[]);
+    assert!(workspace.prompt(8_192).text.is_empty());
+    assert!(workspace.read_item_schema().is_none());
+    let _ = std::fs::remove_dir_all(base);
+}
+
+#[test]
+fn the_prompt_stays_within_the_budget_and_a_shared_name_is_read_by_kind() {
+    let (base, workspace) = prompt_fixture("prompt-budget");
+    write(&workspace.root.join(".agents/skills/short/SKILL.md"), "---\nname: short\ndescription: A skill named like a rule\n---\nSkill text.");
+    let workspace = Workspace::scan(&workspace.root, Homes::default(), &[]);
+    for budget in [300, 800, 1_500, 4_096, 9_000, 20_000] {
+        let prompt = workspace.prompt(budget);
+        assert!(prompt.text.len() <= budget, "budget {budget}: {} characters", prompt.text.len());
+    }
+    assert!(workspace.read_item("short", Some("skill")).unwrap().1.contains("Skill text."));
+    assert!(workspace.read_item("short", Some("rule")).unwrap().1.contains("Keep diffs small."));
+    let _ = std::fs::remove_dir_all(base);
+}

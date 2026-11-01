@@ -1,14 +1,14 @@
-//! The project's agent files in the agent: the AGENTS.md instructions in the system prompt, and
-//! what /memory shows. Finding the files is `cluaiz_agents::workspace` (shared with the Engine):
-//! `~/.cluaiz/AGENTS.md`, then per folder from the repository root down `.agents/AGENTS.md` and the
-//! folder's own `AGENTS.md` (or `CLAUDE.md` / `GEMINI.md`); rules, workflows and skills in
-//! `.agents/`.
+//! The project's agent files in the agent. Finding them and putting them into the system prompt is
+//! `cluaiz_agents::workspace` (shared with the Engine): `~/.cluaiz/AGENTS.md`, then per folder from
+//! the repository root down `.agents/AGENTS.md` and the folder's own `AGENTS.md` (or `CLAUDE.md` /
+//! `GEMINI.md`); rules, workflows and skills in `.agents/`. This file scans them for the agent and
+//! is what /memory shows.
 
 use std::path::Path;
 
-use cluaiz_agents::workspace::{Homes, Instruction, Kind, Trigger, Workspace, BUDGET};
+use cluaiz_agents::workspace::{Homes, Kind, Placement, Trigger, Workspace, WorkspacePrompt};
 
-/// The agent files for work in `dir`
+/// The agent files for work in `dir`; `installed` are the registry ids of installed skills
 pub fn scan(dir: &Path, installed: &[String]) -> Workspace {
     let cluaiz = cluaiz_core::EnvironmentManager::current().global_dir;
     let user = user_home();
@@ -20,21 +20,6 @@ pub fn user_home() -> Option<std::path::PathBuf> {
     std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(std::path::PathBuf::from)
 }
 
-/// The instructions as a block of the system prompt (empty without any)
-pub fn prompt(loaded: &[Instruction]) -> String {
-    if loaded.iter().all(|file| file.text.is_empty()) {
-        return String::new();
-    }
-    let mut block = String::from(
-        "Instructions from the user and the project. Follow them; when two disagree, the later (more specific) one wins.",
-    );
-    for file in loaded.iter().filter(|file| !file.text.is_empty()) {
-        let cut = if file.cut() { " (cut to fit)" } else { "" };
-        block.push_str(&format!("\n\n## {}{cut}\n{}", file.label, file.text));
-    }
-    block
-}
-
 fn trigger_name(trigger: Option<Trigger>) -> &'static str {
     match trigger {
         Some(Trigger::AlwaysOn) | None => "always on",
@@ -44,55 +29,60 @@ fn trigger_name(trigger: Option<Trigger>) -> &'static str {
     }
 }
 
-/// What /memory shows: the instruction files and how much of each is in the prompt, the rules and
-/// workflows found, files that could not be used, and where the files go
-pub fn summary(workspace: &Workspace, home: Option<&Path>) -> String {
-    let display = |path: &Path| cluaiz_api::cep::roots::display(path);
-    let mut places = Vec::new();
-    if let Some(home) = home {
-        places.push(format!("  For every project:  {}", display(&home.join("AGENTS.md"))));
+fn placement_name(placement: Placement) -> &'static str {
+    match placement {
+        Placement::Whole => "in the prompt",
+        Placement::Cut => "in the prompt, cut",
+        Placement::Index => "in the index (read on demand)",
+        Placement::Left => "not in the prompt",
     }
-    let agents = workspace.root.join(".agents");
-    places.push(format!("  For this project:   {}", display(&agents.join("AGENTS.md"))));
-    places.push(format!("  Rules:              {}", display(&agents.join("rules"))));
-    places.push(format!("  Workflows:          {}", display(&agents.join("workflows"))));
-    places.push(format!("  Skills:             {}", display(&agents.join("skills"))));
+}
 
+/// What /memory shows: what of the project's agent files is in the system prompt and how much
+/// room it takes, the rules and workflows found, files that could not be used, and where the files go
+pub fn summary(workspace: &Workspace, layout: &WorkspacePrompt, home: Option<&Path>) -> String {
+    let display = |path: &Path| cluaiz_api::cep::roots::display(path);
     let mut lines = Vec::new();
-    let loaded = &workspace.instructions;
-    if loaded.is_empty() {
-        lines.push("No AGENTS.md instructions yet (type /init: the model reads this project and writes one).".to_string());
+    if layout.parts.is_empty() {
+        lines.push("No AGENTS.md, rules, workflows or skills yet (type /init: the model reads this project and writes .agents/AGENTS.md).".to_string());
     } else {
-        let width = loaded.iter().map(|file| file.label.len()).max().unwrap_or(0);
-        lines.push(format!("Instructions in the prompt ({BUDGET} characters at most, nearest file first):"));
-        for file in loaded {
-            let used = file.text.chars().count();
-            let size = match (used, file.cut()) {
-                (0, _) => format!("left out: no room ({} characters)", file.total),
-                (_, true) => format!("{used} of {} characters (cut)", file.total),
-                _ => format!("{used} characters"),
+        lines.push(format!(
+            "In the system prompt: {} of {} characters (about {} tokens; the share follows the model's context)",
+            layout.text.chars().count(),
+            layout.budget,
+            layout.text.chars().count() / 4
+        ));
+        let width = layout.parts.iter().map(|part| part.name.len()).max().unwrap_or(0);
+        for part in &layout.parts {
+            let size = match part.placement {
+                Placement::Cut => format!("  {} of {} characters", part.chars, part.total),
+                Placement::Whole => format!("  {} characters", part.chars),
+                _ => String::new(),
             };
-            lines.push(format!("  {:<width$}  {size}", file.label));
+            lines.push(format!("  {:<width$}  {:<12}  {}{size}", part.name, part.kind, placement_name(part.placement)));
         }
     }
-    for (kind, title) in [(Kind::Rule, "Rules"), (Kind::Workflow, "Workflows")] {
-        let items: Vec<_> = workspace.index().filter(|item| item.kind == kind).collect();
-        if items.is_empty() {
-            continue;
-        }
-        lines.push(format!("{title}:"));
-        let width = items.iter().map(|item| item.name.len()).max().unwrap_or(0);
-        for item in items {
-            let when = if kind == Kind::Rule { format!("{}  ", trigger_name(item.trigger)) } else { String::new() };
+    let rules: Vec<_> = workspace.index().filter(|item| item.kind == Kind::Rule).collect();
+    if !rules.is_empty() {
+        lines.push("Rules:".into());
+        let width = rules.iter().map(|item| item.name.len()).max().unwrap_or(0);
+        for item in rules {
             let description: String = item.description.chars().take(70).collect();
-            lines.push(format!("  {:<width$}  {when}{description}  [{}]", item.name, item.source));
+            lines.push(format!("  {:<width$}  {:<18}  {description}  [{}]", item.name, trigger_name(item.trigger), item.source));
         }
     }
     for problem in &workspace.problems {
         lines.push(format!("! {problem}"));
     }
+    let agents = workspace.root.join(".agents");
     lines.push("Edits take effect in a new agent session. The files:".into());
-    lines.extend(places);
+    if let Some(home) = home {
+        lines.push(format!("  For every project:  {}", display(&home.join("AGENTS.md"))));
+    }
+    lines.push(format!("  For this project:   {}", display(&agents.join("AGENTS.md"))));
+    lines.push(format!("  Rules:              {}", display(&agents.join("rules"))));
+    lines.push(format!("  Workflows:          {}", display(&agents.join("workflows"))));
+    lines.push(format!("  Skills:             {}", display(&agents.join("skills"))));
     lines.join("\n")
 }
 
@@ -101,7 +91,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_prompt_keeps_the_order_and_summary_shows_rules_and_places() {
+    fn test_summary_shows_what_went_into_the_prompt_and_where_files_go() {
         let base = std::env::temp_dir().join(format!("cluaiz-instructions-summary-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
         let (home, repo) = (base.join("home"), base.join("repo"));
@@ -113,16 +103,15 @@ mod tests {
         std::fs::write(repo.join(".agents/rules/style.md"), "---\ntrigger: model_decision\ndescription: Code style\n---\nTabs.").unwrap();
 
         let workspace = Workspace::scan(&repo, Homes { cluaiz: Some(&home), user: None }, &[]);
-        let block = prompt(&workspace.instructions);
-        assert!(block.find("Answer briefly").unwrap() < block.find("This app uses Vite").unwrap());
-        let text = summary(&workspace, Some(&home));
-        assert!(text.contains(".agents/AGENTS.md"));
-        assert!(text.contains("style") && text.contains("when it fits") && text.contains("Code style"));
+        let layout = workspace.prompt(8_192);
+        assert!(layout.text.find("Answer briefly").unwrap() < layout.text.find("This app uses Vite").unwrap());
+        let text = summary(&workspace, &layout, Some(&home));
+        assert!(text.contains(".agents/AGENTS.md") && text.contains("in the prompt"));
+        assert!(text.contains("style") && text.contains("in the index") && text.contains("when it fits"));
         assert!(text.contains(&cluaiz_api::cep::roots::display(&repo.join(".agents").join("rules"))));
 
         let empty = Workspace::scan(&base.join("none"), Homes::default(), &[]);
-        assert!(prompt(&empty.instructions).is_empty());
-        assert!(summary(&empty, None).contains("/init"));
+        assert!(summary(&empty, &empty.prompt(8_192), None).contains("/init"));
         let _ = std::fs::remove_dir_all(base);
     }
 }

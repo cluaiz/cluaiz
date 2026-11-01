@@ -453,9 +453,10 @@ folders to leave alone, or your style rules. The agent reads, in this order:
 
 Front matter (`---` with `name`, `description`) at the top of a file is left out of the prompt.
 
-A later, nearer file is more specific and wins where two disagree. All of them share 8,000
-characters in the prompt; the nearest file takes its share first, so a long personal file is cut
-before the project's own. `/memory` shows which files are in use and what was cut. The files are
+A later, nearer file is more specific and wins where two disagree. The nearest file takes its
+share of the room first, so a long personal file is cut before the project's own; a cut file ends
+with a note, and the model can read all of it with `read_item` and the file's label (see
+[How the project's files reach the model](#how-the-projects-files-reach-the-model)). The files are
 read when the agent starts. `--system-prompt "..."` adds instructions for one run.
 
 **`/init`** writes the project's `AGENTS.md` for you, as `/init` does in Codex and Claude Code: the
@@ -518,9 +519,32 @@ Run cargo fmt before you finish.
 `/memory` lists the instruction files, the rules with their trigger, the workflows, the files that
 could not be used (for example an unknown `trigger`) and where each kind of file goes.
 
-What is in place now: the instruction files go into the prompt; rules and workflows are found and
-listed. Rules do not go into the prompt by their trigger yet, and a workflow does not run as a `/`
-command yet; both are planned next.
+A workflow does not run as a `/` command yet; the model can read one with `read_item`.
+
+### How the project's files reach the model
+
+The project's files take a share of the system prompt that follows the model's context: about a
+quarter of it (the context size in tokens, as characters; 48,000 characters at most). With a
+4,096-token context that is about 4,000 characters, with 32,768 tokens about 32,000. Within it:
+
+1. **The index** comes first, because without it the model cannot find anything: one line per
+   `model_decision` and `glob` rule, workflow and skill, with its name, kind and description.
+2. **Instructions:** the AGENTS.md files, the nearest first. A file that does not fit whole is
+   cut, with a note on how to read the rest.
+3. **Always-on rules,** each whole. A rule is never cut: one that does not fit goes into the index
+   (marked `always on`) and the model reads it when it needs it.
+
+`manual` rules are not in the prompt. The model reads any item with the `read_item` tool (its name;
+`kind` when a rule and a skill share a name; an instruction file by its label such as
+`.agents/AGENTS.md`). `read_item` never asks; `--disallowed-tools "read_item"` turns it off.
+
+`/memory` shows what went where: each file in the prompt (whole or cut, with its size), in the
+index, or left out, and how much of the share is used. Small models do not always read an item on
+their own; naming it in the request ("read the cerd rule") makes them use it.
+
+The headings and notes the agent adds around these files are managed prompts
+(`workspace.instructions`, `workspace.rules`, `workspace.index`, `workspace.cut`,
+`workspace.read_item`), changed like `agent.system`.
 
 ## Skills: SKILL.md
 
@@ -544,11 +568,11 @@ The agent finds skills in, nearest first (a nearer skill hides a farther one of 
    offered as [installed tools](#installed-tools)).
 3. `~/.agents/skills/<skill>/SKILL.md`: your skills for every project and every agent.
 
-Only each skill's name and description go into the prompt (3,000 characters for the list), so a
-small context stays free. The model reads the instructions of the skill a task needs with the
-`use_skill` tool, which never asks; `--disallowed-tools "use_skill"` turns it off. `/skills` lists
-the skills. Small models do not always pick a skill on their own; naming it in the request ("use
-the react-app skill") makes them use it.
+Only each skill's name and description go into the prompt (in the index, see
+[How the project's files reach the model](#how-the-projects-files-reach-the-model)), so a small
+context stays free. The model reads the instructions of the skill a task needs with the
+`read_item` tool. `/skills` lists the skills. Small models do not always pick a skill on their own;
+naming it in the request ("use the react-app skill") makes them use it.
 
 ## Using a running `cluaiz serve`
 
