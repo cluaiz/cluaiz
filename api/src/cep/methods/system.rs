@@ -31,6 +31,26 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         |_: CallCtx, _: Call, _: NoParams| async move { Ok(live()) },
     );
     registry.add(
+        "system.update_check",
+        Meta::new(
+            Scope::Read,
+            "Whether a newer Cluaiz release is published: this Engine's version and the newest release on GitHub. Installs nothing (`cluaiz self update` does)",
+        )
+        .error(-32010, "update_check_failed", "GitHub could not be reached or returned no release")
+        .example(
+            json!({}),
+            json!({"current":"0.1.1","update_available":true,
+                   "latest":{"version":"0.1.2","tag":"v0.1.2","url":"https://github.com/cluaiz/cluaiz/releases/tag/v0.1.2",
+                             "prerelease":true,"published_at":"2026-11-01T08:00:00Z"}}),
+        ),
+        |_: CallCtx, _: Call, _: NoParams| async move {
+            let check = crate::update::check()
+                .await
+                .map_err(|error| CepError::unavailable("update_check_failed", error))?;
+            serde_json::to_value(check).map_err(|_| CepError::internal("system.update_check"))
+        },
+    );
+    registry.add(
         "system.ps",
         Meta::new(
             Scope::Read,
@@ -106,7 +126,7 @@ fn processes(plan: Option<cluaiz_plan::ExecutionPlan>) -> Value {
 fn info() -> Value {
     json!({
         "engine": "Cluaiz Engine",
-        "version": env!("CARGO_PKG_VERSION"),
+        "version": cluaiz_core::VERSION,
         "cep_version": cluaiz_cep::discover::CEP_VERSION,
         "hardware": HardwareProber::current(),
         "network": { "lan_ip": lan_ip() },

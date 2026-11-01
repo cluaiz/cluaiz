@@ -15,6 +15,7 @@
 | [`system.live`](./system/system.live.md) | read | sync | Current process, memory, CPU and GPU telemetry |
 | [`system.plan`](./system/system.plan.md) | read | sync | Plans an installed model without loading its weights or changing saved settings |
 | [`system.ps`](./system/system.ps.md) | read | sync | Loaded model execution plan and hardware snapshot |
+| [`system.update_check`](./system/system.update_check.md) | read | sync | Whether a newer Cluaiz release is published: this Engine's version and the newest release on GitHub. Installs nothing (`cluaiz self update` does) |
 | [`tasks.cancel`](./tasks/tasks.cancel.md) | read | sync | Cancels a running task |
 | [`tasks.get`](./tasks/tasks.get.md) | read | sync | A task's status, progress and new events |
 | [`tasks.list`](./tasks/tasks.list.md) | read | sync | Your tasks that have not expired, newest first |

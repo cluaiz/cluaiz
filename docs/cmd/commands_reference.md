@@ -91,6 +91,8 @@ cat task.txt | cluaiz agent --yes
 | `cluaiz logs stream --tail` | | Stream active logs to terminal |
 | `cluaiz ps` | | Show active neural engines loaded in memory |
 | `cluaiz test-prefix` | | Test Prefix Caching compilation and memory footprint |
+| `cluaiz self update` | `--check`, `--to <version>` | Update Cluaiz to the newest release with that release's installer; models and settings stay |
+| `cluaiz self uninstall` | `--keep-models`, `-y` | Remove Cluaiz: its folder, its models (unless `--keep-models`) and its PATH entry |
 
 **Examples:**
 ```bash
@@ -99,6 +101,9 @@ cluaiz calibrate
 cluaiz benchmark
 cluaiz benchmark gemma4:e2b --runs 3
 cluaiz ps
+cluaiz self update --check
+cluaiz self update
+cluaiz self uninstall --keep-models
 ```
 
 ---

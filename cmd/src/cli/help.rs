@@ -13,6 +13,7 @@ const GROUPS: &[(&str, &[&str])] = &[
     ("Tools", &["skill", "plugin", "mcp"]),
     ("Documents and storage", &["ingest", "storage"]),
     ("Settings", &["config"]),
+    ("Update and remove", &["self"]),
 ];
 
 pub fn print<C: CommandFactory>() {

@@ -42,6 +42,17 @@ curl -fsSL https://cluaiz.com/install.sh | bash
 
 See [Platform Support](../deployments/platforms.md) for what each GPU pack covers.
 
+### Update and uninstall
+
+```bash
+cluaiz self update --check        # is a newer release out?
+cluaiz self update                # install it; models and settings stay
+cluaiz self uninstall             # remove Cluaiz, its models and its PATH entry (asks first)
+cluaiz self uninstall --keep-models
+```
+
+On Windows the update installer opens in its own window once the command exits (a running `cluaiz.exe` is locked). Close the Cluaiz App or stop `cluaiz serve` first. Apps can ask whether an update is out with the CEP method [`system.update_check`](../api/cep/system/system/system.update_check.md).
+
 ---
 
 ## 🛠️ 2. Manual From-Source Compilation

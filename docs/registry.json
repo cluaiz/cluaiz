@@ -171,6 +171,7 @@
           { "slug": "cep-system-live", "title": "system.live", "file_path": "docs/api/cep/system/system/system.live.md" },
           { "slug": "cep-system-plan", "title": "system.plan", "file_path": "docs/api/cep/system/system/system.plan.md" },
           { "slug": "cep-system-ps", "title": "system.ps", "file_path": "docs/api/cep/system/system/system.ps.md" },
+          { "slug": "cep-system-update-check", "title": "system.update_check", "file_path": "docs/api/cep/system/system/system.update_check.md" },
           { "slug": "cep-config-get", "title": "config.get", "file_path": "docs/api/cep/system/config/config.get.md" },
           { "slug": "cep-config-set", "title": "config.set", "file_path": "docs/api/cep/system/config/config.set.md" },
           { "slug": "cep-storage-clean", "title": "storage.clean", "file_path": "docs/api/cep/system/storage/storage.clean.md" },

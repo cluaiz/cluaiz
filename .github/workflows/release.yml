@@ -35,6 +35,9 @@ permissions:
 env:
   CARGO_TERM_COLOR: always
   VERSION: ${{ inputs.version }}
+  # Compiled into the Engine (cluaiz_core::VERSION): `cluaiz --version`, system.info and the update
+  # check report the release's version even when Cargo.toml was not bumped
+  CLUAIZ_RELEASE_VERSION: ${{ inputs.version }}
   # Smoke-test model: small enough for a CI runner's CPU, a real GGUF chat model
   SMOKE_MODEL: unsloth/Qwen3-0.6B-GGUF:Q4_K_M
 
