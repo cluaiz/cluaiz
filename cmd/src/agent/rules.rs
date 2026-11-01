@@ -14,16 +14,30 @@ pub struct Project {
 
 /// One settings file that was read, and what it said
 pub struct Layer {
-    /// As /rules shows it: `~/.cluaiz/config/agent.json`, `.cluaiz/agent.json`, `.cluaiz/agent.local.json`
+    /// As /rules shows it: `~/.cluaiz/config/agent.json`, `.agents/settings.json`, `.agents/settings.local.json`
     pub label: String,
     pub settings: Project,
+}
+
+/// The project's settings file, shared in its repository, in the project's agent folder
+pub const PROJECT_FILE: &str = "settings.json";
+/// The user's own settings for the project, kept out of git
+pub const LOCAL_FILE: &str = "settings.local.json";
+
+/// The project's `.agents` folder: at the repository root, else in the working folder
+pub fn agents_folder(dir: &std::path::Path) -> std::path::PathBuf {
+    cluaiz_agents::workspace::project_folders(dir).0.join(".agents")
 }
 
 /// The agent settings of a working folder, as Claude Code layers its settings files:
 ///
 /// 1. `~/.cluaiz/config/agent.json`: the user's rules for every folder
-/// 2. `<folder>/.cluaiz/agent.json`: the project's, shared in its repository
-/// 3. `<folder>/.cluaiz/agent.local.json`: the user's own for this folder, kept out of git
+/// 2. `<project>/.agents/settings.json`: the project's, shared in its repository
+/// 3. `<project>/.agents/settings.local.json`: the user's own for this project, kept out of git
+///
+/// `<project>` is the repository root (else the working folder), where the project's `.agents/`
+/// folder is. The files of the first version, `<folder>/.cluaiz/agent.json` and
+/// `agent.local.json`, are still read, before the new ones, with a notice to move them.
 ///
 /// Rules of every file apply (a deny wins over any allow); the mode of the nearest file that sets
 /// one is used. The global mode is the App's security mode, so the first file sets no mode.
@@ -37,18 +51,37 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub fn load(cluaiz_home: Option<&std::path::Path>, root: &std::path::Path) -> Self {
-        let mut files = Vec::new();
+    pub fn load(cluaiz_home: Option<&std::path::Path>, dir: &std::path::Path) -> Self {
+        let display = |path: &std::path::Path| cluaiz_api::cep::roots::display(path);
+        let agents = agents_folder(dir);
+        // (file, label, where it moved to: Some for a file of the first version)
+        let mut files: Vec<(std::path::PathBuf, String, Option<std::path::PathBuf>)> = Vec::new();
         if let Some(home) = cluaiz_home {
-            files.push((home.join("config").join("agent.json"), "~/.cluaiz/config/agent.json"));
+            files.push((home.join("config").join("agent.json"), "~/.cluaiz/config/agent.json".into(), None));
         }
-        files.push((root.join(".cluaiz").join("agent.json"), ".cluaiz/agent.json"));
-        files.push((root.join(".cluaiz").join("agent.local.json"), ".cluaiz/agent.local.json"));
+        for (old, new) in [("agent.json", PROJECT_FILE), ("agent.local.json", LOCAL_FILE)] {
+            files.push((dir.join(".cluaiz").join(old), format!(".cluaiz/{old}"), Some(agents.join(new))));
+        }
+        for name in [PROJECT_FILE, LOCAL_FILE] {
+            files.push((agents.join(name), format!(".agents/{name}"), None));
+        }
 
         let mut settings = Settings::default();
-        settings.places = files.iter().map(|(path, label)| (label.to_string(), path.clone())).collect();
-        for (index, (path, label)) in files.into_iter().enumerate() {
+        // Old files are shown only when they are there
+        settings.places = files
+            .iter()
+            .filter(|(path, _, moved)| moved.is_none() || path.is_file())
+            .map(|(path, label, _)| (label.clone(), path.clone()))
+            .collect();
+        for (index, (path, label, moved)) in files.into_iter().enumerate() {
             let Ok(text) = std::fs::read_to_string(&path) else { continue };
+            if let Some(new) = &moved {
+                settings.problems.push(format!(
+                    "{} is read from its old place; move it to {}",
+                    display(&path),
+                    display(new)
+                ));
+            }
             let mut parsed: Project = match serde_json::from_str(&text) {
                 Ok(parsed) => parsed,
                 Err(error) => {
@@ -101,7 +134,7 @@ impl Settings {
         if shown.is_empty() {
             lines.push(
                 "No rules yet. Answer \"Yes, and always allow ... in this folder\" when the agent asks, and the \
-                 rule is saved in .cluaiz/agent.local.json; or write a file: {\"allow\": [\"run_command(cargo test*)\"], \
+                 rule is saved in .agents/settings.local.json; or write a file: {\"allow\": [\"run_command(cargo test*)\"], \
                  \"deny\": [\"run_command(git push*)\"]}"
                     .into(),
             );
@@ -399,10 +432,10 @@ mod tests {
         let home = base.join("home");
         let root = base.join("project");
         std::fs::create_dir_all(home.join("config")).unwrap();
-        std::fs::create_dir_all(root.join(".cluaiz")).unwrap();
+        std::fs::create_dir_all(root.join(".agents")).unwrap();
         std::fs::write(home.join("config/agent.json"), r#"{"mode": "full", "deny": ["run_command(git push*)"]}"#).unwrap();
-        std::fs::write(root.join(".cluaiz/agent.json"), r#"{"mode": "plan", "allow": ["run_command(cargo test*)"]}"#).unwrap();
-        std::fs::write(root.join(".cluaiz/agent.local.json"), r#"{"mode": "accept-edits", "allow": ["run_command(git *)"]}"#).unwrap();
+        std::fs::write(root.join(".agents/settings.json"), r#"{"mode": "plan", "allow": ["run_command(cargo test*)"]}"#).unwrap();
+        std::fs::write(root.join(".agents/settings.local.json"), r#"{"mode": "accept-edits", "allow": ["run_command(git *)"]}"#).unwrap();
 
         let settings = Settings::load(Some(&home), &root);
         assert_eq!(settings.layers.len(), 3);
@@ -422,14 +455,25 @@ mod tests {
         }
         assert!(matches!(rules.check("run_command", "git status\nin /w"), Verdict::Allow));
         assert!(matches!(rules.check("run_command", "cargo test -p cmd\nin /w"), Verdict::Allow));
-        assert!(settings.summary(&rules).contains("[.cluaiz/agent.local.json]"));
+        assert!(settings.summary(&rules).contains("[.agents/settings.local.json]"));
 
         // A broken file is reported, not silently ignored
-        std::fs::write(root.join(".cluaiz/agent.local.json"), "{ not json").unwrap();
+        std::fs::write(root.join(".agents/settings.local.json"), "{ not json").unwrap();
         let settings = Settings::load(Some(&home), &root);
         assert_eq!(settings.layers.len(), 2);
-        assert!(settings.problems.iter().any(|problem| problem.contains("agent.local.json is not used")));
+        assert!(settings.problems.iter().any(|problem| problem.contains("settings.local.json is not used")));
         assert_eq!(settings.mode(), Some(super::super::tools::Mode::Plan));
+
+        // A file of the first version is still read, with a notice where it goes now; the new
+        // project file comes after it, so its mode wins
+        std::fs::create_dir_all(root.join(".cluaiz")).unwrap();
+        std::fs::write(root.join(".cluaiz/agent.json"), r#"{"mode": "full", "deny": ["edit_file(.env)"]}"#).unwrap();
+        let settings = Settings::load(Some(&home), &root);
+        assert!(settings.problems.iter().any(|problem| problem.contains("old place") && problem.contains("settings.json")));
+        assert!(settings.layers.iter().any(|layer| layer.label == ".cluaiz/agent.json"));
+        assert_eq!(settings.mode(), Some(super::super::tools::Mode::Plan));
+        assert!(settings.places.iter().any(|(label, _)| label == ".cluaiz/agent.json"));
+        assert!(!settings.places.iter().any(|(label, _)| label == ".cluaiz/agent.local.json"));
         let _ = std::fs::remove_dir_all(base);
     }
 
@@ -457,7 +501,7 @@ mod tests {
 
         let base = std::env::temp_dir().join(format!("cluaiz-agent-save-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&base);
-        let file = base.join(".cluaiz").join("agent.local.json");
+        let file = base.join(".agents").join("settings.local.json");
         save_allow(&file, "run_command(git status*)").unwrap();
         save_allow(&file, "run_command(git status*)").unwrap();
         std::fs::write(&file, r#"{"mode": "plan", "allow": ["run_command(git status*)"], "deny": ["x"]}"#).unwrap();

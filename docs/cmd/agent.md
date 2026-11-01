@@ -109,7 +109,7 @@ The agent never changes anything without your answer, unless you allow it.
 | `y` | This call runs |
 | `n`, empty answer or Esc in the UI | This call does not run |
 | `a` | This call runs, and every later call of the same tool runs without asking until you exit |
-| `r` | This call runs, and a rule for it is saved in `.cluaiz/agent.local.json` of the working folder, so it runs without asking from now on, in later sessions too. Offered as "Yes, and always allow `<rule>` in this folder" when a rule fits the call |
+| `r` | This call runs, and a rule for it is saved in the project's `.agents/settings.local.json`, so it runs without asking from now on, in later sessions too. Offered as "Yes, and always allow `<rule>` in this folder" when a rule fits the call |
 | Other text | Nothing executes; the model receives your instructions with their original case |
 
 The rule `r` saves is narrow. A command with a sub-command keeps its first two words
@@ -117,7 +117,7 @@ The rule `r` saves is narrow. A command with a sub-command keeps its first two w
 `run_command(cargo test*)`). Any other command is saved exactly as it was written
 (`python build.py`), and a file change is saved for that one file (`edit_file(src/lib.rs)`). A
 chained command (`a && b`, `a; b`, a pipe or a redirect) gets no rule. When the agent creates
-`agent.local.json` in a git repository, it adds the file to `.git/info/exclude`, so git ignores it
+`settings.local.json` in a git repository, it adds the file to `.git/info/exclude`, so git ignores it
 in this clone without a change to the repository's `.gitignore`. `/rules` shows the saved rules;
 delete a line from the file to ask again.
 
@@ -180,8 +180,13 @@ optional:
 | File | For | Shared |
 | :--- | :--- | :--- |
 | `~/.cluaiz/config/agent.json` (or `$CLUAIZ_HOME/config/agent.json`) | Every folder | No |
-| `<folder>/.cluaiz/agent.json` | The project | Yes, commit it with the repository |
-| `<folder>/.cluaiz/agent.local.json` | You, in this folder | No: add it to `.gitignore` |
+| `<project>/.agents/settings.json` | The project | Yes, commit it with the repository |
+| `<project>/.agents/settings.local.json` | You, in this project | No (the agent adds it to `.git/info/exclude` when it creates it) |
+
+`<project>` is the repository root (the folder with `.git`), else the working folder: the same
+`.agents/` folder that holds the project's `AGENTS.md`, rules and skills. The first version kept
+these files in `<folder>/.cluaiz/agent.json` and `agent.local.json`; they are still read (before
+the new files, so the new ones win), and the agent says where to move them.
 
 ```json
 {
@@ -194,7 +199,7 @@ optional:
 - **Rules:** the rules of all three files apply, then `--allowed-tools` and `--disallowed-tools`
   for one run. A denied call is refused in every mode, whichever file allows it. The refusal names
   the rule and the file it came from.
-- **Mode:** the mode of `agent.local.json` is used, else that of `agent.json`. `--mode` and `--yes`
+- **Mode:** the mode of `settings.local.json` is used, else that of `settings.json`. `--mode` and `--yes`
   win over both. Without any of them the App's security mode is used. The global file sets no mode,
   because the mode for every folder is the App's security mode (`/mode`). A `mode` there is
   reported and not used; its rules still apply.

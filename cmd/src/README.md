@@ -69,11 +69,12 @@ cluaiz agent -m qwen3 --dir ../app --yes "..."  # model, folder, no questions
   them): AGENTS.md files, and the rules, workflows and SKILL.md skills of `.agents/` folders and
   `~/.agents/`. Skills are listed by name and description (`agent/skills.rs`); the model reads one
   with the `use_skill` tool. `/memory` shows the instructions, rules and workflows.
-- The agent settings files (`agent/rules.rs`: `~/.cluaiz/config/agent.json`, `.cluaiz/agent.json`,
-  `.cluaiz/agent.local.json`) are layered: every file's rules apply, the nearest mode wins, and a
+- The agent settings files (`agent/rules.rs`: `~/.cluaiz/config/agent.json`, the project's
+  `.agents/settings.json` and `.agents/settings.local.json`; the first version's
+  `.cluaiz/agent*.json` still read with a notice) are layered: every file's rules apply, the nearest mode wins, and a
   file that is not valid JSON is reported, not used. `/rules` shows them. The approval answer
   "always allow in this folder" (`ApprovalResponse::Remember`) saves the narrow rule
-  `Rules::suggest` gives into `.cluaiz/agent.local.json` and adds that file to `.git/info/exclude`.
+  `Rules::suggest` gives into `.agents/settings.local.json` and adds that file to `.git/info/exclude`.
   An allow rule never covers a chained command; a deny rule matches any part of one.
 - `/init` asks the model to write the project's `AGENTS.md`, then reloads the instructions.
 
