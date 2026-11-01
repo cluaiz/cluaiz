@@ -459,6 +459,16 @@ The agent's own instructions tell the model the folder, the operating system and
 the tools instead of guessing, never to claim it did something it did not, to read a file before
 editing it, and to end with a short summary.
 
+These instructions are not fixed in the program. They are the managed prompt `agent.system`; the
+texts `/init` and `/compact` send are `agent.init`, `agent.compact` and `agent.compact_system`.
+Each default ships with the Engine; to use your own text, write
+`~/.cluaiz/prompts/<id>.md` (or `$CLUAIZ_HOME/prompts/<id>.md`), or use the CEP methods
+[`prompts.set`](../api/cep/ai-inference/prompts/prompts.set.md) and
+[`prompts.reset`](../api/cep/ai-inference/prompts/prompts.reset.md).
+`{{folder}}`, `{{os}}`, `{{arch}}` and `{{shell}}` are filled in. The agent reads its prompts
+when it starts, so a change applies from the next session. A project folder cannot replace these
+prompts; a project shapes the agent through `AGENTS.md`.
+
 ## Skills: SKILL.md
 
 A skill is a folder with a `SKILL.md` file: `name` and `description` in its front matter, the

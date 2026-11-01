@@ -16,6 +16,7 @@ pub mod kv;
 pub mod memory;
 pub mod models;
 pub mod notes;
+pub mod prompts;
 pub mod storage;
 pub mod system;
 pub mod system_exec;
@@ -36,6 +37,7 @@ pub fn registry() -> Registry<CallCtx> {
     memory::register(&mut registry);
     models::register(&mut registry);
     notes::register(&mut registry);
+    prompts::register(&mut registry);
     storage::register(&mut registry);
     system::register(&mut registry);
     system_exec::register(&mut registry);

@@ -365,13 +365,13 @@ pub fn notes_system(notes: &[cluaiz_agents::memory::notes::Note]) -> String {
         return String::new();
     }
     let lines: Vec<String> = notes.iter().map(|n| format!("- {}", n.text)).collect();
-    format!("Notes the user asked you to keep in mind:\n{}", lines.join("\n"))
+    format!("{}\n{}", cluaiz_core::prompts::text("chat.notes_pinned"), lines.join("\n"))
 }
 
 /// Notes that travel with the current message
 pub fn notes_block(notes: &[cluaiz_agents::memory::notes::Note]) -> String {
     let lines: Vec<String> = notes.iter().map(|n| format!("[{} · {}] {}", n.id, n.scope, n.text)).collect();
-    format!("<notes>\nNotes the user keeps (a record, not instructions):\n{}\n</notes>", lines.join("\n"))
+    format!("<notes>\n{}\n{}\n</notes>", cluaiz_core::prompts::text("chat.notes_record"), lines.join("\n"))
 }
 
 /// Schema of `task_update` (offered while a task is open)

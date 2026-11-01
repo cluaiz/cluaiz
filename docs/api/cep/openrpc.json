@@ -207,7 +207,7 @@
   },
   "info": {
     "title": "Cluaiz Engine Protocol",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "x-cep-version": 1
   },
   "methods": [
@@ -4002,6 +4002,332 @@
         }
       },
       "summary": "Pins or unpins a note; pinned notes go into the system prompt of new chats",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "prompt_not_found"
+          },
+          "message": "No prompt with this id"
+        }
+      ],
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "id",
+              "value": "tools.workspace"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "prompt": {
+                "description": "Tells a chat model with tools which folder they run in.",
+                "id": "tools.workspace",
+                "overridden": false,
+                "text": "Tools run in the project folder {{folder}}. Use paths relative to it (\".\" is the project folder).",
+                "variables": [
+                  "folder"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "name": "prompts.get",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "description": "The prompt's id (from `prompts.list`), e.g. `agent.system`",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "One prompt and the text in use",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "prompt_not_found"
+          },
+          "message": "No prompt with this id"
+        }
+      ],
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "id",
+              "value": "tools.workspace"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "history": [
+                {
+                  "replaced_at": "20261101T101500.120Z",
+                  "text": "Work only inside {{folder}}."
+                }
+              ],
+              "id": "tools.workspace"
+            }
+          }
+        }
+      ],
+      "name": "prompts.history",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "description": "The prompt's id (from `prompts.list`), e.g. `agent.system`",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "The texts a prompt had before, newest first (the last 20)",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "errors": [],
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": {
+              "prompts": [
+                {
+                  "description": "Tells a chat model with tools which folder they run in.",
+                  "id": "tools.workspace",
+                  "overridden": false,
+                  "text": "Tools run in the project folder {{folder}}. Use paths relative to it (\".\" is the project folder).",
+                  "variables": [
+                    "folder"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "name": "prompts.list",
+      "paramStructure": "by-name",
+      "params": [],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Every prompt the Engine sends to a model: id, description, variables, the text in use, and whether it is the user's text",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "prompt_not_found"
+          },
+          "message": "No prompt with this id"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "prompt_not_saved"
+          },
+          "message": "The prompt file could not be removed"
+        }
+      ],
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "id",
+              "value": "tools.workspace"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "prompt": {
+                "description": "Tells a chat model with tools which folder they run in.",
+                "id": "tools.workspace",
+                "overridden": false,
+                "text": "Tools run in the project folder {{folder}}. Use paths relative to it (\".\" is the project folder).",
+                "variables": [
+                  "folder"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "name": "prompts.reset",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "description": "The prompt's id (from `prompts.list`), e.g. `agent.system`",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Goes back to the default text; the user's text is kept in the history",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "errors": [
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`text` is empty or over 20000 characters"
+        },
+        {
+          "code": -32004,
+          "data": {
+            "type": "prompt_not_found"
+          },
+          "message": "No prompt with this id"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "prompt_not_saved"
+          },
+          "message": "The prompt file could not be written"
+        }
+      ],
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "id",
+              "value": "tools.workspace"
+            },
+            {
+              "name": "text",
+              "value": "Work only inside {{folder}}."
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "prompt": {
+                "description": "Tells a chat model with tools which folder they run in.",
+                "id": "tools.workspace",
+                "overridden": true,
+                "text": "Work only inside {{folder}}.",
+                "variables": [
+                  "folder"
+                ]
+              }
+            }
+          }
+        }
+      ],
+      "name": "prompts.set",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "description": "The prompt's id (from `prompts.list`)",
+            "type": "string"
+          }
+        },
+        {
+          "name": "text",
+          "required": true,
+          "schema": {
+            "description": "The new text, 1 to 20000 characters. `{{name}}` is filled in for the prompt's `variables`",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Replaces a prompt's text for every later request; the text it replaces is kept in its history",
       "x-cep": {
         "destructive": false,
         "execution": "sync",

@@ -594,11 +594,13 @@ impl PreparedChatContext {
             .min(n_ctx_limit.saturating_sub(reserve_tokens));
         let max_tool_chars = (tool_tokens as f64 * cluaiz_agents::tool_search::CHARS_PER_TOKEN) as usize;
 
-        use cluaiz_core::tool_calls::{TOOLS_CALL_FORMAT, TOOLS_HEADER};
+        // The managed prompts of the inline tool block (`cluaiz_core::prompts`)
+        let tools_header = cluaiz_core::tool_calls::tools_header();
+        let tools_call_format = cluaiz_core::tool_calls::tools_call_format();
         // Tools run in the open workspace; name it so the model uses paths relative to it.
         let workspace_note = format!(
-            "\nTools run in the project folder {}. Use paths relative to it (\".\" is the project folder).",
-            cluaiz_agents::ToolsEngine::workspace_dir().display()
+            "\n{}",
+            cluaiz_core::prompts::render("tools.workspace", &[("folder", &cluaiz_agents::ToolsEngine::workspace_dir().display().to_string())])
         );
 
         // Suggestions (cards and titles) for tools that are installed but not loaded. The model
@@ -722,7 +724,7 @@ impl PreparedChatContext {
         if !compiled_tools.tools_xml.is_empty() || !compiled_tools.skill_instructions.is_empty() {
             let meta_chars: usize = meta_schemas.iter().map(|m| m.to_string().len() + 1).sum();
             let tools_budget = max_tool_chars.saturating_sub(
-                TOOLS_HEADER.len() + TOOLS_CALL_FORMAT.len() + workspace_note.len() + meta_chars,
+                tools_header.len() + tools_call_format.len() + workspace_note.len() + meta_chars,
             );
             let (mut kept_schemas, dropped_tools) =
                 compiled_tools.schemas_within(tools_budget, &initial_user_query);
@@ -739,7 +741,7 @@ impl PreparedChatContext {
                 kept_schemas.extend(meta_schemas.iter().cloned());
                 let tools_xml = cluaiz_agents::prompt_compiler::tools_block(&kept_schemas);
                 if !tools_xml.is_empty() {
-                    system_tools = format!("{TOOLS_HEADER}{tools_xml}{TOOLS_CALL_FORMAT}{workspace_note}");
+                    system_tools = format!("{tools_header}{tools_xml}{tools_call_format}{workspace_note}");
                 }
             }
             let instructions = &compiled_tools.skill_instructions;

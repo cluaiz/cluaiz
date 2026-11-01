@@ -36,5 +36,10 @@ How it works: [`memory.*` overview](./memory/README.md), [`context.*` overview](
 | [`notes.invalidate`](./notes/notes.invalidate.md) | write | sync | The note no longer holds (it is kept, with the time) |
 | [`notes.list`](./notes/notes.list.md) | read | sync | Notes, newest last |
 | [`notes.pin`](./notes/notes.pin.md) | write | sync | Pins or unpins a note; pinned notes go into the system prompt of new chats |
+| [`prompts.get`](./prompts/prompts.get.md) | read | sync | One prompt and the text in use |
+| [`prompts.history`](./prompts/prompts.history.md) | read | sync | The texts a prompt had before, newest first (the last 20) |
+| [`prompts.list`](./prompts/prompts.list.md) | read | sync | Every prompt the Engine sends to a model: id, description, variables, the text in use, and whether it is the user's text |
+| [`prompts.reset`](./prompts/prompts.reset.md) | write | sync | Goes back to the default text; the user's text is kept in the history |
+| [`prompts.set`](./prompts/prompts.set.md) | write | sync | Replaces a prompt's text for every later request; the text it replaces is kept in its history |
 
 All categories: [CEP reference](../README.md). Folder: `docs/api/cep/ai-inference/`.

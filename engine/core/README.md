@@ -34,6 +34,7 @@ graph TD
 | [`chat.rs`](src/chat.rs) | One message/envelope definition for text and typed content; generation settings survive content preparation. Existing token estimates/history trimming remain text-only. |
 | [`media_limits.rs`](src/media_limits.rs) | Single definition of media byte ceilings, errors and default resource guards. |
 | [`processing.rs`](src/processing.rs) | Optional request-scoped backend/transport-neutral stage observations, real work counts, cancellation and source-to-prepared attachment identity. Retains a terminal snapshot for bounded transports; does not infer percentages. |
+| [`prompts.rs`](src/prompts.rs) | Managed prompts: every instruction the Engine itself sends to a model has an id and a default file in [`prompts/`](prompts/) (embedded at build time). `<CLUAIZ_HOME>/prompts/<id>.md` replaces one; replaced texts are kept in `prompts/history/<id>/` (last 20). `{{variable}}` is filled for the variables a prompt declares. CEP: `prompts.*`. |
 | [`settings_tests.rs`](src/settings_tests.rs) | Existing settings tests, relocated without changing their visibility or production behavior. |
 
 ## Decoded media contract
