@@ -13,6 +13,11 @@ pub(crate) fn asset_manifest() -> serde_json::Value {
 
 /// Signature-only protobuf fixture; never a claimed inference result.
 pub(crate) fn onnx(path: &Path, input: &str, output: &str, external: Option<&str>) {
+    onnx_signature(path, &[input], output, external);
+}
+
+/// Like [`onnx`], with several graph inputs.
+pub(crate) fn onnx_signature(path: &Path, inputs: &[&str], output: &str, external: Option<&str>) {
     fn varint(mut value: u64) -> Vec<u8> {
         let mut bytes = Vec::new();
         while value >= 128 {
@@ -36,7 +41,7 @@ pub(crate) fn onnx(path: &Path, input: &str, output: &str, external: Option<&str
         value.extend(message(2, &message(1, &tensor)));
         value
     }
-    let mut graph = message(11, &value_info(input));
+    let mut graph: Vec<u8> = inputs.iter().flat_map(|input| message(11, &value_info(input))).collect();
     graph.extend(message(12, &value_info(output)));
     if let Some(location) = external {
         let mut pair = message(1, b"location");

@@ -620,12 +620,10 @@ async fn real_router_onnx_audio_selected_model_and_retention() -> Result<()> {
         audio_task::run(&router, missing).await?.unwrap_err()["code"],
         -32004
     );
-    let mut unsupported = tts_request.clone();
-    unsupported["parameters"] = json!({"voice_id":"unsupported"});
-    assert_eq!(
-        audio_task::run(&router, unsupported).await?.unwrap_err()["code"],
-        -32602
-    );
+    // OpenAI clients always send a voice ("alloy"): a name the model lacks falls back to its voice
+    let mut unknown_voice = tts_request.clone();
+    unknown_voice["parameters"] = json!({"voice_id":"alloy"});
+    assert!(audio_task::run(&router, unknown_voice).await?.is_ok_and(|r| r["output"]["audio_data"].is_string()));
     let mut wrong = tts_request.clone();
     wrong["model"] = json!(ids[1]);
     assert_eq!(

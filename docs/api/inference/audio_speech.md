@@ -22,7 +22,7 @@ params:
     req: false
     default: "\"default\""
     allowed: "Model voice ID, or GGUF reference audio source"
-    desc: "ONNX: `\"default\"`/`\"auto\"` selects by language; Kokoro accepts its voice IDs, Piper has one voice. GGUF: default uses the native model's unconditioned voice; any other value is an audio data URI, authorized local file, or allowed remote URL for speaker conditioning. It is not a Kokoro voice ID."
+    desc: "ONNX: `\"default\"`/`\"auto\"` selects by language; Kokoro accepts its voice IDs and uses its default voice for a name it does not have (such as OpenAI's `alloy`), Piper has one voice. GGUF: default uses the native model's unconditioned voice; any other value is an audio data URI, authorized local file, or allowed remote URL for speaker conditioning. It is not a Kokoro voice ID."
   - name: "language"
     type: "String"
     req: false
@@ -114,7 +114,7 @@ Synthesizes speech with an installed ONNX TTS package or a GGUF speech backbone 
 |:---|:---|:---:|:---|:---|:---|
 | **`input`** | String | **Yes** | — | Any UTF-8 text string | The text content to synthesize into speech. |
 | **`model`** | String | No | active TTS slot, else first eligible installed package | Installed TTS package ID | ONNX TTS or GGUF speech model with an audio-generation projector. |
-| **`voice`** | String | No | `"default"` | Model voice ID, or GGUF reference audio source | ONNX: `"default"`/`"auto"` selects by language; Kokoro accepts its voice IDs, Piper has one voice. GGUF: default uses the native model's unconditioned voice; any other value is an audio data URI, authorized local file, or allowed remote URL for speaker conditioning. It is not a Kokoro voice ID. |
+| **`voice`** | String | No | `"default"` | Model voice ID, or GGUF reference audio source | ONNX: `"default"`/`"auto"` selects by language; Kokoro accepts its voice IDs and uses its default voice for a name it does not have (such as OpenAI's `alloy`), Piper has one voice. GGUF: default uses the native model's unconditioned voice; any other value is an audio data URI, authorized local file, or allowed remote URL for speaker conditioning. It is not a Kokoro voice ID. |
 | **`language`** | String | No | ONNX: inferred; GGUF: native default | Language code such as `"cs"`, `"hi"`, `"en-US"` | Phoneme runtimes: spelling/number rules from script/voice/model. GGUF: native selector; unsupported vocabulary languages return HTTP400 before model load. Audio8 determines language from text and rejects forcing; omit language or use `"auto"`. |
 | **`speed`** | Float | No | `1.0` | `0.25` – `4.0` | Kokoro/Piper use model duration controls. GGUF applies shared pitch-preserving output tempo at the native sample rate; this is not a native model prosody control. Other families' support depends on their runtime. |
 | **`stream`** | Boolean | No | `false` | `true`, `false` | `true`: Server-Sent Events. Kokoro/Piper emit WAV parts per settled sentence; GGUF emits new generated PCM as WAV parts (`speech.audio.delta`), then the whole WAV. Other families depend on their runtime. |
