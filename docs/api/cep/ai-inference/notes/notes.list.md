@@ -25,7 +25,7 @@ params:
   - name: "status"
     type: "string | null"
     req: false
-    desc: "proposed, confirmed, superseded or invalidated"
+    desc: "proposed, confirmed, superseded, invalidated or moved (now a project memory fact)"
     example: "confirmed"
 request_payload: |
   {

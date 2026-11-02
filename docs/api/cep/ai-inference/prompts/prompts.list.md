@@ -103,6 +103,7 @@ Lists every prompt.
 | `workspace.rules` | Heading of the project's always-on rules | none |
 | `workspace.index` | Heading of the index of rules, workflows and skills read on demand, and of the project's memory facts | none |
 | `workspace.cut` | Note after an instruction file that did not fit whole | `name` |
+| `workspace.read_item_hint` | In a chat's `<tools_hint>`, when the project's index lists rules, workflows or skills | none |
 | `workspace.read_item` | Description of the `read_item` tool | none |
 | `workspace.remember` | Description of the `remember` tool, which proposes a fact for the project's memory (`.agents/memory/`) | none |
 | `workspace.remember_refused` | The `remember` tool result in a headless run, where nobody can confirm a fact | none |

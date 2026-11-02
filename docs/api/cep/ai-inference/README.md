@@ -31,10 +31,11 @@ How it works: [`memory.*` overview](./memory/README.md), [`context.*` overview](
 | [`memory.item`](./memory/memory.item.md) | read | sync | The exact message behind a reference (m:<position>) |
 | [`memory.revoke_grants`](./memory/memory.revoke_grants.md) | write | sync | Asks again for this chat's tools (or one tool) |
 | [`memory.search`](./memory/memory.search.md) | read | sync | Messages of a chat that fit a query, or text from the other chats |
-| [`notes.confirm`](./notes/notes.confirm.md) | write | sync | A proposed note becomes confirmed (and supersedes a live note on the same subject) |
+| [`notes.confirm`](./notes/notes.confirm.md) | write | sync | A proposed note becomes confirmed (and supersedes a live note on the same subject); a workspace note of a project becomes a fact of its `.agents/memory/` |
 | [`notes.create`](./notes/notes.create.md) | write | sync | A note written by the user, confirmed at once; it supersedes a live note on the same subject |
 | [`notes.invalidate`](./notes/notes.invalidate.md) | write | sync | The note no longer holds (it is kept, with the time) |
 | [`notes.list`](./notes/notes.list.md) | read | sync | Notes, newest last |
+| [`notes.move`](./notes/notes.move.md) | write | sync | A confirmed workspace note, saved before notes of a project became its `.agents/memory/` facts, becomes one now |
 | [`notes.pin`](./notes/notes.pin.md) | write | sync | Pins or unpins a note; pinned notes go into the system prompt of new chats |
 | [`prompts.get`](./prompts/prompts.get.md) | read | sync | One prompt and the text in use |
 | [`prompts.history`](./prompts/prompts.history.md) | read | sync | The texts a prompt had before, newest first (the last 20) |

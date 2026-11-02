@@ -3617,6 +3617,13 @@
             "type": "notes_unavailable"
           },
           "message": "The notes file could not be written"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "memory_not_saved"
+          },
+          "message": "The note is confirmed, but its project fact could not be written"
         }
       ],
       "examples": [
@@ -3661,7 +3668,7 @@
           "title": "AnyValue"
         }
       },
-      "summary": "A proposed note becomes confirmed (and supersedes a live note on the same subject)",
+      "summary": "A proposed note becomes confirmed (and supersedes a live note on the same subject); a workspace note of a project becomes a fact of its `.agents/memory/`",
       "x-cep": {
         "destructive": false,
         "execution": "sync",
@@ -3906,7 +3913,7 @@
           "required": false,
           "schema": {
             "default": null,
-            "description": "proposed, confirmed, superseded or invalidated",
+            "description": "proposed, confirmed, superseded, invalidated or moved (now a project memory fact)",
             "type": [
               "string",
               "null"
@@ -3928,6 +3935,91 @@
         "mcp": true,
         "owner_only": false,
         "scope": "read"
+      }
+    },
+    {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "note_not_found"
+          },
+          "message": "No note with this id"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "The note is not a live workspace note of a project folder"
+        },
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The project's memory folder is outside the caller's roots"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "memory_not_saved"
+          },
+          "message": "The fact file could not be written"
+        }
+      ],
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "id",
+              "value": "n7"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "note": {
+                "id": "n7",
+                "moved_to": "D:/work/.agents/memory/prefers-tabs-over-spaces.md",
+                "status": "moved"
+              },
+              "project_fact": {
+                "name": "prefers-tabs-over-spaces",
+                "path": "D:/work/.agents/memory/prefers-tabs-over-spaces.md",
+                "replaced": []
+              }
+            }
+          }
+        }
+      ],
+      "name": "notes.move",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "id",
+          "required": true,
+          "schema": {
+            "description": "The note's `id` (from `notes.list`)",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "A confirmed workspace note, saved before notes of a project became its `.agents/memory/` facts, becomes one now",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": false,
+        "owner_only": false,
+        "scope": "write"
       }
     },
     {

@@ -102,6 +102,7 @@
           { "slug": "cep-notes-invalidate", "title": "notes.invalidate", "file_path": "docs/api/cep/ai-inference/notes/notes.invalidate.md" },
           { "slug": "cep-notes-list", "title": "notes.list", "file_path": "docs/api/cep/ai-inference/notes/notes.list.md" },
           { "slug": "cep-notes-pin", "title": "notes.pin", "file_path": "docs/api/cep/ai-inference/notes/notes.pin.md" },
+          { "slug": "cep-notes-move", "title": "notes.move", "file_path": "docs/api/cep/ai-inference/notes/notes.move.md" },
           { "slug": "cep-prompts-get", "title": "prompts.get", "file_path": "docs/api/cep/ai-inference/prompts/prompts.get.md" },
           { "slug": "cep-prompts-history", "title": "prompts.history", "file_path": "docs/api/cep/ai-inference/prompts/prompts.history.md" },
           { "slug": "cep-prompts-list", "title": "prompts.list", "file_path": "docs/api/cep/ai-inference/prompts/prompts.list.md" },
