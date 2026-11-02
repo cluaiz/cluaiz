@@ -103,6 +103,7 @@ Lists every prompt.
 | `workspace.cut` | Note after an instruction file that did not fit whole | `name` |
 | `workspace.read_item` | Description of the `read_item` tool | none |
 | `workspace.remember` | Description of the `remember` tool, which proposes a fact for the project's memory (`.agents/memory/`) | none |
+| `workspace.remember_refused` | The `remember` tool result in a headless run, where nobody can confirm a fact | none |
 | `workspace.matched` | Heading of the `<context>` block of project items that fit the user's message | none |
 | `workspace.matched_read` | In that block, the line for an item too long to add | `name` |
 | `workspace.glob_rule` | Added to a tool result when a glob rule is for the file read or changed | `name`, `path` |
@@ -110,6 +111,19 @@ Lists every prompt.
 | `chat.notes_pinned` | Heading of the pinned notes in a chat's system prompt | none |
 | `chat.notes_record` | Heading of the notes that travel with the current message | none |
 | `chat.card` | The background request for a message's search card (its JSON keys are fixed by a grammar) | none |
+| `chat.episode_summary` | The background request for the title and summary of an earlier part of a chat (its JSON keys are fixed by a grammar) | none |
+| `chat.recall` | Heading of recalled messages of the chat (the `recall` result and the `<recall>` block) | none |
+| `chat.recall_outline` | In the `<recall>` block, heading of the earlier topics not shown | none |
+| `chat.recall_other_chats` | Heading of messages `recall` found in the user's other chats | none |
+| `chat.recall_none` | The `recall` result when nothing earlier in the chat matches | `query` |
+| `chat.recall_try_other_chats` | Added after `chat.recall_none` when other chats may be searched | none |
+| `chat.recall_cross_chat_off` | The `recall` result for other chats when `cross_chat` is `deny` | none |
+| `chat.task` | First line of the `<task>` block of the chat's open task | `stage`, `title` |
+| `chat.task_files` | The line of the task's files in the `<task>` block | `files` |
+| `chat.task_saved` | The `task_update` result after the task was saved | `goal`, `stage` |
+| `chat.noted` | The chat `remember` result after a confirmed note was saved | `id` |
+| `chat.noted_proposed` | The chat `remember` result after a proposed note was saved | `id` |
+| `chat.noted_by_app` | The chat `remember` result when the App keeps the chat | `status` |
 | `tools.header` | Heading before the inline `<tools>` block | none |
 | `tools.call_format` | How a model writes a `<tool_call>` block | none |
 | `tools.workspace` | Which folder tools run in | `folder` |
