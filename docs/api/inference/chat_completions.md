@@ -568,6 +568,50 @@ Pinned durable notes go into the system prompt of new chats; other notes that fi
 
 ---
 
+## 📁 The project's agent files
+
+A chat gets the agent files of the Engine's workspace (`workspace.set`), the same files the
+terminal agent reads (see [the agent's project files](../../cmd/agent.md)): `~/.cluaiz/AGENTS.md`,
+the project's `AGENTS.md` files (`.agents/AGENTS.md`, `AGENTS.md`, `CLAUDE.md` or `GEMINI.md`, from
+the repository root down), and the rules, workflows, skills and memory facts of its `.agents/`
+folders and of `~/.agents/`.
+
+- **System prompt.** They go after the client's own system text, within a share of the context
+  (the context size in tokens, as characters, at most 48,000): at 8K only AGENTS.md, always-on
+  rules and the index fit. Nothing is cut in the middle; an item that does not fit is left to the
+  index. The same files give the same text, so the system prompt (and the KV cache) stays the same
+  while they do; a changed file is in the next request's prompt.
+- **`read_item`.** When the index lists rules, workflows or skills, the model gets `read_item`
+  (`{"name": "delivery"}`), answered by the Engine without an approval prompt. The memory functions
+  (`remember`, `recall`) come along with it, as with any tool in the prompt.
+- **Items named in the message** (a rule, workflow, skill or fact whose name is in the user's
+  message) go whole in a `<context>` block in front of it: at most 3, within half the share, once
+  per chat (kept in the chat's ledger; a compaction clears it).
+- **`/<workflow>`.** A message that is exactly `/<name> [arguments]` for a workflow of the project
+  gets the workflow's steps in front of it (prompt `workflow.run`). Any other `/text` is sent as it
+  is.
+- **Memory.** A note the model proposes with `remember` for the workspace (`scope: workspace`)
+  becomes a fact of the project's `.agents/memory/` when the user confirms it
+  ([`notes.confirm`](../cep/ai-inference/notes/notes.confirm.md)); with `notes: "auto"` it still
+  waits for the user, since it is written into the user's project. Chat and global notes stay in
+  the Cluaiz home. A workspace that nobody picked (the Cluaiz home itself) is not a project.
+- **Off.** `context_policy: {"project_files": "off"}` for one request, or the setting
+  `context.project_files`. A strict private chat (`temporary_chat: "strict"`) gets none of them.
+
+`context_report.plan.project` reports `root`, `budget_chars`, `chars`, `parts` (each file's `kind`,
+`name`, `placement`: `whole`, `cut`, `index` or `left`, `chars`, `total`), `problems` (files that
+could not be used), `with_message` (items sent in the `<context>` block, as `kind:name`),
+`workflow` (the `/<workflow>` that ran) and `read_item` (offered). Null when the chat got none.
+
+Measured with Qwen3.8-4B Q4_K_M (8K context) on a test project with an AGENTS.md, one rule, one
+workflow and one memory fact (2026-11-02): the answers followed AGENTS.md (prices as "Rs 450", the
+closing line) and the fact; the delivery rule, listed in the index only, was read with `read_item`
+before the answer; `/order-slip` ran its four steps; the second request of a chat took 160 of its
+352 prompt tokens from the cache. Before `read_item` existed, the same question got invented
+delivery prices.
+
+---
+
 ## 💾 Chat Memory (saved KV cache per chat)
 
 Send a `session_id` with every request of a chat. After each answer (once per answer, not after every tool step) the engine saves that chat's KV cache to disk and restores it when the chat continues after another chat, a model reload or a restart, so only the new tokens are processed (`engine.context.cache_n`). Private requests (`temporary_chat`) are never saved. Settings, endpoints and measurements: [Chat Memory API](../cep/ai-inference/kv/kv.status.md).

@@ -15,7 +15,7 @@ struct List {
     /// chat, workspace or global
     #[serde(default)]
     scope: Option<String>,
-    /// proposed, confirmed, superseded or invalidated
+    /// proposed, confirmed, superseded, invalidated or moved (now a project memory fact)
     #[serde(default)]
     status: Option<String>,
     /// Only notes that apply to this chat (with the current workspace)
@@ -162,6 +162,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             "notes.move",
             Meta::new(Scope::Write, "A confirmed workspace note, saved before notes of a project became its `.agents/memory/` facts, becomes one now")
                 .idempotent(false)
+                .no_mcp()
                 .error(-32004, "note_not_found", "No note with this id")
                 .error(-32602, "invalid_params", "The note is not a live workspace note of a project folder")
                 .error(-32002, "forbidden", "The project's memory folder is outside the caller's roots")

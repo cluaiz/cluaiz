@@ -166,6 +166,8 @@ The chat id is mandatory for this scope.
 
 note is the stored record with its generated id/status/scope. superseded lists previous live notes displaced by the note-store subject rules; it is not a general delete-all operation. Reuse note.id in notes.pin/confirm/invalidate.
 
+A `workspace` note of a project folder (not the Cluaiz home, with `context.project_files` on) becomes a fact of the project's `.agents/memory/` at once, as [`notes.confirm`](notes.confirm.md) describes: the note is kept with `status: "moved"` and the result has `project_fact`.
+
 The following response is an illustrative shape. IDs, byte counts, timings and array contents depend on the actual request and machine; shortened nested objects are not a second schema or a measured result.
 
 ```json

@@ -28,7 +28,7 @@ flowchart LR
     HTTP --> Engine["CEP engine: parse, principal, scope"]
     FFI --> Engine
     MCP --> Engine
-    Engine --> Registry["Method registry (89 methods)"]
+    Engine --> Registry["Method registry (90 methods)"]
     Registry -->|"sync"| Result["result"]
     Registry -->|"task"| Tasks["tasks.get / tasks.result"]
     Registry -->|"outside roots, system.exec"| Approvals["approvals.approve"]

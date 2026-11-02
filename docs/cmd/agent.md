@@ -594,6 +594,9 @@ In this project the tests run with npm run check (not npm test).
   [`workspace.memory`](../api/cep/filesystem/workspace/workspace.memory.md) and
   [`workspace.remember`](../api/cep/filesystem/workspace/workspace.remember.md) (after the user
   confirms; not offered to MCP clients).
+- A chat in the App (or any client of the Chat Completions API) gets the same files from the
+  Engine's workspace, with `read_item`, and a workspace note the user confirms there becomes a file
+  here: see [The project's agent files](../api/inference/chat_completions.md#-the-projects-agent-files).
 
 ### How the project's files reach the model
 

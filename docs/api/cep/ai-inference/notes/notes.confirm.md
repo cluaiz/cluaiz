@@ -4,7 +4,7 @@ transport: "POST /v1/cep"
 category: "ai-inference"
 category_title: "AI & Inference Core"
 group: "notes"
-summary: "A proposed note becomes confirmed (and supersedes a live note on the same subject)"
+summary: "A proposed note becomes confirmed (and supersedes a live note on the same subject); a workspace note of a project becomes a fact of its `.agents/memory/`"
 scope: "write"
 execution: "sync"
 mcp: true
@@ -48,6 +48,9 @@ errors:
   - code: -32010
     type: "notes_unavailable"
     when: "The notes file could not be written"
+  - code: -32010
+    type: "memory_not_saved"
+    when: "The note is confirmed, but its project fact could not be written"
 ---
 
 # notes.confirm
@@ -127,6 +130,16 @@ Replace the placeholder with an existing id; the request does not create a note.
 
 note is the updated stored record; superseded reports changes performed by the shared update rules. A missing id returns note_not_found, not an invented note.
 
+**A workspace note of a project.** When the note is a live `workspace` note, its workspace is a
+folder the user picked (not the Cluaiz home), `context.project_files` is `on` and the caller's roots
+include the folder, the note becomes a fact of the project: `.agents/memory/<name>.md` is written
+(the name is the note's first words; a live fact on the same subject is marked superseded), the
+note is kept with `status: "moved"` and `moved_to` (the file), and the result has `project_fact`:
+`name`, `path` and `replaced` (the facts it superseded). From then on the file is the fact: the
+terminal agent, another chat and another AI read it from the project. A note that is not of a
+project stays in the Cluaiz home as before.
+
+
 The following response is an illustrative shape. IDs, byte counts, timings and array contents depend on the actual request and machine; shortened nested objects are not a second schema or a measured result.
 
 ```json
@@ -155,6 +168,7 @@ The following response is an illustrative shape. IDs, byte counts, timings and a
 | `-32002` / principal | Required scope/owner/root authorization is absent | Inspect `error.data.needs`; use an authorized caller or permitted target |
 | `-32004` / `note_not_found` | No note with this id | Refresh the relevant inventory/IDs and check whether the resource expired |
 | `-32010` / `notes_unavailable` | The notes file could not be written | Read the error message, correct the backend/filesystem/configuration condition, then retry deliberately |
+| `-32010` / `memory_not_saved` | The note is confirmed, but its project fact could not be written | The note stays confirmed in the Cluaiz home; check the project folder, then move it with `notes.move` |
 
 ### Invalid-field example
 
