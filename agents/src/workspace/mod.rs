@@ -209,6 +209,14 @@ impl Workspace {
         workspace
     }
 
+    /// [`Workspace::scan`] with the user's homes: the Cluaiz home (`~/.cluaiz/AGENTS.md`, its
+    /// installed skills) and the user's folder (`~/.agents/`)
+    pub fn for_folder(dir: &Path, installed: &[String]) -> Self {
+        let cluaiz = cluaiz_core::EnvironmentManager::current().global_dir;
+        let user = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(PathBuf::from);
+        Self::scan(dir, Homes { cluaiz: Some(&cluaiz), user: user.as_deref() }, installed)
+    }
+
     /// Every rule, workflow, skill and live memory fact: the index the model and the user see
     pub fn index(&self) -> impl Iterator<Item = &Item> {
         self.rules.iter().chain(&self.workflows).chain(&self.skills).chain(self.memory.iter().filter(|fact| fact.superseded_by.is_none()))

@@ -484,6 +484,11 @@ impl PreparedChatContext {
         let z0_notes: Vec<_> = pinned_notes.iter().filter(|n| z0_note_ids.contains(&n.id)).cloned().collect();
         let mut block_notes: Vec<_> = pinned_notes.iter().filter(|n| !z0_note_ids.contains(&n.id)).cloned().collect();
         block_notes.extend(relevant_notes);
+        // The workspace's agent files (AGENTS.md, .agents/), as the terminal agent reads them: the
+        // same files give the same text, so the system prompt stays the same while they do
+        let project = super::project::for_chat(&policy, dynamic_context_limit, skip_brain);
+        let project_text = project.as_ref().map(|p| p.prompt.text.clone()).unwrap_or_default();
+        context_plan::inject(&mut augmented_messages, &mut origin, "", &project_text);
         context_plan::inject(&mut augmented_messages, &mut origin, "", &super::recall::notes_system(&z0_notes));
         // The chat's event log: what the client sent (a preview changes nothing)
         let ingest_started = std::time::Instant::now();
@@ -892,6 +897,7 @@ impl PreparedChatContext {
                         context_plan::render_history(&request.messages, Some(&compacted), tool_role, history_mode, policy.recent_turns_min);
                     augmented_messages = again.messages;
                     origin = again.origin;
+                    context_plan::inject(&mut augmented_messages, &mut origin, "", &project_text);
                     context_plan::inject(&mut augmented_messages, &mut origin, "", &super::recall::notes_system(&z0_notes));
                     context_plan::inject(&mut augmented_messages, &mut origin, &hint, &system_tools);
                     plan = context_plan::plan_messages(&state.host, &augmented_messages, n_ctx_limit, answer_reserve, thinks, &policy);
@@ -956,6 +962,7 @@ impl PreparedChatContext {
             "with_message": block_notes.iter().map(|n| n.id.clone()).collect::<Vec<_>>(),
         });
         plan_report["task"] = task_report;
+        plan_report["project"] = super::project::report(project.as_ref());
 
         // 🧠 1. THINKING MONOLOGUE VISIBILITY (think_mode: "on" | "off" | "auto")
         let active_think_mode = request
