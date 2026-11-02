@@ -673,7 +673,7 @@ impl PreparedChatContext {
                 && !catalog.is_empty()
                 && cluaiz_agents::tool_search::is_actionable(&initial_user_query)
             {
-                hint_lines = "Installed tools are not loaded. If one would help, search them with find_tools.\n".to_string();
+                hint_lines = format!("{}\n", cluaiz_core::prompts::text("tools.hint_find"));
                 search_offered = true;
             }
             offer_meta_tools = !hint_lines.is_empty()
@@ -693,7 +693,7 @@ impl PreparedChatContext {
         let remember_tool = memory_room && policy.notes != "off";
         if memory_tools {
             if hint_lines.is_empty() && history_hidden {
-                hint_lines = "Earlier messages of this chat are not all shown. To look something up, call recall with a query; open_memory gives one message in full.\n".to_string();
+                hint_lines = format!("{}\n", cluaiz_core::prompts::text("chat.recall_hint"));
             }
             offer_meta_tools = true;
         }
@@ -705,7 +705,7 @@ impl PreparedChatContext {
             meta_schemas.push(super::recall::remember_schema());
             offer_meta_tools = true;
             if hint_lines.is_empty() && history_hidden {
-                hint_lines = "To keep something the user wants remembered beyond this chat, call remember.\n".to_string();
+                hint_lines = format!("{}\n", cluaiz_core::prompts::text("chat.remember_hint"));
             }
         }
         // task_update while a task is open
@@ -713,7 +713,7 @@ impl PreparedChatContext {
             meta_schemas.push(super::recall::task_schema());
             offer_meta_tools = true;
             if hint_lines.is_empty() {
-                hint_lines = "To keep track of the current task, call task_update with its goal, stage and checkpoint.\n".to_string();
+                hint_lines = format!("{}\n", cluaiz_core::prompts::text("chat.task_hint"));
             }
         }
 
@@ -800,10 +800,9 @@ impl PreparedChatContext {
             hint.push_str("<tools_hint>\n");
             hint.push_str(&hint_lines);
             if system_tools.is_empty() {
-                hint.push_str(&format!(
-                    "To call a function, reply with only:\n<tool_call>\n{{\"name\": \"function_name\", \"arguments\": {{\"arg\": \"value\"}}}}\n</tool_call>\nFunctions you can call now:\n{}\n{}",
-                    cluaiz_agents::prompt_compiler::tools_block(&meta_schemas),
-                    workspace_note.trim_start()
+                hint.push_str(&cluaiz_core::prompts::render(
+                    "tools.call_format_hint",
+                    &[("tools", cluaiz_agents::prompt_compiler::tools_block(&meta_schemas).as_str()), ("workspace", workspace_note.trim_start())],
                 ));
                 hint.push('\n');
             }

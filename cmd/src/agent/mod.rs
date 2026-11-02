@@ -726,8 +726,8 @@ context    {}", plan.summary(), plan.context_reason)
             return Err(eyre!("Compact stopped; the conversation is unchanged"));
         }
         self.history = vec![
-            message("user", format!("Summary of our conversation so far (it replaced the full history):\n{}", summary.trim())),
-            message("assistant", "Understood. I will continue from this summary.".into()),
+            message("user", cluaiz_core::prompts::render("agent.compact_summary", &[("summary", summary.trim())])),
+            message("assistant", cluaiz_core::prompts::text("agent.compact_ack")),
         ];
         self.usage = None;
         self.compact_next = false;

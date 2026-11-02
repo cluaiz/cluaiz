@@ -453,7 +453,7 @@ pub async fn execute_streaming_loop(
                             }
                         }
                     } else {
-                        let reason = user_denial_feedback.unwrap_or_else(|| "User denied permission to execute this tool.".to_string());
+                        let reason = user_denial_feedback.unwrap_or_else(|| cluaiz_core::prompts::text("tools.denied"));
                         super::authorize::denied_result(&reason)
                     };
                     let latency_ms = tool_start_time.elapsed().as_secs_f64() * 1000.0;

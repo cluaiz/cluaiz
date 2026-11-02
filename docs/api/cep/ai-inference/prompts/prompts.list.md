@@ -97,6 +97,8 @@ Lists every prompt.
 | `agent.init` | What `/init` asks the agent to do: write the project's `.agents/AGENTS.md`, for code or for documents | `path` |
 | `agent.compact` | What `/compact` asks the model for (the conversation follows it) | none |
 | `agent.compact_system` | The system prompt of the `/compact` request | none |
+| `agent.compact_summary` | After `/compact`, the message that carries the summary | `summary` |
+| `agent.compact_ack` | After `/compact`, the assistant reply to the summary | none |
 | `workspace.instructions` | Heading of the project's AGENTS.md files in the agent's system prompt | none |
 | `workspace.rules` | Heading of the project's always-on rules | none |
 | `workspace.index` | Heading of the index of rules, workflows and skills read on demand, and of the project's memory facts | none |
@@ -124,11 +126,18 @@ Lists every prompt.
 | `chat.noted` | The chat `remember` result after a confirmed note was saved | `id` |
 | `chat.noted_proposed` | The chat `remember` result after a proposed note was saved | `id` |
 | `chat.noted_by_app` | The chat `remember` result when the App keeps the chat | `status` |
+| `chat.recall_hint` | In `<tools_hint>`: earlier messages are not all shown; how to look them up | none |
+| `chat.remember_hint` | In `<tools_hint>`: when `remember` is offered | none |
+| `chat.task_hint` | In `<tools_hint>`: while a task is open | none |
+| `chat.no_memory` | A memory tool result in a chat that keeps no memory | none |
 | `tools.header` | Heading before the inline `<tools>` block | none |
 | `tools.call_format` | How a model writes a `<tool_call>` block | none |
+| `tools.call_format_hint` | In `<tools_hint>`, when the system prompt has no tool block: how to call a tool, and the tools callable now | `tools`, `workspace` |
 | `tools.workspace` | Which folder tools run in | `folder` |
 | `tools.hint` | Heading of the suggested tools sent with a message | none |
 | `tools.hint_titles` | The line naming more installed tools | `titles` |
+| `tools.hint_find` | In `<tools_hint>`: installed tools are not loaded; search them with `find_tools` | none |
+| `tools.denied` | The tool result when the user did not allow a call and gave no reason | none |
 
 The Engine adds no other instruction of its own. A chat request's own system prompt comes from the client and is not one of these.
 

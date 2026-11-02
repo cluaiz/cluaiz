@@ -20,6 +20,8 @@ const DEFAULTS: &[&str] = &[
     include_str!("../prompts/agent.init.md"),
     include_str!("../prompts/agent.compact.md"),
     include_str!("../prompts/agent.compact_system.md"),
+    include_str!("../prompts/agent.compact_summary.md"),
+    include_str!("../prompts/agent.compact_ack.md"),
     include_str!("../prompts/workspace.instructions.md"),
     include_str!("../prompts/workspace.rules.md"),
     include_str!("../prompts/workspace.index.md"),
@@ -47,11 +49,18 @@ const DEFAULTS: &[&str] = &[
     include_str!("../prompts/chat.noted.md"),
     include_str!("../prompts/chat.noted_proposed.md"),
     include_str!("../prompts/chat.noted_by_app.md"),
+    include_str!("../prompts/chat.recall_hint.md"),
+    include_str!("../prompts/chat.remember_hint.md"),
+    include_str!("../prompts/chat.task_hint.md"),
+    include_str!("../prompts/chat.no_memory.md"),
     include_str!("../prompts/tools.header.md"),
     include_str!("../prompts/tools.call_format.md"),
+    include_str!("../prompts/tools.call_format_hint.md"),
     include_str!("../prompts/tools.workspace.md"),
     include_str!("../prompts/tools.hint.md"),
     include_str!("../prompts/tools.hint_titles.md"),
+    include_str!("../prompts/tools.hint_find.md"),
+    include_str!("../prompts/tools.denied.md"),
 ];
 
 /// Replaced texts kept per prompt
@@ -341,6 +350,18 @@ Reply with only one JSON object and nothing else: \
             "Below is part of a chat. Reply with only one JSON object and nothing else: {\"title\": \"what it was about, at most 10 words\", \"summary\": \"2-3 sentences: what was asked, decided and done\", \"keywords\": [\"up to 6 words\"]}"
         );
         assert!(r("workspace.remember_refused", &[]).starts_with("not saved: nobody can confirm a fact in this run."));
+        assert_eq!(r("tools.hint_find", &[]), "Installed tools are not loaded. If one would help, search them with find_tools.");
+        assert_eq!(r("chat.recall_hint", &[]), "Earlier messages of this chat are not all shown. To look something up, call recall with a query; open_memory gives one message in full.");
+        assert_eq!(r("chat.remember_hint", &[]), "To keep something the user wants remembered beyond this chat, call remember.");
+        assert_eq!(r("chat.task_hint", &[]), "To keep track of the current task, call task_update with its goal, stage and checkpoint.");
+        assert_eq!(r("chat.no_memory", &[]), "This chat keeps no memory (private chat or no session_id).");
+        assert_eq!(r("tools.denied", &[]), "User denied permission to execute this tool.");
+        assert_eq!(r("agent.compact_summary", &[("summary", "S")]), "Summary of our conversation so far (it replaced the full history):\nS");
+        assert_eq!(r("agent.compact_ack", &[]), "Understood. I will continue from this summary.");
+        assert_eq!(
+            r("tools.call_format_hint", &[("tools", "T"), ("workspace", "W")]),
+            "To call a function, reply with only:\n<tool_call>\n{\"name\": \"function_name\", \"arguments\": {\"arg\": \"value\"}}\n</tool_call>\nFunctions you can call now:\nT\nW"
+        );
     }
 
     #[test]
