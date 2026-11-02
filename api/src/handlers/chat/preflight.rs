@@ -63,6 +63,12 @@ pub struct PreparedChatContext {
     pub memory_tools: bool,
     /// Pinned notes in this chat's system prompt (kept in its ledger)
     pub z0_note_ids: Vec<String>,
+    /// The workspace's agent files, for `read_item` (None: the chat got none of them)
+    pub project: Option<Arc<cluaiz_agents::workspace::Workspace>>,
+    /// `read_item` was offered
+    pub project_read: bool,
+    /// The project's items this message got whole (kept in the ledger, not sent twice)
+    pub project_sent: Vec<String>,
     /// Keeps idle-time jobs away until the request ends
     _foreground: super::background::Foreground,
     pub json_prompt: String,
@@ -722,6 +728,16 @@ impl PreparedChatContext {
             }
         }
 
+        // read_item, when the project has items the system prompt only lists
+        let project_read = tools_allowed && project.as_ref().is_some_and(|p| p.has_unread());
+        if let Some(schema) = project.as_ref().filter(|_| project_read).and_then(|p| p.workspace.read_item_schema()) {
+            meta_schemas.push(schema);
+            offer_meta_tools = true;
+            if hint_lines.is_empty() {
+                hint_lines = format!("{}\n", cluaiz_core::prompts::text("workspace.read_item_hint"));
+            }
+        }
+
         // Bound tools: whole schemas and whole skill instructions, or left out; never cut. With
         // native tool calls the schemas go to the template (`tools` in the envelope) instead.
         let mut system_tools = String::new();
@@ -887,6 +903,9 @@ impl PreparedChatContext {
                         chat, report.freed_tokens, report.blocks_removed, report.results_cleared
                     );
                     // A preview reports the compaction without making it
+                    // What the chat got before may be gone from the history now
+                    let mut compacted = compacted;
+                    compacted.project_sent.clear();
                     if !request.preview {
                         cluaiz_agents::ChatLedger::put(chat, compacted.clone());
                         if !report.unloaded_tools.is_empty() {
@@ -955,6 +974,34 @@ impl PreparedChatContext {
             turn_block = if turn_block.is_empty() { block } else { format!("{block}\n\n{turn_block}") };
             plan = context_plan::plan_messages(&state.host, &augmented_messages, n_ctx_limit, answer_reserve, thinks, &policy);
         }
+        // The project's items that fit this message (`<context>`), and a `/<workflow>` message's
+        // steps; each item goes once in a chat
+        let mut project_sent = Vec::new();
+        let mut workflow_run = None;
+        if let Some(p) = &project {
+            let earlier = if compaction.is_some() { Vec::new() } else { ledger.as_ref().map(|l| l.project_sent.clone()).unwrap_or_default() };
+            let known = p.known(&earlier);
+            let items = p.workspace.matched(&initial_user_query, previous_user_query.as_deref(), &known);
+            let mut blocks = Vec::new();
+            if let Some((key, request)) = p.workflow_request(&initial_user_query) {
+                workflow_run = Some(key.clone());
+                project_sent.push(key);
+                blocks.push(request);
+            }
+            let items: Vec<_> = items.into_iter().filter(|item| !project_sent.contains(&cluaiz_agents::workspace::matching::key(item))).collect();
+            if let Some((block, keys)) = p.workspace.context_block(&items, cluaiz_agents::workspace::budget_for(n_ctx_limit) / 2) {
+                project_sent.extend(keys);
+                blocks.insert(0, block);
+            }
+            if !blocks.is_empty() {
+                let block = blocks.join("\n\n");
+                if let Some(last) = augmented_messages.last_mut() {
+                    context_plan::prepend_text(&mut last.content, &block);
+                }
+                turn_block = if turn_block.is_empty() { block } else { format!("{block}\n\n{turn_block}") };
+                plan = context_plan::plan_messages(&state.host, &augmented_messages, n_ctx_limit, answer_reserve, thinks, &policy);
+            }
+        }
         let mut plan_report = context_plan::report(&plan, history_mode, &policy, compaction.as_ref());
         plan_report["recall"] = recall_report;
         plan_report["notes"] = json!({
@@ -963,6 +1010,11 @@ impl PreparedChatContext {
         });
         plan_report["task"] = task_report;
         plan_report["project"] = super::project::report(project.as_ref());
+        if !plan_report["project"].is_null() {
+            plan_report["project"]["with_message"] = json!(project_sent);
+            plan_report["project"]["workflow"] = json!(workflow_run);
+            plan_report["project"]["read_item"] = json!(project_read);
+        }
 
         // 🧠 1. THINKING MONOLOGUE VISIBILITY (think_mode: "on" | "off" | "auto")
         let active_think_mode = request
@@ -1212,6 +1264,9 @@ impl PreparedChatContext {
             message_count: request.messages.len(),
             memory_tools: memory_tools || remember_tool,
             z0_note_ids,
+            project: project.as_ref().map(|p| p.workspace.clone()),
+            project_read,
+            project_sent,
             _foreground: foreground,
             tool_hint: turn_block,
             tools_report,
@@ -1419,6 +1474,11 @@ pub fn record_turn(
     ledger.set_turn(cluaiz_agents::TurnRecord { key: key.clone(), block: ctx.tool_hint.clone(), steps });
     ledger.bindings = cluaiz_agents::SessionToolManager::get_session_tools(chat);
     ledger.notes = Some(ctx.z0_note_ids.clone());
+    for key in &ctx.project_sent {
+        if !ledger.project_sent.contains(key) {
+            ledger.project_sent.push(key.clone());
+        }
+    }
     cluaiz_agents::ChatLedger::put(chat, ledger);
     // Every event the app has not had: this request's and answer's, and those added since the
     // last answer (an idle-time card, a note)

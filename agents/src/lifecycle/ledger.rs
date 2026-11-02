@@ -62,6 +62,10 @@ pub struct ChatLedger {
     /// prompt stays the same; notes pinned later travel with the message they arrive in)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notes: Option<Vec<String>>,
+    /// The project's items (`kind:name`) this chat already got whole: sent with a message or read
+    /// with `read_item` (cleared when a compaction may have removed them)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub project_sent: Vec<String>,
 }
 
 static LEDGERS: LazyLock<Mutex<HashMap<String, ChatLedger>>> = LazyLock::new(|| Mutex::new(HashMap::new()));

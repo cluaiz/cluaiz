@@ -238,6 +238,19 @@ pub async fn run_meta_tool(
 ) -> MetaOutcome {
     let args = serde_json::from_str::<Value>(payload).unwrap_or_else(|_| json!({}));
     let text_arg = |key: &str| args.get(key).and_then(Value::as_str).unwrap_or("").trim().to_string();
+    if let (cluaiz_agents::workspace::READ_ITEM, Some(workspace), true) = (name, &ctx.project, ctx.project_read) {
+        let (text, key) = super::project::read_item(workspace, &text_arg("name"), &text_arg("kind"));
+        // Read whole: not sent again with a later message of the chat
+        if let (Some(key), Some((chat, _))) = (key, &ctx.ledger_turn) {
+            let mut ledger = cluaiz_agents::ChatLedger::get(chat);
+            if !ledger.project_sent.contains(&key) {
+                ledger.project_sent.push(key);
+                cluaiz_agents::ChatLedger::put(chat, ledger);
+            }
+        }
+        tracing::info!("📚 [Project] read_item({}) -> {} chars", payload, text.len());
+        return MetaOutcome { text, unloaded: None };
+    }
     if super::recall::is_memory_tool(name) {
         let text = match &ctx.ledger_turn {
             Some((chat, _)) => super::recall::run_memory_tool(chat, name, &args),
