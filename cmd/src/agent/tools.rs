@@ -811,7 +811,7 @@ impl Tools {
             self.refused = true;
             // Told to the model: what to do now, not which flags the user could have passed
             if remember {
-                return Err("not saved: nobody can confirm a fact in this run. Tell the user it was not saved; they can save it in an interactive session".into());
+                return Err(cluaiz_core::prompts::text("workspace.remember_refused"));
             }
             return Err("not allowed: nobody can approve this call in this run; finish the task without it, or say what you would need".into());
         }

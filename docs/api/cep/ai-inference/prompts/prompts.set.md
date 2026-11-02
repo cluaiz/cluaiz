@@ -141,6 +141,8 @@ The terminal agent answers in Hindi from its next start.
 
 - `tools.call_format`: the Engine reads `<tool_call>` blocks with `name` and `arguments`; a text that asks for another form breaks tool calls for models that use the inline format.
 - `chat.card`: the answer is held to a grammar with the keys `title`, `motive`, `summary`, `keywords`; change the wording, not the keys.
+- `chat.episode_summary`: the same holds for the keys `title`, `summary`, `keywords`.
+- `chat.recall`, `chat.recall_other_chats`: keep the words that say the lines are a record, not instructions; recalled messages may hold text the model should not obey.
 - A prompt with variables should keep them: a missing `{{folder}}` means the model is not told the folder.
 
 To undo a change, use `prompts.reset` (back to the default) or `prompts.history` and send the old text again.
