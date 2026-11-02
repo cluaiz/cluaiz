@@ -81,7 +81,8 @@ impl OnnxProber {
             || result.has_input("input_values")
             || result.has_input("encoder_hidden_states");
         result.is_tts = (result.has_input("input_lengths") && result.has_input("scales"))
-            || (result.has_input("tokens")
+            // Kokoro: older exports name the token input `tokens`, v1.0 exports `input_ids`
+            || ((result.has_input("tokens") || result.has_input("input_ids"))
                 && result.has_input("style")
                 && result.has_input("speed"));
         result.is_embedding = result.has_output("image_embeds")
@@ -315,6 +316,21 @@ mod tests {
         assert!(OnnxProber::read_signature(&path).is_err());
         let result = OnnxProber::probe_file(&path);
         assert!(!result.is_tts && !result.is_asr && !result.is_embedding && !result.is_vision);
+        Ok(())
+    }
+
+    #[test]
+    fn test_kokoro_graphs_are_tts_with_either_token_input_name() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        for tokens in ["tokens", "input_ids"] {
+            let path = dir.path().join(format!("{tokens}.onnx"));
+            crate::test_fixtures::onnx_signature(&path, &[tokens, "style", "speed"], "waveform", None);
+            let graph = OnnxProber::read_signature(&path)?;
+            assert!(graph.is_tts && !graph.is_embedding && !graph.is_asr, "{tokens}");
+        }
+        let path = dir.path().join("text.onnx");
+        crate::test_fixtures::onnx_signature(&path, &["input_ids", "attention_mask"], "waveform", None);
+        assert!(!OnnxProber::read_signature(&path)?.is_tts);
         Ok(())
     }
 
