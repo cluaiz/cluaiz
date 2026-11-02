@@ -63,15 +63,13 @@ pub async fn execute(file_path: &str) -> Result<()> {
         chunks.into_iter().map(EmbeddingInput::Text).collect()
     };
     let schema = cluaiz_security::PermissionSchema::load();
-    let embedding_id = schema
-        .active_slots
-        .get("embedding_slot")
-        .and_then(|slot| slot.model_id.as_deref());
+    // The model `cluaiz model set-vector` chose (`embed_slot`, then `vector_models.text`)
+    let embedding_id = schema.get_active_embedding_model();
     let selected = if is_image {
         schema
             .active_slots
             .get("ingest_slot")
-            .and_then(|slot| slot.model_id.as_deref())
+            .and_then(|slot| slot.model_id.clone())
             .or(embedding_id)
     } else {
         embedding_id
@@ -79,16 +77,16 @@ pub async fn execute(file_path: &str) -> Result<()> {
     let Some(id) = selected else {
         if is_image {
             return Err(eyre!(
-                "Configure an image embedding model in ingest_slot or embedding_slot"
+                "Choose an image embedding model with `cluaiz model set-vector <id>`"
             ));
         }
-        println!("Text extracted. Configure an embedding model to also generate vectors.");
+        println!("Text extracted. Choose an embedding model with `cluaiz model set-vector <id>` to also generate vectors.");
         return Ok(());
     };
     let registry = cluaiz_models::registry::InstalledStateRegistry::load();
     let entry = registry
         .installed_models
-        .get(id)
+        .get(&id)
         .ok_or_else(|| eyre!("Configured embedding model is not installed: {id}"))?;
     let model = OnnxModel::from_package(entry).map_err(|error| eyre!("{error:#}"))?;
     let host = EngineHost::new();
