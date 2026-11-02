@@ -392,6 +392,8 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
         .unwrap_err()
         .to_string()
         .contains("Model/configuration changed"));
+    // A prepared request owns the attachment buffers until it ends: end it before the next one
+    drop(ctx);
 
     let outside = tempfile::tempdir()?;
     let external = outside.path().join("outside.png");
@@ -426,6 +428,7 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
     .await
     .map_err(|response| anyhow::anyhow!("Owner workspace source failed: {}", response.status()))?;
     assert!(inside_ctx.prepared_media.is_some());
+    drop(inside_ctx);
     let (status, missing) = post(
         &router,
         "/v1/chat/completions",
@@ -437,16 +440,19 @@ async fn real_router_image_audio_metadata_errors_and_continuation() -> Result<()
         serde_json::from_str::<Value>(&missing)?["error"]["code"],
         "model_not_found"
     );
+    // max_tokens as large as the context is not an error: the answer's room is capped at a quarter
+    // of the context and context shifting continues a longer answer (docs: Context window)
     let mut oversized = image_request;
     oversized["max_tokens"] = json!(4096);
-    let (status, failed) = post(&router, "/v1/chat/completions", oversized.clone()).await?;
-    assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR, "{failed}");
-    assert!(serde_json::from_str::<Value>(&failed)?
-        .get("error")
-        .is_some());
+    let (status, answered) = post(&router, "/v1/chat/completions", oversized.clone()).await?;
+    assert_eq!(status, StatusCode::OK, "{answered}");
+    assert!(serde_json::from_str::<Value>(&answered)?["choices"][0]["message"]["content"]
+        .as_str()
+        .is_some_and(|text| !text.trim().is_empty()));
     oversized["stream"] = json!(true);
-    let (_, failed_events) = post(&router, "/v1/chat/completions", oversized).await?;
-    assert!(failed_events
+    let (_, events) = post(&router, "/v1/chat/completions", oversized).await?;
+    assert!(events.contains("data: [DONE]"));
+    assert!(!events
         .lines()
         .filter_map(|line| line.strip_prefix("data: "))
         .filter(|line| *line != "[DONE]")
