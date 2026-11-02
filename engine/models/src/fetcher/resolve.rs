@@ -216,8 +216,11 @@ pub async fn resolve(model_id: &str, all: bool, ui: &dyn ResolveUi) -> Result<Re
 
         ui.step(ResolveStep::FetchingMetadata);
         // The slot (chat, speech, transcription, embedding) comes from what the repository declares
-        let (pipeline_tag, tags) = HuggingFaceHub::declared_tasks(&repo_id).await;
-        let mut hf_manifest = HuggingFaceHub::build_manifest(&repo_id, &selected_variant, pipeline_tag.as_deref(), &tags);
+        let metadata = HuggingFaceHub::declared_metadata(&repo_id).await;
+        let mut hf_manifest = HuggingFaceHub::build_manifest(&repo_id, &selected_variant, metadata.pipeline_tag.as_deref(), &metadata.tags);
+        if let Some(architecture) = metadata.architecture() {
+            hf_manifest.architecture = architecture.to_owned();
+        }
         // The quant tag goes into the id for a flat vault folder: GLM-5.2-GGUF + UD-IQ1_S → GLM-5.2-GGUF-UD-IQ1_S
         let qt = &selected_variant.quant_tag;
         if !qt.is_empty() && qt != "DEFAULT" && !hf_manifest.id.to_uppercase().contains(&qt.to_uppercase()) {

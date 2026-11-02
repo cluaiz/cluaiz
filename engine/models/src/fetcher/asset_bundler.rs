@@ -10,6 +10,14 @@ use std::path::Path;
 pub struct AssetBundler;
 
 impl AssetBundler {
+    /// Full selected bundle size, counting each inventory path once.
+    pub fn bundle_size_gb(items: &[super::HfTreeItem], files: &[String]) -> f64 {
+        let inventory: std::collections::HashMap<_, _> = items.iter()
+            .map(|item| (item.path.as_str(), item.size.unwrap_or(0))).collect();
+        let unique: std::collections::HashSet<_> = files.iter().map(String::as_str).collect();
+        unique.into_iter().filter_map(|path| inventory.get(path)).map(|bytes| *bytes as f64).sum::<f64>()
+            / cluaiz_core::GIB_F64
+    }
     /// Returns supplementary metadata and configuration file names to auto-fetch for a model repository.
     pub fn supplementary_metadata_files() -> &'static [&'static str] {
         &[

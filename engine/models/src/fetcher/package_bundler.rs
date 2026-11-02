@@ -41,13 +41,8 @@ pub async fn complete_custom(
             }
             files.insert(path);
         }
-        variant.size_gb = inventory
-            .iter()
-            .filter(|item| files.contains(&item.path))
-            .map(|item| item.size.unwrap_or(0))
-            .sum::<u64>() as f64
-            / cluaiz_core::GIB_F64;
         variant.all_files = files.into_iter().collect();
+        variant.size_gb = AssetBundler::bundle_size_gb(&inventory, &variant.all_files);
     }
     Ok(variant)
 }

@@ -30,6 +30,25 @@ graph TD
 
 ## Native package capability contract
 
+### Download preview metadata
+
+The HF repository metadata request supplies task declarations and the available
+GGUF/config architecture together. Missing architecture is displayed as Unknown,
+not a guessed Transformer label. The local GGUF header remains authoritative after
+download. Selected bundle sizing includes unique primary/shard, projector, MTP and
+metadata paths; it is a download estimate, not a runtime memory requirement.
+
+`tests/download_preview.rs` covers metadata precedence and full bundle accounting.
+Its opt-in `live_download_preview_metadata` check reads only public metadata and file
+lists using `CLUAIZ_PREVIEW_REPO`; it does not download weights or install a model.
+
+2026-11-02 checks: release `download_preview` tests: 2 passed; model library:
+24 passed, 1 opt-in ignored. The read-only live E4B check passed with architecture
+`gemma4` and BF16/Q8_0/Q4_0 bundle sizes 15.1027/8.4950/5.2546 GiB (three files
+each). `cargo build --release --offline -p cmd` completed. The resulting CLI preview
+showed `gemma4` and 5.25 GB for the Q4_0 bundle; it was stopped at confirmation.
+No inference or completed model installation was tested for this correction.
+
 ### Anonymous registry resolution
 
 `fetcher/client.rs` owns catalogue resolution. It sends one bounded HTTP request with the original model ID and an optional distinct tagged-base fallback. Missing IDs, rate limits, client rejection and service failure remain distinct. HTTP redirects are not followed. Complete HF coordinates bypass the website; model files still use the existing downloader. No request-count telemetry or delayed batch is sent. Client markers are identification hints, not authentication. Website proxy secrets stay on the server and are never shipped in the Engine.
