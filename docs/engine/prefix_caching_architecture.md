@@ -1,58 +1,49 @@
-# Prefix Caching Architecture & Delta Resumption
+# KV Cache Reuse (Prefix Caching)
 
-## 1. Overview & Core Mechanism
-Traditional Large Language Model (LLM) inference runtimes process multi-turn conversations and tool executions by re-evaluating the entire conversation history from scratch (full prefill). In long-running agentic loops, repeated prompt recomputations cause significant Time to First Token (TTFT) latency spikes and unnecessary compute waste.
+When a chat continues, most of the new prompt is the same as the last one. The Engine keeps the
+KV cache of the last generation and computes only the tokens that changed. This works like
+llama-server's prompt cache, `--cache-reuse`, context shift and `--slot-save-path`.
 
-**Cluaiz Prefix Caching** solves this bottleneck at the native C-ABI stream level. When continuing dialogues or receiving tool execution results, the engine matches the incoming token prefix against the active Key-Value (KV) cache memory. Only new delta tokens are decoded, while the shared conversation prefix stays active in memory.
+Code: `engine/llama/src/native/stream.rs` (matching), `engine/llama/src/native/context.rs` (chunk
+reuse, shift), `engine/runtime/src/chat_memory.rs` (save to disk).
 
----
+## 1. In memory: the same model, the next turn
 
-## 2. Multi-Turn Execution & Delta Decoding
+1. **Common prefix.** The new prompt's tokens are compared with the tokens the KV cache holds,
+   from the start. The matching part is kept. Only the rest is processed.
+2. **Chunk reuse** (`kv_reuse`). When old turns were dropped to fit the context, the history after
+   the drop is still in the cache, only at other positions. The Engine moves those shared chunks
+   instead of computing them again (llama-server `--cache-reuse`).
+   - Auto: chunks only when this request dropped history; otherwise prefix only.
+   - `kv_reuse: "prefix"` or `"chunk"` in a chat request forces one rule.
+   - After an edit inside the prompt (for example a tool was unloaded), prefix-only is right: the
+     text after the edit must be computed again, or the removed text keeps its influence.
+3. **Checkpoints.** Models with sliding-window or recurrent memory cannot cut their cache at any
+   position. The Engine then restarts at the newest checkpoint inside the shared prefix, or
+   processes the prompt again.
+4. **Tool step continuation.** After a tool call, the tool's result is appended to what the
+   context already holds. When it does not fit, the oldest tokens after BOS are shifted out
+   (llama-server's context shift).
+5. **Media.** A request with images or audio is processed without text prefix reuse.
 
-The Prefix Caching pipeline operates deterministically inside the native stream loop (`interface-engines/llama/src/native/stream.rs`):
+Every response reports what happened (`cache_n`, `processed_tokens`, `cause`: `cold`, `append`,
+`edit`, `history_drop`, `shift`, `restart`, `media`). See
+[chat_completions.md](../api/inference/chat_completions.md).
 
-```mermaid
-sequenceDiagram
-    participant User as Client / Agent
-    participant Engine as Cluaiz Stream Loop
-    participant Cache as Memory KV-Cache Buffer
-    participant Sampler as Autoregressive Decoder
+## 2. On disk: after a model reload, another chat or a restart
 
-    User->>Engine: Send Turn 1 Prompt (2,000 tokens)
-    Engine->>Cache: Prefill 2,000 tokens & Store KV State
-    Engine->>Sampler: Generate Assistant Response
-    Sampler-->>User: Stream Tokens
+After each answer the chat's KV cache is saved to `<CLUAIZ_HOME>/kv_cache/chats/<chat>.kv` with a
+JSON record. When the chat continues later, the KV is read back instead of processing the whole
+history.
 
-    Note over User, Engine: Turn 2 Dialogue Continuation
-    User->>Engine: Send Turn 2 Prompt (2,000 prefix + 30 new tokens)
-    Engine->>Cache: Match Shared Prefix Tokens (stream.rs:330)
-    Note over Cache, Engine: 2,000 Tokens Reused (Zero Prefill Compute)
-    Engine->>Cache: Prefill Only 30 Delta Tokens
-    Engine->>Sampler: Resume Generation Instantly
-    Sampler-->>User: Stream Tokens (0ms Delay)
-```
+- A saved KV is restored only for the exact model file and load settings it was made with.
+- Limits come from `settings.json` → `chat_memory`: `enabled` (default `true`), `max_disk_gb`
+  (default `5.0`, least recently used chats are deleted first) and `max_age_days` (default `30`).
+- Private chats (`temporary_chat`) are not saved.
+- CEP `kv.status`, `kv.delete`, `kv.clear` show and remove saved chats.
 
-1. **Prefix Match:** During sequence evaluation, the engine compares prompt tokens against cached sequences:
-   ```rust
-   while match_len < min_len && last_prefilled[i] == tokens[i] {
-       match_len += 1;
-   }
-   ```
-2. **Delta Evaluation:** If the initial tokens match, the engine skips re-evaluating the matched slice and feeds only the remaining delta tokens to the compute backend.
-3. **Mid-Stream Tool Resumption (`[PIVOT_CONTINUE]`):** When an agent executes a tool, the active KV-cache is preserved. Once the tool output arrives, the engine seamlessly appends the tool response and resumes inference without recomputing the dialogue history.
+## 3. Measured
 
----
-
-## 3. Hardware-Agnostic Execution
-
-Prefix Caching operates across all supported hardware backends:
-* **CPU Execution:** Eliminates matrix multiplications over repeated system instructions on CPU threads.
-* **GPU Execution (CUDA/Metal/Vulkan):** Preserves VRAM tensor allocations and reduces memory bandwidth pressure across multi-turn sessions.
-
----
-
-## 4. Security & Memory Boundaries
-
-Prefix Caching memory allocations are strictly bounded:
-* **Session Isolation:** Each active sequence maintains deterministic boundaries to prevent cross-session memory bleed.
-* **Payload Safety Guards:** Tool outputs passed to the engine are validated through size limiters (`300MB` safe threshold) to prevent buffer overflows.
+KV equality tests (`test/context-runtime/kv_equality.py`, Windows test machine): the answer with
+a reused or restored KV matched the cold-prompt answer in KV1 (10/10) and KV2 (10/10); KV3 was
+equal.

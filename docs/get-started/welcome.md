@@ -63,8 +63,8 @@ Navigate through the system specifications based on your development targets:
 
 
 ### 🧠 4. Explanation (Architectural Deep Dives)
-*   **[Zero-Latency Unified FFI Bridging](/docs/architecture/unified-brain-ffi)** — C-ABI bindings, zero-copy operations, and runtime CPU/GPU hardware-agnostic dispatch loops.
-*   **[CLI Engine Process Design](/docs/architecture/cli-process-design)** — Deeper breakdown of execution threads and backend socket IPC handlers.
+*   **[C Library (FFI)](/docs/architecture/unified-brain-ffi)** — The C-ABI library and how GPU backends are loaded.
+*   **[KV Cache Reuse](/docs/engine/prefix-caching-architecture)** — How a chat's next turn reuses the KV cache in memory and from disk.
 *   **[CEP (Cluaiz Engine Protocol)](/docs/api/cep/README)** — One JSON-RPC 2.0 protocol for every engine operation, over HTTP, MCP and the in-process C library.
 
 
