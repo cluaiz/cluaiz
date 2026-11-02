@@ -20,6 +20,12 @@ pub struct FallbackJsonMetadata {
 pub struct FallbackProber;
 
 impl FallbackProber {
+    /// Read the declared model type, including multimodal nested text configs.
+    pub fn architecture_from_config(config: &Value) -> Option<&str> {
+        ["/model_type", "/text_config/model_type", "/architectures/0"].into_iter()
+            .filter_map(|path| config.pointer(path).and_then(Value::as_str))
+            .find(|value| !value.trim().is_empty())
+    }
     /// Ingests companion configuration JSON files in a model directory
     pub fn probe_directory(dir: &Path) -> FallbackJsonMetadata {
         let mut meta = FallbackJsonMetadata::default();
@@ -50,11 +56,7 @@ impl FallbackProber {
                     if let Some(ctx) = val.get("max_position_embeddings").and_then(|v| v.as_u64()) {
                         meta.context_window = Some(format!("{}", ctx));
                     }
-                    if let Some(archs) = val.get("architectures").and_then(|v| v.as_array()) {
-                        if let Some(first) = archs.first().and_then(|v| v.as_str()) {
-                            meta.architecture = Some(first.to_string());
-                        }
-                    }
+                    meta.architecture = Self::architecture_from_config(&val).map(str::to_owned);
                 }
             }
         }

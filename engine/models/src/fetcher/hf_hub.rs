@@ -35,6 +35,27 @@ pub struct HfVariant {
 
 pub struct HuggingFaceHub;
 
+/// Repository declarations for the pre-download preview; local GGUF probing
+/// remains authoritative after the selected weights have been downloaded.
+#[derive(Debug, Default, Deserialize)]
+pub struct HfRepositoryMetadata {
+    pub pipeline_tag: Option<String>,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    #[serde(default)]
+    gguf: serde_json::Value,
+    #[serde(default)]
+    config: serde_json::Value,
+}
+
+impl HfRepositoryMetadata {
+    pub fn architecture(&self) -> Option<&str> {
+        self.gguf.get("architecture").and_then(|value| value.as_str())
+            .filter(|value| !value.trim().is_empty())
+            .or_else(|| crate::prober::fallback::FallbackProber::architecture_from_config(&self.config))
+    }
+}
+
 impl HuggingFaceHub {
     /// Resolve an existing primary/component to exactly one full repository bundle.
     /// Used by repair and single-primary install callers; ambiguity never picks the first model.
@@ -52,7 +73,9 @@ impl HuggingFaceHub {
         if matches.next().is_some() {
             return Err("Ambiguous package source; choose an explicit repository variant".into());
         }
-        let mut resolved = Self::build_manifest(&manifest.huggingface_repo, &variant, None, &[]);
+        let metadata = Self::declared_metadata(&manifest.huggingface_repo).await;
+        let mut resolved = Self::build_manifest(&manifest.huggingface_repo, &variant, metadata.pipeline_tag.as_deref(), &metadata.tags);
+        resolved.architecture = metadata.architecture().unwrap_or(&manifest.architecture).to_owned();
         resolved.id = manifest.id.clone();
         resolved.category = manifest.category.clone();
         resolved.huggingface_filename = variant
@@ -150,22 +173,24 @@ impl HuggingFaceHub {
     /// What the repository declares it does: its pipeline tag and tags (empty when the Hub cannot
     /// be read, and the model is then classified from its files once downloaded)
     pub async fn declared_tasks(repo_id: &str) -> (Option<String>, Vec<String>) {
-        #[derive(serde::Deserialize)]
-        struct Info {
-            pipeline_tag: Option<String>,
-            #[serde(default)]
-            tags: Vec<String>,
-        }
+        let info = Self::declared_metadata(repo_id).await;
+        (info.pipeline_tag, info.tags)
+    }
+
+    /// Reuse the task metadata request for architecture instead of inventing a
+    /// generic family or issuing a separate metadata lookup for the CLI.
+    pub async fn declared_metadata(repo_id: &str) -> HfRepositoryMetadata {
         let mut req = Client::new().get(format!("https://huggingface.co/api/models/{repo_id}"));
+        req = req.timeout(std::time::Duration::from_secs(20));
         if let Some(token) = Self::resolve_hf_token() {
             req = req.header("Authorization", format!("Bearer {token}"));
         }
         match req.send().await.and_then(|r| r.error_for_status()) {
-            Ok(response) => match response.json::<Info>().await {
-                Ok(info) => (info.pipeline_tag, info.tags),
-                Err(_) => (None, Vec::new()),
+            Ok(response) => match response.json::<HfRepositoryMetadata>().await {
+                Ok(info) => info,
+                Err(_) => HfRepositoryMetadata::default(),
             },
-            Err(_) => (None, Vec::new()),
+            Err(_) => HfRepositoryMetadata::default(),
         }
     }
 
@@ -380,6 +405,11 @@ impl HuggingFaceHub {
 
         // 2. Process ONNX models (Bundling .onnx.data companion binary shards & STT sub-graphs via SSOT)
         variants.extend(Self::bundle_onnx_variants(&items, &metadata_files));
+        // Companions and metadata were added after primary/shard sizing above.
+        // Price the final selected file set before exposing any variant preview.
+        for variant in &mut variants {
+            variant.size_gb = AssetBundler::bundle_size_gb(&items, &variant.all_files);
+        }
         super::package_bundler::complete_variants(repo_id, &items, &mut variants).await?;
 
         if variants.is_empty() {
@@ -535,7 +565,7 @@ impl HuggingFaceHub {
         ModelManifest {
             id: sovereign_id,
             name: safe_name.to_string(),
-            architecture: "transformer".to_string(),
+            architecture: "Unknown".to_string(),
             architecture_type: variant.format_type.clone(),
             parameters,
             training_tokens: "Unknown".to_string(),
