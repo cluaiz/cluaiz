@@ -1,10 +1,9 @@
-# 🏛️ Tools Modular Subsystem (`engines/src/tools/`)
+# Agents crate source (`agents/src/`)
 
-## 1. Architectural Mandate: Single Domain Sovereignty
+## 1. Scope
 
-Just like Model architecture is self-contained in `engines/src/models/` and Hardware Expert Offloading is self-contained in `engines/core/src/hardware/expert_offloading/`, **all Tool logic** (Skills, Plugins, MCP, Registry, Turn Lifecycle, and Telemetry) is unified within this modular domain:
-
-$$\mathbf{engines/src/tools/}$$
+All tool logic (skills, plugins, MCP, registry, turn lifecycle, telemetry), the chat memory
+store and the project's `.agents/` workspace files live in this crate.
 
 ---
 
@@ -12,12 +11,15 @@ $$\mathbf{engines/src/tools/}$$
 
 | Subsystem | Folder | Responsibility |
 | :--- | :--- | :--- |
-| **Facade** | [`mod.rs`](./mod.rs) | `ToolsEngine` public facade providing a clean API for Handlers and Engine. |
+| **Facade** | [`lib.rs`](./lib.rs) | `ToolsEngine` public facade used by the API and the CLI. |
+| **Tool search** | [`tool_search.rs`](./tool_search.rs) | Matches a message to the installed tools (whole words), builds the short tool cards, and runs `load_tool`, `unload_tool`, `find_tools`. |
+| **Memory** | [`memory/`](./memory/) | Chat event store and notes (`proposed`, `confirmed`, `moved`, …). |
+| **Execution** | [`execution/`](./execution/) | Command execution policy; destructive commands are always refused. |
 | **Registry** | [`registry/`](./registry/) | Manages `tools_registry.json` (kept in RAM; JSON only, no `.bin` cache). Auto-probes `~/.cluaiz/tools/`. |
 | **Installer** | [`installer/`](./installer/) | Downloads, caches, installs, and uninstalls packages from Cluaiz Tools. |
-| **Workspace** | [`workspace/`](./workspace/) | A project's agent files: `AGENTS.md` (home, `.agents/`, folder files), and `rules/`, `workflows/`, `skills/` of each `.agents/` (or `.agent/`) folder up to the repository root and `~/.agents/`, with name, description and rule trigger, and the project's memory (`.agents/memory/*.md`, facts saved with `remember` after the user confirms; a newer fact on the same subject supersedes the older, both kept). One index, built from the files each time; `matching.rs` finds the items that fit a message (the `tool_search` matcher) or a file (glob rules). Used by the terminal agent. |
-| **Skills** | [`skills/`](./skills/) | Parses `SKILL.md` frontmatter and provides O(1) keyword and semantic routing. |
-| **Plugins** | [`plugins/`](./plugins/) | Parses `package.json` and executes WASM binaries and native libraries. |
+| **Workspace** | [`workspace/`](./workspace/) | A project's agent files: `AGENTS.md` (home, `.agents/`, folder files), and `rules/`, `workflows/`, `skills/` of each `.agents/` (or `.agent/`) folder up to the repository root and `~/.agents/`, with name, description and rule trigger, and the project's memory (`.agents/memory/*.md`, facts saved with `remember` after the user confirms; a newer fact on the same subject supersedes the older, both kept). One index, built from the files each time; `matching.rs` finds the items that fit a message (the `tool_search` matcher) or a file (glob rules). Used by the terminal agent and by the API chat (`project_files`). |
+| **Skills** | [`skills/`](./skills/) | Parses `SKILL.md` front matter; `SkillRouter` matches the registry's trigger words as whole words. |
+| **Plugins** | [`plugins/`](./plugins/) | Parses `package.json` and runs the plugin as a normal child process. There is no sandbox (no WASM, no OS isolation). |
 | **MCP** | [`mcp/`](./mcp/) | Parses `package.json` and handles JSON-RPC 2.0 subprocess communication over stdio. |
 | **Lifecycle** | [`lifecycle/`](./lifecycle/) | Tracks session-bound active tools, turn countdowns (`-1`, `0`, `N`), and auto-unloading. |
 | **Telemetry** | [`telemetry/`](./telemetry/) | Calculates active token breakdowns, lazy loading savings, and KV-cache VRAM allocation. |
@@ -32,10 +34,10 @@ $$\mathbf{engines/src/tools/}$$
 │   ├── model_registry.json              <── Master record for GGUF & ONNX models
 │   └── tools_registry.json              <── Master record for all installed tools (JSON only)
 └── tools/                               <── Master Tools domain folder
-    ├── skills/                          <── Installed Cognitive Skills
+    ├── skills/                          <── Installed skills
     │   └── frontend-dev/SKILL.md
-    ├── plugins/                         <── Installed WASM / Native Tool Binaries
-    │   └── cluaiz-search/plugin.wasm & package.json
+    ├── plugins/                         <── Installed plugin programs
+    │   └── cluaiz-search/<program> & package.json
     └── mcp/                             <── Installed MCP Servers
         └── sqlite-bridge/package.json
 ```

@@ -64,7 +64,7 @@ params:
     req: false
     default: "null"
     allowed: "`\"lite\"`, `\"strict\"`"
-    desc: "Privacy isolation mode: `\"lite\"` (no vector write) or `\"strict\"` (brain and memory bypass)."
+    desc: "Private chat: `\"lite\"` keeps nothing on disk (no chat memory, events or ledger); `\"strict\"` also leaves out the project's agent files."
   - name: "session_id"
     type: "String"
     req: false
@@ -352,7 +352,7 @@ flowchart LR
 | **`think_mode`** | String / Integer | No | `"auto"` | `"auto"`, `"off"`, `"on"`, or integer (e.g. `768`) | Controls Chain-of-Thought reasoning token emission and budget. |
 | **`reasoning_effort`** | String | No | `"auto"` | `"low"`, `"medium"`, `"high"`, `"max"`, `"auto"` | OpenAI-compatible alias for reasoning token budget. |
 | **`skip_reasoning`** | Boolean | No | `false` | `true`, `false` | Bypasses the reasoning monologue phase entirely for lower latency. |
-| **`temporary_chat`** | String | No | `null` | `"lite"`, `"strict"` | Privacy isolation mode: `"lite"` (no vector write) or `"strict"` (brain and memory bypass). |
+| **`temporary_chat`** | String | No | `null` | `"lite"`, `"strict"` | Private chat: `"lite"` keeps nothing on disk (no chat memory, events or ledger); `"strict"` also leaves out the project's agent files. |
 | **`session_id`** | String | No | `null` | String | Session identifier used to preserve conversation tool-call state across multi-turn sessions. |
 | **`top_p`** | Float | No | `0.95` | `0.0 - 1.0` | Nucleus sampling probability mass threshold. |
 | **`top_k`** | Integer | No | `40` | $\ge 1$ | Top-k tokens to sample from at each step. |

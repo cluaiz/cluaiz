@@ -1,58 +1,46 @@
-# cluaiz Engine Permissions - Architecture & Security Doctrine
+# permission.json
 
-## 1. System Overview
-The `Permission.json` is the sovereign policy file for the Cluaiz Inference Engine. It acts as the primary firewall and capability router, determining exactly what hardware resources (models), data flows (vectorization), and sandboxed privileges (WASM) are permitted during runtime. 
+`permission.json` is in the config folder (`~/.cluaiz/config/permission.json`, or
+`<CLUAIZ_HOME>/config/permission.json`). The schema is `security/src/permission_schema.rs`.
+Missing fields take their defaults. If the file cannot be parsed, the Engine uses the defaults.
 
-Unlike static configuration files, this file dictates the **Backend Power Dynamics**—how the engine orchestrates its telemetry and handles plugin execution requests.
+Change it with `cluaiz permission …`, `cluaiz token …`, `cluaiz model set-chat|set-vector`, or
+from the App settings screen.
 
-## 2. Capability Architecture & Memory Mapping
+## Fields the Engine uses
 
-### A. Vector Models (`vector_models`)
-Controls the memory boundaries for RAG and semantic routing.
-* **`text`**: (e.g., `clip:vit-base:onnx:fp32`) Defines the primary mathematical space for text embeddings. 
-* **`vision` & `audio`**: If `null`, the engine completely locks the VLM/Audio sub-engines, freeing up dedicated VRAM chunks that would otherwise be reserved for multimodal tensor allocations.
+| Field | Default | What it does |
+|---|---|---|
+| `active_slots` | `{}` | The model chosen for each slot (`chat_slot`, `embed_slot`, `vision_slot`, `audio_slot`). A slot wins over `chat_models` / `vector_models` |
+| `chat_models.text` | none | Default chat model (`model: "auto"` in a chat request) |
+| `vector_models.text` | none | Default embedding model for `/v1/embeddings` when the request names none |
+| `stream_telemetry` | `false` | Adds usage and timing details to chat responses |
+| `model_header_info` | `false` | With `stream_telemetry`, also adds which models are loaded |
+| `lazy_load_model` | `true` | `true`: load the chat model on the first request. `false`: start loading it when the server starts (the port opens without waiting) |
+| `api_port` | `8000` | HTTP port of `cluaiz serve` |
+| `api_host` | `0.0.0.0` | Address the server listens on. The `CLUAIZ_HOST` environment variable wins |
+| `connection_protocol` | `http` | Shown by `cluaiz serve` |
+| `api_auth.required` | `false` | `true`: every request needs a bearer token (the session token or an API key) |
+| `api_auth.tokens` | `[]` | API keys, at most 5 (`cluaiz token create|list|remove`) |
+| `agent_security_mode` | `sandboxed` | Approval rule for tool calls, used by the App, the API chat and the terminal agent: `full_access`, `sandboxed` (workspace-gated) or `strict` |
+| `exec.allow_shell` | `false` | CEP `system.exec` also accepts a shell line, not only a program with arguments |
+| `exec.without_approval` | `false` | CEP `system.exec` runs without the owner's approval of each call |
 
-### B. Chat Models (`chat_models`)
-* Dictates the primary autoregressive Core LLM (`text`). The engine reads this to allocate the primary KV Cache buffer. 
+## Fields saved but not used yet
 
-### C. WebAssembly Security (`wasm_firewall`)
-When a plugin asks for execution power via the `/v1/cep` endpoint, this firewall determines its OS-level syscall access:
-* **`auto`**: The engine creates an isolated ring-buffer for the WASM payload, granting only the specific `file_system` or `network_access` defined in the plugin's YAML manifest.
-* **`strict`**: Absolute lockdown. All host bindings (FFI) are severed except for STDIN/STDOUT. Network sockets and file I/O will instantly throw a backend trap.
+The App settings screen and `cluaiz permission` read and write these, but no Engine code reads
+them:
 
-## 3. Data Telemetry & RAG Pipeline
+| Field | Default | Why it does nothing |
+|---|---|---|
+| `wasm_firewall` | `auto` | There is no WASM sandbox. A plugin runs as a normal child process (`agents/src/plugins/executor.rs`) |
+| `vectorize_user_input` | `true` | Chat memory uses no vectors (word matching tested better) |
+| `vectorize_ai_response` | `true` | Same as above |
+| `enable_kvcache` | `true` | Saving a chat's KV cache is controlled by `settings.json` → `chat_memory.enabled` |
+| `vector_models.vision`, `vector_models.audio` | none | No request path reads them |
 
-* **`vectorize_user_input` / `vectorize_ai_response`**: 
-  When set to `true`, the engine spawns an asynchronous background thread. For every conversational turn, the text is streamed through the `vector_models.text` graph, converted into high-dimensional vectors, and written to the LMDB local vector store. This creates a perpetual, searchable memory without stalling the main UI generation loop.
+## Related
 
-## 4. Architectural Flow: Plugin Execution & Prefix Caching
-
-The following diagram illustrates how user settings in `Permission.json` actively govern what power a plugin gets during an execution event.
-
-```mermaid
-sequenceDiagram
-    participant User/UI
-    participant Engine
-    participant Plugin
-    
-    User/UI->>Engine: Model emits a tool call `<tool_call>{"name":"cluaiz-search",...}</tool_call>`
-    Engine->>Engine: Pauses LLM Generation (Agentic Pause)
-    Engine->>Engine: Reads `Permission.json` & `llm_optimization.json`
-    
-    Note over Engine: Firewall & Feature Validation
-    
-    Engine->>Plugin: FFI Payload (Injects `think_mode`, `vision` state)
-    
-    alt If system_bindings allow
-        Plugin->>Plugin: Alters behavior (e.g., deep fetch if vision=true)
-    else
-        Plugin->>Plugin: Executes basic logic
-    end
-    
-    Plugin-->>Engine: Returns Result / Context
-    
-    Note over Engine: Prefix Caching Context Continuation
-    
-    Engine->>Engine: Pushes Result into Sequence Context
-    Engine-->>User/UI: Resumes LLM Text Stream with New Knowledge
-```
+- Execution policy for commands: `agents/src/execution/policy.rs` (destructive commands are always refused).
+- Audit log of write, exec and admin calls: `security/src/audit.rs`, CEP `system.audit`.
+- Security overview: [security-and-auth-architecture.md](../architecture/security-and-auth-architecture.md).

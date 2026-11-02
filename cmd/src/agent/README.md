@@ -107,6 +107,6 @@ tool-capable model and a test-owned workspace/home. Developer fixtures stay in t
 The screen uses the existing Markdown inline/table formatter without terminal writes or ANSI.
 Native clipboard format availability varies by OS/host. Decoding a format does not prove that every
 model can understand it; package capabilities and installed companions still apply.
-Durable sessions, checkpoints, installed tools, task views and the API
-controller migration remain later plan stages. Shell output currently appears after completion;
+Sessions, checkpoints (`/undo`, `/rewind`) and installed tools are built. Task views and one
+shared agent core with the API chat are not built yet. Shell output currently appears after completion;
 there is no live subprocess stdout view or interactive child PTY in this frontend yet.

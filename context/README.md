@@ -8,11 +8,11 @@ around it.
 Dependencies are `serde`, `serde_json` and `chrono` only, so `cargo test --release -p
 cluaiz-context` builds in seconds and never rebuilds llama.cpp.
 
-## Text analysis (`src/analyze.rs`, `data/words.json`)
+## Text analysis (`src/analyze.rs`)
 
-Whole words (split on case, `_` and `-`), English and Hinglish stopwords, a light plural stem,
-and aliases that map Hinglish and Devanagari words to their meaning ("padho" → read). Shared by
-the tool matcher (`agents/src/tool_search.rs`) and the chat memory. The word lists are data.
+Whole words (split on case, `_` and `-`) and a light plural stem. There are no word lists of any
+language: how common a word is comes from the text being searched (IDF). Shared by the tool
+matcher (`agents/src/tool_search.rs`) and the chat memory.
 
 ## Chat Map v1 (`src/memory/`)
 
@@ -23,7 +23,8 @@ the tool matcher (`agents/src/tool_search.rs`) and the chat memory. The word lis
 - `index.rs`: BM25 over the cards, in RAM, rebuilt on demand.
 - `recall.rs`: earlier messages outside the visible prompt that fit the current message, scored
   by BM25, shared entities, recency and importance, and limited to a time window when the
-  message names one ("kal", "2 din pehle", "last week").
+  caller gives one (`time.rs`). The Engine reads no time words: the chat model turns "yesterday"
+  into dates in the `recall` tool's arguments, and an API client sends them to `memory.search`.
 
 Measured (release, this machine): 20,000 cards built in 265 ms, their index in 28 ms.
 

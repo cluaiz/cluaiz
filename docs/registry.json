@@ -256,18 +256,18 @@
       {
         "group": "Core Engine",
         "pages": [
-          { "slug": "llm-optimization-deep", "title": "🚀 LLM Optimization Guide", "file_path": "docs/engine/llm_optimization.md" },
+          { "slug": "llm-optimization-deep", "title": "🚀 Load & Speed Settings", "file_path": "docs/engine/llm_optimization.md" },
           { "slug": "api-old", "title": "📡 Axum API Details", "file_path": "docs/engine/api.md" },
-          { "slug": "dual-engine-architecture", "title": "⚙️ Dual Engine Arch", "file_path": "docs/engine/dual_engine_architecture.md" },
-          { "slug": "prefix-caching-architecture", "title": "⚡ Prefix Caching Architecture", "file_path": "docs/engine/prefix_caching_architecture.md" },
-          { "slug": "permission", "title": "🔒 Permission Engine", "file_path": "docs/engine/permission.md" },
-          { "slug": "system-control", "title": "⚙️ System Control", "file_path": "docs/engine/system_control.md" }
+          { "slug": "dual-engine-architecture", "title": "⚙️ llama.cpp & ONNX Runtime", "file_path": "docs/engine/dual_engine_architecture.md" },
+          { "slug": "prefix-caching-architecture", "title": "⚡ KV Cache Reuse", "file_path": "docs/engine/prefix_caching_architecture.md" },
+          { "slug": "permission", "title": "🔒 permission.json", "file_path": "docs/engine/permission.md" },
+          { "slug": "system-control", "title": "⚙️ Hardware Profile", "file_path": "docs/engine/system_control.md" }
         ]
       },
       {
         "group": "Architecture & FFI",
         "pages": [
-          { "slug": "unified-brain-ffi", "title": "🔌 Zero-Latency FFI", "file_path": "docs/architecture/unified-brain-ffi.md" },
+          { "slug": "unified-brain-ffi", "title": "🔌 C Library (FFI)", "file_path": "docs/architecture/unified-brain-ffi.md" },
           { "slug": "registry-web-integration", "title": "🏛️ Registry Web Specs", "file_path": "docs/architecture/registry-web-integration.md" }
         ]
       }
@@ -282,9 +282,9 @@
         "pages": [
           { "slug": "security-and-auth-architecture", "title": "🛡️ Security & Auth Architecture", "file_path": "docs/architecture/security-and-auth-architecture.md" },
           { "slug": "hardware-troubleshooting", "title": "🚨 Hardware Troubleshooting", "file_path": "docs/architecture/hardware-troubleshooting.md" },
-          { "slug": "cli-architecture", "title": "💻 CLI Architecture", "file_path": "docs/architecture/cli-architecture.md" },
-          { "slug": "cli-deep-audit", "title": "🔍 CLI Deep Audit", "file_path": "docs/architecture/cli-deep-audit.md" },
-          { "slug": "cli-process-design", "title": "⚙️ CLI Process Design", "file_path": "docs/architecture/cli-process-design.md" }
+          { "slug": "cli-architecture", "title": "💻 CLI Architecture (old draft)", "file_path": "docs/architecture/cli-architecture.md" },
+          { "slug": "cli-deep-audit", "title": "🔍 CLI Audit (old)", "file_path": "docs/architecture/cli-deep-audit.md" },
+          { "slug": "cli-process-design", "title": "⚙️ CLI Process Design (old draft)", "file_path": "docs/architecture/cli-process-design.md" }
         ]
       }
     ]
