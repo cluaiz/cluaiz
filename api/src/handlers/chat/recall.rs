@@ -456,7 +456,9 @@ pub fn run_memory_tool(chat: &str, name: &str, args: &Value) -> String {
             "workspace" => Some(current_workspace()),
             _ => None,
         };
-        let status = if cluaiz_core::Settings::current().context_runtime.notes == "auto" { "confirmed" } else { "proposed" };
+        // A project fact is written into the user's project: it waits for the user, also in auto mode
+        let project_fact = super::project::project_for(scope, owner.as_deref()).is_some();
+        let status = if cluaiz_core::Settings::current().context_runtime.notes == "auto" && !project_fact { "confirmed" } else { "proposed" };
         let pos = map.cards.iter().map(|c| c.pos).max().unwrap_or(0);
         // A chat the app keeps (storage external): the note is an event of the chat, which goes to
         // the app with the answer; the Engine keeps no note on disk
