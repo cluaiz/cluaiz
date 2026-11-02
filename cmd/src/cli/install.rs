@@ -15,8 +15,11 @@ pub use cluaiz_models::fetcher::{DownloadPlan, Resolved};
 /// Downloads run without questions (first variant, no confirm) when this is set, e.g. in scripts
 pub const NON_INTERACTIVE_ENV: &str = "CLUAIZ_NONINTERACTIVE";
 
+/// No questions: `CLUAIZ_NONINTERACTIVE` is set, or stdin is not a terminal (a script, CI, a pipe),
+/// where a prompt could never be answered
 fn non_interactive() -> bool {
-    std::env::var(NON_INTERACTIVE_ENV).is_ok()
+    use std::io::IsTerminal;
+    std::env::var(NON_INTERACTIVE_ENV).is_ok() || !io::stdin().is_terminal()
 }
 
 /// The terminal's side of the resolution: printed steps, prompts
@@ -65,6 +68,9 @@ impl ResolveUi for Terminal {
     }
 
     fn pick_files(&self, repo: &str, tree: &[HfTreeItem]) -> Result<Vec<String>, String> {
+        if non_interactive() {
+            return Err("--all picks files by hand and needs a terminal; run it without --all in scripts".to_string());
+        }
         run_directory_tree_picker(repo, tree).map_err(|e| e.to_string())
     }
 }

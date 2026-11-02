@@ -33,6 +33,13 @@ Upon execution, the engine displays a structured file bundle tree showing the mo
 
 ![HuggingFace CLI Downloader](../../assets/hf-download-model.png)
 
+In scripts and CI (`CLUAIZ_NONINTERACTIVE` set, or stdin not a terminal) nothing is asked: the
+first variant is downloaded without a confirmation.
+
+```bash
+CLUAIZ_NONINTERACTIVE=1 cluaiz pull bartowski/SmolLM2-135M-Instruct-GGUF
+```
+
 ---
 
 ## 🌐 Web Dashboard Downloading Interface
