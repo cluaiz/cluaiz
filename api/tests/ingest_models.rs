@@ -301,7 +301,7 @@ async fn real_ingest_selected_models_and_native_fallback() -> Result<()> {
     println!("REAL INGEST NEGATIVE: incomplete installed vision package rejected with projector error before loading weights");
 
     let native_model = ingest(&router,json!({"source":pdf,"model":ids[4],"vision_settings":{
-        "use_vision":false,"system_instruction":"Return both order codes from the document. Copy the codes exactly.","max_tokens":64}})).await?;
+        "use_vision":false,"system_instruction":"Return both codes from the document, the invoice code and the order code. Copy the codes exactly.","max_tokens":64}})).await?;
     let native_answer = native_model["chunks"].to_string();
     assert!(
         native_answer.contains("ALPHA731") && native_answer.contains("BETA942"),
@@ -312,7 +312,7 @@ async fn real_ingest_selected_models_and_native_fallback() -> Result<()> {
         &router,
         &ids[4],
         &pdf,
-        "Return both order codes from the document. Copy the codes exactly.",
+        "Return both codes from the document, the invoice code and the order code. Copy the codes exactly.",
         &["ALPHA731", "BETA942"],
     )
     .await?;
@@ -347,7 +347,7 @@ async fn real_ingest_selected_models_and_native_fallback() -> Result<()> {
         &router,
         &ids[3],
         &pdf,
-        "Return both order codes from the document. Copy the codes exactly.",
+        "Return both codes from the document, the invoice code and the order code. Copy the codes exactly.",
         &["ALPHA731", "BETA942"],
     )
     .await?;
