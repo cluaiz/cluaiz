@@ -22,7 +22,8 @@ pub struct Note {
     #[serde(default)]
     pub owner: Option<String>,
     pub text: String,
-    /// proposed, confirmed, active, superseded, invalidated
+    /// proposed, confirmed, active, superseded, invalidated, or moved (now a fact of the
+    /// project's `.agents/memory/`, see `moved_to`)
     pub status: String,
     #[serde(default)]
     pub pinned: bool,
@@ -37,6 +38,9 @@ pub struct Note {
     pub sources: Vec<String>,
     /// user, model, rule
     pub by: String,
+    /// The project memory file the note became (status moved)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub moved_to: Option<String>,
     pub updated_at: String,
 }
 
@@ -160,6 +164,7 @@ impl NoteStore {
             supersedes: None,
             sources,
             by: by.to_string(),
+            moved_to: None,
             updated_at: time.clone(),
         };
         // A proposed note does not replace anything until it is confirmed
@@ -174,6 +179,16 @@ impl NoteStore {
         lines.extend(superseded.clone());
         self.append(&lines)?;
         Ok((note, superseded))
+    }
+
+    /// The note became the project memory file `path`: it is kept, with status moved, and is no
+    /// longer live (the file is the fact now)
+    pub fn mark_moved(&self, id: &str, path: &str) -> anyhow::Result<Option<Note>> {
+        let _guard = self.lock.lock().unwrap_or_else(|e| e.into_inner());
+        let Some(note) = fold(&self.read_lines()).into_iter().find(|n| n.id == id) else { return Ok(None) };
+        let note = Note { status: "moved".into(), moved_to: Some(path.to_string()), updated_at: now(), ..note };
+        self.append(std::slice::from_ref(&note))?;
+        Ok(Some(note))
     }
 
     /// Changes a note's status or pin (confirm, invalidate, pin, unpin). Confirming a proposed
@@ -264,6 +279,7 @@ mod tests {
             supersedes: None,
             sources: vec![],
             by: "user".into(),
+            moved_to: None,
             updated_at: String::new(),
         };
         assert!(note("global", None).applies_to(None, None));

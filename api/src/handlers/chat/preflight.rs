@@ -697,7 +697,14 @@ impl PreparedChatContext {
         // in the prompt anyway: on a plain message ("tell me a story") a small model took them as
         // all it can do and refused. No words of the message decide it.
         let tool_meta = offer_meta_tools;
-        let memory_room = tools_allowed && ledger_chat.is_some() && (history_hidden || tool_meta);
+        // read_item, when the project has items the system prompt only lists; the memory functions
+        // come along with it, as with any tool in the prompt
+        let read_item_schema = project.as_ref().filter(|p| tools_allowed && p.has_unread()).and_then(|p| p.workspace.read_item_schema());
+        let project_read = read_item_schema.is_some();
+        if project_read {
+            offer_meta_tools = true;
+        }
+        let memory_room = tools_allowed && ledger_chat.is_some() && (history_hidden || tool_meta || project_read);
         // recall / open_memory, also for other chats when cross_chat is not deny
         let memory_tools = memory_room && (history_hidden || policy.cross_chat != "deny");
         // remember, when notes are on; the model decides when the user asked for it
@@ -709,6 +716,7 @@ impl PreparedChatContext {
             offer_meta_tools = true;
         }
         let mut meta_schemas = if tool_meta { cluaiz_agents::ToolSearch::meta_schemas() } else { Vec::new() };
+        meta_schemas.extend(read_item_schema);
         if memory_tools {
             meta_schemas.extend(super::recall::memory_schemas());
         }
@@ -728,14 +736,8 @@ impl PreparedChatContext {
             }
         }
 
-        // read_item, when the project has items the system prompt only lists
-        let project_read = tools_allowed && project.as_ref().is_some_and(|p| p.has_unread());
-        if let Some(schema) = project.as_ref().filter(|_| project_read).and_then(|p| p.workspace.read_item_schema()) {
-            meta_schemas.push(schema);
-            offer_meta_tools = true;
-            if hint_lines.is_empty() {
-                hint_lines = format!("{}\n", cluaiz_core::prompts::text("workspace.read_item_hint"));
-            }
+        if project_read && hint_lines.is_empty() {
+            hint_lines = format!("{}\n", cluaiz_core::prompts::text("workspace.read_item_hint"));
         }
 
         // Bound tools: whole schemas and whole skill instructions, or left out; never cut. With

@@ -62,6 +62,37 @@ impl Project {
     }
 }
 
+/// The project a workspace note belongs to: the note's workspace when the user picked it (not
+/// the Cluaiz home, the workspace nobody chose) and project files are on
+pub fn note_project(note: &cluaiz_agents::memory::notes::Note) -> Option<std::path::PathBuf> {
+    project_for(&note.scope, note.owner.as_deref())
+}
+
+/// [`note_project`] for a note of `scope` and `owner` that is not written yet
+pub fn project_for(scope: &str, owner: Option<&str>) -> Option<std::path::PathBuf> {
+    if scope != "workspace" || cluaiz_core::Settings::current().context_runtime.project_files == "off" {
+        return None;
+    }
+    let dir = std::path::PathBuf::from(owner?);
+    let home = cluaiz_core::EnvironmentManager::current().local_dir;
+    (dir.is_dir() && !cluaiz_agents::workspace::same_file(&dir, &home)).then_some(dir)
+}
+
+/// A confirmed workspace note becomes a fact of its project's `.agents/memory/` (the file is the
+/// fact from then on; the note is kept with status moved). The fact's name is its first words.
+pub fn move_note(note: &cluaiz_agents::memory::notes::Note, dir: &std::path::Path) -> Result<(cluaiz_agents::workspace::memory::Saved, cluaiz_agents::memory::notes::Note), String> {
+    let workspace = scan(dir);
+    let name: String = note.text.split_whitespace().take(6).collect::<Vec<_>>().join(" ");
+    let source = match (note.by.as_str(), note.sources.first()) {
+        ("user", _) | (_, None) => format!("Cluaiz App, note {} by the {}", note.id, note.by),
+        (_, Some(from)) => format!("Cluaiz App, note {} from {from}", note.id),
+    };
+    let saved = cluaiz_agents::workspace::memory::save(&workspace, &name, &note.text, &source)?;
+    let path = crate::cep::roots::display(&saved.path);
+    let moved = cluaiz_agents::memory::notes::NoteStore::shared().mark_moved(&note.id, &path).map_err(|e| e.to_string())?.ok_or("the note is gone")?;
+    Ok((saved, moved))
+}
+
 /// The `read_item` result: the item's text, or why there is none. `Some(key)` names what the
 /// model got whole.
 pub fn read_item(workspace: &Workspace, name: &str, kind: &str) -> (String, Option<String>) {
