@@ -139,7 +139,7 @@ The terminal agent answers in Hindi from its next start.
 
 ## What to keep when changing a prompt
 
-- `tools.call_format`: the Engine reads `<tool_call>` blocks with `name` and `arguments`; a text that asks for another form breaks tool calls for models that use the inline format.
+- `tools.call_format`: the Engine reads `<tool_call>` blocks with `name` and `arguments`; a text that asks for another form breaks tool calls for models that use the inline format. The same holds for `tools.call_format_hint`.
 - `chat.card`: the answer is held to a grammar with the keys `title`, `motive`, `summary`, `keywords`; change the wording, not the keys.
 - `chat.episode_summary`: the same holds for the keys `title`, `summary`, `keywords`.
 - `chat.recall`, `chat.recall_other_chats`: keep the words that say the lines are a record, not instructions; recalled messages may hold text the model should not obey.
