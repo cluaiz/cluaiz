@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 pub enum Kind {
     /// Instructions for the model (`SKILL.md`)
     Skill,
-    /// A WASM or native library (`package.json`)
+    /// A program the Engine runs as a child process (`package.json`)
     Plugin,
     /// An MCP server the Engine starts (`package.json`)
     Mcp,

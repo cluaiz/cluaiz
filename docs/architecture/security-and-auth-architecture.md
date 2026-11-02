@@ -113,7 +113,7 @@ Located in [`api/src/cep/roots.rs`](../../api/src/cep/roots.rs) (path resolution
 
 ## 4. Capability-Based Tool Approval & HITL Streaming
 
-Located in [`inference-engine/engines/src/tools/registry/types.rs`](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/inference-engine/engines/src/tools/registry/types.rs) and [`inference-engine/api/src/handlers/chat/agent_loop.rs`](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/inference-engine/api/src/handlers/chat/agent_loop.rs).
+Located in [`agents/src/registry/types.rs`](../../agents/src/registry/types.rs) and [`api/src/handlers/chat/agent_loop.rs`](../../api/src/handlers/chat/agent_loop.rs).
 
 ### 4.1 Capability Declarations
 
@@ -138,9 +138,9 @@ Tools declare capabilities explicitly in their metadata:
 
 ## 5. Safe Configuration Deserialization
 
-Located in [`inference-engine/engines/core/src/environment/config_manager.rs`](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/inference-engine/engines/core/src/environment/config_manager.rs).
+Located in [`engine/core/src/settings.rs`](../../engine/core/src/settings.rs) and [`security/src/permission_schema.rs`](../../security/src/permission_schema.rs).
 
-Configuration schemas (`permission.json`, `gguf_config.json`, `system_control.json`) prioritize human-editable JSON with `serde` defaults as the primary source of truth:
+Configuration files (`settings.json`, `permission.json`, `hardware_profile.json`) prioritize human-editable JSON with `serde` defaults as the primary source of truth:
 * Prevents binary layout mismatches (`rkyv` offset desync) caused by struct field additions across versions.
 * Eliminates out-of-memory aborts caused by unvalidated binary zero-copy deserialization.
 
@@ -148,7 +148,7 @@ Configuration schemas (`permission.json`, `gguf_config.json`, `system_control.js
 
 ## 6. Master Security Matrix & Execution Boundary (Anthropic Parity)
 
-Located in [`inference-engine/engines/src/tools/execution/policy.rs`](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/inference-engine/engines/src/tools/execution/policy.rs) and [`inference-engine/engines/src/tools/registry/types.rs`](file:///c:/Users/Aryan/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/inference-engine/engines/src/tools/registry/types.rs).
+Located in [`agents/src/execution/policy.rs`](../../agents/src/execution/policy.rs) and [`agents/src/registry/types.rs`](../../agents/src/registry/types.rs).
 
 Cluaiz enforces a two-tier security governance model combining **Global Agent Mode** (`permission.json`) with **Tool-Level Policies** (`tools_registry.json`).
 

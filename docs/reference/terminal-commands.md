@@ -1,178 +1,181 @@
-# Cluaiz Core CLI Reference Manual
+# Cluaiz CLI Reference
 
-This is the definitive engineering reference for the `cluaiz` binary. It details the execution flow, internal JSON state mutations, and API mappings of the `cluaiz` commands (`cluaiz --help` is the full list).
-
-
----
-
-## 🚀 Core Engine & Orchestration
-
-### `cluaiz` (TUI Dashboard)
-* **Usage:** `cluaiz`
-* **Description:** Launch the interactive dashboard (TUI).
-* **Execution Flow:** Initializes the Ratatui-based Terminal User Interface (TUI). It acts as the primary visual orchestrator, polling the background daemon (if active) or spinning up an embedded local thread. It dynamically polls system health and active engines.
-* **API Mapping:** `GET /health` and CEP `system.info` (`POST /v1/cep`).
-
-### `cluaiz serve`
-* **Usage:** `cluaiz serve`
-* **Action:** Starts the HTTP API on the configured host and port (default port 8000).
-* **API Mapping:** The standard routes (`/v1/chat/completions`, `/api/chat`, `/v1/embeddings`, `/v1/audio/*`, `/v1/models`, `/api/tags`, `/api/pull`, `/health`), CEP `POST /v1/cep` and MCP `/mcp`. See [API](../api/README.md).
-
-### `cluaiz mcp-server`
-* **Usage:** `cluaiz mcp-server` (launched by an MCP client: `"command": "cluaiz", "args": ["mcp-server"]`)
-* **Description:** MCP over stdio, backed by the running Engine's `/mcp`. Read-only methods only.
-
-### `cluaiz ingest`
-* **Usage:** `cluaiz ingest <file_path>`
-* **Description:** Ingest a document natively for semantic chunking and RAG.
-* **Execution Flow:** Invokes the local vectorization pipeline. Parses the document (PDF, TXT, MD), chunks it semantically based on NLP boundaries, and passes the chunks to the active ONNX embedding model to store in the local LMDB namespace.
-* **API Mapping:** Maps to `/v1/ingest`.
-
-### `cluaiz setup profile`
-* **Usage:** `cluaiz setup profile`
-* **Description:** Setup cluaiz Node Profile and Identity (Vectorization and DB Injection).
-* **Execution Flow:** Initializes the native Node Profile. Prompts the user for local workspace defaults and configures initial `system_control.json` values for identity and database access.
-
-### `cluaiz help`
-* **Usage:** `cluaiz help`
-* **Description:** Show this help screen.
-* **Execution Flow:** Parses `cmd/assets/commands.json` dynamically and generates the CLI `--help` stdout screen based on the JSON configuration.
+What each `cluaiz` command does, and the API method that does the same thing over HTTP.
+`cluaiz --help` and `cluaiz <command> --help` list every flag.
 
 ---
 
-## 🧠 Model Management & Inference
+## Chat and agent
+
+### `cluaiz` (no command)
+* In a terminal, with a default chat model set: opens the agent in the current folder.
+  Otherwise prints the help.
+
+### `cluaiz agent ["task"]`
+* Coding agent in this folder: reads, searches and edits files and runs commands, asking before
+  changes. Reads the project's `AGENTS.md` and `.agents/` files. See [agent](../cmd/agent.md).
+* Loads the model in this process; no server is needed.
+
+### `cluaiz run [model] ["prompt"]`
+* Chat in the terminal, or answer one prompt and exit. See [chat](../cmd/chat.md).
+* `model` is an installed id, a `.gguf` path, or an id to download first. If the model is
+  missing, `run` downloads it, then loads it.
+* llama.cpp-style flags work: `-c`, `-ngl`, `-fa`, and more.
+* API: `POST /v1/chat/completions` (or `/api/chat`).
+
+---
+
+## Models
 
 > [!IMPORTANT]
-> **Understanding `run` vs `pull` vs `rm`**
-> - `run` will **automatically download** the model if it is missing, and then immediately load it into VRAM for inference.
-> - `pull` will **only download** the model to your SSD. It is meant for background downloading and will NOT load the model into VRAM.
-> - `rm` physically **deletes** the downloaded weights from your SSD to free up space.
+> - `run` downloads a missing model and then loads it.
+> - `pull` only downloads and registers it.
+> - `rm` deletes the model's files from disk.
 
-### `cluaiz run`
-* **Usage:** `cluaiz run <model-id>`
-* **Description:** Pull & run a model. Downloads if not cached locally.
-* **Execution Flow:** 
-  1. Checks if the model is a HuggingFace repo. If so, fetches metadata and prompts for GGUF variant selection.
-  2. If the model is not on disk, it automatically pulls it.
-  3. Conducts a Pre-flight Silicon Audit (checks VRAM, RAM, and projects TPS).
-  4. Spawns the native inference thread via FFI and launches the Ratatui Dashboard for interactive chat.
-* **API Mapping:** `POST /v1/chat/completions` (OpenAI compatible).
+### `cluaiz pull <model>`
+* Downloads a model (Hugging Face or the Cluaiz catalog) into `~/.cluaiz/models/` and registers
+  it. Asks which file when a repository has several; set `CLUAIZ_NONINTERACTIVE=1` to skip
+  questions.
+* API: CEP `models.download`, or `POST /api/pull` for Ollama clients.
 
-### `cluaiz pull`
-* **Usage:** `cluaiz pull <model-id>`
-* **Description:** Download and register a model into the local vault without running it.
-* **Execution Flow:** Authenticates with HuggingFace Hub or external registry, selects the requested variant, and streams the `.gguf` weights directly to the `~/.cluaiz/models/` secure vault. It exits immediately after download, intentionally preserving VRAM.
-* **API Mapping:** CEP `models.download`.
+### `cluaiz list` (`ls`)
+* Installed models; `*` marks the default chat model.
+* API: CEP `models.list`; `GET /v1/models`, `GET /api/tags`.
 
-### `cluaiz rm`
-* **Usage:** `cluaiz rm <model-id>`
-* **Description:** Remove a model from the local vault (physically deletes the .gguf file).
-* **Execution Flow:** Verifies if the model is actively loaded in RAM/VRAM. Unlinks metadata and unloads it safely, then physically deletes the `.gguf` file to free up SSD space.
-* **API Mapping:** CEP `models.remove`.
+### `cluaiz show <model>`
+* GGUF details, thinking tags, and the plan the model would get on this machine.
+* API: CEP `models.inspect`, `system.plan`.
 
-### `cluaiz list`
-* **Usage:** `cluaiz list`
-* **Description:** List all downloaded models in the local vault.
-* **Execution Flow:** Scans the `~/.cluaiz/models/` directory and internal manifest files to construct a table showing model IDs, architectures, and physical SSD sizes.
-* **API Mapping:** CEP `models.list`; `GET /v1/models` and `GET /api/tags` for OpenAI / Ollama clients.
+### `cluaiz rm <model>`
+* Deletes a model's folder and its registry entry.
+* API: CEP `models.remove`.
 
-### `cluaiz model`
-* **Usage:** `cluaiz model <set-chat|set-vector> <model_id>`
-* **Description:** Switch the active chat or vector/embedding model dynamically.
-* **Execution Flow:** Modifies the active routing defaults in `Permission.json`. Directs all subsequent implicit chat or vector embedding payload traffic to the newly selected backend model without requiring a daemon restart.
+### `cluaiz model set-chat <id>` / `cluaiz model set-vector <id>`
+* Sets the default chat model or embedding model in `permission.json`. `/v1/embeddings` and
+  `cluaiz ingest` use the embedding model when a request names none.
+
+### `cluaiz ps`
+* The model the running server has loaded.
+* API: CEP `system.ps`.
 
 ---
 
-## ⚙️ System, Hardware & Tuning
+## Server
 
-### `cluaiz ps`
-* **Usage:** `cluaiz ps`
-* **Description:** Show active neural engines in memory and auto-heal stale PIDs.
-* **Execution Flow:** Probes active Neural Engines and memory-mapped files. Detects if a daemon crashed and auto-heals stale Process IDs.
-* **API Mapping:** CEP `system.ps`.
+### `cluaiz serve`
+* Starts the HTTP API on the host and port in `permission.json` (default port 8000).
+* Routes: `/v1/chat/completions`, `/api/chat`, `/v1/embeddings`, `/v1/audio/speech`,
+  `/v1/audio/transcriptions`, `/v1/ingest`, `/v1/models`, `/api/tags`, `/api/pull`, `/health`,
+  CEP `POST /v1/cep` and MCP `/mcp`. See [API](../api/README.md).
+* `--native-endpoint <pipe>`: a local pipe or socket instead of a TCP port.
+
+### `cluaiz mcp-server`
+* MCP over stdio for MCP clients (`"command": "cluaiz", "args": ["mcp-server"]`), backed by the
+  running server's `/mcp`. Read-only methods only.
+
+### `cluaiz token show|create|list|remove`
+* The session token and API keys (at most 5).
+* API: CEP `tokens.create`, `tokens.list`, `tokens.revoke`.
+
+### `cluaiz permission [name value]`
+* Without arguments: shows the values. With a name: changes one (`telemetry`, `lazy-load`,
+  `port`, …). See [permission.json](../engine/permission.md).
+* `firewall`, `kvcache`, `vectorize-input` and `vectorize-response` are saved but not used by
+  the Engine yet.
+* API: CEP `config.get` / `config.set` with `section: "engine"`.
+
+---
+
+## This machine
+
+### `cluaiz status`
+* The hardware the planner sees: CPU, RAM, GPUs and their free memory.
+* API: CEP `system.info`.
+
+### `cluaiz calibrate`
+* Runs the hardware probe again (after a hardware or driver change) and saves
+  `hardware_profile.json`. See [hardware profile](../engine/system_control.md).
+
+### `cluaiz bench <model>`
+* Prompt and generation speed, like llama-bench (pp512, tg128). Runs locally.
+
+---
+
+## Tools
+
+Skills, plugins and MCP servers share one command shape. Aliases: `i` (install), `ls` (list),
+`rm` (remove).
+
+| Command | What it does | API |
+|---|---|---|
+| `cluaiz skill\|plugin\|mcp install <name>` | Download and install from the Cluaiz Tools registry | `tools.install` |
+| `cluaiz skill\|plugin\|mcp list` | Installed ones | `tools.list` |
+| `cluaiz skill\|plugin\|mcp remove <name>` | Remove one | `tools.remove` |
+| `cluaiz skill\|plugin\|mcp cache …` | Cached files of a tool | `tools.cache`, `tools.clear_cache` |
+| `cluaiz mcp start <name>` | Start an MCP server or extension in the background | — |
+| `cluaiz plugin link …` | Link a plugin to a skill | — |
+| `cluaiz skill\|plugin\|mcp config <name>` | View or change a tool's settings | `tools.get_settings`, `tools.set_settings` |
+
+* **Skills** are instructions (`SKILL.md`) the model loads when it needs them.
+* **Plugins** are programs. A plugin runs as a normal child process with your user's rights;
+  there is no sandbox, so install only plugins you trust.
+* **MCP servers** run over stdio and are started only when the model loads them.
+
+---
+
+## Documents and storage
+
+### `cluaiz ingest <file>`
+* Reads a document (PDF, DOCX, DOC, text, code) or an image and prints the text chunks. If an
+  embedding model is set (`cluaiz model set-vector`), it also makes the vectors. Nothing is
+  stored.
+* API: `POST /v1/ingest`.
+
+### `cluaiz storage status|clean`
+* Temporary media of the running server.
+* API: CEP `storage.status`, `storage.clean`.
+
+---
+
+## Settings
+
+### `cluaiz config list|get|set|reset|path`
+* `settings.json`. `set` accepts `auto` or `null` for the automatic value; `reset` backs the
+  file up first. See [engine configuration](engine-configuration.md).
+* API: CEP `config.get` / `config.set` (sections `gguf`, `onnx`, `optimization`, `context`,
+  `storage`, `kv`, `engine`).
+
+---
+
+## Update and remove
 
 ### `cluaiz self update`
 * **Usage:** `cluaiz self update [--check] [--to <version>]`
-* **Description:** Update Cluaiz to the newest release (pre-releases included, as the installers do). `--check` only says whether one is out; `--to 0.1.2` installs that release, an older one too.
-* **Execution Flow:** Reads the newest release from GitHub and compares it with this version. It then downloads that release's own installer (`install.ps1` / `install.sh` from the release tag) and runs it into the folder this `cluaiz` runs from, so the GPU pack is chosen and every file is checked against `SHA256SUMS.txt` exactly as on a first install. Models and settings stay. On Windows the installer opens in its own window once the command has exited, because a running `cluaiz.exe` and its DLLs are locked. It stops with a message when a Cluaiz server (the App or `cluaiz serve`) is running, and it refuses a development build (one inside a Cargo workspace).
-* **API Mapping:** CEP `system.update_check` (the check only; there is no update method in the API).
+* Updates to the newest release (pre-releases included, as the installers do). `--check` only
+  says whether one is out; `--to 0.1.2` installs that release, an older one too.
+* It downloads that release's own installer (`install.ps1` / `install.sh` from the release tag)
+  and runs it into the folder this `cluaiz` runs from, so the GPU pack is chosen and every file is
+  checked against `SHA256SUMS.txt` as on a first install. Models and settings stay.
+* On Windows the installer opens in its own window after the command exits, because a running
+  `cluaiz.exe` and its DLLs are locked.
+* It stops when a Cluaiz server (the App or `cluaiz serve`) is running, and it refuses a
+  development build (one inside a Cargo workspace).
+* API: CEP `system.update_check` (the check only; there is no update method in the API).
 
 ### `cluaiz self uninstall`
 * **Usage:** `cluaiz self uninstall [--keep-models] [-y]`
-* **Description:** Remove Cluaiz from this machine.
-* **Execution Flow:** Shows what goes (the Cluaiz home `~/.cluaiz` or `CLUAIZ_HOME`, with the size of the models, and the program folder) and asks first; `-y` does not ask, and without a terminal `-y` is required. It removes the PATH entry the installer added (Windows: the user PATH; Linux and macOS: the installer's `# Cluaiz` block in `.bashrc`, `.zshrc` and `.profile`, only when the line is unchanged), then the files. `--keep-models` keeps `models/` and the model list, so a later install finds them. On Windows the program folder is deleted right after the command exits. A running Cluaiz server must be stopped first. The Cluaiz App is a separate program and is not removed.
-* **API Mapping:** None, on purpose: a remote caller must not be able to delete the Engine.
-
-### `cluaiz status`
-* **Usage:** `cluaiz status`
-* **Description:** Show hardware status and silicon health metrics.
-* **Execution Flow:** Fetches hardware health, silicone truth metrics (Total VRAM, active layers), and active Booster configurations.
-* **API Mapping:** CEP `system.info`.
-
-### `cluaiz calibrate`
-* **Usage:** `cluaiz calibrate`
-* **Description:** Re-scan hardware and synchronize SiliconTruth profile.
-* **Execution Flow:** Runs real-time RDTSC hardware clocking, SIMD profiling, and VRAM boundary detection. Synchronizes this data to create a perfect hardware profile.
-* **API Mapping:** none (runs locally).
-
-### `cluaiz bench`
-* **Usage:** `cluaiz bench <model>`
-* **Description:** Measure prompt and generation speed (llama-bench). Runs locally, without the API.
-
-### `cluaiz config`
-* **Usage:** `cluaiz config`
-* **Description:** View and change engine settings (`settings.json`).
-* **API Mapping:** CEP `config.get` / `config.set` (sections `gguf`, `onnx`, `optimization`, `context`, `storage`, `kv`).
-
-### `cluaiz permission`
-* **Usage:** `cluaiz permission <key> <value>`
-* **Description:** Change engine permissions and firewalls natively from CLI.
-* **Execution Flow:** Edits firewall rules and telemetry flags natively in `Permission.json` (e.g., `wasm_firewall strict`, `stream_telemetry off`). Controls what the active engine is permitted to execute.
-* **API Mapping:** CEP `config.get` / `config.set` with `section: "engine"` (permission.json).
-
-### `cluaiz test-prefix`
-* **Usage:** `cluaiz test-prefix`
-* **Description:** Test Prefix Caching compilation and memory footprint.
-* **Execution Flow:** Performs a native dry-run memory allocation to test Prefix Caching, analyzing shared token reuse before actual inference occurs.
+* Shows what goes (the Cluaiz home `~/.cluaiz` or `CLUAIZ_HOME`, with the size of the models, and
+  the program folder) and asks first. `-y` does not ask; without a terminal `-y` is required.
+* Removes the PATH entry the installer added (Windows: the user PATH; Linux and macOS: the
+  installer's `# Cluaiz` block in `.bashrc`, `.zshrc` and `.profile`, only when the line is
+  unchanged), then the files. `--keep-models` keeps `models/` and the model list.
+* A running Cluaiz server must be stopped first. The Cluaiz App is a separate program and is not
+  removed.
+* API: none, on purpose: a remote caller must not be able to delete the Engine.
 
 ---
 
-## 🛠️ Extensibility (Skills, Plugins, MCP)
+## Development
 
-Cluaiz provides deep native extensibility via Skills, Plugins, and MCP integrations. All extensibility components share a unified command structure supporting aliases like `i` (install), `ls` (list), and `rm` (remove).
-
-### 🧠 Skills
-Skills are cognitive instruction sets (`SKILL.md`) that teach the AI how to reason and call tools.
-* **`cluaiz skill install <skill_name>`** (alias: `i`)
-  * **Flow:** Downloads and installs the skill.
-  * **API Mapping:** `tools.install`.
-* **`cluaiz skill list`** (alias: `ls`)
-  * **Flow:** Lists active installed skills.
-  * **API Mapping:** `tools.list`.
-* **`cluaiz skill remove <skill_name>`** (alias: `rm`)
-  * **Flow:** Deletes the skill and its local footprint.
-* **`cluaiz skill cache ls`** & **`cluaiz skill cache clear [cache_id]`**
-  * **Flow:** Manages cached skill runtime states.
-
-### ⚙️ Plugins (WASM & Native Execution)
-Plugins provide high-performance execution power, either in a secure `WASM` micro-sandbox or as a bare-metal `NATIVE` C-FFI binary (`cluaiz-search`, `cluaiz-db`).
-* **`cluaiz plugin install <plugin_name>`** (alias: `i`)
-  * **Flow:** Downloads and compiles/installs the plugin.
-  * **API Mapping:** `tools.install`.
-* **`cluaiz plugin list`** (alias: `ls`)
-  * **Flow:** Lists active installed plugins.
-  * **API Mapping:** `tools.list`.
-* **`cluaiz plugin remove <plugin_name>`** (alias: `rm`)
-  * **Flow:** Deletes the plugin and its local binaries.
-* **`cluaiz plugin cache ls`** & **`cluaiz plugin cache clear [cache_id]`**
-  * **Flow:** Manages cached plugin runtime states.
-
-### 🌐 Model Context Protocol (MCP)
-MCP integrations allow Cluaiz to interface with external standard tools.
-* **`cluaiz mcp install <mcp_name>`** (alias: `i`)
-* **`cluaiz mcp list`** (alias: `ls`)
-* **`cluaiz mcp remove <mcp_name>`** (alias: `rm`)
-* **`cluaiz mcp start <mcp_name>`**
-  * **Flow:** Registers a new MCP server configuration and manages its lifecycle.
-* **`cluaiz mcp cache ls`** & **`cluaiz mcp cache clear [cache_id]`**
-  * **API Mapping:** `tools.cache` and `tools.clear_cache`.
+### `cluaiz dev-sync`
+* Copies development builds (core, drivers) into `~/.cluaiz`. For Engine developers only.

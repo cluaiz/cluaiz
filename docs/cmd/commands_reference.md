@@ -1,76 +1,37 @@
-# 🧬 cluaiz CLI — Complete Command Reference (A to Z)
+# cluaiz CLI — Command Reference
 
-> Binary: `cluaiz` — Sovereign Neural Kernel  
-> Built from: `cluaiz/cmd/`
-
----
-
-## 🔨 BUILD & DEV COMMANDS
-
-> These are NOT `cluaiz` commands. These run inside the workspace during development.
-
-| Command | Description |
-|---------|-------------|
-| `cargo build --release --workspace` | Full workspace release build (all crates) |
-| `cargo build --release --package cluaiz_api` | Only the engine API/IPC daemon binary |
-| `cargo build --release --package cmd` | Only the CLI binary |
-| `cargo run -- serve` | Dev-run the engine daemon (no install needed) |
-| `cargo run -- run <model-id>` | Dev-run the CLI |
-| `Copy-Item "target\release\cluaiz.exe" "$env:USERPROFILE\.cluaiz\bin\cluaiz.exe" -Force` | Install built binary to system path |
+> Binary: `cluaiz`. Built from `cmd/`. `cluaiz <command> --help` lists every flag.
+> What each command does in more detail: [terminal commands](../reference/terminal-commands.md).
 
 ---
 
-## 🚀 CORE COMMANDS
+## Core
 
 | Command | Description |
 |---------|-------------|
 | `cluaiz` | In a terminal with a default chat model: the [agent](agent.md) in the current folder. Otherwise the help |
-| `cluaiz --help`, `cluaiz -h`, `cluaiz help` | The mascot banner and every command in groups (chat and agent, models, server, this machine, tools, documents, settings); `cluaiz <command> --help` for its flags |
+| `cluaiz --help`, `cluaiz -h`, `cluaiz help` | Every command in groups; `cluaiz <command> --help` for its flags |
 | `cluaiz -v`, `-V`, `--version` | The version (`-v` with a command means verbose: engine logs on stderr, `-vv` debug) |
-| `cluaiz serve` | Start the Engine API on `http://<api_host>:<api_port>` |
-| `cluaiz mcp-server` | MCP over stdio for MCP clients; forwards to the running Engine's `/mcp` (read-only methods) |
 
 ---
 
-## 🤖 MODEL COMMANDS
+## Chat and agent
 
 | Command | Flags / Args | Description |
 |---------|-------------|-------------|
-| `cluaiz run` | _(no args)_ | Chat with the active chat model |
+| `cluaiz run` | _(no args)_ | Chat with the default chat model |
 | `cluaiz run <model-id>` | load / sampling / thinking flags | Chat with a model; downloads it first when it is not installed ([guide](chat.md)) |
 | `cluaiz run <model-id> "prompt"` | `-p`, `-f`, `-i`, `-n` | Answer one prompt and exit (`-i`: keep chatting). Piped stdin is the prompt |
-| `cluaiz pull <model-id>` | | Download and register a model into local vault |
-| `cluaiz list` | | List all downloaded models in the vault |
-| `cluaiz rm <model-id>` | | Remove a model from the local vault |
-| `cluaiz model set-chat <model-id>` | | Set the active chat/LLM model in Permission.json |
-| `cluaiz model set-vector <model-id>` | | Set the active vector/embedding model in Permission.json |
+| `cluaiz agent` | `-m <model>`, `-C/--dir <path>`, `--ui auto\|plain\|tui` | Coding agent in the current folder (or `--dir`): reads, searches and edits files, runs commands |
+| `cluaiz agent "task"` | `-p` | Do one task and exit. Piped stdin is the task |
+| `cluaiz agent --yes` | `-y` | Allow every change and command without asking (destructive commands stay refused) |
 
-**Examples:**
+Inside the agent: `/yes`, `/ask`, `/clear`, `/undo`, `/rewind`, `/bye`, `/?`, and the project's
+workflows as `/<name>`. Tools, approvals and limits: [agent guide](agent.md).
+
 ```bash
 cluaiz run gemma4:e2b
 cluaiz run bonsai:8b "Summarise this in one line" < notes.txt
-cluaiz pull qwen3:8b
-cluaiz pull unsloth/Qwen3.5-4B-GGUF
-cluaiz rm gemma4:e2b
-cluaiz model set-chat gemma4:e2b
-cluaiz model set-vector bge_m3:unknown:onnx:fp32
-```
-
----
-
-## 🛠️ AGENT COMMANDS
-
-| Command | Flags / Args | Description |
-|---------|-------------|-------------|
-| `cluaiz agent` | `-m <model>`, `--dir <path>` | Coding agent in the current folder (or `--dir`): reads, searches and edits files, runs commands |
-| `cluaiz agent "task"` | `-p`, `-i` | Do one task and exit (`-i`: keep chatting). Piped stdin is the task |
-| `cluaiz agent --yes` | | Allow every change and command without asking (destructive commands stay refused) |
-
-Inside the agent: `/yes`, `/ask`, `/clear`, `/bye`, `/?`. Tools, approvals and limits:
-[agent guide](agent.md).
-
-**Examples:**
-```bash
 cluaiz agent
 cluaiz agent -m qwen3 --dir ../website "find where the footer year is set and update it to 2026"
 cat task.txt | cluaiz agent --yes
@@ -78,200 +39,115 @@ cat task.txt | cluaiz agent --yes
 
 ---
 
-## ⚙️ SYSTEM COMMANDS
-
-| Command | Flags / Args | Description |
-|---------|-------------|-------------|
-| `cluaiz status` | | Show hardware health, silicon profile, active drivers |
-| `cluaiz calibrate` | | Re-scan hardware and synchronize SiliconTruth profile |
-| `cluaiz --calibrate` | _(legacy flag)_ | Same as `calibrate` (older style) |
-| `cluaiz benchmark` | | Run full hardware performance benchmark |
-| `cluaiz benchmark <model-id>` | `--runs <N>` | Benchmark a specific model N times |
-| `cluaiz --benchmark` | _(legacy flag)_ | Same as `benchmark` (older style) |
-| `cluaiz logs stream --tail` | | Stream active logs to terminal |
-| `cluaiz ps` | | Show active neural engines loaded in memory |
-| `cluaiz test-prefix` | | Test Prefix Caching compilation and memory footprint |
-| `cluaiz self update` | `--check`, `--to <version>` | Update Cluaiz to the newest release with that release's installer; models and settings stay |
-| `cluaiz self uninstall` | `--keep-models`, `-y` | Remove Cluaiz: its folder, its models (unless `--keep-models`) and its PATH entry |
-
-**Examples:**
-```bash
-cluaiz status
-cluaiz calibrate
-cluaiz benchmark
-cluaiz benchmark gemma4:e2b --runs 3
-cluaiz ps
-cluaiz self update --check
-cluaiz self update
-cluaiz self uninstall --keep-models
-```
-
----
-
-## 🧠 BRAIN / FFI DATABASE COMMANDS
-
-> Controls the FFI connection to the `cluaizdb` background database daemon.
-
-| Command | Args | Description |
-|---------|------|-------------|
-| `cluaiz brain on` | _(no args = local)_ | Enable FFI Database connection (local cluaizdb) |
-| `cluaiz brain on <ip:port>` | e.g. `10.0.0.5:8080` | Connect to a remote cluaizdb instance |
-| `cluaiz brain off` | | Disable FFI Database connection |
-| `cluaiz brain only` | | Pure Brain Mode: enable local DB but suspend LLM to save VRAM |
-| `cluaiz brain status` | | View connection status and background daemon health |
-
-**Examples:**
-```bash
-cluaiz brain on
-cluaiz brain on 10.0.0.5:8080
-cluaiz brain off
-cluaiz brain only
-cluaiz brain status
-```
-
----
-
-## 🔐 PERMISSION COMMANDS
-
-> Controls `Permission.json` — security, privacy, vectorization settings.
-
-| Command | Args | Description |
-|---------|------|-------------|
-| `cluaiz permission` | _(no args)_ | Open interactive permission TUI menu |
-| `cluaiz permission kvcache <on/off>` | Toggle KV Cache generation |
-| `cluaiz permission port <number>` | Change the active API Port |
-| `cluaiz permission firewall <status>` | `auto / strict / off` | Set WASM Firewall mode |
-| `cluaiz permission telemetry <status>` | `on / off` | Enable or disable anonymous telemetry |
-
-**Interactive Menu Options (when run without args):**
-- WASM Firewall → `auto / strict / off`
-- Telemetry → `true / false`
-- Vectorize User Input → `true / false`
-- Vectorize AI Response → `true / false`
-- Temporary Chat TTL → `12 hr / 24 hr / 48 hr / 72 hr / 1 week / max`
-- Active Chat Model → Select from downloaded chat models
-- Active Vector Model → Select from downloaded embedding + vision models
-
-**Examples:**
-```bash
-cluaiz permission
-cluaiz permission firewall strict
-cluaiz permission firewall auto
-cluaiz permission telemetry off
-```
-
----
-
-## 🔑 TOKEN & API AUTH COMMANDS
-
-> Manages API authorization tokens directly on the host machine from `permission.json`.
-
-| Command | Aliases | Description |
-|---------|---------|-------------|
-| `cluaiz token show` | | View primary active API token and auth guard status |
-| `cluaiz token show --all` | `-a` | View all configured API tokens in full plaintext |
-| `cluaiz token create` | | Create and register a new secure `sk-cluaiz-...` API access token (up to 5 keys) |
-| `cluaiz token list` | `ls` | List all configured API tokens in full plaintext |
-| `cluaiz token remove <token>` | `rm` | Remove an API token by exact string or key suffix |
-
-**Examples:**
-```bash
-# View primary active API token
-cluaiz token show
-
-# View all configured tokens in full plaintext
-cluaiz token show --all
-
-# Create a new token
-cluaiz token create
-
-# List all configured tokens
-cluaiz token list
-cluaiz token ls
-
-# Remove a token using its suffix or full key
-cluaiz token remove 7898
-cluaiz token rm sk-cluaiz-758cfa115a9843a89ce03e985cff7898
-```
-
----
-
-## ⚡ LLM OPTIMIZATION COMMANDS
-
-> Controls LLM execution performance and KV-cache parameters via `cluaiz llm-optimization`.
-
-| Command | Flag | Values | Description |
-|---------|------|--------|-------------|
-| `cluaiz llm-optimization --mode <mode>` | `--mode` | `edge / multitasking / balance / max_boost / ultra_max_boost / hyper_cluster` | Set execution performance profile |
-| `cluaiz llm-optimization --kv-quant <level>` | `--kv-quant` | `auto / kv16 / kv8 / kv4` | Set KV-Cache quantization level |
-| `cluaiz llm-optimization --context-shift <mode>` | `--context-shift` | `auto / off / minimal / standard / aggressive / extreme` | Set context shifting / sliding window mode |
-| `cluaiz llm-optimization --spec-decode <mode>` | `--spec-decode` | `on / off / auto` | Enable/disable speculative decoding |
-
-**Examples:**
-```bash
-cluaiz llm-optimization --mode edge
-cluaiz llm-optimization --mode max_boost
-cluaiz llm-optimization --kv-quant kv8
-cluaiz llm-optimization --context-shift aggressive
-cluaiz llm-optimization --spec-decode on
-cluaiz llm-optimization --mode edge --kv-quant kv8 --context-shift aggressive
-```
-
----
-
-## 🧩 COMPONENT MANAGEMENT COMMANDS (Plugins, Skills, MCP)
-
-> Manages the installation and lifecycle of all AI Ecosystem components. 
-> You can use the component type (`plugin`, `skill`, `mcp`) or aliases (`p`, `s`).
-
-| Command | Aliases | Description |
-|---------|---------|-------------|
-| `cluaiz <type> install <id>` | `i` | Install a component from the cluaiz-tools registry (e.g., `cluaiz-search`) |
-| `cluaiz <type> list` | `ls` | List all locally installed components of that type |
-| `cluaiz <type> remove <id>` | `rm` | Remove an installed component |
-| `cluaiz <type> start <id>` | | Start a component's background daemon (MCP only) |
-| `cluaiz plugin cache clear` | `--all`, `--force`| Clear orphaned caches for plugins |
-
-**Examples:**
-```bash
-# Install a plugin (WASM or Native C-FFI)
-cluaiz plugin install cluaiz-search
-cluaiz plugin i cluaiz-search
-
-# List installed plugins
-cluaiz plugin ls
-
-# Remove an MCP
-cluaiz mcp rm postgres-connector
-```
-
----
-
-## 📄 INGEST COMMANDS
-
-> Natively ingest documents for semantic chunking and RAG.
-
-| Command | Args | Description |
-|---------|------|-------------|
-| `cluaiz ingest <file-path>` | File path | Ingest a document (PDF, TXT, MD, etc.) for semantic chunking |
-
-**Examples:**
-```bash
-cluaiz ingest ./document.pdf
-cluaiz ingest "C:\Users\Aryan\Documents\notes.md"
-```
-
----
-
-## 🛠️ SETUP COMMANDS
+## Models
 
 | Command | Description |
 |---------|-------------|
-| `cluaiz setup profile` | Generate and register Purpose Vectorization for the Node Profile |
+| `cluaiz pull <model-id>` | Download and register a model (`CLUAIZ_NONINTERACTIVE=1`: no questions) |
+| `cluaiz list` (`ls`) | Installed models; `*` = default chat model |
+| `cluaiz show <model-id>` | GGUF details and the plan the model would get on this machine |
+| `cluaiz rm <model-id>` | Delete a model and its registry entry |
+| `cluaiz model set-chat <model-id>` | Default chat model (`permission.json`) |
+| `cluaiz model set-vector <model-id>` | Default embedding model (`permission.json`), used by `/v1/embeddings` and `cluaiz ingest` |
+| `cluaiz ps` | The model the running server has loaded |
+
+```bash
+cluaiz pull qwen3:8b
+cluaiz pull unsloth/Qwen3.5-4B-GGUF
+cluaiz show qwen3:8b
+cluaiz rm gemma4:e2b
+cluaiz model set-chat gemma4:e2b
+```
 
 ---
 
-## 🌐 HTTP API (host and port are the owner's settings; default port `8000`)
+## Server, permissions and tokens
+
+| Command | Description |
+|---------|-------------|
+| `cluaiz serve` | Start the API on `http://<api_host>:<api_port>` (`--native-endpoint <pipe>`: a local pipe or socket instead) |
+| `cluaiz mcp-server` | MCP over stdio for MCP clients; forwards to the running Engine's `/mcp` (read-only methods) |
+| `cluaiz permission` | Show the `permission.json` values |
+| `cluaiz permission port <number>` | API port |
+| `cluaiz permission telemetry on\|off` | Usage details in chat responses |
+| `cluaiz permission lazy-load on\|off` | Load the chat model on first use, or at server start |
+| `cluaiz permission firewall\|kvcache\|vectorize-input\|vectorize-response …` | Saved but not used by the Engine yet ([permission.json](../engine/permission.md)) |
+| `cluaiz token show` (`--all`) | The active API token and whether auth is on |
+| `cluaiz token create` | New `sk-cluaiz-…` API key (at most 5) |
+| `cluaiz token list` (`ls`) | All API keys |
+| `cluaiz token remove <token>` (`rm`) | Remove a key by its full text or its suffix |
+
+```bash
+cluaiz token create
+cluaiz token remove 7898
+```
+
+---
+
+## This machine
+
+| Command | Flags | Description |
+|---------|-------|-------------|
+| `cluaiz status` | | The hardware the planner sees |
+| `cluaiz calibrate` | | Re-scan the hardware (after a hardware or driver change) |
+| `cluaiz bench <model-id>` | `-p`, `-n`, `-r`, `-o md\|json`, load flags (`-c`, `--n-gpu-layers`, `--n-cpu-moe`, `--cache-type-k`…) | Prompt and generation speed (llama-bench: pp512, tg128) |
+| `cluaiz self update` | `--check`, `--to <version>` | Update to the newest release with that release's installer; models and settings stay |
+| `cluaiz self uninstall` | `--keep-models`, `-y` | Remove Cluaiz: its home, its program folder and its PATH entry |
+
+---
+
+## Tools (skills, plugins, MCP)
+
+| Command | Alias | Description |
+|---------|-------|-------------|
+| `cluaiz <type> install <id>` | `i` | Install from the Cluaiz Tools registry (`<type>` = `skill`, `plugin` or `mcp`) |
+| `cluaiz <type> list` | `ls` | Installed components of that type |
+| `cluaiz <type> remove <id>` | `rm` | Remove an installed component |
+| `cluaiz <type> cache …` | | Cached files of a component |
+| `cluaiz <type> config <id>` | | View or change a component's settings (asks for missing values) |
+| `cluaiz mcp start <id>` | | Start an MCP server or extension in the background |
+| `cluaiz plugin link …` | | Link a plugin to a skill |
+
+A plugin runs as a normal child process with your user's rights; there is no sandbox.
+
+```bash
+cluaiz plugin install cluaiz-search
+cluaiz plugin ls
+cluaiz mcp rm sqlite-bridge
+```
+
+---
+
+## Documents, storage and settings
+
+| Command | Description |
+|---------|-------------|
+| `cluaiz ingest <file-path>` | Read a document (PDF, DOCX, DOC, text, code) or image and print its chunks; with an embedding model set, also make vectors. Nothing is stored |
+| `cluaiz storage status\|clean` | Temporary media of the running server |
+| `cluaiz config list\|get\|set\|reset\|path` | `settings.json` ([engine configuration](../reference/engine-configuration.md)) |
+
+```bash
+cluaiz ingest ./document.pdf
+cluaiz config get optimization.n_gpu_layers
+cluaiz config set optimization.n_gpu_layers 20
+cluaiz config set optimization.n_gpu_layers auto
+```
+
+---
+
+## Development
+
+These are not `cluaiz` commands. They run in the repository.
+
+| Command | Description |
+|---------|-------------|
+| `cargo build --release -p cmd` | Build the `cluaiz` program |
+| `cargo build --release -p cmd -p cluaiz-ffi` | Also build the C library |
+| `cluaiz dev-sync` | Copy development builds (core, drivers) into `~/.cluaiz` |
+
+---
+
+## HTTP API (host and port are the owner's settings; default port `8000`)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -285,8 +161,6 @@ cluaiz ingest "C:\Users\Aryan\Documents\notes.md"
 | `POST` | `/api/pull` | Ollama pull: downloads and registers a model, as `cluaiz pull` does (CEP: `models.download`) |
 | `GET` | `/health` | Health check, always open |
 
-Example:
-
 ```bash
 curl -X POST http://localhost:8000/v1/cep -H 'Content-Type: application/json' \
   -d '{"jsonrpc":"2.0","id":1,"method":"system.info","params":{}}'
@@ -296,46 +170,22 @@ Add `-H 'Authorization: Bearer <token>'` when API authentication is on.
 
 ---
 
-## 🔌 In-process apps
+## In-process apps
 
-An app that embeds the Engine calls the same methods through the C library (`cluaiz_cep`: `cep_call` / `cep_free`, header `ffi/include/cep.h`), with the same JSON-RPC text as `/v1/cep`.
+An app that embeds the Engine calls the same methods through the C library (`cluaiz_cep`:
+`cep_call` / `cep_free`, header `ffi/include/cep.h`), with the same JSON-RPC text as `/v1/cep`.
+See [C library and FFI](../reference/c-pointer-fii.md).
 
 ---
 
-## 📂 Config Files (`~/.cluaiz/engine/`)
+## Config files (`~/.cluaiz/config/`)
 
 | File | Purpose |
 |------|---------|
-| `Permission.json` | Privacy, active models, vectorization settings |
-| `llm_optimization.json` | Hardware performance optimization profile |
-| `system_control.json` | Hardware fingerprint, brain mode, OS identity |
+| `settings.json` | Engine settings: load and speed, samplers, media limits, chat memory, context |
+| `permission.json` | Port, host, API auth, security mode, default models |
+| `hardware_profile.json` | The saved hardware probe |
+| `model_registry.json` | Installed models |
+| `tools_registry.json` | Installed skills, plugins and MCP servers |
 
----
-
-## 📦 Model Vault Structure (`~/.cluaiz/models/`)
-
-| Folder | Model Type | Appears In |
-|--------|-----------|------------|
-| `models/chat/` | LLM / Generative chat models | **Chat Model** dropdown only |
-| `models/embedding/` | Text embedding / ONNX vector models | **Vector Model** dropdown only |
-| `models/vision/` | Image CLIP / vision-embedding models (e.g. FashionCLIP, CLIP-ViT) | **Vector Model** dropdown (can embed images into vector space) |
-
-> **Classification Logic (ffi_bridge.rs `GET_SETTINGS`):**  
-> Primary = folder path (`/models/chat/` → chat, `/models/embedding/` or `/models/vision/` → vector)  
-> Fallback = `category` field in `model_manifest.json` (`"chat"` → chat, `"embedding"/"vision"/"multimodal"` → vector)
-
----
-
-## ⚙️ UNIVERSAL COMPONENT CONFIGURATION
-
-The CLI provides an interactive, strict-schema mechanism to configure any component. It reads the component's `package.json` (or `SKILL.md`) to understand the available `settings:` (their types, default values, and enum options), and then securely saves user overrides into `~/.cluaiz/config/user_settings.yaml` without mutating the core files.
-
-| Command | Action |
-|---------|--------|
-| `cluaiz config set` | Launches the **Interactive TUI Dropdown Menu** to select component type, component ID, and the setting to modify. |
-| `cluaiz config set <type> <id> <setting_key> <value>` | One-shot command to set a value non-interactively. (e.g., `cluaiz config set plugin cluaiz-search search_api_key "xxx"`) |
-
-**Features of `config set`:**
-- **Cute Dropdowns:** If a setting is defined as type `enum` in the manifest, the CLI renders an interactive `<inquire>` dropdown menu of allowed `options` instead of a blank text prompt.
-- **Clean Keys:** You no longer type internal prefixes like `configuration_schema.` or `settings.`. Just select the direct setting name (e.g. `api_key`).
-- **Strict Types:** String types are automatically safely serialized into YAML without causing formatting errors in the background config file.
+Details: [engine configuration](../reference/engine-configuration.md).

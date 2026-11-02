@@ -90,7 +90,7 @@ flowchart TD
 
 | Parameter | Type | Required | Meaning, default and constraints |
 |---|---|---|---|
-| `kind` | "skill" \| "plugin" \| "mcp" | Yes | skill, plugin or mcp Required enum: skill (instructions), plugin (WASM/native package), mcp (server package). Kind and name must identify the same installed entry. |
+| `kind` | "skill" \| "plugin" \| "mcp" | Yes | skill, plugin or mcp Required enum: skill (instructions), plugin (a program run as a child process), mcp (server package). Kind and name must identify the same installed entry. |
 | `name` | string \| null | No | One tool; every tool of `kind` when absent Optional selected installed name; omit only when cleaning all installed packages of this kind intentionally. |
 
 Unknown top-level method parameters are rejected. `params._meta` is protocol metadata, not a domain option; approval retries must preserve the same method and domain parameters. Where a parameter is optional, omission follows the method-specific rules above rather than implying a universal zero or empty-string default.

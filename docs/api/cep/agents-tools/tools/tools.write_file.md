@@ -94,7 +94,7 @@ flowchart TD
 
 | Parameter | Type | Required | Meaning, default and constraints |
 |---|---|---|---|
-| `kind` | "skill" \| "plugin" \| "mcp" | Yes | skill, plugin or mcp Required enum: skill (instructions), plugin (WASM/native package), mcp (server package). Kind and name must identify the same installed entry. |
+| `kind` | "skill" \| "plugin" \| "mcp" | Yes | skill, plugin or mcp Required enum: skill (instructions), plugin (a program run as a child process), mcp (server package). Kind and name must identify the same installed entry. |
 | `name` | string | Yes | The tool's folder name: 1–64 lowercase letters, digits, dots, underscores or hyphens Required package/registry name, 1–64 ASCII lowercase letters/digits/dots/underscores/hyphens; first character must be a letter or digit. Not a path or arbitrary repository URL. |
 | `text` | string | Yes | The new content of `SKILL.md` (skill) or `package.json` (plugin, mcp) Required full replacement text; not a JSON patch. SKILL.md is Markdown; package.json callers should provide valid manifest JSON themselves. |
 

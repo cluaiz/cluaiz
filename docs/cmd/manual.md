@@ -22,9 +22,9 @@ The full list is in the [command reference](commands_reference.md).
 
 ---
 
-## Configuration JSON Assets
+## Files
 
-All CLI settings and commands are tracked in two local JSON profiles:
-
-*   **`assets/commands.json`:** Mapped entries and command usage parameters, baked directly into the Rust binary at compile time.
-*   **`Independent.json` / `system_control.json`:** Tracks active local configuration, hardware profiles, user identities, and loaded weight paths.
+* **`~/.cluaiz/config/settings.json`:** engine settings (`cluaiz config`).
+* **`~/.cluaiz/config/permission.json`:** port, auth, security mode (`cluaiz permission`). See [permission.json](../engine/permission.md).
+* **`~/.cluaiz/config/hardware_profile.json`:** the saved hardware probe (`cluaiz calibrate`). See [hardware profile](../engine/system_control.md).
+* **`~/.cluaiz/config/model_registry.json`:** installed models.
