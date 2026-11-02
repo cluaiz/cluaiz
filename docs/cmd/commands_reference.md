@@ -43,7 +43,7 @@ cat task.txt | cluaiz agent --yes
 
 | Command | Description |
 |---------|-------------|
-| `cluaiz pull <model-id>` | Download and register a model (`CLUAIZ_NONINTERACTIVE=1`: no questions) |
+| `cluaiz pull <model-id>` | Download and register a model (no questions when `CLUAIZ_NONINTERACTIVE` is set or stdin is not a terminal) |
 | `cluaiz list` (`ls`) | Installed models; `*` = default chat model |
 | `cluaiz show <model-id>` | GGUF details and the plan the model would get on this machine |
 | `cluaiz rm <model-id>` | Delete a model and its registry entry |
