@@ -94,7 +94,7 @@ flowchart TD
 
 | Parameter | Type | Required | Meaning, default and constraints |
 |---|---|---|---|
-| `kind` | "skill" \| "plugin" \| "mcp" | Yes | skill, plugin or mcp Required enum: skill (instructions), plugin (WASM/native package), mcp (server package). Kind and name must identify the same installed entry. |
+| `kind` | "skill" \| "plugin" \| "mcp" | Yes | skill, plugin or mcp Required enum: skill (instructions), plugin (a program run as a child process), mcp (server package). Kind and name must identify the same installed entry. |
 | `name` | string | Yes | The tool's folder name: 1–64 lowercase letters, digits, dots, underscores or hyphens Required package/registry name, 1–64 ASCII lowercase letters/digits/dots/underscores/hyphens; first character must be a letter or digit. Not a path or arbitrary repository URL. |
 | `path` | string | Yes | A file inside the tool's folder, relative to it Required relative file path inside the package. Absolute paths, .. components, empty values and escaping symlinks are rejected. |
 

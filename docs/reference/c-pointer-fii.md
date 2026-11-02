@@ -1,99 +1,87 @@
-# Cluaiz C-Pointer & FFI Memory Specifications Manual
+# C Library and FFI Memory Rules
 
-This manual details the specifications for using raw C-pointers and FFI zero-copy memory transfers within the Cluaiz Inference Engine. It covers memory representations, lifetime conventions, allocation mechanics, and SDK bindings for dynamic execution.
+The Engine can run inside another program as a C library: `cluaiz_cep.dll` (Windows),
+`libcluaiz_cep.so` (Linux), `libcluaiz_cep.dylib` (macOS). The header is
+[`ffi/include/cep.h`](../../ffi/include/cep.h), the code [`ffi/src/lib.rs`](../../ffi/src/lib.rs).
 
 ---
 
-## 🏛️ 1. Core Architecture: FFI Pointer Bridge
-
-To prevent memory copies, the Cluaiz Engine passes binary payloads directly across language boundaries using standard **C Application Binary Interface (C-ABI)** structures. 
-
-Instead of serialization over HTTP/TCP ports, host applications dynamically invoke engine execution parameters directly in memory using shared buffer pointers.
-
-### A. Memory Representation (`CxpPayload`)
-The core pointer struct is defined strictly under the C-ABI layout. It binds a payload type identifier, a memory pointer address, and a length segment to guarantee stable memory alignment.
+## 1. The two functions
 
 ```c
-typedef enum {
-    Json = 0,
-    Cdql = 1,
-    WasmBinary = 2,
-    RawBytes = 3,
-    Bincode = 4
-} PayloadType;
-
-typedef struct {
-    PayloadType payload_type;
-    const uint8_t* data_ptr;
-    size_t data_len;
-} CxpPayload;
+char *cep_call(const char *request_json);
+void  cep_free(char *reply);
 ```
 
----
+| Function | In | Out |
+|---|---|---|
+| `cep_call` | A NUL-terminated UTF-8 JSON-RPC 2.0 request or batch, the same as the body of `POST /v1/cep` | A NUL-terminated UTF-8 JSON reply, or `NULL` when the request held only notifications |
+| `cep_free` | A pointer returned by `cep_call` (or `NULL`) | — |
 
-## 🔒 2. Memory Lifetime & Allocation Rules
+## 2. Memory rules
 
-When handling C-pointers across language boundaries (FFI), explicit allocations and deallocations are mandatory to avoid double-free panics or memory leaks:
+1. **The request stays yours.** The Engine copies `request_json` during the call and never keeps
+   or frees it.
+2. **The reply is the Engine's.** Free every non-NULL reply with `cep_free`, exactly once. Never
+   free it with `free()` or your language's allocator: it was allocated by Rust.
+3. **`NULL` is safe.** `cep_call(NULL)` returns an error reply; `cep_free(NULL)` does nothing.
+4. **No callbacks, no shared buffers.** Nothing crosses the boundary except the two strings. Long
+   work returns a task handle that you poll with `tasks.get` / `tasks.result`.
 
-1. **Input Payloads**: When the Engine passes an `CxpPayload` pointer to a plugin, the host Engine retains ownership. The plugin must *never* free or write to the input payload's buffer.
-2. **Output Payloads**: When a plugin returns a pointer, it must allocate both the `CxpPayload` envelope and its underlying buffer using dynamic heap allocations (`malloc` or equivalent).
-3. **Deallocation Hook**: The Engine assumes ownership of the returned pointer. Once the Engine consumes the data, it triggers the library's exported deallocation hook to reclaim memory from the system heap:
-   ```c
-   void cluaiz_free_payload(CxpPayload* ptr);
-   ```
+## 3. Threads and errors
 
----
+- `cep_call` blocks until the reply is ready. Several threads may call at once.
+- A thread that is already running an async runtime gets an error reply instead of a deadlock.
+- A panic inside the Engine becomes a JSON-RPC `-32603` reply. It never unwinds into your
+  program.
+- The first call starts the Engine with `CLUAIZ_HOME` (or the default home). It does not write
+  `session.token`, so a `cluaiz serve` on the same home keeps working.
 
-## ⚙️ 3. Execution Pipeline Flow
+## 4. Examples
 
-The zero-copy dynamic linking cycle operates under the following sequence:
+### C
 
-```mermaid
-flowchart TD
-    A["Tool call"] --> B{"Cluaiz Engine"}
-    B -->|Resolve Dynamic Symbol| C["Function Pointer: process_data"]
-    C -->|Construct Input Pointer| D["Shared Memory Segment"]
-    D -->|FFI Boundary Transition| E["Plugin Execution"]
-    E -->|Heap Allocate malloc| F["New CxpPayload & Data Buffer"]
-    F -->|Return Pointer Address| B
-    B -->|Consume Bytes| G["Process Pipeline Mappings"]
-    G -->|Clean Memory Hook| H["Invoke: cluaiz_free_payload"]
-    H -->|Free Heap| I["Memory Reclaimed"]
+```c
+#include "cep.h"
+#include <stdio.h>
+
+int main(void) {
+    char *reply = cep_call("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"system.info\"}");
+    if (reply) {
+        puts(reply);
+        cep_free(reply);
+    }
+    return 0;
+}
 ```
 
+### Python (ctypes)
 
----
+```python
+import ctypes, json
 
-## 🌐 4. Cross-Language SDK Mappings
+lib = ctypes.CDLL("./cluaiz_cep.dll")
+lib.cep_call.argtypes = [ctypes.c_char_p]
+lib.cep_call.restype = ctypes.c_void_p      # keep the raw pointer so it can be freed
+lib.cep_free.argtypes = [ctypes.c_void_p]
 
-Below is the compilation reference matrix mapping pointer bindings across target languages:
+ptr = lib.cep_call(json.dumps({"jsonrpc": "2.0", "id": 1, "method": "rpc.discover"}).encode())
+try:
+    reply = json.loads(ctypes.string_at(ptr).decode())
+finally:
+    lib.cep_free(ptr)
+```
 
-### A. C/C++ FFI SDK
-- Allocations must use pure `malloc` / `free` boundary calls. Expose functions under `extern "C"` to prevent C++ symbol name mangling.
-- Reference Manuals: [C FFI SDK Guide](../cel/sdk/c-ffi.md) and [C++ FFI SDK Guide](../cel/sdk/cpp-ffi.md).
+On Windows with a CUDA build, add the CUDA `bin` folder with `os.add_dll_directory` first; see
+[ffi/README.md](../../ffi/README.md).
 
-### B. Go (cgo) SDK
-- Maps C-pointers to Go byte slices using `C.GoBytes(unsafe.Pointer(input.data_ptr), C.int(input.data_len))`.
-- Since Go's garbage collector ignores memory allocated via `C.malloc`, explicit `cluaiz_free_payload` implementation is mandatory.
-- Reference Manual: [Go FFI SDK Guide](../cel/sdk/go-ffi.md).
+## 5. Measured
 
-### C. Python (cffi) SDK
-- Integrates ctypes pointers using `ctypes.POINTER(ctypes.c_uint8)`.
-- Reference Manual: [Python CFFI SDK Guide](../cel/sdk/python-cffi.md).
+`test/cep/ffi_python.py` (Python ctypes): 12/12 checks pass; 10,000 calls added no measurable
+memory; p95 0.11 ms per call.
 
-### D. Node.js FFI SDK
-- Shares buffers directly with JS `Buffer` arrays without Base64 conversions, mapping parameters using `node-ffi-napi`.
-- Reference Manual: [NodeJS FFI SDK Guide](../cel/sdk/nodejs-ffi.md).
+## 6. Plugins do not use this boundary
 
-### E. Rust Native SDK
-- Interfaces directly with Rust native crates (`CxpPayload` with `#[repr(C)]`).
-- Reference Manual: [Rust Native SDK Guide](../cel/sdk/rust-native.md).
-
----
-
-## 🛡️ 5. Prefix Caching & WASM Sandbox Pointer Barriers
-
-To secure raw memory pointer operations, the engine implements strict sandbox limits:
-* **Prefix Caching Memory Guards**: The prefix caching pipeline validates context envelopes and token boundaries before sequence continuation. Refer to the [Prefix Caching Architecture Manual](../engine/prefix_caching_architecture.md) and [Permission Manual](../engine/permission.md).
-* **WASM Instruction Fuel Limits**: Before passing a pointer into a WebAssembly module, the Cluaiz Engine isolates memory structures using WASM memory barriers. Refer to the [WASM Security Matrix](../cel/authoring/wasm_vs_rhai_vs_pure.md).
-
+Installed plugins are not loaded into the Engine's memory. A plugin runs as a separate child
+process: the payload is passed as an argument and its stdout is the result
+(`agents/src/plugins/executor.rs`). There is no sandbox around it.

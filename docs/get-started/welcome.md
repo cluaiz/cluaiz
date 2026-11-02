@@ -1,12 +1,14 @@
 # Welcome to cluaiz Documentation
 
-Welcome to the official documentation portal for `cluaiz`—a decoupled, local AI inference engine and orchestrator engineered to execute neural models directly on physical edge workstations.
+`cluaiz` is a local AI engine: it runs language, speech and embedding models on your own
+computer, with a terminal coding agent, an OpenAI-compatible HTTP API and its own JSON-RPC
+protocol (CEP).
 
 ---
 
-## 🚀 Native Workstation Bootstrapping
+## 🚀 Install
 
-Deploy `cluaiz` directly onto your hardware workspace without virtualized containers or external Python environment runtime requirements.
+No containers and no Python environment are needed.
 
 ### Windows (PowerShell)
 ```powershell
@@ -18,53 +20,58 @@ powershell -c "irm https://cluaiz.com/install.ps1 | iex"
 curl -fsSL https://cluaiz.com/install.sh | bash
 ```
 
----
+The installer picks the GPU pack for your machine (CUDA 12 or 13 for NVIDIA, Vulkan for AMD and
+Intel, otherwise CPU) and checks every file against the release's `SHA256SUMS.txt`.
 
-## 🏛️ Edge Topology & Execution Lifecycle
+Then:
 
-`cluaiz` uses a split client-daemon model to isolate front-end user experience rendering from raw tensor FFI execution pipelines.
-
-```mermaid
-sequenceDiagram
-    autonumber
-    participant Client as cluaiz-cli (Ratatui TUI)
-    participant Engine as cluaiz-engine (Axum Server)
-    participant Bridge as dynamic Silicon dispatch (FFI)
-    participant Hardware as SIMD / CUDA / Metal Core
-
-    Client->>Engine: Send raw command payload (IPC / Sockets)
-    Note over Engine: Verify limits via llm_optimization.json
-    Engine->>Bridge: Zero-Copy Struct (C-ABI #[repr(C)])
-    Bridge->>Hardware: Dynamic symbol execution (dlopen/LoadLibraryW)
-    Hardware-->>Bridge: Tensor computations complete
-    Bridge-->>Engine: Memory pointer response
-    Engine-->>Client: Streaming updates (Server-Sent Events)
+```bash
+cluaiz pull qwen3:8b
+cluaiz run qwen3:8b        # chat in the terminal
+cluaiz agent               # coding agent in the current folder
+cluaiz serve               # HTTP API on port 8000
 ```
 
 ---
 
-## 🗺️ Documentation Directory (Diátaxis Structure)
+## 🏛️ How a request runs
 
-Navigate through the system specifications based on your development targets:
+```mermaid
+sequenceDiagram
+    autonumber
+    participant Client as Client (App, CLI, curl, MCP)
+    participant Engine as cluaiz serve (Axum)
+    participant Host as EngineHost + planner
+    participant Runtime as llama.cpp / ONNX Runtime
 
-### 📖 1. Tutorials (Learning Pathways)
-*   **[Introduction to cluaiz](/docs/get-started/introduction)** — Core system philosophy, decoupled layers, and privacy-preserving sandboxes.
-*   **[Quickstart Guide](/docs/get-started/quickstart)** — Step-by-step native bootstrapping guide and manual from-source compilation setups.
+    Client->>Engine: POST /v1/chat/completions or /v1/cep
+    Note over Engine: Build the prompt: history, recall, notes, project files, tool cards
+    Engine->>Host: Load or reuse the model with this machine's plan
+    Host->>Runtime: Generate (CPU, CUDA, Vulkan or Metal backend)
+    Runtime-->>Engine: Tokens
+    Engine-->>Client: Streamed answer (Server-Sent Events)
+```
 
-### 🛠️ 2. How-To Guides (Deployment & Operations)
-*   **[System Architecture Overview](/docs/get-started/architecture)** — Network socket configurations, thread boundaries, and workstation initialization limits.
-*   **[Hardware Troubleshooting](/docs/architecture/hardware-troubleshooting)** — Diagnose driver binding errors, VRAM depletion, and compile-time target overrides.
+The CLI and the agent load models in their own process; they do not need the server.
 
+---
 
-### ⚙️ 3. Reference Manuals (Configuration & API Contracts)
-*   **[Configuration Registry Index](/docs/reference/engine-configuration)** — Parameters for [llm_optimization.json](/docs/reference/engine-configuration#2-compute-acceleration--optimization-profile-llm_optimizationjson), [Permission.json](/docs/reference/engine-configuration#3-security-boundaries--capability-rules-profile-permissionjson), and [system_control.json](/docs/reference/engine-configuration#1-silicon-truth--hardware-governance-profile-system_controljson).
-*   **[Terminal CLI Commands Reference](/docs/reference/terminal-commands)** — Comprehensive command arguments, dynamic options, and local workspace hooks.
+## 🗺️ Documentation map
+
+### 📖 1. Start
+*   **[Introduction to cluaiz](/docs/get-started/introduction)** — What the Engine is made of and where your data lives.
+*   **[Quickstart Guide](/docs/get-started/quickstart)** — Install, first model, building from source.
+
+### 🛠️ 2. How-to
+*   **[System Architecture Overview](/docs/get-started/architecture)** — The layers of the program.
+*   **[Hardware Troubleshooting](/docs/architecture/hardware-troubleshooting)** — GPU driver, VRAM and build problems.
+
+### ⚙️ 3. Reference
+*   **[Engine Configuration](/docs/reference/engine-configuration)** — The settings files: `settings.json`, `permission.json`, `hardware_profile.json`.
+*   **[Terminal Commands](/docs/reference/terminal-commands)** — What each `cluaiz` command does.
 *   **[HTTP API Interface](/docs/reference/api)** — The routes, CEP and where each is documented.
 
-
-### 🧠 4. Explanation (Architectural Deep Dives)
+### 🧠 4. Explanation
 *   **[C Library (FFI)](/docs/architecture/unified-brain-ffi)** — The C-ABI library and how GPU backends are loaded.
-*   **[KV Cache Reuse](/docs/engine/prefix-caching-architecture)** — How a chat's next turn reuses the KV cache in memory and from disk.
+*   **[KV Cache Reuse](/docs/engine/prefix_caching_architecture)** — How a chat's next turn reuses the KV cache in memory and from disk.
 *   **[CEP (Cluaiz Engine Protocol)](/docs/api/cep/README)** — One JSON-RPC 2.0 protocol for every engine operation, over HTTP, MCP and the in-process C library.
-
-

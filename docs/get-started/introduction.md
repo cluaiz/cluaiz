@@ -1,25 +1,33 @@
-# Introduction to cluaiz
+# Introduction to Cluaiz
 
-cluaiz is a high-performance local AI inference engine and orchestrator designed to execute Large Language Models (LLMs) and deep learning models directly on edge workstations and local cluster environments.
+Cluaiz is a local AI engine. It runs language, speech and embedding models on your own computer,
+with the files and memory staying on your disk.
 
-This documentation serves as a comprehensive system manual for setting up, configuring, and optimizing cluaiz nodes.
-
----
-
-## 🏛️ System Philosophy: Decoupled Edge Architecture
-
-The framework enforces absolute separation of concerns across its core execution layers:
-
-* **Sovereign Client Layer (`cluaiz-cli`):** The terminal interface and interactive dashboard built in Rust using Ratatui. Communicates asynchronously via local network sockets or named pipes.
-* **Core Engine Daemon (`cluaiz-engine` / `cluaizdb`):** The orchestration center built with the Axum web framework. Manages model lifecycles, configuration states, and FFI pipelines.
-* **Silicon Driver Bridges:** Dynamically linked binaries targeting SIMD CPU (AVX-512, ARM Neon) or discrete GPU (CUDA, Metal, Vulkan) cores.
+This documentation covers installing the Engine, running models, the terminal agent, the HTTP API
+and CEP (the Engine's JSON-RPC protocol).
 
 ---
 
-## 🔒 Local Isolation & Data Protection
+## What it is made of
 
-cluaiz prioritizes absolute privacy by routing all computing operations on-device:
+* **`cluaiz` program:** the CLI (`run`, `agent`, `pull`, `serve`, …), the terminal coding agent
+  and the HTTP server, in one executable.
+* **Two model runtimes:** llama.cpp for GGUF models and ONNX Runtime for ONNX models (TTS, STT,
+  embeddings). See [the two runtimes](../engine/dual_engine_architecture.md).
+* **GPU packs:** the CPU build works everywhere; CUDA 12, CUDA 13 and Vulkan packs add GPU support
+  (Metal is built into the macOS build).
+* **Ways in:** the CLI, the HTTP API (`cluaiz serve`), a C library (`cluaiz_cep.dll`) and MCP.
 
-* **On-Device Embedding Vectors:** All document chunking and vector space creations occur inside local memory allocations.
-* **Deterministic Sandboxing:** Sandboxed WASM routines run under strict memory limits and fuel restrictions to isolate third-party plugins.
-* **Controlled Telemetry:** Diagnostics tracking is disabled by default and runs entirely under explicit user toggle parameters.
+The full map is in [ARCHITECTURE.md](../../ARCHITECTURE.md).
+
+---
+
+## Local data
+
+* Models, chat memory, KV caches, notes and settings are stored under `~/.cluaiz` (or
+  `CLUAIZ_HOME`). See the [install layout](../deployments/install-layout.md).
+* Documents are read and chunked in memory by `/v1/ingest`; there is no vector database.
+* Telemetry in chat responses (`stream_telemetry`) is off by default.
+* Plugins run as normal child processes with your user's rights. There is no sandbox, so install
+  only plugins you trust. MCP servers and tools ask for approval according to the
+  `agent_security_mode` in [permission.json](../engine/permission.md).

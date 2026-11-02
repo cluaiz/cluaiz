@@ -1,52 +1,34 @@
-# Zero-Latency Unified FFI Bridging & Driver Decoupling
+# C Library (FFI) and GPU Backend Loading
 
-This document explains the low-level FFI (Foreign Function Interface) bridging and driver decoupling mechanics inside the cluaiz Inference Engine.
+## 1. The Engine as a C library
 
----
+`cluaiz_cep.dll` / `libcluaiz_cep.so` / `libcluaiz_cep.dylib` runs the Engine inside another
+program. It exports two functions:
 
-## 1. Zero-Latency C-ABI Bridging
-
-To bypass the overhead of REST/gRPC or IPC channels during raw tensor copy operations, cluaiz communicates with native drivers via a strict C-ABI bridge. 
-
-```
-┌────────────────────────────────────────────────────────┐
-│                   cluaiz ENGINE (RUST)                │
-│  Manages routing, safety bounds, state, and planning   │
-└───────────────────────────┬────────────────────────────┘
-                            │ Safe C-ABI FFI (Zero-Copy)
-                            ▼
-┌────────────────────────────────────────────────────────┐
-│                  NATIVE ENGINE DRIVERS                 │
-│        Dynamic Library: .dll / .so / .dylib            │
-│  Executes SIMD / CUDA / Metal computation graphs       │
-└────────────────────────────────────────────────────────┘
+```c
+char *cep_call(const char *request_json);  /* JSON-RPC 2.0 in, the reply out */
+void  cep_free(char *reply);               /* frees a reply */
 ```
 
-The FFI structures are annotated with `#[repr(C)]` to guarantee binary compatibility across compilers:
+The messages are the same as `POST /v1/cep`. The first call starts the Engine with `CLUAIZ_HOME`.
+A panic inside the Engine becomes a `-32603` reply and never unwinds into the host. Long work
+returns a task handle (`tasks.get`, `tasks.result`).
 
-```rust
-#[repr(C)]
-pub enum PayloadType {
-    Bincode = 0,
-    RawJson = 1,
-}
+Details, building and Windows DLL loading: [ffi/README.md](../../ffi/README.md).
 
-#[repr(C)]
-pub struct CxpPayload {
-    pub payload_type: PayloadType,
-    pub data_ptr: *const u8,
-    pub data_len: usize,
-}
-```
+Measured (Python ctypes, `test/cep/ffi_python.py`): 12/12 checks pass; 10,000 calls added no
+measurable memory; p95 0.11 ms per call.
 
----
+## 2. GPU backends are separate libraries
 
-## 2. Dynamic Silicon Dispatch (Driver Decoupling)
+The `cluaiz` executable is built without CUDA or Vulkan. llama.cpp's GPU backends are shared
+libraries (`ggml-cuda`, `ggml-vulkan`, …) installed next to the executable by the GPU packs.
 
-cluaiz decouples compile-time compute dependencies. The engine binary compiles independently of CUDA or Metal libraries. At startup, the engine scans the host system's compute capabilities and dynamically loads the matching driver library:
+1. At start, llama.cpp loads every backend library in the executable's folder
+   (`ggml_backend_load_all_from_path`, `engine/llama/src/native/core.rs`).
+2. A backend whose driver is missing does not load; the others still work.
+3. With no GPU backend, the CPU backend runs (AVX2, AVX-512 or NEON).
 
-1. **Audit Phase:** Scans PCI buses, Metal device lists, or Vulkan registries.
-2. **Bind Phase:** Uses dynamic loading system calls (`LoadLibraryW` on Windows, `dlopen` on POSIX) to load the driver `.dll` / `.so`.
-3. **Execution Phase:** Resolves function pointers (such as `cluaiz_execute_payload`) and maps the memory layout.
-
-If no dedicated GPU accelerator is present, the engine binds the baseline CPU SIMD library (utilizing AVX2, AVX-512, or ARM Neon instructions).
+The installer picks the pack from the GPU it finds: NVIDIA → CUDA 12 or 13 (by driver version),
+AMD or Intel → Vulkan, otherwise CPU only. A GPU pack must come from the same llama.cpp commit as
+the core build. See [cicd.md](../deployments/cicd.md).

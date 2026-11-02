@@ -108,7 +108,7 @@ pub struct ToolEntry {
     #[serde(default)]
     pub local_dir: String,
 
-    /// Path to compiled WASM or native binary (if applicable)
+    /// Path to the plugin program (if applicable)
     #[serde(default)]
     pub binary_path: Option<String>,
 

@@ -119,7 +119,7 @@ flowchart TD
 
 | Parameter | Type | Required | Meaning, default and constraints |
 |---|---|---|---|
-| `kind` | "skill" \| "plugin" \| "mcp" | Yes | skill, plugin or mcp Required enum: skill (instructions), plugin (WASM/native package), mcp (server package). Kind and name must identify the same installed entry. |
+| `kind` | "skill" \| "plugin" \| "mcp" | Yes | skill, plugin or mcp Required enum: skill (instructions), plugin (a program run as a child process), mcp (server package). Kind and name must identify the same installed entry. |
 | `name` | string | Yes | The tool's folder name: 1–64 lowercase letters, digits, dots, underscores or hyphens Required package/registry name, 1–64 ASCII lowercase letters/digits/dots/underscores/hyphens; first character must be a letter or digit. Not a path or arbitrary repository URL. |
 | `patch` | object | Yes | Only the fields to change Required object containing only supported fields; omitted members remain unchanged. |
 | `patch.enabled` | boolean \| null | No | false: the tool is not offered to the model (an MCP server is also stopped) Optional boolean. false disables offering and also stops the named MCP server. |

@@ -104,7 +104,7 @@ flowchart TD
 |---|---|---|---|
 | `fn` | string \| null | No | The function to run (a plugin export or an MCP tool); the tool's default when absent Optional exported function/MCP tool name; the owner default is used when omitted. Empty, .. or path-like function strings are invalid. |
 | `input` | any | Yes | The function's arguments, as JSON Required JSON value passed as the selected function’s arguments. Use the function inputSchema from tools.list; there is no one universal input shape. |
-| `kind` | "skill" \| "plugin" \| "mcp" | Yes | skill, plugin or mcp Required enum: skill (instructions), plugin (WASM/native package), mcp (server package). Kind and name must identify the same installed entry. |
+| `kind` | "skill" \| "plugin" \| "mcp" | Yes | skill, plugin or mcp Required enum: skill (instructions), plugin (a program run as a child process), mcp (server package). Kind and name must identify the same installed entry. |
 | `name` | string | Yes | The tool's folder name: 1–64 lowercase letters, digits, dots, underscores or hyphens Required package/registry name, 1–64 ASCII lowercase letters/digits/dots/underscores/hyphens; first character must be a letter or digit. Not a path or arbitrary repository URL. |
 
 Unknown top-level method parameters are rejected. `params._meta` is protocol metadata, not a domain option; approval retries must preserve the same method and domain parameters. Where a parameter is optional, omission follows the method-specific rules above rather than implying a universal zero or empty-string default.

@@ -102,7 +102,7 @@
           },
           {
             "const": "plugin",
-            "description": "A WASM or native library (`package.json`)",
+            "description": "A program the Engine runs as a child process (`package.json`)",
             "type": "string"
           },
           {

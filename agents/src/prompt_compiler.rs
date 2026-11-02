@@ -90,7 +90,7 @@ impl CompiledPromptTools {
     }
 }
 
-/// Dynamic compiler that aggregates active Skills, Plugins (WASM/Native), and MCP Tools
+/// Dynamic compiler that aggregates active Skills, Plugins (child processes) and MCP Tools
 /// into standard ChatML / OpenAI JSON schemas for LLM prompts.
 pub struct ToolPromptCompiler;
 
@@ -171,7 +171,7 @@ impl ToolPromptCompiler {
                     }
                 }
                 "plugin" => {
-                    // WASM / Native Plugin: JSON schema functions
+                    // Plugin: JSON schema functions
                     let schemas = Self::extract_plugin_schemas(&local_dir, normalized_id, &name, &description);
                     function_schemas.extend(schemas);
                 }
@@ -242,7 +242,7 @@ impl ToolPromptCompiler {
         ("unknown".to_string(), PathBuf::from(tool_id), tool_id.to_string(), String::new())
     }
 
-    /// Extracts function schemas for a WASM/Native plugin from its `package.json` manifest
+    /// Extracts function schemas for a plugin from its `package.json` manifest
     fn extract_plugin_schemas(local_dir: &Path, plugin_id: &str, name: &str, fallback_desc: &str) -> Vec<Value> {
         let mut schemas = Vec::new();
         let manifest_path = local_dir.join("package.json");

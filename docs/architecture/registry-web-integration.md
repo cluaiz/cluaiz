@@ -175,5 +175,5 @@ Shows actual VRAM/RAM specs parsed directly from the JSON quantization matrix, a
 
 ## 5. Architectural Benefits
 1. **Absolute Decoupling**: Frontend files never need to be modified when new models are launched.
-2. **Verified Accuracy**: VRAM limits, RAM allocation guidelines, and HuggingFace download links are 100% matched to their production CLI targets.
+2. **Verified Accuracy**: VRAM limits, RAM allocation guidelines, and HuggingFace download links match the ones the CLI uses.
 3. **Makkhan Developer Workflow**: Adding a new model family is as easy as adding a folder.
