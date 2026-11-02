@@ -6,13 +6,11 @@
 
 use std::path::Path;
 
-use cluaiz_agents::workspace::{Homes, Kind, Placement, Trigger, Workspace, WorkspacePrompt};
+use cluaiz_agents::workspace::{Kind, Placement, Trigger, Workspace, WorkspacePrompt};
 
 /// The agent files for work in `dir`; `installed` are the registry ids of installed skills
 pub fn scan(dir: &Path, installed: &[String]) -> Workspace {
-    let cluaiz = cluaiz_core::EnvironmentManager::current().global_dir;
-    let user = user_home();
-    Workspace::scan(dir, Homes { cluaiz: Some(&cluaiz), user: user.as_deref() }, installed)
+    Workspace::for_folder(dir, installed)
 }
 
 /// The user's home folder (for `~/.agents/`)
@@ -130,6 +128,7 @@ pub fn summary(workspace: &Workspace, layout: &WorkspacePrompt, home: Option<&Pa
 #[cfg(test)]
 mod tests {
     use super::*;
+    use cluaiz_agents::workspace::Homes;
 
     #[test]
     fn test_summary_shows_what_went_into_the_prompt_and_where_files_go() {

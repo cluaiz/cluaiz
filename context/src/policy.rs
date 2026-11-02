@@ -38,10 +38,14 @@ pub struct Policy {
     /// "on": the MCP server of a clearly suggested tool starts in the background before the model
     /// asks for it (its first load does not wait for the start); "off": servers start when loaded
     pub mcp_prewarm: String,
+    /// "on": the workspace's agent files (`AGENTS.md`, `.agents/` rules, workflows, skills and
+    /// memory, as the terminal agent reads them) go into the system prompt within a share of the
+    /// context; "off": the chat gets none of them
+    pub project_files: String,
 }
 
 impl Default for Policy {
     fn default() -> Self {
-        Self { recent_turns_min: 2, evidence_cap_pct: 15, suggestions_cap_pct: 5, margin_pct: 2, compact_at_pct: 85, compact_to_pct: 60, indexer: "auto".into(), notes: "ask".into(), cross_chat: "ask".into(), tool_format: "native".into(), auto_load: "off".into(), mcp_prewarm: "on".into() }
+        Self { recent_turns_min: 2, evidence_cap_pct: 15, suggestions_cap_pct: 5, margin_pct: 2, compact_at_pct: 85, compact_to_pct: 60, indexer: "auto".into(), notes: "ask".into(), cross_chat: "ask".into(), tool_format: "native".into(), auto_load: "off".into(), mcp_prewarm: "on".into(), project_files: "on".into() }
     }
 }

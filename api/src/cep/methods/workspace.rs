@@ -3,7 +3,7 @@
 //! its `.agents/` folders, and its memory (`.agents/memory/`).
 
 use crate::cep::{roots, CallCtx};
-use cluaiz_agents::workspace::{memory, Homes, Item, Kind, Workspace};
+use cluaiz_agents::workspace::{memory, Item, Kind, Workspace};
 use cluaiz_cep::{Call, CepError, Meta, NoParams, Registry, Scope};
 use schemars::JsonSchema;
 use serde::Deserialize;
@@ -55,9 +55,7 @@ async fn scan(ctx: &CallCtx, call: &Call, path: Option<&str>) -> Result<Workspac
     if !dir.is_dir() {
         return Err(roots::invalid("path", "The project folder must be a directory"));
     }
-    let cluaiz = cluaiz_core::EnvironmentManager::current().global_dir;
-    let user = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).map(std::path::PathBuf::from);
-    Ok(Workspace::scan(&dir, Homes { cluaiz: Some(&cluaiz), user: user.as_deref() }, &[]))
+    Ok(Workspace::for_folder(&dir, &[]))
 }
 
 fn item_json(item: &Item) -> serde_json::Value {

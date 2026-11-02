@@ -10,6 +10,7 @@ pub(crate) mod recall;
 pub mod non_streaming;
 pub mod preflight;
 mod processing;
+pub(crate) mod project;
 pub mod tool_parser;
 mod tool_turns;
 pub mod types;
