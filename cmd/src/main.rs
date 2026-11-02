@@ -133,15 +133,15 @@ enum CliCommand {
 
 #[derive(Subcommand)]
 pub enum PermissionCommand {
-    /// WASM firewall: auto, strict or off
+    /// WASM firewall: auto, strict or off (saved only; nothing reads it yet, there is no WASM sandbox)
     Firewall { status: String },
     /// Usage telemetry in chat responses: on or off
     Telemetry { status: String },
-    /// KV cache generation: on or off
+    /// KV cache generation: on or off (saved only; the KV cache is always saved)
     Kvcache { status: String },
-    /// Vectorize user messages: on or off
+    /// Vectorize user messages: on or off (saved only; chat memory uses no vectors)
     VectorizeInput { status: String },
-    /// Vectorize AI responses: on or off
+    /// Vectorize AI responses: on or off (saved only; chat memory uses no vectors)
     VectorizeResponse { status: String },
     /// Load the chat model on first use instead of at server start: on or off
     LazyLoad { status: String },
@@ -488,6 +488,7 @@ async fn main() -> Result<()> {
                 row("port", schema.api_port.to_string());
                 row("chat model", schema.get_active_chat_model().unwrap_or_else(|| "none".into()));
                 row("vector model", schema.get_active_embedding_model().unwrap_or_else(|| "none".into()));
+                eprintln!("{}", "firewall, kvcache and vectorize-* are saved but not used by the Engine yet.".dimmed());
                 eprintln!("{}", "Change one with `cluaiz permission <name> <value>`.".dimmed());
                 return Ok(());
             };

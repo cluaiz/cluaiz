@@ -6,8 +6,8 @@
 //! search the rest with `find_tools`. Nothing is injected in full unless the model asks, and
 //! nothing is ever cut in the middle.
 //!
-//! Matching works on whole words (never on parts of words), with a small alias list for common
-//! Hinglish and Devanagari words. Only the servers of loaded MCP tools are started.
+//! Matching works on whole words (never on parts of words). Only the servers of loaded MCP tools
+//! are started.
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};

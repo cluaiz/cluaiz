@@ -1,5 +1,7 @@
-//! ⚡ Plugin Executor Sandbox (`agents/src/plugins/wasm_sandbox.rs`)
-//! Safe execution sandbox for plugins without legacy crate dependencies.
+//! Plugin executor (`agents/src/plugins/executor.rs`).
+//!
+//! Runs a plugin as a plain child process in its own folder and returns its stdout. There is
+//! no sandbox: the plugin runs with the same rights as the Engine (no WASM, no OS isolation).
 
 use anyhow::{anyhow, Result};
 use std::path::Path;

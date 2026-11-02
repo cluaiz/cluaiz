@@ -1,5 +1,5 @@
 pub mod manifest;
-pub mod wasm_sandbox;
+pub mod executor;
 
 pub use manifest::{PluginManifest, PluginManifestParser};
-pub use wasm_sandbox::PluginExecutor;
+pub use executor::PluginExecutor;
