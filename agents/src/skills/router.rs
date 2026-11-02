@@ -4,7 +4,8 @@ use std::sync::{Arc, LazyLock, Mutex};
 use crate::tools::registry::ToolsRegistry;
 use super::parser::{SkillParser, ParsedSkill};
 
-/// O(1) Keyword and Semantic Trigger Router for Skills
+/// Keyword router for skills: matches the `semantic_triggers` words from the registry as whole
+/// words. The main tool matching for chat is in `tool_search.rs`.
 pub struct SkillRouter {
     /// Maps keyword trigger (lowercase) -> skill ID
     keyword_map: HashMap<String, String>,

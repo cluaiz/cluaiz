@@ -151,12 +151,12 @@ impl ToolsEngine {
         router.get_instructions(skill_id).map(|s| s.to_string())
     }
 
-    /// Executes a WASM or Native plugin by path
+    /// Runs a plugin (a normal child process, no sandbox) by path
     pub fn execute_plugin(plugin_dir: &Path, payload: &[u8]) -> Result<Vec<u8>> {
         PluginExecutor::execute(plugin_dir, payload)
     }
 
-    /// Executes a WASM or Native plugin by name resolving path from ~/.cluaiz/tools/plugins
+    /// Runs a plugin (a normal child process, no sandbox) by name, from ~/.cluaiz/tools/plugins
     pub fn execute_plugin_by_name(plugin_name: &str, payload: &[u8]) -> Result<Vec<u8>> {
         let env = cluaiz_core::EnvironmentManager::current();
         let plugin_dir = env.plugins_dir().join(plugin_name);

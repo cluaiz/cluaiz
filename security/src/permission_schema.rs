@@ -158,16 +158,20 @@ pub struct PermissionSchema {
     pub vector_models: ModelSelection,
     #[serde(default)]
     pub chat_models: ModelSelection,
+    /// Saved for the App settings screen; no Engine code reads it yet.
     #[serde(default = "default_wasm_firewall")]
     pub wasm_firewall: String,
+    /// Saved for the App settings screen; no Engine code reads it yet.
     #[serde(default = "default_vectorize_user_input")]
     pub vectorize_user_input: bool,
+    /// Saved for the App settings screen; no Engine code reads it yet.
     #[serde(default = "default_vectorize_ai_response")]
     pub vectorize_ai_response: bool,
     #[serde(default = "default_stream_telemetry")]
     pub stream_telemetry: bool,
     #[serde(default = "default_lazy_load_model")]
     pub lazy_load_model: bool,
+    /// Saved for the App settings screen; no Engine code reads it yet.
     #[serde(default = "default_enable_kvcache")]
     pub enable_kvcache: bool,
     #[serde(default = "default_model_header_info")]
