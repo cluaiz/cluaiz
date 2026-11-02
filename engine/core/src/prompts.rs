@@ -27,6 +27,7 @@ const DEFAULTS: &[&str] = &[
     include_str!("../prompts/workspace.index.md"),
     include_str!("../prompts/workspace.cut.md"),
     include_str!("../prompts/workspace.read_item.md"),
+    include_str!("../prompts/workspace.read_item_hint.md"),
     include_str!("../prompts/workspace.remember.md"),
     include_str!("../prompts/workspace.remember_refused.md"),
     include_str!("../prompts/workspace.matched.md"),
