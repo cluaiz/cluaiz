@@ -80,7 +80,7 @@ MCP servers you installed (`cluaiz skill / plugin / mcp install`, switched on) a
 | `search` | Searches the text of files for a regular expression, optionally only in files like `*.rs`. Skips `.git`, `target`, `node_modules`, `.venv`, `venv`, `__pycache__`, `dist`, `build`, `.next`, binary files and files over 2 MB | Only outside the working folder |
 | `write_file` | Creates a file, or replaces all of its content | Always |
 | `edit_file` | Replaces an exact piece of text in a file, once (or every occurrence when asked). Works with files that use Windows line breaks | Always |
-| `run_command` | Runs one command line in the working folder: PowerShell on Windows, `sh` on Linux and macOS. Stops it after 120 seconds unless the model asks for longer (at most 600) | Unless read-only, see below |
+| `run_command` | Runs one command line in the working folder: PowerShell on Windows, `sh` on Linux and macOS. Stops it after 120 seconds unless the model asks for longer (at most 600). Its last lines show under the call while it runs; the model gets the whole output. It gets no keyboard input, so a command that asks a question fails instead of waiting | Unless read-only, see below |
 
 So the agent can, for example:
 

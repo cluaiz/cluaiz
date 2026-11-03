@@ -155,7 +155,23 @@ impl SandboxTerminalRunner {
         venv_dir: Option<&Path>,
         stdin_input: Option<&str>,
         timeout_secs: Option<u64>,
+        cancel_rx: Option<watch::Receiver<bool>>,
+    ) -> Result<TerminalRunResult> {
+        Self::execute_streaming(command_line, cwd, security_mode, venv_dir, stdin_input, timeout_secs, cancel_rx, None).await
+    }
+
+    /// [`Self::execute_advanced`] that also sends each stdout / stderr line to `on_line` as it is
+    /// written, for a live view of a long command. The result still holds the whole output.
+    #[allow(clippy::too_many_arguments)]
+    pub async fn execute_streaming(
+        command_line: &str,
+        cwd: &Path,
+        security_mode: SecurityMode,
+        venv_dir: Option<&Path>,
+        stdin_input: Option<&str>,
+        timeout_secs: Option<u64>,
         mut cancel_rx: Option<watch::Receiver<bool>>,
+        on_line: Option<tokio::sync::mpsc::UnboundedSender<String>>,
     ) -> Result<TerminalRunResult> {
         Self::validate_command(command_line, cwd, security_mode)?;
 
@@ -232,10 +248,14 @@ impl SandboxTerminalRunner {
         let stderr = child.stderr.take().ok_or_else(|| anyhow!("Failed to open stderr"))?;
 
         // 5. Read stdout and stderr concurrently
+        let stdout_live = on_line.clone();
         let stdout_handle = tokio::spawn(async move {
             let mut reader = BufReader::new(stdout).lines();
             let mut lines = Vec::new();
             while let Ok(Some(line)) = reader.next_line().await {
+                if let Some(live) = &stdout_live {
+                    let _ = live.send(line.clone());
+                }
                 lines.push(line);
             }
             lines.join("\n")
@@ -245,6 +265,9 @@ impl SandboxTerminalRunner {
             let mut reader = BufReader::new(stderr).lines();
             let mut lines = Vec::new();
             while let Ok(Some(line)) = reader.next_line().await {
+                if let Some(live) = &on_line {
+                    let _ = live.send(line.clone());
+                }
                 lines.push(line);
             }
             lines.join("\n")
@@ -319,6 +342,25 @@ mod tests {
         assert_eq!(result.exit_code, 0);
         assert!(result.stdout.contains("Hello Cluaiz") || (result.stdout.contains("Hello") && result.stdout.contains("Cluaiz")));
         assert!(!result.cancelled);
+    }
+
+    #[tokio::test]
+    async fn test_streaming_sends_each_line_while_keeping_the_output() {
+        let temp_dir = std::env::temp_dir();
+        #[cfg(target_os = "windows")]
+        let cmd = "Write-Output one; Write-Output two";
+        #[cfg(not(target_os = "windows"))]
+        let cmd = "echo one; echo two";
+        let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
+        let result = SandboxTerminalRunner::execute_streaming(cmd, &temp_dir, SecurityMode::Inherit, None, None, Some(30), None, Some(tx))
+            .await
+            .expect("streaming run");
+        let mut live = Vec::new();
+        while let Ok(line) = rx.try_recv() {
+            live.push(line);
+        }
+        assert_eq!(live, ["one", "two"]);
+        assert!(result.stdout.contains("one") && result.stdout.contains("two"));
     }
 
     #[test]
