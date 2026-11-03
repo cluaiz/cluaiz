@@ -99,6 +99,8 @@ What each `cluaiz` command does, and the API method that does the same thing ove
 
 ### `cluaiz bench <model>`
 * Prompt and generation speed, like llama-bench (pp512, tg128). Runs locally.
+* `--placements` tests every placement that fits (full GPU, split, CPU only); the planner then
+  loads the fastest one. See [measured speed](../engine/llm_optimization.md#measured-speed).
 
 ---
 

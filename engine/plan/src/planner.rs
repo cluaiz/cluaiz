@@ -1,7 +1,7 @@
 //! 🎯 Placement planner: (model geometry, live hardware, settings) -> ExecutionPlan.
 //! Follows the rules in resource_negotiator's header: CTX rules, BUFFER rules, STEP 1-3.
 //! All byte counts come from the GGUF tensor table (`ModelGeometry::weights`) and llama.cpp's KV math.
-//! Speed is not measured here (STEP 4 is not built yet), so candidates are chosen by rule order.
+//! STEP 4: a placement measured faster by `cluaiz bench` replaces the rule-order pick ([`crate::speed`]).
 
 use cluaiz_core::{
     bytes_to_gib, gib_to_bytes, ActiveUserSettings, ContextSetting, KvCacheQuantization,
@@ -449,19 +449,44 @@ impl Planner {
             format!("weights {:.2} + KV {:.2} + logits {:.2} = {:.2} GB in RAM", gib(w.total), gib(kv_total), gib(logits), gib(p.ram)),
         ));
 
+        for c in candidates.iter_mut() {
+            use crate::speed::{measured, Signature, Test};
+            let signature = Signature::of(c);
+            c.measured_tokens_per_s = measured(Test::Generation, geometry, settings, ctx, kv, &signature);
+            c.measured_prompt_tokens_per_s = measured(Test::Prompt, geometry, settings, ctx, kv, &signature);
+        }
+
         // A user placement is used as given. Otherwise rule order: first candidate that fits in RAM;
         // STEP 3 - MoE may read experts from disk when nothing fits
-        let selected = if opt.is_manual_placement() {
-            candidates.first().cloned()
+        let in_memory = |c: &ExecutionCandidate| c.feasible && c.disk_stream_gb == 0.0;
+        let rule = if opt.is_manual_placement() {
+            (!candidates.is_empty()).then_some(0)
         } else {
-            candidates.iter().find(|c| c.feasible && c.disk_stream_gb == 0.0)
-                .or_else(|| if is_moe { candidates.iter().find(|c| c.feasible) } else { None })
-                .cloned()
+            candidates.iter().position(in_memory)
+                .or_else(|| if is_moe { candidates.iter().position(|c| c.feasible) } else { None })
         };
+        // STEP 4 - a placement measured faster replaces the rule-order pick (never the user's)
+        let mut instead_of: Option<(String, f64)> = None;
+        let selected = rule.map(|rule| {
+            let pick = if opt.is_manual_placement() || !in_memory(&candidates[rule]) {
+                rule
+            } else {
+                crate::speed::fastest(&candidates, rule, in_memory)
+            };
+            if pick != rule {
+                instead_of = Some((candidates[rule].name.clone(), candidates[rule].measured_tokens_per_s.unwrap_or(0.0)));
+            }
+            candidates[pick].clone()
+        });
 
         let (selected, explanation) = match selected {
             Some(c) => {
-                let why = format!("{}: {}", c.name, c.reason);
+                let why = match &instead_of {
+                    Some((rule_name, rule_tps)) => format!(
+                        "{}: measured faster ({:.1} t/s vs {:.1} t/s for {}); {}",
+                        c.name, c.measured_tokens_per_s.unwrap_or(0.0), rule_tps, rule_name, c.reason),
+                    None => format!("{}: {}", c.name, c.reason),
+                };
                 (c, why)
             }
             None => {
@@ -536,6 +561,8 @@ impl Planner {
             missing_gb: if feasible { 0.0 } else { gib(vram_over) + if may_stream_from_disk { 0.0 } else { gib(over_ram) } },
             feasible,
             reason,
+            measured_tokens_per_s: None,
+            measured_prompt_tokens_per_s: None,
         }
     }
 }
@@ -878,6 +905,61 @@ mod tests {
         crate::margin::record(&g2, &s, -0.40);
         let buffer = model_buffer_options(&g2, &hardware, &s)[0];
         assert!((buffer - (-0.40 + 0.20)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_placement_measured_faster_replaces_the_rule_order_pick() {
+        use crate::speed::{Signature, Test};
+        let record = |g: &ModelGeometry, s: &ActiveUserSettings, ctx: u32, kv: KvCacheQuantization, sig: &Signature, tps: f64| {
+            crate::speed::record(Test::Generation, g, s, ctx, kv, sig, tps)
+        };
+        let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
+        // A size no other test uses: the measurements are process-wide
+        let g = qwen3_like(4.5123);
+        let live = hw(2.8, 12.0);
+        let by_rule = Planner::create_plan("m", &g, &live, &s);
+        assert_eq!(by_rule.selected_tier, PlacementTier::Hybrid, "{}", by_rule.explanation);
+        let split = by_rule.candidates.iter().find(|c| c.name == "GPU + RAM split").unwrap().clone();
+        let cpu = by_rule.candidates.iter().find(|c| c.name == "CPU only").unwrap().clone();
+        let (ctx, kv) = (by_rule.context_window, by_rule.kv_cache_type);
+
+        // Only the other placement measured: the rule-order pick is not known to be slower
+        record(&g, &s, ctx, kv, &Signature::of(&cpu), 9.0);
+        assert_eq!(Planner::create_plan("m", &g, &live, &s).selected_tier, PlacementTier::Hybrid);
+
+        // Both measured, one block away from today's split (free VRAM moved a little): CPU only is
+        // faster, so it is loaded
+        let near = Signature { n_gpu_layers: split.n_gpu_layers + 1, ..Signature::of(&split) };
+        record(&g, &s, ctx, kv, &near, 6.0);
+        let measured = Planner::create_plan("m", &g, &live, &s);
+        assert_eq!(measured.selected_tier, PlacementTier::CpuOnly, "{}", measured.explanation);
+        assert!(measured.explanation.contains("measured faster"), "{}", measured.explanation);
+        assert!(measured.format_telemetry_banner(&g, &live, &s).contains("9.0 tokens/s"));
+
+        // Within the 5% run-to-run spread: the rule order stays
+        record(&g, &s, ctx, kv, &near, 8.8);
+        assert_eq!(Planner::create_plan("m", &g, &live, &s).selected_tier, PlacementTier::Hybrid);
+
+        // Faster at generation but much slower at reading prompts: not worth it
+        record(&g, &s, ctx, kv, &near, 6.0);
+        crate::speed::record(Test::Prompt, &g, &s, ctx, kv, &near, 180.0);
+        crate::speed::record(Test::Prompt, &g, &s, ctx, kv, &Signature::of(&cpu), 48.0);
+        assert_eq!(Planner::create_plan("m", &g, &live, &s).selected_tier, PlacementTier::Hybrid);
+        crate::speed::record(Test::Prompt, &g, &s, ctx, kv, &Signature::of(&cpu), 175.0);
+        assert_eq!(Planner::create_plan("m", &g, &live, &s).selected_tier, PlacementTier::CpuOnly);
+
+        // The user's placement is never replaced
+        record(&g, &s, ctx, kv, &near, 1.0);
+        let mut manual = s.clone();
+        manual.optimization.n_gpu_layers = Some(split.n_gpu_layers);
+        manual.optimization.set_context_setting(ContextSetting::Custom(ctx));
+        manual.optimization.kv_cache_quantization = kv;
+        assert_eq!(Planner::create_plan("m", &g, &live, &manual).n_gpu_layers, split.n_gpu_layers);
+
+        // A different context is a different measurement
+        let other = settings(ContextSetting::Custom(ctx * 2), KvCacheQuantization::Auto);
+        let plan = Planner::create_plan("m", &g, &live, &other);
+        assert!(plan.candidates.iter().all(|c| c.measured_tokens_per_s.is_none()));
     }
 
     #[test]

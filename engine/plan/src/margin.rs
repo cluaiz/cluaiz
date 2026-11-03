@@ -100,6 +100,13 @@ pub fn record_key(key: &str, gap_gb: f64) -> bool {
     }
 }
 
+/// Keeps a measurement by key, replacing an earlier one (a speed is the latest run, not a peak)
+pub fn set_key(key: &str, value: f64) {
+    if let Ok(mut guard) = LEARNED.write() {
+        guard.get_or_insert_with(HashMap::new).insert(key.to_string(), value);
+    }
+}
+
 /// Every measurement, to save
 pub fn snapshot() -> HashMap<String, f64> {
     LEARNED.read().ok().and_then(|g| g.clone()).unwrap_or_default()
@@ -107,7 +114,7 @@ pub fn snapshot() -> HashMap<String, f64> {
 
 /// Measurements read back from disk (replaces what is held); entries of an older format are dropped
 pub fn restore(mut measured: HashMap<String, f64>) {
-    measured.retain(|key, _| ["pool:", CORRECTION, "onnx:", "speech:"].iter().any(|prefix| key.starts_with(prefix)));
+    measured.retain(|key, _| ["pool:", CORRECTION, "onnx:", "speech:", crate::speed::PREFIX].iter().any(|prefix| key.starts_with(prefix)));
     if let Ok(mut guard) = LEARNED.write() {
         *guard = Some(measured);
     }
