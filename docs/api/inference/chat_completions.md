@@ -564,7 +564,7 @@ The question about a fact never given (a passport number) was answered with an i
 
 ## 📝 Notes
 
-Pinned durable notes go into the system prompt of new chats; other notes that fit the message travel with it; and the model can propose notes with `remember` (offered with the memory functions above when `notes` is not `off`; the model decides when the user asked to remember something). A plain message with no tools in the prompt gets none of these functions: a small model given only memory functions answered "I can only recall messages" to "tell me a story". See [`notes.*`](../cep/ai-inference/notes/notes.list.md).
+Pinned durable notes go into the system prompt of new chats; other notes that fit the message travel with it; and the model can propose notes with `remember` (offered with the memory functions above when `notes` is not `off`; the model decides when the user asked to remember something). Nothing is replaced by guessing. A new note is saved at once (a note the user asked for is never lost); when it may repeat notes that are there, the result shows them (`[n:4 · 2026-11-03] …`), and the model removes the one the new note corrects with `forget` (`{"id": "n:4"}`, offered when `notes_change` is not `off`), or does nothing when they are about other things. A model that already knows the note it corrects passes it as `replaces` (`{"text": "…", "replaces": "n:4"}`): the new note takes its place. Notes reach the model with their date, and the model is told that the newer of two notes that disagree holds. Whether such a change happens at once or waits for the user is the policy `notes_change`; a replaced or forgotten note leaves the notes file, or stays out of sight for `notes_history_days`. Pinned notes in the system prompt carry their ids, so the model can name them. A plain message with no tools in the prompt gets none of these functions: a small model given only memory functions answered "I can only recall messages" to "tell me a story". See [`notes.*`](../cep/ai-inference/notes/notes.list.md).
 
 ---
 
@@ -593,8 +593,10 @@ folders and of `~/.agents/`.
 - **Memory.** A note the model proposes with `remember` for the workspace (`scope: workspace`)
   becomes a fact of the project's `.agents/memory/` when the user confirms it
   ([`notes.confirm`](../cep/ai-inference/notes/notes.confirm.md)); with `notes: "auto"` it still
-  waits for the user, since it is written into the user's project. Chat and global notes stay in
-  the Cluaiz home. A workspace that nobody picked (the Cluaiz home itself) is not a project.
+  waits for the user, since it is written into the user's project. In a project chat the model is
+  also shown the project's facts that a new note may repeat (`[fact:deploy-port] …`); with
+  `replaces: "fact:deploy-port"` (or `forget` with that id) it proposes to rewrite (or delete) that
+  fact's file, which happens when the user confirms. Chat and global notes stay in the Cluaiz home. A workspace that nobody picked (the Cluaiz home itself) is not a project.
 - **Off.** `context_policy: {"project_files": "off"}` for one request, or the setting
   `context.project_files`. A strict private chat (`temporary_chat: "strict"`) gets none of them.
 

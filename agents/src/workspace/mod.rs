@@ -23,7 +23,7 @@ pub mod memory;
 mod prompt;
 
 pub use instructions::{Instruction, BUDGET};
-pub use memory::REMEMBER;
+pub use memory::{FORGET, REMEMBER};
 pub use prompt::{budget_for, Part, Placement, WorkspacePrompt, READ_ITEM};
 
 use std::path::{Path, PathBuf};

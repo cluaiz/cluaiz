@@ -79,17 +79,30 @@ pub fn project_for(scope: &str, owner: Option<&str>) -> Option<std::path::PathBu
 }
 
 /// A confirmed workspace note becomes a fact of its project's `.agents/memory/` (the file is the
-/// fact from then on; the note is kept with status moved). The fact's name is its first words.
+/// fact from then on; the note leaves, kept as moved for `notes_history_days` only). The fact's
+/// name is its first words. A note that names a fact (`replaces: fact:<name>`) rewrites that
+/// fact's file instead, or, with `forget`, deletes it.
 pub fn move_note(note: &cluaiz_agents::memory::notes::Note, dir: &std::path::Path) -> Result<(cluaiz_agents::workspace::memory::Saved, cluaiz_agents::memory::notes::Note), String> {
+    use cluaiz_agents::workspace::memory;
     let workspace = scan(dir);
-    let name: String = note.text.split_whitespace().take(6).collect::<Vec<_>>().join(" ");
-    let source = match (note.by.as_str(), note.sources.first()) {
-        ("user", _) | (_, None) => format!("Cluaiz App, note {} by the {}", note.id, note.by),
-        (_, Some(from)) => format!("Cluaiz App, note {} from {from}", note.id),
+    let fact = note.replaces.as_deref().and_then(|r| r.strip_prefix(cluaiz_agents::memory::notes::FACT_PREFIX));
+    let saved = match fact {
+        Some(name) if note.forget => {
+            let path = memory::forget(&workspace, name)?;
+            memory::Saved { name: name.to_string(), path, replaced: vec![name.to_string()] }
+        }
+        _ => {
+            let name: String = note.text.split_whitespace().take(6).collect::<Vec<_>>().join(" ");
+            let source = match (note.by.as_str(), note.sources.first()) {
+                ("user", _) | (_, None) => format!("Cluaiz App, note {} by the {}", note.id, note.by),
+                (_, Some(from)) => format!("Cluaiz App, note {} from {from}", note.id),
+            };
+            memory::save(&workspace, &name, &note.text, &source, fact)?
+        }
     };
-    let saved = cluaiz_agents::workspace::memory::save(&workspace, &name, &note.text, &source)?;
     let path = crate::cep::roots::display(&saved.path);
-    let moved = cluaiz_agents::memory::notes::NoteStore::shared().mark_moved(&note.id, &path).map_err(|e| e.to_string())?.ok_or("the note is gone")?;
+    let history = cluaiz_agents::memory::notes::history_days();
+    let moved = cluaiz_agents::memory::notes::NoteStore::shared().mark_moved(&note.id, &path, history).map_err(|e| e.to_string())?.ok_or("the note is gone")?;
     Ok((saved, moved))
 }
 

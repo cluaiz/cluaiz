@@ -12,11 +12,12 @@
 | [`fs.read`](./fs/fs.read.md) | read | sync | Reads a UTF-8 file, or returns base64 for binary data |
 | [`fs.rename`](./fs/fs.rename.md) | write | sync | Moves a file or directory between authorized paths; a link is moved itself |
 | [`fs.write`](./fs/fs.write.md) | write | sync | Writes exactly one of text or data_base64 to a file |
+| [`workspace.forget`](./workspace/workspace.forget.md) | write | sync | Deletes a fact of the project's memory (`.agents/memory/<name>.md`) the user wants gone |
 | [`workspace.get`](./workspace/workspace.get.md) | read | sync | Returns the current workspace directory |
 | [`workspace.index`](./workspace/workspace.index.md) | read | sync | A project's agent files: AGENTS.md instructions, rules with their trigger, workflows, skills and memory facts, with name and description |
 | [`workspace.item`](./workspace/workspace.item.md) | read | sync | The text of one rule, workflow, skill, memory fact or instruction file of a project, without its front matter |
 | [`workspace.memory`](./workspace/workspace.memory.md) | read | sync | A project's memory facts (`.agents/memory/`), live and replaced, with their text |
-| [`workspace.remember`](./workspace/workspace.remember.md) | write | sync | Saves a fact the user confirmed in the project's memory (`.agents/memory/<name>.md`); a live fact on the same subject or of the same name is marked superseded |
+| [`workspace.remember`](./workspace/workspace.remember.md) | write | sync | Saves a fact the user confirmed in the project's memory (`.agents/memory/<name>.md`). With `replaces`, that fact's file gets the new text; without, nothing is replaced and `similar` lists facts that may be about the same thing |
 | [`workspace.set`](./workspace/workspace.set.md) | write | sync | Changes the workspace to an existing directory |
 
 All categories: [CEP reference](../README.md). Folder: `docs/api/cep/filesystem/`.

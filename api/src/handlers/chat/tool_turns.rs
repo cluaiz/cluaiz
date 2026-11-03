@@ -253,7 +253,7 @@ pub async fn run_meta_tool(
     }
     if super::recall::is_memory_tool(name) {
         let text = match &ctx.ledger_turn {
-            Some((chat, _)) => super::recall::run_memory_tool(chat, name, &args),
+            Some((chat, _)) => super::recall::run_memory_tool(chat, name, &args, &ctx.policy),
             None => cluaiz_core::prompts::text("chat.no_memory"),
         };
         tracing::info!("🔁 [Memory] {}({}) -> {} chars", name, payload, text.len());

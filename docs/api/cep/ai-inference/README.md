@@ -31,9 +31,9 @@ How it works: [`memory.*` overview](./memory/README.md), [`context.*` overview](
 | [`memory.item`](./memory/memory.item.md) | read | sync | The exact message behind a reference (m:<position>) |
 | [`memory.revoke_grants`](./memory/memory.revoke_grants.md) | write | sync | Asks again for this chat's tools (or one tool) |
 | [`memory.search`](./memory/memory.search.md) | read | sync | Messages of a chat that fit a query, or text from the other chats |
-| [`notes.confirm`](./notes/notes.confirm.md) | write | sync | A proposed note becomes confirmed (and supersedes a live note on the same subject); a workspace note of a project becomes a fact of its `.agents/memory/` |
-| [`notes.create`](./notes/notes.create.md) | write | sync | A note written by the user, confirmed at once; it supersedes a live note on the same subject |
-| [`notes.invalidate`](./notes/notes.invalidate.md) | write | sync | The note no longer holds (it is kept, with the time) |
+| [`notes.confirm`](./notes/notes.confirm.md) | write | sync | A proposed note becomes confirmed. A proposed change does its work: it replaces the note it names, or forgets it; in a project, it rewrites or deletes the fact it names. A workspace note of a project becomes a fact of its `.agents/memory/` |
+| [`notes.create`](./notes/notes.create.md) | write | sync | A note written by the user, confirmed at once. It replaces only the note named in `replaces`; `similar` lists notes that may be about the same thing |
+| [`notes.invalidate`](./notes/notes.invalidate.md) | write | sync | Forgets a note: it leaves the notes (kept out of sight for `notes_history_days`, when set). A proposal is turned down |
 | [`notes.list`](./notes/notes.list.md) | read | sync | Notes, newest last |
 | [`notes.move`](./notes/notes.move.md) | write | sync | A confirmed workspace note, saved before notes of a project became its `.agents/memory/` facts, becomes one now |
 | [`notes.pin`](./notes/notes.pin.md) | write | sync | Pins or unpins a note; pinned notes go into the system prompt of new chats |

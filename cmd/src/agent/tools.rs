@@ -154,6 +154,7 @@ impl Tools {
             all.push(schema);
         }
         all.push(cluaiz_agents::workspace::memory::schema());
+        all.push(cluaiz_agents::workspace::memory::forget_schema());
         all.extend(self.installed_schemas.iter().cloned());
         Value::Array(all)
     }
@@ -337,7 +338,10 @@ impl Tools {
                 },
                 None => Err("give the name, as listed".into()),
             },
-            cluaiz_agents::workspace::REMEMBER => self.remember(&text("name").unwrap_or_default(), &text("fact").unwrap_or_default()),
+            cluaiz_agents::workspace::REMEMBER => {
+                self.remember(&text("name").unwrap_or_default(), &text("fact").unwrap_or_default(), &text("replaces").unwrap_or_default())
+            }
+            cluaiz_agents::workspace::FORGET => self.forget(&text("name").unwrap_or_default()),
             other => self.run_installed(other, arguments).await,
         };
         // A file a glob rule is for: the rule comes with the result, once in a conversation
@@ -741,23 +745,51 @@ impl Tools {
 
     /// `remember`: the user sees the fact and where it goes, and confirms it before it is written.
     /// It always asks (also with --yes and in Full Access): memory outlives the session, so a fact
-    /// from a file or web page the model read must not become memory unseen.
-    fn remember(&mut self, name: &str, fact: &str) -> Result<(String, String), String> {
+    /// from a file or web page the model read must not become memory unseen. Nothing is replaced
+    /// by guessing: when the fact may repeat facts that are there, the model is shown them and
+    /// calls again with `replaces` (the fact it corrects, whose file gets the new text, or "none").
+    fn remember(&mut self, name: &str, fact: &str, replaces: &str) -> Result<(String, String), String> {
         use cluaiz_agents::workspace::memory;
         let (name, fact) = memory::prepare(name, fact)?;
-        let replaces: Vec<String> = memory::replaces(&self.workspace, &name, &fact).iter().map(|item| item.name.clone()).collect();
-        let mut why = format!("{}\n{fact}", cluaiz_api::cep::roots::display(&memory::path_for(&self.workspace, &name)));
-        if !replaces.is_empty() {
-            why.push_str(&format!("\nreplaces: {}", replaces.join(", ")));
+        let replaces = replaces.trim();
+        if replaces.is_empty() {
+            let similar = memory::similar(&self.workspace, &name, &fact, memory::SIMILAR_SHOWN);
+            if !similar.is_empty() {
+                let names: Vec<String> = similar.iter().map(|item| item.name.clone()).collect();
+                return Ok((format!("may repeat {}", names.join(", ")), memory::similar_text(&similar)));
+            }
+        }
+        let target = Some(replaces).filter(|r| !r.is_empty() && !r.eq_ignore_ascii_case("none"));
+        let path = match target {
+            Some(old) => memory::live(&self.workspace, old).map(|item| item.path.clone()).ok_or_else(|| format!("there is no fact named {old} to replace"))?,
+            None => memory::path_for(&self.workspace, &name),
+        };
+        let mut why = format!("{}\n{fact}", cluaiz_api::cep::roots::display(&path));
+        if let Some(old) = target {
+            why.push_str(&format!("\nreplaces: {old}"));
         }
         self.check_running()?;
         self.ask(cluaiz_agents::workspace::REMEMBER, &why)?;
-        let saved = memory::save(&self.workspace, &name, &fact, &self.memory_source)?;
+        let saved = memory::save(&self.workspace, &name, &fact, &self.memory_source, target)?;
         // read_item finds it now; the system prompt lists it from the next session on
         self.rescan_workspace();
         let shown = cluaiz_api::cep::roots::display(&saved.path);
         let replaced = if saved.replaced.is_empty() { String::new() } else { format!("; it replaces {}", saved.replaced.join(", ")) };
         Ok((format!("saved {}{replaced}", saved.name), format!("Saved in the project's memory as {shown}{replaced}.")))
+    }
+
+    /// `forget`: the user sees the fact and confirms before its file is deleted (always asked, as
+    /// `remember`)
+    fn forget(&mut self, name: &str) -> Result<(String, String), String> {
+        use cluaiz_agents::workspace::memory;
+        let item = memory::live(&self.workspace, name).ok_or_else(|| format!("there is no fact named {name}"))?;
+        let why = format!("delete {}\n{}", cluaiz_api::cep::roots::display(&item.path), item.body().unwrap_or_default().trim());
+        let name = item.name.clone();
+        self.check_running()?;
+        self.ask(cluaiz_agents::workspace::FORGET, &why)?;
+        let path = memory::forget(&self.workspace, &name)?;
+        self.rescan_workspace();
+        Ok((format!("forgot {name}"), format!("Deleted {} from the project's memory.", cluaiz_api::cep::roots::display(&path))))
     }
 
     /// The text of the glob rules for a file not sent yet in this conversation, for its result
@@ -813,7 +845,8 @@ impl Tools {
             Mode::AcceptEdits if edit && !self.strict => return Ok(()),
             _ => {}
         }
-        let remember = tool == cluaiz_agents::workspace::REMEMBER;
+        // Memory outlives the session: saving or deleting a fact is always seen
+        let remember = tool == cluaiz_agents::workspace::REMEMBER || tool == cluaiz_agents::workspace::FORGET;
         if (self.allow_all && !remember) || self.always.contains(tool) {
             return Ok(());
         }
@@ -903,7 +936,7 @@ fn describe_call(name: &str, args: &Value) -> String {
             (offset, limit) => format!("{} · lines from {}, at most {}", text("path"), offset.unwrap_or(1), limit.unwrap_or(READ_LINES as u64)),
         },
         "list_dir" => if text("path").is_empty() { ".".into() } else { text("path").to_owned() },
-        "read_item" | "use_skill" | "remember" => text("name").to_owned(),
+        "read_item" | "use_skill" | "remember" | "forget" => text("name").to_owned(),
         "write_file" => format!("{} · {} lines", text("path"), text("content").lines().count()),
         "edit_file" => {
             let all = args.get("replace_all").and_then(Value::as_bool).unwrap_or(false);
