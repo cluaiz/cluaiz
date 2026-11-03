@@ -23,6 +23,8 @@ pub struct State {
     thinking: bool,
     /// The running tool showed a change (write / edit): its row stays open when it ends
     diff: bool,
+    /// The last lines a running command wrote, shown under its row while it runs
+    tool_output: std::collections::VecDeque<String>,
     /// The context after the last answer (tokens, size): the live footer adds the tokens being generated
     context: Option<(usize, usize)>,
 }
@@ -165,6 +167,19 @@ mod tests {
     }
 
     #[test]
+    fn running_command_shows_its_last_lines_live() {
+        let mut state = state();
+        state.apply(Event::ToolStart("run_command".into(), "cargo build".into()));
+        for n in 0..12 {
+            state.apply(Event::ToolOutput(format!("line {n}")));
+        }
+        let shown = text(&mut state);
+        assert!(shown.contains("line 11") && shown.contains("line 4"), "{shown}");
+        assert!(!shown.contains("line 3
+"), "{shown}");
+    }
+
+    #[test]
     fn test_deltas_update_one_answer_and_failed_tool_has_no_success_label() {
         let mut state = state();
         state.apply(Event::StartAnswer);
@@ -248,6 +263,7 @@ impl State {
             tool_preparing: false,
             thinking: false,
             diff: false,
+            tool_output: Default::default(),
             context: None,
         }
     }
@@ -444,6 +460,7 @@ impl State {
                 }
                 self.tool_preparing = false;
                 self.diff = false;
+                self.tool_output.clear();
                 self.tool_name = name;
                 self.tool = target;
                 Self::entry(
@@ -454,6 +471,22 @@ impl State {
                     &format!("{}\nPreparing", self.tool),
                 );
                 self.active(&self.tool_id.clone());
+            }
+            Event::ToolOutput(line) => {
+                // The last few lines, live; the whole output comes with the result
+                const LIVE_LINES: usize = 8;
+                if self.tool_output.len() == LIVE_LINES {
+                    self.tool_output.pop_front();
+                }
+                self.tool_output.push_back(line);
+                let live: Vec<&str> = self.tool_output.iter().map(String::as_str).collect();
+                Self::entry(
+                    &mut self.app,
+                    &self.tool_id,
+                    Role::ToolRunning,
+                    &self.tool_name,
+                    &format!("{}\n{}", self.tool, live.join("\n")),
+                );
             }
             Event::Diff(diff) => {
                 self.diff = true;

@@ -626,19 +626,20 @@ impl Tools {
                     SecurityMode::AlwaysAllow
                 }
             };
-        self.execute(command, mode, timeout).await
+        self.execute(command, mode, timeout, true).await
     }
 
     /// `!<command>` typed by the user: runs without asking (they typed it) and returns the exit and
     /// output, which the conversation keeps so the model knows what happened
     pub async fn run_user_command(&mut self, command: &str) -> (bool, String) {
-        match self.execute(command, SecurityMode::AlwaysAllow, 600).await {
+        match self.execute(command, SecurityMode::AlwaysAllow, 600, false).await {
             Ok((_, out)) => (true, out),
             Err(out) => (false, out),
         }
     }
 
-    async fn execute(&mut self, command: &str, mode: SecurityMode, timeout: usize) -> Result<(String, String), String> {
+    /// `live`: show the output under the tool's row while it runs (run_command)
+    async fn execute(&mut self, command: &str, mode: SecurityMode, timeout: usize, live: bool) -> Result<(String, String), String> {
         // Ctrl+C stops the command (the handler sets the cancel signal while this runs)
         let (cancel, cancel_rx) = CancelHandle::new();
         self.check_running()?;
@@ -656,7 +657,14 @@ impl Tools {
                 }
             }
         });
-        let result = SandboxTerminalRunner::execute_advanced(
+        let (line_tx, mut line_rx) = tokio::sync::mpsc::unbounded_channel::<String>();
+        let shown = self.display.clone();
+        let forward = tokio::spawn(async move {
+            while let Some(line) = line_rx.recv().await {
+                shown.emit(Event::ToolOutput(line));
+            }
+        });
+        let result = SandboxTerminalRunner::execute_streaming(
             command,
             &self.root,
             mode,
@@ -664,9 +672,11 @@ impl Tools {
             None,
             Some(timeout as u64),
             Some(cancel_rx),
+            live.then_some(line_tx),
         )
         .await;
         watcher.abort();
+        let _ = forward.await;
         crate::chat::GENERATING.store(false, Ordering::SeqCst);
         cluaiz_core::GLOBAL_CANCEL_SIGNAL.store(false, Ordering::SeqCst);
         let run = result.map_err(|e| e.to_string())?;

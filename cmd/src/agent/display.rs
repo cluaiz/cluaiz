@@ -35,6 +35,8 @@ pub enum Event {
     User(String),
     Error(String),
     ToolStart(String, String),
+    /// A line a running command wrote (run_command), shown while it runs
+    ToolOutput(String),
     Diff(String),
     ToolEnd {
         ok: bool,
@@ -152,6 +154,7 @@ impl Display {
                 Event::ToolStart(name, target) => json!({"type": "tool_call", "name": name, "target": target}),
                 Event::ToolEnd { ok, summary, .. } => json!({"type": "tool_result", "ok": ok, "summary": summary}),
                 Event::Diff(text) => json!({"type": "diff", "text": text}),
+                Event::ToolOutput(text) => json!({"type": "tool_output", "text": text}),
                 Event::Message(label, text) => json!({"type": "notice", "label": label, "text": text}),
                 Event::Error(text) => json!({"type": "error", "text": text}),
                 Event::Usage(text) => json!({"type": "usage", "text": text}),
@@ -170,6 +173,7 @@ impl Display {
                 eprintln!("{} {} {}", "●".cyan(), name.bold(), target)
             }
             Event::Diff(text) => eprintln!("{text}"),
+            Event::ToolOutput(text) => eprintln!("  {} {}", "│".dimmed(), text.dimmed()),
             Event::Shell { command, output, .. } => eprintln!("! {command}
 {output}"),
             Event::Themes => {
