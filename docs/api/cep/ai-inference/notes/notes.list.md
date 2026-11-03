@@ -17,6 +17,11 @@ params:
     req: false
     desc: "Only notes that apply to this chat (with the current workspace)"
     example: null
+  - name: "kind"
+    type: "string | null"
+    req: false
+    desc: "Only notes of this kind: preference, fact, person, instruction or other"
+    example: null
   - name: "scope"
     type: "string | null"
     req: false
@@ -27,6 +32,11 @@ params:
     req: false
     desc: "proposed, confirmed, superseded, invalidated or moved (now a project memory fact)"
     example: "confirmed"
+  - name: "user"
+    type: "string | null"
+    req: false
+    desc: "Only the notes of this user of an app (the chat request's `user`); without it, every note"
+    example: null
 request_payload: |
   {
     "id": 1,

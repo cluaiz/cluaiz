@@ -35,6 +35,109 @@ impl Category {
 
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+struct RoomCandidate {
+    /// The model's id (an installed one, or one of a catalog)
+    id: String,
+    /// Its weight file's size in bytes
+    bytes: u64,
+}
+
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct RoomParams {
+    /// Embedding models to place, in the caller's order of preference; without it, the installed
+    /// embedding models
+    #[serde(default)]
+    candidates: Option<Vec<RoomCandidate>>,
+    /// The installed chat model the embedding model has to run beside; without it, the chat model
+    /// loaded now (if any)
+    #[serde(default)]
+    chat_model: Option<String>,
+}
+
+/// Memory an embedding model of `bytes` takes besides its file: llama.cpp's context and compute
+/// buffers for a short batch (notes are a sentence or two)
+const EMBEDDING_BUFFERS_GB: f64 = 0.15;
+
+/// Where each candidate embedding model would run beside the chat model, and the one to recommend
+async fn embedding_room(ctx: &CallCtx, params: RoomParams) -> Result<Value, CepError> {
+    let settings = cluaiz_core::Settings::current();
+    let hw = cluaiz_hw::HardwareProber::with_live_memory();
+    let registry = InstalledStateRegistry::load();
+    let loaded = ctx.state.host.active_model_path.lock().await.clone();
+    let loaded_path = loaded.as_deref().and_then(|p| Path::new(p).canonicalize().ok());
+    let chat = match params.chat_model.as_deref().map(str::trim).filter(|m| !m.is_empty()) {
+        Some(id) => Some(registry.installed_models.get(id).cloned().ok_or_else(|| CepError::not_found("model_not_found", format!("No installed model {id}")))?),
+        None => registry.installed_models.values().find(|e| e.primary_path().and_then(|p| p.canonicalize().ok()).is_some_and(|p| Some(p) == loaded_path)).cloned(),
+    };
+    // A chat model that is not loaded yet still needs its room: its plan on today's free memory
+    let mut chat_report = Value::Null;
+    // Taken by the chat model when it loads (nothing when it is loaded: free memory shows it), and
+    // the VRAM its plan keeps free
+    let (mut chat_vram, mut chat_ram, mut kept_free) = (0.0, 0.0, 0.0);
+    if let Some(entry) = &chat {
+        let path = entry.primary_path();
+        let is_loaded = path.as_ref().and_then(|p| p.canonicalize().ok()).is_some_and(|p| Some(p) == loaded_path);
+        let plan = if is_loaded {
+            ctx.state.host.current_plan.lock().await.clone()
+        } else {
+            path.filter(|_| entry.format_type.eq_ignore_ascii_case("gguf"))
+                .and_then(|p| cluaiz_models::GgufProber::probe_geometry(&p).ok())
+                .map(|geometry| cluaiz_plan::Planner::create_plan(&entry.id, &geometry, &hw, &settings))
+        };
+        if let (Some(plan), false) = (&plan, is_loaded) {
+            (chat_vram, chat_ram, kept_free) = (plan.vram_budget_gb, plan.ram_budget_gb, plan.vram_buffer_gb.max(0.0));
+        }
+        chat_report = json!({ "id": entry.id, "loaded": is_loaded, "placement": plan.as_ref().map(|p| p.placement_label()),
+                              "vram_gb": plan.as_ref().map(|p| p.vram_budget_gb), "ram_gb": plan.as_ref().map(|p| p.ram_budget_gb) });
+    }
+    let gpu_free = hw.gpus.first().map_or(0.0, |g| g.vram_available_gb);
+    let gpu_left = (gpu_free - chat_vram - kept_free.max(cluaiz_plan::margin::reserve_gb(&hw))).max(0.0);
+    let ram_left = (cluaiz_core::bytes_to_gib(cluaiz_plan::ram_budget_bytes(&hw, &settings)) - chat_ram).max(0.0);
+    let candidates: Vec<(String, u64, bool)> = match params.candidates {
+        Some(list) => list.into_iter().map(|c| {
+            let installed = registry.installed_models.contains_key(&c.id);
+            (c.id, c.bytes, installed)
+        }).collect(),
+        None => {
+            let mut found: Vec<(String, u64, bool)> = registry
+                .installed_models
+                .values()
+                .filter(|e| crate::handlers::embeddings::is_embedding_model(e))
+                .filter_map(|e| Some((e.id.clone(), std::fs::metadata(e.primary_path()?).ok()?.len(), true)))
+                .collect();
+            found.sort();
+            found
+        }
+    };
+    let mut recommended: Option<usize> = None;
+    let mut rows = Vec::new();
+    for (i, (id, bytes, installed)) in candidates.iter().enumerate() {
+        let need = cluaiz_core::bytes_to_gib(*bytes) + EMBEDDING_BUFFERS_GB;
+        let runs_on = if !hw.gpus.is_empty() && need <= gpu_left { "gpu" } else if need <= ram_left { "cpu" } else { "none" };
+        rows.push(json!({ "id": id, "bytes": bytes, "installed": installed, "needs_gb": (need * 100.0).round() / 100.0, "runs_on": runs_on }));
+        let better = match (recommended.map(|r| rows[r]["runs_on"].as_str() == Some("gpu")), runs_on) {
+            (None, "gpu" | "cpu") => true,
+            (Some(false), "gpu") => true,
+            _ => false,
+        };
+        if better {
+            recommended = Some(i);
+        }
+    }
+    if let Some(i) = recommended {
+        rows[i]["recommended"] = json!(true);
+    }
+    Ok(json!({
+        "chat_model": chat_report,
+        "gpu_left_gb": (gpu_left * 100.0).round() / 100.0,
+        "ram_left_gb": (ram_left * 100.0).round() / 100.0,
+        "candidates": rows,
+    }))
+}
+
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct ListParams {
     /// Only models of this category; all when absent
     category: Option<Category>,
@@ -81,6 +184,22 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             "metadata": {"architecture": "onnx-generic", "backend_type": "onnx"}
         }])),
         |_: CallCtx, _: Call, params: ListParams| async move { worker(move || list(params)).await },
+    );
+    registry.add(
+        "models.embedding_room",
+        Meta::new(
+            Scope::Read,
+            "Where each embedding model would run beside the chat model (GPU, CPU or no room) on today's free memory, and the one to recommend",
+        )
+        .error(-32004, "model_not_found", "`chat_model` is not an installed model")
+        .example(
+            json!({"candidates":[{"id":"embeddinggemma-300m-gguf-Q8_0","bytes":333590944},{"id":"qwen3-embedding-0.6b-gguf-Q8_0","bytes":639150592}]}),
+            json!({"chat_model":{"id":"qwen3.8-4b-distill-gguf-Q4_K_M","loaded":true,"placement":"GPU + RAM split","vram_gb":2.44,"ram_gb":1.6},
+                   "gpu_left_gb":0.12,"ram_left_gb":9.8,
+                   "candidates":[{"id":"embeddinggemma-300m-gguf-Q8_0","bytes":333590944,"installed":true,"needs_gb":0.46,"runs_on":"cpu","recommended":true},
+                                 {"id":"qwen3-embedding-0.6b-gguf-Q8_0","bytes":639150592,"installed":false,"needs_gb":0.75,"runs_on":"cpu"}]}),
+        ),
+        |ctx: CallCtx, _: Call, params: RoomParams| async move { embedding_room(&ctx, params).await },
     );
     registry.add(
         "models.inspect",

@@ -146,6 +146,26 @@
         },
         "type": "object"
       },
+      "RoomCandidate": {
+        "additionalProperties": false,
+        "properties": {
+          "bytes": {
+            "description": "Its weight file's size in bytes",
+            "format": "uint64",
+            "minimum": 0,
+            "type": "integer"
+          },
+          "id": {
+            "description": "The model's id (an installed one, or one of a catalog)",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "bytes"
+        ],
+        "type": "object"
+      },
       "Section": {
         "oneOf": [
           {
@@ -3240,6 +3260,113 @@
           "data": {
             "type": "model_not_found"
           },
+          "message": "`chat_model` is not an installed model"
+        }
+      ],
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "candidates",
+              "value": [
+                {
+                  "bytes": 333590944,
+                  "id": "embeddinggemma-300m-gguf-Q8_0"
+                },
+                {
+                  "bytes": 639150592,
+                  "id": "qwen3-embedding-0.6b-gguf-Q8_0"
+                }
+              ]
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "candidates": [
+                {
+                  "bytes": 333590944,
+                  "id": "embeddinggemma-300m-gguf-Q8_0",
+                  "installed": true,
+                  "needs_gb": 0.46,
+                  "recommended": true,
+                  "runs_on": "cpu"
+                },
+                {
+                  "bytes": 639150592,
+                  "id": "qwen3-embedding-0.6b-gguf-Q8_0",
+                  "installed": false,
+                  "needs_gb": 0.75,
+                  "runs_on": "cpu"
+                }
+              ],
+              "chat_model": {
+                "id": "qwen3.8-4b-distill-gguf-Q4_K_M",
+                "loaded": true,
+                "placement": "GPU + RAM split",
+                "ram_gb": 1.6,
+                "vram_gb": 2.44
+              },
+              "gpu_left_gb": 0.12,
+              "ram_left_gb": 9.8
+            }
+          }
+        }
+      ],
+      "name": "models.embedding_room",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "candidates",
+          "required": false,
+          "schema": {
+            "description": "Embedding models to place, in the caller's order of preference; without it, the installed\nembedding models",
+            "items": {
+              "$ref": "#/components/schemas/RoomCandidate"
+            },
+            "type": [
+              "array",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "chat_model",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "The installed chat model the embedding model has to run beside; without it, the chat model\nloaded now (if any)",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Where each embedding model would run beside the chat model (GPU, CPU or no room) on today's free memory, and the one to recommend",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "model_not_found"
+          },
           "message": "No installed model with this id, or its weight file is missing"
         },
         {
@@ -3748,6 +3875,18 @@
           }
         },
         {
+          "name": "kind",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "preference, fact, person, instruction or other",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
           "name": "pinned",
           "required": false,
           "schema": {
@@ -3786,6 +3925,18 @@
           "schema": {
             "description": "1 to 2000 characters",
             "type": "string"
+          }
+        },
+        {
+          "name": "user",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "The user of an app the note belongs to (as the chat request's `user`); without it, the\nEngine's own user",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         }
       ],
@@ -3919,6 +4070,18 @@
           }
         },
         {
+          "name": "kind",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "Only notes of this kind: preference, fact, person, instruction or other",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
           "name": "scope",
           "required": false,
           "schema": {
@@ -3936,6 +4099,18 @@
           "schema": {
             "default": null,
             "description": "proposed, confirmed, superseded, invalidated or moved (now a project memory fact)",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "user",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "Only the notes of this user of an app (the chat request's `user`); without it, every note",
             "type": [
               "string",
               "null"

@@ -52,8 +52,26 @@ pub struct Note {
     /// A proposal to forget the note `replaces` names (`text` is that note's text)
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub forget: bool,
+    /// The person the note belongs to, in an app with several users (the chat request's `user`):
+    /// only requests of that user see it. None: the Engine's own user.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub user: Option<String>,
+    /// What kind of note it is, when the model or app said: preference, fact, person,
+    /// instruction or other (apps filter by it)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
     pub updated_at: String,
 }
+
+/// Who a new note belongs to and what kind it is
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Extra {
+    pub user: Option<String>,
+    pub kind: Option<String>,
+}
+
+/// The kinds of note an app can filter by
+pub const KINDS: [&str; 5] = ["preference", "fact", "person", "instruction", "other"];
 
 impl Note {
     pub fn is_live(&self) -> bool {
@@ -68,6 +86,11 @@ impl Note {
             "chat" => chat.is_some() && self.owner.as_deref() == chat,
             _ => false,
         }
+    }
+
+    /// Whether a request of `user` (None: the Engine's own user) may see and change the note
+    pub fn belongs_to(&self, user: Option<&str>) -> bool {
+        self.user.as_deref() == user
     }
 
     fn is_dead(&self) -> bool {
@@ -125,10 +148,10 @@ pub const SIMILAR_WORDS: f32 = 1.0 / 3.0;
 
 /// The live notes among `notes` that may be about the same thing as `text`, most alike first, with
 /// their word overlap. Only notes of `scope` and `owner` (the ones a new note there could replace).
-pub fn similar<'a>(notes: &'a [Note], text: &str, scope: &str, owner: Option<&str>, limit: usize) -> Vec<(&'a Note, f32)> {
+pub fn similar<'a>(notes: &'a [Note], text: &str, scope: &str, owner: Option<&str>, user: Option<&str>, limit: usize) -> Vec<(&'a Note, f32)> {
     let mut found: Vec<(&Note, f32)> = notes
         .iter()
-        .filter(|n| n.is_live() && n.scope == scope && n.owner.as_deref() == owner)
+        .filter(|n| n.is_live() && n.scope == scope && n.owner.as_deref() == owner && n.belongs_to(user))
         .map(|n| (n, word_overlap(&n.text, text)))
         .filter(|(_, score)| *score >= SIMILAR_WORDS)
         .collect();
@@ -255,6 +278,23 @@ impl NoteStore {
         sources: Vec<String>,
         history_days: u32,
     ) -> anyhow::Result<Note> {
+        self.add_with(text, scope, owner, status, pinned, by, sources, Extra::default(), history_days)
+    }
+
+    /// [`NoteStore::add`] for a user of an app and with a kind
+    #[allow(clippy::too_many_arguments)]
+    pub fn add_with(
+        &self,
+        text: &str,
+        scope: &str,
+        owner: Option<&str>,
+        status: &str,
+        pinned: bool,
+        by: &str,
+        sources: Vec<String>,
+        extra: Extra,
+        history_days: u32,
+    ) -> anyhow::Result<Note> {
         let _guard = self.lock.lock().unwrap_or_else(|e| e.into_inner());
         let mut notes = self.read();
         let time = now();
@@ -273,6 +313,8 @@ impl NoteStore {
             moved_to: None,
             replaces: None,
             forget: false,
+            user: extra.user,
+            kind: extra.kind,
             updated_at: time,
         };
         notes.push(note.clone());
@@ -354,7 +396,7 @@ impl NoteStore {
     /// with `text`, or (`forget`) to delete it. Confirmed, the caller does the file work
     /// ([`crate::workspace::memory`]) and marks the proposal moved.
     #[allow(clippy::too_many_arguments)]
-    pub fn propose_for_fact(&self, text: &str, scope: &str, owner: Option<&str>, target: &str, forget: bool, sources: Vec<String>, history_days: u32) -> anyhow::Result<Note> {
+    pub fn propose_for_fact(&self, text: &str, scope: &str, owner: Option<&str>, target: &str, forget: bool, sources: Vec<String>, extra: Extra, history_days: u32) -> anyhow::Result<Note> {
         let _guard = self.lock.lock().unwrap_or_else(|e| e.into_inner());
         let mut notes = self.read();
         let time = now();
@@ -373,6 +415,8 @@ impl NoteStore {
             moved_to: None,
             replaces: Some(target.to_string()),
             forget,
+            user: extra.user,
+            kind: extra.kind,
             updated_at: time,
         };
         notes.push(note.clone());
@@ -483,7 +527,7 @@ mod tests {
         // Nothing is replaced by guessing: a second note on the subject is just added
         let other = add(&notes, "Deploy server ka port ab 9090 hai", "confirmed");
         assert_eq!(notes.all().len(), 2);
-        assert_eq!(similar(&notes.all(), "deploy server port 7000", "workspace", None, 3).len(), 2);
+        assert_eq!(similar(&notes.all(), "deploy server port 7000", "workspace", None, None, 3).len(), 2);
         // Named: the new text takes the old note's place, the pin carries over, the old one is gone
         let change = notes.replace(&first.id, "Deploy server ka port 7000 hai", "confirmed", "model", vec![], 0).unwrap().unwrap();
         assert_eq!(change.superseded.unwrap().id, first.id);
@@ -499,6 +543,24 @@ mod tests {
         notes.forget(&other.id, "confirmed", "user", 0).unwrap();
         assert!(notes.all().is_empty());
         assert_eq!(add(&notes, "Next", "confirmed").id, "n:4");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn test_notes_of_an_app_user_stay_theirs() {
+        let (notes, dir) = store();
+        let extra = |user: &str| Extra { user: Some(user.into()), kind: Some("preference".into()) };
+        let a = notes.add_with("Likes tea", "global", None, "confirmed", false, "model", vec![], extra("alice"), 0).unwrap();
+        notes.add_with("Likes coffee", "global", None, "confirmed", false, "model", vec![], extra("bob"), 0).unwrap();
+        add(&notes, "Owner likes water", "confirmed");
+        let all = notes.all();
+        assert!(a.belongs_to(Some("alice")) && !a.belongs_to(Some("bob")) && !a.belongs_to(None));
+        assert_eq!(similar(&all, "likes tea", "global", None, Some("bob"), 3).len(), 1);
+        assert_eq!(similar(&all, "likes tea", "global", None, Some("bob"), 3)[0].0.text, "Likes coffee");
+        assert_eq!(a.kind.as_deref(), Some("preference"));
+        // A replacement keeps the user and kind of the note it replaces
+        let change = notes.replace(&a.id, "Likes green tea", "confirmed", "model", vec![], 0).unwrap().unwrap();
+        assert_eq!(change.note.user.as_deref(), Some("alice"));
         let _ = std::fs::remove_dir_all(dir);
     }
 
@@ -589,6 +651,8 @@ mod tests {
             moved_to: None,
             replaces: None,
             forget: false,
+            user: None,
+            kind: None,
             updated_at: String::new(),
         };
         assert!(note("global", None).applies_to(None, None));

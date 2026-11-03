@@ -21,6 +21,12 @@ struct List {
     /// Only notes that apply to this chat (with the current workspace)
     #[serde(default)]
     chat_id: Option<String>,
+    /// Only the notes of this user of an app (the chat request's `user`); without it, every note
+    #[serde(default)]
+    user: Option<String>,
+    /// Only notes of this kind: preference, fact, person, instruction or other
+    #[serde(default)]
+    kind: Option<String>,
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -42,6 +48,13 @@ struct Create {
     /// result lists notes that may be about the same thing.
     #[serde(default)]
     replaces: Option<String>,
+    /// The user of an app the note belongs to (as the chat request's `user`); without it, the
+    /// Engine's own user
+    #[serde(default)]
+    user: Option<String>,
+    /// preference, fact, person, instruction or other
+    #[serde(default)]
+    kind: Option<String>,
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -102,6 +115,8 @@ pub fn register(registry: &mut Registry<CallCtx>) {
                     .filter(|n| p.scope.as_deref().is_none_or(|s| n.scope == s))
                     .filter(|n| p.status.as_deref().is_none_or(|s| n.status == s))
                     .filter(|n| p.chat_id.as_deref().is_none_or(|c| n.applies_to(Some(c), Some(&workspace))))
+                    .filter(|n| p.user.as_deref().is_none_or(|u| n.belongs_to(Some(u))))
+                    .filter(|n| p.kind.as_deref().is_none_or(|k| n.kind.as_deref() == Some(k)))
                     .collect();
                 Ok(json!({ "workspace": workspace, "notes": notes }))
             },
@@ -128,8 +143,16 @@ pub fn register(registry: &mut Registry<CallCtx>) {
                 };
                 let store = NoteStore::shared();
                 let history = notes::history_days();
+                let user = crate::handlers::chat::recall::note_user(p.user.as_deref());
+                if p.kind.as_deref().is_some_and(|k| !notes::KINDS.contains(&k)) {
+                    return Err(CepError::invalid_params("`kind` is preference, fact, person, instruction or other", vec![json!({ "path": "kind", "message": "unknown" })], None));
+                }
+                let extra = notes::Extra { user: user.clone(), kind: p.kind.clone() };
                 let mut value = match p.replaces.as_deref().map(str::trim).filter(|r| !r.is_empty()) {
                     Some(target) => {
+                        if store.all().iter().any(|n| n.id == notes::normalize_id(target) && !n.belongs_to(user.as_deref())) {
+                            return Err(CepError::not_found("note_not_found", format!("No live note {target}")));
+                        }
                         let change = store
                             .replace(target, text, "confirmed", "user", Vec::new(), history)
                             .map_err(store_error)?
@@ -141,10 +164,10 @@ pub fn register(registry: &mut Registry<CallCtx>) {
                         json!({ "note": note, "superseded": change.superseded, "similar": [] })
                     }
                     None => {
-                        let note = store.add(text, scope, owner.as_deref(), "confirmed", p.pinned, "user", Vec::new(), history).map_err(store_error)?;
+                        let note = store.add_with(text, scope, owner.as_deref(), "confirmed", p.pinned, "user", Vec::new(), extra, history).map_err(store_error)?;
                         let all = store.all();
                         let others: Vec<Note> = all.iter().filter(|n| n.id != note.id).cloned().collect();
-                        let similar: Vec<&Note> = notes::similar(&others, text, scope, owner.as_deref(), 3).into_iter().map(|(n, _)| n).collect();
+                        let similar: Vec<&Note> = notes::similar(&others, text, scope, owner.as_deref(), user.as_deref(), 3).into_iter().map(|(n, _)| n).collect();
                         json!({ "note": note, "superseded": null, "similar": similar })
                     }
                 };
