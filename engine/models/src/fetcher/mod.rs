@@ -137,7 +137,10 @@ impl ModelDownloader {
             .unwrap_or(filename);
 
         let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(3600))
+            // No total timeout: a large file on a slow link takes longer than any fixed limit.
+            // A connection that stops sending fails after a minute and the download continues.
+            .connect_timeout(std::time::Duration::from_secs(30))
+            .read_timeout(std::time::Duration::from_secs(60))
             .user_agent("cluaiz/1.0")
             .build()
             .map_err(|e| e.to_string())?;
@@ -231,7 +234,10 @@ impl ModelDownloader {
             .unwrap_or_else(|| manifest.huggingface_filename.clone());
 
         let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(3600))
+            // No total timeout: a large file on a slow link takes longer than any fixed limit.
+            // A connection that stops sending fails after a minute and the download continues.
+            .connect_timeout(std::time::Duration::from_secs(30))
+            .read_timeout(std::time::Duration::from_secs(60))
             .user_agent("cluaiz/1.0")
             .build()
             .map_err(|e| e.to_string())?;
@@ -283,10 +289,14 @@ impl ModelDownloader {
             )
             .await
             {
-                for path in &created {
-                    let _ = std::fs::remove_file(path);
+                // Finished files and the `.part` stay, so running the pull again continues; a
+                // download the user stopped leaves nothing behind
+                if e == downloader::ABORTED {
+                    for path in &created {
+                        let _ = std::fs::remove_file(path);
+                    }
+                    let _ = std::fs::remove_dir(&dir); // only when nothing else is in it
                 }
-                let _ = std::fs::remove_dir(&dir); // only when nothing else is in it
                 return Err(format!("{}: {}", rel_path, e));
             }
             created.push(dest);
