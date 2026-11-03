@@ -23,6 +23,8 @@ graph TD
 |---|---|
 | [`types.rs`](src/types.rs) | Typed data structures for Candidates, Tiers, and ExecutionPlans. |
 | [`planner.rs`](src/planner.rs) | Pure mathematical calculation of memory budgets and candidate selection. |
+| [`margin.rs`](src/margin.rs) | VRAM a model really took on this machine, kept in `config/vram_margins.json`. |
+| [`speed.rs`](src/speed.rs) | STEP 4: speeds measured by `cluaiz bench`; a placement measured faster replaces the rule-order pick. |
 | [`media_budget.rs`](src/media_budget.rs) | Additive media preflight after model load. Reuses safety policies without changing text placement math. |
 
 ## Auto context and KV cache

@@ -90,7 +90,7 @@ cluaiz token remove 7898
 |---------|-------|-------------|
 | `cluaiz status` | | The hardware the planner sees |
 | `cluaiz calibrate` | | Re-scan the hardware (after a hardware or driver change) |
-| `cluaiz bench <model-id>` | `-p`, `-n`, `-r`, `-o md\|json`, load flags (`-c`, `--n-gpu-layers`, `--n-cpu-moe`, `--cache-type-k`…) | Prompt and generation speed (llama-bench: pp512, tg128) |
+| `cluaiz bench <model-id>` | `-p`, `-n`, `-r`, `--placements`, `-o md\|json`, load flags (`-c`, `--n-gpu-layers`, `--n-cpu-moe`, `--cache-type-k`…) | Prompt and generation speed (llama-bench: pp512, tg128); `--placements` tests every placement and the planner then loads the fastest |
 | `cluaiz self update` | `--check`, `--to <version>` | Update to the newest release with that release's installer; models and settings stay |
 | `cluaiz self uninstall` | `--keep-models`, `-y` | Remove Cluaiz: its home, its program folder and its PATH entry |
 

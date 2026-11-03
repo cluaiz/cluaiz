@@ -38,9 +38,23 @@ pub struct ExecutionCandidate {
     pub missing_gb: f64,
     pub feasible: bool,
     pub reason: String,
+    /// Generation speed measured on this placement by `cluaiz bench` (tokens/s), when there is one
+    #[serde(default)]
+    pub measured_tokens_per_s: Option<f64>,
+    /// Prompt processing speed measured on this placement by `cluaiz bench` (tokens/s)
+    #[serde(default)]
+    pub measured_prompt_tokens_per_s: Option<f64>,
 }
 
 impl ExecutionCandidate {
+    /// True when this candidate is the placement `plan` loads
+    pub fn is_placement_of(&self, plan: &ExecutionPlan) -> bool {
+        self.tier == plan.selected_tier
+            && self.n_gpu_layers == plan.n_gpu_layers
+            && self.n_cpu_moe == plan.n_cpu_moe
+            && self.kv_offload == plan.kv_offload
+    }
+
     pub fn infeasible(ctx: u32) -> Self {
         Self {
             name: "No placement".into(),
@@ -57,6 +71,8 @@ impl ExecutionCandidate {
             missing_gb: 0.0,
             feasible: false,
             reason: String::new(),
+            measured_tokens_per_s: None,
+            measured_prompt_tokens_per_s: None,
         }
     }
 }
@@ -210,11 +226,22 @@ impl ExecutionPlan {
             out.push_str(&format!("║   • Disk (mmap)     : {:.2} GB of experts read from disk when used\n", self.disk_stream_gb));
         }
         out.push_str(&format!("║   • Reason          : {}\n", self.explanation));
-        out.push_str(&format!("║   • Speed           : not measured (chosen by rule order)\n"));
+        let selected = self.candidates.iter().find(|c| c.is_placement_of(self));
+        let speed = match selected.and_then(|c| c.measured_tokens_per_s) {
+            Some(tps) => format!("{:.1} tokens/s generation{}, measured by cluaiz bench", tps,
+                selected.and_then(|c| c.measured_prompt_tokens_per_s).map(|pp| format!(", {:.1} tokens/s prompt", pp)).unwrap_or_default()),
+            None => "not measured (chosen by rule order; cluaiz bench --placements measures it)".to_string(),
+        };
+        out.push_str(&format!("║   • Speed           : {}\n", speed));
         out.push_str(&format!("╠{}╣\n║ [CANDIDATES]\n", line));
         for c in &self.candidates {
-            out.push_str(&format!("║   • {:<16} {:<10} VRAM {:>5.2} GB | RAM {:>5.2} GB | {}\n",
-                c.name, if c.feasible { "[FITS]" } else { "[NO]" }, c.vram_required_gb, c.ram_required_gb, c.reason));
+            let speed = c.measured_tokens_per_s.map(|tps| format!(" | {:.1} t/s measured", tps)).unwrap_or_default();
+            let speed = match c.measured_prompt_tokens_per_s {
+                Some(pp) => format!("{} (prompt {:.1} t/s)", speed, pp),
+                None => speed,
+            };
+            out.push_str(&format!("║   • {:<16} {:<10} VRAM {:>5.2} GB | RAM {:>5.2} GB | {}{}\n",
+                c.name, if c.feasible { "[FITS]" } else { "[NO]" }, c.vram_required_gb, c.ram_required_gb, c.reason, speed));
         }
         out.push_str(&format!("╠{}╣\n║ [SETTINGS]\n", line));
         let (n_threads, n_threads_batch) = settings.optimization.resolved_threads(hardware.cpu.physical_cores);

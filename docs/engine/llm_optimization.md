@@ -29,6 +29,23 @@ a compute buffer), the Engine records the miss and plans once more with the larg
 layers, a smaller context or a smaller KV type. The plan report then says "load retry". When the
 GPU layers or `n_cpu_moe` are set by hand there is no retry: the error is shown as it is.
 
+### Measured speed
+
+Without measurements the planner picks placements in a fixed order: full GPU, MoE split, GPU + RAM
+split, CPU only. `cluaiz bench <model> --placements` runs the speed test (llama-bench's `pp` and
+`tg`) on every placement that fits for that model, on the same context and KV type, and keeps the
+numbers in `config/vram_margins.json`. A plain `cluaiz bench <model>` keeps the numbers of the
+placement it loaded with.
+
+From then on the planner loads another placement instead of the rule-order one when both were
+measured, it generates at least 5% faster, and it does not read prompts more than 5% slower. A
+measurement still counts when free VRAM moves the split by up to 2 blocks. A normal load never
+measures anything, so it is not slower. The plan report shows the measured speeds and, when they
+changed the choice, "measured faster". Placements set by hand are never replaced.
+
+Example on a 4 GB laptop GPU, a 4B Q4_K_M model (qwen35 architecture) at 8192 tokens: GPU + RAM split (22 of 33 blocks on
+the GPU) 18.2 t/s generation, 870 t/s prompt; CPU only 10.5 t/s and 48 t/s. The split stays.
+
 ## Context and KV cache
 
 | Field | Default | Meaning |
