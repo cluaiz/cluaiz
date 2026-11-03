@@ -89,6 +89,12 @@ HuggingFace repositories often have deeply nested folder structures. The Cluaiz 
 - This clean, flat structure guarantees that the inference engine can resolve tokenizers and model binaries instantly without navigating nested folder paths.
 
 ### 3. Resumable Byte-Range Downloads
-If a download fails mid-stream due to network drops:
-- The engine uses HTTP Range headers (`Range: bytes=X-`) to verify already written file chunks.
-- It skips verified blocks and resumes downloading the remaining payload, avoiding redundant bandwidth usage.
+Each file is written to `<file>.part` and renamed only when every byte has arrived.
+- When the connection drops (or stops sending for a minute), the download asks for the rest with
+  `Range: bytes=<bytes in .part>-` and continues, up to 6 tries with a growing wait (2 to 30 s).
+- If every try fails, `.part` and the files already finished are kept: running the same
+  `cluaiz pull` again continues from there. A download you stop (Ctrl+C, or cancel in the App)
+  leaves nothing behind.
+- A server that ignores `Range` sends the whole file again, and `.part` starts over. A file whose
+  size does not match the server's is never renamed.
+- There is no time limit on a whole file, so a large model on a slow link is not cut off.
