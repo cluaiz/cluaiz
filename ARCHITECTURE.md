@@ -47,8 +47,10 @@ routes. See [docs/api/cep/README.md](docs/api/cep/README.md).
    - the cards of the installed tools that fit the message (`agents/src/tool_search.rs`).
 3. **Placement.** `EngineHost` loads the model with the plan from `engine/plan` (GPU layers, KV
    cache size, offload), or reuses the loaded one.
-4. **Generation.** llama.cpp generates. Native tool calls or inline tool calls go through the tool
-   loop (`agent_loop.rs`, `tool_turns.rs`). Calls that need approval wait for the owner.
+4. **Generation.** llama.cpp generates. Tool calls go through the agent turn core
+   (`agents/src/turn.rs`), the same one the terminal agent uses; the API's part is
+   `api_turn.rs` (tools, approvals, SSE chunks) and `tool_turns.rs`. Calls that need approval wait
+   for the owner.
 5. **Save.** The turn is written to the event log; the KV cache is saved so the next turn reuses
    the shared prefix.
 

@@ -1,6 +1,5 @@
 use super::preflight::PreparedChatContext;
-use super::tool_parser;
-use super::types::{ExternalChatRequest, DEFAULT_MAX_TOKENS};
+use super::types::ExternalChatRequest;
 use crate::state::AppState;
 use axum::response::{IntoResponse, Json};
 use chrono::Utc;
@@ -12,210 +11,30 @@ pub async fn execute_non_streaming(
     state: Arc<AppState>,
     request: ExternalChatRequest,
     ctx: PreparedChatContext,
-    mut dispatch_result: HostResponse,
+    dispatch_result: HostResponse,
 ) -> axum::response::Response {
     let keep_alive_val = request.keep_alive;
     let req_session_id = request.session_id.clone();
     let start_time = ctx.start_time;
     let turn_memory = super::preflight::TurnMemory::new(state.clone(), &ctx);
 
-    let mut max_iters = 15;
-    let mut tool_turns = super::tool_turns::ToolTurns::start(&ctx);
-    let mut tool_events: Vec<serde_json::Value> = Vec::new();
-    // A tool the Engine loaded before the model answered (auto_load)
-    if let Some(step) = &ctx.auto_loaded {
-        let payload = json!({ "id": ctx.tools_report["auto_loaded"] }).to_string();
-        tool_events.push(super::preflight::tool_event(cluaiz_agents::LOAD_TOOL_NAME, &payload, &step.result));
-    }
-    let mut final_raw_text = String::new();
-    // A call of a client function ends the answer: OpenAI `tool_calls`, finish_reason "tool_calls"
-    let mut client_call: Option<serde_json::Value> = None;
-
-    while max_iters > 0 {
-        max_iters -= 1;
-
-        let turn_content = match dispatch_result {
-            HostResponse::TokenStream(mut rx) => {
-                let mut full_text = String::new();
-                while let Some(token) = rx.recv().await {
-                    if let Some(error) = cluaiz_runtime::stream_error(&token) {
-                        if keep_alive_val == Some(0) {
-                            state.host.unload_model().await;
-                        }
-                        return super::preflight::error_response(
-                            &request,
-                            &ctx.request_id,
-                            error.to_owned(),
-                            super::types::engine_error_type(error),
-                            None,
-                        );
-                    }
-                    if token.trim() == "[DONE]" {
-                        break;
-                    }
-                    full_text.push_str(&token);
-                    // A complete tool call ends this step: stop generating at the next token
-                    if token.contains('>') && tool_parser::extract_tool_call(&full_text).is_some() {
-                        rx.close();
-                    }
-                }
-                full_text
-            }
-            HostResponse::Completed(res) => res,
-            HostResponse::Error(err) => {
-                return super::preflight::error_response(
-                    &request,
-                    &ctx.request_id,
-                    err,
-                    "engine_error",
-                    None,
-                )
-            }
-        };
-
-        // Check if this turn called a tool
-        if let Some(tool_call) = tool_parser::extract_tool_call(&turn_content) {
-            let raw_json = &tool_call.raw_json;
-            let raw_fn_name = tool_call.raw_fn_name.as_str();
-            let payload_str = tool_call.payload_str;
-
-            if ctx.client_tools.iter().any(|name| name == raw_fn_name) {
-                client_call = Some(json!([{
-                    "id": format!("call_{}", Utc::now().timestamp_millis()),
-                    "type": "function",
-                    "function": {"name": raw_fn_name, "arguments": payload_str}
-                }]));
-                final_raw_text = turn_content
-                    .split(cluaiz_core::tool_calls::OPEN)
-                    .next()
-                    .unwrap_or_default()
-                    .to_string();
-                break;
-            }
-
-            // find_tools / load_tool / unload_tool are answered by the engine itself
-            // A tool called by its id before it was loaded is answered as load_tool
-            let implicit_load =
-                super::tool_turns::needs_load(&ctx, &tool_turns, req_session_id.as_deref(), raw_fn_name);
-            let is_meta_tool = implicit_load
-                || (ctx.tool_load_room.is_some() && cluaiz_agents::ToolSearch::is_meta_tool(raw_fn_name))
-                || ((ctx.memory_tools || raw_fn_name == super::recall::TASK_UPDATE_TOOL) && ctx.ledger_turn.is_some() && super::recall::is_memory_tool(raw_fn_name))
-                || (ctx.project_read && raw_fn_name == cluaiz_agents::workspace::READ_ITEM);
-            let (meta_name, meta_payload) = if implicit_load {
-                (cluaiz_agents::LOAD_TOOL_NAME, json!({"id": raw_fn_name, "implicit": true}).to_string())
-            } else {
-                (raw_fn_name, payload_str.clone())
-            };
-            let resolved_target = if is_meta_tool {
-                None
-            } else if let Some(ref sid) = req_session_id {
-                cluaiz_agents::ToolsEngine::resolve_function_target_for_session(sid, raw_fn_name)
-                    .or_else(|| {
-                        cluaiz_agents::ToolsEngine::resolve_function_target(raw_fn_name, &[])
-                    })
-            } else {
-                cluaiz_agents::ToolsEngine::resolve_function_target(raw_fn_name, &[])
-            };
-
-            let (comp_type, comp_name, tool_sub_func) = if is_meta_tool {
-                ("tools".to_string(), raw_fn_name.to_string(), None)
-            } else if let Some(target) = resolved_target {
-                (target.category, target.component_id, target.sub_function)
-            } else {
-                ("plugin".to_string(), raw_fn_name.to_string(), None)
-            };
-
-            let public_call_name = tool_sub_func.as_deref().unwrap_or(&comp_name);
-            tracing::info!(
-                "🔍 [API/NonStreaming] Tool Execution: {} '{}' with payload: {}",
-                comp_type,
-                public_call_name,
-                payload_str
-            );
-
-            // Same approval gate as streaming: the call waits for the user's decision, which the
-            // App sees with approvals.list
-            // Searching other chats asks the user first (policy cross_chat: ask), like a tool call
-                    let assessment = if is_meta_tool && super::recall::needs_cross_chat_approval(meta_name, &meta_payload, ctx.chat_id.as_deref()) {
-                        super::authorize::Assessment { requires_approval: true, capabilities: vec!["memory:other_chats".to_string()] }
-                    } else {
-                        super::authorize::assess(&comp_type, &comp_name, tool_sub_func.as_deref(), is_meta_tool, ctx.chat_id.as_deref())
-                    };
-            let denial = if assessment.requires_approval {
-                let pending = super::authorize::request(&state, &comp_type, public_call_name, &payload_str, ctx.chat_id.as_deref()).await;
-                tracing::info!(
-                    "🛡️ [API/NonStreaming] Waiting for approval of '{}' ({})",
-                    public_call_name,
-                    pending.request_id
-                );
-                let decision = super::authorize::wait(&state, pending, public_call_name).await;
-                tool_events.push(super::authorize::approval_event(public_call_name, &decision));
-                decision.err()
-            } else {
-                None
-            };
-
-            let mut unloaded_tool: Option<String> = None;
-            let executed = if let Some(reason) = denial {
-                Ok(super::authorize::denied_result(&reason))
-            } else if is_meta_tool {
-                let outcome = super::tool_turns::run_meta_tool(&ctx, &tool_turns, req_session_id.as_deref(), meta_name, &meta_payload).await;
-                if meta_name == cluaiz_agents::LOAD_TOOL_NAME && outcome.text.contains("Loaded tool") {
-                    if let Some(id) = serde_json::from_str::<serde_json::Value>(&meta_payload).ok().and_then(|a| a.get("id").and_then(|v| v.as_str()).map(str::to_string)) {
-                        tool_turns.add_loaded_tool(&ctx, &id).await;
-                    }
-                }
-                tool_events.push(super::preflight::tool_event(meta_name, &meta_payload, &outcome.text));
-                unloaded_tool = outcome.unloaded;
-                Ok(outcome.text)
-            } else {
-                cluaiz_agents::ToolsEngine::execute_tool_by_name(
-                    &comp_type,
-                    &comp_name,
-                    tool_sub_func.as_deref(),
-                    &payload_str,
-                )
-                .await
-            };
-            let execution_result = match executed {
-                Ok(res_str) => {
-                    tracing::info!(
-                        "✅ [API/NonStreaming] Tool execution completed for '{}' ({} chars)",
-                        public_call_name,
-                        res_str.len()
-                    );
-                    res_str
-                }
-                Err(e) => {
-                    tracing::error!(
-                        "❌ [API/NonStreaming] Failed to execute tool '{}': {}",
-                        public_call_name,
-                        e
-                    );
-                    format!("Error executing {}: {}", public_call_name, e)
-                }
-            };
-
-            if let Some(id) = &unloaded_tool {
-                tool_turns.tombstone(id);
-            }
-            tool_turns.push(raw_json, public_call_name, &execution_result);
-            let current_prompt = tool_turns.continuation(&ctx);
-
-            tracing::info!("🔄 [API/NonStreaming] Resuming autonomous multi-turn generation with tool result...");
-            dispatch_result = ctx
-                .dispatch(
-                    &state.host,
-                    Some(&current_prompt),
-                    ctx.validated_max_tokens.unwrap_or(DEFAULT_MAX_TOKENS),
-                )
-                .await;
-            continue;
-        } else {
-            final_raw_text = turn_content;
-            break;
+    let mut turn = super::api_turn::ApiTurn::new(state.clone(), &ctx, &request, dispatch_result, None);
+    if cluaiz_agents::turn::run(&mut turn, super::api_turn::MAX_STEPS).await.is_err() {
+        if keep_alive_val == Some(0) {
+            state.host.unload_model().await;
         }
+        let (message, kind) = turn.error.clone().unwrap_or_else(|| ("The answer stopped with an error".into(), "engine_error"));
+        return super::preflight::error_response(&request, &ctx.request_id, message, kind, None);
     }
+    // A client-run call ends the answer: OpenAI `tool_calls`, finish_reason "tool_calls"
+    let client_call = turn.client_call.take();
+    let final_raw_text = if client_call.is_some() {
+        turn.last_raw.split(cluaiz_core::tool_calls::OPEN).next().unwrap_or_default().to_string()
+    } else {
+        std::mem::take(&mut turn.last_raw)
+    };
+    let tool_events = std::mem::take(&mut turn.tool_events);
+    let tool_turns = turn.tool_turns;
 
     // Extract reasoning and clean answer conforming to standard
     let (reasoning_opt, final_content, reasoning_toks) =
