@@ -15,6 +15,7 @@ pub async fn execute(model_id: &str) -> Result<()> {
             return Err(eyre!("no installed model is called '{}'. Did you mean: {}?", model_id, ids.join(", ")));
         }
     };
+    cluaiz_runtime::vram_use::forget_model(&id);
     let dir = cluaiz_models::ModelDownloader::uninstall(&id).map_err(|e| eyre!(e))?;
     println!("  {} Removed '{}' ({})", "🗑️".red(), id.bold(), dir.display());
     Ok(())

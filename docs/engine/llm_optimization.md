@@ -43,6 +43,9 @@ measurement still counts when free VRAM moves the split by up to 2 blocks. A nor
 measures anything, so it is not slower. The plan report shows the measured speeds and, when they
 changed the choice, "measured faster". Placements set by hand are never replaced.
 
+Removing a model (`cluaiz rm`, or `models.remove` over CEP) also drops its VRAM and speed numbers from
+`config/vram_margins.json`; `cluaiz self uninstall` deletes the whole file with the Cluaiz home.
+
 Example on a 4 GB laptop GPU, a 4B Q4_K_M model (qwen35 architecture) at 8192 tokens: GPU + RAM split (22 of 33 blocks on
 the GPU) 18.2 t/s generation, 870 t/s prompt; CPU only 10.5 t/s and 48 t/s. The split stays.
 

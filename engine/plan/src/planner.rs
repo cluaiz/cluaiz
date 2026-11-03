@@ -963,6 +963,33 @@ mod tests {
     }
 
     #[test]
+    fn a_removed_model_leaves_no_measurements_behind() {
+        use crate::speed::{Signature, Test};
+        let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
+        // Sizes no other test uses: the measurements are process-wide
+        let (gone, kept) = (qwen3_like(1.7771), qwen3_like(1.7772));
+        let sig = Signature { tier: PlacementTier::CpuOnly, n_gpu_layers: 0, n_cpu_moe: 0, kv_offload: true };
+        for g in [&gone, &kept] {
+            crate::margin::record(g, &s, 0.1);
+            crate::margin::record_correction(g, &s, -0.05);
+            crate::speed::record(Test::Generation, g, &s, 4096, KvCacheQuantization::Kv8, &sig, 10.0);
+            crate::speed::record(Test::Prompt, g, &s, 4096, KvCacheQuantization::Kv8, &sig, 50.0);
+        }
+        crate::margin::set_key("onnx:gone-tts:tts:cuda", 0.3);
+        crate::margin::set_key("onnx:gone-tts-large:tts:cuda", 0.3);
+        crate::margin::set_key("speech:gone-tts", 0.2);
+
+        assert_eq!(crate::margin::forget_model("gone-tts", &[gone.clone()]), 6);
+        assert!(crate::margin::learned(&gone, &s).is_none());
+        assert!(crate::margin::correction(&gone, &s).is_none());
+        assert!(crate::speed::measured(Test::Generation, &gone, &s, 4096, KvCacheQuantization::Kv8, &sig).is_none());
+        // Another model, even one whose id starts the same, keeps its numbers
+        assert!(crate::margin::learned(&kept, &s).is_some());
+        assert!(crate::speed::measured(Test::Prompt, &kept, &s, 4096, KvCacheQuantization::Kv8, &sig).is_some());
+        assert!(crate::margin::learned_key("onnx:gone-tts-large:tts:cuda").is_some());
+    }
+
+    #[test]
     fn a_load_that_fell_back_is_not_planned_the_same_way_again() {
         let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
         // A size no other test uses: the measurements are process-wide
