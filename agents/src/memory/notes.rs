@@ -68,8 +68,21 @@ fn subject(text: &str) -> HashSet<String> {
 /// Two notes are about the same subject when most of the smaller one's words are shared
 pub fn same_subject(a: &str, b: &str) -> bool {
     let (a, b) = (subject(a), subject(b));
-    let smaller = a.len().min(b.len());
-    smaller > 0 && a.intersection(&b).count() * 2 >= smaller.max(2)
+    let (small, large) = if a.len() <= b.len() { (&a, &b) } else { (&b, &a) };
+    let shared = small.iter().filter(|word| large.iter().any(|other| same_word(word, other))).count();
+    !small.is_empty() && shared * 2 >= small.len().max(2)
+}
+
+/// The same word, or one form of it: the shorter (at least 4 letters) starts the longer, which adds
+/// at most 2 letters ("sunday" / "sundays", "deploy" / "deployed"). Letters, not a word list, so it
+/// works the same in any language.
+fn same_word(a: &str, b: &str) -> bool {
+    if a == b {
+        return true;
+    }
+    let (a, b): (Vec<char>, Vec<char>) = (a.chars().collect(), b.chars().collect());
+    let (short, long) = if a.len() <= b.len() { (&a, &b) } else { (&b, &a) };
+    short.len() >= 4 && long.len() - short.len() <= 2 && long.starts_with(short)
 }
 
 /// Current state of every note from the log lines (the newest line of a note wins)
@@ -289,5 +302,10 @@ mod tests {
         assert!(!note("chat", Some("c1")).applies_to(Some("c2"), None));
         assert!(same_subject("deploy server port 8011", "deploy server port 9090"));
         assert!(!same_subject("deploy server port", "biryani recipe"));
+        assert!(same_subject("standup meeting every Sunday", "standup meetings on Sundays"));
+        assert!(same_subject("deploy the staging server", "deployed staging servers"));
+        // A short word is not a form of a longer one, and unrelated words stay apart
+        assert!(!same_subject("cat food", "catalog fees"));
+        assert!(!same_subject("Sunday brunch", "Monday report"));
     }
 }
