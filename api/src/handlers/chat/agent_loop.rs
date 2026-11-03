@@ -1,6 +1,5 @@
 use super::preflight::PreparedChatContext;
-use super::tool_parser;
-use super::types::{ExternalChatRequest, StreamSignals, ACTIVE_STREAMS, DEFAULT_MAX_TOKENS};
+use super::types::{ExternalChatRequest, StreamSignals, ACTIVE_STREAMS};
 use crate::state::AppState;
 use axum::response::{sse::Event, IntoResponse, Sse};
 use chrono::Utc;
@@ -76,21 +75,6 @@ pub async fn execute_streaming_loop(
     let turn_memory = super::preflight::TurnMemory::new(state.clone(), &ctx);
     let stream = async_stream::stream! {
         let turn_memory = turn_memory;
-        let mut current_prompt = ctx.json_prompt.clone();
-        let mut total_generated = String::new();
-        let mut overall_token_count = 0;
-        let mut reasoning_tokens_count = 0usize;
-        let mut think_filter = cluaiz_models::StreamingReasoningFilter::new(
-            ctx.dyn_think_start.clone(),
-            ctx.dyn_think_end.clone(),
-            // The engine sends the start tag itself when the rendered prompt opened the block
-            false,
-            ctx.active_think_mode == "off",
-        );
-        let mut call_text_guard = tool_parser::ToolCallTextGuard::default();
-        let mut first_ttft_ms = 0;
-        let mut is_first_token = true;
-
         // 🚀 YIELD MODEL HEADER METADATA EARLY
         let permission = cluaiz_security::PermissionSchema::load();
         if ctx.send_telemetry && permission.model_header_info {
@@ -157,20 +141,9 @@ pub async fn execute_streaming_loop(
             "choices": [],
             "context": { "tools": ctx.tools_report.clone() }
         }).to_string()));
-        let mut tool_events: Vec<serde_json::Value> = Vec::new();
-        // The answer as the client sees it (logged in the chat's event log)
-        let mut visible_answer = String::new();
-
-        let mut rx = initial_rx;
-
-        // 🔄 AUTONOMOUS MULTI-TURN AGENT EXECUTION LOOP
-        // Chaining consecutive tool executions up to 15 turns without halting prematurely
-        let mut max_iters = 15;
-        let mut tool_turns = super::tool_turns::ToolTurns::start(&ctx);
         // A tool the Engine loaded before the model answered (auto_load) shows like a load_tool call
         if let Some(step) = &ctx.auto_loaded {
             let payload = json!({ "id": ctx.tools_report["auto_loaded"] }).to_string();
-            tool_events.push(super::preflight::tool_event(cluaiz_agents::LOAD_TOOL_NAME, &payload, &step.result));
             for delta in [
                 json!({ "tool_calls": [{ "index": 0, "id": "call_tools", "type": "tools",
                     "function": { "name": "tools", "sub_function": cluaiz_agents::LOAD_TOOL_NAME, "arguments": payload, "auto": true } }] }),
@@ -188,437 +161,53 @@ pub async fn execute_streaming_loop(
             }
         }
 
-        // A call of a client function ended the answer (finish_reason "tool_calls")
-        let mut client_call = false;
-        while max_iters > 0 {
-            max_iters -= 1;
-            let mut tool_executed = false;
-            let mut token_accumulator = String::new();
-
-            while let Some(token) = rx.recv().await {
-                // 🛑 Real-time Multi-Stream Signal Verification (Cancel & Skip-Reasoning)
-                let (should_cancel, should_skip) = if let Ok(lock) = ACTIVE_STREAMS.read() {
-                    if let Some(signals) = lock.get(&req_id_stream) {
-                        (signals.cancel.load(Ordering::Relaxed), signals.skip_reasoning.load(Ordering::Relaxed))
-                    } else {
-                        (false, false)
-                    }
-                } else {
-                    (false, false)
+        // The turn (cluaiz_agents::turn) runs here; its chunks arrive on `chunks` as it goes
+        let (sink, mut chunks) = tokio::sync::mpsc::unbounded_channel::<String>();
+        let mut turn = super::api_turn::ApiTurn::new(state_clone.clone(), &ctx, &request, HostResponse::TokenStream(initial_rx), Some(sink));
+        let outcome = {
+            let core = cluaiz_agents::turn::run(&mut turn, super::api_turn::MAX_STEPS);
+            tokio::pin!(core);
+            loop {
+                let next = tokio::select! {
+                    biased;
+                    Some(data) = chunks.recv() => Ok(data),
+                    outcome = &mut core => Err(outcome),
                 };
-
-                if should_cancel {
-                    tracing::info!("🛑 [StreamControl] Aborting stream '{}' on user cancel signal.", req_id_stream);
-                    break;
-                }
-                if token.trim() == "[DONE]" {
-                    break;
-                }
-
-                if let Some(error) = cluaiz_runtime::stream_error(&token) {
-                    if let Some(p) = &ctx.progress { p.finish(cluaiz_core::processing::ProcessingState::Failed); }
-                    yield Ok::<_, Infallible>(Event::default().data(json!({
-                        "id": req_id_stream.clone(),
-                        "error": {"message": error, "type": super::types::engine_error_type(error)}
-                    }).to_string()));
-                    if let Ok(mut lock) = ACTIVE_STREAMS.write() { lock.remove(&req_id_stream); }
-                    if keep_alive_val == Some(0) { state_clone.host.unload_model().await; }
-                    yield Ok::<_, Infallible>(Event::default().data("[DONE]"));
-                    return;
-                }
-
-                // 🧩 Token Accumulation & Robust Fragment Parsing for Tool Calls
-                token_accumulator.push_str(&token);
-
-                if let Some(tool_call) = tool_parser::extract_tool_call(&token_accumulator) {
-                    // The call is complete: stop generating now (the worker stops at its next
-                    // token), instead of after the tool ran or its approval was answered
-                    rx.close();
-                    let raw_json = &tool_call.raw_json;
-                    let raw_fn_name = tool_call.raw_fn_name.as_str();
-                    let payload_str = tool_call.payload_str;
-
-                    // A function the client runs itself: the call goes back as OpenAI `tool_calls`
-                    if ctx.client_tools.iter().any(|name| name == raw_fn_name) {
-                        call_text_guard.clear();
-                        client_call = true;
-                        yield Ok::<_, Infallible>(Event::default().data(json!({
-                            "id": req_id_stream.clone(),
-                            "object": "chat.completion.chunk",
-                            "created": Utc::now().timestamp(),
-                            "model": ctx.resolved_model_name.clone(),
-                            "choices": [{"index": 0, "delta": {"tool_calls": [{
-                                "index": 0,
-                                "id": format!("call_{}", Utc::now().timestamp_millis()),
-                                "type": "function",
-                                "function": {"name": raw_fn_name, "arguments": payload_str}
-                            }]}}]
-                        }).to_string()));
-                        break;
-                    }
-
-                    // find_tools / load_tool / unload_tool are answered by the engine itself
-                    // A tool called by its id before it was loaded is answered as load_tool
-                    let implicit_load = super::tool_turns::needs_load(&ctx, &tool_turns, req_session_id.as_deref(), raw_fn_name);
-                    let is_meta_tool = implicit_load
-                        || (ctx.tool_load_room.is_some() && cluaiz_agents::ToolSearch::is_meta_tool(raw_fn_name))
-                || ((ctx.memory_tools || raw_fn_name == super::recall::TASK_UPDATE_TOOL) && ctx.ledger_turn.is_some() && super::recall::is_memory_tool(raw_fn_name))
-                || (ctx.project_read && raw_fn_name == cluaiz_agents::workspace::READ_ITEM);
-                    let (meta_name, meta_payload) = if implicit_load {
-                        (cluaiz_agents::LOAD_TOOL_NAME, json!({"id": raw_fn_name, "implicit": true}).to_string())
-                    } else {
-                        (raw_fn_name, payload_str.clone())
-                    };
-                    let resolved_target = if is_meta_tool {
-                        None
-                    } else if let Some(ref sid) = req_session_id {
-                        cluaiz_agents::ToolsEngine::resolve_function_target_for_session(sid, raw_fn_name)
-                            .or_else(|| cluaiz_agents::ToolsEngine::resolve_function_target(raw_fn_name, &[]))
-                    } else {
-                        cluaiz_agents::ToolsEngine::resolve_function_target(raw_fn_name, &[])
-                    };
-
-                    let (comp_type, comp_name, tool_sub_func) = if is_meta_tool {
-                        ("tools".to_string(), raw_fn_name.to_string(), None)
-                    } else if let Some(target) = resolved_target {
-                        (target.category, target.component_id, target.sub_function)
-                    } else {
-                        ("plugin".to_string(), raw_fn_name.to_string(), None)
-                    };
-
-                    let public_call_name = comp_name.clone();
-                    tracing::info!("🔍 [API] Market Standard Tool Execution: {} '{}' (sub_func: {:?}) with payload: {}", comp_type, public_call_name, tool_sub_func, payload_str);
-
-                    // Resolve tool SVG icon from filesystem/registry
-                    let icon_svg = {
-                        let env = cluaiz_core::EnvironmentManager::current();
-                        let tool_dir = match comp_type.as_str() {
-                            "skill" => env.skills_dir().join(&comp_name),
-                            "plugin" => env.plugins_dir().join(&comp_name),
-                            "mcp" => env.mcp_dir().join(&comp_name),
-                            _ => env.tools_dir().join(&comp_name),
-                        };
-                        let p1 = tool_dir.join("assets").join("icon.svg");
-                        let p2 = tool_dir.join("icon.svg");
-                        if p1.exists() {
-                            std::fs::read_to_string(p1).ok()
-                        } else if p2.exists() {
-                            std::fs::read_to_string(p2).ok()
-                        } else {
-                            None
-                        }
-                    };
-
-                    // 1. Yield standard OpenAI tool_calls delta chunk EARLY before execution begins!
-                    let tool_calls_chunk = json!({
-                        "id": req_id_stream.clone(),
-                        "object": "chat.completion.chunk",
-                        "created": Utc::now().timestamp(),
-                        "model": request.model.clone(),
-                        "choices": [{
-                            "index": 0,
-                            "delta": {
-                                "tool_calls": [{
-                                    "index": 0,
-                                    "id": format!("call_{}", comp_name),
-                                    "type": comp_type.clone(),
-                                    "icon_svg": icon_svg.clone(),
-                                    "function": {
-                                        "name": public_call_name.clone(),
-                                        "sub_function": tool_sub_func.clone(),
-                                        "arguments": payload_str,
-                                        "icon_svg": icon_svg.clone()
-                                    }
-                                }]
-                            }
-                        }]
-                    });
-                    yield Ok::<_, Infallible>(Event::default().data(tool_calls_chunk.to_string()));
-
-                    let tool_start_time = std::time::Instant::now();
-                    let sec_mode = cluaiz_agents::ToolsEngine::get_tool(&comp_name)
-                        .ok()
-                        .flatten()
-                        .map(|t| t.security_mode)
-                        .unwrap_or(cluaiz_agents::SecurityMode::Inherit);
-
-                    // 🛡️ Human-In-The-Loop (HITL) Permission Gate (shared with the non-streaming path)
-                    // Searching other chats asks the user first (policy cross_chat: ask), like a tool call
-                    let assessment = if is_meta_tool && super::recall::needs_cross_chat_approval(meta_name, &meta_payload, ctx.chat_id.as_deref()) {
-                        super::authorize::Assessment { requires_approval: true, capabilities: vec!["memory:other_chats".to_string()] }
-                    } else {
-                        super::authorize::assess(&comp_type, &comp_name, tool_sub_func.as_deref(), is_meta_tool, ctx.chat_id.as_deref())
-                    };
-                    let mut permission_granted = true;
-                    let mut user_denial_feedback: Option<String> = None;
-
-                    if assessment.requires_approval {
-                        let pending = super::authorize::request(&state_clone, &comp_type, &public_call_name, &payload_str, ctx.chat_id.as_deref()).await;
-
-                        // Real-time permission request with the full parameters and capabilities
-                        let perm_chunk = json!({
-                            "id": req_id_stream.clone(),
-                            "object": "chat.completion.chunk",
-                            "created": Utc::now().timestamp(),
-                            "model": request.model.clone(),
-                            "choices": [{
-                                "index": 0,
-                                "delta": {
-                                    "permission_request": {
-                                        "request_id": pending.request_id.clone(),
-                                        "tool_name": public_call_name.clone(),
-                                        "category": comp_type.clone(),
-                                        "capabilities": assessment.capabilities,
-                                        "parameters": serde_json::from_str::<serde_json::Value>(&payload_str).unwrap_or(serde_json::json!(payload_str)),
-                                        "status": "pending_approval",
-                                        "timeout_seconds": super::authorize::APPROVAL_TIMEOUT_SECS
-                                    }
-                                }
-                            }]
-                        });
-                        yield Ok::<_, Infallible>(Event::default().data(perm_chunk.to_string()));
-
-                        let decision = super::authorize::wait(&state_clone, pending, &public_call_name).await;
-                        tool_events.push(super::authorize::approval_event(&public_call_name, &decision));
-                        if let Err(reason) = decision {
-                            permission_granted = false;
-                            user_denial_feedback = Some(reason);
-                        }
-                    } else {
-                        // Stage 1: Auto-approved / Safe inspection -> Tool is queued and authorized
-                        let pending_chunk = json!({
-                            "id": req_id_stream.clone(),
-                            "object": "chat.completion.chunk",
-                            "created": Utc::now().timestamp(),
-                            "model": request.model.clone(),
-                            "choices": [{
-                                "index": 0,
-                                "delta": {
-                                    "tool_status": {
-                                        "id": format!("call_{}", comp_name),
-                                        "name": public_call_name.clone(),
-                                        "category": comp_type.clone(),
-                                        "status": "pending",
-                                        "message": "Authorized. Queued for execution."
-                                    }
-                                }
-                            }]
-                        });
-                        yield Ok::<_, Infallible>(Event::default().data(pending_chunk.to_string()));
-                    }
-
-                    let mut unloaded_tool: Option<String> = None;
-                    let execution_result = if permission_granted {
-                        // Stage 2: Tool execution actively running in background process
-                        let running_chunk = json!({
-                            "id": req_id_stream.clone(),
-                            "object": "chat.completion.chunk",
-                            "created": Utc::now().timestamp(),
-                            "model": request.model.clone(),
-                            "choices": [{
-                                "index": 0,
-                                "delta": {
-                                    "tool_status": {
-                                        "id": format!("call_{}", comp_name),
-                                        "name": public_call_name.clone(),
-                                        "category": comp_type.clone(),
-                                        "status": "running",
-                                        "message": "Executing tool in background process"
-                                    }
-                                }
-                            }]
-                        });
-                        yield Ok::<_, Infallible>(Event::default().data(running_chunk.to_string()));
-
-                        let executed = if is_meta_tool {
-                            let outcome = super::tool_turns::run_meta_tool(&ctx, &tool_turns, req_session_id.as_deref(), meta_name, &meta_payload).await;
-                            if meta_name == cluaiz_agents::LOAD_TOOL_NAME && outcome.text.contains("Loaded tool") {
-                                if let Some(id) = serde_json::from_str::<serde_json::Value>(&meta_payload).ok().and_then(|a| a.get("id").and_then(|v| v.as_str()).map(str::to_string)) {
-                                    tool_turns.add_loaded_tool(&ctx, &id).await;
-                                }
-                            }
-                            tool_events.push(super::preflight::tool_event(meta_name, &meta_payload, &outcome.text));
-                            unloaded_tool = outcome.unloaded;
-                            Ok(outcome.text)
-                        } else {
-                            cluaiz_agents::ToolsEngine::execute_tool_by_name(&comp_type, &comp_name, tool_sub_func.as_deref(), &payload_str).await
-                        };
-                        match executed {
-                            Ok(res_str) => {
-                                tracing::info!("✅ [API] Tool execution completed for '{}' ({} chars)", public_call_name, res_str.len());
-                                res_str
-                            },
-                            Err(e) => {
-                                tracing::error!("❌ [API] Failed to execute tool '{}': {}", public_call_name, e);
-                                format!("Error executing {}: {}", public_call_name, e)
-                            }
-                        }
-                    } else {
-                        let reason = user_denial_feedback.unwrap_or_else(|| cluaiz_core::prompts::text("tools.denied"));
-                        super::authorize::denied_result(&reason)
-                    };
-                    let latency_ms = tool_start_time.elapsed().as_secs_f64() * 1000.0;
-
-                    let status_str = if !permission_granted {
-                        "denied"
-                    } else if execution_result.starts_with("Error executing") {
-                        "failed"
-                    } else {
-                        "completed"
-                    };
-
-                    let mut execution_logs = vec![
-                        format!("[ToolsEngine] Invoking {} '{}' (security: {:?})", comp_type, public_call_name, sec_mode),
-                    ];
-                    if let Ok(val) = serde_json::from_str::<serde_json::Value>(&execution_result) {
-                        if let Some(cmd) = val.get("command").and_then(|v| v.as_str()) {
-                            execution_logs.push(format!("[Process] Command: {}", cmd));
-                        }
-                        if let Some(exit_code) = val.get("exit_code") {
-                            execution_logs.push(format!("[Process] Exit Code: {}", exit_code));
-                        }
-                        if let Some(stdout) = val.get("stdout").and_then(|v| v.as_str()) {
-                            if !stdout.trim().is_empty() {
-                                execution_logs.push(format!("[Process] Output captured ({} bytes)", stdout.len()));
-                            }
-                        }
-                    }
-                    execution_logs.push(format!("[ToolsEngine] Execution {} in {:.2}ms", status_str, latency_ms));
-
-                    // Stage 3: Yield rich cluaiz_tool_result status chunk
-                    let result_chunk = json!({
-                        "id": req_id_stream.clone(),
-                        "object": "chat.completion.chunk",
-                        "created": Utc::now().timestamp(),
-                        "model": request.model.clone(),
-                        "choices": [{
-                            "index": 0,
-                            "delta": {
-                                "tool_result": {
-                                    "id": format!("call_{}", comp_name),
-                                    "name": public_call_name,
-                                    "category": comp_type,
-                                    "icon_svg": icon_svg.clone(),
-                                    "status": status_str,
-                                    "security_mode": sec_mode.as_str(),
-                                    "latency_ms": ((latency_ms * 100.0).round() / 100.0),
-                                    "input_payload": serde_json::from_str::<serde_json::Value>(&payload_str).unwrap_or(serde_json::json!(payload_str)),
-                                    "output_result": serde_json::from_str::<serde_json::Value>(&execution_result).unwrap_or(serde_json::json!(&execution_result)),
-                                    "logs": execution_logs,
-                                    "result": execution_result.clone()
-                                }
-                            }
-                        }]
-                    });
-                    yield Ok::<_, Infallible>(Event::default().data(result_chunk.to_string()));
-
-                    // The call and its result join the conversation once; the next step renders it again.
-                    // An unloaded tool's earlier load result in this answer becomes a short note.
-                    if let Some(id) = &unloaded_tool {
-                        tool_turns.tombstone(id);
-                    }
-                    tool_turns.push(raw_json, raw_fn_name, &execution_result);
-                    current_prompt = tool_turns.continuation(&ctx);
-
-                    tool_executed = true;
-                    token_accumulator.clear();
-                    call_text_guard.clear();
-                    break;
-                }
-
-                // Normal Token Yielding & Reasoning Separation
-                total_generated.push_str(&token);
-                overall_token_count += 1;
-
-                if is_first_token {
-                    first_ttft_ms = ctx.start_time.elapsed().as_millis();
-                    is_first_token = false;
-                }
-
-                let make_chunk = |content: Option<String>, reasoning: Option<String>| -> Event {
-                    let mut delta = serde_json::Map::new();
-                    if let Some(c) = content {
-                        delta.insert("content".to_string(), serde_json::Value::String(c));
-                    }
-                    if let Some(r) = reasoning {
-                        delta.insert("reasoning_content".to_string(), serde_json::Value::String(r));
-                    }
-                    let chunk = json!({
-                        "id": req_id_stream.clone(),
-                        "object": "chat.completion.chunk",
-                        "created": Utc::now().timestamp(),
-                        "model": ctx.resolved_model_name.clone(),
-                        "choices": [{"delta": delta}]
-                    });
-                    Event::default().data(chunk.to_string())
-                };
-
-                let (content_opt, reasoning_opt) = think_filter.process_token(&token);
-                let content_opt = content_opt.and_then(|c| call_text_guard.push(&c));
-                if !should_skip && reasoning_opt.is_some() {
-                    reasoning_tokens_count += 1;
-                }
-                if let Some(content) = &content_opt {
-                    visible_answer.push_str(content);
-                }
-                if content_opt.is_some() || (!should_skip && reasoning_opt.is_some()) {
-                    yield Ok::<_, Infallible>(make_chunk(content_opt, if should_skip { None } else { reasoning_opt }));
+                match next {
+                    Ok(data) => yield Ok::<_, Infallible>(Event::default().data(data)),
+                    Err(outcome) => break outcome,
                 }
             }
-
-            if tool_executed {
-                tracing::info!("🔄 [API] Resuming autonomous multi-turn generation with tool result...");
-                // 100% DRY: Reusable turn reset for seamless multi-turn reasoning stream
-                think_filter.reset_turn(false);
-                let new_dispatch = ctx.dispatch(
-                    &state_clone.host, Some(&current_prompt),
-                    ctx.validated_max_tokens.unwrap_or(DEFAULT_MAX_TOKENS),
-                ).await;
-                if let HostResponse::TokenStream(new_rx) = new_dispatch {
-                    rx = new_rx;
-                    continue;
-                } else {
-                    break;
-                }
-            } else {
-                break; // Generation naturally finished with no further tool calls
-            }
-        }
-
-        // Flush any remaining characters in think_filter post-stream
-        let should_skip = if let Ok(lock) = ACTIVE_STREAMS.read() {
-            lock.get(&req_id_stream).map(|s| s.skip_reasoning.load(Ordering::Relaxed)).unwrap_or(false)
-        } else {
-            false
         };
-        let (final_content, final_reasoning) = think_filter.flush_final();
-        // Held text that never became a complete tool call is shown as answer text.
-        let final_content = match (call_text_guard.flush(), final_content) {
-            (Some(held), Some(rest)) => Some(held + &rest),
-            (held, rest) => held.or(rest),
-        };
-        if !should_skip && final_reasoning.is_some() {
-            reasoning_tokens_count += 1;
+        while let Ok(data) = chunks.try_recv() {
+            yield Ok::<_, Infallible>(Event::default().data(data));
         }
-        if final_content.is_some() || (!should_skip && final_reasoning.is_some()) {
-            let mut delta = serde_json::Map::new();
-            if let Some(c) = final_content {
-                visible_answer.push_str(&c);
-                delta.insert("content".to_string(), serde_json::Value::String(c));
-            }
-            if let Some(r) = final_reasoning {
-                if !should_skip {
-                    delta.insert("reasoning_content".to_string(), serde_json::Value::String(r));
-                }
-            }
+        if outcome.is_err() {
+            let (message, kind) = turn.error.clone().unwrap_or_else(|| ("The answer stopped with an error".into(), "engine_error"));
+            if let Some(p) = &ctx.progress { p.finish(cluaiz_core::processing::ProcessingState::Failed); }
             yield Ok::<_, Infallible>(Event::default().data(json!({
                 "id": req_id_stream.clone(),
-                "object": "chat.completion.chunk",
-                "created": Utc::now().timestamp(),
-                "model": ctx.resolved_model_name.clone(),
-                "choices": [{"delta": delta}]
+                "error": {"message": message, "type": kind}
             }).to_string()));
+            if let Ok(mut lock) = ACTIVE_STREAMS.write() { lock.remove(&req_id_stream); }
+            if keep_alive_val == Some(0) { state_clone.host.unload_model().await; }
+            yield Ok::<_, Infallible>(Event::default().data("[DONE]"));
+            return;
         }
+        if matches!(outcome, Ok(cluaiz_agents::turn::Ended::StepLimit)) {
+            tracing::info!("🔁 [API] Turn '{}' reached {} steps", req_id_stream, super::api_turn::MAX_STEPS);
+        }
+        let client_call = turn.client_call.is_some();
+        turn.flush();
+        for data in std::iter::from_fn(|| chunks.try_recv().ok()) {
+            yield Ok::<_, Infallible>(Event::default().data(data));
+        }
+        let overall_token_count = turn.token_count;
+        let reasoning_tokens_count = turn.reasoning_tokens;
+        let first_ttft_ms = turn.first_token_ms;
+        let visible_answer = std::mem::take(&mut turn.visible_answer);
+        let tool_events = std::mem::take(&mut turn.tool_events);
+        let tool_turns = turn.tool_turns;
 
         // OpenAI's closing chunk: why the answer ended ("length" = max_tokens or the context)
         let context_report = state_clone.host.last_context().await;

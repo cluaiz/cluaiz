@@ -34,8 +34,8 @@ flowchart TD
     Display --> Plain
 ```
 
-The CLI still has its original controller. Moving it and the API controller into one neutral agent
-core is pending. This frontend does not imply installed MCP/plugin/skill or daemon-attach support.
+Its turn loop runs on the agent core shared with the API chat (`agents/src/turn.rs`): this front end
+brings the message history, the file and command tools, approvals and the terminal display.
 
 ## Files
 
@@ -107,6 +107,6 @@ tool-capable model and a test-owned workspace/home. Developer fixtures stay in t
 The screen uses the existing Markdown inline/table formatter without terminal writes or ANSI.
 Native clipboard format availability varies by OS/host. Decoding a format does not prove that every
 model can understand it; package capabilities and installed companions still apply.
-Sessions, checkpoints (`/undo`, `/rewind`) and installed tools are built. Task views and one
-shared agent core with the API chat are not built yet. Shell output currently appears after completion;
-there is no live subprocess stdout view or interactive child PTY in this frontend yet.
+Sessions, checkpoints (`/undo`, `/rewind`) and installed tools are built. Task views are not built
+yet. A running command shows its last lines live; there is no interactive child PTY (a command gets
+no keyboard input).
