@@ -36,7 +36,7 @@ impl OnnxModel {
 
     /// The languages this speech-to-text package can transcribe (empty for a one-language model).
     pub fn stt_languages(&self) -> Vec<String> {
-        onnx_engine::audio::stt::families::tokenizer_languages(&self.dir)
+        onnx_engine::audio::stt::families::stt_languages(&self.dir)
     }
 
     /// Resolve declared assets inside the selected installed package only.

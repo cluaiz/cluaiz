@@ -130,7 +130,7 @@ Copy a real id from models.list; language codes come from this package rather th
 
 ## Response and field meanings
 
-data is the model’s language code list, with model indicating the selected package. A monolingual package can return an empty list; do not interpret it as universal language support or automatically broken installation.
+data is the model’s language code list, with model indicating the selected package. A monolingual package lists its one language (Moonshine: `["en"]`). An empty list means the package declares none: do not read it as support for every language.
 
 The following response is an illustrative shape. IDs, byte counts, timings and array contents depend on the actual request and machine; shortened nested objects are not a second schema or a measured result.
 

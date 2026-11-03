@@ -425,6 +425,18 @@ pub(crate) async fn dispatch_audio(
         Ok(model) => model,
         Err(e) => return error(StatusCode::BAD_REQUEST, "model_contract_error", e),
     };
+    // A language the transcription model does not read is the caller's mistake, refused before
+    // any work (the decoder would fail on it)
+    if task != AudioTask::TextToSpeech {
+        if let Some(language) = options.language.as_deref().map(str::trim).filter(|l| !l.is_empty() && !l.eq_ignore_ascii_case("auto")) {
+            let known = model.stt_languages();
+            let base = language.split(['-', '_']).next().unwrap_or(language).to_ascii_lowercase();
+            if !known.is_empty() && !known.contains(&base) && !known.contains(&language.to_ascii_lowercase()) {
+                let hint = if known.len() == 1 { " Use a multilingual model (Whisper) for other languages." } else { "" };
+                return error(StatusCode::BAD_REQUEST, "unsupported_language", format!("The transcription model does not read '{language}'. It reads: {}.{hint}", known.join(", ")));
+            }
+        }
+    }
     if task == AudioTask::TextToSpeech {
         match model
             .tts_capabilities()
