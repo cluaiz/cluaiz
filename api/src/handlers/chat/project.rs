@@ -139,3 +139,115 @@ pub fn report(project: Option<&Project>) -> Value {
         "problems": project.workspace.problems,
     })
 }
+
+/// Most argument strings of one call looked at for project files
+const MAX_PATHS: usize = 32;
+
+/// The project files a call of an installed tool named: every string of its arguments (nested
+/// ones too) that is a file inside the project after the call ran, as its path from the project
+/// root. Relative paths are taken from `base`, the chat's workspace folder, where installed tools
+/// run. No tool or argument names are known here: a string that is no file of the project is left
+/// out.
+pub fn files_of_call(workspace: &Workspace, base: &std::path::Path, arguments: &str) -> Vec<String> {
+    let Ok(args) = serde_json::from_str::<Value>(arguments) else { return Vec::new() };
+    let mut strings = Vec::new();
+    collect_strings(&args, &mut strings);
+    let Ok(root) = workspace.root.canonicalize() else { return Vec::new() };
+    let mut files: Vec<String> = Vec::new();
+    for text in strings.into_iter().take(MAX_PATHS) {
+        let text = text.trim();
+        if text.is_empty() || text.len() > 1024 || text.contains(['\n', '\r', '\0']) {
+            continue;
+        }
+        let path = std::path::Path::new(text);
+        let full = if path.is_absolute() { path.to_path_buf() } else { base.join(path) };
+        let Ok(full) = full.canonicalize() else { continue };
+        if !full.is_file() {
+            continue;
+        }
+        let Ok(relative) = full.strip_prefix(&root) else { continue };
+        let relative = relative.components().map(|c| c.as_os_str().to_string_lossy()).collect::<Vec<_>>().join("/");
+        if !relative.is_empty() && !files.contains(&relative) {
+            files.push(relative);
+        }
+    }
+    files
+}
+
+fn collect_strings<'v>(value: &'v Value, out: &mut Vec<&'v str>) {
+    match value {
+        Value::String(text) => out.push(text),
+        Value::Array(items) => items.iter().for_each(|item| collect_strings(item, out)),
+        Value::Object(fields) => fields.values().for_each(|item| collect_strings(item, out)),
+        _ => {}
+    }
+}
+
+/// The text of the `glob` rules for the project files a call named, for its result, leaving out
+/// the rules in `sent` (sent in this chat already) and adding the ones it returns to it. The
+/// rules sent, as `(name, file)`.
+pub fn glob_rules(workspace: &Workspace, files: &[String], sent: &mut Vec<String>) -> (String, Vec<(String, String)>) {
+    let mut text = String::new();
+    let mut applied = Vec::new();
+    for file in files {
+        for rule in workspace.rules_for_file(file) {
+            let key = matching::key(rule);
+            if sent.contains(&key) {
+                continue;
+            }
+            let Ok(body) = rule.body() else { continue };
+            let heading = cluaiz_core::prompts::render("workspace.glob_rule", &[("name", &rule.name), ("path", file)]);
+            text.push_str(&format!("\n\n{heading}\n{body}"));
+            sent.push(key);
+            applied.push((rule.name.clone(), file.clone()));
+        }
+    }
+    (text, applied)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_tool_call_on_a_project_file_brings_its_glob_rules_once() {
+        let repo = std::env::temp_dir().join(format!("cluaiz-glob-call-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&repo);
+        std::fs::create_dir_all(repo.join(".git")).unwrap();
+        std::fs::create_dir_all(repo.join(".agents/rules")).unwrap();
+        std::fs::create_dir_all(repo.join("web/src")).unwrap();
+        std::fs::write(repo.join(".agents/rules/ts.md"), "---
+trigger: glob
+globs: \"*.ts\"
+---
+Strict TypeScript.").unwrap();
+        std::fs::write(repo.join(".agents/rules/docs.md"), "---
+trigger: glob
+globs: [\"docs/**\"]
+---
+English only.").unwrap();
+        std::fs::write(repo.join("web/src/app.ts"), "x").unwrap();
+        std::fs::write(repo.join("readme.md"), "x").unwrap();
+        let workspace = Workspace::for_folder(&repo, &[]);
+        let absolute = repo.join("web/src/app.ts").display().to_string();
+
+        // Any argument, nested or not, relative to the workspace folder or absolute
+        let args = json!({ "edits": [{ "file": "web/src/app.ts" }], "content": "hello", "other": "readme.md" }).to_string();
+        assert_eq!(files_of_call(&workspace, &repo, &args), ["web/src/app.ts", "readme.md"]);
+        assert_eq!(files_of_call(&workspace, &repo.join("web"), &json!({ "path": "src/app.ts" }).to_string()), ["web/src/app.ts"]);
+        assert_eq!(files_of_call(&workspace, &repo, &json!({ "path": absolute }).to_string()), ["web/src/app.ts"]);
+        // A folder, a missing file, text and a file outside the project are no project files
+        let outside = std::env::temp_dir().display().to_string();
+        assert!(files_of_call(&workspace, &repo, &json!({ "path": "web", "q": "missing.ts", "n": 3, "o": outside }).to_string()).is_empty());
+
+        let mut sent = Vec::new();
+        let (text, applied) = glob_rules(&workspace, &["web/src/app.ts".into(), "readme.md".into()], &mut sent);
+        assert!(text.contains("Strict TypeScript.") && text.contains("web/src/app.ts"));
+        assert_eq!(applied, [("ts".to_string(), "web/src/app.ts".to_string())]);
+        assert_eq!(sent, ["rule:ts"]);
+        // Once in a chat
+        let (text, applied) = glob_rules(&workspace, &["web/src/app.ts".into()], &mut sent);
+        assert!(text.is_empty() && applied.is_empty());
+        let _ = std::fs::remove_dir_all(repo);
+    }
+}
