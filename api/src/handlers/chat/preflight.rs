@@ -709,8 +709,9 @@ impl PreparedChatContext {
         let memory_room = tools_allowed && ledger_chat.is_some() && (history_hidden || tool_meta || project_read);
         // recall / open_memory, also for other chats when cross_chat is not deny
         let memory_tools = memory_room && (history_hidden || policy.cross_chat != "deny");
-        // remember, when notes are on; the model decides when the user asked for it
-        let remember_tool = memory_room && policy.notes != "off";
+        // remember, in every chat the Engine keeps when notes are on (without it a model told
+        // "remember this" answers "noted" and nothing is kept); the model decides when to call it
+        let remember_tool = tools_allowed && ledger_chat.is_some() && policy.notes != "off";
         if memory_tools {
             if hint_lines.is_empty() && history_hidden {
                 hint_lines = format!("{}\n", cluaiz_core::prompts::text("chat.recall_hint"));
@@ -728,7 +729,7 @@ impl PreparedChatContext {
                 meta_schemas.push(super::recall::forget_schema());
             }
             offer_meta_tools = true;
-            if hint_lines.is_empty() && history_hidden {
+            if hint_lines.is_empty() {
                 hint_lines = format!("{}\n", cluaiz_core::prompts::text("chat.remember_hint"));
             }
         }
