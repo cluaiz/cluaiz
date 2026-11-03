@@ -12,6 +12,7 @@ pub mod registry;
 pub mod skills;
 pub mod telemetry;
 pub mod tool_search;
+pub mod turn;
 pub mod workspace;
 
 use std::path::{Path, PathBuf};
