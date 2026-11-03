@@ -66,6 +66,25 @@ pub(crate) fn is_embedding_model(
         )
     })
 }
+/// Embeds texts with an installed embedding model for the Engine's own use (note matching); the
+/// same hosts as `/v1/embeddings`. A GGUF model that is busy with another request is an error.
+pub(crate) async fn embed_texts(
+    state: &AppState,
+    entry: &cluaiz_models::types::manifest::ModelRegistryEntry,
+    texts: Vec<String>,
+) -> anyhow::Result<Vec<Vec<f32>>> {
+    let settings = cluaiz_core::Settings::current();
+    let outputs = if entry.format_type.eq_ignore_ascii_case("gguf") {
+        let admission = state.host.embeddings.try_acquire().map_err(|_| anyhow::anyhow!("the embedding model is busy"))?;
+        state.host.embeddings.embed(entry.clone(), texts, settings, None, admission).await?.into_iter().map(|o| o.vector).collect()
+    } else {
+        let model = OnnxModel::from_package(entry)?;
+        let inputs = texts.into_iter().map(PreparedEmbedding::Text).collect();
+        state.host.onnx.embed(model, inputs, settings, None).await?.into_iter().map(|o| o.vector).collect()
+    };
+    Ok(outputs)
+}
+
 fn validate(payload: &EmbeddingRequest) -> anyhow::Result<()> {
     if payload
         .encoding_format

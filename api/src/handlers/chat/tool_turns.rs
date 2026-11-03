@@ -230,6 +230,7 @@ pub struct MetaOutcome {
 /// a loaded tool is bound to the session, so the next messages carry it; an unloaded one is
 /// unbound and kept out of the suggestions for a few answers.
 pub async fn run_meta_tool(
+    state: &crate::AppState,
     ctx: &PreparedChatContext,
     turns: &ToolTurns,
     session_id: Option<&str>,
@@ -253,7 +254,7 @@ pub async fn run_meta_tool(
     }
     if super::recall::is_memory_tool(name) {
         let text = match &ctx.ledger_turn {
-            Some((chat, _)) => super::recall::run_memory_tool(chat, name, &args, &ctx.policy),
+            Some((chat, _)) => super::recall::run_memory_tool(state, chat, name, &args, &ctx.policy).await,
             None => cluaiz_core::prompts::text("chat.no_memory"),
         };
         tracing::info!("🔁 [Memory] {}({}) -> {} chars", name, payload, text.len());

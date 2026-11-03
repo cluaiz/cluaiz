@@ -15,6 +15,7 @@ pub mod notes;
 pub mod records;
 pub mod store;
 pub mod transcript;
+pub mod vectors;
 
 pub use events::{Event, NewEvent};
 pub use external::{is_external, register_external, store_for};

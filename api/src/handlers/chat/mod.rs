@@ -8,6 +8,7 @@ pub(crate) mod background;
 pub(crate) mod context_plan;
 pub(crate) mod ingest_events;
 pub(crate) mod recall;
+pub(crate) mod semantic;
 pub mod non_streaming;
 pub mod preflight;
 mod processing;

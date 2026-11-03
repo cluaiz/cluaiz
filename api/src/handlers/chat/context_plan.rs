@@ -222,6 +222,9 @@ pub fn valid(policy: &Policy) -> bool {
         && matches!(policy.notes.as_str(), "ask" | "auto" | "off")
         && matches!(policy.notes_change.as_str(), "ask" | "auto" | "off")
         && policy.notes_history_days <= 3650
+        && policy.notes_similar_pct <= 100
+        && policy.notes_recall_pct <= 100
+        && policy.notes_max <= 20
         && matches!(policy.cross_chat.as_str(), "ask" | "allow" | "deny")
         && matches!(policy.tool_format.as_str(), "inline" | "native")
         && matches!(policy.auto_load.as_str(), "off" | "on")

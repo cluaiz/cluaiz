@@ -31,6 +31,16 @@ pub struct Policy {
     /// Days a replaced or forgotten note is kept out of sight (for undo) before it is deleted;
     /// 0 deletes it at once
     pub notes_history_days: u32,
+    /// How notes are matched to a message and to a new note: "auto" (an installed embedding model
+    /// when there is one, else words), "words", or the id of an installed embedding model
+    pub notes_match: String,
+    /// Similarity (0-100, cosine x 100) from which a kept note is shown as maybe repeating a new
+    /// one (the model decides); tuned for EmbeddingGemma-300M
+    pub notes_similar_pct: u8,
+    /// Similarity (0-100) from which a note goes with a message; tuned for EmbeddingGemma-300M
+    pub notes_recall_pct: u8,
+    /// Most notes that go with one message (pinned ones aside)
+    pub notes_max: u8,
     /// Searching other chats with `recall` (scope workspace or all): "ask" (the user approves
     /// each search, like a tool call), "allow" or "deny"
     pub cross_chat: String,
@@ -52,6 +62,6 @@ pub struct Policy {
 
 impl Default for Policy {
     fn default() -> Self {
-        Self { recent_turns_min: 2, evidence_cap_pct: 15, suggestions_cap_pct: 5, margin_pct: 2, compact_at_pct: 85, compact_to_pct: 60, indexer: "auto".into(), notes: "ask".into(), notes_change: "ask".into(), notes_history_days: 0, cross_chat: "ask".into(), tool_format: "native".into(), auto_load: "off".into(), mcp_prewarm: "on".into(), project_files: "on".into() }
+        Self { recent_turns_min: 2, evidence_cap_pct: 15, suggestions_cap_pct: 5, margin_pct: 2, compact_at_pct: 85, compact_to_pct: 60, indexer: "auto".into(), notes: "ask".into(), notes_change: "ask".into(), notes_history_days: 0, notes_match: "auto".into(), notes_similar_pct: 50, notes_recall_pct: 50, notes_max: 3, cross_chat: "ask".into(), tool_format: "native".into(), auto_load: "off".into(), mcp_prewarm: "on".into(), project_files: "on".into() }
     }
 }

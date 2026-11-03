@@ -482,7 +482,7 @@ impl PreparedChatContext {
         // message, like the ones that fit it
         let workspace = super::recall::current_workspace();
         let note_query = request.messages.last().map(|m| m.content.text_content()).unwrap_or_default();
-        let (pinned_notes, relevant_notes) = super::recall::notes_for(ledger_chat.as_deref(), &workspace, &note_query);
+        let (pinned_notes, relevant_notes) = super::recall::notes_for(state, &policy, ledger_chat.as_deref(), &workspace, &note_query).await;
         let starting = ledger.as_ref().is_none_or(|saved| saved.turns.is_empty() && saved.notes.is_none())
             && request.messages.iter().filter(|m| !m.role.eq_ignore_ascii_case("system")).count() <= 1;
         let z0_note_ids: Vec<String> = match ledger.as_ref().and_then(|saved| saved.notes.clone()) {

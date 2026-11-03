@@ -16,6 +16,7 @@ pub async fn execute(model_id: &str) -> Result<()> {
         }
     };
     cluaiz_runtime::vram_use::forget_model(&id);
+    cluaiz_agents::memory::vectors::VectorStore::shared().forget_model(&id);
     let dir = cluaiz_models::ModelDownloader::uninstall(&id).map_err(|e| eyre!(e))?;
     println!("  {} Removed '{}' ({})", "🗑️".red(), id.bold(), dir.display());
     Ok(())
