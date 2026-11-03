@@ -25,6 +25,12 @@ pub struct Policy {
     /// Notes the model proposes with `remember`: "ask" (proposed until the user confirms),
     /// "auto" (confirmed at once) or "off" (no remember function)
     pub notes: String,
+    /// The model replacing or forgetting a note it names (`remember` with `replaces`, `forget`):
+    /// "ask" (proposed until the user confirms), "auto" (done at once) or "off" (it cannot)
+    pub notes_change: String,
+    /// Days a replaced or forgotten note is kept out of sight (for undo) before it is deleted;
+    /// 0 deletes it at once
+    pub notes_history_days: u32,
     /// Searching other chats with `recall` (scope workspace or all): "ask" (the user approves
     /// each search, like a tool call), "allow" or "deny"
     pub cross_chat: String,
@@ -46,6 +52,6 @@ pub struct Policy {
 
 impl Default for Policy {
     fn default() -> Self {
-        Self { recent_turns_min: 2, evidence_cap_pct: 15, suggestions_cap_pct: 5, margin_pct: 2, compact_at_pct: 85, compact_to_pct: 60, indexer: "auto".into(), notes: "ask".into(), cross_chat: "ask".into(), tool_format: "native".into(), auto_load: "off".into(), mcp_prewarm: "on".into(), project_files: "on".into() }
+        Self { recent_turns_min: 2, evidence_cap_pct: 15, suggestions_cap_pct: 5, margin_pct: 2, compact_at_pct: 85, compact_to_pct: 60, indexer: "auto".into(), notes: "ask".into(), notes_change: "ask".into(), notes_history_days: 0, cross_chat: "ask".into(), tool_format: "native".into(), auto_load: "off".into(), mcp_prewarm: "on".into(), project_files: "on".into() }
     }
 }

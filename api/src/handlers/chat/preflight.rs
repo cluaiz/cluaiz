@@ -63,6 +63,8 @@ pub struct PreparedChatContext {
     pub memory_tools: bool,
     /// Pinned notes in this chat's system prompt (kept in its ledger)
     pub z0_note_ids: Vec<String>,
+    /// The request's context policy (settings with its `context_policy` on top)
+    pub policy: cluaiz_context::Policy,
     /// The workspace's agent files, for `read_item` (None: the chat got none of them)
     pub project: Option<Arc<cluaiz_agents::workspace::Workspace>>,
     /// `read_item` was offered
@@ -722,6 +724,9 @@ impl PreparedChatContext {
         }
         if remember_tool {
             meta_schemas.push(super::recall::remember_schema());
+            if policy.notes_change != "off" {
+                meta_schemas.push(super::recall::forget_schema());
+            }
             offer_meta_tools = true;
             if hint_lines.is_empty() && history_hidden {
                 hint_lines = format!("{}\n", cluaiz_core::prompts::text("chat.remember_hint"));
@@ -1266,6 +1271,7 @@ impl PreparedChatContext {
             message_count: request.messages.len(),
             memory_tools: memory_tools || remember_tool,
             z0_note_ids,
+            policy: policy.clone(),
             project: project.as_ref().map(|p| p.workspace.clone()),
             project_read,
             project_sent,

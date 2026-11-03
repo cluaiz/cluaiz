@@ -37,6 +37,7 @@ response: |
     "id": 1,
     "jsonrpc": "2.0",
     "result": {
+      "forgotten": null,
       "note": {
         "id": "n7",
         "pinned": false,
@@ -44,7 +45,7 @@ response: |
         "status": "confirmed",
         "text": "Prefers tabs over spaces"
       },
-      "superseded": []
+      "superseded": null
     }
   }
 errors:

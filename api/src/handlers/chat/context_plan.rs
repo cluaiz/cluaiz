@@ -220,6 +220,8 @@ pub fn policy(overrides: Option<&serde_json::Value>) -> Policy {
 pub fn valid(policy: &Policy) -> bool {
     matches!(policy.indexer.as_str(), "auto" | "always" | "rules_only" | "off")
         && matches!(policy.notes.as_str(), "ask" | "auto" | "off")
+        && matches!(policy.notes_change.as_str(), "ask" | "auto" | "off")
+        && policy.notes_history_days <= 3650
         && matches!(policy.cross_chat.as_str(), "ask" | "allow" | "deny")
         && matches!(policy.tool_format.as_str(), "inline" | "native")
         && matches!(policy.auto_load.as_str(), "off" | "on")

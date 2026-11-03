@@ -10,6 +10,7 @@ CEP `config.set` (section context) and sets it back after. The fixture folder ho
 ("The secret word is MANGO-42.").
 """
 import argparse
+from pathlib import Path
 import json
 import sys
 import time
@@ -327,7 +328,83 @@ def ext1(engine):
                 f"({note and note.get('status')}); seqs unique and in order {seqs == sorted(set(seqs))}; on disk {on_disk}")
 
 
-JOURNEYS = {"MEM3": mem3, "MEM5": mem5, "MEM6": mem6, "ENR1": enr1, "PERF5": perf5, "C2": c2, "EXT1": ext1}
+def _notes(engine):
+    """Live notes (confirmed or active) and proposals, as text"""
+    notes = engine.cep("notes.list")["notes"]
+    live = [n["text"] for n in notes if n["status"] in ("confirmed", "active")]
+    proposed = [n for n in notes if n["status"] == "proposed"]
+    return live, proposed
+
+
+def _clear_notes(engine):
+    for n in engine.cep("notes.list")["notes"]:
+        if n["status"] in ("confirmed", "active", "proposed"):
+            engine.cep("notes.invalidate", id=n["id"])
+
+
+def _tell(engine, text, policy, tokens=400):
+    """One message in a new chat with an earlier turn (so the memory functions are offered); the
+    model may call remember / forget several times. Returns the answer and the memory calls."""
+    chat = session("note")
+    messages = [{"role": "user", "content": "Namaste"}, {"role": "assistant", "content": "Namaste! Batao, kya madad karun?"},
+                {"role": "user", "content": text}]
+    r = engine.chat(dict(body("", chat, max_tokens=tokens, context_policy=policy, history_mode="adaptive"), messages=messages))
+    calls = [e for e in (r.get("engine") or {}).get("tool_events") or [] if (e.get("function") or {}).get("name") in ("remember", "forget")]
+    engine.cep("memory.delete", chat_id=chat)
+    return answer_of(r), calls
+
+
+AUTO = {"notes": "auto", "notes_change": "auto", "notes_history_days": 0}
+
+
+def note1(engine):
+    """A correction replaces the old note; nothing old stays in the file"""
+    _clear_notes(engine)
+    _tell(engine, "Yaad rakhna: mera deploy server ka port 9090 hai.", AUTO)
+    first, _ = _notes(engine)
+    _tell(engine, "Yaad rakhna: deploy server ka port badal gaya, ab 8080 hai.", AUTO)
+    live, proposed = _notes(engine)
+    raw = Path(engine.home, "memory", "notes", "notes.jsonl").read_text(encoding="utf-8") if engine.home else ""
+    ok = any("9090" in t for t in first) and len(live) == 1 and "8080" in live[0] and not proposed and "9090" not in raw
+    return ok, f"after the first: {first}; after the correction: {live}; 9090 still in the file: {'9090' in raw}"
+
+
+def note2(engine):
+    """Two different people with shared words both stay"""
+    _clear_notes(engine)
+    _tell(engine, "Yaad rakhna: mera bhai Delhi mein rehta hai.", AUTO)
+    _tell(engine, "Yaad rakhna: meri behen bhi Delhi mein rehti hai.", AUTO)
+    live, _ = _notes(engine)
+    ok = any("bhai" in t.lower() or "brother" in t.lower() for t in live) and any("behen" in t.lower() or "sister" in t.lower() for t in live)
+    return ok, f"live notes: {live}"
+
+
+def note3(engine):
+    """forget removes a wrong note, and only that one"""
+    _clear_notes(engine)
+    engine.cep("notes.create", text="Mera bhai Delhi mein rehta hai.")
+    engine.cep("notes.create", text="Meri behen bhi Delhi mein rehti hai.")
+    _tell(engine, "Bhai wali note galat hai, mera koi bhai nahi hai. Woh note bhool jao (forget).", AUTO)
+    live, _ = _notes(engine)
+    ok = not any("bhai" in t.lower() for t in live) and any("behen" in t.lower() for t in live)
+    return ok, f"live notes: {live}"
+
+
+def note4(engine):
+    """notes_change ask: removing the old note waits for the user; notes.confirm applies it"""
+    _clear_notes(engine)
+    engine.cep("notes.create", text="Standup meeting roz 10 baje hoti hai.")
+    _tell(engine, "Yaad rakhna: standup ab 11 baje hota hai, 10 nahi.", dict(AUTO, notes_change="ask"))
+    before, proposed = _notes(engine)
+    for p in proposed:
+        engine.cep("notes.confirm", id=p["id"])
+    after, left = _notes(engine)
+    ok = bool(proposed) and any("10 baje hoti" in t for t in before) and len(after) == 1 and "11" in after[0] and not left
+    return ok, f"before confirm: live {before}, proposed {[(p['text'], p.get('forget', False)) for p in proposed]}; after: {after}"
+
+
+JOURNEYS = {"MEM3": mem3, "MEM5": mem5, "MEM6": mem6, "ENR1": enr1, "PERF5": perf5, "C2": c2, "EXT1": ext1,
+            "NOTE1": note1, "NOTE2": note2, "NOTE3": note3, "NOTE4": note4}
 
 
 def main():

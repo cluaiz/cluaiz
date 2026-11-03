@@ -4,7 +4,7 @@ transport: "POST /v1/cep"
 category: "ai-inference"
 category_title: "AI & Inference Core"
 group: "notes"
-summary: "A proposed note becomes confirmed (and supersedes a live note on the same subject); a workspace note of a project becomes a fact of its `.agents/memory/`"
+summary: "A proposed note becomes confirmed. A proposed change does its work: it replaces the note it names, or forgets it; in a project, it rewrites or deletes the fact it names. A workspace note of a project becomes a fact of its `.agents/memory/`"
 scope: "write"
 execution: "sync"
 mcp: true
@@ -31,6 +31,7 @@ response: |
     "id": 1,
     "jsonrpc": "2.0",
     "result": {
+      "forgotten": null,
       "note": {
         "id": "n7",
         "pinned": false,
@@ -38,7 +39,7 @@ response: |
         "status": "confirmed",
         "text": "Prefers tabs over spaces"
       },
-      "superseded": []
+      "superseded": null
     }
   }
 errors:
@@ -128,14 +129,15 @@ Replace the placeholder with an existing id; the request does not create a note.
 
 ## Response and field meanings
 
-note is the updated stored record; superseded reports changes performed by the shared update rules. A missing id returns note_not_found, not an invented note.
+note is the updated stored record. Confirming a proposed change does its work: superseded is the note a proposed replacement took over from, forgotten the note a proposal to forget removed (the proposal itself then leaves). Invalidating forgets a note: it leaves the notes, kept out of sight for `notes_history_days` when that setting is above 0; invalidating a proposal turns it down. A missing id returns note_not_found, not an invented note.
 
 **A workspace note of a project.** When the note is a live `workspace` note, its workspace is a
 folder the user picked (not the Cluaiz home), `context.project_files` is `on` and the caller's roots
 include the folder, the note becomes a fact of the project: `.agents/memory/<name>.md` is written
-(the name is the note's first words; a live fact on the same subject is marked superseded), the
-note is kept with `status: "moved"` and `moved_to` (the file), and the result has `project_fact`:
-`name`, `path` and `replaced` (the facts it superseded). From then on the file is the fact: the
+(the name is the note's first words), the note leaves the notes (kept as `status: "moved"` with
+`moved_to` only for `notes_history_days`), and the result has `project_fact`: `name`, `path` and
+`replaced`. A proposal that names a fact (`replaces: "fact:<name>"`, made by the model's `remember`
+or `forget` in a project chat) rewrites that fact's file in place, or deletes it. From then on the file is the fact: the
 terminal agent, another chat and another AI read it from the project. A note that is not of a
 project stays in the Cluaiz home as before.
 
@@ -255,7 +257,7 @@ console.log(reply.result);
 
 ## Limits, state and related operations
 
-Confirmation can supersede a live note on the same subject. Invalidation retains the record and its lifecycle timestamp; it is not physical deletion. Neither method accepts replacement text, scope or a pinned flag.
+Confirmation replaces or forgets only the note a proposal names (`replaces`); nothing is replaced by subject. Invalidation removes the note from the file unless `notes_history_days` keeps it out of sight for that many days. Neither method accepts replacement text, scope or a pinned flag.
 
 - [`notes.list`](notes.list.md): use its separate documented contract.
 - [`notes.pin`](notes.pin.md): use its separate documented contract.

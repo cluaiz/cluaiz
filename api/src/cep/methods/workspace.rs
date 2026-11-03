@@ -45,6 +45,19 @@ struct SaveParams {
     source: Option<String>,
     /// The project folder (default: the workspace)
     path: Option<String>,
+    /// The name of a live fact this one corrects or updates: its file gets the new text. Without
+    /// it nothing is replaced; `similar` in the result lists facts that may be about the same thing
+    #[serde(default)]
+    replaces: Option<String>,
+}
+
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct ForgetParams {
+    /// The fact's name, e.g. `deploy-port`
+    name: String,
+    /// The project folder (default: the workspace)
+    path: Option<String>,
 }
 
 /// The project's agent files for a folder the caller may read
@@ -176,24 +189,44 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         )
         .add(
             "workspace.remember",
-            Meta::new(Scope::Write, "Saves a fact the user confirmed in the project's memory (`.agents/memory/<name>.md`); a live fact on the same subject or of the same name is marked superseded")
+            Meta::new(Scope::Write, "Saves a fact the user confirmed in the project's memory (`.agents/memory/<name>.md`). With `replaces`, that fact's file gets the new text; without, nothing is replaced and `similar` lists facts that may be about the same thing")
                 // Memory outlives the chat: an MCP client must not write it unseen
                 .no_mcp()
                 .idempotent(false)
                 .error(-32602, "invalid_params", "`fact` is empty or over 2000 characters")
                 .error(-32002, "forbidden", "The folder is outside the caller's roots")
-                .error(-32010, "memory_not_saved", "The fact file could not be written")
+                .error(-32010, "memory_not_saved", "The fact file could not be written, or `replaces` names no live fact")
                 .example(
                     json!({ "name": "test-command", "fact": "The tests run with npm run check.", "source": "Cluaiz App, chat 12" }),
-                    json!({ "saved": "test-command", "path": "/project/.agents/memory/test-command.md", "replaced": [] }),
+                    json!({ "saved": "test-command", "path": "/project/.agents/memory/test-command.md", "replaced": [], "similar": [] }),
                 ),
             |ctx: CallCtx, call: Call, p: SaveParams| async move {
                 let workspace = scan(&ctx, &call, p.path.as_deref()).await?;
                 memory::prepare(&p.name, &p.fact).map_err(|error| CepError::invalid_params(error, vec![json!({ "path": "fact", "message": "length" })], None))?;
                 call.check_path(&memory::folder(&workspace))?;
-                let saved = memory::save(&workspace, &p.name, &p.fact, p.source.as_deref().unwrap_or("cep"))
+                let replaces = p.replaces.as_deref().map(str::trim).filter(|r| !r.is_empty());
+                let similar: Vec<String> = if replaces.is_none() {
+                    memory::similar(&workspace, &p.name, &p.fact, memory::SIMILAR_SHOWN).iter().map(|item| item.name.clone()).collect()
+                } else {
+                    Vec::new()
+                };
+                let saved = memory::save(&workspace, &p.name, &p.fact, p.source.as_deref().unwrap_or("cep"), replaces)
                     .map_err(|error| CepError::unavailable("memory_not_saved", format!("The fact was not saved: {error}")))?;
-                Ok(json!({ "saved": saved.name, "path": roots::display(&saved.path), "replaced": saved.replaced }))
+                Ok(json!({ "saved": saved.name, "path": roots::display(&saved.path), "replaced": saved.replaced, "similar": similar }))
+            },
+        )
+        .add(
+            "workspace.forget",
+            Meta::new(Scope::Write, "Deletes a fact of the project's memory (`.agents/memory/<name>.md`) the user wants gone")
+                .no_mcp()
+                .error(-32002, "forbidden", "The folder is outside the caller's roots")
+                .error(-32004, "fact_not_found", "No live fact of this name")
+                .example(json!({ "name": "test-command" }), json!({ "forgotten": "test-command", "path": "/project/.agents/memory/test-command.md" })),
+            |ctx: CallCtx, call: Call, p: ForgetParams| async move {
+                let workspace = scan(&ctx, &call, p.path.as_deref()).await?;
+                call.check_path(&memory::folder(&workspace))?;
+                let path = memory::forget(&workspace, &p.name).map_err(|error| CepError::not_found("fact_not_found", error))?;
+                Ok(json!({ "forgotten": p.name, "path": roots::display(&path) }))
             },
         );
 

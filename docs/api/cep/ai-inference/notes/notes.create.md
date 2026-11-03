@@ -4,7 +4,7 @@ transport: "POST /v1/cep"
 category: "ai-inference"
 category_title: "AI & Inference Core"
 group: "notes"
-summary: "A note written by the user, confirmed at once; it supersedes a live note on the same subject"
+summary: "A note written by the user, confirmed at once. It replaces only the note named in `replaces`; `similar` lists notes that may be about the same thing"
 scope: "write"
 execution: "sync"
 mcp: true
@@ -21,6 +21,11 @@ params:
     type: "boolean"
     req: false
     desc: "Pinned notes go into the system prompt of new chats"
+    example: null
+  - name: "replaces"
+    type: "string | null"
+    req: false
+    desc: "The id of a live note this one corrects or updates: the new note takes its place (its pin carries over) and the old one leaves. Without it nothing is replaced; `similar` in the result lists notes that may be about the same thing."
     example: null
   - name: "scope"
     type: "string | null"
@@ -54,13 +59,17 @@ response: |
         "status": "confirmed",
         "text": "Prefers tabs over spaces"
       },
-      "superseded": []
+      "similar": [],
+      "superseded": null
     }
   }
 errors:
   - code: -32602
     type: "invalid_params"
     when: "`text` is empty or over 2000 characters, `scope` is unknown, or scope chat has no `chat_id`"
+  - code: -32004
+    type: "note_not_found"
+    when: "`replaces` names no live note"
   - code: -32010
     type: "notes_unavailable"
     when: "The notes file could not be written"
@@ -68,7 +77,7 @@ errors:
 
 # notes.create
 
-Persist a user-authored fact or preference beyond the immediate message. User notes are confirmed on creation and can supersede an existing live note on the same subject; this is not a model-generated proposal awaiting confirmation.
+Persist a user-authored fact or preference beyond the immediate message. User notes are confirmed on creation; this is not a model-generated proposal awaiting confirmation. Nothing is replaced by guessing: the note replaces another only when `replaces` names it, and `similar` lists notes that may be about the same thing so the App can ask the user.
 
 ## Endpoint, execution and permissions
 
@@ -86,14 +95,14 @@ Send a Bearer token when API authentication is enabled. Authentication failures 
 
 1. Trim and validate text, select the scope and owner
 2. Add a confirmed user note through the shared NoteStore
-3. Return the new note and ids/records superseded by subject matching
+3. With `replaces`: the new note takes the named note's place (its pin carries over) and the old note leaves the notes (kept out of sight for `notes_history_days` when set); without: return in `similar` the live notes of the same scope that may be about the same thing
 
 ```mermaid
 flowchart TD
     C["Client request"] --> A["Authentication, principal and typed params"]
     A --> P0["Trim and validate text, select the scope and owner"]
     P0 --> P1["Add a confirmed user note through the shared NoteStore"]
-    P1 --> P2["Return the new note and ids/records superseded by subject matching"]
+    P1 --> P2["`replaces`: take the named note's place; else list `similar` notes"]
     P2 --> R["JSON-RPC result or explicit error"]
 ```
 
@@ -104,6 +113,7 @@ flowchart TD
 | `chat_id` | string \| null | No | The chat, for scope chat Required when scope is chat; identifies the scope owner. Does not select a different current workspace. |
 | `pinned` | boolean | No | Pinned notes go into the system prompt of new chats Defaults to false. Pinned confirmed notes can enter the system prompt of new chats. |
 | `scope` | string \| null | No | chat, workspace (default) or global Defaults to workspace. Allowed chat, workspace, global. |
+| `replaces` | string \| null | No | The id of a live note this one corrects or updates (`n:4` or `n4`). The new note takes its place (the pin carries over) and the old one leaves; `note_not_found` when it names no live note. Without it nothing is replaced. |
 | `text` | string | Yes | 1 to 2000 characters After trimming, non-empty and at most 2000 UTF-8 BYTES in the current implementation (String.len), despite the brief schema description saying characters. Multibyte text reaches the boundary earlier. |
 
 Unknown top-level method parameters are rejected. `params._meta` is protocol metadata, not a domain option; approval retries must preserve the same method and domain parameters. Where a parameter is optional, omission follows the method-specific rules above rather than implying a universal zero or empty-string default.
@@ -164,9 +174,9 @@ The chat id is mandatory for this scope.
 
 ## Response and field meanings
 
-note is the stored record with its generated id/status/scope. superseded lists previous live notes displaced by the note-store subject rules; it is not a general delete-all operation. Reuse note.id in notes.pin/confirm/invalidate.
+note is the stored record with its generated id/status/scope. superseded is the note named in `replaces` (null without it); it has left the notes. similar lists live notes of the same scope that may be about the same thing (by words; empty with `replaces`): to make the new note replace one, the App asks the user, then calls notes.create again with `replaces` and notes.invalidate on the extra note. Reuse note.id in notes.pin/confirm/invalidate.
 
-A `workspace` note of a project folder (not the Cluaiz home, with `context.project_files` on) becomes a fact of the project's `.agents/memory/` at once, as [`notes.confirm`](notes.confirm.md) describes: the note is kept with `status: "moved"` and the result has `project_fact`.
+A `workspace` note of a project folder (not the Cluaiz home, with `context.project_files` on) becomes a fact of the project's `.agents/memory/` at once, as [`notes.confirm`](notes.confirm.md) describes: the note leaves the notes (kept as `status: "moved"` only for `notes_history_days`) and the result has `project_fact`.
 
 The following response is an illustrative shape. IDs, byte counts, timings and array contents depend on the actual request and machine; shortened nested objects are not a second schema or a measured result.
 

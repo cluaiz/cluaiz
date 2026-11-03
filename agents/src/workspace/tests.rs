@@ -228,7 +228,7 @@ fn a_confirmed_fact_is_a_file_in_the_project_and_a_newer_one_replaces_it() {
     assert!(memory::prepare("x", "  ").is_err());
     assert!(memory::prepare("x", &"a".repeat(memory::MAX_FACT_CHARS + 1)).is_err());
 
-    let first = memory::save(&workspace, "deploy-port", "The deploy server port is 8011.", "test").unwrap();
+    let first = memory::save(&workspace, "deploy-port", "The deploy server port is 8011.", "test", None).unwrap();
     assert_eq!(first.path, repo.join(".agents/memory/deploy-port.md"));
     assert!(first.replaced.is_empty());
     let workspace = Workspace::scan(&repo, homes, &[]);
@@ -240,24 +240,31 @@ fn a_confirmed_fact_is_a_file_in_the_project_and_a_newer_one_replaces_it() {
     assert!(workspace.prompt(4_096).text.contains("- deploy-port (memory): The deploy server port is 8011."));
     assert!(workspace.read_item("deploy-port", Some("memory")).unwrap().1.contains("port is 8011"));
 
-    // A newer fact on the same subject: a new file; the old one stays, marked
-    let second = memory::save(&workspace, "server-port", "The deploy server port is now 9090.", "test").unwrap();
-    assert_eq!(second.replaced, ["deploy-port"]);
-    let workspace = Workspace::scan(&repo, homes, &[]);
-    assert_eq!(workspace.memory.len(), 2);
-    assert!(workspace.find("deploy-port", None).is_none());
-    assert!(workspace.find("server-port", None).is_some());
-    let old = std::fs::read_to_string(&first.path).unwrap();
-    assert!(old.contains("status: superseded") && old.contains("superseded_by: server-port"));
-    assert!(std::fs::read_to_string(&second.path).unwrap().contains("supersedes: deploy-port"));
+    // A newer fact that may repeat it: shown first, by name or by words; nothing is replaced by guessing
+    let shown = |name: &str, fact: &str| memory::similar(&workspace, name, fact, 3).iter().map(|item| item.name.clone()).collect::<Vec<_>>();
+    assert_eq!(shown("server-port", "The deploy server port is now 9090."), ["deploy-port"]);
+    assert_eq!(shown("deploy-port", "Something else entirely"), ["deploy-port"]);
+    assert!(shown("biryani", "A recipe for biryani").is_empty());
+    assert!(memory::similar_text(&memory::similar(&workspace, "x", "deploy server port 9090", 3)).contains("- deploy-port: The deploy server port is 8011."));
 
-    // The same name again: its own file, and the old fact is replaced
-    let third = memory::save(&workspace, "server-port", "Tests use the build profile release.", "test").unwrap();
-    assert_eq!(third.path, repo.join(".agents/memory/server-port-2.md"));
-    assert_eq!(third.replaced, ["server-port"]);
-    // Another subject replaces nothing
+    // Named: the same file gets the new text; no second file, nothing marked superseded
+    let second = memory::save(&workspace, "server-port", "The deploy server port is now 9090.", "test", Some("deploy-port")).unwrap();
+    assert_eq!(second.path, first.path);
+    assert_eq!(second.replaced, ["deploy-port"]);
+    let text = std::fs::read_to_string(&first.path).unwrap();
+    assert!(text.contains("port is now 9090") && !text.contains("8011") && text.contains("updated: "));
     let workspace = Workspace::scan(&repo, homes, &[]);
-    assert!(memory::replaces(&workspace, "biryani", "A recipe for biryani").is_empty());
+    assert_eq!(workspace.memory.len(), 1);
+    assert!(memory::save(&workspace, "x", "y", "test", Some("no-such-fact")).is_err());
+
+    // A separate fact with a taken name gets its own file
+    let third = memory::save(&workspace, "deploy-port", "Tests use the build profile release.", "test", None).unwrap();
+    assert_eq!(third.path, repo.join(".agents/memory/deploy-port-2.md"));
+    // Forgotten: the file is gone
+    let workspace = Workspace::scan(&repo, homes, &[]);
+    assert_eq!(memory::forget(&workspace, "deploy-port-2").unwrap(), third.path);
+    assert!(!third.path.exists());
+    assert!(memory::forget(&workspace, "deploy-port-2").is_err() || !third.path.exists());
     let _ = std::fs::remove_dir_all(base);
 }
 
@@ -297,7 +304,7 @@ fn items_that_fit_a_message_go_into_its_context_block() {
     write(&base.join(".agents/skills/pdf-report/SKILL.md"), "---\ndescription: Make a PDF report from a table\n---\nUse the report template.");
     write(&base.join(".agents/workflows/deploy.md"), "---\ndescription: Deploy the site\n---\n1. Build.\n2. Upload.");
     let workspace = Workspace::scan(&base, Homes::default(), &[]);
-    memory::save(&workspace, "deploy-port", "The deploy server port is 9090.", "test").unwrap();
+    memory::save(&workspace, "deploy-port", "The deploy server port is 9090.", "test", None).unwrap();
     let workspace = Workspace::scan(&base, Homes::default(), &[]);
     let known = std::collections::HashSet::new();
     let names = |message: &str, known: &std::collections::HashSet<String>| {

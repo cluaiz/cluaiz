@@ -159,7 +159,7 @@ Any folder inside the caller's roots.
 - `instructions`: `label` (as the model sees it, e.g. `.agents/AGENTS.md`), `path`, `chars` (size of the file without front matter). Farthest first; the user's `~/.cluaiz/AGENTS.md` comes first.
 - `rules`, `workflows`, `skills`, `memory`: one object per item: `kind`, `name`, `description` (front matter, else the first heading), `path` (the file; a skill's `SKILL.md`), `found_in` (the folder it was found in, e.g. `.agents/rules`, `web/.agents/skills`, `~/.agents/workflows`). A nearer item hides a farther one of the same name.
   - rules also have `trigger` (`always_on`, `model_decision`, `glob`, `manual`) and `globs`;
-  - memory facts also have `status` (`confirmed`, or `superseded` when a newer fact replaced it) and `superseded_by` (the newer fact's name, or null). Memory is read only from the project's folders, never from `~/.agents/`.
+  - memory facts also have `status` (`confirmed`, or `superseded` for a file an older Engine marked when a newer fact replaced it) and `superseded_by` (the newer fact's name, or null). A fact replaced now is rewritten in place. Memory is read only from the project's folders, never from `~/.agents/`.
 - `problems`: files that could not be used as they are, and why (an unknown `trigger`, a glob rule without `globs`, a file that cannot be read).
 
 ## Errors and recovery

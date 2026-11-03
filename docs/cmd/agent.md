@@ -580,19 +580,25 @@ In this project the tests run with npm run check (not npm test).
   web page must not become memory unseen.
 - In a run nobody can answer (a script, `--output-format json`), nothing is saved and the model is
   told so.
-- A newer fact on the same subject, or with the same name, replaces the older one: the new fact
-  gets its own file (`supersedes: <old>`), the old file stays and is marked `status: superseded`
-  and `superseded_by: <new>`. Only live facts reach the model.
+- Nothing is replaced by guessing. When a new fact may repeat facts that are there (the same name,
+  or a third of the words shared), nothing is saved yet: the model is shown those facts and calls
+  `remember` again with `replaces` (the name of the fact it corrects, or `"none"` for a separate
+  fact). A fact it replaces gets the new text in its own file (name and `created` kept, `updated`
+  set): one file per subject, no `-2` copies. In a git project, git keeps the old text.
+- The model deletes a fact that is wrong or no longer holds with `forget` (`{"name": "deploy-port"}`);
+  you see the fact and say yes or no, as with `remember`. Files an older version marked
+  `status: superseded` stay out of the index; delete them when you like.
 - Every live fact is a line of the index (`- test-command (memory): ...`), so a new session has
   it; `read_item` reads one in full. A fact saved now can be read with `read_item` at once and is
   in the index from the next session on.
 - The files are plain Markdown: edit them, delete them, or commit them with the project. A fact
   is at most 2,000 characters. `/memory` lists the live facts and how many were replaced.
-- The tool's description is the managed prompt `workspace.remember`.
+- The tools' descriptions are the managed prompts `workspace.remember` and `workspace.forget`; what the model is shown when a fact may repeat others is `workspace.remember_similar`.
 - The App reads the same files through CEP: [`workspace.index`](../api/cep/filesystem/workspace/workspace.index.md),
   [`workspace.item`](../api/cep/filesystem/workspace/workspace.item.md),
   [`workspace.memory`](../api/cep/filesystem/workspace/workspace.memory.md) and
-  [`workspace.remember`](../api/cep/filesystem/workspace/workspace.remember.md) (after the user
+  [`workspace.remember`](../api/cep/filesystem/workspace/workspace.remember.md) and
+  [`workspace.forget`](../api/cep/filesystem/workspace/workspace.forget.md) (after the user
   confirms; not offered to MCP clients).
 - A chat in the App (or any client of the Chat Completions API) gets the same files from the
   Engine's workspace, with `read_item`, and a workspace note the user confirms there becomes a file

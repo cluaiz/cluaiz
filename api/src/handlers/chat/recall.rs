@@ -316,20 +316,36 @@ const MAX_OPEN_CHARS: usize = 4000;
 pub const TASK_UPDATE_TOOL: &str = "task_update";
 /// Meta-tool: keep a fact or preference as a durable note
 pub const REMEMBER_TOOL: &str = "remember";
+/// Meta-tool: forget a note that is wrong or no longer holds
+pub const FORGET_TOOL: &str = "forget";
+/// Notes shown to the model as "maybe the same thing" before it saves one
+const SIMILAR_SHOWN: usize = 3;
 
 pub fn is_memory_tool(name: &str) -> bool {
-    matches!(name, RECALL_TOOL | OPEN_MEMORY_TOOL | TASK_UPDATE_TOOL | REMEMBER_TOOL)
+    matches!(name, RECALL_TOOL | OPEN_MEMORY_TOOL | TASK_UPDATE_TOOL | REMEMBER_TOOL | FORGET_TOOL)
 }
 
 /// Schema of `remember`
 pub fn remember_schema() -> Value {
     json!({"type": "function", "function": {
         "name": REMEMBER_TOOL,
-        "description": "Keep a fact or preference the user wants remembered beyond this chat, as one short sentence.",
+        "description": "Keep a fact or preference the user wants remembered beyond this chat, as one short sentence. When it may repeat a note that is there, the result shows that note.",
         "parameters": {"type": "object", "properties": {
             "text": {"type": "string"},
-            "scope": {"type": "string", "enum": ["workspace", "global"], "description": "workspace (default): this project; global: every chat"}
+            "scope": {"type": "string", "enum": ["workspace", "global"], "description": "workspace (default): this project; global: every chat"},
+            "replaces": {"type": "string", "description": "The id of the note (like n:4) this one corrects or updates, or \"none\" when it is a separate fact"}
         }, "required": ["text"]}
+    }})
+}
+
+/// Schema of `forget` (offered with `remember` when the model may change notes)
+pub fn forget_schema() -> Value {
+    json!({"type": "function", "function": {
+        "name": FORGET_TOOL,
+        "description": "Forget a note that is wrong or no longer holds, by its id (like n:4). To change a note, use remember with replaces instead.",
+        "parameters": {"type": "object", "properties": {
+            "id": {"type": "string"}
+        }, "required": ["id"]}
     }})
 }
 
@@ -364,13 +380,18 @@ pub fn notes_system(notes: &[cluaiz_agents::memory::notes::Note]) -> String {
     if notes.is_empty() {
         return String::new();
     }
-    let lines: Vec<String> = notes.iter().map(|n| format!("- {}", n.text)).collect();
+    let lines: Vec<String> = notes.iter().map(|n| format!("- [{} · {}] {}", n.id, note_date(n), n.text)).collect();
     format!("{}\n{}", cluaiz_core::prompts::text("chat.notes_pinned"), lines.join("\n"))
+}
+
+/// The day a note was last written (`YYYY-MM-DD`): the model takes the newer of two notes that disagree
+fn note_date(note: &cluaiz_agents::memory::notes::Note) -> &str {
+    note.updated_at.get(..10).unwrap_or(&note.updated_at)
 }
 
 /// Notes that travel with the current message
 pub fn notes_block(notes: &[cluaiz_agents::memory::notes::Note]) -> String {
-    let lines: Vec<String> = notes.iter().map(|n| format!("[{} · {}] {}", n.id, n.scope, n.text)).collect();
+    let lines: Vec<String> = notes.iter().map(|n| format!("[{} · {} · {}] {}", n.id, n.scope, note_date(n), n.text)).collect();
     format!("<notes>\n{}\n{}\n</notes>", cluaiz_core::prompts::text("chat.notes_record"), lines.join("\n"))
 }
 
@@ -435,48 +456,15 @@ pub fn memory_schemas() -> Vec<Value> {
     ]
 }
 
-/// Answers `recall` and `open_memory` for the chat
-pub fn run_memory_tool(chat: &str, name: &str, args: &Value) -> String {
+/// Answers `recall`, `open_memory`, `task_update`, `remember` and `forget` for the chat
+pub fn run_memory_tool(chat: &str, name: &str, args: &Value, policy: &cluaiz_context::Policy) -> String {
     let Some(map) = chat_map_hot(chat) else {
         return "The chat's earlier messages could not be read.".to_string();
     };
     let arg = |key: &str| args.get(key).and_then(Value::as_str).unwrap_or("").trim().to_string();
-    if name == REMEMBER_TOOL {
-        let text: String = arg("text").chars().take(500).collect();
-        if text.is_empty() {
-            return "remember needs the text to keep.".to_string();
-        }
-        let scope = match arg("scope").as_str() {
-            "chat" => "chat",
-            "global" => "global",
-            _ => "workspace",
-        };
-        let owner = match scope {
-            "chat" => Some(chat.to_string()),
-            "workspace" => Some(current_workspace()),
-            _ => None,
-        };
-        // A project fact is written into the user's project: it waits for the user, also in auto mode
-        let project_fact = super::project::project_for(scope, owner.as_deref()).is_some();
-        let status = if cluaiz_core::Settings::current().context_runtime.notes == "auto" && !project_fact { "confirmed" } else { "proposed" };
+    if name == REMEMBER_TOOL || name == FORGET_TOOL {
         let pos = map.cards.iter().map(|c| c.pos).max().unwrap_or(0);
-        // A chat the app keeps (storage external): the note is an event of the chat, which goes to
-        // the app with the answer; the Engine keeps no note on disk
-        if cluaiz_agents::memory::is_external(chat) {
-            let event = cluaiz_agents::memory::NewEvent::new(
-                "note",
-                json!({ "text": text, "scope": scope, "status": status, "by": "model", "source": [format!("{chat}:m:{pos}")] }),
-            );
-            return match cluaiz_agents::memory::store_for(chat).append(chat, vec![event]) {
-                Ok(_) => cluaiz_core::prompts::render("chat.noted_by_app", &[("status", status)]),
-                Err(e) => format!("The note could not be saved: {e}"),
-            };
-        }
-        return match cluaiz_agents::memory::notes::NoteStore::shared().add(&text, scope, owner.as_deref(), status, false, "model", vec![format!("{chat}:m:{pos}")]) {
-            Ok((note, _)) if status == "proposed" => cluaiz_core::prompts::render("chat.noted_proposed", &[("id", note.id.as_str())]),
-            Ok((note, _)) => cluaiz_core::prompts::render("chat.noted", &[("id", note.id.as_str())]),
-            Err(e) => format!("The note could not be saved: {e}"),
-        };
+        return notes_tool(chat, name, args, policy, pos);
     }
     if name == TASK_UPDATE_TOOL {
         let (goal, stage) = (arg("goal"), arg("stage"));
@@ -723,4 +711,142 @@ pub fn auto_recall(chat: &str, message: &str, hidden: &[usize], max_tokens: usiz
     }
     block.push_str("\n</recall>");
     Some(Evidence { block, report: json!({ "hidden_messages": hidden.len(), "recalled": refs, "episodes": outline.len(), "tokens": used }) })
+}
+
+/// `remember` and `forget`: nothing is replaced by guessing. A new note is saved at once (a note
+/// the user asked for is never lost); when it may repeat notes that are there (or, in a project,
+/// facts of its memory), the model is shown them and forgets the one it replaces. `replaces`
+/// replaces a note the model already knows. Changes follow the request's `notes_change`; a
+/// project fact always waits for the user.
+fn notes_tool(chat: &str, name: &str, args: &Value, policy: &cluaiz_context::Policy, pos: u64) -> String {
+    use cluaiz_agents::memory::notes::{self, NoteStore, FACT_PREFIX};
+    use cluaiz_agents::workspace::memory as facts;
+    let render = cluaiz_core::prompts::render;
+    let arg = |key: &str| args.get(key).and_then(Value::as_str).unwrap_or("").trim().to_string();
+    let history = policy.notes_history_days;
+    let sources = vec![format!("{chat}:m:{pos}")];
+    let change_off = policy.notes_change == "off";
+    let failed = |e: anyhow::Error| format!("The note could not be saved: {e}");
+    let scope = match arg("scope").as_str() {
+        "chat" => "chat",
+        "global" => "global",
+        _ => "workspace",
+    };
+    let owner = match scope {
+        "chat" => Some(chat.to_string()),
+        "workspace" => Some(current_workspace()),
+        _ => None,
+    };
+    // A project fact is written into the user's project: it waits for the user, also in auto mode
+    let project = super::project::project_for(scope, owner.as_deref());
+    // A chat the app keeps (storage external): the note is an event of the chat, which goes to the
+    // app with the answer; the Engine keeps no note on disk
+    let external = cluaiz_agents::memory::is_external(chat);
+
+    if name == FORGET_TOOL {
+        let target = arg("id");
+        if change_off {
+            return cluaiz_core::prompts::text("chat.notes_change_off");
+        }
+        if external {
+            let status = if policy.notes_change == "auto" { "confirmed" } else { "proposed" };
+            return app_note(chat, json!({ "forget": target, "status": status, "by": "model", "source": sources }), status);
+        }
+        if let Some(fact) = target.strip_prefix(FACT_PREFIX) {
+            let Some(dir) = &project else { return render("chat.note_not_found", &[("id", target.as_str())]) };
+            let workspace = super::project::scan(dir);
+            let Some(item) = facts::live(&workspace, fact) else { return render("chat.note_not_found", &[("id", target.as_str())]) };
+            let text = item.body().unwrap_or_default();
+            return match NoteStore::shared().propose_for_fact(&text, scope, owner.as_deref(), &target, true, sources, history) {
+                Ok(note) => render("chat.note_change_proposed", &[("id", note.id.as_str())]),
+                Err(e) => failed(e),
+            };
+        }
+        let status = if policy.notes_change == "auto" { "confirmed" } else { "proposed" };
+        let id = notes::normalize_id(&target);
+        return match NoteStore::shared().forget(&id, status, "model", history) {
+            Ok(Some(change)) if status == "proposed" => render("chat.note_change_proposed", &[("id", change.note.id.as_str())]),
+            Ok(Some(_)) => render("chat.note_forgotten", &[("id", id.as_str())]),
+            Ok(None) => render("chat.note_not_found", &[("id", id.as_str())]),
+            Err(e) => failed(e),
+        };
+    }
+
+    let text: String = arg("text").chars().take(500).collect();
+    if text.is_empty() {
+        return "remember needs the text to keep.".to_string();
+    }
+    let replaces = arg("replaces");
+    let add_status = if policy.notes == "auto" && project.is_none() { "confirmed" } else { "proposed" };
+    if external {
+        let mut event = json!({ "text": text, "scope": scope, "status": add_status, "by": "model", "source": sources });
+        if !replaces.is_empty() && replaces != "none" {
+            event["replaces"] = json!(replaces);
+        }
+        return app_note(chat, event, add_status);
+    }
+    let store = NoteStore::shared();
+    if replaces.is_empty() || replaces.eq_ignore_ascii_case("none") {
+        // Saved first, so a note the user asked for is never lost; what it may repeat (notes of
+        // the same scope, and the project's facts) is shown after, for the model to forget one
+        let note = match store.add(&text, scope, owner.as_deref(), add_status, false, "model", sources, history) {
+            Ok(note) => note,
+            Err(e) => return failed(e),
+        };
+        let saved = if add_status == "proposed" {
+            render("chat.noted_proposed", &[("id", note.id.as_str())])
+        } else {
+            render("chat.noted", &[("id", note.id.as_str())])
+        };
+        if !replaces.is_empty() {
+            return saved;
+        }
+        let all: Vec<_> = store.all().into_iter().filter(|n| n.id != note.id).collect();
+        let mut lines: Vec<String> = similar_notes(&all, &text, scope, owner.as_deref()).iter().map(|n| format!("[{} · {}] {}", n.id, note_date(n), n.text)).collect();
+        if let Some(dir) = &project {
+            let workspace = super::project::scan(dir);
+            lines.extend(facts::similar(&workspace, "", &text, SIMILAR_SHOWN).iter().map(|item| format!("[{FACT_PREFIX}{}] {}", item.name, item.body().unwrap_or_default().trim())));
+        }
+        if lines.is_empty() || change_off {
+            return saved;
+        }
+        return format!("{saved}
+{}", render("chat.noted_similar", &[("notes", lines.join("
+").as_str())]));
+    }
+    if change_off {
+        return cluaiz_core::prompts::text("chat.notes_change_off");
+    }
+    if let Some(fact) = replaces.strip_prefix(FACT_PREFIX) {
+        let live = project.as_ref().is_some_and(|dir| facts::live(&super::project::scan(dir), fact).is_some());
+        if !live {
+            return render("chat.note_not_found", &[("id", replaces.as_str())]);
+        }
+        return match store.propose_for_fact(&text, scope, owner.as_deref(), &replaces, false, sources, history) {
+            Ok(note) => render("chat.note_change_proposed", &[("id", note.id.as_str())]),
+            Err(e) => failed(e),
+        };
+    }
+    let status = if policy.notes_change == "auto" && project.is_none() { "confirmed" } else { "proposed" };
+    let id = notes::normalize_id(&replaces);
+    match store.replace(&id, &text, status, "model", sources, history) {
+        Ok(Some(change)) if status == "proposed" => render("chat.note_change_proposed", &[("id", change.note.id.as_str())]),
+        Ok(Some(change)) => render("chat.note_replaced", &[("id", change.note.id.as_str()), ("old", id.as_str())]),
+        Ok(None) => render("chat.note_not_found", &[("id", id.as_str())]),
+        Err(e) => failed(e),
+    }
+}
+
+/// The live notes that may be about the same thing as `text` (same scope and owner), most alike first
+pub fn similar_notes<'a>(all: &'a [cluaiz_agents::memory::notes::Note], text: &str, scope: &str, owner: Option<&str>) -> Vec<&'a cluaiz_agents::memory::notes::Note> {
+    cluaiz_agents::memory::notes::similar(all, text, scope, owner, SIMILAR_SHOWN).into_iter().map(|(note, _)| note).collect()
+}
+
+/// A note change in a chat the app keeps: an event of the chat for the app
+fn app_note(chat: &str, payload: Value, status: &str) -> String {
+    let event = cluaiz_agents::memory::NewEvent::new("note", payload);
+    match cluaiz_agents::memory::store_for(chat).append(chat, vec![event]) {
+        Ok(_) => cluaiz_core::prompts::render("chat.noted_by_app", &[("status", status)]),
+        Err(e) => format!("The note could not be saved: {e}"),
+    }
 }

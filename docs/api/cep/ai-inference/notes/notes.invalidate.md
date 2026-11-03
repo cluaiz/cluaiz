@@ -4,7 +4,7 @@ transport: "POST /v1/cep"
 category: "ai-inference"
 category_title: "AI & Inference Core"
 group: "notes"
-summary: "The note no longer holds (it is kept, with the time)"
+summary: "Forgets a note: it leaves the notes (kept out of sight for `notes_history_days`, when set). A proposal is turned down"
 scope: "write"
 execution: "sync"
 mcp: true
@@ -31,6 +31,7 @@ response: |
     "id": 1,
     "jsonrpc": "2.0",
     "result": {
+      "forgotten": null,
       "note": {
         "id": "n7",
         "pinned": false,
@@ -38,7 +39,7 @@ response: |
         "status": "confirmed",
         "text": "Prefers tabs over spaces"
       },
-      "superseded": []
+      "superseded": null
     }
   }
 errors:
@@ -125,7 +126,7 @@ Replace the placeholder with an existing id; the request does not create a note.
 
 ## Response and field meanings
 
-note is the updated stored record; superseded reports changes performed by the shared update rules. A missing id returns note_not_found, not an invented note.
+note is the updated stored record. Confirming a proposed change does its work: superseded is the note a proposed replacement took over from, forgotten the note a proposal to forget removed (the proposal itself then leaves). Invalidating forgets a note: it leaves the notes, kept out of sight for `notes_history_days` when that setting is above 0; invalidating a proposal turns it down. A missing id returns note_not_found, not an invented note.
 
 The following response is an illustrative shape. IDs, byte counts, timings and array contents depend on the actual request and machine; shortened nested objects are not a second schema or a measured result.
 
@@ -241,7 +242,7 @@ console.log(reply.result);
 
 ## Limits, state and related operations
 
-Confirmation can supersede a live note on the same subject. Invalidation retains the record and its lifecycle timestamp; it is not physical deletion. Neither method accepts replacement text, scope or a pinned flag.
+Confirmation replaces or forgets only the note a proposal names (`replaces`); nothing is replaced by subject. Invalidation removes the note from the file unless `notes_history_days` keeps it out of sight for that many days. Neither method accepts replacement text, scope or a pinned flag.
 
 - [`notes.list`](notes.list.md): use its separate documented contract.
 - [`notes.pin`](notes.pin.md): use its separate documented contract.

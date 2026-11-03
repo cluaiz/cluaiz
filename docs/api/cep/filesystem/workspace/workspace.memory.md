@@ -104,7 +104,7 @@ Every fact of the current project.
 
 ## Response
 
-`facts`: one object per fact, as in `workspace.index` (`kind`, `name`, `description`, `path`, `found_in`, `status`, `superseded_by`) plus `text`. A fact with `status: "superseded"` was replaced by `superseded_by` and is no longer sent to the model; its file stays. Each file's front matter also records `source` (who saved it) and `created`.
+`facts`: one object per fact, as in `workspace.index` (`kind`, `name`, `description`, `path`, `found_in`, `status`, `superseded_by`) plus `text`. A replaced fact is rewritten in place (`workspace.remember` with `replaces`), so there is one file per subject. A fact with `status: "superseded"` was marked by an older Engine and is no longer sent to the model; its file stays until someone deletes it (`workspace.forget`). Each file's front matter also records `source` (who saved it) and `created`.
 
 ## Errors and recovery
 

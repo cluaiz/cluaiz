@@ -3638,6 +3638,7 @@
           "result": {
             "name": "result",
             "value": {
+              "forgotten": null,
               "note": {
                 "id": "n7",
                 "pinned": false,
@@ -3645,7 +3646,7 @@
                 "status": "confirmed",
                 "text": "Prefers tabs over spaces"
               },
-              "superseded": []
+              "superseded": null
             }
           }
         }
@@ -3668,7 +3669,7 @@
           "title": "AnyValue"
         }
       },
-      "summary": "A proposed note becomes confirmed (and supersedes a live note on the same subject); a workspace note of a project becomes a fact of its `.agents/memory/`",
+      "summary": "A proposed note becomes confirmed. A proposed change does its work: it replaces the note it names, or forgets it; in a project, it rewrites or deletes the fact it names. A workspace note of a project becomes a fact of its `.agents/memory/`",
       "x-cep": {
         "destructive": false,
         "execution": "sync",
@@ -3686,6 +3687,13 @@
             "type": "invalid_params"
           },
           "message": "`text` is empty or over 2000 characters, `scope` is unknown, or scope chat has no `chat_id`"
+        },
+        {
+          "code": -32004,
+          "data": {
+            "type": "note_not_found"
+          },
+          "message": "`replaces` names no live note"
         },
         {
           "code": -32010,
@@ -3718,7 +3726,8 @@
                 "status": "confirmed",
                 "text": "Prefers tabs over spaces"
               },
-              "superseded": []
+              "similar": [],
+              "superseded": null
             }
           }
         }
@@ -3748,6 +3757,18 @@
           }
         },
         {
+          "name": "replaces",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "The id of a live note this one corrects or updates: the new note takes its place (its pin\ncarries over) and the old one leaves. Without it nothing is replaced; `similar` in the\nresult lists notes that may be about the same thing.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
           "name": "scope",
           "required": false,
           "schema": {
@@ -3774,7 +3795,7 @@
           "title": "AnyValue"
         }
       },
-      "summary": "A note written by the user, confirmed at once; it supersedes a live note on the same subject",
+      "summary": "A note written by the user, confirmed at once. It replaces only the note named in `replaces`; `similar` lists notes that may be about the same thing",
       "x-cep": {
         "destructive": false,
         "execution": "sync",
@@ -3813,6 +3834,7 @@
           "result": {
             "name": "result",
             "value": {
+              "forgotten": null,
               "note": {
                 "id": "n7",
                 "pinned": false,
@@ -3820,7 +3842,7 @@
                 "status": "confirmed",
                 "text": "Prefers tabs over spaces"
               },
-              "superseded": []
+              "superseded": null
             }
           }
         }
@@ -3843,7 +3865,7 @@
           "title": "AnyValue"
         }
       },
-      "summary": "The note no longer holds (it is kept, with the time)",
+      "summary": "Forgets a note: it leaves the notes (kept out of sight for `notes_history_days`, when set). A proposal is turned down",
       "x-cep": {
         "destructive": false,
         "execution": "sync",
@@ -4055,6 +4077,7 @@
           "result": {
             "name": "result",
             "value": {
+              "forgotten": null,
               "note": {
                 "id": "n7",
                 "pinned": false,
@@ -4062,7 +4085,7 @@
                 "status": "confirmed",
                 "text": "Prefers tabs over spaces"
               },
-              "superseded": []
+              "superseded": null
             }
           }
         }
@@ -6806,6 +6829,80 @@
       }
     },
     {
+      "errors": [
+        {
+          "code": -32002,
+          "data": {
+            "type": "forbidden"
+          },
+          "message": "The folder is outside the caller's roots"
+        },
+        {
+          "code": -32004,
+          "data": {
+            "type": "fact_not_found"
+          },
+          "message": "No live fact of this name"
+        }
+      ],
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "name",
+              "value": "test-command"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "forgotten": "test-command",
+              "path": "/project/.agents/memory/test-command.md"
+            }
+          }
+        }
+      ],
+      "name": "workspace.forget",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "description": "The fact's name, e.g. `deploy-port`",
+            "type": "string"
+          }
+        },
+        {
+          "name": "path",
+          "required": false,
+          "schema": {
+            "description": "The project folder (default: the workspace)",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Deletes a fact of the project's memory (`.agents/memory/<name>.md`) the user wants gone",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": false,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
       "errors": [],
       "examples": [
         {
@@ -7123,7 +7220,7 @@
           "data": {
             "type": "memory_not_saved"
           },
-          "message": "The fact file could not be written"
+          "message": "The fact file could not be written, or `replaces` names no live fact"
         }
       ],
       "examples": [
@@ -7148,7 +7245,8 @@
             "value": {
               "path": "/project/.agents/memory/test-command.md",
               "replaced": [],
-              "saved": "test-command"
+              "saved": "test-command",
+              "similar": []
             }
           }
         }
@@ -7184,6 +7282,18 @@
           }
         },
         {
+          "name": "replaces",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "The name of a live fact this one corrects or updates: its file gets the new text. Without\nit nothing is replaced; `similar` in the result lists facts that may be about the same thing",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
           "name": "source",
           "required": false,
           "schema": {
@@ -7201,7 +7311,7 @@
           "title": "AnyValue"
         }
       },
-      "summary": "Saves a fact the user confirmed in the project's memory (`.agents/memory/<name>.md`); a live fact on the same subject or of the same name is marked superseded",
+      "summary": "Saves a fact the user confirmed in the project's memory (`.agents/memory/<name>.md`). With `replaces`, that fact's file gets the new text; without, nothing is replaced and `similar` lists facts that may be about the same thing",
       "x-cep": {
         "destructive": false,
         "execution": "sync",
