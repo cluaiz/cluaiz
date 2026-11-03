@@ -4,6 +4,7 @@ pub mod chunker;
 mod doc;
 mod docx;
 pub mod ocr;
+pub mod office;
 mod pdf;
 pub mod pdf_render;
 mod text;
@@ -12,6 +13,15 @@ use crate::formats::{DocumentKind, MediaFormat};
 use anyhow::{bail, Context, Result};
 use cluaiz_core::media_limits::MediaLimits;
 use serde::Serialize;
+
+/// One piece of a document in reading order: its text, an embedded picture (its file bytes), or
+/// a visual that could not be read, and why
+#[derive(Debug)]
+pub enum Segment {
+    Text(String),
+    Image(Vec<u8>),
+    Unread(&'static str),
+}
 
 /// Default maximum UTF-8 bytes per semantic chunk, shared by API and CLI.
 pub const DEFAULT_CHUNK_BYTES: usize = 512;
@@ -114,8 +124,21 @@ pub fn extract_with_assets(
             }
             parts
         }
-        DocumentKind::Doc => doc::extract(bytes, limits)?,
-        DocumentKind::Docx => docx::extract(bytes, limits)?,
+        DocumentKind::Doc => match doc::extract(bytes, limits) {
+            Ok(parts) => parts,
+            // A compound file that is a legacy workbook or presentation, not a Word document
+            Err(error) => match office::segments(bytes, office::OfficeKind::LegacyCompound, limits) {
+                Ok(segments) => with_pictures(segments, "office_markdown", Vec::new(), limits, assets),
+                Err(_) => return Err(error),
+            },
+        },
+        DocumentKind::Docx => {
+            let body = docx::extract(bytes, limits)?;
+            with_pictures(body.segments, "docx_xml", body.omissions, limits, assets)
+        }
+        DocumentKind::Office(kind) => {
+            with_pictures(office::segments(bytes, kind, limits)?, "office_markdown", Vec::new(), limits, assets)
+        }
         DocumentKind::Image => {
             let image = crate::image::decode_image(bytes, limits)?;
             let mut part = DocumentPart {
@@ -166,6 +189,92 @@ pub fn extract_with_assets(
         mime_type: format.mime_type.clone(),
         parts,
     })
+}
+
+/// The text and pictures of a Word or Office document in reading order, for a model that reads
+/// pictures itself; None for other kinds
+pub fn segments(bytes: &[u8], format: &MediaFormat, limits: MediaLimits) -> Result<Option<Vec<Segment>>> {
+    limits.check_input_bytes(u64::try_from(bytes.len())?)?;
+    Ok(match format.document_kind(bytes)? {
+        DocumentKind::Docx => Some(docx::extract(bytes, limits)?.segments),
+        DocumentKind::Office(kind) => Some(office::segments(bytes, kind, limits)?),
+        _ => None,
+    })
+}
+
+/// What a model reading text is told about the picture numbered `number`, without the picture
+pub fn picture_label(number: usize, note: &str) -> String {
+    format!("
+[Picture {number}: {note}]
+")
+}
+
+/// Text segments become parts; each picture is read with OCR (its text follows its label), and
+/// a picture with no text, in a format that cannot be decoded, or without OCR installed gets a
+/// label that says so. An unread picture is marked in the text, so it is not an omission: the
+/// model knows a picture was there and that its content is not in the text.
+fn with_pictures(
+    segments: Vec<Segment>,
+    method: &'static str,
+    omissions: Vec<&'static str>,
+    limits: MediaLimits,
+    assets: Option<&crate::native_assets::NativeAssets>,
+) -> Vec<DocumentPart> {
+    let mut parts: Vec<DocumentPart> = Vec::new();
+    let mut owned: Option<Result<crate::native_assets::NativeAssets>> = None;
+    let mut number = 0usize;
+    let part = |method, text, warnings| DocumentPart { page: None, method, text, omissions: Vec::new(), warnings, ocr_confidence: None };
+    for segment in segments {
+        match segment {
+            Segment::Text(text) => {
+                if !text.trim().is_empty() {
+                    parts.push(part(method, text, Vec::new()));
+                }
+            }
+            Segment::Unread(why) => {
+                number += 1;
+                parts.push(part(method, picture_label(number, &format!("{why}; its content is not in this text")), Vec::new()));
+            }
+            Segment::Image(data) => {
+                number += 1;
+                let image = match crate::image::decode_image(&data, limits) {
+                    Ok(image) => image,
+                    Err(error) => {
+                        parts.push(part("embedded_image_ocr", picture_label(number, "a picture in a format that cannot be read; its content is not in this text"), vec![format!("Picture {number}: {error:#}")]));
+                        continue;
+                    }
+                };
+                let assets = match assets {
+                    Some(assets) => Ok(assets),
+                    None => owned
+                        .get_or_insert_with(crate::native_assets::NativeAssets::from_environment)
+                        .as_ref()
+                        .map_err(|e| anyhow::anyhow!("{e:#}")),
+                };
+                let mut picture = part("embedded_image_ocr", String::new(), Vec::new());
+                match assets.and_then(|assets| ocr::recognize(&image, limits, assets)) {
+                    Ok(found) => {
+                        picture.text = format!("{}{}
+", picture_label(number, "a picture; the text read from it follows"), found.text.trim());
+                        picture.ocr_confidence = Some(found.confidence);
+                        picture.warnings.push(OCR_TEXT_SCOPE.into());
+                    }
+                    Err(error) if error.to_string() == ocr::NO_TEXT => {
+                        picture.text = picture_label(number, "a picture with no text in it; what it shows is not in this text");
+                    }
+                    Err(error) => {
+                        picture.text = picture_label(number, "a picture that was not read; its content is not in this text (text recognition is not installed)");
+                        picture.warnings.push(format!("Picture {number}: {error:#}"));
+                    }
+                }
+                parts.push(picture);
+            }
+        }
+    }
+    if let Some(first) = parts.first_mut() {
+        first.omissions = omissions;
+    }
+    parts
 }
 
 pub(super) const OCR_TEXT_SCOPE: &str = "OCR returns recognized text; it does not interpret diagrams, image meaning or certify recognition accuracy";

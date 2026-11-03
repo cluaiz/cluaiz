@@ -210,7 +210,7 @@ An allowed image URL or actual `data:image/png;base64,...` is an alternative. Na
 }
 ```
 
-The OOXML provider reads supported main-body text/table content. It is not a screenshot interpretation model; headers/footers or unsupported objects can appear as omissions.
+The OOXML provider reads supported main-body text/table content. It is not a screenshot interpretation model; headers/footers can appear as omissions. Pictures in the body are read with native OCR when it is installed; each picture is labelled `[Picture N: …]` in its place, with its text when some was found. XLSX/XLS (sheets as Markdown tables) and PPTX/PPT (slides with notes) are read the same way.
 
 ### 6. Legacy Word DOC: supported native text
 
