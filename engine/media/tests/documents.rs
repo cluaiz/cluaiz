@@ -64,9 +64,12 @@ fn test_real_docx_unicode_tables_entities_and_zip_limits() -> Result<()> {
     let visual = support::docx(
         &support::DOCX_XML.replace("</a:body>", "<a:p><a:r><a:drawing/></a:r></a:p></a:body>"),
     )?;
+    // A drawing without a picture is marked in the text, not left out silently
     let visual = extract(&visual, 8192)?;
-    assert!(!visual.complete());
-    assert!(visual.text(MediaLimits::default(), true).is_err());
+    assert!(visual.complete());
+    assert!(visual
+        .text(MediaLimits::default(), true)?
+        .contains("[Picture 1: a drawing without a picture (a chart or a shape); its content is not in this text]"));
     let duplicate = support::docx(&format!("{}{}", support::DOCX_XML, support::DOCX_XML))?;
     assert!(extract(&duplicate, 8192).is_err());
     assert!(extract(b"binary\0data", 8192).is_err());

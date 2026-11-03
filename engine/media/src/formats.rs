@@ -1,5 +1,6 @@
 //! Extensible content detection. A detected format does not imply an installed decoder/model.
 
+use crate::documents::office::OfficeKind;
 use anyhow::{bail, Result};
 
 const GENERIC_MIME: &str = "application/octet-stream";
@@ -91,8 +92,13 @@ pub enum DocumentKind {
     Pdf,
     Doc,
     Docx,
+    /// A spreadsheet or presentation (`documents::office`)
+    Office(crate::documents::office::OfficeKind),
     Image,
 }
+
+const SPREADSHEET: &str = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const PRESENTATION: &str = "application/vnd.openxmlformats-officedocument.presentationml.presentation";
 
 /// Positive registered document providers. PDF/DOCX support means text extraction,
 /// with visual/empty pages reported separately; it is not native model file input.
@@ -101,6 +107,10 @@ pub fn document_attachment_formats() -> Vec<(cluaiz_core::Modality, &'static str
         "application/pdf",
         "application/msword",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        SPREADSHEET,
+        PRESENTATION,
+        "application/vnd.ms-excel",
+        "application/vnd.ms-powerpoint",
         "text/plain",
         "text/markdown",
         "application/json",
@@ -121,10 +131,24 @@ impl MediaFormat {
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document" => {
                 Ok(DocumentKind::Docx)
             }
+            SPREADSHEET => Ok(DocumentKind::Office(OfficeKind::Spreadsheet)),
+            PRESENTATION => Ok(DocumentKind::Office(OfficeKind::Presentation)),
+            "application/vnd.ms-excel" | "application/vnd.ms-powerpoint" => {
+                Ok(DocumentKind::Office(OfficeKind::LegacyCompound))
+            }
+            // An Office Open XML package named by its main part
             "application/zip" => {
-                let mut archive = zip::ZipArchive::new(std::io::Cursor::new(bytes))?;
-                archive.by_name("word/document.xml")?;
-                Ok(DocumentKind::Docx)
+                let archive = zip::ZipArchive::new(std::io::Cursor::new(bytes))?;
+                let has = |name: &str| archive.index_for_name(name).is_some();
+                if has("word/document.xml") {
+                    Ok(DocumentKind::Docx)
+                } else if has("xl/workbook.xml") {
+                    Ok(DocumentKind::Office(OfficeKind::Spreadsheet))
+                } else if has("ppt/presentation.xml") {
+                    Ok(DocumentKind::Office(OfficeKind::Presentation))
+                } else {
+                    bail!("This ZIP file is not a Word, Excel or PowerPoint document")
+                }
             }
             mime if mime.starts_with("text/")
                 || mime == GENERIC_MIME

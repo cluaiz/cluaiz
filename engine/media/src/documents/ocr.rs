@@ -196,7 +196,7 @@ impl Session {
         )?)?;
         let text = std::str::from_utf8(bytes).context("Native OCR returned invalid UTF-8")?;
         if text.trim().is_empty() {
-            bail!("Native OCR recognized no readable text");
+            bail!("{NO_TEXT}");
         }
         let confidence = (self.functions.confidence)(self.handle.as_ptr());
         if !(0..=100).contains(&confidence) {
@@ -251,6 +251,9 @@ impl Drop for NativeText {
         }
     }
 }
+
+/// The error of a picture with no text to read (not a failure of recognition)
+pub const NO_TEXT: &str = "Native OCR recognized no readable text";
 
 pub struct OcrText {
     pub text: String,

@@ -659,12 +659,13 @@ Supports JPEG, PNG, WEBP, GIF, and BMP:
 Direct document question answering and summarization. The same `file_url` payload supports native document text and selected-model PDF vision. A selected package declaring image support with a projector receives ordered rendered PDF pages, including their graphics. Text-only packages receive native extracted/OCR text. This route does not invoke the ingest HTTP API or chat tools to read the attachment.
 
 > [!TIP]
-> **Native text fallback:** Text-only LLMs can read extracted PDF/Word text without a vision projector. Native OCR recognizes words, not the meaning of diagrams. To ask about PDF graphics, explicitly select a complete compatible vision package. Visual pages share the configured decoded-byte and model-context limits; oversized PDFs fail instead of silently dropping pages. DOC/DOCX text extraction does not automatically expose embedded images.
+> **Native text fallback:** Text-only LLMs can read extracted PDF/Word text without a vision projector. Native OCR recognizes words, not the meaning of diagrams. To ask about PDF graphics, explicitly select a complete compatible vision package. Visual pages share the configured decoded-byte and model-context limits; oversized PDFs fail instead of silently dropping pages. Pictures inside Word, Excel and PowerPoint files keep their place: a model with a vision projector receives each picture as an image where it is in the document; a text-only model gets a label `[Picture N: …]` there, followed by the picture's text when native OCR is installed and finds some. A picture that is not read (no OCR installed, no text in it, a vector format such as EMF, a chart or a shape without a picture) is still labelled, and the label says its content is not in the text, so the document is not refused for it.
 
 #### 📋 Supported Document & Code Formats
 | Category | Supported Extensions | Processing Mechanism |
 |:---|:---|:---|
 | **Documents** | `.pdf`, `.docx`, `.doc`, `.txt`, `.md`, `.csv`, `.json`, `.toml`, `.yaml`, `.yml` | Native extraction into text; PDFium/OCR for PDFs, OOXML for DOCX and the supported compound Word parser for DOC. Unsupported content is reported as omissions/errors. |
+| **Spreadsheets and slides** | `.xlsx`, `.xls`, `.pptx`, `.ppt` | Each sheet as a Markdown table under its name (charts' text, comments); each slide with its title, text, tables and speaker notes, in order. Read by the pinned `office_oxide` reader the DOC parser already uses. |
 | **Source Code** | `.rs`, `.ts`, `.tsx`, `.js`, `.jsx`, `.py`, `.c`, `.cpp`, `.h`, `.go`, `.html`, `.css`, `.sql`, `.sh`, `.log` | Plain text tokenizer ingestion into context window |
 
 > [!WARNING]

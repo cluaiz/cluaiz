@@ -4,6 +4,7 @@ use std::io::{Cursor, Write};
 #[allow(dead_code)]
 pub mod raster;
 
+#[allow(dead_code)]
 pub fn pdf(pages: &[Option<&str>]) -> anyhow::Result<Vec<u8>> {
     let mut objects = vec![
         "<< /Type /Catalog /Pages 2 0 R >>".to_owned(),
@@ -55,7 +56,13 @@ pub fn pdf(pages: &[Option<&str>]) -> anyhow::Result<Vec<u8>> {
     Ok(bytes)
 }
 
+#[allow(dead_code)]
 pub fn docx(xml: &str) -> anyhow::Result<Vec<u8>> {
+    docx_with(xml, &[])
+}
+
+/// A DOCX with more package entries (relationships, media)
+pub fn docx_with(xml: &str, extra: &[(&str, &[u8])]) -> anyhow::Result<Vec<u8>> {
     let mut archive = zip::ZipWriter::new(Cursor::new(Vec::new()));
     let options = zip::write::SimpleFileOptions::default()
         .compression_method(zip::CompressionMethod::Deflated);
@@ -73,9 +80,23 @@ pub fn docx(xml: &str) -> anyhow::Result<Vec<u8>> {
         archive.start_file(path, options)?;
         archive.write_all(text.as_bytes())?;
     }
+    for (path, data) in extra {
+        archive.start_file(*path, options)?;
+        archive.write_all(data)?;
+    }
     Ok(archive.finish()?.into_inner())
 }
 
+/// A small real PNG
+#[allow(dead_code)]
+pub fn png_bytes() -> anyhow::Result<Vec<u8>> {
+    let image = image::RgbImage::from_pixel(8, 6, image::Rgb([30, 120, 200]));
+    let mut out = Cursor::new(Vec::new());
+    image::DynamicImage::ImageRgb8(image).write_to(&mut out, image::ImageOutputFormat::Png)?;
+    Ok(out.into_inner())
+}
+
+#[allow(dead_code)]
 pub const DOCX_XML: &str = r#"<?xml version="1.0" encoding="UTF-8"?><a:document xmlns:a="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><a:body><a:p><a:r><a:t>Hello &amp; नमस्ते</a:t></a:r></a:p><a:tbl><a:tr><a:tc><a:p><a:r><a:t>First</a:t></a:r></a:p></a:tc><a:tc><a:p><a:r><a:t>Second</a:t></a:r></a:p></a:tc></a:tr></a:tbl><a:p><a:r><a:t>Final</a:t></a:r></a:p></a:body></a:document>"#;
 
 /// Word 97 CFB/FIB/CLX document with one actual ANSI or UTF-16 text piece.

@@ -248,6 +248,13 @@ async fn prepare_resolved(
             {
                 return prepare_pdf_pages(&bytes, decode_limits, &cancellation);
             }
+            // A Word or Office document for a model that reads pictures: its pictures go to the
+            // model as images in their place
+            if document_images {
+                if let Some(segments) = crate::documents::segments(&bytes, &format, decode_limits)? {
+                    return prepare_segments(segments, decode_limits, &cancellation);
+                }
+            }
             let document = crate::documents::extract(&bytes, &format, decode_limits)?;
             let text = document.text(decode_limits, true)?;
             Ok(vec![PreparedPart::Text { text }])
@@ -287,6 +294,59 @@ async fn prepare_resolved(
         p.emit(Stage::Decoding, State::Completed, Some(target), None);
     }
     Ok(decoded)
+}
+
+/// Text and decoded pictures in order, within the decoded byte budget. A picture that cannot be
+/// decoded (a vector format such as EMF) or a visual without one is a label in the text.
+fn prepare_segments(
+    segments: Vec<crate::documents::Segment>,
+    limits: MediaLimits,
+    cancellation: &AtomicBool,
+) -> Result<Vec<PreparedPart>> {
+    use crate::documents::{picture_label, Segment};
+    let mut parts = Vec::new();
+    let mut retained = 0_u64;
+    let mut number = 0usize;
+    for segment in segments {
+        if cancellation.load(Ordering::Acquire) {
+            anyhow::bail!("Document preparation cancelled");
+        }
+        let remaining = limits.max_decoded_bytes().saturating_sub(retained);
+        let mut add = |part: PreparedPart, parts: &mut Vec<PreparedPart>| -> Result<()> {
+            retained = retained
+                .checked_add(part.retained_bytes() as u64)
+                .context("Document part size overflow")?;
+            limits.check_decoded_bytes(retained)?;
+            parts.try_reserve(1)?;
+            parts.push(part);
+            Ok(())
+        };
+        match segment {
+            Segment::Text(text) if text.trim().is_empty() => {}
+            Segment::Text(text) => add(PreparedPart::Text { text }, &mut parts)?,
+            Segment::Unread(why) => {
+                number += 1;
+                add(PreparedPart::Text { text: picture_label(number, &format!("{why}; its content is not in this text")) }, &mut parts)?;
+            }
+            Segment::Image(data) => {
+                number += 1;
+                let decoded = MediaLimits::new(limits.max_input_bytes(), remaining.max(1))
+                    .map_err(anyhow::Error::from)
+                    .and_then(|picture_limits| decode_image(&data, picture_limits));
+                match decoded {
+                    Ok(image) => {
+                        add(PreparedPart::Text { text: picture_label(number, "a picture of the document, shown next") }, &mut parts)?;
+                        add(PreparedPart::Image { image }, &mut parts)?;
+                    }
+                    Err(_) => add(PreparedPart::Text { text: picture_label(number, "a picture in a format that cannot be read; its content is not in this text") }, &mut parts)?,
+                }
+            }
+        }
+    }
+    if parts.is_empty() {
+        anyhow::bail!("The document has no text or pictures");
+    }
+    Ok(parts)
 }
 
 /// Reuse serialized PDFium; native bitmaps are temporary, retained RGB pages are bounded.
