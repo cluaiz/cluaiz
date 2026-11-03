@@ -107,6 +107,30 @@ pub fn set_key(key: &str, value: f64) {
     }
 }
 
+/// Drops every measurement of a removed model: its GGUF files' VRAM and speed numbers (by
+/// `geometries`) and its ONNX / speech package numbers (by `model_id`). Returns how many were dropped.
+pub fn forget_model(model_id: &str, geometries: &[ModelGeometry]) -> usize {
+    let files: Vec<String> = geometries
+        .iter()
+        .map(|g| format!("{}:{}:{}:", g.architecture, g.file_size_bytes, g.block_count))
+        .collect();
+    let package = format!("onnx:{model_id}:");
+    let speech = format!("speech:{model_id}");
+    let of_model = |key: &str| {
+        let rest = ["pool:", CORRECTION, "speed:tg:", "speed:pp:"]
+            .iter()
+            .find_map(|prefix| key.strip_prefix(prefix));
+        rest.is_some_and(|rest| files.iter().any(|file| rest.starts_with(file.as_str())))
+            || key.starts_with(&package)
+            || key == speech
+    };
+    let Ok(mut guard) = LEARNED.write() else { return 0 };
+    let Some(map) = guard.as_mut() else { return 0 };
+    let before = map.len();
+    map.retain(|key, _| !of_model(key));
+    before - map.len()
+}
+
 /// Every measurement, to save
 pub fn snapshot() -> HashMap<String, f64> {
     LEARNED.read().ok().and_then(|g| g.clone()).unwrap_or_default()
