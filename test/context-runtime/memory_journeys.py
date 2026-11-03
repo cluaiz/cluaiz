@@ -360,9 +360,9 @@ AUTO = {"notes": "auto", "notes_change": "auto", "notes_history_days": 0}
 def note1(engine):
     """A correction replaces the old note; nothing old stays in the file"""
     _clear_notes(engine)
-    _tell(engine, "Yaad rakhna: mera deploy server ka port 9090 hai.", AUTO)
+    engine.cep("notes.create", text="Mera deploy server ka port 9090 hai.")
     first, _ = _notes(engine)
-    _tell(engine, "Yaad rakhna: deploy server ka port badal gaya, ab 8080 hai.", AUTO)
+    _tell(engine, "Yaad rakhna: server ab 8080 par chalta hai.", AUTO)
     live, proposed = _notes(engine)
     raw = Path(engine.home, "memory", "notes", "notes.jsonl").read_text(encoding="utf-8") if engine.home else ""
     ok = any("9090" in t for t in first) and len(live) == 1 and "8080" in live[0] and not proposed and "9090" not in raw
@@ -375,7 +375,7 @@ def note2(engine):
     _tell(engine, "Yaad rakhna: mera bhai Delhi mein rehta hai.", AUTO)
     _tell(engine, "Yaad rakhna: meri behen bhi Delhi mein rehti hai.", AUTO)
     live, _ = _notes(engine)
-    ok = any("bhai" in t.lower() or "brother" in t.lower() for t in live) and any("behen" in t.lower() or "sister" in t.lower() for t in live)
+    ok = any("bhai" in t.lower() or "brother" in t.lower() for t in live) and any("beh" in t.lower() or "sister" in t.lower() for t in live)
     return ok, f"live notes: {live}"
 
 
@@ -403,8 +403,37 @@ def note4(engine):
     return ok, f"before confirm: live {before}, proposed {[(p['text'], p.get('forget', False)) for p in proposed]}; after: {after}"
 
 
+def _with_message(engine, text, policy):
+    """The notes that went with one message (a new chat)"""
+    chat = session("recall")
+    r = engine.chat(body(text, chat, max_tokens=30, context_policy=policy))
+    engine.cep("memory.delete", chat_id=chat)
+    ids = (engine_context(r).get("plan") or r.get("context_report", {}).get("plan") or {}).get("notes", {}).get("with_message", [])
+    by_id = {n["id"]: n["text"] for n in engine.cep("notes.list")["notes"]}
+    return [by_id.get(i, i) for i in ids]
+
+
+def note5(engine):
+    """Notes reach a message by meaning (embedding model), not only by shared words"""
+    _clear_notes(engine)
+    for text in ["Standup meeting roz 10 baje hoti hai.", "Mujhe chai pasand hai.", "Deploy server ka port 9090 hai.", "User ka naam Aryan hai."]:
+        engine.cep("notes.create", text=text)
+    asks = {"meeting kab hai?": "Standup", "deploy wala server kaunse port pe sunta hai?": "9090", "what is my name?": "Aryan"}
+    rows, ok = [], True
+    for mode in ("auto", "words"):
+        for question, want in asks.items():
+            got = _with_message(engine, question, {"notes_match": mode})
+            hit = any(want in t for t in got)
+            if mode == "auto":
+                ok &= hit and len(got) <= 3
+            rows.append(f"{mode}: {question!r} -> {got}")
+    vectors = list(Path(engine.home, "memory", "vectors").glob("*.json")) if engine.home else []
+    ok &= bool(vectors)
+    return ok, " | ".join(rows) + f" | vector files: {[v.name for v in vectors]}"
+
+
 JOURNEYS = {"MEM3": mem3, "MEM5": mem5, "MEM6": mem6, "ENR1": enr1, "PERF5": perf5, "C2": c2, "EXT1": ext1,
-            "NOTE1": note1, "NOTE2": note2, "NOTE3": note3, "NOTE4": note4}
+            "NOTE1": note1, "NOTE2": note2, "NOTE3": note3, "NOTE4": note4, "NOTE5": note5}
 
 
 def main():

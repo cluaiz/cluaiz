@@ -372,7 +372,7 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
                 }}
             }])));
             let executed = if is_meta_tool {
-                let outcome = super::tool_turns::run_meta_tool(ctx, &self.tool_turns, session_id.as_deref(), meta_name, &meta_payload).await;
+                let outcome = super::tool_turns::run_meta_tool(&self.state, ctx, &self.tool_turns, session_id.as_deref(), meta_name, &meta_payload).await;
                 if meta_name == cluaiz_agents::LOAD_TOOL_NAME && outcome.text.contains("Loaded tool") {
                     if let Some(id) = serde_json::from_str::<Value>(&meta_payload)
                         .ok()

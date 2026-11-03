@@ -350,29 +350,44 @@ pub fn forget_schema() -> Value {
 }
 
 
-/// Notes for a chat: the pinned ones and the live ones that fit the message (at most 3)
-pub fn notes_for(chat: Option<&str>, workspace: &str, message: &str) -> (Vec<cluaiz_agents::memory::notes::Note>, Vec<cluaiz_agents::memory::notes::Note>) {
-    let live: Vec<_> = cluaiz_agents::memory::notes::NoteStore::shared()
-        .all()
-        .into_iter()
-        .filter(|n| n.is_live() && n.applies_to(chat, Some(workspace)))
-        .collect();
+/// Notes for a chat: the pinned ones, and the live ones that fit the message (at most
+/// `notes_max`): by meaning with an embedding model (`notes_recall_pct`), and by words (two shared
+/// words, or a third of a short note's words), most alike first
+pub async fn notes_for(
+    state: &crate::AppState,
+    policy: &cluaiz_context::Policy,
+    chat: Option<&str>,
+    workspace: &str,
+    message: &str,
+) -> (Vec<cluaiz_agents::memory::notes::Note>, Vec<cluaiz_agents::memory::notes::Note>) {
+    let all = cluaiz_agents::memory::notes::NoteStore::shared().all();
+    let live_ids: std::collections::HashSet<String> = all.iter().filter(|n| n.is_live()).map(|n| n.id.clone()).collect();
+    let live: Vec<_> = all.into_iter().filter(|n| n.is_live() && n.applies_to(chat, Some(workspace))).collect();
     let pinned: Vec<_> = live.iter().filter(|n| n.pinned).cloned().collect();
+    let others: Vec<_> = live.into_iter().filter(|n| !n.pinned).collect();
+    if others.is_empty() || message.trim().is_empty() {
+        return (pinned, Vec::new());
+    }
     let query: std::collections::HashSet<String> = cluaiz_context::analyze::terms(message).into_iter().collect();
-    let mut relevant: Vec<(usize, cluaiz_agents::memory::notes::Note)> = live
-        .into_iter()
-        .filter(|n| !n.pinned)
+    let words: Vec<usize> = others
+        .iter()
         .map(|n| {
             let terms: std::collections::HashSet<String> = cluaiz_context::analyze::terms(&n.text).into_iter().collect();
             let shared = terms.iter().filter(|t| query.contains(*t)).count();
             // Two shared words, or a third of a short note's words
-            let fits = shared >= 2 || (shared >= 1 && shared * 3 >= terms.len());
-            (if fits { shared } else { 0 }, n)
+            if shared >= 2 || (shared >= 1 && shared * 3 >= terms.len()) { shared } else { 0 }
         })
-        .filter(|(shared, _)| *shared > 0)
         .collect();
-    relevant.sort_by(|a, b| b.0.cmp(&a.0));
-    (pinned, relevant.into_iter().take(3).map(|(_, n)| n).collect())
+    let items: Vec<(String, String)> = others.iter().map(|n| (n.id.clone(), n.text.clone())).collect();
+    let meaning = super::semantic::similarities(state, policy, message, &items, Some(&live_ids)).await;
+    let floor = policy.notes_recall_pct as f32 / 100.0;
+    let mut relevant: Vec<(f32, usize, usize)> = (0..others.len())
+        .map(|i| (meaning.as_ref().map_or(0.0, |m| m[i]), words[i], i))
+        .filter(|(similarity, shared, _)| *shared > 0 || (meaning.is_some() && *similarity >= floor))
+        .collect();
+    relevant.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal).then(b.1.cmp(&a.1)));
+    let chosen: Vec<usize> = relevant.into_iter().take(policy.notes_max as usize).map(|(_, _, i)| i).collect();
+    (pinned, chosen.into_iter().map(|i| others[i].clone()).collect())
 }
 
 /// The notes part of the system prompt
@@ -457,14 +472,14 @@ pub fn memory_schemas() -> Vec<Value> {
 }
 
 /// Answers `recall`, `open_memory`, `task_update`, `remember` and `forget` for the chat
-pub fn run_memory_tool(chat: &str, name: &str, args: &Value, policy: &cluaiz_context::Policy) -> String {
+pub async fn run_memory_tool(state: &crate::AppState, chat: &str, name: &str, args: &Value, policy: &cluaiz_context::Policy) -> String {
     let Some(map) = chat_map_hot(chat) else {
         return "The chat's earlier messages could not be read.".to_string();
     };
     let arg = |key: &str| args.get(key).and_then(Value::as_str).unwrap_or("").trim().to_string();
     if name == REMEMBER_TOOL || name == FORGET_TOOL {
         let pos = map.cards.iter().map(|c| c.pos).max().unwrap_or(0);
-        return notes_tool(chat, name, args, policy, pos);
+        return notes_tool(state, chat, name, args, policy, pos).await;
     }
     if name == TASK_UPDATE_TOOL {
         let (goal, stage) = (arg("goal"), arg("stage"));
@@ -718,7 +733,7 @@ pub fn auto_recall(chat: &str, message: &str, hidden: &[usize], max_tokens: usiz
 /// facts of its memory), the model is shown them and forgets the one it replaces. `replaces`
 /// replaces a note the model already knows. Changes follow the request's `notes_change`; a
 /// project fact always waits for the user.
-fn notes_tool(chat: &str, name: &str, args: &Value, policy: &cluaiz_context::Policy, pos: u64) -> String {
+async fn notes_tool(state: &crate::AppState, chat: &str, name: &str, args: &Value, policy: &cluaiz_context::Policy, pos: u64) -> String {
     use cluaiz_agents::memory::notes::{self, NoteStore, FACT_PREFIX};
     use cluaiz_agents::workspace::memory as facts;
     let render = cluaiz_core::prompts::render;
@@ -802,10 +817,10 @@ fn notes_tool(chat: &str, name: &str, args: &Value, policy: &cluaiz_context::Pol
             return saved;
         }
         let all: Vec<_> = store.all().into_iter().filter(|n| n.id != note.id).collect();
-        let mut lines: Vec<String> = similar_notes(&all, &text, scope, owner.as_deref()).iter().map(|n| format!("[{} · {}] {}", n.id, note_date(n), n.text)).collect();
+        let mut lines: Vec<String> = similar_notes(state, policy, &all, &text, scope, owner.as_deref()).await.iter().map(|n| format!("[{} · {}] {}", n.id, note_date(n), n.text)).collect();
         if let Some(dir) = &project {
             let workspace = super::project::scan(dir);
-            lines.extend(facts::similar(&workspace, "", &text, SIMILAR_SHOWN).iter().map(|item| format!("[{FACT_PREFIX}{}] {}", item.name, item.body().unwrap_or_default().trim())));
+            lines.extend(similar_facts(state, policy, &workspace, &text).await);
         }
         if lines.is_empty() || change_off {
             return saved;
@@ -837,9 +852,43 @@ fn notes_tool(chat: &str, name: &str, args: &Value, policy: &cluaiz_context::Pol
     }
 }
 
-/// The live notes that may be about the same thing as `text` (same scope and owner), most alike first
-pub fn similar_notes<'a>(all: &'a [cluaiz_agents::memory::notes::Note], text: &str, scope: &str, owner: Option<&str>) -> Vec<&'a cluaiz_agents::memory::notes::Note> {
-    cluaiz_agents::memory::notes::similar(all, text, scope, owner, SIMILAR_SHOWN).into_iter().map(|(note, _)| note).collect()
+/// The live notes that may be about the same thing as `text` (same scope and owner), most alike
+/// first: by meaning with an embedding model (`notes_similar_pct`), else by words
+pub async fn similar_notes<'a>(
+    state: &crate::AppState,
+    policy: &cluaiz_context::Policy,
+    all: &'a [cluaiz_agents::memory::notes::Note],
+    text: &str,
+    scope: &str,
+    owner: Option<&str>,
+) -> Vec<&'a cluaiz_agents::memory::notes::Note> {
+    let candidates: Vec<&cluaiz_agents::memory::notes::Note> =
+        all.iter().filter(|n| n.is_live() && n.scope == scope && n.owner.as_deref() == owner).collect();
+    let items: Vec<(String, String)> = candidates.iter().map(|n| (n.id.clone(), n.text.clone())).collect();
+    match super::semantic::similarities(state, policy, text, &items, None).await {
+        Some(scores) => top(candidates, &scores, policy.notes_similar_pct),
+        None => cluaiz_agents::memory::notes::similar(all, text, scope, owner, SIMILAR_SHOWN).into_iter().map(|(note, _)| note).collect(),
+    }
+}
+
+/// The project's facts that may be about the same thing as `text`, as `[fact:<name>] text` lines
+async fn similar_facts(state: &crate::AppState, policy: &cluaiz_context::Policy, workspace: &cluaiz_agents::workspace::Workspace, text: &str) -> Vec<String> {
+    use cluaiz_agents::memory::notes::FACT_PREFIX;
+    let facts: Vec<&cluaiz_agents::workspace::Item> = workspace.memory.iter().filter(|item| item.superseded_by.is_none()).collect();
+    let items: Vec<(String, String)> =
+        facts.iter().map(|item| (format!("{FACT_PREFIX}{}", item.path.display()), item.body().unwrap_or_default().trim().to_string())).collect();
+    let chosen = match super::semantic::similarities(state, policy, text, &items, None).await {
+        Some(scores) => top(facts, &scores, policy.notes_similar_pct),
+        None => cluaiz_agents::workspace::memory::similar(workspace, "", text, SIMILAR_SHOWN),
+    };
+    chosen.iter().map(|item| format!("[{FACT_PREFIX}{}] {}", item.name, item.body().unwrap_or_default().trim())).collect()
+}
+
+/// The items with a similarity from `floor_pct`, most alike first, at most [`SIMILAR_SHOWN`]
+fn top<T>(items: Vec<T>, scores: &[f32], floor_pct: u8) -> Vec<T> {
+    let mut scored: Vec<(f32, T)> = scores.iter().copied().zip(items).filter(|(score, _)| *score * 100.0 >= floor_pct as f32).collect();
+    scored.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+    scored.into_iter().take(SIMILAR_SHOWN).map(|(_, item)| item).collect()
 }
 
 /// A note change in a chat the app keeps: an event of the chat for the app

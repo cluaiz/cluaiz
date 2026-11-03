@@ -162,6 +162,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             }
             worker(move || {
                 cluaiz_runtime::vram_use::forget_model(&entry.id);
+                crate::handlers::chat::semantic::forget_model(&entry.id);
                 let directory = cluaiz_models::ModelDownloader::uninstall(&entry.id)
                     .map_err(|error| CepError::unavailable("model_remove_failed", error))?;
                 Ok(json!({"model":entry.id,"dir":roots::display(&directory)}))
