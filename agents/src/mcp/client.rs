@@ -205,8 +205,10 @@ impl McpSession {
             }
         });
 
+        // Version negotiation (MCP spec): a server that does not speak this one answers with the
+        // one it does, and the calls the Engine makes (tools/list, tools/call) are the same in each
         session.request("initialize", json!({
-            "protocolVersion": "2024-11-05",
+            "protocolVersion": "2025-06-18",
             "capabilities": { "roots": { "listChanged": true } },
             "clientInfo": { "name": "cluaiz-engine", "version": env!("CARGO_PKG_VERSION") }
         }), START_TIMEOUT).await
