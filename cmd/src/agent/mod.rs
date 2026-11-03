@@ -786,82 +786,25 @@ context    {}", plan.summary(), plan.context_reason)
             self.display.emit(Event::Context { used: bytes / 4, size: self.session.plan.context_window as usize, speed: None });
         }
         let schemas = self.tools.all_schemas();
-        for _ in 0..self.max_steps {
-            if self.display.closing()
-                || self.display.interrupted()
-                || cluaiz_core::GLOBAL_CANCEL_SIGNAL.load(std::sync::atomic::Ordering::SeqCst)
-            {
+        self.tools.cancelled = false;
+        let max_steps = self.max_steps;
+        let mut turn = CliTurn { agent: self, schemas: &schemas, generated: false };
+        let ended = cluaiz_agents::turn::run(&mut turn, max_steps).await.map_err(|error| eyre!("{error:#}"))?;
+        let generated = turn.generated;
+        match ended {
+            cluaiz_agents::turn::Ended::Answered(said) => self.history.push(message("assistant", said)),
+            cluaiz_agents::turn::Ended::Stopped(_) if !generated => {
                 return Err(eyre!("Request cancelled before generation"));
             }
-            let (answer, report) = loop {
-                let mut messages = Vec::with_capacity(self.history.len() + 1);
-                messages.push(message("system", self.system.clone()));
-                messages.extend(self.history.iter().cloned());
-                let mut out = self.display.output(self.session.options.show_thinking);
-                match self
-                    .session
-                    .generate_prepared(messages, Some(&schemas), &mut *out)
-                    .await
-                {
-                    Ok(done) => break done,
-                    Err(e)
-                        if e.to_string().contains("exceeds the available context")
-                            && self.make_room() =>
-                    {
-                        self.display.emit(Event::Message(
-                            "Context".into(),
-                            "Context full: the oldest part of the conversation was left out."
-                                .into(),
-                        ));
-                    }
-                    Err(e) => return Err(e),
-                }
-            };
-            if self.session.options.verbose && !self.display.screen_enabled() {
-                print::stats(&report);
-            }
-            self.note_usage(&report);
-            if report.cancelled || self.display.interrupted() {
-                let said = answer
-                    .split(cluaiz_core::tool_calls::OPEN)
-                    .next()
-                    .unwrap_or_default();
-                self.history.push(message("assistant", said.to_owned()));
-                self.display.emit(Event::Message(
-                    "Stopped".into(),
-                    "Generation cancelled.".into(),
-                ));
-                return Ok(());
-            }
-            let (said, calls) =
-                validation::calls(&answer, report.stop).map_err(|error| eyre!(error))?;
-            if calls.is_empty() {
-                self.history.push(message("assistant", said));
-                return Ok(());
-            }
-            // Kept in the Engine's form, as the API keeps a conversation with calls
-            let mut kept = said;
-            for (name, arguments) in &calls {
-                kept.push('\n');
-                kept.push_str(&cluaiz_core::tool_calls::canonical_call(name, arguments));
-            }
-            self.history
-                .push(message("assistant", kept.trim().to_string()));
-            for (name, arguments) in &calls {
-                if self.display.closing() || self.display.interrupted() {
-                    return Ok(());
-                }
-                let result = self.tools.run(name, arguments).await;
-                self.history.push(message("tool", result));
-                if self.tools.cancelled {
-                    return Ok(());
-                }
-            }
+            // A stopped generation was kept and announced in `generate`; a stopped call needs nothing
+            cluaiz_agents::turn::Ended::Stopped(_) => {}
+            // The terminal agent offers no client functions
+            cluaiz_agents::turn::Ended::ClientCall { .. } => {}
+            cluaiz_agents::turn::Ended::StepLimit => self.display.emit(Event::Message(
+                "Stopped".into(),
+                format!("Stopped after {} steps; say how to go on.", self.max_steps),
+            )),
         }
-        self.display.emit(Event::Message(
-            "Stopped".into(),
-            format!("Stopped after {} steps; say how to go on.", self.max_steps),
-        ));
         Ok(())
     }
 
@@ -886,6 +829,85 @@ context    {}", plan.summary(), plan.context_reason)
             }
             None => false,
         }
+    }
+}
+
+/// The terminal agent's part of a turn (`cluaiz_agents::turn`): its message history, its file and
+/// command tools, and the terminal display
+struct CliTurn<'a> {
+    agent: &'a mut Agent,
+    schemas: &'a serde_json::Value,
+    /// A generation started (a stop before it is "cancelled before generation")
+    generated: bool,
+}
+
+impl cluaiz_agents::turn::Agent for CliTurn<'_> {
+    async fn generate(&mut self, _step: usize) -> anyhow::Result<cluaiz_agents::turn::Generated> {
+        use cluaiz_agents::turn::{Generated, ToolCall};
+        self.generated = true;
+        let agent = &mut *self.agent;
+        let (answer, report) = loop {
+            let mut messages = Vec::with_capacity(agent.history.len() + 1);
+            messages.push(message("system", agent.system.clone()));
+            messages.extend(agent.history.iter().cloned());
+            let mut out = agent.display.output(agent.session.options.show_thinking);
+            match agent.session.generate_prepared(messages, Some(self.schemas), &mut *out).await {
+                Ok(done) => break done,
+                Err(e) if e.to_string().contains("exceeds the available context") && agent.make_room() => {
+                    agent.display.emit(Event::Message(
+                        "Context".into(),
+                        "Context full: the oldest part of the conversation was left out.".into(),
+                    ));
+                }
+                Err(e) => return Err(anyhow::anyhow!("{e:#}")),
+            }
+        };
+        if agent.session.options.verbose && !agent.display.screen_enabled() {
+            print::stats(&report);
+        }
+        agent.note_usage(&report);
+        if report.cancelled || agent.display.interrupted() {
+            let said = answer.split(cluaiz_core::tool_calls::OPEN).next().unwrap_or_default().to_owned();
+            agent.history.push(message("assistant", said.clone()));
+            agent.display.emit(Event::Message("Stopped".into(), "Generation cancelled.".into()));
+            return Ok(Generated::Stopped { said });
+        }
+        let (said, calls) = validation::calls(&answer, report.stop).map_err(|error| anyhow::anyhow!(error))?;
+        let calls = calls
+            .into_iter()
+            .map(|(name, arguments)| ToolCall {
+                raw: cluaiz_core::tool_calls::canonical_call(&name, &arguments),
+                name,
+                arguments,
+            })
+            .collect();
+        Ok(Generated::Answer { said, calls })
+    }
+
+    async fn call(&mut self, call: &cluaiz_agents::turn::ToolCall) -> cluaiz_agents::turn::CallRun {
+        cluaiz_agents::turn::CallRun::Done(self.agent.tools.run(&call.name, &call.arguments).await)
+    }
+
+    fn record_answer(&mut self, said: &str, calls: &[cluaiz_agents::turn::ToolCall]) {
+        // Kept in the Engine's form, as the API keeps a conversation with calls
+        let mut kept = said.to_owned();
+        for call in calls {
+            kept.push('\n');
+            kept.push_str(&call.raw);
+        }
+        self.agent.history.push(message("assistant", kept.trim().to_string()));
+    }
+
+    fn record_result(&mut self, _call: &cluaiz_agents::turn::ToolCall, result: &str) {
+        self.agent.history.push(message("tool", result.to_owned()));
+    }
+
+    fn stopped(&self) -> bool {
+        let agent = &*self.agent;
+        agent.display.closing()
+            || agent.display.interrupted()
+            || agent.tools.cancelled
+            || cluaiz_core::GLOBAL_CANCEL_SIGNAL.load(std::sync::atomic::Ordering::SeqCst)
     }
 }
 
