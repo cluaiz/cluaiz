@@ -410,7 +410,6 @@ impl EngineHost {
         let hw = crate::host::native_load::gguf_hardware();
 
         // The plan carries the exact llama.cpp values; nothing is re-derived here
-        let n_gpu_layers = plan.n_gpu_layers;
         let target_fp = Self::load_key(model_path, settings);
 
         // Same model with the same load-time settings is already resident: nothing to do
@@ -434,10 +433,52 @@ impl EngineHost {
         // Prevents two models from colliding simultaneously in physical VRAM.
         self.unload_model_inner().await;
 
-        let n_ctx = plan.context_window as u32;
         let mut dna_guard = self.dna.lock().await;
-        let llama = load_with_plan(model_path, plan, settings, &hw, &mut dna_guard)?;
+        let first = load_with_plan(model_path, plan, settings, &hw, &mut dna_guard);
         drop(dna_guard);
+        // A load that fails on the GPU (most often the KV cache or a compute buffer that did not fit)
+        // is planned once more: the miss is recorded, so the planner keeps that much more free on
+        // this GPU for this model and settings, and the next candidate is tried (plan §5.4)
+        let (llama, retried) = match first {
+            Ok(llama) => (llama, None),
+            Err(error) => match Planner::after_failed_load(
+                plan,
+                &geometry,
+                hw.gpus.first().map_or(0.0, |g| g.vram_available_gb),
+                &crate::host::native_load::gguf_hardware(),
+                settings,
+            ) {
+                Some(next) => {
+                    crate::vram_use::save();
+                    tracing::warn!(
+                        "⚠️ [EngineHost] Load failed with {} GPU layers, {} tokens ({error:#}); retrying with {} GPU layers, {} tokens",
+                        plan.n_gpu_layers, plan.context_window, next.n_gpu_layers, next.context_window
+                    );
+                    self.record_plan_report(next.format_telemetry_banner(&geometry, &hw, settings)).await;
+                    let mut dna_guard = self.dna.lock().await;
+                    let llama = load_with_plan(model_path, &next, settings, &hw, &mut dna_guard)
+                        .map_err(|second| anyhow::anyhow!("{error:#}; the retry with a smaller placement failed too: {second:#}"))?;
+                    (llama, Some(next))
+                }
+                None => return Err(error),
+            },
+        };
+        let retried_plan;
+        let plan = match retried {
+            Some(next) => {
+                retried_plan = ExecutionPlan {
+                    explanation: format!(
+                        "{} | load retry: the planned placement ({} GPU layers, {} tokens) failed to load; the miss was recorded",
+                        next.explanation, plan.n_gpu_layers, plan.context_window
+                    ),
+                    ..next
+                };
+                &retried_plan
+            }
+            None => plan,
+        };
+        let n_gpu_layers = plan.n_gpu_layers;
+        let n_ctx = plan.context_window as u32;
 
         let mut loaded_plan = plan.clone();
         let fell_back = llama.n_gpu_layers_loaded != plan.n_gpu_layers;

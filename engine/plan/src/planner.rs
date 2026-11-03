@@ -220,6 +220,32 @@ struct Placement {
 }
 
 impl Planner {
+    /// The next placement after `failed` did not load (llama.cpp could not allocate it on the GPU),
+    /// or None when there is none to try: the plan put nothing on a GPU, the user fixed the GPU
+    /// layers or MoE offload, or the plan does not change. The miss is recorded first (it needed at
+    /// least the `free_gb` that was free), so this model and these settings keep that much more free
+    /// from now on; the caller saves the measurements.
+    pub fn after_failed_load(
+        failed: &ExecutionPlan,
+        geometry: &ModelGeometry,
+        free_gb: f64,
+        live: &SystemInfo,
+        settings: &ActiveUserSettings,
+    ) -> Option<ExecutionPlan> {
+        let manual = settings.optimization.n_gpu_layers.is_some() || settings.optimization.n_cpu_moe.is_some();
+        if failed.n_gpu_layers == 0 || live.gpus.is_empty() || manual {
+            return None;
+        }
+        crate::margin::record(geometry, settings, free_gb - failed.vram_budget_gb);
+        let next = Self::create_plan(&failed.model_id, geometry, live, settings);
+        let changed = next.n_gpu_layers != failed.n_gpu_layers
+            || next.context_window != failed.context_window
+            || next.n_cpu_moe != failed.n_cpu_moe
+            || next.kv_cache_type != failed.kv_cache_type
+            || next.kv_offload != failed.kv_offload;
+        (next.is_feasible() && changed).then_some(next)
+    }
+
     pub fn create_plan(
         model_id: &str,
         geometry: &ModelGeometry,
@@ -587,6 +613,28 @@ mod tests {
             fixed_bytes: g.weights.full_gpu() + g.logits_buffer_bytes(s.optimization.resolved_ubatch_size()),
             buffers_gb: vram_buffer_options(s),
         }
+    }
+
+    #[test]
+    fn a_failed_load_records_the_miss_and_plans_a_smaller_placement_once() {
+        // A size no other test uses: the learned margin is kept per model
+        let g = qwen3_like(2.21);
+        let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
+        let live = hw(3.6, 16.0);
+        let first = Planner::create_plan("retry-test", &g, &live, &s);
+        assert!(first.n_gpu_layers != 0 && first.is_feasible(), "{}", first.explanation);
+        let next = Planner::after_failed_load(&first, &g, 3.6, &live, &s).expect("a smaller placement");
+        assert!(
+            next.vram_budget_gb < first.vram_budget_gb,
+            "{} GB then {} GB", first.vram_budget_gb, next.vram_budget_gb
+        );
+        // The user's own GPU layers are never second-guessed
+        let mut manual = s.clone();
+        manual.optimization.n_gpu_layers = Some(20);
+        assert!(Planner::after_failed_load(&first, &g, 3.6, &live, &manual).is_none());
+        // Nothing was on the GPU: nothing to retry
+        let cpu = ExecutionPlan { n_gpu_layers: 0, ..first.clone() };
+        assert!(Planner::after_failed_load(&cpu, &g, 3.6, &live, &s).is_none());
     }
 
     #[test]

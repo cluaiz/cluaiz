@@ -20,6 +20,15 @@ machine's free memory, or llama.cpp's own default applies. A value you set wins 
 | `custom_ram_buffer_gb` | auto | RAM kept free. Auto: 1.0 GB, lowered down to 0.5 GB when that lets the model fit in RAM |
 | `use_mmap` | `true` | Memory-map the GGUF file |
 
+### When a load does not fit
+
+What a model really takes on this GPU is measured after each load and kept in
+`config/vram_margins.json`; the next plan for the same model and settings uses it instead of the
+fixed buffer. If llama.cpp still cannot allocate a planned GPU placement (most often the KV cache or
+a compute buffer), the Engine records the miss and plans once more with the larger margin: fewer GPU
+layers, a smaller context or a smaller KV type. The plan report then says "load retry". When the
+GPU layers or `n_cpu_moe` are set by hand there is no retry: the error is shown as it is.
+
 ## Context and KV cache
 
 | Field | Default | Meaning |
