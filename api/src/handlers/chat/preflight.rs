@@ -65,6 +65,8 @@ pub struct PreparedChatContext {
     pub z0_note_ids: Vec<String>,
     /// The request's context policy (settings with its `context_policy` on top)
     pub policy: cluaiz_context::Policy,
+    /// The app's end user the notes belong to (request `user`), None for the Engine's own user
+    pub user: Option<String>,
     /// The workspace's agent files, for `read_item` (None: the chat got none of them)
     pub project: Option<Arc<cluaiz_agents::workspace::Workspace>>,
     /// `read_item` was offered
@@ -482,7 +484,8 @@ impl PreparedChatContext {
         // message, like the ones that fit it
         let workspace = super::recall::current_workspace();
         let note_query = request.messages.last().map(|m| m.content.text_content()).unwrap_or_default();
-        let (pinned_notes, relevant_notes) = super::recall::notes_for(state, &policy, ledger_chat.as_deref(), &workspace, &note_query).await;
+        let note_user = super::recall::note_user(request.user.as_deref());
+        let (pinned_notes, relevant_notes) = super::recall::notes_for(state, &policy, note_user.as_deref(), ledger_chat.as_deref(), &workspace, &note_query).await;
         let starting = ledger.as_ref().is_none_or(|saved| saved.turns.is_empty() && saved.notes.is_none())
             && request.messages.iter().filter(|m| !m.role.eq_ignore_ascii_case("system")).count() <= 1;
         let z0_note_ids: Vec<String> = match ledger.as_ref().and_then(|saved| saved.notes.clone()) {
@@ -1273,6 +1276,7 @@ impl PreparedChatContext {
             memory_tools: memory_tools || remember_tool,
             z0_note_ids,
             policy: policy.clone(),
+            user: note_user.clone(),
             project: project.as_ref().map(|p| p.workspace.clone()),
             project_read,
             project_sent,

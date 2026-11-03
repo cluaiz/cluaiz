@@ -87,6 +87,10 @@ pub struct ExternalChatRequest {
     /// events with each answer (`memory_events`). "none": nothing is kept (like temporary_chat).
     #[serde(default)]
     pub storage: Option<String>,
+    /// The app's end user (OpenAI's `user`): notes the model keeps in this chat belong to that
+    /// user, and only that user's notes reach the model. Without it: the Engine's own user.
+    #[serde(default)]
+    pub user: Option<String>,
     /// Planner fields for this request only (recent_turns_min, evidence_cap_pct,
     /// suggestions_cap_pct, margin_pct, compact_at_pct, compact_to_pct); unknown or invalid ones are ignored
     #[serde(default)]

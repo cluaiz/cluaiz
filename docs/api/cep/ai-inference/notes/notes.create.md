@@ -17,6 +17,11 @@ params:
     req: false
     desc: "The chat, for scope chat"
     example: null
+  - name: "kind"
+    type: "string | null"
+    req: false
+    desc: "preference, fact, person, instruction or other"
+    example: null
   - name: "pinned"
     type: "boolean"
     req: false
@@ -37,6 +42,11 @@ params:
     req: true
     desc: "1 to 2000 characters"
     example: "Prefers tabs over spaces"
+  - name: "user"
+    type: "string | null"
+    req: false
+    desc: "The user of an app the note belongs to (as the chat request's `user`); without it, the Engine's own user"
+    example: null
 request_payload: |
   {
     "id": 1,
@@ -114,6 +124,8 @@ flowchart TD
 | `pinned` | boolean | No | Pinned notes go into the system prompt of new chats Defaults to false. Pinned confirmed notes can enter the system prompt of new chats. |
 | `scope` | string \| null | No | chat, workspace (default) or global Defaults to workspace. Allowed chat, workspace, global. |
 | `replaces` | string \| null | No | The id of a live note this one corrects or updates (`n:4` or `n4`). The new note takes its place (the pin carries over) and the old one leaves; `note_not_found` when it names no live note. Without it nothing is replaced. |
+| `user` | string \| null | No | The user of an app the note belongs to (the chat request's `user`); only that user's chats see it. Without it: the Engine's own user. |
+| `kind` | string \| null | No | `preference`, `fact`, `person`, `instruction` or `other`; apps filter `notes.list` by it. |
 | `text` | string | Yes | 1 to 2000 characters After trimming, non-empty and at most 2000 UTF-8 BYTES in the current implementation (String.len), despite the brief schema description saying characters. Multibyte text reaches the boundary earlier. |
 
 Unknown top-level method parameters are rejected. `params._meta` is protocol metadata, not a domain option; approval retries must preserve the same method and domain parameters. Where a parameter is optional, omission follows the method-specific rules above rather than implying a universal zero or empty-string default.

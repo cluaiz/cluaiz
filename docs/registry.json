@@ -166,6 +166,7 @@
         "pages": [
           { "slug": "cep-models", "title": "Index", "file_path": "docs/api/cep/models/README.md" },
           { "slug": "cep-models-download", "title": "models.download", "file_path": "docs/api/cep/models/models/models.download.md" },
+          { "slug": "cep-models-embedding-room", "title": "models.embedding_room", "file_path": "docs/api/cep/models/models/models.embedding_room.md" },
           { "slug": "cep-models-inspect", "title": "models.inspect", "file_path": "docs/api/cep/models/models/models.inspect.md" },
           { "slug": "cep-models-list", "title": "models.list", "file_path": "docs/api/cep/models/models/models.list.md" },
           { "slug": "cep-models-load", "title": "models.load", "file_path": "docs/api/cep/models/models/models.load.md" },

@@ -333,7 +333,8 @@ pub fn remember_schema() -> Value {
         "parameters": {"type": "object", "properties": {
             "text": {"type": "string"},
             "scope": {"type": "string", "enum": ["workspace", "global"], "description": "workspace (default): this project; global: every chat"},
-            "replaces": {"type": "string", "description": "The id of the note (like n:4) this one corrects or updates, or \"none\" when it is a separate fact"}
+            "replaces": {"type": "string", "description": "The id of the note (like n:4) this one corrects or updates, or \"none\" when it is a separate fact"},
+            "kind": {"type": "string", "enum": ["preference", "fact", "person", "instruction", "other"]}
         }, "required": ["text"]}
     }})
 }
@@ -356,13 +357,14 @@ pub fn forget_schema() -> Value {
 pub async fn notes_for(
     state: &crate::AppState,
     policy: &cluaiz_context::Policy,
+    user: Option<&str>,
     chat: Option<&str>,
     workspace: &str,
     message: &str,
 ) -> (Vec<cluaiz_agents::memory::notes::Note>, Vec<cluaiz_agents::memory::notes::Note>) {
     let all = cluaiz_agents::memory::notes::NoteStore::shared().all();
     let live_ids: std::collections::HashSet<String> = all.iter().filter(|n| n.is_live()).map(|n| n.id.clone()).collect();
-    let live: Vec<_> = all.into_iter().filter(|n| n.is_live() && n.applies_to(chat, Some(workspace))).collect();
+    let live: Vec<_> = all.into_iter().filter(|n| n.is_live() && n.belongs_to(user) && n.applies_to(chat, Some(workspace))).collect();
     let pinned: Vec<_> = live.iter().filter(|n| n.pinned).cloned().collect();
     let others: Vec<_> = live.into_iter().filter(|n| !n.pinned).collect();
     if others.is_empty() || message.trim().is_empty() {
@@ -472,14 +474,14 @@ pub fn memory_schemas() -> Vec<Value> {
 }
 
 /// Answers `recall`, `open_memory`, `task_update`, `remember` and `forget` for the chat
-pub async fn run_memory_tool(state: &crate::AppState, chat: &str, name: &str, args: &Value, policy: &cluaiz_context::Policy) -> String {
+pub async fn run_memory_tool(state: &crate::AppState, chat: &str, name: &str, args: &Value, policy: &cluaiz_context::Policy, user: Option<&str>) -> String {
     let Some(map) = chat_map_hot(chat) else {
         return "The chat's earlier messages could not be read.".to_string();
     };
     let arg = |key: &str| args.get(key).and_then(Value::as_str).unwrap_or("").trim().to_string();
     if name == REMEMBER_TOOL || name == FORGET_TOOL {
         let pos = map.cards.iter().map(|c| c.pos).max().unwrap_or(0);
-        return notes_tool(state, chat, name, args, policy, pos).await;
+        return notes_tool(state, chat, name, args, policy, user, pos).await;
     }
     if name == TASK_UPDATE_TOOL {
         let (goal, stage) = (arg("goal"), arg("stage"));
@@ -733,8 +735,8 @@ pub fn auto_recall(chat: &str, message: &str, hidden: &[usize], max_tokens: usiz
 /// facts of its memory), the model is shown them and forgets the one it replaces. `replaces`
 /// replaces a note the model already knows. Changes follow the request's `notes_change`; a
 /// project fact always waits for the user.
-async fn notes_tool(state: &crate::AppState, chat: &str, name: &str, args: &Value, policy: &cluaiz_context::Policy, pos: u64) -> String {
-    use cluaiz_agents::memory::notes::{self, NoteStore, FACT_PREFIX};
+async fn notes_tool(state: &crate::AppState, chat: &str, name: &str, args: &Value, policy: &cluaiz_context::Policy, user: Option<&str>, pos: u64) -> String {
+    use cluaiz_agents::memory::notes::{self, Extra, NoteStore, FACT_PREFIX, KINDS};
     use cluaiz_agents::workspace::memory as facts;
     let render = cluaiz_core::prompts::render;
     let arg = |key: &str| args.get(key).and_then(Value::as_str).unwrap_or("").trim().to_string();
@@ -742,6 +744,10 @@ async fn notes_tool(state: &crate::AppState, chat: &str, name: &str, args: &Valu
     let sources = vec![format!("{chat}:m:{pos}")];
     let change_off = policy.notes_change == "off";
     let failed = |e: anyhow::Error| format!("The note could not be saved: {e}");
+    let kind = Some(arg("kind").to_ascii_lowercase()).filter(|k| KINDS.contains(&k.as_str()));
+    let extra = Extra { user: user.map(str::to_string), kind: kind.clone() };
+    // A note of another user of the app is not there for this one
+    let theirs = |id: &str| NoteStore::shared().all().iter().any(|n| n.id == notes::normalize_id(id) && !n.belongs_to(user));
     let scope = match arg("scope").as_str() {
         "chat" => "chat",
         "global" => "global",
@@ -772,13 +778,16 @@ async fn notes_tool(state: &crate::AppState, chat: &str, name: &str, args: &Valu
             let workspace = super::project::scan(dir);
             let Some(item) = facts::live(&workspace, fact) else { return render("chat.note_not_found", &[("id", target.as_str())]) };
             let text = item.body().unwrap_or_default();
-            return match NoteStore::shared().propose_for_fact(&text, scope, owner.as_deref(), &target, true, sources, history) {
+            return match NoteStore::shared().propose_for_fact(&text, scope, owner.as_deref(), &target, true, sources, extra, history) {
                 Ok(note) => render("chat.note_change_proposed", &[("id", note.id.as_str())]),
                 Err(e) => failed(e),
             };
         }
         let status = if policy.notes_change == "auto" { "confirmed" } else { "proposed" };
         let id = notes::normalize_id(&target);
+        if theirs(&id) {
+            return render("chat.note_not_found", &[("id", id.as_str())]);
+        }
         return match NoteStore::shared().forget(&id, status, "model", history) {
             Ok(Some(change)) if status == "proposed" => render("chat.note_change_proposed", &[("id", change.note.id.as_str())]),
             Ok(Some(_)) => render("chat.note_forgotten", &[("id", id.as_str())]),
@@ -794,7 +803,7 @@ async fn notes_tool(state: &crate::AppState, chat: &str, name: &str, args: &Valu
     let replaces = arg("replaces");
     let add_status = if policy.notes == "auto" && project.is_none() { "confirmed" } else { "proposed" };
     if external {
-        let mut event = json!({ "text": text, "scope": scope, "status": add_status, "by": "model", "source": sources });
+        let mut event = json!({ "text": text, "scope": scope, "status": add_status, "by": "model", "source": sources, "kind": kind });
         if !replaces.is_empty() && replaces != "none" {
             event["replaces"] = json!(replaces);
         }
@@ -804,7 +813,7 @@ async fn notes_tool(state: &crate::AppState, chat: &str, name: &str, args: &Valu
     if replaces.is_empty() || replaces.eq_ignore_ascii_case("none") {
         // Saved first, so a note the user asked for is never lost; what it may repeat (notes of
         // the same scope, and the project's facts) is shown after, for the model to forget one
-        let note = match store.add(&text, scope, owner.as_deref(), add_status, false, "model", sources, history) {
+        let note = match store.add_with(&text, scope, owner.as_deref(), add_status, false, "model", sources, extra, history) {
             Ok(note) => note,
             Err(e) => return failed(e),
         };
@@ -817,7 +826,7 @@ async fn notes_tool(state: &crate::AppState, chat: &str, name: &str, args: &Valu
             return saved;
         }
         let all: Vec<_> = store.all().into_iter().filter(|n| n.id != note.id).collect();
-        let mut lines: Vec<String> = similar_notes(state, policy, &all, &text, scope, owner.as_deref()).await.iter().map(|n| format!("[{} · {}] {}", n.id, note_date(n), n.text)).collect();
+        let mut lines: Vec<String> = similar_notes(state, policy, &all, &text, scope, owner.as_deref(), user).await.iter().map(|n| format!("[{} · {}] {}", n.id, note_date(n), n.text)).collect();
         if let Some(dir) = &project {
             let workspace = super::project::scan(dir);
             lines.extend(similar_facts(state, policy, &workspace, &text).await);
@@ -837,19 +846,27 @@ async fn notes_tool(state: &crate::AppState, chat: &str, name: &str, args: &Valu
         if !live {
             return render("chat.note_not_found", &[("id", replaces.as_str())]);
         }
-        return match store.propose_for_fact(&text, scope, owner.as_deref(), &replaces, false, sources, history) {
+        return match store.propose_for_fact(&text, scope, owner.as_deref(), &replaces, false, sources, extra, history) {
             Ok(note) => render("chat.note_change_proposed", &[("id", note.id.as_str())]),
             Err(e) => failed(e),
         };
     }
     let status = if policy.notes_change == "auto" && project.is_none() { "confirmed" } else { "proposed" };
     let id = notes::normalize_id(&replaces);
+    if theirs(&id) {
+        return render("chat.note_not_found", &[("id", id.as_str())]);
+    }
     match store.replace(&id, &text, status, "model", sources, history) {
         Ok(Some(change)) if status == "proposed" => render("chat.note_change_proposed", &[("id", change.note.id.as_str())]),
         Ok(Some(change)) => render("chat.note_replaced", &[("id", change.note.id.as_str()), ("old", id.as_str())]),
         Ok(None) => render("chat.note_not_found", &[("id", id.as_str())]),
         Err(e) => failed(e),
     }
+}
+
+/// The request's `user` as notes keep it: trimmed, at most 128 characters, None when empty
+pub fn note_user(user: Option<&str>) -> Option<String> {
+    user.map(str::trim).filter(|u| !u.is_empty()).map(|u| u.chars().take(128).collect())
 }
 
 /// The live notes that may be about the same thing as `text` (same scope and owner), most alike
@@ -861,13 +878,14 @@ pub async fn similar_notes<'a>(
     text: &str,
     scope: &str,
     owner: Option<&str>,
+    user: Option<&str>,
 ) -> Vec<&'a cluaiz_agents::memory::notes::Note> {
     let candidates: Vec<&cluaiz_agents::memory::notes::Note> =
-        all.iter().filter(|n| n.is_live() && n.scope == scope && n.owner.as_deref() == owner).collect();
+        all.iter().filter(|n| n.is_live() && n.scope == scope && n.owner.as_deref() == owner && n.belongs_to(user)).collect();
     let items: Vec<(String, String)> = candidates.iter().map(|n| (n.id.clone(), n.text.clone())).collect();
     match super::semantic::similarities(state, policy, text, &items, None).await {
         Some(scores) => top(candidates, &scores, policy.notes_similar_pct),
-        None => cluaiz_agents::memory::notes::similar(all, text, scope, owner, SIMILAR_SHOWN).into_iter().map(|(note, _)| note).collect(),
+        None => cluaiz_agents::memory::notes::similar(all, text, scope, owner, user, SIMILAR_SHOWN).into_iter().map(|(note, _)| note).collect(),
     }
 }
 
