@@ -344,7 +344,7 @@ Final result: {model,task,output:{text,audio_data,segments}}. Decode a returned 
 | `-32602` / typed params | Missing required fields, wrong JSON types or unknown fields | Correct the request against this page; do not retry the same invalid payload |
 | `-32002` / principal | Required scope/owner/root authorization is absent | Inspect `error.data.needs`; use an authorized caller or permitted target |
 | `-32602` / `unsupported_parameter` | An option the model does not support: timestamps, VAD, speaker labels, beam size above 1, temperature above 0, voice / speed for transcription | Correct the option/value combination; install required assets where relevant |
-| `-32602` / `unsupported_language` | The speech model does not support `language` | Correct the option/value combination; install required assets where relevant |
+| `-32602` / `unsupported_language` | The speech model does not support `language` (for transcription: a language not in `audio.languages`, refused before the recording is read) | Correct the option/value combination; install required assets where relevant |
 | `-32602` / `unsupported_task` | `task` is not text_to_speech, speech_to_text or speech_translation, or the model does not declare it | Correct the option/value combination; install required assets where relevant |
 | `-32602` / `invalid_input` | An unreadable source: a bare base64 string, a missing file, a non-audio file | Correct the option/value combination; install required assets where relevant |
 | `-32004` / `model_not_found` | No installed model with this id, or no installed model for the task | Refresh the relevant inventory/IDs and check whether the resource expired |

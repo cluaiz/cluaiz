@@ -486,6 +486,25 @@ impl HuggingFaceHub {
                     }
                 }
 
+                // A merged decoder (`decoder_model_merged`, the uncached and cached graphs in one
+                // with `use_cache_branch`) is never loaded when the separate decoders are there
+                // (onnx_host::stt_graphs): it is not downloaded then
+                let decoder_name = |path: &str| Path::new(path).file_name().and_then(|s| s.to_str()).unwrap_or(path).to_lowercase();
+                let has_separate_decoder = bundle_files.iter().any(|p| {
+                    let name = decoder_name(p);
+                    name.contains("decoder") && !name.contains("merged")
+                });
+                if has_separate_decoder {
+                    bundle_files.retain(|p| {
+                        let name = decoder_name(p);
+                        let merged = name.contains("decoder") && name.contains("merged");
+                        if merged {
+                            total_size -= items.iter().find(|i| &i.path == p).and_then(|i| i.size).unwrap_or(0);
+                        }
+                        !merged
+                    });
+                }
+
                 // Pair matching companion .onnx.data shards for all bundled ONNX graphs
                 let bundled_bases: Vec<String> = bundle_files
                     .iter()
@@ -654,6 +673,22 @@ mod tests {
         assert!(!quant
             .all_files
             .contains(&"onnx/decoder_model_merged.onnx".to_string()));
+    }
+
+    #[test]
+    fn test_merged_decoder_is_left_out_beside_the_separate_decoders() {
+        let file = |path: &str, size: u64| HfTreeItem { r#type: Some("file".to_string()), path: path.to_string(), size: Some(size) };
+        let items = vec![
+            file("onnx/encoder_model.onnx", 30),
+            file("onnx/decoder_model.onnx", 78),
+            file("onnx/decoder_with_past_model.onnx", 74),
+            file("onnx/decoder_model_merged.onnx", 78),
+        ];
+        let variants = HuggingFaceHub::bundle_onnx_variants(&items, &["config.json".to_string()]);
+        let fp32 = variants.iter().find(|v| v.primary_file == "onnx/encoder_model.onnx").unwrap();
+        assert!(fp32.all_files.contains(&"onnx/decoder_model.onnx".to_string()));
+        assert!(fp32.all_files.contains(&"onnx/decoder_with_past_model.onnx".to_string()));
+        assert!(!fp32.all_files.contains(&"onnx/decoder_model_merged.onnx".to_string()));
     }
 
     #[test]

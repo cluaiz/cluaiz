@@ -16,6 +16,9 @@ use ort::value::Value;
 /// explicit `n_samples` / `max_length` limit.
 const DEFAULT_MOONSHINE_MAX_SECONDS: usize = 64;
 
+/// The language of a Moonshine package whose configs declare none (the published English models)
+pub const DEFAULT_LANGUAGE: &str = "en";
+
 /// Resolves and validates the Moonshine processor and special-token contract from
 /// `preprocessor_config.json`, `config.json`, `generation_config.json`, and `tokenizer.json`.
 pub fn resolve_moonshine_profile(engine: &OnnxEngine) -> Result<SttFamilyProfile> {
@@ -50,7 +53,7 @@ pub fn resolve_moonshine_profile(engine: &OnnxEngine) -> Result<SttFamilyProfile
     let mut decoder_start_token: Option<i64> = None;
     let mut eos_token: Option<i64> = None;
     let mut max_target_positions: Option<usize> = None;
-    let mut supported_languages: Vec<String> = Vec::new();
+    let mut supported_languages = super::config_languages(dir);
 
     for filename in ["config.json", "generation_config.json", "tokenizer_config.json"] {
         let path = dir.join(filename);
@@ -76,27 +79,12 @@ pub fn resolve_moonshine_profile(engine: &OnnxEngine) -> Result<SttFamilyProfile
                         .and_then(|v| usize::try_from(v).ok())
                         .filter(|v| *v > 4);
                 }
-                if supported_languages.is_empty() {
-                    if let Some(lang) = json.get("language").and_then(|v| v.as_str()) {
-                        let clean = lang.trim().to_ascii_lowercase();
-                        if !clean.is_empty() {
-                            supported_languages.push(clean);
-                        }
-                    } else if let Some(arr) = json.get("languages").and_then(|v| v.as_array()) {
-                        for item in arr.iter().filter_map(|v| v.as_str()) {
-                            let clean = item.trim().to_ascii_lowercase();
-                            if !clean.is_empty() && !supported_languages.contains(&clean) {
-                                supported_languages.push(clean);
-                            }
-                        }
-                    }
-                }
             }
         }
     }
 
     if supported_languages.is_empty() {
-        supported_languages = vec!["en".to_string(), "english".to_string()];
+        supported_languages = vec![DEFAULT_LANGUAGE.to_string(), "english".to_string()];
     }
 
     if let Some(tokenizer) = &engine.tokenizer {

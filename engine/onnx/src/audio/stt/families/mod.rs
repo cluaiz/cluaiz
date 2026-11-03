@@ -133,6 +133,52 @@ pub fn base_language(code: &str) -> String {
 
 /// The languages an STT model can be told to transcribe, from its tokenizer's language tokens
 /// (Whisper: about 100). Empty for a model without them (Moonshine reads one language).
+/// The languages a package's configs declare (`language` or `languages` in config.json,
+/// generation_config.json or tokenizer_config.json), lowercase, as written
+pub fn config_languages(model_dir: &std::path::Path) -> Vec<String> {
+    let mut languages: Vec<String> = Vec::new();
+    for filename in ["config.json", "generation_config.json", "tokenizer_config.json"] {
+        let Ok(bytes) = std::fs::read(model_dir.join(filename)) else { continue };
+        let Ok(json) = serde_json::from_slice::<serde_json::Value>(&bytes) else { continue };
+        let found: Vec<&str> = match (json.get("language").and_then(|v| v.as_str()), json.get("languages").and_then(|v| v.as_array())) {
+            (Some(one), _) => vec![one],
+            (None, Some(list)) => list.iter().filter_map(|v| v.as_str()).collect(),
+            _ => Vec::new(),
+        };
+        for item in found {
+            let clean = item.trim().to_ascii_lowercase();
+            if !clean.is_empty() && !languages.contains(&clean) {
+                languages.push(clean);
+            }
+        }
+        if !languages.is_empty() {
+            break;
+        }
+    }
+    languages
+}
+
+/// The languages a transcription package reads, as codes: Whisper's language tokens; else what
+/// its configs declare; else English for a Moonshine package (its adapter's default)
+pub fn stt_languages(model_dir: &std::path::Path) -> Vec<String> {
+    let tokens = tokenizer_languages(model_dir);
+    if !tokens.is_empty() {
+        return tokens;
+    }
+    let declared = config_languages(model_dir);
+    if !declared.is_empty() {
+        return declared;
+    }
+    let model_type = std::fs::read(model_dir.join("config.json"))
+        .ok()
+        .and_then(|bytes| serde_json::from_slice::<serde_json::Value>(&bytes).ok())
+        .and_then(|json| json.get("model_type")?.as_str().map(str::to_ascii_lowercase));
+    if model_type.as_deref() == Some("moonshine") {
+        return vec![moonshine::DEFAULT_LANGUAGE.to_string()];
+    }
+    Vec::new()
+}
+
 pub fn tokenizer_languages(model_dir: &std::path::Path) -> Vec<String> {
     let Ok(bytes) = std::fs::read(model_dir.join("tokenizer.json")) else {
         return Vec::new();

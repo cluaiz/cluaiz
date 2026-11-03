@@ -166,7 +166,23 @@ Use one of `input_source` and `file`; if both are present, `input_source` wins. 
 { "object": "list", "model": "whisper-large-v3-turbo-FP16", "data": ["af", "am", "ar", "...", "hi", "...", "zh"] }
 ```
 
-A model that reads one language only (Moonshine) returns an empty list.
+A model that reads one language lists that one: Moonshine gives `["en"]` (the language its configs declare, else English, the language of the published Moonshine models).
+
+### Moonshine
+
+`cluaiz pull onnx-community/moonshine-tiny-ONNX` installs the encoder, the decoder and the decoder
+that continues from cached keys/values (0.17 GB); the repository's merged decoder, which repeats
+both and is never loaded, is not downloaded. Moonshine reads English only and needs no 30-second
+window: its encoder takes the raw 16 kHz waveform. Checked on a laptop (RTX 3050 4 GB, DirectML,
+release build, 2026-11-03) with two English recordings made by Windows speech:
+
+| Recording | Time (second request) | Words wrong | Transcript differences |
+|---|---|---|---|
+| 4.2 s | 0.43 s | 1 of 8 | "mango" heard as "manga" |
+| 17.5 s | 3.0 to 3.3 s | 3 of 55 (one is "ten" written as "10") | "started to rain" heard as "started terrain" |
+
+The first request also loads the model (about 4 s). For other languages or harder audio, use a
+Whisper model.
 
 ---
 
@@ -355,6 +371,6 @@ Read records separated by blank lines and wait for the terminal `done` or `error
 
 ## Errors, device placement and limits
 
-Missing/invalid Bearer tokens return HTTP 401 when API authentication is required. An uninstalled explicit model returns HTTP 404 `model_not_found`; a wrong-task/incomplete package, unsupported option, corrupt audio or unauthorized source returns an error with details. The engine does not substitute a placeholder transcript.
+Missing/invalid Bearer tokens return HTTP 401 when API authentication is required. An uninstalled explicit model returns HTTP 404 `model_not_found`; a wrong-task/incomplete package, unsupported option, corrupt audio or unauthorized source returns an error with details. A `language` the model does not read (one not in `audio.languages`, compared by its base code: `en-US` is `en`) returns HTTP 400 `unsupported_language` before any work, naming the languages it reads; `audio.run` returns the same as `-32602`. The engine does not substitute a placeholder transcript.
 
 Inline transport capacity includes Base64 expansion and JSON envelope space: `4 * ceil(media.limits.max_input_bytes / 3) + 2 MiB`. Over-limit JSON returns HTTP 413 `request_too_large`. Encoded source bytes, decoded audio and live memory admission have separate limits. ONNX provider/device settings apply; `device` is not a field in this payload. A small download does not establish peak RAM/VRAM requirements or realtime speed.
