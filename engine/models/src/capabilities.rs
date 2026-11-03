@@ -316,7 +316,7 @@ impl PackageCapabilities {
                 .tensors
                 .iter()
                 .any(|tensor| tensor.name == "token_embd.weight");
-        let inputs = vec![
+        let mut inputs = vec![
             declaration(
                 Modality::Text,
                 has_text.then_some(true),
@@ -437,6 +437,38 @@ impl PackageCapabilities {
         } else {
             None
         };
+        // A GGUF backbone rarely says it takes images or audio; its projector does. When neither the
+        // model header nor config.json says anything, the selected projector's encoders decide, as
+        // llama.cpp's mtmd does (`mtmd_support_vision` / `mtmd_support_audio`). An explicit or
+        // conflicting declaration is kept, and ambiguous projectors (none selected) add nothing.
+        if let Some(selected) = &projector {
+            let name = selected
+                .path
+                .file_name()
+                .map(|name| name.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            for (modality, undeclared, encoder, key) in [
+                (
+                    Modality::Image,
+                    flag(header, "clip.has_vision_encoder").is_none() && config.vision_input.is_none(),
+                    selected.profile.vision_encoder,
+                    "clip.has_vision_encoder",
+                ),
+                (
+                    Modality::Audio,
+                    flag(header, "clip.has_audio_encoder").is_none() && config.audio_input.is_none(),
+                    selected.profile.audio_encoder,
+                    "clip.has_audio_encoder",
+                ),
+            ] {
+                if let Some(input) = inputs.iter_mut().find(|input| input.modality == modality) {
+                    if undeclared && encoder == Some(true) {
+                        input.state = CapabilityState::Supported;
+                        input.evidence.push(format!("projector {name}: {key}"));
+                    }
+                }
+            }
+        }
         Self {
             inputs,
             primary_file: primary
@@ -465,7 +497,7 @@ impl PackageCapabilities {
         }
     }
 
-    /// Positive intrinsic declarations only. Projector presence does not invent model support.
+    /// Positive declarations: the model's own, else the selected projector's encoders.
     pub fn supported_inputs(&self) -> Vec<Modality> {
         self.inputs
             .iter()

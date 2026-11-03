@@ -206,11 +206,35 @@ fn test_capabilities_conflicting_malformed_and_unrelated_companion_reject_suppor
 }
 
 #[test]
-fn test_capabilities_projector_alone_does_not_invent_model_inputs_or_stt_role() {
+fn test_capabilities_projector_encoders_decide_undeclared_inputs_not_roles() {
     let dir = tempfile::tempdir().unwrap();
     let path = primary(dir.path());
+    // A GGUF repository without config.json (ggml-org): the projector's encoders decide, as in mtmd
     projector(&dir.path().join("helper.gguf"), "32", true);
     let package = PackageCapabilities::inspect(&path).unwrap();
+    assert_eq!(
+        package.supported_inputs(),
+        [Modality::Text, Modality::Image, Modality::Audio]
+    );
+    assert!(package.inputs[1].evidence.iter().any(|e| e.contains("helper.gguf")));
+    // Vision-only projector: audio stays unknown
+    projector(&dir.path().join("helper.gguf"), "32", false);
+    let package = PackageCapabilities::inspect(&path).unwrap();
+    assert_eq!(package.supported_inputs(), [Modality::Text, Modality::Image]);
+    // A model that says it has no vision keeps that, whatever the projector says
+    gguf(
+        &path,
+        &[("tokenizer.ggml.model", "vocabulary")],
+        &[("clip.has_vision_encoder", false)],
+        None,
+    );
+    let package = PackageCapabilities::inspect(&path).unwrap();
+    assert_eq!(package.inputs[1].state, CapabilityState::Unsupported);
+    // Two different projectors: none is selected, so nothing is added
+    let path = primary(dir.path());
+    projector(&dir.path().join("other.gguf"), "64", true);
+    let package = PackageCapabilities::inspect(&path).unwrap();
+    assert!(package.projector.is_none());
     assert_eq!(package.supported_inputs(), [Modality::Text]);
     let caps = ModelCapabilities {
         has_audio: true,
