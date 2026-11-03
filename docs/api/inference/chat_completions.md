@@ -588,6 +588,18 @@ folders and of `~/.agents/`.
 - **Items named in the message** (a rule, workflow, skill or fact whose name is in the user's
   message) go whole in a `<context>` block in front of it: at most 3, within half the share, once
   per chat (kept in the chat's ledger; a compaction clears it).
+- **Glob rules with a file.** When an installed tool (an MCP server, a plugin) reads or changes a
+  file of the project, the project's `glob` rules for that file come with the tool's result
+  (prompt `workspace.glob_rule`), once per chat (kept in the chat's ledger; a compaction clears
+  it), as the terminal agent does for its file tools. The Engine knows no tool or argument names:
+  every string in the call's arguments that is a file inside the project after the call ran
+  counts (a relative path is taken from the workspace folder, where installed tools run). The
+  stream's `tool_result` lists them in `rules` (`[{"name": "ts", "path": "web/app.ts"}]`, empty
+  when none applied); the result the client sees stays as the tool returned it. Functions the
+  client runs itself (`"type": "function"` tools) are not covered. Tested with Qwen3.8-4B and a stdio MCP server
+  (2026-11-03): after reading `web/app.ts` the answer quoted the `*.ts` rule, a second read in the
+  chat did not get it again, `notes.txt` got none, and after a write of `web/new.ts` the model
+  wrote the file again with the line the rule asks for.
 - **`/<workflow>`.** A message that is exactly `/<name> [arguments]` for a workflow of the project
   gets the workflow's steps in front of it (prompt `workflow.run`). Any other `/text` is sent as it
   is.

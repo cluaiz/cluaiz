@@ -45,6 +45,9 @@ pub struct ApiTurn<'a> {
     pub token_count: usize,
     pub reasoning_tokens: usize,
     pub first_token_ms: u128,
+    /// The project's items the chat has whole (this message's and earlier ones'): a glob rule of
+    /// a file a tool touched is added to its result only when it is not one of them
+    project_sent: Vec<String>,
 }
 
 impl<'a> ApiTurn<'a> {
@@ -61,7 +64,10 @@ impl<'a> ApiTurn<'a> {
             let payload = json!({ "id": ctx.tools_report["auto_loaded"] }).to_string();
             tool_events.push(super::preflight::tool_event(cluaiz_agents::LOAD_TOOL_NAME, &payload, &step.result));
         }
+        let mut project_sent = ctx.ledger_turn.as_ref().map(|(chat, _)| cluaiz_agents::ChatLedger::get(chat).project_sent).unwrap_or_default();
+        project_sent.extend(ctx.project_sent.iter().cloned());
         Self {
+            project_sent,
             state,
             ctx,
             request,
@@ -400,6 +406,29 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
         };
         let latency_ms = tool_start_time.elapsed().as_secs_f64() * 1000.0;
 
+        // A project file the tool read or changed: the project's glob rules for it come with the
+        // result, once in the chat (as the terminal agent does for its file tools)
+        let mut model_result = execution_result.clone();
+        let mut rules_applied: Vec<(String, String)> = Vec::new();
+        if let (Some(workspace), true) = (&ctx.project, permission_granted && !is_meta_tool && !execution_result.starts_with("Error executing")) {
+            let files = super::project::files_of_call(workspace, &cluaiz_agents::ToolsEngine::workspace_dir(), &payload_str);
+            let (text, applied) = super::project::glob_rules(workspace, &files, &mut self.project_sent);
+            if !applied.is_empty() {
+                model_result.push_str(&text);
+                if let Some((chat, _)) = &ctx.ledger_turn {
+                    let mut ledger = cluaiz_agents::ChatLedger::get(chat);
+                    for key in self.project_sent.iter().filter(|key| key.starts_with("rule:")) {
+                        if !ledger.project_sent.contains(key) {
+                            ledger.project_sent.push(key.clone());
+                        }
+                    }
+                    cluaiz_agents::ChatLedger::put(chat, ledger);
+                }
+                tracing::info!("📏 [Project] glob rules for {}: {:?}", public_call_name, applied);
+            }
+            rules_applied = applied;
+        }
+
         if self.streaming() {
             let status_str = if !permission_granted {
                 "denied"
@@ -436,11 +465,12 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
                     "input_payload": serde_json::from_str::<Value>(&payload_str).unwrap_or(json!(payload_str)),
                     "output_result": serde_json::from_str::<Value>(&execution_result).unwrap_or(json!(&execution_result)),
                     "logs": execution_logs,
-                    "result": execution_result.clone()
+                    "result": execution_result.clone(),
+                    "rules": rules_applied.iter().map(|(name, path)| json!({ "name": name, "path": path })).collect::<Vec<_>>()
                 }}
             }])));
         }
-        CallRun::Done(execution_result)
+        CallRun::Done(model_result)
     }
 
     fn record_answer(&mut self, _said: &str, _calls: &[ToolCall]) {

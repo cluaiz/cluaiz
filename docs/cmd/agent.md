@@ -642,6 +642,8 @@ Small models seldom call `read_item` on their own, so the agent finds what fits 
   `edit_file` of a matching file in the conversation (a line `Rules: <rule> applies to <file>`
   shows it). A pattern without `/` matches the file name in any folder (`*.ts`); one with `/` the
   path from the project root (`docs/**`, `src/*.rs`); `*.{ts,tsx}` is written out.
+  App and API chats do the same for installed tools that touch a project file (see
+  [chat completions](../api/inference/chat_completions.md)).
 - `/clear` and `/compact` forget what was sent, so it is sent again when it fits.
 - In a test with Qwen3.8-4B: "Use the cerd rule: what is 17 times 23?" sent the rule, and the
   answer ended with the line the rule asks for in 2 of 3 runs; a `*.py` glob rule asking for
