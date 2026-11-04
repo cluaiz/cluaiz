@@ -28,7 +28,18 @@ pub use super::time::{window, window_in, Window};
 
 /// Earlier messages worth recalling for `message`, best first. `visible` holds the positions
 /// already in the prompt; they are never recalled. With a `window`, only messages of that time.
+/// Nobody asked for these, so they need evidence: a lone shared word is not enough.
 pub fn recall(cards: &[Card], index: &CardIndex, message: &str, visible: &HashSet<u64>, window: Option<Window>, limit: usize) -> Vec<Hit> {
+    find(cards, index, message, visible, window, limit, true)
+}
+
+/// The same for a search someone asked for: the query may be one word, or one word of it may be
+/// in the chat's language, and that word is enough.
+pub fn search(cards: &[Card], index: &CardIndex, query: &str, visible: &HashSet<u64>, window: Option<Window>, limit: usize) -> Vec<Hit> {
+    find(cards, index, query, visible, window, limit, false)
+}
+
+fn find(cards: &[Card], index: &CardIndex, message: &str, visible: &HashSet<u64>, window: Option<Window>, limit: usize, need_evidence: bool) -> Vec<Hit> {
     let query = terms(message);
     let query_entities = entities(message);
     let ranked = index.search(&query);
@@ -79,7 +90,7 @@ pub fn recall(cards: &[Card], index: &CardIndex, message: &str, visible: &HashSe
             // Evidence, not a lone word: two query words, a shared file or value, or a time window
             let evidence = why.len() >= 2 || !shared_entities.is_empty() || window.is_some();
             why.extend(shared_entities);
-            (score >= MIN_SCORE && evidence).then_some(Hit { card: i, score, why })
+            (score >= MIN_SCORE && (evidence || !need_evidence)).then_some(Hit { card: i, score, why })
         })
         .collect();
     hits.sort_by(|a, b| b.score.total_cmp(&a.score).then(cards[b.card].pos.cmp(&cards[a.card].pos)));
@@ -138,6 +149,17 @@ mod tests {
         assert!(recall(&cards, &index, "deploy server ka port kya tha?", &all, None, 3).is_empty());
         let visible: HashSet<u64> = (40..60).collect();
         assert!(recall(&cards, &index, "tell me a joke", &visible, None, 3).is_empty());
+    }
+
+    #[test]
+    fn test_a_search_finds_one_word_that_recall_does_not_bring_up() {
+        let cards = chat();
+        let index = CardIndex::build(&cards);
+        let none = HashSet::new();
+        assert!(recall(&cards, &index, "deploy", &none, None, 3).is_empty());
+        let hits = search(&cards, &index, "puerto deploy", &none, None, 3);
+        assert!(hits.iter().any(|h| [0, 1].contains(&cards[h.card].pos)), "{hits:?}");
+        assert!(search(&cards, &index, "banana", &none, None, 3).is_empty());
     }
 
     #[test]

@@ -110,7 +110,7 @@ Send a Bearer token when API authentication is enabled. Authentication failures 
 2. For chat scope, score the chat map and return message references/cards
 3. For cross-chat scope, search the selected other-chat range and return recalled text
 
-The Engine reads no time words in the query, in any language. "What did we discuss yesterday?" is a query plus `from` / `to` set to yesterday's date; the client (or the chat model, through the `recall` tool) turns the user's words into dates. With a window and no matching words, every message of that time is a candidate.
+The Engine reads no time words in the query, in any language. "What did we discuss yesterday?" is a query plus `from` / `to` set to yesterday's date; the client (or the chat model, through the `recall` tool) turns the user's words into dates. With a window and no matching words, every message of that time is a candidate. Without a window, one shared word is enough for a search (the recall the Engine does by itself, unasked, needs more).
 
 ```mermaid
 flowchart TD

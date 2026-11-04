@@ -525,7 +525,7 @@ pub async fn run_memory_tool(state: &crate::AppState, chat: &str, name: &str, ar
     }
     // The message being answered is the newest user message; finding it says nothing
     let asking = map.asking();
-    let hits = recall(&map.cards, &map.index, &query, &asking, window, 5);
+    let hits = cluaiz_context::memory::search(&map.cards, &map.index, &query, &asking, window, 5);
     let hits = expand(&hits, &map.cards, &asking, 7);
     if hits.is_empty() {
         let cross_chat = cluaiz_core::Settings::current().context_runtime.cross_chat;
@@ -637,7 +637,7 @@ pub fn search_other_chats(query: &str, this_chat: &str, workspace: Option<&str>,
         }
         let Some(map) = chat_map_uncached(chat) else { continue };
         searched += 1;
-        for hit in recall(&map.cards, &map.index, query, &HashSet::new(), window, 3) {
+        for hit in cluaiz_context::memory::search(&map.cards, &map.index, query, &HashSet::new(), window, 3) {
             let card = &map.cards[hit.card];
             let text: String = map.texts[hit.card].split_whitespace().collect::<Vec<_>>().join(" ").chars().take(200).collect();
             found.push((hit.score + recency, format!("[chat {} · m:{} · {} · {}] {}", chat, card.pos, card.ts.get(..16).unwrap_or(&card.ts).replace('T', " "), card.role, text)));

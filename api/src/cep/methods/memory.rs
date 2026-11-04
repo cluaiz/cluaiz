@@ -155,7 +155,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
                     return Err(CepError::invalid_params("`scope` is chat, workspace or all", Vec::new(), None));
                 }
                 let map = chat_map(&p.chat_id)?;
-                let hits = cluaiz_context::memory::recall(&map.cards, &map.index, &p.query, &HashSet::new(), window, p.limit.unwrap_or(5).min(50));
+                let hits = cluaiz_context::memory::search(&map.cards, &map.index, &p.query, &HashSet::new(), window, p.limit.unwrap_or(5).min(50));
                 let results: Vec<Value> = hits
                     .iter()
                     .map(|hit| {
