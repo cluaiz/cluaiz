@@ -219,6 +219,16 @@ chained or redirected command (`git status; rm -r src`, `git status > out.txt`):
 
 ## Reading the screen
 
+**A command that asks questions.** `run_command` with `interactive: true` and every `!command`
+run in a real terminal (ConPTY on Windows, a pty elsewhere) on the interactive screen. While one
+runs, what you type and send goes to it: Enter alone sends an empty line (the command's default), Esc
+or Ctrl+C stops it. Output shows live, also a question without a line end. A password the command
+hides does not reach the output, but it is visible in the input box while you type it. Everything
+else, and all commands in headless modes, runs without a keyboard. Input goes line by line, so a
+full-screen program such as an editor is not usable; stop it with Esc. Tested on Windows through the real
+screen (`cmd/tests/agent_keyboard.rs`): a `!command` took both answers in 3 of 3 runs; Qwen3.8-4B set
+`interactive` as asked in 1 of 3 runs. Linux and macOS are not tested yet.
+
 The interactive screen keeps model words, thinking (unless hidden), tool names, proposed changes
 and actual results in stable entries. Failed commands show their exit code as an error. You can
 type while generation runs; one further message can wait in the queue. Esc requests cancellation

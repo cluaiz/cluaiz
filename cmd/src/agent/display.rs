@@ -55,6 +55,8 @@ pub enum Event {
     Ready(String),
     /// How full the context is ("Context 62% · 2540 / 4096")
     Usage(String),
+    /// A command in a terminal started (where typed lines go) or ended (None)
+    CommandInput(Option<tokio::sync::mpsc::UnboundedSender<String>>),
     /// A `!command` the user ran: all of its output
     Shell {
         command: String,

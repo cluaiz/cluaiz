@@ -272,6 +272,7 @@ impl Tools {
                 if cfg!(windows) { "Run a PowerShell command in the working folder. Returns the exit code and output." } else { "Run a shell (sh) command in the working folder. Returns the exit code and output." },
                 json!({
                     "command": { "type": "string", "description": "The command line" },
+                    "interactive": { "type": "boolean", "description": "True when the command asks questions the user answers at the keyboard (an installer, a setup prompt)" },
                     "timeout": { "type": "integer", "description": "Seconds before it is stopped (default 120, most 600)" }
                 }),
                 &["command"],
@@ -327,7 +328,10 @@ impl Tools {
                 _ => Err("give a path, old_text and new_text".into()),
             },
             "run_command" => match text("command") {
-                Some(command) => self.run_command(&command, number("timeout").unwrap_or(120).clamp(1, 600)).await,
+                Some(command) => {
+                    let interactive = args.get("interactive").and_then(Value::as_bool).unwrap_or(false);
+                    self.run_command(&command, number("timeout").unwrap_or(120).clamp(1, 600), interactive).await
+                }
                 None => Err("give a command".into()),
             },
             // `use_skill` is the name this tool had before rules and workflows joined the index
@@ -608,6 +612,7 @@ impl Tools {
         &mut self,
         command: &str,
         timeout: usize,
+        interactive: bool,
     ) -> Result<(String, String), String> {
         let mode =
             match ExecutionPolicy::evaluate(command, &self.root, SecurityMode::RequireApproval) {
@@ -630,20 +635,22 @@ impl Tools {
                     SecurityMode::AlwaysAllow
                 }
             };
-        self.execute(command, mode, timeout, true).await
+        self.execute(command, mode, timeout, true, interactive).await
     }
 
     /// `!<command>` typed by the user: runs without asking (they typed it) and returns the exit and
     /// output, which the conversation keeps so the model knows what happened
     pub async fn run_user_command(&mut self, command: &str) -> (bool, String) {
-        match self.execute(command, SecurityMode::AlwaysAllow, 600, false).await {
+        match self.execute(command, SecurityMode::AlwaysAllow, 600, false, true).await {
             Ok((_, out)) => (true, out),
             Err(out) => (false, out),
         }
     }
 
-    /// `live`: show the output under the tool's row while it runs (run_command)
-    async fn execute(&mut self, command: &str, mode: SecurityMode, timeout: usize, live: bool) -> Result<(String, String), String> {
+    /// `live`: show the output under the tool's row while it runs (run_command).
+    /// `interactive`: in a real terminal whose keyboard is the user's, when there is a screen to
+    /// type on; without one (headless) the command has no input, as any other.
+    async fn execute(&mut self, command: &str, mode: SecurityMode, timeout: usize, live: bool, interactive: bool) -> Result<(String, String), String> {
         // Ctrl+C stops the command (the handler sets the cancel signal while this runs)
         let (cancel, cancel_rx) = CancelHandle::new();
         self.check_running()?;
@@ -668,17 +675,25 @@ impl Tools {
                 shown.emit(Event::ToolOutput(line));
             }
         });
-        let result = SandboxTerminalRunner::execute_streaming(
-            command,
-            &self.root,
-            mode,
-            None,
-            None,
-            Some(timeout as u64),
-            Some(cancel_rx),
-            live.then_some(line_tx),
-        )
-        .await;
+        let result = if interactive && self.display.screen_enabled() {
+            let (keys, key_rx) = tokio::sync::mpsc::unbounded_channel();
+            self.display.emit(Event::CommandInput(Some(keys)));
+            let run = SandboxTerminalRunner::execute_interactive(command, &self.root, mode, timeout as u64, cancel_rx, line_tx, key_rx).await;
+            self.display.emit(Event::CommandInput(None));
+            run
+        } else {
+            SandboxTerminalRunner::execute_streaming(
+                command,
+                &self.root,
+                mode,
+                None,
+                None,
+                Some(timeout as u64),
+                Some(cancel_rx),
+                live.then_some(line_tx),
+            )
+            .await
+        };
         watcher.abort();
         let _ = forward.await;
         crate::chat::GENERATING.store(false, Ordering::SeqCst);

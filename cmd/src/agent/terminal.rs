@@ -288,6 +288,17 @@ fn screen_inner(
             continue;
         };
         dirty = true;
+        // Enter on an empty line answers a command that asks (it takes its default)
+        if let (Some(keys), cluaiz_terminal::event::Event::Key(key)) = (&state.command_input, &event) {
+            if key.code == cluaiz_terminal::event::KeyCode::Enter
+                && key.kind == cluaiz_terminal::event::KeyEventKind::Press
+                && state.app.draft().is_empty()
+                && !state.app.approval_pending()
+            {
+                let _ = keys.send(String::new());
+                continue;
+            }
+        }
         let action = if let cluaiz_terminal::event::Event::Paste(text) = &event {
             if !state.app.approval_pending()
                 && !state.app.theme_picker_open()
@@ -332,6 +343,12 @@ fn screen_inner(
             }
             Action::Choose { .. } => {
                 state.app.notice = Some("A message is already queued; choose again after it starts".into())
+            }
+            // What is typed while a command reads the keyboard is that command's
+            Action::Submit(text) if state.command_input.is_some() => {
+                if let Some(keys) = &state.command_input {
+                    let _ = keys.send(text);
+                }
             }
             // A shell habit: clears the screen here, the model never sees it
             Action::Submit(text) if matches!(text.trim(), "cls" | "clear") => {

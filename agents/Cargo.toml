@@ -5,6 +5,7 @@ edition.workspace = true
 authors.workspace = true
 
 [dependencies]
+portable-pty = "0.9"
 cluaiz-core = { path = "../engine/core" }
 cluaiz-models = { path = "../engine/models" }
 cluaiz-context = { path = "../context" }
