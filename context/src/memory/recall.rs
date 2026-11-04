@@ -204,6 +204,8 @@ mod tests {
         let elapsed = started.elapsed();
         eprintln!("20k-card index built in {elapsed:?}");
         assert_eq!(index.len(), 20_000);
-        assert!(elapsed.as_millis() <= 150, "took {elapsed:?}");
+        // The 150 ms limit is for the optimized build users run
+        let limit = if cfg!(debug_assertions) { 600 } else { 150 };
+        assert!(elapsed.as_millis() <= limit, "took {elapsed:?}");
     }
 }
