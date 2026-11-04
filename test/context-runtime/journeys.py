@@ -73,7 +73,8 @@ def j4(engine):
     """"notes.txt padho": filesystem suggested, loaded, read with approval, MANGO-42"""
     r = engine.stream(body("notes.txt padho aur secret word batao", session("j4")))
     read = any("filesystem" in n and "read" in n for n in names(r))
-    return read and "MANGO-42" in r["text"] and not r["error"], \
+    # A thinking tag in the answer means the model's thinking went out as the answer
+    return read and "MANGO-42" in r["text"] and "channel|>" not in r["text"] and not r["error"], \
         f"calls {names(r)}, asked {len(r['asked'])}, answer {r['text'][-120:]!r}"
 
 
