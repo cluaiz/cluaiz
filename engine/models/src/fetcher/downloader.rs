@@ -3,9 +3,9 @@
 //! ═══════════════════════════════════════════════════════════════════════
 //!
 //! A file is written to `<name>.part` and renamed when every byte has arrived. A dropped
-//! connection continues from the bytes already in `.part` with an HTTP `Range` request, a few
-//! times in a row; a later run of the same download continues too. A server that ignores `Range`
-//! sends the whole file again, and `.part` starts over.
+//! connection continues from the bytes already in `.part` with an HTTP `Range` request, for as
+//! long as bytes keep arriving; a later run of the same download continues too. A server that
+//! ignores `Range` sends the whole file again, and `.part` starts over.
 
 use futures_util::StreamExt;
 use reqwest::{header, Client, StatusCode};
@@ -24,7 +24,9 @@ pub enum DownloadEvent {
     PurgeError(String, String),
 }
 
-/// Tries per download run before it gives up (the bytes in `.part` stay for the next run)
+/// Tries in a row without a new byte before a download run gives up (the bytes in `.part` stay
+/// for the next run). A try that brought bytes starts the count again: on a poor connection a large
+/// file may need many.
 const ATTEMPTS: u32 = 6;
 /// Longest wait between two tries
 const MAX_BACKOFF_SECS: u64 = 30;
@@ -52,7 +54,7 @@ impl FileDownloader {
         abort: Arc<AtomicBool>,
     ) -> Result<(), String> {
         if dest_path.exists() {
-            let _ = tx.send(DownloadEvent::Complete(dest_path.to_string_lossy().to_string())).await;
+            let _ = tx.try_send(DownloadEvent::Complete(dest_path.to_string_lossy().to_string()));
             return Ok(());
         }
         if let Some(parent) = dest_path.parent() {
@@ -61,22 +63,9 @@ impl FileDownloader {
                 .map_err(|e| format!("Failed to create parent dir: {}", e))?;
         }
         let part_path = part_path(dest_path);
-        let mut last_error = String::new();
-        for attempt in 1..=ATTEMPTS {
-            if attempt > 1 {
-                let wait = (1u64 << (attempt - 1)).min(MAX_BACKOFF_SECS);
-                let have = file_len(&part_path).await;
-                eprintln!(
-                    "   │  {last_error}; continuing from {:.1} MB in {wait} s (try {attempt}/{ATTEMPTS})",
-                    have as f64 / 1_048_576.0
-                );
-                tracing::warn!(url, error = %last_error, have, attempt, "download interrupted; resuming");
-                tokio::time::sleep(std::time::Duration::from_secs(wait)).await;
-                if abort.load(Ordering::Relaxed) {
-                    let _ = tokio::fs::remove_file(&part_path).await;
-                    return Err(ABORTED.to_string());
-                }
-            }
+        let mut failures = 0u32;
+        loop {
+            let before = file_len(&part_path).await;
             match Self::attempt(client, url, &part_path, &tx, &abort).await {
                 Ok(()) => {
                     tokio::fs::rename(&part_path, dest_path)
@@ -85,24 +74,38 @@ impl FileDownloader {
                     let _ = tx.try_send(DownloadEvent::Complete(dest_path.to_string_lossy().to_string()));
                     return Ok(());
                 }
+                // try_send: a caller may not read the events, and a full channel must not stop the
+                // download from ending
                 Err(Failure::Fatal(error)) => {
-                    let _ = tx
-                        .send(DownloadEvent::Error(dest_path.to_string_lossy().to_string(), error.clone()))
-                        .await;
+                    let _ = tx.try_send(DownloadEvent::Error(dest_path.to_string_lossy().to_string(), error.clone()));
                     return Err(error);
                 }
-                Err(Failure::Retry(error)) => last_error = error,
+                Err(Failure::Retry(last_error)) => {
+                    let have = file_len(&part_path).await;
+                    failures = if have > before { 1 } else { failures + 1 };
+                    if failures >= ATTEMPTS {
+                        let error = format!(
+                            "{last_error} after {ATTEMPTS} tries without a new byte; {:.1} MB is kept, and running the same download again continues from there",
+                            have as f64 / 1_048_576.0
+                        );
+                        let _ = tx.try_send(DownloadEvent::Error(dest_path.to_string_lossy().to_string(), error.clone()));
+                        return Err(error);
+                    }
+                    let wait = (1u64 << failures).min(MAX_BACKOFF_SECS);
+                    eprintln!(
+                        "   │  {last_error}; continuing from {:.1} MB in {wait} s (try {}/{ATTEMPTS})",
+                        have as f64 / 1_048_576.0,
+                        failures + 1
+                    );
+                    tracing::warn!(url, error = %last_error, have, failures, "download interrupted; resuming");
+                    tokio::time::sleep(std::time::Duration::from_secs(wait)).await;
+                    if abort.load(Ordering::Relaxed) {
+                        let _ = tokio::fs::remove_file(&part_path).await;
+                        return Err(ABORTED.to_string());
+                    }
+                }
             }
         }
-        let have = file_len(&part_path).await;
-        let error = format!(
-            "{last_error} after {ATTEMPTS} tries; {:.1} MB is kept, and running the same download again continues from there",
-            have as f64 / 1_048_576.0
-        );
-        let _ = tx
-            .send(DownloadEvent::Error(dest_path.to_string_lossy().to_string(), error.clone()))
-            .await;
-        Err(error)
     }
 
     /// One request: from the start, or from the end of `.part`
@@ -351,6 +354,64 @@ mod tests {
             }
         });
         (url, ranges)
+    }
+
+    /// Each connection sends a little and drops: more drops in all than ATTEMPTS, each with bytes
+    #[tokio::test]
+    async fn test_a_download_that_keeps_making_progress_does_not_give_up() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let body: Vec<u8> = (0..70_000u32).map(|i| (i % 251) as u8).collect();
+        let step = body.len() / (ATTEMPTS as usize + 2);
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!("http://{}/model.gguf", listener.local_addr().unwrap());
+        let served = body.clone();
+        tokio::spawn(async move {
+            while let Ok((mut socket, _)) = listener.accept().await {
+                let mut request = Vec::new();
+                let mut buf = [0u8; 1024];
+                while !request.windows(4).any(|w| w == b"\r\n\r\n") {
+                    let n = socket.read(&mut buf).await.unwrap();
+                    if n == 0 {
+                        break;
+                    }
+                    request.extend_from_slice(&buf[..n]);
+                }
+                let text = String::from_utf8_lossy(&request).to_ascii_lowercase();
+                let from: usize = text.lines().find_map(|l| l.strip_prefix("range: bytes=")).and_then(|v| v.trim().trim_end_matches('-').parse().ok()).unwrap_or(0);
+                let len = served.len();
+                let status = if from > 0 { "206 Partial Content" } else { "200 OK" };
+                let head = format!("HTTP/1.1 {status}\r\nContent-Length: {}\r\nContent-Range: bytes {from}-{}/{len}\r\n\r\n", len - from, len - 1);
+                socket.write_all(head.as_bytes()).await.unwrap();
+                socket.write_all(&served[from..(from + step).min(len)]).await.unwrap();
+            }
+        });
+        let dir = tempfile::tempdir().unwrap();
+        let dest = dir.path().join("model.gguf");
+        let (tx, _rx) = mpsc::channel(1024);
+        FileDownloader::download_single_file(&Client::new(), &url, &dest, tx, Arc::new(AtomicBool::new(false))).await.unwrap();
+        assert_eq!(std::fs::read(&dest).unwrap(), body);
+    }
+
+    /// A caller that keeps the receiver and never reads it (`cluaiz pull`): a failed download ends
+    #[tokio::test]
+    async fn test_a_failed_download_ends_when_nobody_reads_the_events() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let url = format!("http://{}/model.gguf", listener.local_addr().unwrap());
+        tokio::spawn(async move {
+            while let Ok((mut socket, _)) = listener.accept().await {
+                let mut buf = [0u8; 1024];
+                let _ = socket.read(&mut buf).await;
+                let _ = socket.write_all(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n").await;
+            }
+        });
+        let dir = tempfile::tempdir().unwrap();
+        let (tx, _rx) = mpsc::channel(1);
+        tx.try_send(DownloadEvent::PurgeComplete(String::new())).unwrap();
+        let (client, dest) = (Client::new(), dir.path().join("m.gguf"));
+        let run = FileDownloader::download_single_file(&client, &url, &dest, tx, Arc::new(AtomicBool::new(false)));
+        let result = tokio::time::timeout(std::time::Duration::from_secs(20), run).await.expect("the download must end");
+        assert!(result.unwrap_err().contains("404"));
     }
 
     #[tokio::test]
