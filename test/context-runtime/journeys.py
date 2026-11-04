@@ -46,13 +46,14 @@ def no_tool_talk(engine, name, text):
     # thinking off: these check what reaches the model, not the answer
     r = engine.stream(body(text, session(name), think_mode="off"))
     t = tools_of(r)
-    ok = not r["error"] and not r["calls"] and not t.get("suggested") and t.get("hint_tokens", 0) == 0 \
-        and t.get("system_tools_tokens", 0) == 0
-    return ok, f"suggested {[s.get('id') for s in t.get('suggested') or []]}, hint {t.get('hint_tokens')} tokens, calls {names(r)}"
+    # The tool list stays (it is in the prompt from the first message, for the KV) and so does the
+    # `remember` hint, which every chat the Engine keeps has. What must not come is a suggestion.
+    ok = not r["error"] and not r["calls"] and not t.get("suggested") and not t.get("search_offered")
+    return ok, f"suggested {[s.get('id') for s in t.get('suggested') or []]}, search offered {t.get('search_offered')}, hint {t.get('hint_tokens')} tokens, calls {names(r)}"
 
 
 def j1(engine):
-    """"Hi" gets 0 tool tokens"""
+    """"Hi" gets no tool suggestion"""
     return no_tool_talk(engine, "j1", "Hi")
 
 
@@ -189,7 +190,8 @@ def j9t(engine):
     started = time.time()
     text = _non_streaming(engine, None)
     waited = time.time() - started
-    return "MANGO-42" not in text and waited >= 115, f"waited {waited:.0f} s, answer {text[-120:]!r}"
+    # One wait: a second confirmation would keep the request for another 120 s with nobody there
+    return "MANGO-42" not in text and 115 <= waited < 235, f"waited {waited:.0f} s, answer {text[-120:]!r}"
 
 
 def j10(engine):
@@ -197,6 +199,8 @@ def j10(engine):
     if not engine.exe:
         return None, "needs --exe and --home"
     chat = session("j10")
+    # Bound here, so that the check does not depend on the model choosing to load the tool
+    engine.cep("chat.set_tools", chat_id=chat, tools=[{"id": "filesystem", "turns": -1, "inline": True}])
     first = engine.stream(body("notes.txt padho aur secret word batao", chat))
     history = [{"role": "user", "content": "notes.txt padho aur secret word batao"},
                {"role": "assistant", "content": first["text"]}]
@@ -205,7 +209,7 @@ def j10(engine):
     loaded = tools_of(second).get("loaded_in_chat") or []
     cache = ((second.get("engine") or {}).get("engine") or {}).get("context", {}).get("cache_n", 0)
     reloaded = any("load_tool" in n for n in names(second))
-    ok = "filesystem" in loaded and not reloaded and cache > 0 and "6 * 7" in second["text"]
+    ok = "MANGO-42" in first["text"] and "filesystem" in loaded and not reloaded and cache > 0 and "6 * 7" in second["text"]
     return ok, f"loaded after restart {loaded}, load_tool again {reloaded}, cache_n {cache}, answer {second['text'][-80:]!r}"
 
 
@@ -214,9 +218,12 @@ def j12(engine):
     a = engine.stream(body("notes.txt padho", session("j12a"), tool_choice="none", think_mode="off"))
     b = engine.stream(body("notes.txt padho", session("j12b"), tool_search=False, think_mode="off"))
     ta, tb = tools_of(a), tools_of(b)
-    ok = not a["calls"] and not b["calls"] and not ta.get("meta_tools") and not ta.get("suggested") \
-        and not tb.get("suggested") and ta.get("hint_tokens", 0) == 0 and tb.get("hint_tokens", 0) == 0
-    return ok, f"none: suggested {ta.get('suggested')}, meta {ta.get('meta_tools')}; tool_search false: suggested {tb.get('suggested')}"
+    # tool_search false still has `remember` and its hint, which are not tool search
+    searched = [n for n in names(b) if "find_tools" in n or "load_tool" in n]
+    ok = not a["calls"] and not searched and not ta.get("meta_tools") and not ta.get("suggested") \
+        and not tb.get("suggested") and not tb.get("search_offered") and ta.get("hint_tokens", 0) == 0
+    return ok, (f"none: calls {names(a)}, suggested {ta.get('suggested')}, meta {ta.get('meta_tools')}, hint {ta.get('hint_tokens')}; "
+                f"tool_search false: calls {names(b)}, suggested {tb.get('suggested')}, search offered {tb.get('search_offered')}")
 
 
 def j13(engine):
