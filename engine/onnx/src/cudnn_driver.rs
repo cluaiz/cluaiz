@@ -238,11 +238,13 @@ fn provider_variant(path: &Path, drivers_dir: &Path) -> Option<&'static str> {
     Some(variant)
 }
 
-/// A download cut off when its process ended leaves a `.part` file behind; one untouched for an
-/// hour is not in progress (downloads time out after 30 minutes), so it is removed.
-fn remove_stale_downloads(drivers_dir: &Path) {
+/// A leftover `.part` file (an archive of an older version, a library cut off while it was copied)
+/// untouched for an hour is not in progress, so it is removed. The archives in `keep` stay: the next
+/// download continues from them.
+fn remove_stale_downloads(drivers_dir: &Path, keep: &[String]) {
     for entry in std::fs::read_dir(drivers_dir).into_iter().flatten().flatten() {
-        if !entry.file_name().to_string_lossy().contains(".part") {
+        let name = entry.file_name().to_string_lossy().to_string();
+        if !name.contains(".part") || keep.contains(&name) {
             continue;
         }
         let stale = entry
@@ -596,7 +598,19 @@ pub fn ensure_cuda_runtime_ready(drivers_dir: &Path, has_nvidia_gpu: bool) -> Re
 
     std::fs::create_dir_all(drivers_dir)
         .with_context(|| format!("failed to create drivers directory {:?}", drivers_dir))?;
-    remove_stale_downloads(drivers_dir);
+    let archive_name = |comp: &CudaComponentManifest, source: &CudaComponentPlatformSource| {
+        let ext = if source.relative_path.ends_with(".zip") { "zip" } else { "tar.xz" };
+        format!("{}-{}-{}.part.{}", comp.component, comp.version, cuda_variant, ext)
+    };
+    let keep: Vec<String> = platform_components(v_manifest, key).map(|(comp, source)| archive_name(comp, source)).collect();
+    // One process installs at a time (a server and `cluaiz calibrate` share the folder and the
+    // archives); the other uses CPU/DirectML until the libraries are there
+    let lock = File::create(drivers_dir.join("cuda_download.lock")).with_context(|| format!("failed to create the lock in {:?}", drivers_dir))?;
+    if lock.try_lock().is_err() {
+        tracing::info!("Another process is installing the CUDA/cuDNN 9 runtime libraries");
+        return Ok(false);
+    }
+    remove_stale_downloads(drivers_dir, &keep);
 
     for (comp, source) in platform_components(v_manifest, key) {
         if is_component_ready(drivers_dir, cuda_variant, comp, source) {
@@ -605,13 +619,8 @@ pub fn ensure_cuda_runtime_ready(drivers_dir: &Path, has_nvidia_gpu: bool) -> Re
 
         let url = format!("{}{}", comp.base_url, source.relative_path);
         let archive_ext = if source.relative_path.ends_with(".zip") { "zip" } else { "tar.xz" };
-        let part_archive = drivers_dir.join(format!(
-            "{}-{}-{}.part.{}",
-            comp.component,
-            comp.version,
-            std::process::id(),
-            archive_ext
-        ));
+        // The same name in every run, so a download cut off by a restart continues from there
+        let part_archive = drivers_dir.join(archive_name(comp, source));
 
         let mb = source.bytes as f64 / (1024.0 * 1024.0);
         eprintln!(
@@ -627,19 +636,18 @@ pub fn ensure_cuda_runtime_ready(drivers_dir: &Path, has_nvidia_gpu: bool) -> Re
             "Downloading NVIDIA runtime archive for ONNX CUDA Execution Provider"
         );
 
-        let download_result = (|| -> Result<()> {
-            download_to_file(&url, &part_archive, source.bytes)?;
-            verify_archive_file(&part_archive, source.bytes, &source.sha256)?;
-            if archive_ext == "zip" {
-                extract_component_from_zip(&part_archive, drivers_dir, source)?;
-            } else {
-                extract_component_from_tar_xz(&part_archive, drivers_dir, source)?;
-            }
-            Ok(())
-        })();
-
+        download_to_file(&url, &part_archive, source.bytes)?;
+        if let Err(error) = verify_archive_file(&part_archive, source.bytes, &source.sha256) {
+            // Bad bytes do not get better by continuing: the next run starts over
+            let _ = std::fs::remove_file(&part_archive);
+            return Err(error);
+        }
+        if archive_ext == "zip" {
+            extract_component_from_zip(&part_archive, drivers_dir, source)?;
+        } else {
+            extract_component_from_tar_xz(&part_archive, drivers_dir, source)?;
+        }
         let _ = std::fs::remove_file(&part_archive);
-        download_result?;
 
         if !is_component_in_drivers_dir(drivers_dir, source) {
             bail!(
@@ -674,24 +682,72 @@ pub fn ensure_cudnn_ready(drivers_dir: &Path, has_nvidia_gpu: bool) -> Result<bo
     ensure_cuda_runtime_ready(drivers_dir, has_nvidia_gpu)
 }
 
+/// Tries per run before the download gives up (what arrived stays for the next run)
+const DOWNLOAD_TRIES: u32 = 4;
+
+/// Downloads `url` to `dest`, continuing from the bytes already there, from an earlier try or an
+/// earlier run. A failure leaves them for the next run.
 fn download_to_file(url: &str, dest: &Path, expected_bytes: u64) -> Result<()> {
-    let response = reqwest::blocking::Client::builder()
+    let mut last = None;
+    for attempt in 0..DOWNLOAD_TRIES {
+        if attempt > 0 {
+            std::thread::sleep(std::time::Duration::from_secs(1 << attempt));
+        }
+        match download_attempt(url, dest, expected_bytes) {
+            Ok(()) => return Ok(()),
+            Err(error) => {
+                tracing::warn!(%error, attempt, "CUDA runtime download interrupted");
+                last = Some(error);
+            }
+        }
+    }
+    Err(last.unwrap_or_else(|| anyhow::anyhow!("download of {url} did not run")))
+}
+
+fn download_attempt(url: &str, dest: &Path, expected_bytes: u64) -> Result<()> {
+    let mut have = std::fs::metadata(dest).map_or(0, |m| m.len());
+    if have > expected_bytes {
+        std::fs::remove_file(dest)?;
+        have = 0;
+    }
+    if have == expected_bytes && have > 0 {
+        return Ok(());
+    }
+    let client = reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(1800))
         .user_agent("Cluaiz-Engine")
-        .build()?
-        .get(url)
-        .send()
-        .with_context(|| format!("GET {url} failed"))?
-        .error_for_status()?;
-
-    let file = File::create(dest).with_context(|| format!("failed to create temporary archive {:?}", dest))?;
+        .build()?;
+    let mut request = client.get(url);
+    if have > 0 {
+        request = request.header(reqwest::header::RANGE, format!("bytes={have}-"));
+    }
+    let response = request.send().with_context(|| format!("GET {url} failed"))?;
+    // The server does not take the range: what is there is of no use
+    if response.status() == reqwest::StatusCode::RANGE_NOT_SATISFIABLE {
+        std::fs::remove_file(dest)?;
+        bail!("the server refused to continue {url}; starting over");
+    }
+    let response = response.error_for_status()?;
+    let resumed = have > 0 && response.status() == reqwest::StatusCode::PARTIAL_CONTENT;
+    if resumed {
+        tracing::info!(have, expected_bytes, "Continuing the CUDA runtime download");
+    } else {
+        have = 0;
+    }
+    let file = std::fs::OpenOptions::new()
+        .create(true)
+        .write(true)
+        .append(resumed)
+        .truncate(!resumed)
+        .open(dest)
+        .with_context(|| format!("failed to open temporary archive {:?}", dest))?;
     let mut writer = BufWriter::new(file);
-    let mut reader = response.take(expected_bytes + 1);
-    let copied = std::io::copy(&mut reader, &mut writer)
-        .with_context(|| format!("failed while streaming download from {url}"))?;
+    let mut reader = response.take(expected_bytes - have + 1);
+    let copied = std::io::copy(&mut reader, &mut writer);
     writer.flush()?;
-    if copied != expected_bytes {
-        bail!("downloaded size mismatch for {url}: expected {expected_bytes} bytes, got {copied} bytes");
+    let copied = copied.with_context(|| format!("failed while streaming download from {url}"))?;
+    if have + copied != expected_bytes {
+        bail!("downloaded size mismatch for {url}: expected {expected_bytes} bytes, got {}", have + copied);
     }
     Ok(())
 }
@@ -917,6 +973,92 @@ mod tests {
         // A different binary (another size) is read again
         std::fs::write(&provider, b"MZ......cublas64_12.dll\0").unwrap();
         assert_eq!(provider_variant(&provider, &dir), Some("cuda12"));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A local server for one file: `ranges` says whether it honors a `Range` request. Cuts the
+    /// first answer off after `cut` bytes, as a dropped connection does.
+    fn file_server(body: Vec<u8>, ranges: bool, cut: Option<usize>) -> String {
+        use std::io::{BufRead, BufReader as Lines};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        std::thread::spawn(move || {
+            let mut cut = cut;
+            for stream in listener.incoming().flatten() {
+                let mut stream = stream;
+                let mut from = 0usize;
+                let mut lines = Lines::new(stream.try_clone().unwrap());
+                loop {
+                    let mut line = String::new();
+                    if lines.read_line(&mut line).unwrap_or(0) == 0 || line.trim().is_empty() {
+                        break;
+                    }
+                    if let Some(value) = line.to_ascii_lowercase().strip_prefix("range: bytes=") {
+                        from = value.trim().trim_end_matches('-').parse().unwrap_or(0);
+                    }
+                }
+                let from = if ranges { from } else { 0 };
+                let status = if from > 0 { "206 Partial Content" } else { "200 OK" };
+                let rest = &body[from..];
+                let _ = write!(stream, "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", rest.len());
+                let sent = cut.take().map_or(rest.len(), |n| n.min(rest.len()));
+                let _ = stream.write_all(&rest[..sent]);
+            }
+        });
+        format!("http://{address}/archive.zip")
+    }
+
+    #[test]
+    fn a_cut_download_continues_from_the_bytes_there() {
+        let dir = std::env::temp_dir().join(format!("cluaiz-cuda-resume-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let body: Vec<u8> = (0..200_000u32).map(|i| (i % 251) as u8).collect();
+        let total = body.len() as u64;
+        let dest = dir.join("a.part.zip");
+
+        // An earlier run left the first part; the server continues it
+        std::fs::write(&dest, &body[..70_000]).unwrap();
+        download_attempt(&file_server(body.clone(), true, None), &dest, total).unwrap();
+        assert_eq!(std::fs::read(&dest).unwrap(), body);
+
+        // Dropped halfway: the bytes stay, the next try ends it
+        std::fs::remove_file(&dest).unwrap();
+        let url = file_server(body.clone(), true, Some(50_000));
+        assert!(download_attempt(&url, &dest, total).is_err());
+        assert_eq!(std::fs::metadata(&dest).unwrap().len(), 50_000);
+        download_attempt(&url, &dest, total).unwrap();
+        assert_eq!(std::fs::read(&dest).unwrap(), body);
+
+        // A server without ranges sends it all again; a whole file needs no request
+        std::fs::write(&dest, &body[..70_000]).unwrap();
+        download_attempt(&file_server(body.clone(), false, None), &dest, total).unwrap();
+        assert_eq!(std::fs::read(&dest).unwrap(), body);
+        download_attempt("http://127.0.0.1:1/never", &dest, total).unwrap();
+
+        // More bytes than the file has: not this file
+        std::fs::write(&dest, vec![0u8; 300_000]).unwrap();
+        download_attempt(&file_server(body.clone(), true, None), &dest, total).unwrap();
+        assert_eq!(std::fs::read(&dest).unwrap(), body);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn leftovers_go_but_the_archive_being_continued_stays() {
+        let dir = std::env::temp_dir().join(format!("cluaiz-cuda-stale-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let old = std::time::SystemTime::now() - std::time::Duration::from_secs(7200);
+        for name in ["cudnn-9-cuda13.part.zip", "cudnn-9-1234.part.zip", "new-1.part.zip"] {
+            let file = File::create(dir.join(name)).unwrap();
+            if name != "new-1.part.zip" {
+                file.set_modified(old).unwrap();
+            }
+        }
+        remove_stale_downloads(&dir, &["cudnn-9-cuda13.part.zip".to_string()]);
+        assert!(dir.join("cudnn-9-cuda13.part.zip").exists());
+        assert!(!dir.join("cudnn-9-1234.part.zip").exists());
+        assert!(dir.join("new-1.part.zip").exists());
         let _ = std::fs::remove_dir_all(&dir);
     }
 
