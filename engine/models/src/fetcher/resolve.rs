@@ -66,6 +66,8 @@ pub trait ResolveUi: Sync {
     fn step(&self, step: ResolveStep<'_>);
     /// Index of the variant to download (`variants` is never empty)
     fn pick_variant(&self, repo: &str, variants: &[HfVariant]) -> Result<usize, String>;
+    /// Whether someone is there to choose
+    fn can_ask(&self) -> bool;
     /// Files of the repository to download (`--all`)
     fn pick_files(&self, repo: &str, tree: &[HfTreeItem]) -> Result<Vec<String>, String>;
 }
@@ -80,6 +82,9 @@ impl<F: Fn(ResolveStep<'_>) + Sync> ResolveUi for FirstVariant<F> {
     }
     fn pick_variant(&self, _: &str, _: &[HfVariant]) -> Result<usize, String> {
         Ok(0)
+    }
+    fn can_ask(&self) -> bool {
+        false
     }
     fn pick_files(&self, _: &str, _: &[HfTreeItem]) -> Result<Vec<String>, String> {
         Err("Choosing files needs the terminal (`cluaiz pull --all`)".into())
@@ -194,6 +199,11 @@ pub async fn resolve(model_id: &str, all: bool, ui: &dyn ResolveUi) -> Result<Re
                 }
                 (_, tag) => {
                     if let Some(tag) = tag {
+                        // Nobody to ask: another size must not start in place of the one named
+                        if !ui.can_ask() {
+                            let have: Vec<String> = variants.iter().map(|v| format!("{} ({:.2} GB)", v.quant_tag, v.size_gb)).collect();
+                            return Err(format!("'{repo_id}' has no variant '{tag}'. It has: {}", have.join(", ")));
+                        }
                         ui.step(ResolveStep::TagNotFound { tag, repo: &repo_id });
                     }
                     let index = ui.pick_variant(&repo_id, &variants)?;
