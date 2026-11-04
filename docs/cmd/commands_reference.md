@@ -71,7 +71,6 @@ cluaiz model set-chat gemma4:e2b
 | `cluaiz permission port <number>` | API port |
 | `cluaiz permission telemetry on\|off` | Usage details in chat responses |
 | `cluaiz permission lazy-load on\|off` | Load the chat model on first use, or at server start |
-| `cluaiz permission firewall\|kvcache\|vectorize-input\|vectorize-response …` | Saved but not used by the Engine yet ([permission.json](../engine/permission.md)) |
 | `cluaiz token show` (`--all`) | The active API token and whether auth is on |
 | `cluaiz token create` | New `sk-cluaiz-…` API key (at most 5) |
 | `cluaiz token list` (`ls`) | All API keys |

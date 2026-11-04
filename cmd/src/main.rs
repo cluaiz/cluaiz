@@ -133,16 +133,8 @@ enum CliCommand {
 
 #[derive(Subcommand)]
 pub enum PermissionCommand {
-    /// WASM firewall: auto, strict or off (saved only; nothing reads it yet, there is no WASM sandbox)
-    Firewall { status: String },
     /// Usage telemetry in chat responses: on or off
     Telemetry { status: String },
-    /// KV cache generation: on or off (saved only; the KV cache is always saved)
-    Kvcache { status: String },
-    /// Vectorize user messages: on or off (saved only; chat memory uses no vectors)
-    VectorizeInput { status: String },
-    /// Vectorize AI responses: on or off (saved only; chat memory uses no vectors)
-    VectorizeResponse { status: String },
     /// Load the chat model on first use instead of at server start: on or off
     LazyLoad { status: String },
     /// API server port
@@ -479,43 +471,19 @@ async fn main() -> Result<()> {
             let mut schema = cluaiz_security::PermissionSchema::load();
             let Some(cmd) = command else {
                 let row = |k: &str, v: String| println!("{:<20}{}", k, v);
-                row("firewall", schema.wasm_firewall.clone());
                 row("telemetry", schema.stream_telemetry.to_string());
-                row("kvcache", schema.enable_kvcache.to_string());
-                row("vectorize-input", schema.vectorize_user_input.to_string());
-                row("vectorize-response", schema.vectorize_ai_response.to_string());
                 row("lazy-load", schema.lazy_load_model.to_string());
                 row("port", schema.api_port.to_string());
                 row("chat model", schema.get_active_chat_model().unwrap_or_else(|| "none".into()));
                 row("vector model", schema.get_active_embedding_model().unwrap_or_else(|| "none".into()));
-                eprintln!("{}", "firewall, kvcache and vectorize-* are saved but not used by the Engine yet.".dimmed());
                 eprintln!("{}", "Change one with `cluaiz permission <name> <value>`.".dimmed());
                 return Ok(());
             };
             let result: Result<String> = (|| {
                 Ok(match cmd {
-                    PermissionCommand::Firewall { status } => {
-                        schema.wasm_firewall = match status.to_lowercase().as_str() {
-                            s @ ("auto" | "strict" | "off") => s.to_string(),
-                            _ => return Err(color_eyre::eyre::eyre!("'{}': use auto, strict or off", status)),
-                        };
-                        format!("firewall = {}", schema.wasm_firewall)
-                    }
                     PermissionCommand::Telemetry { status } => {
                         schema.stream_telemetry = on_off(&status)?;
                         format!("telemetry = {}", schema.stream_telemetry)
-                    }
-                    PermissionCommand::Kvcache { status } => {
-                        schema.enable_kvcache = on_off(&status)?;
-                        format!("kvcache = {}", schema.enable_kvcache)
-                    }
-                    PermissionCommand::VectorizeInput { status } => {
-                        schema.vectorize_user_input = on_off(&status)?;
-                        format!("vectorize-input = {}", schema.vectorize_user_input)
-                    }
-                    PermissionCommand::VectorizeResponse { status } => {
-                        schema.vectorize_ai_response = on_off(&status)?;
-                        format!("vectorize-response = {}", schema.vectorize_ai_response)
                     }
                     PermissionCommand::LazyLoad { status } => {
                         schema.lazy_load_model = on_off(&status)?;

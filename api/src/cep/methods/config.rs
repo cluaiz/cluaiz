@@ -148,7 +148,12 @@ async fn section_value(ctx: &CallCtx, section: Section) -> Value {
         Section::Context => json!(settings.context_runtime),
         Section::Storage => json!({ "cleanup_policy": settings.storage_cleanup_policy }),
         Section::Kv => json!(settings.chat_memory),
-        Section::Engine => json!(clear_missing_slots(ctx).await),
+        Section::Engine => {
+            let mut engine = json!(clear_missing_slots(ctx).await);
+            // What a settings screen should not offer as working switches
+            engine["unused_fields"] = json!(cluaiz_security::UNUSED_FIELDS);
+            engine
+        }
     }
 }
 

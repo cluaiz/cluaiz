@@ -26,16 +26,18 @@ from the App settings screen.
 | `exec.allow_shell` | `false` | CEP `system.exec` also accepts a shell line, not only a program with arguments |
 | `exec.without_approval` | `false` | CEP `system.exec` runs without the owner's approval of each call |
 
-## Fields saved but not used yet
+## Fields that do nothing
 
-The App settings screen and `cluaiz permission` read and write these, but no Engine code reads
-them:
+Existing files and the App settings screen may still hold these, so they are read and saved, but
+no Engine code acts on them and `cluaiz permission` no longer shows or changes them. CEP
+`config.get` lists them under `engine.unused_fields`, so a settings screen can hide them or mark
+them as not working:
 
 | Field | Default | Why it does nothing |
 |---|---|---|
 | `wasm_firewall` | `auto` | There is no WASM sandbox. A plugin runs as a normal child process (`agents/src/plugins/executor.rs`) |
-| `vectorize_user_input` | `true` | Chat memory uses no vectors (word matching tested better) |
-| `vectorize_ai_response` | `true` | Same as above |
+| `vectorize_user_input` | `true` | Messages are not vectorized. Notes use the policy `notes_match` instead |
+| `vectorize_ai_response` | `true` | Answers are not vectorized |
 | `enable_kvcache` | `true` | Saving a chat's KV cache is controlled by `settings.json` → `chat_memory.enabled` |
 | `vector_models.vision`, `vector_models.audio` | none | No request path reads them |
 
