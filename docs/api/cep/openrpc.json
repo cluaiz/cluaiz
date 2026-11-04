@@ -3147,7 +3147,7 @@
           "required": false,
           "schema": {
             "default": null,
-            "description": "Only messages of the last this many hours",
+            "description": "Only messages of this many hours before `to`, or before now without `to`",
             "format": "uint32",
             "minimum": 0,
             "type": [

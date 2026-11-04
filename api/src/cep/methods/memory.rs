@@ -53,7 +53,7 @@ struct Search {
     /// RFC 3339
     #[serde(default)]
     to: Option<String>,
-    /// Only messages of the last this many hours
+    /// Only messages of this many hours before `to`, or before now without `to`
     #[serde(default)]
     within_hours: Option<u32>,
 }

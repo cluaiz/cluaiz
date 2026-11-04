@@ -38,8 +38,9 @@ fn instant(value: &str, end: End, offset: FixedOffset) -> Result<DateTime<Utc>, 
     local(date.and_time(chrono::NaiveTime::MIN)).ok_or_else(|| format!("'{value}' does not exist on this clock"))
 }
 
-/// The window named by `from`, `to` (see [`instant`]) and `within_hours` (the last that many
-/// hours), with days as the user's clock (`offset`) counts them. `None` when nothing is named.
+/// The window named by `from`, `to` (see [`instant`]) and `within_hours` (that many hours before
+/// `to`, or before now without one), with days as the user's clock (`offset`) counts them. `None`
+/// when nothing is named.
 /// An open end reaches to the start of the chat or to `now`.
 pub fn window_in(from: Option<&str>, to: Option<&str>, within_hours: Option<u32>, now: DateTime<Utc>, offset: FixedOffset) -> Result<Option<Window>, String> {
     let (from, to) = (from.map(str::trim).filter(|v| !v.is_empty()), to.map(str::trim).filter(|v| !v.is_empty()));
@@ -54,7 +55,7 @@ pub fn window_in(from: Option<&str>, to: Option<&str>, within_hours: Option<u32>
         window.to = instant(to, End::To, offset)?;
     }
     if let Some(hours) = within_hours {
-        window.from = window.from.max(now - Duration::hours(hours as i64));
+        window.from = window.from.max(window.to.min(now) - Duration::hours(hours as i64));
     }
     if window.from >= window.to {
         return Err("`from` must be before `to`".to_string());
@@ -92,6 +93,13 @@ mod tests {
         assert_eq!(night, ("2026-10-23T21:00:00+05:30".into(), "2026-10-24T05:00:00+05:30".into()));
         // An offset given is kept
         assert_eq!(w(Some("2026-10-23T00:00:00Z"), None, None).unwrap().unwrap().0, "2026-10-23T05:30:00+05:30");
+    }
+
+    #[test]
+    fn test_hours_count_back_from_to() {
+        // A day and its 24 hours: the whole day, not its last moments
+        let day = w(None, Some("2026-10-23"), Some(24)).unwrap().unwrap();
+        assert_eq!(day, ("2026-10-23T00:00:00+05:30".into(), "2026-10-24T00:00:00+05:30".into()));
     }
 
     #[test]
