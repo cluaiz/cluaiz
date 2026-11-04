@@ -48,6 +48,8 @@ pub struct ApiTurn<'a> {
     /// The project's items the chat has whole (this message's and earlier ones'): a glob rule of
     /// a file a tool touched is added to its result only when it is not one of them
     project_sent: Vec<String>,
+    /// A confirmation went unanswered: nobody is there, so this turn asks no more and waits no more
+    nobody_answered: bool,
 }
 
 impl<'a> ApiTurn<'a> {
@@ -68,6 +70,7 @@ impl<'a> ApiTurn<'a> {
         project_sent.extend(ctx.project_sent.iter().cloned());
         Self {
             project_sent,
+            nobody_answered: false,
             state,
             ctx,
             request,
@@ -330,7 +333,11 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
             super::authorize::assess(&comp_type, &comp_name, tool_sub_func.as_deref(), is_meta_tool, ctx.chat_id.as_deref())
         };
         let mut denial: Option<String> = None;
-        if assessment.requires_approval {
+        if assessment.requires_approval && self.nobody_answered {
+            let decision = Err(super::authorize::NOBODY_ANSWERED.to_string());
+            self.tool_events.push(super::authorize::approval_event(&public_call_name, &decision));
+            denial = decision.err();
+        } else if assessment.requires_approval {
             let pending = super::authorize::request(&self.state, &comp_type, &public_call_name, &payload_str, ctx.chat_id.as_deref()).await;
             self.send(self.chunk(model, json!([{
                 "index": 0,
@@ -346,6 +353,7 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
             }])));
             let decision = super::authorize::wait(&self.state, pending, &public_call_name).await;
             self.tool_events.push(super::authorize::approval_event(&public_call_name, &decision));
+            self.nobody_answered = decision.as_ref().err().is_some_and(|reason| super::authorize::timed_out(reason));
             denial = decision.err();
         } else {
             self.send(self.chunk(model, json!([{
