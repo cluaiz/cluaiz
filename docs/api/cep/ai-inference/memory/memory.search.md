@@ -45,7 +45,7 @@ params:
   - name: "within_hours"
     type: "integer | null"
     req: false
-    desc: "Only messages of the last this many hours"
+    desc: "Only messages of this many hours before `to`, or before now without `to`"
     example: null
 request_payload: |
   {

@@ -462,7 +462,7 @@ pub fn memory_schemas() -> Vec<Value> {
                 "scope": {"type": "string", "enum": ["chat", "workspace", "all"], "description": "Default chat"},
                 "from": {"type": "string", "description": "Earliest time: YYYY-MM-DD (from the start of that day) or YYYY-MM-DDTHH:MM"},
                 "to": {"type": "string", "description": "Latest time: YYYY-MM-DD (to the end of that day) or YYYY-MM-DDTHH:MM"},
-                "within_hours": {"type": "integer", "minimum": 1, "description": "Only the last this many hours"}
+                "within_hours": {"type": "integer", "minimum": 1, "description": "Only this many hours before `to`, or before now without `to`"}
             }, "required": ["query"]}
         }}),
         json!({"type": "function", "function": {
