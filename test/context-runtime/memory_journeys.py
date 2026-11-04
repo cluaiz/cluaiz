@@ -204,9 +204,18 @@ def _wait_job(engine, chat, timeout=90):
     return None, None
 
 
+def _speed_gates(engine):
+    """The placement of the loaded chat model, and whether the speed targets apply: a card within
+    1 s and preemption within 50 ms hold for a model fully on the GPU. On a smaller GPU one decode
+    alone takes longer, so the speed is reported instead."""
+    placement = (engine.cep("models.embedding_room").get("chat_model") or {}).get("placement")
+    return placement, placement == "Full GPU"
+
+
 def enr1(engine):
     """Card enrichment on the hot KV: the next request reuses the cache as much as with no card job"""
-    processed, details = {}, []
+    reused, details = {}, []
+    card_ms = None
     before = engine.cep("config.get", section="context")["context"]["indexer"]
     try:
         for indexer in ("off", "always"):
@@ -216,19 +225,23 @@ def enr1(engine):
             history = [{"role": "user", "content": "Mera deploy server ka naam orion hai aur port 8011. Ek line me confirm karo."}]
             r = engine.chat(dict(body("", chat, max_tokens=40), messages=history))
             history.append({"role": "assistant", "content": answer_of(r)})
-            outcome = _wait_job(engine, chat, 120)[0] if indexer == "always" else "off"
+            outcome, ms = _wait_job(engine, chat, 120) if indexer == "always" else ("off", None)
+            card_ms = ms if ms is not None else card_ms
             history.append({"role": "user", "content": "Port kya tha?"})
             r = engine.chat(dict(body("", chat, max_tokens=20), messages=history))
             context = engine_context(r)
-            processed[indexer] = context.get("processed_tokens", 0)
+            reused[indexer] = context.get("prompt_tokens", 0) - context.get("processed_tokens", 0)
             card = [c for c in engine.cep("memory.index", chat_id=chat)["cards"] if c.get("enrichment")]
-            details.append(f"{indexer}: job {outcome}, card {bool(card)}, processed {processed[indexer]} of {context.get('prompt_tokens')}")
+            details.append(f"{indexer}: job {outcome}, card {bool(card)}, processed {context.get('processed_tokens')} of {context.get('prompt_tokens')}")
             engine.cep("memory.delete", chat_id=chat)
     finally:
         engine.cep("config.set", section="context", patch={"indexer": before})
-    # The new message only, as without the job: the job's own prompt left no trace in the KV
-    ok = "card True" in details[1] and processed["always"] <= processed["off"] + 2
-    return ok, "; ".join(details)
+    # As much from the cache as without the job: the job's own prompt left no trace in the KV.
+    # Tokens from the cache, not tokens processed: the model's two answers differ in length
+    placement, strict = _speed_gates(engine)
+    in_time = not strict or (card_ms is not None and card_ms <= 1000)
+    ok = "card True" in details[1] and reused["always"] >= reused["off"] - 2 and reused["off"] > 0 and in_time
+    return ok, "; ".join(details) + f"; card {card_ms} ms on {placement} ({'target 1000 ms' if strict else 'reported only'})"
 
 
 def _ttft(engine, payload):
@@ -267,10 +280,12 @@ def perf5(engine):
         engine.cep("config.set", section="context", patch={"indexer": before})
     extra_ms = round((during - normal) * 1000)
     # The job stops between two prompt chunks (or tokens): the wait is at most one decode, which
-    # is about one short prompt's time to first text (plan: 50 ms; not reachable when one decode
-    # alone takes longer, as with layers in RAM)
-    ok = running and outcome == "stopped" and extra_ms <= max(50, normal * 1000)
-    return ok, f"time to first text {round(normal * 1000)} ms idle, {round(during * 1000)} ms during a job ({extra_ms:+} ms); job was running {running}, outcome {outcome}"
+    # is about one short prompt's time to first text. Fully on the GPU the target is 50 ms; with
+    # layers in RAM one decode alone takes longer, so only that bound holds
+    placement, strict = _speed_gates(engine)
+    limit = 50 if strict else max(50, normal * 1000)
+    ok = running and outcome == "stopped" and extra_ms <= limit
+    return ok, f"time to first text {round(normal * 1000)} ms idle, {round(during * 1000)} ms during a job ({extra_ms:+} ms, limit {round(limit)} ms on {placement}); job was running {running}, outcome {outcome}"
 
 
 def c2(engine):
