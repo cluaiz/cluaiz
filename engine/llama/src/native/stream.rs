@@ -893,6 +893,20 @@ pub(crate) fn stream_tokens_with_media(
                     // (a strict grammar starts at the answer itself: nothing to replay)
                     set_grammar(!in_think_block, if grammar_lazy { &think_end_tag } else { "" });
                     generated.push_str(emit_str);
+                    // A start tag over several tokens (Gemma 4: "<|channel>" + "thought"): its first
+                    // tokens went to the answer parser, which sends nothing of them. The reader of the
+                    // stream needs the whole tag, or the thinking looks like the answer.
+                    let mut opened = None;
+                    if in_think_block && !was_thinking && native_parser.is_some() {
+                        let held = (1..think_start_tag.len())
+                            .rev()
+                            .filter(|n| think_start_tag.is_char_boundary(*n))
+                            .find(|n| answer_raw.ends_with(&think_start_tag[..*n]))
+                            .unwrap_or(0);
+                        answer_raw.truncate(answer_raw.len() - held);
+                        let after = emit_str.strip_prefix(&think_start_tag[held..]).unwrap_or("");
+                        opened = Some(format!("{think_start_tag}{after}"));
+                    }
                     if native_parser.is_some() && !in_think_block && !was_thinking {
                         // The answer goes out as llama.cpp's parser reads it: text only, the call
                         // markup is held back and sent in the Engine's form when generation ends
@@ -922,7 +936,7 @@ pub(crate) fn stream_tokens_with_media(
                             next_token_id,
                             emit_str
                         );
-                        if !callback(emit_str.to_string()) {
+                        if !callback(opened.unwrap_or_else(|| emit_str.to_string())) {
                             report.stop = "cancel";
                             break;
                         }
