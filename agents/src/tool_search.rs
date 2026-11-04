@@ -434,7 +434,7 @@ impl ToolSearch {
             }}),
             json!({"type": "function", "function": {
                 "name": READ_TOOL_FILE_NAME,
-                "description": "Read one more file of a tool, such as a reference its instructions point to. An empty path lists the tool's files.",
+                "description": "Read one more file from a tool's own folder, such as a reference its instructions point to; not for project files. An empty path lists the tool's files.",
                 "parameters": {"type": "object", "properties": {"id": {"type": "string"}, "path": {"type": "string"}}, "required": ["id", "path"]}
             }}),
             json!({"type": "function", "function": {
@@ -787,7 +787,7 @@ fn read_in_folder(id: &str, dir: &Path, path: &str, max_chars: usize) -> String 
         return listing();
     }
     let (Ok(root), Ok(target)) = (dir.canonicalize(), dir.join(path).canonicalize()) else {
-        return format!("Tool '{id}' has no file '{path}'. {}", listing());
+        return format!("Tool '{id}' has no file '{path}'; read_tool_file only reads the tool's own files. To use the tool on project files, call load_tool with its id. {}", listing());
     };
     if !target.starts_with(&root) {
         return format!("'{path}' is outside the folder of tool '{id}'. {}", listing());
