@@ -10,6 +10,8 @@ pub struct State {
     pub busy: bool,
     pub finished: bool,
     pub approval: Option<mpsc::SyncSender<ApprovalResponse>>,
+    /// The running command that reads the keyboard: what is typed and sent goes to it
+    pub command_input: Option<tokio::sync::mpsc::UnboundedSender<String>>,
     sequence: u64,
     answer_id: String,
     reasoning_id: String,
@@ -251,6 +253,7 @@ impl State {
             busy: true,
             finished: false,
             approval: None,
+            command_input: None,
             sequence: 0,
             answer_id: String::new(),
             reasoning_id: String::new(),
@@ -471,6 +474,10 @@ impl State {
                     &format!("{}\nPreparing", self.tool),
                 );
                 self.active(&self.tool_id.clone());
+            }
+            Event::CommandInput(input) => {
+                self.app.notice = input.is_some().then(|| "The command reads the keyboard: type an answer and press Enter (Enter alone sends an empty line, Esc stops it)".to_string());
+                self.command_input = input;
             }
             Event::ToolOutput(line) => {
                 // The last few lines, live; the whole output comes with the result

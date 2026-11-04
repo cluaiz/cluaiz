@@ -54,6 +54,7 @@ walkdir = "2"
 winres = "0.1"
 
 [dev-dependencies]
+portable-pty = "0.9"
 tempfile = "3"
 
 [features]

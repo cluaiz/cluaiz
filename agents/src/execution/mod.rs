@@ -3,6 +3,7 @@ pub mod policy_rules;
 pub mod environment;
 pub mod result;
 pub mod terminal_runner;
+mod pty_runner;
 pub mod script_runner;
 
 
