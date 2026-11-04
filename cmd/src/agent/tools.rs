@@ -34,6 +34,40 @@ const SKIP_DIRS: &[&str] = &[
     ".next",
 ];
 
+/// Embeddings for the agent's own use: a running server has the model (loading it here too would
+/// split the VRAM), else this process does
+#[derive(Clone)]
+pub enum Embedder {
+    Local(std::sync::Arc<cluaiz_runtime::EngineHost>),
+    Server,
+}
+
+impl Embedder {
+    async fn embed(&self, entry: &cluaiz_models::types::manifest::ModelRegistryEntry, texts: Vec<String>) -> anyhow::Result<Vec<Vec<f32>>> {
+        match self {
+            Self::Local(host) => cluaiz_api::handlers::embeddings::embed_texts(host, entry, texts).await,
+            Self::Server => {
+                let body = json!({ "model": entry.id, "input": texts });
+                let response = crate::cli::server::request_with_timeout(reqwest::Method::POST, "/v1/embeddings", std::time::Duration::from_secs(120))
+                    .json(&body)
+                    .send()
+                    .await?
+                    .error_for_status()?;
+                let reply: Value = response.json().await?;
+                reply["data"]
+                    .as_array()
+                    .ok_or_else(|| anyhow::anyhow!("the server sent no embeddings"))?
+                    .iter()
+                    .map(|item| {
+                        let vector = item["embedding"].as_array().ok_or_else(|| anyhow::anyhow!("the server sent no embedding"))?;
+                        Ok(vector.iter().filter_map(Value::as_f64).map(|n| n as f32).collect())
+                    })
+                    .collect()
+            }
+        }
+    }
+}
+
 pub struct Tools {
     root: PathBuf,
     /// `--yes`: no questions
@@ -57,6 +91,8 @@ pub struct Tools {
     pub rules: super::rules::Rules,
     /// A call was refused because nobody allowed it (headless exit code 2)
     pub refused: bool,
+    /// Where embeddings for matching project facts come from; None: facts match by words
+    pub embedder: Option<Embedder>,
     /// Where a fact saved with `remember` came from (the agent and its model)
     pub memory_source: String,
     /// The project's items whose text the model already has in this conversation (`kind:name`):
@@ -91,6 +127,7 @@ impl Tools {
             checkpoints: Default::default(),
             rules,
             refused: false,
+            embedder: None,
             memory_source: "cluaiz agent".into(),
             sent: HashSet::new(),
         }
@@ -343,7 +380,7 @@ impl Tools {
                 None => Err("give the name, as listed".into()),
             },
             cluaiz_agents::workspace::REMEMBER => {
-                self.remember(&text("name").unwrap_or_default(), &text("fact").unwrap_or_default(), &text("replaces").unwrap_or_default())
+                self.remember(&text("name").unwrap_or_default(), &text("fact").unwrap_or_default(), &text("replaces").unwrap_or_default()).await
             }
             cluaiz_agents::workspace::FORGET => self.forget(&text("name").unwrap_or_default()),
             other => self.run_installed(other, arguments).await,
@@ -763,12 +800,21 @@ impl Tools {
     /// from a file or web page the model read must not become memory unseen. Nothing is replaced
     /// by guessing: when the fact may repeat facts that are there, the model is shown them and
     /// calls again with `replaces` (the fact it corrects, whose file gets the new text, or "none").
-    fn remember(&mut self, name: &str, fact: &str, replaces: &str) -> Result<(String, String), String> {
+    async fn remember(&mut self, name: &str, fact: &str, replaces: &str) -> Result<(String, String), String> {
         use cluaiz_agents::workspace::memory;
         let (name, fact) = memory::prepare(name, fact)?;
         let replaces = replaces.trim();
         if replaces.is_empty() {
-            let similar = memory::similar(&self.workspace, &name, &fact, memory::SIMILAR_SHOWN);
+            let similar = match self.embedder.clone() {
+                Some(embedder) => {
+                    let policy = cluaiz_api::handlers::chat::semantic::saved_policy();
+                    cluaiz_api::handlers::chat::semantic::similar_facts_with(&policy, &self.workspace, &name, &fact, memory::SIMILAR_SHOWN, move |entry, texts| async move {
+                        embedder.embed(&entry, texts).await
+                    })
+                    .await
+                }
+                None => memory::similar(&self.workspace, &name, &fact, memory::SIMILAR_SHOWN),
+            };
             if !similar.is_empty() {
                 let names: Vec<String> = similar.iter().map(|item| item.name.clone()).collect();
                 return Ok((format!("may repeat {}", names.join(", ")), memory::similar_text(&similar)));

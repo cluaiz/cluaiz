@@ -892,21 +892,17 @@ pub async fn similar_notes<'a>(
 /// The project's facts that may be about the same thing as `text`, as `[fact:<name>] text` lines
 async fn similar_facts(state: &crate::AppState, policy: &cluaiz_context::Policy, workspace: &cluaiz_agents::workspace::Workspace, text: &str) -> Vec<String> {
     use cluaiz_agents::memory::notes::FACT_PREFIX;
-    let facts: Vec<&cluaiz_agents::workspace::Item> = workspace.memory.iter().filter(|item| item.superseded_by.is_none()).collect();
-    let items: Vec<(String, String)> =
-        facts.iter().map(|item| (format!("{FACT_PREFIX}{}", item.path.display()), item.body().unwrap_or_default().trim().to_string())).collect();
-    let chosen = match super::semantic::similarities(state, policy, text, &items, None).await {
-        Some(scores) => top(facts, &scores, policy.notes_similar_pct),
-        None => cluaiz_agents::workspace::memory::similar(workspace, "", text, SIMILAR_SHOWN),
-    };
+    let host = state.host.clone();
+    let chosen = super::semantic::similar_facts_with(policy, workspace, "", text, SIMILAR_SHOWN, |entry, texts| async move {
+        crate::handlers::embeddings::embed_texts(&host, &entry, texts).await
+    })
+    .await;
     chosen.iter().map(|item| format!("[{FACT_PREFIX}{}] {}", item.name, item.body().unwrap_or_default().trim())).collect()
 }
 
 /// The items with a similarity from `floor_pct`, most alike first, at most [`SIMILAR_SHOWN`]
 fn top<T>(items: Vec<T>, scores: &[f32], floor_pct: u8) -> Vec<T> {
-    let mut scored: Vec<(f32, T)> = scores.iter().copied().zip(items).filter(|(score, _)| *score * 100.0 >= floor_pct as f32).collect();
-    scored.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
-    scored.into_iter().take(SIMILAR_SHOWN).map(|(_, item)| item).collect()
+    super::semantic::top(items, scores, floor_pct, SIMILAR_SHOWN)
 }
 
 /// A note change in a chat the app keeps: an event of the chat for the app

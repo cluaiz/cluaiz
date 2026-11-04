@@ -219,6 +219,8 @@ chained or redirected command (`git status; rm -r src`, `git status > out.txt`):
 
 ## Reading the screen
 
+**Facts by meaning.** Before `remember` saves a new fact it looks for live facts about the same thing. With an installed embedding model it compares meaning (policy `notes_match`, floor `notes_similar_pct`), through a running server when the agent uses one, else in this process; vectors are kept in `memory/vectors`, so each fact is embedded once. Without a model, or when it cannot run, it compares words. A project without facts loads no model. Checked with EmbeddingGemma-300M and a `deploy-port` fact "Deploys go to port 8011.": "The port for shipping builds is 9090." (0.53) gave `may repeat deploy-port` in both ways; with `notes_match: words` it did not.
+
 **A command that asks questions.** `run_command` with `interactive: true` and every `!command`
 run in a real terminal (ConPTY on Windows, a pty elsewhere) on the interactive screen. While one
 runs, what you type and send goes to it: Enter alone sends an empty line (the command's default), Esc
