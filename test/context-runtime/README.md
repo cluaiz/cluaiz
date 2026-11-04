@@ -335,6 +335,11 @@ depend on the model.
 python test/context-runtime/memory_journeys.py --exe target/release/cluaiz.exe --home <test home>     --workspace <fixture> --log <log file> [--model gemma-4-e4b-it-gguf-Q4_K_M] [--only MEM3,MEM5]
 ```
 
+**Speed targets depend on the placement** (ENR1, PERF5). With the chat model fully on the GPU, a
+card must be written within 1 s and a request must wait at most 50 ms for a running job. With layers
+in RAM one decode alone can take longer, so the card's time is reported, not judged, and the wait
+may be at most one short prompt's time to first text.
+
 Results (2026-10-24, Gemma 4 E4B Q4_K_M, thinking off): 6 of 6 pass, and `journeys.py` 16 of 16.
 
 | Test | Result |
