@@ -305,7 +305,7 @@ def c2(engine):
     reattached = "read_text_file" in prompt and "The secret word is MANGO-42" in prompt
     answer = answer_of(r3)
     engine.cep("memory.delete", chat_id=chat)
-    ok = any("read_text_file" in c["name"] for c in r["calls"]) and reattached and "Project notes" in answer
+    ok = any("read_text_file" in c["name"] for c in r["calls"]) and reattached and "MANGO-42" in answer
     return ok, f"first calls {[c['name'] for c in r['calls']]}; step in the 4th prompt {reattached}; answer {answer[-100:]!r}"
 
 
@@ -352,6 +352,9 @@ def _notes(engine):
 
 
 def _clear_notes(engine):
+    # A note in a project folder becomes a fact of its .agents/memory; these journeys test notes
+    if engine.home:
+        engine.cep("workspace.set", path=str(engine.home))
     for n in engine.cep("notes.list")["notes"]:
         if n["status"] in ("confirmed", "active", "proposed"):
             engine.cep("notes.invalidate", id=n["id"])
