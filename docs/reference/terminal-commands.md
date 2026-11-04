@@ -81,8 +81,6 @@ What each `cluaiz` command does, and the API method that does the same thing ove
 ### `cluaiz permission [name value]`
 * Without arguments: shows the values. With a name: changes one (`telemetry`, `lazy-load`,
   `port`, …). See [permission.json](../engine/permission.md).
-* `firewall`, `kvcache`, `vectorize-input` and `vectorize-response` are saved but not used by
-  the Engine yet.
 * API: CEP `config.get` / `config.set` with `section: "engine"`.
 
 ---

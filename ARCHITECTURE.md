@@ -81,8 +81,9 @@ in our tests they matched worse than word matching.
 
 - No WASM or OS sandbox for plugins: a plugin runs as a normal child process
   (`agents/src/plugins/executor.rs`).
-- Some `permission.json` settings are saved but not used (`wasm_firewall`,
-  `vectorize_user_input`, `vectorize_ai_response`, `enable_kvcache`).
+- Some `permission.json` settings do nothing (`wasm_firewall`, `vectorize_user_input`,
+  `vectorize_ai_response`, `enable_kvcache`, `vector_models.vision`, `vector_models.audio`). They are
+  kept for existing files and the App, and CEP `config.get` lists them as `engine.unused_fields`.
 - The API chat and the terminal agent have separate tool loops.
 
 ## More

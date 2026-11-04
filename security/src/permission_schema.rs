@@ -150,6 +150,17 @@ impl ApiAuth {
     }
 }
 
+/// Fields kept only so existing `permission.json` files and the App's settings screen keep
+/// working: nothing in the Engine acts on them. CEP `config.get` lists them for the App.
+pub const UNUSED_FIELDS: [&str; 6] = [
+    "wasm_firewall",
+    "vectorize_user_input",
+    "vectorize_ai_response",
+    "enable_kvcache",
+    "vector_models.vision",
+    "vector_models.audio",
+];
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PermissionSchema {
     #[serde(default)]
@@ -158,20 +169,20 @@ pub struct PermissionSchema {
     pub vector_models: ModelSelection,
     #[serde(default)]
     pub chat_models: ModelSelection,
-    /// Saved for the App settings screen; no Engine code reads it yet.
+    /// Not used: see [`UNUSED_FIELDS`]
     #[serde(default = "default_wasm_firewall")]
     pub wasm_firewall: String,
-    /// Saved for the App settings screen; no Engine code reads it yet.
+    /// Not used: see [`UNUSED_FIELDS`]
     #[serde(default = "default_vectorize_user_input")]
     pub vectorize_user_input: bool,
-    /// Saved for the App settings screen; no Engine code reads it yet.
+    /// Not used: see [`UNUSED_FIELDS`]
     #[serde(default = "default_vectorize_ai_response")]
     pub vectorize_ai_response: bool,
     #[serde(default = "default_stream_telemetry")]
     pub stream_telemetry: bool,
     #[serde(default = "default_lazy_load_model")]
     pub lazy_load_model: bool,
-    /// Saved for the App settings screen; no Engine code reads it yet.
+    /// Not used: see [`UNUSED_FIELDS`]
     #[serde(default = "default_enable_kvcache")]
     pub enable_kvcache: bool,
     #[serde(default = "default_model_header_info")]
