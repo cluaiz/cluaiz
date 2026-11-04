@@ -67,6 +67,10 @@ impl ResolveUi for Terminal {
             .map_err(|e| format!("Selection cancelled: {}", e))
     }
 
+    fn can_ask(&self) -> bool {
+        !non_interactive()
+    }
+
     fn pick_files(&self, repo: &str, tree: &[HfTreeItem]) -> Result<Vec<String>, String> {
         if non_interactive() {
             return Err("--all picks files by hand and needs a terminal; run it without --all in scripts".to_string());
