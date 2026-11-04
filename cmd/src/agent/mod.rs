@@ -208,6 +208,11 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
         last_message: None,
     };
     // The agent settings files (global, project, local), then this run's flags on top
+    agent.tools.embedder = Some(if agent.session.remote.is_some() {
+        tools::Embedder::Server
+    } else {
+        tools::Embedder::Local(agent.session.host.clone())
+    });
     agent.settings = rules::Settings::load(Some(&cluaiz_core::EnvironmentManager::current().global_dir), agent.tools.root());
     let mut rules = rules::Rules::new(agent.tools.root());
     for layer in &agent.settings.layers {
