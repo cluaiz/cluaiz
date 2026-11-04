@@ -14,6 +14,8 @@ use tokio::sync::oneshot;
 
 /// How long a tool call waits for the user's decision.
 pub const APPROVAL_TIMEOUT_SECS: u64 = 120;
+/// What the model reads for a call made after a confirmation went unanswered in the same turn
+pub const NOBODY_ANSWERED: &str = "An earlier confirmation in this turn was not answered, so this call was not run and no more will be asked. Tell the user what you need instead of calling again.";
 
 /// The chat and tool of each pending approval, so an approval can become a grant
 static REQUESTS: LazyLock<Mutex<HashMap<String, (String, String)>>> = LazyLock::new(Default::default);
@@ -144,6 +146,15 @@ pub async fn request(state: &Arc<AppState>, comp_type: &str, tool_name: &str, pa
     PendingApproval { request_id: approval.id, decision }
 }
 
+/// Whether `reason` from [`wait`] means nobody answered
+pub fn timed_out(reason: &str) -> bool {
+    reason == timeout_reason()
+}
+
+fn timeout_reason() -> String {
+    format!("User confirmation timed out after {} seconds. Operation skipped.", APPROVAL_TIMEOUT_SECS)
+}
+
 /// Waits for the decision. `Err` carries the reason the call must not run.
 pub async fn wait(state: &Arc<AppState>, pending: PendingApproval, tool_name: &str) -> Result<(), String> {
     let outcome = match tokio::time::timeout(std::time::Duration::from_secs(APPROVAL_TIMEOUT_SECS), pending.decision).await {
@@ -158,7 +169,7 @@ pub async fn wait(state: &Arc<AppState>, pending: PendingApproval, tool_name: &s
         Ok(Err(_)) => Err("Approval channel disconnected".to_string()),
         Err(_) => {
             tracing::warn!("⏱️ [API] Confirmation timed out for tool '{}'", tool_name);
-            Err(format!("User confirmation timed out after {} seconds. Operation skipped.", APPROVAL_TIMEOUT_SECS))
+            Err(timeout_reason())
         }
     };
     // A late answer finds nothing waiting

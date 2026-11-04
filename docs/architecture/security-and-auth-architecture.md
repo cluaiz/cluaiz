@@ -133,6 +133,7 @@ Tools declare capabilities explicitly in their metadata:
    * `parameters`: Fully expanded, untruncated JSON payload.
 2. The agent loop pauses and awaits a signal on an in-memory `tokio::sync::oneshot` channel.
 3. When the user approves via `approvals.approve`, the engine resumes and executes the **exact stored parameters** received during the pause. The model cannot alter the payload between approval and execution.
+4. A request nobody answers ends after 120 seconds and the tool does not run. The rest of that turn asks nothing more: further calls that need approval are refused at once, so a client with nobody at the screen waits once, not once per retry of the model.
 
 ---
 
