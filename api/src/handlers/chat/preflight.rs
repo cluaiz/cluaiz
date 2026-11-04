@@ -508,7 +508,6 @@ impl PreparedChatContext {
         }
         let ingest_ms = ingest_started.elapsed().as_millis() as u64;
         let current_turn_key = rendered.current_key;
-        let chat_has_tool_history = ledger.as_ref().is_some_and(|saved| !saved.turns.is_empty());
 
         if let Some(ref tools_vec) = request.tools {
             for tool_val in tools_vec {
@@ -692,10 +691,14 @@ impl PreparedChatContext {
                 hint_lines = format!("{}\n", cluaiz_core::prompts::text("tools.hint_find"));
                 search_offered = true;
             }
+            // From a chat's first message on while any tool is installed, whatever the message
+            // says: the tool list is in the system prompt, and a list that changes at the second
+            // message makes the model process the whole prompt again
             offer_meta_tools = !hint_lines.is_empty()
                 || !tool_ids_to_compile.is_empty()
                 || !inline_tool_ids.is_empty()
-                || chat_has_tool_history;
+                || !catalog.is_empty()
+                || !exclude.is_empty();
         }
         // Earlier messages not shown (adaptive / none): the model can look them up, also when
         // tool suggestions are off. Otherwise the memory functions only come along when tools are
