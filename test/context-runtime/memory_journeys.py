@@ -152,15 +152,17 @@ def mem6(engine):
     before = engine.cep("config.get", section="context")["context"]["cross_chat"]
     code = f"HERON-{uuid.uuid4().hex[:4].upper()}"
     first = session("mem6-a")
+    # Deleted at the end: a question left in another chat matches the next run's search
+    chats = {"allow": session("mem6-allow"), "deny": session("mem6-deny"), "ask": session("mem6-ask")}
     engine.chat(body(f"Yaad rakhna: hamare naye project ka codename {code} hai. Bas 'ok' bolo.", first, max_tokens=20))
     question = "Dusri chat me maine naye project ka codename kya bataya tha? Recall se dhundo."
     rows = {}
     try:
         _set_cross_chat(engine, "allow")
-        r = engine.stream(dict(body(question, session("mem6-allow")), stream=True))
-        rows["allow"] = (code in r["text"], [c["name"] for c in r["calls"]])
+        r = engine.stream(dict(body(question, chats["allow"]), stream=True))
+        rows["allow"] = (code in r["text"], [(c["name"], c["arguments"]) for c in r["calls"]], r["text"][-120:])
         _set_cross_chat(engine, "deny")
-        r = engine.stream(dict(body(question, session("mem6-deny")), stream=True))
+        r = engine.stream(dict(body(question, chats["deny"]), stream=True))
         search_status = None
         try:
             engine.cep("memory.search", chat_id=session("x"), query="codename", scope="all")
@@ -173,11 +175,12 @@ def mem6(engine):
         def reject(request):
             asked.append(request.get("capability") or request.get("tool"))
             return "reject"
-        r = engine.stream(dict(body(question, session("mem6-ask")), stream=True), decide=reject)
+        r = engine.stream(dict(body(question, chats["ask"]), stream=True), decide=reject)
         rows["ask+reject"] = (code not in r["text"] and bool(asked), asked)
     finally:
         _set_cross_chat(engine, before)
-        engine.cep("memory.delete", chat_id=first)
+        for chat in (first, *chats.values()):
+            engine.cep("memory.delete", chat_id=chat)
     ok = rows["allow"][0] and rows["deny"][0] and rows["ask+reject"][0]
     return ok, f"code {code}; " + "; ".join(f"{k}: {v}" for k, v in rows.items())
 
