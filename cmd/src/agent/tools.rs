@@ -924,7 +924,7 @@ impl Tools {
             if remember {
                 return Err(cluaiz_core::prompts::text("workspace.remember_refused"));
             }
-            return Err("not allowed: nobody can approve this call in this run; finish the task without it, or say what you would need".into());
+            return Err("not allowed: nobody can approve this call in this run, so it did not run and you have no result from it. Use a tool that needs no approval (read_file reads a project file), or say what you could not find out; do not guess".into());
         }
         // A fact is never allowed by a saved rule: each one is seen
         let rule = if remember { None } else { self.rules.suggest(tool, why) };
