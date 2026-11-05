@@ -275,6 +275,9 @@ detail line says what happened. Results (2026-10-24, Gemma 4 E4B Q4_K_M, thinkin
 J6's next turn processing nearly the whole prompt again is the cost of a wrong load: the load and
 unload change the tools part near the start of the prompt.
 
+Results (2026-11-05, Qwen3.8-4B Q4_K_M, its default thinking, RTX 3050 4 GB): 16 of 16 in one run,
+15 of 16 in the next (J7: the model called two of the three servers); J7 alone then passed 3 of 3.
+
 ## Speed and memory (`perf.py`, plan §10.2 PERF)
 
 Times come from the context report's `timing` (the Engine's own clock). PERF5 (how fast a request
@@ -352,6 +355,19 @@ Results (2026-10-24, Gemma 4 E4B Q4_K_M, thinking off): 6 of 6 pass, and `journe
 | C2 earlier tool step in client mode | the 4th turn's prompt had the first turn's `read_text_file` call and its result; the answer quoted the file's first line |
 | J9T (in `journeys.py`) | nobody answered the approval: the request waited 140 s and the tool did not run |
 | EXT1 `storage: "external"` (2026-10-25) | the first turn's model card and a `remember` note came in the second answer's `memory_events`, each event once; no chat folder and no note in the Engine's files |
+
+Results (2026-11-05, Qwen3.8-4B Q4_K_M, a smaller model than the one above): 7 to 8 of 12 per run.
+The note tests run with the model's default thinking, as a user's chat does.
+
+| Test | Result |
+| --- | --- |
+| MEM3 | The Engine's part passes. The model's part fails: it sends no date for "yesterday" or only `from`, and answers with today's port |
+| MEM6 | 2 of 3 alone. The failing run called no tool and made up a name. The test now deletes its chats: questions left in them outranked the real message |
+| NOTE1 / NOTE2 / NOTE4 | 1, 2 and 2 of 3: the model adds a new note instead of replacing the old one, or writes a wrong sentence |
+| NOTE3, MEM5, ENR1, PERF5, C2, EXT1, NOTE5 | pass |
+
+How often a note is saved when the user asks (8 requests each, same model): 8 of 8 with thinking, 5 of
+8 with `think_mode: "off"`, and 3 of those answers said it was remembered when nothing was kept.
 
 MEM5 found that `tool_only` (design §11.7) was missing: recall showed the answer around a tool
 run, never its output. PERF5 found that a job could not be stopped while its prompt was processed

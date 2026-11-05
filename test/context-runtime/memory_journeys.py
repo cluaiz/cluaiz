@@ -369,7 +369,10 @@ def _tell(engine, text, policy, tokens=400):
     chat = session("note")
     messages = [{"role": "user", "content": "Namaste"}, {"role": "assistant", "content": "Namaste! Batao, kya madad karun?"},
                 {"role": "user", "content": text}]
-    r = engine.chat(dict(body("", chat, max_tokens=tokens, context_policy=policy, history_mode="adaptive"), messages=messages))
+    request = dict(body("", chat, max_tokens=tokens, context_policy=policy, history_mode="adaptive"), messages=messages)
+    # As a user's chat runs: the model's default, with its thinking
+    request.pop("think_mode")
+    r = engine.chat(request)
     calls = [e for e in (r.get("engine") or {}).get("tool_events") or [] if (e.get("function") or {}).get("name") in ("remember", "forget")]
     engine.cep("memory.delete", chat_id=chat)
     return answer_of(r), calls
