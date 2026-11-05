@@ -77,7 +77,7 @@ pub async fn execute(file_path: &str) -> Result<()> {
     let Some(id) = selected else {
         if is_image {
             return Err(eyre!(
-                "Choose an image embedding model with `cluaiz model set-vector <id>`"
+                "This command makes image vectors: choose an image embedding model with `cluaiz model set-vector <id>`. To read the text of an image, send it to `POST /v1/ingest` with a GGUF vision model; native OCR is not in the release packages yet"
             ));
         }
         println!("Text extracted. Choose an embedding model with `cluaiz model set-vector <id>` to also generate vectors.");

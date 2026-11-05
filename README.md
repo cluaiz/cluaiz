@@ -135,7 +135,7 @@ optional: without one the engine extracts the text itself.
 | :--- | :--- |
 | Text, Markdown, source code, CSV | Text and chunks |
 | Digital PDF | The embedded page text |
-| Scanned PDF and images | OCR (PDFium renders the pages, Tesseract reads them) |
+| Scanned PDF and images | Not in the release packages yet: they need the OCR pack (PDFium and Tesseract). An unavailable provider is reported, nothing is made up |
 | DOCX, legacy DOC | Main-body text and tables |
 
 | Model chosen | Result |
@@ -145,7 +145,7 @@ optional: without one the engine extracts the text itself.
 | An ONNX vision (CLIP-style) model, e.g. FashionCLIP | Image or page vectors for similarity search (not text) |
 | A GGUF vision model | Text the model writes from the page or image, following an instruction |
 
-Not included yet: XLSX / PPTX parsing and a persistent vector index. Details:
+Not included yet: the OCR pack and a persistent vector index. Details:
 [`docs/api/inference/ingest.md`](docs/api/inference/ingest.md).
 
 ### Placement and memory

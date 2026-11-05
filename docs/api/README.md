@@ -76,7 +76,7 @@ Invoke-RestMethod "$base/v1/embeddings" -Method Post -Headers $headers `
 | Transcribe a recording | `POST /v1/audio/transcriptions` | Compatible ONNX STT package |
 | Text vectors | `POST /v1/embeddings` | Compatible ONNX/GGUF text embedding package, including supported EmbeddingGemma-2 text projection |
 | Image vectors | Same embeddings route, `{type:"image",source:...}` input | ONNX image embedding graph; GGUF multimodal embeddings are not implemented |
-| Extract document text/chunks | `POST /v1/ingest`, omit model | Native PDF/OCR/DOCX/DOC/text extraction |
+| Extract document text/chunks | `POST /v1/ingest`, omit model | Native PDF/DOCX/DOC/text extraction; OCR needs the OCR pack, not in the release packages yet |
 | Document or image model processing | `POST /v1/ingest`, select model | Text embedding model for native chunks; ONNX image graph for images/PDF pages; generative GGUF vision model for text |
 
 `/v1/ingest` extracts chunks and can run a selected embedding or vision model. Its HTTP response is the final result; there is no CEP task or polling. `/v1/embeddings` accepts prepared text or image inputs directly. Your application stores, indexes and searches the returned vectors; these routes do not create a persistent RAG database. Retention for chat, speech, STT and direct embeddings is in **minutes** (`0` unloads, positive expires, `-1` retains). Ingest has no per-request retention field; its selected model uses the existing owner's cached lifecycle.
