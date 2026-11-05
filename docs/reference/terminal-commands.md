@@ -35,7 +35,7 @@ What each `cluaiz` command does, and the API method that does the same thing ove
 ### `cluaiz pull <model>`
 * Downloads a model (Hugging Face or the Cluaiz catalog) into `~/.cluaiz/models/` and registers
   it. In a terminal it asks which variant when a repository has several, then asks to go on.
-* No questions (the first variant, no confirmation) when `CLUAIZ_NONINTERACTIVE` is set or
+* No questions (Q4_K_M, else the smallest variant; no confirmation) when `CLUAIZ_NONINTERACTIVE` is set or
   stdin is not a terminal (scripts, CI, pipes). `--all` (pick files by hand) needs a terminal.
 * API: CEP `models.download`, or `POST /api/pull` for Ollama clients.
 

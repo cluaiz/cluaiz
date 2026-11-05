@@ -76,12 +76,28 @@ pub trait ResolveUi: Sync {
 /// a free pick of files is refused
 pub struct FirstVariant<F: Fn(ResolveStep<'_>) + Sync>(pub F);
 
+/// The variant taken when nobody can be asked: Q4_K_M, the usual balance of size and quality, else
+/// the smallest. The first one listed can be the largest, and a script should not start that.
+pub fn default_variant(variants: &[HfVariant]) -> usize {
+    variants
+        .iter()
+        .position(|v| v.quant_tag.eq_ignore_ascii_case("Q4_K_M"))
+        .or_else(|| {
+            variants
+                .iter()
+                .enumerate()
+                .min_by(|(_, a), (_, b)| a.size_gb.total_cmp(&b.size_gb))
+                .map(|(at, _)| at)
+        })
+        .unwrap_or(0)
+}
+
 impl<F: Fn(ResolveStep<'_>) + Sync> ResolveUi for FirstVariant<F> {
     fn step(&self, step: ResolveStep<'_>) {
         (self.0)(step)
     }
-    fn pick_variant(&self, _: &str, _: &[HfVariant]) -> Result<usize, String> {
-        Ok(0)
+    fn pick_variant(&self, _: &str, variants: &[HfVariant]) -> Result<usize, String> {
+        Ok(default_variant(variants))
     }
     fn can_ask(&self) -> bool {
         false
@@ -287,5 +303,31 @@ pub async fn pull(
         Resolved::OnDisk(path) => Ok(Pulled::OnDisk(path)),
         Resolved::AlreadyInstalled(id) => Ok(Pulled::AlreadyInstalled(id)),
         Resolved::Download(plan) => ModelDownloader::install(&plan.manifest, &plan.files, tx, abort).await.map(Pulled::Downloaded),
+    }
+}
+
+#[cfg(test)]
+mod default_variant_tests {
+    use super::*;
+
+    fn variant(tag: &str, size_gb: f64) -> HfVariant {
+        HfVariant {
+            revision: None,
+            variant_id: tag.into(),
+            format_type: "gguf".into(),
+            quant_tag: tag.into(),
+            primary_file: format!("{tag}.gguf"),
+            all_files: Vec::new(),
+            filename: format!("{tag}.gguf"),
+            size_gb,
+        }
+    }
+
+    #[test]
+    fn nobody_to_ask_takes_q4_k_m_else_the_smallest() {
+        assert_eq!(default_variant(&[variant("F16", 14.0), variant("Q8_0", 8.0), variant("q4_k_m", 5.0)]), 2);
+        assert_eq!(default_variant(&[variant("F16", 14.0), variant("Q8_0", 8.0), variant("UINT8", 0.2)]), 2);
+        assert_eq!(default_variant(&[variant("only", 3.0)]), 0);
+        assert_eq!(default_variant(&[]), 0);
     }
 }

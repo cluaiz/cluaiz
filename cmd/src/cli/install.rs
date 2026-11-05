@@ -57,7 +57,7 @@ impl ResolveUi for Terminal {
 
     fn pick_variant(&self, _: &str, variants: &[HfVariant]) -> Result<usize, String> {
         if non_interactive() {
-            return Ok(0);
+            return Ok(cluaiz_models::fetcher::default_variant(variants));
         }
         let options: Vec<String> = variants.iter().map(|v| format!("{} ({:.2} GB)", v.variant_id, v.size_gb)).collect();
         inquire::Select::new("Select model variant bundle to download:", options)
