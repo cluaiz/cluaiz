@@ -238,6 +238,7 @@ mod tests {
         let elapsed = started.elapsed();
         eprintln!("20k cards built in {elapsed:?}");
         assert_eq!(cards.len(), 20_000);
-        assert!(elapsed.as_secs_f64() < 2.0, "took {elapsed:?}");
+        let limit = if cfg!(debug_assertions) { 6.0 } else { 2.0 };
+        assert!(elapsed.as_secs_f64() < limit, "took {elapsed:?}");
     }
 }
