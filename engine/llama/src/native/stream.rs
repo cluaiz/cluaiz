@@ -331,13 +331,9 @@ pub(crate) fn stream_tokens_with_media(
             // answer's room fit, counted with the model's own tokenizer. A continuation (pivot) only
             // appends to the conversation already in the context, so it is fitted below by a shift.
             while !is_pivot {
-                let overflow = (prompt_tokens.len() + fit_reserve).saturating_sub(n_ctx);
-                let Some(target) = (overflow > 0)
-                    .then(|| cluaiz_core::tokens_to_free(shifting, n_ctx, overflow, can_shift))
-                    .flatten()
-                else {
+                if prompt_tokens.len() + fit_reserve <= n_ctx {
                     break;
-                };
+                }
                 let mut sizes = structured_messages
                     .iter()
                     .map(|(role, content)| {
@@ -349,8 +345,27 @@ pub(crate) fn stream_tokens_with_media(
                 // nearly everything
                 let content_tokens: usize = sizes.iter().map(|(_, n)| n).sum();
                 let per_message = prompt_tokens.len().saturating_sub(content_tokens) / sizes.len().max(1);
+                // By their own sizes: spread, the tool schemas would count as earlier turns that can go,
+                // and the note that replaces a result would look long
+                let earlier_result = cluaiz_core::oldest_earlier_result(&sizes);
+                let room = cluaiz_core::room_to_keep(&sizes, prompt_tokens.len(), n_ctx, fit_reserve, gen_reserve);
                 for (_, n) in &mut sizes {
                     *n += per_message;
+                }
+                let overflow = (prompt_tokens.len() + room).saturating_sub(n_ctx);
+                let Some(target) = (overflow > 0)
+                    .then(|| cluaiz_core::tokens_to_free(shifting, n_ctx, overflow, can_shift))
+                    .flatten()
+                else {
+                    break;
+                };
+                if let Some(at) = earlier_result {
+                    report.dropped_tokens += sizes[at].1;
+                    report.truncated = true;
+                    structured_messages[at].1 = cluaiz_core::EARLIER_RESULT_NOTE.to_string();
+                    formatted_prompt = render(llama, &structured_messages)?;
+                    prompt_tokens = tokenize(vocab, &formatted_prompt, add_special, true)?;
+                    continue;
                 }
                 let (mut n_drop, mut freed) = cluaiz_core::oldest_turns_to_drop(&sizes, target);
                 let mut start = usize::from(structured_messages[0].0.eq_ignore_ascii_case("system"));
