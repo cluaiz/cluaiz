@@ -33,6 +33,13 @@ for file in "$src"/*; do
     cp -L "$file" "$out/" # ort's links point into its download cache
   fi
 done
+# The CPU backends use OpenMP, and a fresh Ubuntu has no libgomp: the binary found its other libraries
+# in its own folder (RUNPATH $ORIGIN) and stopped on this one
+if [ "$(uname -s)" = Linux ]; then
+  gomp=$("${CC:-gcc}" -print-file-name=libgomp.so.1)
+  [ -f "$gomp" ] || { echo "libgomp.so.1 not found: $gomp"; exit 1; }
+  cp -L "$gomp" "$out/libgomp.so.1"
+fi
 cp LICENSE THIRD_PARTY_NOTICES.md "$out/"
 
 if $windows && command -v 7z >/dev/null; then
