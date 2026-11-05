@@ -178,6 +178,33 @@ pub fn oldest_turns_to_drop(messages: &[(&str, usize)], target: usize) -> (usize
     (end.saturating_sub(start), freed)
 }
 
+/// What takes the place of a tool result of an earlier turn when the context is short
+pub const EARLIER_RESULT_NOTE: &str = "(This result was left out: the context was full. Run the tool again if it is needed.)";
+
+/// Results this short are not worth replacing by the note
+const EARLIER_RESULT_MIN_TOKENS: usize = 64;
+
+/// The room to keep free when a prompt of `prompt_tokens` is fitted: `thinking_room` when what is
+/// left without the earlier turns (the system message, the tools and the current request) leaves it,
+/// else `answer_room`. Earlier turns are not given up for room that dropping them cannot make.
+pub fn room_to_keep(messages: &[(&str, usize)], prompt_tokens: usize, n_ctx: usize, thinking_room: usize, answer_room: usize) -> usize {
+    let start = usize::from(messages.first().is_some_and(|(role, _)| role.eq_ignore_ascii_case("system")));
+    let current = messages.iter().rposition(|(role, _)| role.eq_ignore_ascii_case("user")).unwrap_or(start).max(start);
+    let earlier: usize = messages[start..current].iter().map(|(_, tokens)| tokens).sum();
+    if prompt_tokens.saturating_sub(earlier) + thinking_room <= n_ctx {
+        thinking_room
+    } else {
+        answer_room
+    }
+}
+
+/// The oldest long tool result of an earlier turn. It goes before the turn does: what was asked and
+/// answered is kept longer than what a tool returned on the way.
+pub fn oldest_earlier_result(messages: &[(&str, usize)]) -> Option<usize> {
+    let current = messages.iter().rposition(|(role, _)| role.eq_ignore_ascii_case("user"))?;
+    messages[..current].iter().position(|(role, tokens)| role.eq_ignore_ascii_case("tool") && *tokens > EARLIER_RESULT_MIN_TOKENS)
+}
+
 /// When no earlier turn is left to drop: the oldest whole steps of the current request (an answer with
 /// its tool results) so at least `target` tokens are freed. The request and its newest step stay.
 /// Returns (index of the first message to drop, messages, tokens).
@@ -262,6 +289,29 @@ mod tests {
         assert_eq!(oldest_turns_to_drop(&msgs, 2100), (4, 2600));
         // Never the last message
         assert_eq!(oldest_turns_to_drop(&msgs, 100_000), (4, 2600));
+    }
+
+    #[test]
+    fn earlier_turns_are_not_given_up_for_room_that_cannot_be_made() {
+        let small = [("system", 100), ("user", 10), ("assistant", 3000), ("user", 20)];
+        assert_eq!(room_to_keep(&small, 3130, 8192, 4096, 2048), 4096);
+        let large = [("system", 4700), ("user", 10), ("assistant", 1000), ("user", 20)];
+        assert_eq!(room_to_keep(&large, 5730, 8192, 4096, 2048), 2048);
+        // The tool schemas are in the prompt, in no message: they stay too
+        assert_eq!(room_to_keep(&small, 7130, 8192, 4096, 2048), 2048);
+        // The steps of the current request count, the earlier turn does not
+        let steps = [("system", 100), ("user", 5000), ("user", 20), ("assistant", 10), ("tool", 4000)];
+        assert_eq!(room_to_keep(&steps, 9130, 8192, 4096, 2048), 2048);
+        assert_eq!(room_to_keep(&steps[..3], 5120, 8192, 4096, 2048), 4096);
+    }
+
+    #[test]
+    fn a_long_earlier_result_goes_before_its_turn() {
+        let msgs = [("system", 100), ("user", 10), ("tool", 20), ("assistant", 10), ("tool", 900), ("assistant", 10), ("user", 20), ("assistant", 10), ("tool", 800)];
+        assert_eq!(oldest_earlier_result(&msgs), Some(4));
+        // The current request's results stay, and a short one is not worth replacing
+        assert_eq!(oldest_earlier_result(&[("user", 20), ("assistant", 10), ("tool", 800)]), None);
+        assert_eq!(oldest_earlier_result(&msgs[..4]), None);
     }
 
     #[test]

@@ -451,7 +451,7 @@ The engine fits every request into the loaded model's context (`n_ctx`), countin
 | Setting | Before the request (history too long) | While answering (context full) |
 | :--- | :--- | :--- |
 | **`Off`** | Error `exceed_context_size_error` (HTTP 400): *request (N tokens) exceeds the available context size (M tokens)* — llama-server's default. | Stops; `finish_reason: "length"`. |
-| **`Auto`** (default) | Drops the oldest whole turns until the prompt plus the answer's room fit. Only the overflow when the model's KV cache can shift, else a quarter of the context so the next turns reuse the cache. | Stops with `"length"`, unless the request asked for more `max_tokens` than the room left: then llama.cpp's context shift (half of the old tokens after BOS) and the answer continues. |
+| **`Auto`** (default) | Replaces the long tool results of earlier turns by a short note, then drops the oldest whole turns, until the prompt plus the answer's room fit. Only the overflow when the model's KV cache can shift, else a quarter of the context so the next turns reuse the cache. A model that thinks gets twice the room when the system message, the tools and the current request leave it; earlier turns are not given up for room that dropping them cannot make. | Stops with `"length"`, unless the request asked for more `max_tokens` than the room left: then llama.cpp's context shift (half of the old tokens after BOS) and the answer continues. |
 | **`Minimal` / `Standard` / `Aggressive` / `Extreme`** | Same, freeing at least 5 / 10 / 25 / 50% of the context each time. | Same; each shift frees that share. |
 
 Rules that hold in every mode:
