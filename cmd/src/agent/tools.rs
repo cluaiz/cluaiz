@@ -375,7 +375,14 @@ impl Tools {
             cluaiz_agents::workspace::READ_ITEM | "use_skill" => match text("name") {
                 Some(item) => match self.rules.check(cluaiz_agents::workspace::READ_ITEM, &item) {
                     super::rules::Verdict::Deny(reason) => Err(reason),
-                    _ => self.workspace.read_item(&item, text("kind").as_deref()),
+                    // The index has items, not files: a model that asks it for a file is told where to go
+                    _ => self.workspace.read_item(&item, text("kind").as_deref()).map_err(|error| {
+                        if error.starts_with("there is nothing named") {
+                            format!("{error}. It is not a project file search: read a file of the project with read_file and its path.")
+                        } else {
+                            error
+                        }
+                    }),
                 },
                 None => Err("give the name, as listed".into()),
             },
