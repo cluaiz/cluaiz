@@ -32,3 +32,8 @@ These runtime shared libraries are proprietary software of NVIDIA Corporation an
 - **NVIDIA cuDNN Software License Agreement (SLA):** https://docs.nvidia.com/deeplearning/cudnn/sla/index.html
 
 Copyright (c) NVIDIA Corporation. All rights reserved.
+
+## libgomp (Linux packages)
+
+The GNU Offloading and Multi Processing Runtime Library from GCC, under the GNU GPL version 3 with the
+GCC Runtime Library Exception. Source: https://gcc.gnu.org/
