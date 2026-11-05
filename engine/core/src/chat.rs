@@ -157,20 +157,51 @@ pub fn shift_discard(mode: ContextShiftingMode, n_ctx: usize, n_left: usize) -> 
 
 /// Oldest messages to drop so at least `target` tokens are freed. Whole turns go: dropping starts after
 /// the system message and stops at a user message, so the kept history never opens with an answer or a
-/// tool result. The last message always stays. `messages` = (role, tokens); returns (messages, tokens).
+/// tool result. The current request (the last user message, with the steps after it) always stays: a
+/// model that has lost it does not know what it is doing. `messages` = (role, tokens); returns
+/// (messages, tokens).
 pub fn oldest_turns_to_drop(messages: &[(&str, usize)], target: usize) -> (usize, usize) {
     let start = usize::from(
         messages
             .first()
             .is_some_and(|(role, _)| role.eq_ignore_ascii_case("system")),
     );
-    let last = messages.len().saturating_sub(1);
+    let last = messages
+        .iter()
+        .rposition(|(role, _)| role.eq_ignore_ascii_case("user"))
+        .unwrap_or(messages.len().saturating_sub(1));
     let (mut end, mut freed) = (start, 0);
     while end < last && (freed < target || !messages[end].0.eq_ignore_ascii_case("user")) {
         freed += messages[end].1;
         end += 1;
     }
     (end.saturating_sub(start), freed)
+}
+
+/// When no earlier turn is left to drop: the oldest whole steps of the current request (an answer with
+/// its tool results) so at least `target` tokens are freed. The request and its newest step stay.
+/// Returns (index of the first message to drop, messages, tokens).
+pub fn oldest_steps_to_drop(messages: &[(&str, usize)], target: usize) -> (usize, usize, usize) {
+    let first = messages
+        .iter()
+        .rposition(|(role, _)| role.eq_ignore_ascii_case("user"))
+        .map_or(messages.len(), |at| at + 1);
+    // Where each step starts: an answer, and the tool results after it belong to it
+    let starts: Vec<usize> = (first..messages.len())
+        .filter(|at| !messages[*at].0.eq_ignore_ascii_case("tool"))
+        .collect();
+    let Some(&newest) = starts.last() else {
+        return (first, 0, 0);
+    };
+    let (mut end, mut freed) = (first, 0);
+    for next in starts.iter().skip(1).copied().chain(std::iter::once(newest)) {
+        if freed >= target || end >= newest {
+            break;
+        }
+        freed += messages[end..next].iter().map(|(_, tokens)| tokens).sum::<usize>();
+        end = next;
+    }
+    (first, end - first, freed)
 }
 
 #[cfg(test)]
@@ -231,6 +262,30 @@ mod tests {
         assert_eq!(oldest_turns_to_drop(&msgs, 2100), (4, 2600));
         // Never the last message
         assert_eq!(oldest_turns_to_drop(&msgs, 100_000), (4, 2600));
+    }
+
+    #[test]
+    fn the_current_request_is_never_dropped_while_tools_run() {
+        let msgs = [
+            ("system", 100),
+            ("user", 10),
+            ("assistant", 10),
+            ("user", 20),
+            ("assistant", 10),
+            ("tool", 500),
+            ("assistant", 10),
+            ("tool", 300),
+        ];
+        // The earlier turn goes; the request of this turn stays, however much is asked for
+        assert_eq!(oldest_turns_to_drop(&msgs, 100_000), (2, 20));
+        // Nothing earlier left: its oldest step goes, with its result, and the newest stays
+        let current = &msgs[..1].iter().chain(&msgs[3..]).copied().collect::<Vec<_>>();
+        assert_eq!(oldest_turns_to_drop(current, 100), (0, 0));
+        assert_eq!(oldest_steps_to_drop(current, 100), (2, 2, 510));
+        assert_eq!(oldest_steps_to_drop(current, 100_000), (2, 2, 510));
+        // One step only: it stays
+        assert_eq!(oldest_steps_to_drop(&msgs[..2], 100), (2, 0, 0));
+        assert_eq!(oldest_steps_to_drop(&[("user", 5), ("assistant", 5), ("tool", 5)], 100), (1, 0, 0));
     }
 
     #[test]
