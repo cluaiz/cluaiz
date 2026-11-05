@@ -352,11 +352,17 @@ pub(crate) fn stream_tokens_with_media(
                 for (_, n) in &mut sizes {
                     *n += per_message;
                 }
-                let (n_drop, freed) = cluaiz_core::oldest_turns_to_drop(&sizes, target);
+                let (mut n_drop, mut freed) = cluaiz_core::oldest_turns_to_drop(&sizes, target);
+                let mut start = usize::from(structured_messages[0].0.eq_ignore_ascii_case("system"));
                 if n_drop == 0 {
-                    break;
+                    // Only the current request is left. What its tools returned is worth more than
+                    // the extra room for thinking: steps go only when the answer's own room is short.
+                    let short = (prompt_tokens.len() + gen_reserve).saturating_sub(n_ctx);
+                    (start, n_drop, freed) = cluaiz_core::oldest_steps_to_drop(&sizes, short);
+                    if short == 0 || n_drop == 0 {
+                        break;
+                    }
                 }
-                let start = usize::from(structured_messages[0].0.eq_ignore_ascii_case("system"));
                 structured_messages.drain(start..start + n_drop);
                 report.dropped_messages += n_drop;
                 report.dropped_tokens += freed;
