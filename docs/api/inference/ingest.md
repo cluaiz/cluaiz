@@ -116,6 +116,8 @@ Audio/video understanding belongs to the dedicated STT/Chat APIs, not this docum
 
 A folder named `ingest` is an installation category, not proof of an OCR decoder. FashionCLIP-style feature graphs return vectors. A generative vision package returns text. The engine does not turn an embedding vector into invented OCR text, and does not silently substitute a different model.
 
+> **Release packages:** The release packages do not include the OCR pack (PDFium and Tesseract) yet. Until they do, a scanned PDF and native OCR of an image are reported as unavailable, in both native extraction and text embedding. Digital PDF, DOCX, DOC and text need no pack. An image can still be read by a selected GGUF vision model (the model's own recognition, which can be wrong); a scanned PDF cannot, because its pages are rendered with PDFium.
+
 A client can expose two controls: **Model** (including Native extraction) and **Payload example** under Body Payload. Offer PDF, scanned PDF, image, DOCX, legacy DOC, text, batch, metadata, vectors, or model text. Replace the example source with your real file/URL/data URI.
 
 ## Request fields
@@ -188,7 +190,7 @@ The native provider extracts page text. Image-only/empty PDF regions use package
 }
 ```
 
-Do not set a model merely to enable native OCR. Packaged renderer/OCR assets must be available; an unavailable provider is reported.
+Do not set a model merely to enable native OCR. Packaged renderer/OCR assets must be available; an unavailable provider is reported. The release packages do not include the OCR pack (PDFium and Tesseract) yet.
 
 ### 4. Receipt/image: native OCR
 
@@ -199,7 +201,7 @@ Do not set a model merely to enable native OCR. Packaged renderer/OCR assets mus
 }
 ```
 
-An allowed image URL or actual `data:image/png;base64,...` is an alternative. Native OCR reads text; it does not describe image meaning.
+An allowed image URL or actual `data:image/png;base64,...` is an alternative. Native OCR reads text; it does not describe image meaning. The release packages do not include the OCR pack (PDFium and Tesseract) yet.
 
 ### 5. Word DOCX: native, no model
 
@@ -306,7 +308,7 @@ The selected GGUF and matching projector process actual pixels through the exist
 }
 ```
 
-Each page is rendered and inferred separately. The output cap applies per page. Large documents can take time; page rendering and selected-model inference are distinct from native PDF text extraction.
+This needs PDFium from the OCR pack to render the pages (see the note on release packages above). Each page is rendered and inferred separately. The output cap applies per page. Large documents can take time; page rendering and selected-model inference are distinct from native PDF text extraction.
 
 ### 14. DOCX native read, then selected model processing
 

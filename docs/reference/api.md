@@ -27,7 +27,7 @@ There are twelve HTTP routes. Ingest is a direct HTTP endpoint, not a CEP method
 
 | Goal | Send | Processing |
 |---|---|---|
-| Extract document/image text | Ingest `source`, omit model | Native text/OCR; inspect omissions/warnings |
+| Extract document/image text | Ingest `source`, omit model | Native text; OCR needs the OCR pack, not in the release packages yet; inspect omissions/warnings |
 | Generate text from image/PDF pixels | Ingest with generative vision package | Model plus matching projector; no saved chat session |
 | Ask follow-up questions about media | Chat `messages[].content` media parts | Prepared media/context for a compatible chat package |
 | Convert PDF to text vectors | Ingest with text embedding package | Native text/OCR → chunks → actual vectors |

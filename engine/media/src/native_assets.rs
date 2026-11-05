@@ -69,7 +69,7 @@ impl NativeAssets {
     pub fn read(root: &Path) -> Result<Self> {
         let root = root
             .canonicalize()
-            .context("Packaged native media directory is unavailable")?;
+            .context("The OCR pack (PDFium and Tesseract) is not installed; the release packages do not include it yet")?;
         let file = std::fs::File::open(root.join(MANIFEST_NAME))
             .context("Packaged native media manifest is unavailable")?;
         // Manifests are package metadata, not arbitrary-sized attachment input.
