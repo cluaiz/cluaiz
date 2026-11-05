@@ -179,10 +179,11 @@ impl App {
     /// The answers of the pending approval, in the order they are shown
     pub(crate) fn approval_answers(&self) -> Vec<(ApprovalResponse, String)> {
         let tool = self.approval.as_ref().map(|approval| approval.title.clone()).unwrap_or_default();
-        let mut answers = vec![
-            (ApprovalResponse::Allow, "Yes, run it".to_owned()),
-            (ApprovalResponse::Session, format!("Yes, and do not ask again for {tool} this session")),
-        ];
+        let mut answers = vec![(ApprovalResponse::Allow, "Yes, run it".to_owned())];
+        // A fact is seen each time: no answer for the whole session
+        if !matches!(tool.as_str(), "remember" | "forget") {
+            answers.push((ApprovalResponse::Session, format!("Yes, and do not ask again for {tool} this session")));
+        }
         if let Some(rule) = &self.approval_rule {
             answers.push((ApprovalResponse::Remember, format!("Yes, and always allow {rule} in this folder")));
         }

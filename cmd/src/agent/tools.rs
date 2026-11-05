@@ -915,7 +915,7 @@ impl Tools {
         }
         // Memory outlives the session: saving or deleting a fact is always seen
         let remember = tool == cluaiz_agents::workspace::REMEMBER || tool == cluaiz_agents::workspace::FORGET;
-        if (self.allow_all && !remember) || self.always.contains(tool) {
+        if !remember && (self.allow_all || self.always.contains(tool)) {
             return Ok(());
         }
         if !self.display.screen_enabled() && !std::io::stdin().is_terminal() {
