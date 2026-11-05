@@ -163,16 +163,6 @@ impl PreparedChatContext {
             .messages
             .iter()
             .any(|message| message.content.has_media());
-        let media_lease = if has_media {
-            Some(state.host.media_admission.try_acquire().map_err(|_| {
-                error_response(request, request_id,
-                    "Another chat attachment request still owns processing buffers; retry after it finishes".into(),
-                    "resource_error", Some("media_busy"))
-            })?)
-        } else {
-            None
-        };
-
         crate::utils::slots::log_capability_guidance(
             &schema,
             target_slot,
@@ -213,6 +203,17 @@ impl PreparedChatContext {
                 target_slot
             );
         }
+
+        // After the model check: a wrong name is the caller's error (400), even while busy
+        let media_lease = if has_media {
+            Some(state.host.media_admission.try_acquire().map_err(|_| {
+                error_response(request, request_id,
+                    "Another chat attachment request still owns processing buffers; retry after it finishes".into(),
+                    "resource_error", Some("media_busy"))
+            })?)
+        } else {
+            None
+        };
 
         // Ensure we actually have a path to load (Auto-heal fallback)
         if active_model_path.is_none() && !has_media {
