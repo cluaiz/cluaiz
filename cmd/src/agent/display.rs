@@ -236,6 +236,8 @@ impl Display {
             Some(rule) => eprint!(
                 "  Allow {tool} {reason}? [y]es / [n]o / [a]lways this session / [r]emember {rule} in this folder, or instructions: "
             ),
+            // A fact is seen each time: no answer for the whole session
+            None if matches!(tool, "remember" | "forget") => eprint!("  Allow {tool} {reason}? [y]es / [n]o, or instructions: "),
             None => eprint!("  Allow {tool} {reason}? [y]es / [n]o / [a]lways this session, or instructions: "),
         }
         let _ = std::io::stderr().flush();

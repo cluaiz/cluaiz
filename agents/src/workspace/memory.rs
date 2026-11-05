@@ -68,7 +68,8 @@ pub fn folder(workspace: &Workspace) -> PathBuf {
     workspace.root.join(".agents").join(Kind::Memory.folder())
 }
 
-/// The file a new fact of this name goes to: always a new file, so a replaced fact keeps its own
+/// The file a new fact of this name goes to: never one that is there (a corrected fact rewrites its
+/// own file in `save`, so no old file stays behind)
 pub fn path_for(workspace: &Workspace, name: &str) -> PathBuf {
     let dir = folder(workspace);
     let mut file_name = name.to_owned();
