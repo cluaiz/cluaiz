@@ -238,8 +238,9 @@ pub(crate) fn stream_tokens_with_media(
             .optimization
             .context_shifting;
         // llama-server turns context shift and cache reuse off when the memory cannot move positions
-        // (sliding-window / recurrent caches) and for multimodal prompts
-        let can_shift = !is_media && llama_cpp::llama_memory_can_shift(mem);
+        // (sliding-window / recurrent caches) and for multimodal prompts; quantized keys cannot move
+        // either, though llama_memory_can_shift says they can
+        let can_shift = !is_media && llama.keys_can_shift && llama_cpp::llama_memory_can_shift(mem);
         // BOS the llama.cpp way: its chat template engine strips the BOS text from the rendered prompt and
         // the tokenizer adds the BOS token when the model asks for it (llama_vocab_get_add_bos).
         // A continuation (pivot) is appended to the existing context, so it gets none.

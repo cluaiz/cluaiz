@@ -34,6 +34,8 @@ pub struct NativeLlama {
     pub last_context: Option<ContextReport>,
     /// Sliding-window checkpoints of the current KV (llama-server context checkpoints), oldest first
     pub checkpoints: Vec<crate::native::context::Checkpoint>,
+    /// Positions in the KV can be moved (not with quantized keys, see `keys_can_shift`)
+    pub keys_can_shift: bool,
 }
 
 /// The request does not fit the context (llama-server's `exceed_context_size_error`). It is raised
@@ -756,6 +758,7 @@ impl NativeLlama {
             last_thinking: None,
             last_context: None,
             checkpoints: Vec::new(),
+            keys_can_shift: cluaiz_core::KvCacheQuantization::keys_can_shift(ctx_params.type_k),
         };
         llama.warmup();
         Ok(llama)
@@ -829,6 +832,7 @@ impl NativeLlama {
                 return Err(anyhow::anyhow!("Context Resize Failure"));
             }
             self.n_ctx = ctx_params.n_ctx;
+            self.keys_can_shift = cluaiz_core::KvCacheQuantization::keys_can_shift(ctx_params.type_k);
             self.n_batch = if ctx_params.n_ctx == 0 {
                 ctx_params.n_batch
             } else {

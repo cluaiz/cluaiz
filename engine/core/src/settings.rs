@@ -58,6 +58,12 @@ impl KvCacheQuantization {
         }
     }
 
+    /// Whether positions in a KV of this GGML key type can be moved. llama.cpp's K-shift copies the
+    /// keys through an operation that has no quantized form, and aborts the whole process.
+    pub fn keys_can_shift(type_k: i32) -> bool {
+        matches!(type_k, 0 | 1) // GGML_TYPE_F32, GGML_TYPE_F16
+    }
+
     /// Exact memory bytes per KV element based on upstream GGML block geometry.
     /// Q4_0: 18 bytes / 32 elements = 0.5625 B/element
     /// Q8_0: 34 bytes / 32 elements = 1.0625 B/element

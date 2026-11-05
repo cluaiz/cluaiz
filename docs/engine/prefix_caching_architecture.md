@@ -30,6 +30,10 @@ Every response reports what happened (`cache_n`, `processed_tokens`, `cause`: `c
 `edit`, `history_drop`, `shift`, `restart`, `media`). See
 [chat_completions.md](../api/inference/chat_completions.md).
 
+A compressed KV (`Kv8`, `Kv4`) never moves positions: llama.cpp's K-shift has no quantized form and
+would stop the whole process. Such a chat frees a quarter of the context when it is full, and shared
+chunks after an edit are processed again, as with a sliding-window model.
+
 ## 2. On disk: after a model reload, another chat or a restart
 
 After each answer the chat's KV cache is saved to `<CLUAIZ_HOME>/kv_cache/chats/<chat>.kv` with a
