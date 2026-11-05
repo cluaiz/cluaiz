@@ -240,3 +240,12 @@ fn request_llama_params_override_settings() {
     };
     assert!(bad.apply_to(&mut OptimizationControl::default()).is_err());
 }
+
+#[test]
+fn a_compressed_kv_never_moves_positions() {
+    let shifts = |kv: KvCacheQuantization| KvCacheQuantization::keys_can_shift(kv.to_ggml_types().0);
+    assert!(shifts(KvCacheQuantization::Auto));
+    assert!(shifts(KvCacheQuantization::Kv16));
+    assert!(!shifts(KvCacheQuantization::Kv8));
+    assert!(!shifts(KvCacheQuantization::Kv4));
+}
