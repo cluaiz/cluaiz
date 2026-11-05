@@ -194,7 +194,6 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
     let mut agent = Agent {
         system: String::new(),
         extra: args.system_prompt.clone(),
-        installed_text: String::new(),
         layout: Default::default(),
         tools: Tools::new(dir, args.yes),
         session,
@@ -244,7 +243,7 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
     // This conversation's checkpoints, with those saved before it was closed
     agent.tools.checkpoints = checkpoints::Checkpoints::open(sessions::checkpoints_dir(agent.tools.root(), &agent.session_id));
     // The project's agent files, and the installed skills, plugins and MCP servers
-    agent.installed_text = agent.tools.load_installed().await;
+    agent.tools.load_installed().await;
     agent.rebuild_system();
     if !screen_enabled {
         for problem in &agent.settings.problems {
@@ -305,7 +304,6 @@ struct Agent {
     /// `--system-prompt`: added at the end of the system prompt for this run
     extra: Option<String>,
     /// The installed skills' instructions, in the system prompt
-    installed_text: String,
     /// What of the project's agent files went into the system prompt (/memory)
     layout: cluaiz_agents::workspace::WorkspacePrompt,
     history: Vec<ChatMessage<Vec<PreparedPart>>>,
@@ -701,7 +699,7 @@ context    {}", plan.summary(), plan.context_reason)
         self.tools.memory_source = format!("cluaiz agent, model {}", self.session.model_id);
         let budget = cluaiz_agents::workspace::budget_for(self.session.plan.context_window as usize);
         self.layout = self.tools.workspace.prompt(budget);
-        self.system = system_prompt(&dir, &self.layout.text, &self.installed_text, self.extra.as_deref());
+        self.system = system_prompt(&dir, &self.layout.text, self.extra.as_deref());
     }
 
     /// `/compact`: the model writes a summary of the conversation, which then replaces it
@@ -1033,7 +1031,7 @@ fn context_note(tokens: u32) -> String {
     }
 }
 
-fn system_prompt(dir: &std::path::Path, workspace: &str, installed: &str, extra: Option<&str>) -> String {
+fn system_prompt(dir: &std::path::Path, workspace: &str, extra: Option<&str>) -> String {
     let shell = if cfg!(windows) { "PowerShell" } else { "sh" };
     // The agent's own instructions: managed prompt `agent.system` (cluaiz_core::prompts)
     let mut prompt = cluaiz_core::prompts::render(
@@ -1045,12 +1043,10 @@ fn system_prompt(dir: &std::path::Path, workspace: &str, installed: &str, extra:
             ("shell", shell),
         ],
     );
-    // The project's AGENTS.md files, rules and index (cluaiz_agents::workspace), then the installed skills
-    for part in [workspace, installed] {
-        if !part.trim().is_empty() {
-            prompt.push_str("\n\n");
-            prompt.push_str(part.trim());
-        }
+    // The project's AGENTS.md files, rules and index, with the skills (cluaiz_agents::workspace)
+    if !workspace.trim().is_empty() {
+        prompt.push_str("\n\n");
+        prompt.push_str(workspace.trim());
     }
     if let Some(extra) = extra.filter(|e| !e.trim().is_empty()) {
         prompt.push_str(&format!("\n\n{}", extra.trim()));

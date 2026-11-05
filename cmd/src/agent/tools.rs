@@ -133,10 +133,11 @@ impl Tools {
         }
     }
 
-    /// Offers the enabled installed tools (the same registry and schemas the API uses) and returns
-    /// the instructions of installed skills, then the list of the project's and the user's own
-    /// skills, for the system prompt. Tools run in the working folder.
-    pub async fn load_installed(&mut self) -> String {
+    /// Offers the enabled installed tools (the same registry and schemas the API uses) and reads
+    /// the project's agent files. Installed skills are lines of the workspace index, like the
+    /// project's own: the model reads the one it needs with `read_item`, because their whole texts
+    /// together can be larger than the context. Tools run in the working folder.
+    pub async fn load_installed(&mut self) {
         cluaiz_agents::ToolsEngine::set_workspace_dir(self.root.clone());
         let ids: Vec<String> = cluaiz_agents::ToolsEngine::list_all_tools()
             .unwrap_or_default()
@@ -144,9 +145,9 @@ impl Tools {
             .filter(|tool| tool.enabled)
             .map(|tool| tool.id)
             .collect();
-        self.workspace = super::instructions::scan(&self.root, &ids);
+        self.workspace = super::instructions::scan(&self.root);
         if ids.is_empty() {
-            return String::new();
+            return;
         }
         let compiled = cluaiz_agents::ToolsEngine::compile_prompt_tools(&ids).await;
         let (schemas, left_out) = compiled.schemas_within(INSTALLED_SCHEMA_CHARS, "");
@@ -163,12 +164,11 @@ impl Tools {
             })
             .collect();
         self.installed = compiled.active_tool_ids;
-        compiled.skill_instructions
     }
 
     /// The project's agent files read again (after /init wrote one)
     pub fn rescan_workspace(&mut self) {
-        self.workspace = super::instructions::scan(&self.root, &self.installed);
+        self.workspace = super::instructions::scan(&self.root);
     }
 
     /// What /skills shows

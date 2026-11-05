@@ -302,7 +302,9 @@ something and there is no row for it, it did not.
 Every enabled skill, plugin and MCP server in `~/.cluaiz/tools` is offered to the model next to
 the six built-in tools, with the same descriptions the API uses:
 
-- A skill's instructions are added to the agent's instructions.
+- A skill is a line of the index (name and description), like the project's own skills. The model
+  reads the one it needs with `read_item`: the whole texts of several skills can be larger than a
+  small context. Its functions, if it has any, are offered with the other tools.
 - A call of an installed tool shows its row like any other (`● math_evaluate`) and **always asks
   first** (`[a]lways` allows that tool for the session; `--yes` allows all). It runs in the working
   folder through the same executor as the API.

@@ -8,9 +8,9 @@ use std::path::Path;
 
 use cluaiz_agents::workspace::{Kind, Placement, Trigger, Workspace, WorkspacePrompt};
 
-/// The agent files for work in `dir`; `installed` are the registry ids of installed skills
-pub fn scan(dir: &Path, installed: &[String]) -> Workspace {
-    Workspace::for_folder(dir, installed)
+/// The agent files for work in `dir`, with the installed skills
+pub fn scan(dir: &Path) -> Workspace {
+    Workspace::for_folder(dir, &[])
 }
 
 /// The user's home folder (for `~/.agents/`)
