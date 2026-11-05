@@ -61,7 +61,7 @@ function Get-DownloadView ([double]$received, [double]$total, [double]$elapsed, 
 }
 
 function Download-File ([string]$url, [string]$outPath, [string]$fileName) {
-    $curl = Get-Command curl.exe -CommandType Application -ErrorAction Stop
+    $curl = Get-Command curl.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1
     $headers = "$outPath.headers"; $errors = "$outPath.stderr"
     # These are direct executable arguments, never a cmd/PowerShell command string.
     foreach ($arg in @($url, $outPath, $headers)) {
