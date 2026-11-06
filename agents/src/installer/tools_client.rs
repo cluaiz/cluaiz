@@ -174,7 +174,17 @@ impl ToolsInstaller {
             );
         }
 
-        let binary_declared = !binary_download_url.is_empty();
+        // A WebAssembly plugin is one file for every machine
+        let is_wasm = component_type == "plugin"
+            && package.as_ref().is_some_and(|(manifest, _)| manifest["build_type"] == "wasm");
+        if is_wasm && binary_download_url.is_empty() {
+            let ver = if target_version.is_empty() { "1.0.0" } else { &target_version };
+            binary_download_url = format!(
+                "https://github.com/cluaiz/cluaiz-tools/releases/download/plugin-{}-v{}/{}_v{}.wasm",
+                component_id, ver, component_id, ver
+            );
+        }
+        let binary_declared = !binary_download_url.is_empty() && (is_wasm || !binary_download_url.contains("/releases/download/plugin-"));
         if binary_download_url.is_empty() && !component_id.is_empty() && component_type == "plugin" {
             let ver = if target_version.is_empty() { "1.0.0" } else { &target_version };
             let (os_name, ext) = if cfg!(target_os = "windows") {
@@ -258,12 +268,19 @@ impl ToolsInstaller {
 
         let staged = match &repo_files {
             Some(files) => Self::write_files(files, &staging_dir),
-            None => Self::unpack_bundle(&bytes, binary_bytes.as_deref(), &component_id, &staging_dir),
+            None => Self::unpack_bundle(&bytes, binary_bytes.as_deref(), &component_id, is_wasm, &staging_dir),
         }
+            .and_then(|_| {
+                // The bundle may hold only the instructions; the manifest says what the plugin offers
+                if let (Some((manifest, _)), false) = (&package, staging_dir.join("package.json").exists()) {
+                    std::fs::write(staging_dir.join("package.json"), serde_json::to_vec_pretty(manifest)?)?;
+                }
+                Ok(())
+            })
             .and_then(|_| {
                 if component_type == "plugin" && !Self::has_program(&staging_dir, package.as_ref().map(|(manifest, _)| manifest)) {
                     return Err(anyhow::anyhow!(
-                        "Plugin '{}' has no program this Engine can run (a WebAssembly or library build is not one). Nothing was installed.",
+                        "Plugin '{}' has no program this Engine can run (a library build is not one). Nothing was installed.",
                         component_id
                     ));
                 }
@@ -306,7 +323,7 @@ impl ToolsInstaller {
         }
         std::fs::read_dir(folder).is_ok_and(|entries| {
             entries.flatten().any(|entry| {
-                entry.path().extension().is_some_and(|ext| ["exe", "so", "py", "js"].iter().any(|program| ext.eq_ignore_ascii_case(program)))
+                entry.path().extension().is_some_and(|ext| ["wasm", "exe", "so", "py", "js"].iter().any(|program| ext.eq_ignore_ascii_case(program)))
             })
         })
     }
@@ -376,7 +393,7 @@ impl ToolsInstaller {
     }
 
     /// Extracts the downloaded bundle (and native binary, if any) into `target_dir`.
-    fn unpack_bundle(bundle: &[u8], binary: Option<&[u8]>, component_id: &str, target_dir: &Path) -> Result<()> {
+    fn unpack_bundle(bundle: &[u8], binary: Option<&[u8]>, component_id: &str, is_wasm: bool, target_dir: &Path) -> Result<()> {
         std::fs::create_dir_all(target_dir)?;
         let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bundle))
             .map_err(|e| anyhow::anyhow!("Downloaded archive is not a valid ZIP: {}", e))?;
@@ -401,7 +418,7 @@ impl ToolsInstaller {
         }
 
         if let Some(bin_bytes) = binary {
-            let bin_ext = if cfg!(target_os = "windows") { "dll" } else if cfg!(target_os = "macos") { "dylib" } else { "so" };
+            let bin_ext = if is_wasm { "wasm" } else if cfg!(target_os = "windows") { "dll" } else if cfg!(target_os = "macos") { "dylib" } else { "so" };
             std::fs::write(target_dir.join(format!("{}.{}", component_id, bin_ext)), bin_bytes)?;
         }
         Ok(())
@@ -581,10 +598,10 @@ mod package_file_tests {
         let dir = std::env::temp_dir().join(format!("cluaiz-plugin-program-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join("SKILL.md"), "x").unwrap();
-        std::fs::write(dir.join("logic.wasm"), "x").unwrap();
-        assert!(!ToolsInstaller::has_program(&dir, Some(&json!({"build_type": "wasm"}))));
+        std::fs::write(dir.join("library.dll"), "x").unwrap();
+        assert!(!ToolsInstaller::has_program(&dir, Some(&json!({"build_type": "native"}))));
         assert!(ToolsInstaller::has_program(&dir, Some(&json!({"execution": {"command": "node"}}))));
-        std::fs::write(dir.join("run.py"), "x").unwrap();
+        std::fs::write(dir.join("logic.wasm"), "x").unwrap();
         assert!(ToolsInstaller::has_program(&dir, None));
         std::fs::remove_dir_all(&dir).unwrap();
     }

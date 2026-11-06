@@ -5,6 +5,7 @@ edition.workspace = true
 authors.workspace = true
 
 [dependencies]
+wasmtime = { version = "45.0.1", default-features = false, features = ["cranelift", "runtime", "std"] }
 portable-pty = "0.9"
 cluaiz-core = { path = "../engine/core" }
 cluaiz-models = { path = "../engine/models" }
@@ -25,3 +26,6 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 zip = { version = "9.0.5", default-features = false, features = ["deflate"] }
 zstd = "0.14"
 sha2 = "0.10"
+
+[dev-dependencies]
+wat = "1"

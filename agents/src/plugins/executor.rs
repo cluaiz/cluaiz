@@ -1,7 +1,8 @@
 //! Plugin executor (`agents/src/plugins/executor.rs`).
 //!
-//! Runs a plugin as a plain child process in its own folder and returns its stdout. There is
-//! no sandbox: the plugin runs with the same rights as the Engine (no WASM, no OS isolation).
+//! A `.wasm` plugin runs inside the Engine, closed in ([`super::wasm`]). Any other plugin runs as
+//! a plain child process in its own folder, with the same rights as the Engine, and its stdout
+//! is the answer.
 
 use anyhow::{anyhow, Result};
 use std::path::Path;
@@ -43,6 +44,10 @@ impl PluginExecutor {
         let binary = binary_path.ok_or_else(|| anyhow!("No executable binary or script found in plugin directory: {:?}", plugin_dir))?;
 
         tracing::info!("⚡ [PluginExecutor] Executing plugin binary at: {:?}", binary);
+        if binary.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("wasm")) {
+            let max_memory_mb = manifest.permissions.as_ref().and_then(|p| p.max_memory_mb).map(u64::from);
+            return super::wasm::run_file(&binary, payload, max_memory_mb);
+        }
         
         let payload_str = String::from_utf8_lossy(payload);
         let mut cmd = std::process::Command::new(&binary);
