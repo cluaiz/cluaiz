@@ -2,7 +2,7 @@
 
 This guide details the deployment pathways to install, bootstrap, and execute cluaiz natively on your workstation. The runtime can be deployed via a single-line automated installer or compiled manually from source.
 
-cluaiz runs with zero virtualized overhead or local containerization: **No Docker. No Python. Pure Silicon.**
+Cluaiz is one native program: it needs no Docker and no Python.
 
 ---
 
