@@ -327,6 +327,13 @@ impl InstalledStateRegistry {
                     continue;
                 }
                 if let Some(registry_entry) = Self::entry_for_folder(category, &dir, None, "") {
+                    // A pull that stopped before its helper files is not a model that can load
+                    let incomplete = registry_entry.metadata.capabilities.as_ref().is_some_and(|package| {
+                        !package.onnx_graphs.is_empty() && !package.missing_onnx_assets().is_empty()
+                    });
+                    if incomplete {
+                        continue;
+                    }
                     added.push(id.clone());
                     reg.installed_models.insert(id, registry_entry);
                 }
