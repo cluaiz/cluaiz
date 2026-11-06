@@ -70,6 +70,37 @@ pub fn openai_messages(messages: &[(String, String)]) -> Vec<Value> {
     out
 }
 
+/// What a call without its opening tag starts with
+const BARE_CALL: &str = "{\"name\"";
+
+/// A call whose opening tag is missing, `{"name": ...}\n</tool_call>`, as Bonsai models write it:
+/// the text before it, the name and the arguments. Only a JSON object with a name counts.
+pub fn call_without_open(text: &str) -> Option<(String, String, String)> {
+    if text.contains(OPEN) {
+        return None;
+    }
+    let end = text.find(CLOSE)?;
+    let start = text[..end].find(BARE_CALL)?;
+    let call: Value = serde_json::from_str(text[start..end].trim()).ok()?;
+    let name = call.get("name")?.as_str()?.to_string();
+    let arguments = match call.get("arguments").or_else(|| call.get("parameters")) {
+        Some(Value::String(s)) => s.clone(),
+        Some(args) => args.to_string(),
+        None => "{}".to_string(),
+    };
+    Some((text[..start].to_string(), name, arguments))
+}
+
+/// How much of a partial answer can go out now: a call without its opening tag may be starting
+/// at the rest. The final answer sends what turned out to be plain text.
+pub fn before_bare_call(text: &str) -> &str {
+    if let Some(start) = text.find(BARE_CALL) {
+        return &text[..start];
+    }
+    let held = (1..BARE_CALL.len()).rev().find(|n| text.ends_with(&BARE_CALL[..*n])).unwrap_or(0);
+    &text[..text.len() - held]
+}
+
 /// The text around an assistant message's `<tool_call>` blocks, and each call's name and
 /// arguments (a JSON string). Blocks that are not a call stay in the text.
 pub fn split_calls(content: &str) -> (String, Vec<(String, String)>) {
@@ -186,6 +217,25 @@ mod tests {
 
     fn msg(role: &str, content: &str) -> (String, String) {
         (role.to_string(), content.to_string())
+    }
+
+    #[test]
+    fn a_call_without_its_opening_tag_is_still_a_call() {
+        let (before, name, args) = call_without_open("Reading.\n{\"name\": \"read_file\", \"arguments\": {\"path\": \"a\"}}\n</tool_call>").unwrap();
+        assert_eq!((before.as_str(), name.as_str(), args.as_str()), ("Reading.\n", "read_file", "{\"path\":\"a\"}"));
+        // Not a call: no closing tag, not JSON, no name, or a normal block
+        assert!(call_without_open("{\"name\": \"x\"}").is_none());
+        assert!(call_without_open("{\"name\": oops}\n</tool_call>").is_none());
+        assert!(call_without_open("the tag </tool_call> in a sentence").is_none());
+        assert!(call_without_open("<tool_call>{\"name\": \"x\"}</tool_call>").is_none());
+    }
+
+    #[test]
+    fn a_partial_answer_holds_back_what_may_be_a_call() {
+        assert_eq!(before_bare_call("Hello there"), "Hello there");
+        assert_eq!(before_bare_call("Reading.\n{\"name\": \"re"), "Reading.\n");
+        assert_eq!(before_bare_call("Reading.\n{\"na"), "Reading.\n");
+        assert_eq!(before_bare_call("Set {"), "Set ");
     }
 
     #[test]
