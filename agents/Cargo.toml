@@ -5,7 +5,7 @@ edition.workspace = true
 authors.workspace = true
 
 [dependencies]
-wasmtime = { version = "45.0.1", default-features = false, features = ["cranelift", "runtime", "std"] }
+wasmtime = { version = "36.0.19", default-features = false, features = ["cranelift", "runtime", "std"] }
 portable-pty = "0.9"
 cluaiz-core = { path = "../engine/core" }
 cluaiz-models = { path = "../engine/models" }
