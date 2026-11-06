@@ -24,7 +24,7 @@ Only when started by hand. Pushes and pull requests never start a build.
 | `core (win-x64)` | `windows-2022` | `cargo build -p cmd --release --locked --no-default-features` | `cluaiz-<v>-win-x64.zip` |
 | `core (linux-x64)` | `ubuntu-24.04` | same | `cluaiz-<v>-linux-x64.tar.gz` |
 | `core (linux-arm64)` | `ubuntu-24.04-arm` | same (experimental: a failure does not block the release) | `cluaiz-<v>-linux-arm64.tar.gz` |
-| `core (mac-arm64)` | `macos-14` | same with `--features metal` (experimental) | `cluaiz-<v>-mac-arm64.tar.gz` |
+| `core (mac-arm64)` | `macos-15` | same with `--features metal` (experimental) | `cluaiz-<v>-mac-arm64.tar.gz` |
 | `llama cuda12` / `cuda13` (win-x64) | `windows-2022` + CUDA 12.4 / 13.4 | CMake target `ggml-cuda` only | `…-win-x64-llama-cuda12.zip` + `…-cudart12.zip`, same for 13 |
 | `llama vulkan` (win-x64) | `windows-2022` + Vulkan SDK | CMake target `ggml-vulkan` only | `…-win-x64-llama-vulkan.zip` |
 | `llama cuda12` / `cuda13` (linux-x64) | `nvidia/cuda:12.8.1` / `13.4.1-devel-ubuntu24.04` | CMake target `ggml-cuda` only | `…-linux-x64-llama-cuda12.tar.gz` + `…-cudart12.tar.gz`, same for 13 |
