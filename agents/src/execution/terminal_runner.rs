@@ -3,7 +3,6 @@ use std::process::Stdio;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 use anyhow::{anyhow, Result};
-use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 use tokio::sync::watch;
 
@@ -85,11 +84,13 @@ impl SandboxTerminalRunner {
         let scrub_secrets = matches!(security_mode, SecurityMode::Inherit | SecurityMode::RequireApproval);
         let env_resolved = EnvironmentResolver::resolve(cwd, None, scrub_secrets);
 
+        let (stdout, stdout_writer) = std::io::pipe()?;
+        let (stderr, stderr_writer) = std::io::pipe()?;
         let mut cmd = Command::new(program);
         cmd.args(args)
             .current_dir(&env_resolved.cwd)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
+            .stdout(stdout_writer)
+            .stderr(stderr_writer)
             .stdin(Stdio::null());
 
         cmd.env_clear();
@@ -105,32 +106,10 @@ impl SandboxTerminalRunner {
         let mut child = cmd.spawn()
             .map_err(|e| anyhow!("Failed to spawn process '{}': {}", program, e))?;
 
-        let stdout = child.stdout.take().ok_or_else(|| anyhow!("Failed to capture stdout"))?;
-        let stderr = child.stderr.take().ok_or_else(|| anyhow!("Failed to capture stderr"))?;
-
-        let stdout_handle = tokio::spawn(async move {
-            let mut reader = BufReader::new(stdout);
-            let mut out = String::new();
-            let mut line = String::new();
-            while let Ok(n) = reader.read_line(&mut line).await {
-                if n == 0 { break; }
-                out.push_str(&line);
-                line.clear();
-            }
-            out
-        });
-
-        let stderr_handle = tokio::spawn(async move {
-            let mut reader = BufReader::new(stderr);
-            let mut out = String::new();
-            let mut line = String::new();
-            while let Ok(n) = reader.read_line(&mut line).await {
-                if n == 0 { break; }
-                out.push_str(&line);
-                line.clear();
-            }
-            out
-        });
+        // The command holds the writers; the reads end only when they are all closed
+        drop(cmd);
+        let stdout_handle = read_output(stdout, None);
+        let stderr_handle = read_output(stderr, None);
 
         let status = child.wait().await?;
         let duration_ms = start_time.elapsed().as_millis() as u64;
@@ -202,11 +181,13 @@ impl SandboxTerminalRunner {
         };
 
         // 3. Build Process Command
+        let (stdout, stdout_writer) = std::io::pipe()?;
+        let (stderr, stderr_writer) = std::io::pipe()?;
         let mut cmd = Command::new(shell_cmd);
         cmd.args(&shell_args)
             .current_dir(&env_resolved.cwd)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
+            .stdout(stdout_writer)
+            .stderr(stderr_writer);
 
         // Configure Stdin
         match stdin_mode {
@@ -244,34 +225,11 @@ impl SandboxTerminalRunner {
             }
         }
 
-        let stdout = child.stdout.take().ok_or_else(|| anyhow!("Failed to open stdout"))?;
-        let stderr = child.stderr.take().ok_or_else(|| anyhow!("Failed to open stderr"))?;
-
-        // 5. Read stdout and stderr concurrently
-        let stdout_live = on_line.clone();
-        let stdout_handle = tokio::spawn(async move {
-            let mut reader = BufReader::new(stdout).lines();
-            let mut lines = Vec::new();
-            while let Ok(Some(line)) = reader.next_line().await {
-                if let Some(live) = &stdout_live {
-                    let _ = live.send(line.clone());
-                }
-                lines.push(line);
-            }
-            lines.join("\n")
-        });
-
-        let stderr_handle = tokio::spawn(async move {
-            let mut reader = BufReader::new(stderr).lines();
-            let mut lines = Vec::new();
-            while let Ok(Some(line)) = reader.next_line().await {
-                if let Some(live) = &on_line {
-                    let _ = live.send(line.clone());
-                }
-                lines.push(line);
-            }
-            lines.join("\n")
-        });
+        // 5. Read stdout and stderr concurrently. The command holds the writers; the reads end
+        // only when they are all closed
+        drop(cmd);
+        let stdout_handle = read_output(stdout, on_line.clone());
+        let stderr_handle = read_output(stderr, on_line);
 
         // 6. Execution Loop with Timeout & Cancellation
         let mut cancelled = false;
@@ -324,9 +282,66 @@ impl SandboxTerminalRunner {
     }
 }
 
+/// Reads a command's output on its own thread, line by line; bytes that are not UTF-8 (a console
+/// code page) become replacement characters instead of ending the read. Not tokio's child pipes:
+/// on Windows a read of those ended the whole program ("operation failed to complete synchronously").
+fn read_output(
+    pipe: std::io::PipeReader,
+    live: Option<tokio::sync::mpsc::UnboundedSender<String>>,
+) -> tokio::task::JoinHandle<String> {
+    tokio::task::spawn_blocking(move || {
+        use std::io::BufRead;
+        let mut reader = std::io::BufReader::new(pipe);
+        let mut lines = Vec::new();
+        let mut bytes = Vec::new();
+        loop {
+            bytes.clear();
+            match reader.read_until(b'\n', &mut bytes) {
+                Ok(0) | Err(_) => break,
+                Ok(_) => {}
+            }
+            let line = String::from_utf8_lossy(&bytes).trim_end_matches(['\r', '\n']).to_owned();
+            if let Some(live) = &live {
+                let _ = live.send(line.clone());
+            }
+            lines.push(line);
+        }
+        lines.join("\n")
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn output_that_is_not_utf8_is_kept() {
+        let (reader, mut writer) = std::io::pipe().unwrap();
+        std::io::Write::write_all(&mut writer, b"one\r\ntw\xFFo\nlast").unwrap();
+        drop(writer);
+        assert_eq!(read_output(reader, None).await.unwrap(), "one\ntw\u{FFFD}o\nlast");
+    }
+
+    /// Many commands at once. A pipe read the wrong way ended the whole program here on Windows.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 8)]
+    #[ignore = "takes minutes"]
+    async fn many_commands_at_once_do_not_end_the_program() {
+        let dir = std::env::temp_dir();
+        for round in 0..30 {
+            let mut runs = Vec::new();
+            for _ in 0..16 {
+                let dir = dir.clone();
+                runs.push(tokio::spawn(async move {
+                    SandboxTerminalRunner::execute("Start-Sleep -Milliseconds 400; echo out", &dir, SecurityMode::Inherit, None).await
+                }));
+            }
+            for run in runs {
+                let result = run.await.unwrap().unwrap();
+                assert_eq!(result.exit_code, 0);
+                assert!(result.stdout.contains("out"), "round {round}: {result:?}");
+            }
+        }
+    }
 
     #[tokio::test]
     async fn test_sandbox_runner_basic_echo() {
