@@ -944,7 +944,7 @@ pub(crate) fn stream_tokens_with_media(
                         if let Some(call) = parsed.as_ref().and_then(|p| p["tool_calls"].as_array()).and_then(|calls| calls.last()) {
                             cluaiz_core::live::set_call(call["name"].as_str().unwrap_or_default(), call["arguments"].as_str().unwrap_or_default());
                         }
-                        if let Some(delta) = parsed.as_ref().and_then(|p| p["content"].as_str()).and_then(|c| content_stream.delta(c)) {
+                        if let Some(delta) = parsed.as_ref().and_then(|p| p["content"].as_str()).and_then(|c| content_stream.delta(cluaiz_core::tool_calls::before_bare_call(c))) {
                             if !callback(delta) {
                                 report.stop = "cancel";
                                 break;
@@ -1056,10 +1056,16 @@ pub(crate) fn stream_tokens_with_media(
                 match parser.parse(&generated, false) {
                     Ok(parsed) => {
                         let content = parsed["content"].as_str().unwrap_or_default();
-                        if let Some(delta) = content_stream.delta(content) {
+                        let calls = parsed["tool_calls"].as_array().cloned().unwrap_or_default();
+                        let bare = calls.is_empty().then(|| cluaiz_core::tool_calls::call_without_open(content)).flatten();
+                        let text = bare.as_ref().map_or(content, |(before, _, _)| before.as_str());
+                        if let Some(delta) = content_stream.delta(text) {
                             let _ = callback(delta);
                         }
-                        let calls = parsed["tool_calls"].as_array().cloned().unwrap_or_default();
+                        if let Some((_, name, arguments)) = &bare {
+                            info!("🧰 [NativeTools] A call without its opening tag: {name}");
+                            let _ = callback(format!("\n{}", cluaiz_core::tool_calls::canonical_call(name, arguments)));
+                        }
                         for call in &calls {
                             let name = call["name"].as_str().unwrap_or_default();
                             let block = cluaiz_core::tool_calls::canonical_call(name, call["arguments"].as_str().unwrap_or("{}"));
