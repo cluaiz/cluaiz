@@ -11,7 +11,7 @@ project's `.agents/` files.
 | [`installer/`](src/installer/) | Download, install and remove tool packages |
 | [`tool_search.rs`](src/tool_search.rs) | Matches a message to the installed tools (whole words) and builds the short tool cards; `load_tool`, `unload_tool`, `find_tools` |
 | [`skills/`](src/skills/) | Parses `SKILL.md` and keeps each enabled skill's instructions |
-| [`plugins/`](src/plugins/) | Plugin manifest and executor. A plugin runs as a normal child process; there is no sandbox |
+| [`plugins/`](src/plugins/) | Plugin manifest and executor. A `.wasm` plugin runs inside the Engine, closed in; any other runs as a normal child process |
 | [`mcp/`](src/mcp/) | MCP client over stdio (JSON-RPC 2.0), server start and restart |
 | [`execution/`](src/execution/) | Command execution policy (destructive commands are always refused) |
 | [`lifecycle/`](src/lifecycle/) | Which tools are loaded in a chat, and when they are unloaded |

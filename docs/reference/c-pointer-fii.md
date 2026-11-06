@@ -86,4 +86,4 @@ memory; p95 0.11 ms per call.
 
 Installed plugins are not loaded into the Engine's memory. A plugin runs as a separate child
 process: the payload is passed as an argument and its stdout is the result
-(`agents/src/plugins/executor.rs`). There is no sandbox around it.
+(`agents/src/plugins/executor.rs`), with your user's rights. Only a `.wasm` plugin is closed in (`agents/src/plugins/wasm.rs`).

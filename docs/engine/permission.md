@@ -35,7 +35,7 @@ them as not working:
 
 | Field | Default | Why it does nothing |
 |---|---|---|
-| `wasm_firewall` | `auto` | There is no WASM sandbox. A plugin runs as a normal child process (`agents/src/plugins/executor.rs`) |
+| `wasm_firewall` | `auto` | Not read. A `.wasm` plugin always runs closed in, with limits (`agents/src/plugins/wasm.rs`); any other plugin runs as a normal child process (`agents/src/plugins/executor.rs`) |
 | `vectorize_user_input` | `true` | Messages are not vectorized. Notes use the policy `notes_match` instead |
 | `vectorize_ai_response` | `true` | Answers are not vectorized |
 | `enable_kvcache` | `true` | Saving a chat's KV cache is controlled by `settings.json` → `chat_memory.enabled` |

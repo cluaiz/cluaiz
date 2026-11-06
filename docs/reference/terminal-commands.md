@@ -118,8 +118,9 @@ Skills, plugins and MCP servers share one command shape. Aliases: `i` (install),
 | `cluaiz skill\|plugin\|mcp config <name>` | View or change a tool's settings | `tools.get_settings`, `tools.set_settings` |
 
 * **Skills** are instructions (`SKILL.md`) the model loads when it needs them.
-* **Plugins** are programs. A plugin runs as a normal child process with your user's rights;
-  there is no sandbox, so install only plugins you trust.
+* **Plugins** are programs. A WebAssembly (`.wasm`) plugin runs inside the Engine and reaches only
+  the time and the OS name. Any other plugin runs as a normal child process with your user's
+  rights, so install only plugins you trust.
 * **MCP servers** run over stdio and are started only when the model loads them.
 
 ---
