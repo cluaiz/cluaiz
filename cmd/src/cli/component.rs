@@ -64,6 +64,7 @@ async fn install_component(component_type: &str, component_name: &str) -> Result
 
     println!("  {} Resolving package metadata from Cluaiz Tools...", "🔍".cyan());
     
+    let mut install_failed = false;
     match ToolsInstaller::install_component(component_type, component_name).await {
         Ok(_) => {
             let tool_id = component_name.split('@').next().unwrap_or(component_name);
@@ -100,8 +101,12 @@ async fn install_component(component_type: &str, component_name: &str) -> Result
             println!("┃ {}                                              ", "❌ INSTALLATION FAILED".bold().red());
             println!("┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫");
             println!("┃ ⚠️  Reason: {}", e.to_string().yellow());
+            install_failed = true;
             println!("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛\n");
         }
+    }
+    if install_failed {
+        std::process::exit(1);
     }
     Ok(())
 }
@@ -110,6 +115,7 @@ async fn remove_component(component_type: &str, component_name: &str) -> Result<
     println!("  {} [Cluaiz {}] Removing: {}", "🗑️".cyan(), component_type.to_uppercase(), component_name.bold());
     if let Err(e) = ToolsInstaller::remove_component(component_type, component_name).await {
         println!("  {} Error removing {}: {}", "❌".red(), component_type, e);
+        std::process::exit(1);
     } else {
         println!("  {} Successfully removed {} '{}' from tools_registry.json", "✅".green(), component_type, component_name.bold());
     }
@@ -117,7 +123,7 @@ async fn remove_component(component_type: &str, component_name: &str) -> Result<
 }
 
 async fn list_components(component_type: &str) -> Result<()> {
-    println!("\n  {} [Cluaiz Tools] Installed Sovereign {}:", "📦".cyan(), component_type.to_uppercase());
+    println!("\n  {} [Cluaiz Tools] Installed {}:", "📦".cyan(), component_type.to_uppercase());
     if let Ok(reg) = ToolsEngine::registry() {
         let tools: Vec<_> = reg.installed_tools.values().filter(|t| t.category == component_type).collect();
         if tools.is_empty() {
