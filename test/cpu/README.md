@@ -44,8 +44,8 @@ Every step prints its number and the time so far. Keep the PC awake and avoid ot
    turn in the same chat and how much of the KV cache it reused, the default thinking mode, streaming.
 6. Installs the `math`, `time`, `sysinfo` and `text` plugins and a skill, and calls each plugin.
 7. Text to speech (Kokoro), speech to text of that audio (Moonshine), embeddings (MiniLM), a text document.
-8. The coding agent, on Qwen and each Bonsai model: reads a file, `--continue`, runs a command, a slow command that must not crash it, a change
-   nobody can approve, a plugin.
+8. The coding agent: reads a file, `--continue`, runs a command, a slow command that must not crash it, a change
+   nobody can approve, a plugin. Each Bonsai model also reads a file.
 9. A chat of 12 turns on the smallest model.
 10. Writes the results.
 
