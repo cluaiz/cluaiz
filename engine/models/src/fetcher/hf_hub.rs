@@ -268,12 +268,12 @@ impl HuggingFaceHub {
         Ok(items)
     }
 
-    /// List all supported model variants (GGUF, ONNX) grouped into cohesive bundles with multi-shard support
-    pub async fn list_variants(repo_id: &str) -> Result<Vec<HfVariant>, String> {
-        let items = Self::list_raw_tree(repo_id).await?;
-
-        let metadata_files: Vec<String> = items
+    /// The small files that go with every variant of a repository
+    fn companion_files(items: &[HfTreeItem]) -> Vec<String> {
+        items
             .iter()
+            // The tree also lists folders (`voices/!v`); those are not files to download
+            .filter(|item| item.r#type.as_deref() != Some("directory"))
             .filter_map(|item| {
                 let path = &item.path;
                 let lower = path.to_lowercase();
@@ -295,7 +295,14 @@ impl HuggingFaceHub {
                     None
                 }
             })
-            .collect();
+            .collect()
+    }
+
+    /// List all supported model variants (GGUF, ONNX) grouped into cohesive bundles with multi-shard support
+    pub async fn list_variants(repo_id: &str) -> Result<Vec<HfVariant>, String> {
+        let items = Self::list_raw_tree(repo_id).await?;
+
+        let metadata_files = Self::companion_files(&items);
 
         let mut variants = Vec::new();
 
@@ -616,6 +623,13 @@ impl HuggingFaceHub {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_folder_is_not_a_companion_file() {
+        let item = |kind: &str, path: &str| HfTreeItem { r#type: Some(kind.to_string()), path: path.to_string(), size: None };
+        let items = [item("directory", "espeak-ng-data/voices/!v"), item("file", "espeak-ng-data/voices/!v/Alex"), item("file", "tokens.txt")];
+        assert_eq!(HuggingFaceHub::companion_files(&items), ["espeak-ng-data/voices/!v/Alex", "tokens.txt"]);
+    }
 
     #[test]
     fn test_bundle_onnx_variants_pairs_moonshine_encoder_and_decoders_by_quant() {
