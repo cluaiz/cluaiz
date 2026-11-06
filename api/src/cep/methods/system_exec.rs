@@ -45,7 +45,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             let mut process = match (p.program.as_deref().map(str::trim), p.command.as_deref().map(str::trim)) {
                 (Some(program), None) if !program.is_empty() => {
                     check_length(program.len() + p.args.iter().map(String::len).sum::<usize>())?;
-                    let mut process = tokio::process::Command::new(program);
+                    let mut process = std::process::Command::new(program);
                     process.args(&p.args);
                     process
                 }
@@ -62,9 +62,10 @@ pub fn register(registry: &mut Registry<CallCtx>) {
                 let target = p.program.as_deref().map(|program| [program].into_iter().chain(p.args.iter().map(String::as_str)).collect::<Vec<_>>().join(" "));
                 call.require_approval(&target.or(p.command).unwrap_or_default())?;
             }
-            let output = process
-                .output()
+            // On its own thread: tokio's child pipes can end the whole program on Windows
+            let output = tokio::task::spawn_blocking(move || process.output())
                 .await
+                .map_err(|e| CepError::unavailable("process_failed", format!("Could not start the program: {e}")))?
                 .map_err(|e| CepError::unavailable("process_failed", format!("Could not start the program: {e}")))?;
             Ok(json!({
                 "exit_code": output.status.code(),
@@ -75,12 +76,12 @@ pub fn register(registry: &mut Registry<CallCtx>) {
     );
 }
 
-fn shell(line: &str) -> tokio::process::Command {
+fn shell(line: &str) -> std::process::Command {
     #[cfg(target_os = "windows")]
     let (shell, flag) = ("cmd", "/C");
     #[cfg(not(target_os = "windows"))]
     let (shell, flag) = ("sh", "-c");
-    let mut process = tokio::process::Command::new(shell);
+    let mut process = std::process::Command::new(shell);
     process.args([flag, line]);
     process
 }
