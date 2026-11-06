@@ -28,6 +28,6 @@ The full map is in [ARCHITECTURE.md](../../ARCHITECTURE.md).
   `CLUAIZ_HOME`). See the [install layout](../deployments/install-layout.md).
 * Documents are read and chunked in memory by `/v1/ingest`; there is no vector database.
 * Telemetry in chat responses (`stream_telemetry`) is off by default.
-* Plugins run as normal child processes with your user's rights. There is no sandbox, so install
+* WebAssembly plugins run closed in, with memory and instruction limits. Other plugins run as normal child processes with your user's rights, so install
   only plugins you trust. MCP servers and tools ask for approval according to the
   `agent_security_mode` in [permission.json](../engine/permission.md).

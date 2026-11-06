@@ -107,7 +107,7 @@ cluaiz token remove 7898
 | `cluaiz mcp start <id>` | | Start an MCP server or extension in the background |
 | `cluaiz plugin link …` | | Link a plugin to a skill |
 
-A plugin runs as a normal child process with your user's rights; there is no sandbox.
+A WebAssembly (`.wasm`) plugin runs inside the Engine and reaches only the time and the OS name. Any other plugin runs as a normal child process with your user's rights.
 
 ```bash
 cluaiz plugin install cluaiz-search
