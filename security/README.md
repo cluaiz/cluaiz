@@ -1,20 +1,12 @@
-# 🛡️ Cluaiz Security Subsystem (`security/`)
+# Permission settings and audit log (`security/`)
 
-Unified Permission Engine and Execution Guards.
-
-## 📐 Architecture
-
-```mermaid
-graph TD
-    Op[Agent / Plugin Operation] --> Guard[guard::GuardEngine]
-    Guard --> Schema[permission_schema::PermissionSchema]
-    Guard --> Audit[audit::SecurityAuditLog]
-```
-
-## 📦 Components
+This crate holds data, not enforcement. The checks run where a call is made: CEP scopes and approvals in
+[`cep/`](../cep/), the bearer token in [`api/src/auth.rs`](../api/src/auth.rs), the agent's rules in
+[`cmd/src/agent/rules.rs`](../cmd/src/agent/rules.rs).
 
 | Module | Responsibility |
 |---|---|
-| [`permission_schema.rs`](src/permission_schema.rs) | Formal specification of permitted resources, paths, and actions. |
-| [`guard.rs`](src/guard.rs) | Runtime interceptor enforcing permissions before tool execution. |
-| [`audit.rs`](src/audit.rs) | Tamper-evident logging of security-sensitive operations. |
+| [`permission_schema.rs`](src/permission_schema.rs) | `permission.json`: its fields, defaults, reading and saving |
+| [`audit.rs`](src/audit.rs) | The log of security-relevant calls |
+
+The settings are described in [docs/engine/permission.md](../docs/engine/permission.md).

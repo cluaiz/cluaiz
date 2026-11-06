@@ -1,5 +1,7 @@
 # C Library and FFI Memory Rules
 
+The release packages do not include this library yet: build it with `cargo build --release -p cluaiz-ffi`.
+
 The Engine can run inside another program as a C library: `cluaiz_cep.dll` (Windows),
 `libcluaiz_cep.so` (Linux), `libcluaiz_cep.dylib` (macOS). The header is
 [`ffi/include/cep.h`](../../ffi/include/cep.h), the code [`ffi/src/lib.rs`](../../ffi/src/lib.rs).
