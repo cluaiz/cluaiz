@@ -1,4 +1,8 @@
 fn main() {
+    // The icon is outside this package: without this line a new icon needs a clean build
+    println!("cargo:rerun-if-changed=../assets/logo.ico");
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-changed=Cargo.toml");
     #[cfg(windows)]
     {
         let mut res = winres::WindowsResource::new();
@@ -6,11 +10,11 @@ fn main() {
         res.set("FileDescription", "cluaiz");
         res.set("ProductName", "cluaiz");
         res.set("OriginalFilename", "cluaiz.exe");
-        res.set("LegalCopyright", "Copyright © 2026 Cluaiz Technologies");
-        res.set("CompanyName", "Cluaiz Technologies");
-        // Alpha Version Alignment Lock
-        res.set("FileVersion", "0.0.1.0");
-        res.set("ProductVersion", "0.0.1.0");
+        res.set("LegalCopyright", "Copyright © 2026 Cluaiz");
+        res.set("CompanyName", "Cluaiz");
+        let version = format!("{}.0", env!("CARGO_PKG_VERSION"));
+        res.set("FileVersion", &version);
+        res.set("ProductVersion", &version);
 
         res.set_manifest(
             r#"
