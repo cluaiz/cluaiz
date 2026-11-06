@@ -53,6 +53,8 @@ impl ToolsInstaller {
         let mut download_url = String::new();
         let mut binary_download_url = String::new();
         let mut target_version = String::new();
+        // The package manifest and where it was read from
+        let mut package: Option<(serde_json::Value, String)> = None;
 
         if let Some(registry_url) = registry_url_opt {
             let base_url = if registry_url.ends_with("/registry.json") {
@@ -80,7 +82,7 @@ impl ToolsInstaller {
                                     if family_resp.status().is_success() {
                                         if let Ok(family_json) = family_resp.json::<serde_json::Value>().await {
                                             if let Some(items) = family_json.get("items").and_then(|i| i.as_object()) {
-                                                if let Some(package_path) = items.get(&component_id).and_then(|p| p.as_str()) {
+                                                if let Some(package_path) = items.get(&component_id).and_then(|p| p.as_str().or_else(|| p.get("path").and_then(|p| p.as_str()))) {
                                                     let category_folder = family_path.split('/').next().unwrap_or(component_type);
                                                     let full_package_url = format!("{}/{}/{}", base_url, category_folder, package_path);
 
@@ -106,6 +108,7 @@ impl ToolsInstaller {
                                                                     data.get("latest_version").and_then(|v| v.as_str()).unwrap_or("0.1.0").to_string()
                                                                 });
                                                                 target_version = ver.clone();
+                                                                package = Some((data.clone(), full_package_url.clone()));
 
                                                                 if let Some(versions) = data.get("versions").and_then(|v| v.as_object()) {
                                                                     if let Some(v_data) = versions.get(&ver).and_then(|v| v.as_object()) {
@@ -199,16 +202,28 @@ impl ToolsInstaller {
         let resp = client.get(&download_url).send().await
             .map_err(|e| anyhow::anyhow!("Network request failed for '{}': {}", download_url, e))?;
 
-        if !resp.status().is_success() {
-            return Err(anyhow::anyhow!(
-                "Failed to download component bundle from '{}'. HTTP Status: {}",
-                download_url,
-                resp.status()
-            ));
-        }
-
-        let bytes = resp.bytes().await
-            .map_err(|e| anyhow::anyhow!("Failed to read downloaded bytes: {}", e))?;
+        // A skill or MCP server without a release is its manifest and the files that lists. A
+        // plugin has a built program, which only a release can provide.
+        let repo_files = match &package {
+            Some((manifest, url)) if resp.status() == reqwest::StatusCode::NOT_FOUND && component_type != "plugin" => {
+                Some(Self::fetch_repo_files(&client, manifest, url, &target_version).await?)
+            }
+            _ => None,
+        };
+        let bytes = if repo_files.is_some() {
+            Vec::new()
+        } else {
+            if !resp.status().is_success() {
+                return Err(anyhow::anyhow!(
+                    "Failed to download component bundle from '{}'. HTTP Status: {}",
+                    download_url,
+                    resp.status()
+                ));
+            }
+            resp.bytes().await
+                .map_err(|e| anyhow::anyhow!("Failed to read downloaded bytes: {}", e))?
+                .to_vec()
+        };
 
         // 2. Download the pre-compiled native binary. A binary declared in the package
         //    manifest is required; the conventional release URL is only a best-effort guess.
@@ -241,7 +256,19 @@ impl ToolsInstaller {
         let staging_dir = staging_root.join(&stamp);
         let backup_dir = staging_root.join(format!("{}-previous", stamp));
 
-        let staged = Self::unpack_bundle(&bytes, binary_bytes.as_deref(), &component_id, &staging_dir)
+        let staged = match &repo_files {
+            Some(files) => Self::write_files(files, &staging_dir),
+            None => Self::unpack_bundle(&bytes, binary_bytes.as_deref(), &component_id, &staging_dir),
+        }
+            .and_then(|_| {
+                if component_type == "plugin" && !Self::has_program(&staging_dir, package.as_ref().map(|(manifest, _)| manifest)) {
+                    return Err(anyhow::anyhow!(
+                        "Plugin '{}' has no program this Engine can run (a WebAssembly or library build is not one). Nothing was installed.",
+                        component_id
+                    ));
+                }
+                Ok(())
+            })
             .and_then(|_| Self::swap_into_place(&staging_dir, &component_dir, &backup_dir));
         if let Err(e) = staged {
             if staging_dir.exists() {
@@ -269,6 +296,75 @@ impl ToolsInstaller {
         }
 
         tracing::info!("✅ [ToolsEngine] Successfully installed {} '{}'", component_type, component_id);
+        Ok(())
+    }
+
+    /// A plugin runs as a child process: its manifest names how, or its folder holds a program
+    fn has_program(folder: &Path, manifest: Option<&serde_json::Value>) -> bool {
+        if manifest.is_some_and(|manifest| manifest.get("execution").is_some_and(|run| !run.is_null())) {
+            return true;
+        }
+        std::fs::read_dir(folder).is_ok_and(|entries| {
+            entries.flatten().any(|entry| {
+                entry.path().extension().is_some_and(|ext| ["exe", "so", "py", "js"].iter().any(|program| ext.eq_ignore_ascii_case(program)))
+            })
+        })
+    }
+
+    /// The paths a package version lists under `files` (names or lists of names), once each
+    fn listed_files(manifest: &serde_json::Value, version: &str) -> Vec<String> {
+        fn walk(value: &serde_json::Value, found: &mut Vec<String>) {
+            match value {
+                serde_json::Value::String(path) if !found.contains(path) => found.push(path.clone()),
+                serde_json::Value::Array(items) => items.iter().for_each(|item| walk(item, found)),
+                serde_json::Value::Object(items) => items.values().for_each(|item| walk(item, found)),
+                _ => {}
+            }
+        }
+        let mut found = Vec::new();
+        walk(&manifest["versions"][version]["files"], &mut found);
+        found
+    }
+
+    /// A path inside the package: no root, no drive, no `..`
+    fn stays_inside(path: &str) -> bool {
+        !path.is_empty() && Path::new(path).components().all(|part| matches!(part, Component::Normal(_)))
+    }
+
+    /// A package read from the registry's folder: its manifest and every file it lists
+    async fn fetch_repo_files(
+        client: &reqwest::Client,
+        manifest: &serde_json::Value,
+        package_url: &str,
+        version: &str,
+    ) -> Result<Vec<(String, Vec<u8>)>> {
+        let folder = package_url.rsplit_once('/').map_or(package_url, |(folder, _)| folder);
+        let mut files = vec![("package.json".to_owned(), serde_json::to_vec_pretty(manifest)?)];
+        for path in Self::listed_files(manifest, version) {
+            if !Self::stays_inside(&path) {
+                return Err(anyhow::anyhow!("The package lists a file outside its folder: '{}'", path));
+            }
+            let url = format!("{}/{}", folder, path);
+            let resp = client.get(&url).send().await
+                .map_err(|e| anyhow::anyhow!("Network request failed for '{}': {}", url, e))?;
+            if !resp.status().is_success() {
+                return Err(anyhow::anyhow!("Failed to download '{}'. HTTP Status: {}", url, resp.status()));
+            }
+            let bytes = resp.bytes().await
+                .map_err(|e| anyhow::anyhow!("Failed to read '{}': {}", url, e))?;
+            files.push((path, bytes.to_vec()));
+        }
+        Ok(files)
+    }
+
+    fn write_files(files: &[(String, Vec<u8>)], target_dir: &Path) -> Result<()> {
+        for (path, bytes) in files {
+            let file = target_dir.join(path);
+            if let Some(parent) = file.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+            std::fs::write(file, bytes)?;
+        }
         Ok(())
     }
 
@@ -472,5 +568,37 @@ impl ToolsInstaller {
         }
 
         Some("https://raw.githubusercontent.com/cluaiz/cluaiz-tools/main/registry.json".to_string())
+    }
+}
+
+#[cfg(test)]
+mod package_file_tests {
+    use super::ToolsInstaller;
+    use serde_json::json;
+
+    #[test]
+    fn a_plugin_needs_a_program() {
+        let dir = std::env::temp_dir().join(format!("cluaiz-plugin-program-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("SKILL.md"), "x").unwrap();
+        std::fs::write(dir.join("logic.wasm"), "x").unwrap();
+        assert!(!ToolsInstaller::has_program(&dir, Some(&json!({"build_type": "wasm"}))));
+        assert!(ToolsInstaller::has_program(&dir, Some(&json!({"execution": {"command": "node"}}))));
+        std::fs::write(dir.join("run.py"), "x").unwrap();
+        assert!(ToolsInstaller::has_program(&dir, None));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn listed_files_are_found_once_and_stay_inside() {
+        let manifest = json!({"versions": {"1.0.0": {"updated_at": "x", "files": {"skill": "SKILL.md", "icon": "a/i.svg", "assets": ["a/i.svg", "a/r.md"]}}, "2.0.0": {"files": {}}}});
+        let mut got = ToolsInstaller::listed_files(&manifest, "1.0.0");
+        got.sort();
+        assert_eq!(got, ["SKILL.md", "a/i.svg", "a/r.md"]);
+        assert!(ToolsInstaller::listed_files(&manifest, "2.0.0").is_empty());
+        assert!(ToolsInstaller::stays_inside("a/r.md"));
+        assert!(!ToolsInstaller::stays_inside("../x"));
+        assert!(!ToolsInstaller::stays_inside("/etc/x"));
+        assert!(!ToolsInstaller::stays_inside(""));
     }
 }
