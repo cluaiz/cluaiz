@@ -18,7 +18,7 @@ store and the project's `.agents/` workspace files live in this crate.
 | **Registry** | [`registry/`](./registry/) | Manages `tools_registry.json` (kept in RAM; JSON only, no `.bin` cache). Auto-probes `~/.cluaiz/tools/`. |
 | **Installer** | [`installer/`](./installer/) | Downloads, caches, installs, and uninstalls packages from Cluaiz Tools. |
 | **Workspace** | [`workspace/`](./workspace/) | A project's agent files: `AGENTS.md` (home, `.agents/`, folder files), and `rules/`, `workflows/`, `skills/` of each `.agents/` (or `.agent/`) folder up to the repository root and `~/.agents/`, with name, description and rule trigger, and the project's memory (`.agents/memory/*.md`, facts saved with `remember` after the user confirms; a newer fact on the same subject supersedes the older, both kept). One index, built from the files each time; `matching.rs` finds the items that fit a message (the `tool_search` matcher) or a file (glob rules). Used by the terminal agent and by the API chat (`project_files`). |
-| **Skills** | [`skills/`](./skills/) | Parses `SKILL.md` front matter; `SkillRouter` matches the registry's trigger words as whole words. |
+| **Skills** | [`skills/`](./skills/) | Parses `SKILL.md` front matter and keeps each enabled skill's instructions |
 | **Plugins** | [`plugins/`](./plugins/) | Parses `package.json` and runs the plugin as a normal child process. There is no sandbox (no WASM, no OS isolation). |
 | **MCP** | [`mcp/`](./mcp/) | Parses `package.json` and handles JSON-RPC 2.0 subprocess communication over stdio. |
 | **Lifecycle** | [`lifecycle/`](./lifecycle/) | Tracks session-bound active tools, turn countdowns (`-1`, `0`, `N`), and auto-unloading. |

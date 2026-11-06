@@ -5,7 +5,7 @@ use cluaiz_core::EnvironmentManager;
 use crate::tools::lifecycle::SessionToolManager;
 use crate::tools::mcp::McpClient;
 use crate::tools::registry::ToolsRegistry;
-use crate::tools::skills::SkillRouter;
+use crate::tools::skills::SkillInstructions;
 
 /// Target resolution information for routing a function call emitted by an LLM
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -110,7 +110,7 @@ impl ToolPromptCompiler {
 
         let registry = ToolsRegistry::load().ok();
         let env = EnvironmentManager::current();
-        let skill_router = SkillRouter::shared();
+        let skills = SkillInstructions::shared();
 
         let mut skill_instructions_vec = Vec::new();
         let mut function_schemas: Vec<Value> = Vec::new();
@@ -149,7 +149,7 @@ impl ToolPromptCompiler {
             match category.as_str() {
                 "skill" => {
                     // Skill: Pure Markdown Prompt Instruction
-                    if let Some(instructions) = skill_router.get_instructions(normalized_id) {
+                    if let Some(instructions) = skills.get(normalized_id) {
                         skill_instructions_vec.push(instructions.to_string());
                     } else {
                         let skill_file = local_dir.join("SKILL.md");

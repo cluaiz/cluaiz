@@ -30,7 +30,7 @@ pub use mcp::{McpClient, McpManifest};
 pub use plugins::{PluginExecutor, PluginManifest};
 pub use prompt_compiler::{CompiledPromptTools, ResolvedToolTarget, ToolPromptCompiler};
 pub use registry::{ExecutionMode, LoadStrategy, SecurityMode, ToolCategory, ToolEntry, ToolsRegistry};
-pub use skills::{ParsedSkill, SkillParser, SkillRouter};
+pub use skills::{ParsedSkill, SkillInstructions, SkillParser};
 pub use telemetry::{ContextBreakdown, ContextTracker, SystemContextTelemetry};
 pub use tool_search::{Candidate, CatalogEntry, Level as ToolLevel, LoadResult, ToolSearch, FIND_TOOLS_NAME, LOAD_TOOL_NAME, READ_TOOL_FILE_NAME, TOOL_SEARCH_NAME, UNLOAD_TOOL_NAME};
 
@@ -140,16 +140,9 @@ impl ToolsEngine {
         ContextTracker::compute_telemetry(active_model_id, session_id, active_tool_ids, prompt_len, history_len, system_prompt_len, generated_tokens)
     }
 
-    /// Matches user query against skill keyword triggers
-    pub fn match_skills(query: &str) -> Vec<String> {
-        let router = SkillRouter::shared();
-        router.match_query(query)
-    }
-
     /// Retrieves instructions for a skill to inject into LLM system prompt
     pub fn get_skill_instructions(skill_id: &str) -> Option<String> {
-        let router = SkillRouter::shared();
-        router.get_instructions(skill_id).map(|s| s.to_string())
+        SkillInstructions::shared().get(skill_id).map(|s| s.to_string())
     }
 
     /// Runs a plugin (a normal child process, no sandbox) by path

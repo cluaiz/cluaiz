@@ -1,5 +1,5 @@
 pub mod parser;
-pub mod router;
+pub mod instructions;
 
 pub use parser::{ParsedSkill, SkillMetadata, SkillParser};
-pub use router::SkillRouter;
+pub use instructions::SkillInstructions;
