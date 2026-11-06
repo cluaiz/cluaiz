@@ -347,7 +347,7 @@ try {
     Result 'agent' '--continue remembers' $(if ($ev.answer -match 'calc') { 'PASS' } elseif ($r.code -eq 0) { 'WARN' } else { 'FAIL' }) "exit $($r.code), $($r.seconds) s: $(Short $ev.answer 90)"
     $r = Run 'agent_command' ($base + @('--yes', '-p', 'Use run_command to run: hostname. Then say DONE.')) 900
     $ev = Agent-Events $r.out
-    Result 'agent' 'runs a command' $(if ($r.code -eq $Crash) { 'FAIL' } elseif ($ev.oks -match 'True') { 'PASS' } else { 'WARN' }) "exit $($r.code), $($r.seconds) s, tools $($ev.calls)"
+    Result 'agent' 'runs a command' $(if ($r.code -eq $Crash) { 'FAIL' } elseif ($ev.calls -match 'run_command' -and $ev.oks -match 'True') { 'PASS' } else { 'WARN' }) "exit $($r.code), $($r.seconds) s, tools $($ev.calls)"
     $r = Run 'agent_network' ($base + @('--yes', '-p', 'Use run_command with curl.exe -s https://example.com and say the page title.')) 900
     $ev = Agent-Events $r.out
     Result 'agent' 'a slow command does not crash' $(if ($r.code -eq $Crash) { 'FAIL' } else { 'PASS' }) "exit $($r.code), $($r.seconds) s, tools $($ev.calls)"
@@ -356,6 +356,13 @@ try {
     $r = Run 'agent_plugin' ($base + @('--yes', '-p', 'What is 17 * 23? Use the math tool.')) 900
     $ev = Agent-Events $r.out
     Result 'agent' 'uses a plugin' $(if ($ev.calls -match 'math') { 'PASS' } elseif ($ev.answer -match '391') { 'WARN' } else { 'FAIL' }) "exit $($r.code), tools $($ev.calls): $(Short $ev.answer 70)"
+
+    # Each Bonsai model too: a call written as text and never run is a failure of the Engine, not of the model
+    foreach ($bonsai in @($tested | Where-Object { $_ -match '(?i)bonsai' })) {
+        $r = Run ('agent_read_' + (Safe $bonsai)) @('agent', '--model', $bonsai, '--output-format', 'stream-json', '-p', 'Read calc.py and say in one line what it prints.') 900
+        $ev = Agent-Events $r.out
+        Result 'agent' "$bonsai reads a file" $(if ($ev.answer -match 'tool_call') { 'FAIL' } elseif ($ev.answer -match '42') { 'PASS' } else { 'WARN' }) "exit $($r.code), $($r.seconds) s, tools $($ev.calls): $(Short $ev.answer 90)"
+    }
 
     # ------ 9. A long chat ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     Step 'a long chat: the context fills up'
