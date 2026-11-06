@@ -152,7 +152,8 @@ everything committed). `/ask` turns the questions back on.
 
 **No terminal, no questions.** When the agent cannot ask you (its input is piped from a file or
 another program), a call that needs asking is refused and the model is told so, unless you passed
-`--yes`.
+`--yes`. Installed tools (skills, plugins, MCP) that nothing could approve in such a run are not
+offered to the model at all; `--yes` or an `--allowed-tools` rule that names one offers it again.
 
 Commands that run without asking get an environment with secret variables (API keys, tokens)
 removed. Commands you allowed run with your normal environment.

@@ -201,6 +201,11 @@ impl Rules {
         lines.join("\n")
     }
 
+    /// An allow rule exists for this tool, with or without a pattern
+    pub fn names(&self, tool: &str) -> bool {
+        self.allowed.iter().any(|rule| rule.tool == tool)
+    }
+
     /// What the rules of a call match: a command as the model wrote it (without the `in <folder>`
     /// line the approval adds), the file of a change relative to the working folder, else the first
     /// line of the approval text
@@ -411,6 +416,16 @@ fn glob(pattern: &str, text: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_allow_rule_names_its_tool() {
+        let mut rules = Rules::new(std::path::Path::new("C:\\w"));
+        rules.add_flags("--allowed-tools", &["mcp:files,plugin:calc(1*)".into()], &["mcp:web".into()]);
+        assert!(rules.names("mcp:files"));
+        assert!(rules.names("plugin:calc"));
+        assert!(!rules.names("mcp:web"));
+        assert!(!rules.names("mcp:other"));
+    }
 
     #[test]
     fn rules_allow_deny_and_ask() {

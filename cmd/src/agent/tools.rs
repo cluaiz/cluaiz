@@ -139,13 +139,19 @@ impl Tools {
     /// together can be larger than the context. Tools run in the working folder.
     pub async fn load_installed(&mut self) {
         cluaiz_agents::ToolsEngine::set_workspace_dir(self.root.clone());
-        let ids: Vec<String> = cluaiz_agents::ToolsEngine::list_all_tools()
+        let (ids, waiting): (Vec<_>, Vec<_>) = cluaiz_agents::ToolsEngine::list_all_tools()
             .unwrap_or_default()
             .into_iter()
             .filter(|tool| tool.enabled)
-            .map(|tool| tool.id)
-            .collect();
+            .partition(|tool| self.can_be_allowed(&format!("{}:{}", tool.category, tool.id)));
+        let ids: Vec<String> = ids.into_iter().map(|tool| tool.id).collect();
         self.workspace = super::instructions::scan(&self.root);
+        if !waiting.is_empty() {
+            self.display.emit(Event::Message(
+                "Tools".into(),
+                format!("{} installed tool(s) not offered: nobody can approve them in this run (--yes or --allowed-tools offers them)", waiting.len()),
+            ));
+        }
         if ids.is_empty() {
             return;
         }
@@ -164,6 +170,18 @@ impl Tools {
             })
             .collect();
         self.installed = compiled.active_tool_ids;
+    }
+
+    /// False for an installed tool that would only be refused: no terminal to ask in, no `--yes`,
+    /// and no allow rule for it. It is not started (an MCP server can take a minute to start)
+    /// and not offered: a model that sees it picks it over `read_file`, is refused, and has lost
+    /// a step of the run. Skills are read, not run, and stay.
+    fn can_be_allowed(&self, tool: &str) -> bool {
+        tool.starts_with("skill:")
+            || self.allow_all
+            || self.display.screen_enabled()
+            || std::io::stdin().is_terminal()
+            || self.rules.names(tool)
     }
 
     /// The project's agent files read again (after /init wrote one)
