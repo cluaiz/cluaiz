@@ -37,6 +37,8 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  # The Mac build runs on macOS 15; the program keeps running on macOS 14
+  MACOSX_DEPLOYMENT_TARGET: "14.0"
   VERSION: ${{ inputs.version }}
   # Compiled into the Engine (cluaiz_core::VERSION): `cluaiz --version`, system.info and the update
   # check report the release's version (the version job checks it equals Cargo.toml)
@@ -87,7 +89,7 @@ jobs:
           - { name: win-x64,     os: windows-2022,     experimental: false, features: "" }
           - { name: linux-x64,   os: ubuntu-24.04,     experimental: false, features: "" }
           - { name: linux-arm64, os: ubuntu-24.04-arm, experimental: true,  features: "" }
-          - { name: mac-arm64,   os: macos-14,         experimental: true,  features: "metal" }
+          - { name: mac-arm64,   os: macos-15,         experimental: true,  features: "metal" }
     steps:
       - uses: actions/checkout@v4
         with:
