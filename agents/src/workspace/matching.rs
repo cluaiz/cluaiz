@@ -84,7 +84,11 @@ impl Workspace {
             return Vec::new();
         }
         let catalog: Vec<CatalogEntry> =
-            items.iter().map(|item| CatalogEntry::named(&item.name, item.kind.name(), &item.description, &[item.kind.name()])).collect();
+            items.iter().map(|item| {
+                let mut triggers: Vec<&str> = item.triggers.iter().map(String::as_str).collect();
+                triggers.push(item.kind.name());
+                CatalogEntry::named(&item.name, item.kind.name(), &item.description, &triggers)
+            }).collect();
         let mut found: Vec<&Item> = Vec::new();
         for candidate in ToolSearch::suggest(&catalog, message, previous) {
             if candidate.level != Level::Card {

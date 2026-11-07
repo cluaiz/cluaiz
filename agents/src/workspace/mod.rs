@@ -109,6 +109,8 @@ pub struct Item {
     pub globs: Vec<String>,
     /// Memory only: the fact that replaced this one (it is then no longer in the index)
     pub superseded_by: Option<String>,
+    /// Skills only: the `triggers` of the tool package the skill belongs to, for matching
+    pub triggers: Vec<String>,
 }
 
 impl Item {
@@ -298,7 +300,17 @@ fn read_item(kind: Kind, file: &Path, source: &str, problems: &mut Vec<String>) 
             problems.push(format!("{}: a model_decision rule needs a description; its first line is shown instead", file.display()));
         }
     }
-    Some(Item { kind, name, description, path: file.to_path_buf(), source: source.to_owned(), trigger, globs, superseded_by })
+    let triggers = if kind == Kind::Skill { package_triggers(file) } else { Vec::new() };
+    Some(Item { kind, name, description, path: file.to_path_buf(), source: source.to_owned(), trigger, globs, superseded_by, triggers })
+}
+
+/// The `triggers` in the `package.json` next to a skill file: a list, or `{"semantic": [...]}`
+fn package_triggers(file: &Path) -> Vec<String> {
+    let Some(text) = file.parent().and_then(|dir| std::fs::read_to_string(dir.join("package.json")).ok()) else { return Vec::new() };
+    let Ok(package) = serde_json::from_str::<serde_json::Value>(&text) else { return Vec::new() };
+    let triggers = package.get("triggers");
+    let list = triggers.and_then(|t| t.as_array()).or_else(|| triggers.and_then(|t| t.get("semantic")).and_then(|t| t.as_array()));
+    list.map(|list| list.iter().filter_map(|t| t.as_str()).map(str::to_owned).collect()).unwrap_or_default()
 }
 
 /// `---` YAML front matter (empty when there is none or it does not parse) and the text under it
