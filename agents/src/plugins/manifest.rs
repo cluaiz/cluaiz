@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -51,6 +52,12 @@ pub struct PluginPermissions {
     pub vram_kv_inject: bool,
     #[serde(default)]
     pub file_system: String,
+    /// A setting's name -> the one host its value may be sent to
+    #[serde(default)]
+    pub secrets: HashMap<String, String>,
+    /// Settings that hold an address the user chose, which alone may be local
+    #[serde(default)]
+    pub user_urls: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -96,6 +103,8 @@ impl PluginManifestParser {
         let mut exec = PluginExecution::default();
         exec.envelope = if btype == "binary" { "NATIVE".to_string() } else { "WASM".to_string() };
         manifest.execution = Some(exec);
+        // Permissions that cannot be read grant nothing
+        manifest.permissions = val.get("permissions").and_then(|p| serde_json::from_value(p.clone()).ok());
         Some(manifest)
     }
 }

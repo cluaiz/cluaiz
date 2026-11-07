@@ -1,5 +1,6 @@
 pub mod manifest;
 pub mod executor;
+pub mod net;
 pub mod wasm;
 
 pub use manifest::{PluginManifest, PluginManifestParser};
