@@ -91,6 +91,8 @@ pub struct Tools {
     left_out: Vec<String>,
     /// The functions have been chosen for a message
     chosen: bool,
+    /// Most characters of installed schemas for this model's context
+    schema_chars: usize,
     /// The project's agent files (AGENTS.md, rules, workflows, skills); the model reads one with read_item
     pub workspace: cluaiz_agents::workspace::Workspace,
     /// Files this request and the last one changed (for the summary, /undo and /diff)
@@ -108,7 +110,8 @@ pub struct Tools {
     pub sent: HashSet<String>,
 }
 
-/// Most characters of installed tool schemas sent with every request (a small context fills fast)
+/// Most characters of installed tool schemas sent with every request (a small context fills fast).
+/// A smaller context gets one character per token of it: about a quarter of the context.
 const INSTALLED_SCHEMA_CHARS: usize = 12_000;
 const BUILT_IN: &[&str] = &["read_file", "list_dir", "search", "write_file", "edit_file", "run_command"];
 
@@ -131,6 +134,7 @@ impl Tools {
             wanted: Vec::new(),
             left_out: Vec::new(),
             chosen: false,
+            schema_chars: INSTALLED_SCHEMA_CHARS,
             // Its files are read by load_installed; the root is known from the start (memory goes there)
             workspace: cluaiz_agents::workspace::Workspace {
                 root: project,
@@ -149,7 +153,8 @@ impl Tools {
     /// the project's agent files. Installed skills are lines of the workspace index, like the
     /// project's own: the model reads the one it needs with `read_item`, because their whole texts
     /// together can be larger than the context. Tools run in the working folder.
-    pub async fn load_installed(&mut self) {
+    pub async fn load_installed(&mut self, context_window: usize) {
+        self.schema_chars = INSTALLED_SCHEMA_CHARS.min(context_window.max(1));
         cluaiz_agents::ToolsEngine::set_workspace_dir(self.root.clone());
         let (ids, waiting): (Vec<_>, Vec<_>) = cluaiz_agents::ToolsEngine::list_all_tools()
             .unwrap_or_default()
@@ -193,7 +198,7 @@ impl Tools {
     }
 
     fn choose_installed(&mut self, message: &str) {
-        let (schemas, left_out) = self.compiled.schemas_for(INSTALLED_SCHEMA_CHARS, message, &self.wanted);
+        let (schemas, left_out) = self.compiled.schemas_for(self.schema_chars, message, &self.wanted);
         self.left_out = left_out;
         self.installed_schemas = schemas
             .into_iter()

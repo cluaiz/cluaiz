@@ -243,7 +243,7 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
     // This conversation's checkpoints, with those saved before it was closed
     agent.tools.checkpoints = checkpoints::Checkpoints::open(sessions::checkpoints_dir(agent.tools.root(), &agent.session_id));
     // The project's agent files, and the installed skills, plugins and MCP servers
-    agent.tools.load_installed().await;
+    agent.tools.load_installed(agent.session.plan.context_window as usize).await;
     agent.rebuild_system();
     if !screen_enabled {
         for problem in &agent.settings.problems {
