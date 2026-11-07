@@ -233,6 +233,7 @@ impl Tools {
         )
         .await
         .map_err(|error| format!("{error:#}"))?;
+        let output = if target.category == "mcp" { cluaiz_agents::ToolsEngine::mcp_text_for_model(&output) } else { output };
         Ok((format!("{what}: {} characters", output.len()), output))
     }
 
