@@ -52,6 +52,16 @@ fn entity_terms(text: &str) -> Vec<String> {
     let has_file = text.split_whitespace().any(is_file_token);
     if has_file && !text.contains("://") {
         out.push("file".to_string());
+        // The kind of file ("report.pdf" → "pdf"), which a tool for that kind lists as a trigger
+        for token in text.split_whitespace().filter(|token| is_file_token(token) && !is_link_token(token)) {
+            let token = token.trim_matches(|c: char| !c.is_alphanumeric());
+            if let Some((_, extension)) = token.rsplit_once('.') {
+                let extension = extension.to_ascii_lowercase();
+                if extension.chars().all(|c| c.is_ascii_alphabetic()) && !out.contains(&extension) {
+                    out.push(extension);
+                }
+            }
+        }
     }
     if text.contains("http://") || text.contains("https://") || text.contains("www.") {
         out.extend(["fetch", "url", "web"].map(str::to_string));
@@ -876,6 +886,14 @@ mod tests {
         assert!(read("references/LANGUAGES.md", 5).contains("needs about"));
         assert!(read("missing.md", 1000).contains("has no file"));
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_file_name_adds_its_kind() {
+        assert_eq!(entity_terms("summarize invoice.pdf"), ["file", "pdf"]);
+        assert_eq!(entity_terms("compare a.DOCX and b.docx, then notes.txt"), ["file", "docx", "txt"]);
+        assert_eq!(entity_terms("open https://example.com/report.pdf"), ["fetch", "url", "web"]);
+        assert_eq!(entity_terms("version 1.25 is out"), Vec::<String>::new());
     }
 
     #[test]
