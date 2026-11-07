@@ -125,6 +125,7 @@ impl McpSession {
         cmd.args(&exec.args)
             .current_dir(&workspace)
             .envs(&exec.env)
+            .envs(user_env(mcp_dir, &cluaiz_core::EnvironmentManager::current().config_dir()))
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
@@ -473,6 +474,23 @@ impl McpClient {
     }
 }
 
+/// Environment values the user set with `cluaiz mcp config`, limited to the names in the package's
+/// `user_env`, so a package cannot read another's values or anything else the user keeps there.
+fn user_env(mcp_dir: &Path, config_dir: &Path) -> HashMap<String, String> {
+    let names: Vec<String> = std::fs::read_to_string(mcp_dir.join("package.json"))
+        .ok()
+        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
+        .and_then(|manifest| serde_json::from_value(manifest.get("user_env")?.clone()).ok())
+        .unwrap_or_default();
+    if names.is_empty() {
+        return HashMap::new();
+    }
+    let id = mcp_dir.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
+    let mut values = crate::plugins::net::read_settings(&id, config_dir);
+    values.retain(|name, _| names.contains(name));
+    values
+}
+
 /// `expose` in a package: the only tools of the server the model gets, each with the only inputs
 /// it may set. A server can offer far more than a small model has room for, and inputs a model
 /// must not touch. Without `expose`, everything the server offers is offered.
@@ -522,6 +540,21 @@ fn tools_list_cache(mcp_dir: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn user_env_gives_only_the_named_values_of_this_package() {
+        let root = std::env::temp_dir().join(format!("cluaiz-env-{}", uuid::Uuid::new_v4()));
+        let dir = root.join("server");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("package.json"), r#"{"user_env":["WANTED"]}"#).unwrap();
+        std::fs::write(
+            root.join("tool_settings.json"),
+            r#"{"server":{"WANTED":"1","OTHER":"2"},"another":{"WANTED":"3"}}"#,
+        )
+        .unwrap();
+        assert_eq!(user_env(&dir, &root), HashMap::from([("WANTED".to_string(), "1".to_string())]));
+        let _ = std::fs::remove_dir_all(&root);
+    }
 
     #[test]
     fn expose_limits_tools_and_inputs() {

@@ -4,17 +4,27 @@ use anyhow::{Result, anyhow};
 use cluaiz_agents::plugins::{net, PluginManifestParser};
 use cluaiz_core::EnvironmentManager;
 
-/// A key or address a plugin's `permissions` names is kept in the user's settings, not in the plugin's
-/// files: an update replaces those, and a key must never be printed or sent elsewhere.
-/// False when this plugin has none, or `key` is not one of them.
-fn plugin_network_setting(id: &str, key: Option<&str>, value: Option<&str>) -> Result<bool> {
-    let Some(dir) = cluaiz_agents::ToolsEngine::resolve_component_dir("plugin", id) else {
+/// The values a plugin's `permissions` or an MCP package's `user_env` names are kept in the user's
+/// settings, not in the tool's files: an update replaces those, and a key must never be printed or
+/// sent elsewhere. False when this tool has none, or `key` is not one of them.
+fn user_setting(kind: &str, id: &str, key: Option<&str>, value: Option<&str>) -> Result<bool> {
+    let Some(dir) = cluaiz_agents::ToolsEngine::resolve_component_dir(kind, id) else {
         return Ok(false);
     };
-    let Some(permissions) = PluginManifestParser::parse_file(dir.join("package.json")).and_then(|m| m.permissions) else {
-        return Ok(false);
+    let (mut names, hidden): (Vec<String>, Vec<String>) = if kind == "plugin" {
+        let Some(permissions) = PluginManifestParser::parse_file(dir.join("package.json")).and_then(|m| m.permissions) else {
+            return Ok(false);
+        };
+        let secrets: Vec<String> = permissions.secrets.keys().cloned().collect();
+        (secrets.iter().cloned().chain(permissions.user_urls).collect(), secrets)
+    } else {
+        let manifest: serde_json::Value = std::fs::read_to_string(dir.join("package.json"))
+            .ok()
+            .and_then(|text| serde_json::from_str(&text).ok())
+            .unwrap_or_default();
+        let names = manifest.get("user_env").cloned().and_then(|list| serde_json::from_value(list).ok()).unwrap_or_default();
+        (names, Vec::new())
     };
-    let mut names: Vec<String> = permissions.secrets.keys().chain(permissions.user_urls.iter()).cloned().collect();
     names.sort();
     if names.is_empty() {
         return Ok(false);
@@ -38,7 +48,7 @@ fn plugin_network_setting(id: &str, key: Option<&str>, value: Option<&str>) -> R
     };
     let value = match value {
         Some(value) => value.to_owned(),
-        None if permissions.user_urls.contains(&name) => inquire::Text::new(&format!("Enter {name} (empty removes it):")).prompt()?,
+        None if !hidden.contains(&name) => inquire::Text::new(&format!("Enter {name} (empty removes it):")).prompt()?,
         None => inquire::Password::new(&format!("Enter {name} (empty removes it):"))
             .without_confirmation()
             .with_display_mode(inquire::PasswordDisplayMode::Masked)
@@ -98,11 +108,11 @@ pub async fn execute(
     }
     let comp_id = final_id.ok_or_else(|| anyhow!("Component ID required"))?;
 
-    if comp_type == "plugin" && plugin_network_setting(&comp_id, opt_key.as_deref(), opt_val.as_deref())? {
+    if matches!(comp_type.as_str(), "plugin" | "mcp") && user_setting(&comp_type, &comp_id, opt_key.as_deref(), opt_val.as_deref())? {
         return Ok(());
     }
 
-    let comp_dir = base_dir.join(&comp_id);
+    let comp_dir = cluaiz_agents::ToolsEngine::resolve_component_dir(&comp_type, &comp_id).unwrap_or_else(|| base_dir.join(&comp_id));
     let possible_manifests = [
         "package.json".to_string(),
         "SKILL.md".to_string(),
@@ -153,6 +163,10 @@ pub async fn execute(
         let key = final_key.ok_or_else(|| anyhow!("Key path required"))?;
         // Remove legacy prefixes if user types them out of habit
         let key = key.replace("settings.", "").replace("", "");
+        let declared = yaml.get("settings").and_then(|settings| settings.get(key.as_str())).is_some();
+        if !declared {
+            return Err(anyhow!("{comp_id} has no setting named {key}"));
+        }
     
         // Value Prompt
         let mut default_val: String = String::new();
