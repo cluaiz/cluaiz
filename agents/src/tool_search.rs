@@ -57,7 +57,8 @@ fn entity_terms(text: &str) -> Vec<String> {
             let token = token.trim_matches(|c: char| !c.is_alphanumeric());
             if let Some((_, extension)) = token.rsplit_once('.') {
                 let extension = extension.to_ascii_lowercase();
-                if extension.chars().all(|c| c.is_ascii_alphabetic()) && !out.contains(&extension) {
+                let kind = extension.chars().all(|c| c.is_ascii_alphanumeric()) && extension.chars().any(|c| c.is_ascii_alphabetic());
+                if kind && !out.contains(&extension) {
                     out.push(extension);
                 }
             }
@@ -894,6 +895,7 @@ mod tests {
         assert_eq!(entity_terms("compare a.DOCX and b.docx, then notes.txt"), ["file", "docx", "txt"]);
         assert_eq!(entity_terms("open https://example.com/report.pdf"), ["fetch", "url", "web"]);
         assert_eq!(entity_terms("version 1.25 is out"), Vec::<String>::new());
+        assert_eq!(entity_terms("transcribe meeting.mp3"), ["file", "mp3"]);
     }
 
     #[test]
