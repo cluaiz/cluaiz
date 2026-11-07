@@ -349,7 +349,7 @@ pub(crate) fn stream_tokens_with_media(
                 // By their own sizes: spread, the tool schemas would count as earlier turns that can go,
                 // and the note that replaces a result would look long
                 let earlier_result = cluaiz_core::oldest_earlier_result(&sizes);
-                let step_result = cluaiz_core::oldest_step_result(&sizes);
+                let step_result = cluaiz_core::shorten_a_step_result(&structured_messages);
                 let room = cluaiz_core::room_to_keep(&sizes, prompt_tokens.len(), n_ctx, fit_reserve, gen_reserve);
                 for (_, n) in &mut sizes {
                     *n += per_message;
@@ -375,12 +375,17 @@ pub(crate) fn stream_tokens_with_media(
                     // Only the current request is left. What its tools returned is worth more than
                     // the extra room for thinking: steps go only when the answer's own room is short.
                     let short = (prompt_tokens.len() + gen_reserve).saturating_sub(n_ctx);
-                    // Results go before whole steps: the calls stay, so the model sees what it has done
-                    if let Some(at) = step_result.filter(|_| short > 0) {
-                        info!("🌊 [Context] Left out the result of step message {} ({} tokens); its call stays", at, sizes[at].1);
-                        report.dropped_tokens += sizes[at].1;
+                    // Results are shortened before whole steps go: the calls and the start of what
+                    // they returned stay, so the model sees what it has done and what it found
+                    if let Some((at, shortened)) = step_result.filter(|_| short > 0) {
+                        info!(
+                            "🌊 [Context] Shortened the result of step message {} ({} to {} characters); its call stays",
+                            at,
+                            structured_messages[at].1.chars().count(),
+                            shortened.chars().count()
+                        );
                         report.truncated = true;
-                        structured_messages[at].1 = cluaiz_core::STEP_RESULT_NOTE.to_string();
+                        structured_messages[at].1 = shortened;
                         formatted_prompt = render(llama, &structured_messages)?;
                         prompt_tokens = tokenize(vocab, &formatted_prompt, add_special, true)?;
                         continue;
