@@ -231,6 +231,40 @@ impl NetAccess {
     }
 }
 
+/// Sets one of a plugin's values, or removes it when `value` is empty. Only the user's own command
+/// calls this: a plugin has no way to write here.
+pub fn save_setting(plugin_id: &str, name: &str, value: &str, config_dir: &Path) -> std::io::Result<()> {
+    let path = config_dir.join("tool_settings.json");
+    let mut all: serde_json::Map<String, Value> = std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .unwrap_or_default();
+    let section = all.entry(plugin_id).or_insert_with(|| json!({}));
+    if !section.is_object() {
+        *section = json!({});
+    }
+    if let Some(section) = section.as_object_mut() {
+        if value.is_empty() {
+            section.remove(name);
+        } else {
+            section.insert(name.to_owned(), json!(value));
+        }
+    }
+    std::fs::create_dir_all(config_dir)?;
+    std::fs::write(&path, serde_json::to_vec_pretty(&all)?)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))?;
+    }
+    Ok(())
+}
+
+/// The names of a plugin's values that are set. The values stay out of it
+pub fn settings_set(plugin_id: &str, config_dir: &Path) -> Vec<String> {
+    read_settings(plugin_id, config_dir).into_keys().collect()
+}
+
 fn read_settings(plugin_id: &str, config_dir: &Path) -> HashMap<String, String> {
     std::fs::read_to_string(config_dir.join("tool_settings.json"))
         .ok()
@@ -446,6 +480,19 @@ mod tests {
         let base = format!("http://127.0.0.1:{port}");
         let answer = access(&[("OWN_URL", base.as_str())]).fetch(br#"{"url":"{{url:OWN_URL}}/"}"#);
         assert_eq!(code(&answer), "blocked", "{answer}");
+    }
+
+    #[test]
+    fn a_saved_setting_reaches_only_its_own_plugin() {
+        let folder = std::env::temp_dir().join(format!("cluaiz-net-{}", uuid::Uuid::new_v4()));
+        save_setting("one", "KEY", "abc", &folder).unwrap();
+        save_setting("two", "OTHER", "def", &folder).unwrap();
+        assert_eq!(read_settings("one", &folder).get("KEY").map(String::as_str), Some("abc"));
+        assert!(read_settings("one", &folder).get("OTHER").is_none());
+        save_setting("one", "KEY", "", &folder).unwrap();
+        assert!(settings_set("one", &folder).is_empty());
+        assert_eq!(settings_set("two", &folder), ["OTHER"]);
+        let _ = std::fs::remove_dir_all(&folder);
     }
 
     #[test]

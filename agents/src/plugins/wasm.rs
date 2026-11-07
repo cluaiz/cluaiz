@@ -87,6 +87,11 @@ fn run(wasm: &[u8], payload: &[u8], max_memory_mb: Option<u64>, net: NetAccess) 
             }
         })
         .map_err(|e| anyhow!("{e}"))?;
+    linker
+        .func_wrap("cluaiz", "utc_offset_minutes", || -> i32 {
+            chrono::Local::now().offset().local_minus_utc() / 60
+        })
+        .map_err(|e| anyhow!("{e}"))?;
     linker.func_wrap("cluaiz", "http_fetch", http_fetch).map_err(|e| anyhow!("{e}"))?;
 
     let instance = linker

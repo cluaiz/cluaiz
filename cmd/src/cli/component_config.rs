@@ -1,7 +1,57 @@
 //! `cluaiz skill|plugin|mcp config <id> [key] [value]`: settings declared in a component's manifest.
 
 use anyhow::{Result, anyhow};
+use cluaiz_agents::plugins::{net, PluginManifestParser};
 use cluaiz_core::EnvironmentManager;
+
+/// A key or address a plugin's `permissions` names is kept in the user's settings, not in the plugin's
+/// files: an update replaces those, and a key must never be printed or sent elsewhere.
+/// False when this plugin has none, or `key` is not one of them.
+fn plugin_network_setting(id: &str, key: Option<&str>, value: Option<&str>) -> Result<bool> {
+    let Some(dir) = cluaiz_agents::ToolsEngine::resolve_component_dir("plugin", id) else {
+        return Ok(false);
+    };
+    let Some(permissions) = PluginManifestParser::parse_file(dir.join("package.json")).and_then(|m| m.permissions) else {
+        return Ok(false);
+    };
+    let mut names: Vec<String> = permissions.secrets.keys().chain(permissions.user_urls.iter()).cloned().collect();
+    names.sort();
+    if names.is_empty() {
+        return Ok(false);
+    }
+    let config_dir = EnvironmentManager::current().config_dir();
+    let plugin_id = dir.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_else(|| id.to_owned());
+    let name = match key {
+        Some(key) if names.iter().any(|name| name == key) => key.to_owned(),
+        Some(_) => return Ok(false),
+        None => {
+            let set = net::settings_set(&plugin_id, &config_dir);
+            let shown: Vec<String> = names
+                .iter()
+                .map(|name| if set.contains(name) { format!("{name} (set)") } else { name.clone() })
+                .collect();
+            let Ok(chosen) = inquire::Select::new("Select a setting:", shown).prompt() else {
+                return Ok(true);
+            };
+            chosen.trim_end_matches(" (set)").to_owned()
+        }
+    };
+    let value = match value {
+        Some(value) => value.to_owned(),
+        None if permissions.user_urls.contains(&name) => inquire::Text::new(&format!("Enter {name} (empty removes it):")).prompt()?,
+        None => inquire::Password::new(&format!("Enter {name} (empty removes it):"))
+            .without_confirmation()
+            .with_display_mode(inquire::PasswordDisplayMode::Masked)
+            .prompt()?,
+    };
+    net::save_setting(&plugin_id, &name, value.trim(), &config_dir)?;
+    if value.trim().is_empty() {
+        println!("✅ [{plugin_id}] {name} removed.");
+    } else {
+        println!("✅ [{plugin_id}] {name} saved.");
+    }
+    Ok(true)
+}
 
 pub async fn execute(
     opt_type: Option<String>,
@@ -47,6 +97,10 @@ pub async fn execute(
         final_id = inquire::Select::new(&format!("Select {} ID:", comp_type), options).prompt().ok();
     }
     let comp_id = final_id.ok_or_else(|| anyhow!("Component ID required"))?;
+
+    if comp_type == "plugin" && plugin_network_setting(&comp_id, opt_key.as_deref(), opt_val.as_deref())? {
+        return Ok(());
+    }
 
     let comp_dir = base_dir.join(&comp_id);
     let possible_manifests = [
