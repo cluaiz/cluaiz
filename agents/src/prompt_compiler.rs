@@ -32,6 +32,9 @@ pub struct CompiledPromptTools {
     pub active_tool_ids: Vec<String>,
     /// Estimated token count for context accounting
     pub estimated_tokens: usize,
+    /// Which tool each function in `function_schemas` belongs to
+    #[serde(default)]
+    pub function_owners: std::collections::HashMap<String, String>,
 }
 
 
@@ -52,6 +55,12 @@ impl CompiledPromptTools {
 
     /// The schemas `tools_xml_within` keeps, and the names of the tools left out
     pub fn schemas_within(&self, max_chars: usize, query: &str) -> (Vec<Value>, Vec<String>) {
+        self.schemas_for(max_chars, query, &[])
+    }
+
+    /// `schemas_within`, with the functions of the tools in `first` ahead of all others, in that
+    /// order: a tool whose instructions the model was given must also have its functions
+    pub fn schemas_for(&self, max_chars: usize, query: &str, first: &[String]) -> (Vec<Value>, Vec<String>) {
         if self.tools_xml.len() <= max_chars {
             return (self.function_schemas.clone(), Vec::new());
         }
@@ -75,7 +84,13 @@ impl CompiledPromptTools {
             words.iter().filter(|word| text.contains(word.as_str())).count()
         };
         let mut ranked: Vec<&Value> = self.function_schemas.iter().collect();
-        ranked.sort_by_key(|schema| std::cmp::Reverse(score(schema)));
+        let place = |schema: &Value| -> usize {
+            self.function_owners
+                .get(&name_of(schema))
+                .and_then(|owner| first.iter().position(|tool| tool.eq_ignore_ascii_case(owner)))
+                .unwrap_or(first.len())
+        };
+        ranked.sort_by_key(|schema| (place(schema), std::cmp::Reverse(score(schema))));
 
         let mut kept: Vec<Value> = Vec::new();
         let mut dropped = Vec::new();
@@ -115,6 +130,7 @@ impl ToolPromptCompiler {
         let mut skill_instructions_vec = Vec::new();
         let mut function_schemas: Vec<Value> = Vec::new();
         let mut active_tool_ids = Vec::new();
+        let mut function_owners = std::collections::HashMap::new();
 
         for tool_id in tool_ids {
             let normalized_id = tool_id.trim();
@@ -145,6 +161,7 @@ impl ToolPromptCompiler {
             };
 
             active_tool_ids.push(normalized_id.to_string());
+            let functions_before = function_schemas.len();
 
             match category.as_str() {
                 "skill" => {
@@ -201,6 +218,11 @@ impl ToolPromptCompiler {
                     }
                 }
             }
+            for schema in &function_schemas[functions_before..] {
+                if let Some(function) = schema.get("function").and_then(|f| f.get("name")).and_then(|n| n.as_str()) {
+                    function_owners.insert(function.to_string(), normalized_id.to_string());
+                }
+            }
         }
 
         let tools_xml = tools_block(&function_schemas);
@@ -215,6 +237,7 @@ impl ToolPromptCompiler {
             skill_instructions,
             active_tool_ids,
             estimated_tokens,
+            function_owners,
         }
     }
 
@@ -642,6 +665,25 @@ impl ToolPromptCompiler {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn functions_of_a_matched_tool_go_first_when_not_all_fit() {
+        let schema = |name: &str| serde_json::json!({"type": "function", "function": {"name": name, "description": "search web page"}});
+        let function_schemas = vec![schema("open_page"), schema("read_page"), schema("web_search")];
+        let compiled = super::CompiledPromptTools {
+            tools_xml: super::tools_block(&function_schemas),
+            function_schemas,
+            function_owners: [("open_page", "browser"), ("read_page", "browser"), ("web_search", "web-search")]
+                .into_iter()
+                .map(|(function, owner)| (function.to_string(), owner.to_string()))
+                .collect(),
+            ..Default::default()
+        };
+        let room = super::tools_block(&[schema("web_search")]).len();
+        let (kept, left_out) = compiled.schemas_for(room, "search the web", &["web-search".to_string()]);
+        assert_eq!(kept[0]["function"]["name"], "web_search");
+        assert_eq!(left_out, ["open_page", "read_page"]);
+    }
+
     use super::*;
 
     #[tokio::test]
