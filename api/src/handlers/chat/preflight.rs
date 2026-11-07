@@ -762,8 +762,12 @@ impl PreparedChatContext {
             let tools_budget = max_tool_chars.saturating_sub(
                 tools_header.len() + tools_call_format.len() + workspace_note.len() + meta_chars,
             );
+            let matched_skills = project
+                .as_ref()
+                .map(|p| p.workspace.matched_skills(&initial_user_query, previous_user_query.as_deref()))
+                .unwrap_or_default();
             let (mut kept_schemas, dropped_tools) =
-                compiled_tools.schemas_within(tools_budget, &initial_user_query);
+                compiled_tools.schemas_for(tools_budget, &initial_user_query, &matched_skills);
             if !dropped_tools.is_empty() {
                 tracing::warn!(
                     "⚠️ [ChatHandler] Tool list exceeds the prompt budget ({} chars); left out: {:?}",

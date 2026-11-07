@@ -83,6 +83,14 @@ pub struct Tools {
     /// Enabled skills, plugins and MCP servers from `~/.cluaiz/tools`, offered next to the built-ins
     installed: Vec<String>,
     installed_schemas: Vec<Value>,
+    /// Every installed function; `installed_schemas` is what fits of it for the conversation
+    compiled: cluaiz_agents::CompiledPromptTools,
+    /// The tools whose skills fitted a message in this conversation, the latest first
+    wanted: Vec<String>,
+    /// The functions left out the last time they were chosen
+    left_out: Vec<String>,
+    /// The functions have been chosen for a message
+    chosen: bool,
     /// The project's agent files (AGENTS.md, rules, workflows, skills); the model reads one with read_item
     pub workspace: cluaiz_agents::workspace::Workspace,
     /// Files this request and the last one changed (for the summary, /undo and /diff)
@@ -119,6 +127,10 @@ impl Tools {
             cancelled: false,
             installed: Vec::new(),
             installed_schemas: Vec::new(),
+            compiled: Default::default(),
+            wanted: Vec::new(),
+            left_out: Vec::new(),
+            chosen: false,
             // Its files are read by load_installed; the root is known from the start (memory goes there)
             workspace: cluaiz_agents::workspace::Workspace {
                 root: project,
@@ -144,7 +156,8 @@ impl Tools {
             .into_iter()
             .filter(|tool| tool.enabled)
             .partition(|tool| self.can_be_allowed(&format!("{}:{}", tool.category, tool.id)));
-        let ids: Vec<String> = ids.into_iter().map(|tool| tool.id).collect();
+        let mut ids: Vec<String> = ids.into_iter().map(|tool| tool.id).collect();
+        ids.sort();
         self.workspace = super::instructions::scan(&self.root);
         if !waiting.is_empty() {
             self.display.emit(Event::Message(
@@ -155,21 +168,39 @@ impl Tools {
         if ids.is_empty() {
             return;
         }
-        let compiled = cluaiz_agents::ToolsEngine::compile_prompt_tools(&ids).await;
-        let (schemas, left_out) = compiled.schemas_within(INSTALLED_SCHEMA_CHARS, "");
-        if !left_out.is_empty() {
+        self.compiled = cluaiz_agents::ToolsEngine::compile_prompt_tools(&ids).await;
+        self.installed = self.compiled.active_tool_ids.clone();
+        self.choose_installed("");
+    }
+
+    /// Chooses the installed functions for a message, when not all of them fit: those of the
+    /// tools whose skills fit it, then those closest to its words. The choice changes only for a
+    /// newly fitting tool, because a changed tool list makes the model read the prompt again.
+    pub fn offer_installed(&mut self, message: &str, skills: Vec<String>) {
+        let new: Vec<String> = skills.into_iter().filter(|skill| !self.wanted.contains(skill)).collect();
+        if self.chosen && new.is_empty() {
+            return;
+        }
+        self.chosen = true;
+        self.wanted.splice(0..0, new);
+        self.choose_installed(message);
+        if !self.left_out.is_empty() {
             self.display.emit(Event::Message(
                 "Tools".into(),
-                format!("{} installed tool(s) left out to save context: {}", left_out.len(), left_out.join(", ")),
+                format!("{} installed tool(s) left out to save context: {}", self.left_out.len(), self.left_out.join(", ")),
             ));
         }
+    }
+
+    fn choose_installed(&mut self, message: &str) {
+        let (schemas, left_out) = self.compiled.schemas_for(INSTALLED_SCHEMA_CHARS, message, &self.wanted);
+        self.left_out = left_out;
         self.installed_schemas = schemas
             .into_iter()
             .filter(|schema| {
                 schema["function"]["name"].as_str().is_some_and(|name| !BUILT_IN.contains(&name))
             })
             .collect();
-        self.installed = compiled.active_tool_ids;
     }
 
     /// False for an installed tool that would only be refused: no terminal to ask in, no `--yes`,

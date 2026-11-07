@@ -665,6 +665,8 @@ context    {}", plan.summary(), plan.context_reason)
     fn with_context(&mut self, text: &str) -> String {
         use cluaiz_agents::workspace::Placement;
         let previous = self.last_message.replace(text.to_owned());
+        let skills = self.tools.workspace.matched_skills(text, previous.as_deref());
+        self.tools.offer_installed(text, skills);
         let mut known = self.tools.sent.clone();
         for part in &self.layout.parts {
             // Whole in the system prompt, or a fact whose index line is the fact itself

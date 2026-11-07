@@ -62,6 +62,15 @@ impl Workspace {
             .collect()
     }
 
+    /// The names of the skills that fit a message, including those the model already has
+    pub fn matched_skills(&self, message: &str, previous: Option<&str>) -> Vec<String> {
+        self.matched(message, previous, &HashSet::new())
+            .into_iter()
+            .filter(|item| item.kind == super::Kind::Skill)
+            .map(|item| item.name.clone())
+            .collect()
+    }
+
     /// The items of the index that fit a message, best first, leaving out those in `known` (their
     /// text is in the system prompt or was already sent). `previous` is the user's message before
     /// this one, for a short follow-up.
