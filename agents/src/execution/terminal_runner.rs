@@ -113,8 +113,8 @@ impl SandboxTerminalRunner {
 
         let status = child.wait().await?;
         let duration_ms = start_time.elapsed().as_millis() as u64;
-        let stdout_str = stdout_handle.await.unwrap_or_default();
-        let stderr_str = stderr_handle.await.unwrap_or_default();
+        let stdout_str = stdout_handle.finish().await;
+        let stderr_str = stderr_handle.finish().await;
 
         Ok(TerminalRunResult {
             exit_code: status.code().unwrap_or(-1),
@@ -206,6 +206,9 @@ impl SandboxTerminalRunner {
         {
             cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
         }
+        // Its own group, so that stopping it reaches what it started
+        #[cfg(unix)]
+        cmd.process_group(0);
 
         let mut child = cmd.spawn()
             .map_err(|e| anyhow!("Failed to spawn sandbox process: {}", e))?;
@@ -248,12 +251,14 @@ impl SandboxTerminalRunner {
                 std::future::pending::<()>().await;
             } => {
                 tracing::warn!("🛑 [TerminalRunner] Command cancelled by user. Terminating process...");
+                kill_tree(child.id()).await;
                 let _ = child.kill().await;
                 cancelled = true;
                 child.wait().await
             }
             _ = tokio::time::sleep(effective_timeout) => {
                 tracing::warn!("⏱️ [TerminalRunner] Command exceeded timeout of {}s. Terminating...", effective_timeout.as_secs());
+                kill_tree(child.id()).await;
                 let _ = child.kill().await;
                 child.wait().await
             }
@@ -267,8 +272,8 @@ impl SandboxTerminalRunner {
             Err(_) => if cancelled { -1 } else { 1 },
         };
 
-        let stdout_raw = stdout_handle.await.unwrap_or_default();
-        let stderr_raw = stderr_handle.await.unwrap_or_default();
+        let stdout_raw = stdout_handle.finish().await;
+        let stderr_raw = stderr_handle.finish().await;
         let duration_ms = start_time.elapsed().as_millis() as u64;
 
         // 7. Format Normalized Result
@@ -282,17 +287,54 @@ impl SandboxTerminalRunner {
     }
 }
 
+/// How long the output may stay open after the command ended. A program it left running in the
+/// background holds the pipe, and the answer must not wait for that program to end.
+const OUTPUT_GRACE: Duration = Duration::from_secs(2);
+
+/// Ends a command and what it started. Killing only the shell leaves its children running.
+async fn kill_tree(pid: Option<u32>) {
+    let Some(pid) = pid else { return };
+    #[cfg(target_os = "windows")]
+    let mut kill = {
+        let mut kill = Command::new("taskkill");
+        kill.args(["/PID", &pid.to_string(), "/T", "/F"]).creation_flags(0x08000000);
+        kill
+    };
+    #[cfg(unix)]
+    let mut kill = {
+        let mut kill = Command::new("kill");
+        kill.args(["-9", &format!("-{pid}")]);
+        kill
+    };
+    let _ = kill.stdin(Stdio::null()).stdout(Stdio::null()).stderr(Stdio::null()).status().await;
+}
+
+/// A command's output as it is read
+struct OutputReader {
+    done: tokio::task::JoinHandle<()>,
+    lines: Arc<std::sync::Mutex<Vec<String>>>,
+}
+
+impl OutputReader {
+    /// All of the output, or what came within the grace time when something still holds the pipe
+    async fn finish(self) -> String {
+        let _ = tokio::time::timeout(OUTPUT_GRACE, self.done).await;
+        self.lines.lock().map(|lines| lines.join("\n")).unwrap_or_default()
+    }
+}
+
 /// Reads a command's output on its own thread, line by line; bytes that are not UTF-8 (a console
 /// code page) become replacement characters instead of ending the read. Not tokio's child pipes:
 /// on Windows a read of those ended the whole program ("operation failed to complete synchronously").
 fn read_output(
     pipe: std::io::PipeReader,
     live: Option<tokio::sync::mpsc::UnboundedSender<String>>,
-) -> tokio::task::JoinHandle<String> {
-    tokio::task::spawn_blocking(move || {
+) -> OutputReader {
+    let lines = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let shared = lines.clone();
+    let done = tokio::task::spawn_blocking(move || {
         use std::io::BufRead;
         let mut reader = std::io::BufReader::new(pipe);
-        let mut lines = Vec::new();
         let mut bytes = Vec::new();
         loop {
             bytes.clear();
@@ -304,10 +346,12 @@ fn read_output(
             if let Some(live) = &live {
                 let _ = live.send(line.clone());
             }
-            lines.push(line);
+            if let Ok(mut lines) = shared.lock() {
+                lines.push(line);
+            }
         }
-        lines.join("\n")
-    })
+    });
+    OutputReader { done, lines }
 }
 
 #[cfg(test)]
@@ -319,7 +363,51 @@ mod tests {
         let (reader, mut writer) = std::io::pipe().unwrap();
         std::io::Write::write_all(&mut writer, b"one\r\ntw\xFFo\nlast").unwrap();
         drop(writer);
-        assert_eq!(read_output(reader, None).await.unwrap(), "one\ntw\u{FFFD}o\nlast");
+        assert_eq!(read_output(reader, None).finish().await, "one\ntw\u{FFFD}o\nlast");
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_timeout_also_ends_what_the_command_started() {
+        #[cfg(windows)]
+        let command = "echo before; ping -n 60 127.0.0.1";
+        #[cfg(unix)]
+        let command = "echo before; sleep 60; echo after";
+        let start = Instant::now();
+        let result = SandboxTerminalRunner::execute_advanced(
+            command,
+            &std::env::temp_dir(),
+            SecurityMode::AlwaysAllow,
+            None,
+            None,
+            Some(1),
+            None,
+        )
+        .await
+        .unwrap();
+        assert!(start.elapsed() < Duration::from_secs(15), "took {:?}", start.elapsed());
+        assert!(result.stdout.contains("before"), "{result:?}");
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn a_program_left_in_the_background_does_not_hold_the_answer() {
+        #[cfg(windows)]
+        let command = "cmd /c start /b ping -n 20 127.0.0.1 & echo out";
+        #[cfg(unix)]
+        let command = "sleep 20 & echo out";
+        let start = Instant::now();
+        let result = SandboxTerminalRunner::execute_advanced(
+            command,
+            &std::env::temp_dir(),
+            SecurityMode::AlwaysAllow,
+            None,
+            None,
+            Some(60),
+            None,
+        )
+        .await
+        .unwrap();
+        assert!(start.elapsed() < Duration::from_secs(12), "took {:?}", start.elapsed());
+        assert!(result.stdout.contains("out"), "{result:?}");
     }
 
     /// Many commands at once. A pipe read the wrong way ended the whole program here on Windows.
