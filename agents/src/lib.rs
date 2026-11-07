@@ -306,6 +306,22 @@ impl ToolsEngine {
         None
     }
 
+    /// What the model reads of an MCP result: its text. The full answer repeats it as structured data,
+    /// and can carry images as base64, which fill a small model's context with nothing it can read.
+    pub fn mcp_text_for_model(result: &str) -> String {
+        let Ok(value) = serde_json::from_str::<Value>(result) else {
+            return result.to_owned();
+        };
+        let Some(content) = value.get("content").and_then(Value::as_array) else {
+            return result.to_owned();
+        };
+        let texts: Vec<&str> = content.iter().filter_map(|item| item.get("text").and_then(Value::as_str)).collect();
+        if texts.is_empty() {
+            return result.to_owned();
+        }
+        texts.join("\n")
+    }
+
     /// Unified DRY executor across plugins, MCP servers, skills, and sandboxed terminal commands
     pub async fn execute_tool_by_name(category: &str, name: &str, tool_name: Option<&str>, payload: &str) -> Result<String> {
         let entry = Self::get_tool(name).ok().flatten();

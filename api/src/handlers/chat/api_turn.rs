@@ -399,7 +399,9 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
                 self.unloaded = outcome.unloaded;
                 Ok(outcome.text)
             } else {
-                cluaiz_agents::ToolsEngine::execute_tool_by_name(&comp_type, &comp_name, tool_sub_func.as_deref(), &payload_str).await
+                cluaiz_agents::ToolsEngine::execute_tool_by_name(&comp_type, &comp_name, tool_sub_func.as_deref(), &payload_str)
+                    .await
+                    .map(|output| if comp_type == "mcp" { cluaiz_agents::ToolsEngine::mcp_text_for_model(&output) } else { output })
             };
             match executed {
                 Ok(text) => {
