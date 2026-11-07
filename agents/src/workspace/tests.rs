@@ -335,3 +335,18 @@ fn items_that_fit_a_message_go_into_its_context_block() {
     assert!(workspace.context_block(&items, 10).is_none());
     let _ = std::fs::remove_dir_all(base);
 }
+
+#[test]
+fn a_plugin_or_mcp_package_with_a_skill_file_is_in_the_index() {
+    let root = std::env::temp_dir().join(format!("cluaiz-index-{}", uuid::Uuid::new_v4()));
+    let project = root.join("project");
+    std::fs::create_dir_all(&project).unwrap();
+    let cluaiz = root.join("cluaiz");
+    write(&cluaiz.join("tools/mcp/browser/SKILL.md"), "---\nname: browser\ndescription: Uses a browser\n---\nSteps.");
+    write(&cluaiz.join("tools/plugins/math/SKILL.md"), "---\nname: math\ndescription: Does math\n---\nSteps.");
+    std::fs::create_dir_all(cluaiz.join("tools/mcp/git")).unwrap();
+    let workspace = Workspace::scan(&project, Homes { cluaiz: Some(&cluaiz), user: None }, &[]);
+    let names: Vec<&str> = workspace.skills.iter().map(|skill| skill.name.as_str()).collect();
+    assert_eq!(names, ["math", "browser"]);
+    let _ = std::fs::remove_dir_all(&root);
+}

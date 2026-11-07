@@ -171,12 +171,14 @@ impl ToolPromptCompiler {
                     }
                 }
                 "plugin" => {
-                    // Plugin: JSON schema functions
+                    // Plugin: JSON schema functions, and how to use them if it says
+                    skill_instructions_vec.extend(Self::tool_instructions(&local_dir));
                     let schemas = Self::extract_plugin_schemas(&local_dir, normalized_id, &name, &description);
                     function_schemas.extend(schemas);
                 }
                 "mcp" => {
-                    // MCP Server: Dynamic discovery over stdio JSON-RPC (tools/list)
+                    // MCP Server: Dynamic discovery over stdio JSON-RPC (tools/list), and how to use them if it says
+                    skill_instructions_vec.extend(Self::tool_instructions(&local_dir));
                     let schemas = Self::extract_mcp_schemas(&local_dir, normalized_id, &name, &description).await;
                     function_schemas.extend(schemas);
                 }
@@ -356,6 +358,12 @@ impl ToolPromptCompiler {
         }
 
         schemas
+    }
+
+    /// The instructions a plugin or MCP package ships in its `SKILL.md`
+    fn tool_instructions(local_dir: &Path) -> Option<String> {
+        let content = std::fs::read_to_string(local_dir.join("SKILL.md")).ok()?;
+        Some(crate::tools::skills::SkillParser::parse_content(&content)?.prompt_instructions)
     }
 
     /// Extracts function schemas from an external MCP server via stdio dynamic discovery (`tools/list`)

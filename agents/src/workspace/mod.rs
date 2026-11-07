@@ -177,6 +177,9 @@ impl Workspace {
                     // Before ~/.agents/skills, as it was before the index existed
                     let at = kind_places.len() - usize::from(homes.user.is_some());
                     kind_places.insert(at, (cluaiz.join("tools").join("skills"), "~/.cluaiz/tools/skills".into()));
+                    // A plugin or MCP package's own SKILL.md says how to use its functions
+                    kind_places.insert(at + 1, (cluaiz.join("tools").join("plugins"), "~/.cluaiz/tools/plugins".into()));
+                    kind_places.insert(at + 2, (cluaiz.join("tools").join("mcp"), "~/.cluaiz/tools/mcp".into()));
                 }
             }
             for (place, source) in kind_places {
