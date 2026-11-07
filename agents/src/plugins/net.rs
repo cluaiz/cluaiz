@@ -265,7 +265,7 @@ pub fn settings_set(plugin_id: &str, config_dir: &Path) -> Vec<String> {
     read_settings(plugin_id, config_dir).into_keys().collect()
 }
 
-fn read_settings(plugin_id: &str, config_dir: &Path) -> HashMap<String, String> {
+pub(crate) fn read_settings(plugin_id: &str, config_dir: &Path) -> HashMap<String, String> {
     std::fs::read_to_string(config_dir.join("tool_settings.json"))
         .ok()
         .and_then(|text| serde_json::from_str::<Value>(&text).ok())
