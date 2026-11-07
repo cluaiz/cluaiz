@@ -42,7 +42,7 @@ Every step prints its number and the time so far. Keep the PC awake and avoid ot
 4. Starts the server.
 5. For each model: first answer, placement, generation and prompt speed (three runs), server memory, a second
    turn in the same chat and how much of the KV cache it reused, the default thinking mode, streaming.
-6. Installs the `math`, `time`, `sysinfo` and `text` plugins and a skill, and calls each plugin.
+6. Installs the `math`, `time`, `search` and `text` plugins and the `learn-cluaiz` skill, and calls each plugin.
 7. Text to speech (Kokoro), speech to text of that audio (Moonshine), embeddings (MiniLM), a text document.
 8. The coding agent: reads a file, `--continue`, runs a command, a slow command that must not crash it, a change
    nobody can approve, a plugin. Each Bonsai model also reads a file.
