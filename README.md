@@ -1,8 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="" srcset="assets/cluaiz-cog.webp">
-    <img alt="Cluaiz Cog" src="assets/cluaiz-cog.webp" width="40%">
-  </picture>
+  <img alt="Cluaiz" src="assets/logo.png" width="30%">
 </p>
 
 <h3 align="center">
