@@ -350,3 +350,22 @@ fn a_plugin_or_mcp_package_with_a_skill_file_is_in_the_index() {
     assert_eq!(names, ["math", "browser"]);
     let _ = std::fs::remove_dir_all(&root);
 }
+
+#[test]
+fn a_tool_skill_matches_on_its_package_triggers() {
+    let root = std::env::temp_dir().join(format!("cluaiz-triggers-{}", uuid::Uuid::new_v4()));
+    let project = root.join("project");
+    std::fs::create_dir_all(&project).unwrap();
+    let cluaiz = root.join("cluaiz");
+    write(&cluaiz.join("tools/plugins/text/SKILL.md"), "---
+name: text
+description: Exact text work
+---
+Steps.");
+    write(&cluaiz.join("tools/plugins/text/package.json"), r#"{"triggers": ["sha256 hash", "hash", "base64"]}"#);
+    let workspace = Workspace::scan(&project, Homes { cluaiz: Some(&cluaiz), user: None }, &[]);
+    assert_eq!(workspace.skills[0].triggers, ["sha256 hash", "hash", "base64"]);
+    assert_eq!(workspace.matched_skills("give me the sha256 hash of abc", None), ["text"]);
+    assert_eq!(workspace.matched_skills("What is the SHA-256 hash of the text abc? Use the text tool.", None), ["text"]);
+    let _ = std::fs::remove_dir_all(&root);
+}
