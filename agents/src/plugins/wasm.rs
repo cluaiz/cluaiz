@@ -2,12 +2,15 @@
 //!
 //! The plugin exports `memory`, `allocate(len) -> ptr`, and `execute_cel(ptr, len) -> u64`, whose
 //! result is `(ptr << 32) | len` of its JSON answer. It reaches nothing outside its own memory
-//! except the two host functions below: no files, no network, no other programs.
+//! except the host functions below: no files and no other programs. The network is reached only
+//! through `http_fetch`, under the rules in [`super::net`].
 
 use anyhow::{anyhow, Result};
 use std::path::Path;
 use std::sync::LazyLock;
-use wasmtime::{Config, Engine, Linker, Module, Store, StoreLimits, StoreLimitsBuilder};
+use wasmtime::{Caller, Config, Engine, Extern, Linker, Module, Store, StoreLimits, StoreLimitsBuilder};
+
+use super::net::NetAccess;
 
 /// Most instructions one call may run: a loop that never ends becomes an error
 const FUEL: u64 = 2_000_000_000;
@@ -20,21 +23,50 @@ static ENGINE: LazyLock<Result<Engine, String>> = LazyLock::new(|| {
     Engine::new(&config).map_err(|e| e.to_string())
 });
 
-pub fn run_file(path: &Path, payload: &[u8], max_memory_mb: Option<u64>) -> Result<Vec<u8>> {
-    run(&std::fs::read(path)?, payload, max_memory_mb)
+/// What one call holds: its memory limit and what it may reach
+struct HostState {
+    limits: StoreLimits,
+    net: NetAccess,
 }
 
-fn run(wasm: &[u8], payload: &[u8], max_memory_mb: Option<u64>) -> Result<Vec<u8>> {
+pub fn run_file(path: &Path, payload: &[u8], max_memory_mb: Option<u64>, net: NetAccess) -> Result<Vec<u8>> {
+    run(&std::fs::read(path)?, payload, max_memory_mb, net)
+}
+
+/// `http_fetch(ptr, len) -> (ptr << 32) | len`: the request and the answer are JSON in the plugin's memory
+fn http_fetch(mut caller: Caller<'_, HostState>, start: i32, length: u32) -> Result<u64> {
+    let memory = caller
+        .get_export("memory")
+        .and_then(Extern::into_memory)
+        .ok_or_else(|| anyhow!("The plugin has no 'memory'"))?;
+    let request = memory
+        .data(&caller)
+        .get(start as u32 as usize..)
+        .and_then(|rest| rest.get(..length as usize))
+        .ok_or_else(|| anyhow!("The plugin gave a request outside its memory"))?
+        .to_vec();
+    let answer = caller.data_mut().net.fetch(&request).to_string().into_bytes();
+    let allocate = caller
+        .get_export("allocate")
+        .and_then(Extern::into_func)
+        .ok_or_else(|| anyhow!("The plugin has no 'allocate'"))?
+        .typed::<u32, i32>(&caller)?;
+    let at = allocate.call(&mut caller, answer.len() as u32)?;
+    memory.write(&mut caller, at as u32 as usize, &answer)?;
+    Ok((u64::from(at as u32) << 32) | answer.len() as u64)
+}
+
+fn run(wasm: &[u8], payload: &[u8], max_memory_mb: Option<u64>, net: NetAccess) -> Result<Vec<u8>> {
     let engine = ENGINE.as_ref().map_err(|e| anyhow!("WebAssembly is not available: {e}"))?;
     let module = Module::new(engine, wasm).map_err(|e| anyhow!("Not a valid WebAssembly plugin: {e}"))?;
     let memory_limit = max_memory_mb
         .map_or(MAX_MEMORY_BYTES, |mb| (mb as usize).saturating_mul(1024 * 1024).min(MAX_MEMORY_BYTES));
     let limits: StoreLimits = StoreLimitsBuilder::new().memory_size(memory_limit).build();
-    let mut store = Store::new(engine, limits);
-    store.limiter(|limits| limits);
+    let mut store = Store::new(engine, HostState { limits, net });
+    store.limiter(|state| &mut state.limits);
     store.set_fuel(FUEL).map_err(|e| anyhow!("{e}"))?;
 
-    let mut linker: Linker<StoreLimits> = Linker::new(engine);
+    let mut linker: Linker<HostState> = Linker::new(engine);
     linker
         .func_wrap("cluaiz", "now_utc_ms", || -> i64 {
             std::time::SystemTime::now()
@@ -55,6 +87,7 @@ fn run(wasm: &[u8], payload: &[u8], max_memory_mb: Option<u64>) -> Result<Vec<u8
             }
         })
         .map_err(|e| anyhow!("{e}"))?;
+    linker.func_wrap("cluaiz", "http_fetch", http_fetch).map_err(|e| anyhow!("{e}"))?;
 
     let instance = linker
         .instantiate(&mut store, &module)
@@ -88,7 +121,12 @@ fn run(wasm: &[u8], payload: &[u8], max_memory_mb: Option<u64>) -> Result<Vec<u8
 
 #[cfg(test)]
 mod tests {
-    use super::run;
+    use super::{run as run_with, NetAccess};
+    use anyhow::Result;
+
+    fn run(wasm: &[u8], payload: &[u8], max_memory_mb: Option<u64>) -> Result<Vec<u8>> {
+        run_with(wasm, payload, max_memory_mb, NetAccess::none())
+    }
 
     /// Echoes its input; `now_utc_ms` is called so the host functions are linked
     const ECHO: &str = r#"(module
@@ -107,6 +145,23 @@ mod tests {
     #[test]
     fn a_plugin_answers_through_its_memory() {
         assert_eq!(run(&wasm(ECHO), br#"{"a":1}"#, None).unwrap(), br#"{"a":1}"#);
+    }
+
+    #[test]
+    fn a_plugin_reaches_http_fetch_and_is_refused_without_the_permission() {
+        // Hands its input to http_fetch and answers with what comes back
+        let caller = r#"(module
+            (import "cluaiz" "http_fetch" (func $fetch (param i32 i32) (result i64)))
+            (memory (export "memory") 1)
+            (global $next (mut i32) (i32.const 1024))
+            (func (export "allocate") (param $n i32) (result i32) (local $at i32)
+                global.get $next local.set $at
+                global.get $next local.get $n i32.add global.set $next
+                local.get $at)
+            (func (export "execute_cel") (param $p i32) (param $l i32) (result i64)
+                local.get $p local.get $l call $fetch))"#;
+        let answer = run(&wasm(caller), br#"{"url":"https://example.com/"}"#, None).unwrap();
+        assert!(String::from_utf8_lossy(&answer).contains("no_permission"));
     }
 
     #[test]

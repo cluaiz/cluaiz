@@ -414,7 +414,9 @@ impl ToolsEngine {
                 Ok(format!("Skill '{}' active. Ready for workflow execution.", name))
             }
             "plugin" | _ => {
-                let bytes = Self::execute_plugin_by_name(name, payload.as_bytes())?;
+                // A plugin may wait on the network, and that must not hold up the async workers
+                let (plugin, input) = (name.to_owned(), payload.as_bytes().to_vec());
+                let bytes = tokio::task::spawn_blocking(move || Self::execute_plugin_by_name(&plugin, &input)).await??;
                 Ok(String::from_utf8_lossy(&bytes).to_string())
             }
         }
