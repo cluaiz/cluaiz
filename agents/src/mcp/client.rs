@@ -353,6 +353,9 @@ fn start_idle_reaper() {
 }
 
 /// Subprocess IPC client communicating with external MCP servers over stdio with full JSON-RPC 2.0 protocol handshake
+/// Most `tools/list` pages read from one server
+const MAX_TOOL_PAGES: usize = 50;
+
 pub struct McpClient;
 
 impl McpClient {
@@ -385,8 +388,22 @@ impl McpClient {
 
         // 3. Ask the running server
         let session = session_for(mcp_dir).await?;
-        let result = session.request("tools/list", json!({}), REQUEST_TIMEOUT).await?;
-        let tools = result.get("tools").and_then(|t| t.as_array()).cloned().unwrap_or_default();
+        // A large server lists its tools in pages (MCP spec: `nextCursor`)
+        let mut tools = Vec::new();
+        let mut cursor: Option<String> = None;
+        for _ in 0..MAX_TOOL_PAGES {
+            let params = match &cursor {
+                Some(cursor) => json!({ "cursor": cursor }),
+                None => json!({}),
+            };
+            let result = session.request("tools/list", params, REQUEST_TIMEOUT).await?;
+            tools.extend(result.get("tools").and_then(|t| t.as_array()).cloned().unwrap_or_default());
+            let next = result.get("nextCursor").and_then(|c| c.as_str()).filter(|c| !c.is_empty()).map(str::to_owned);
+            if next.is_none() || next == cursor {
+                break;
+            }
+            cursor = next;
+        }
         let tools = match exposed_tools(mcp_dir) {
             Some(exposed) => only_exposed(tools, &exposed),
             None => tools,
