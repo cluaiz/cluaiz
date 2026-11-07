@@ -386,6 +386,10 @@ impl McpClient {
         let session = session_for(mcp_dir).await?;
         let result = session.request("tools/list", json!({}), REQUEST_TIMEOUT).await?;
         let tools = result.get("tools").and_then(|t| t.as_array()).cloned().unwrap_or_default();
+        let tools = match exposed_tools(mcp_dir) {
+            Some(exposed) => only_exposed(tools, &exposed),
+            None => tools,
+        };
 
         // Kept on disk so tool matching knows the functions after a restart, without starting
         // the server. It is only read for matching; loading always asks the running server.
@@ -419,6 +423,9 @@ impl McpClient {
 
     /// Calls a tool on the server's running process
     pub async fn call_tool(mcp_dir: &Path, tool_name: &str, arguments: Value) -> Result<Value> {
+        if let Some(exposed) = exposed_tools(mcp_dir) {
+            check_exposed(&exposed, tool_name, &arguments)?;
+        }
         let session = session_for(mcp_dir).await?;
         let result = session.request("tools/call", json!({ "name": tool_name, "arguments": arguments }), REQUEST_TIMEOUT).await
             .map_err(|e| anyhow!("MCP tool error: {}", e))?;
@@ -466,6 +473,46 @@ impl McpClient {
     }
 }
 
+/// `expose` in a package: the only tools of the server the model gets, each with the only inputs
+/// it may set. A server can offer far more than a small model has room for, and inputs a model
+/// must not touch. Without `expose`, everything the server offers is offered.
+fn exposed_tools(mcp_dir: &Path) -> Option<HashMap<String, Vec<String>>> {
+    let text = std::fs::read_to_string(mcp_dir.join("package.json")).ok()?;
+    let manifest: Value = serde_json::from_str(&text).ok()?;
+    serde_json::from_value(manifest.get("expose")?.clone()).ok()
+}
+
+fn only_exposed(tools: Vec<Value>, exposed: &HashMap<String, Vec<String>>) -> Vec<Value> {
+    tools
+        .into_iter()
+        .filter_map(|mut tool| {
+            let inputs = exposed.get(tool.get("name")?.as_str()?)?;
+            if let Some(schema) = tool.get_mut("inputSchema") {
+                if let Some(properties) = schema.get_mut("properties").and_then(Value::as_object_mut) {
+                    properties.retain(|name, _| inputs.contains(name));
+                }
+                if let Some(required) = schema.get_mut("required").and_then(Value::as_array_mut) {
+                    required.retain(|name| name.as_str().is_some_and(|name| inputs.iter().any(|i| i == name)));
+                }
+            }
+            Some(tool)
+        })
+        .collect()
+}
+
+/// A call outside `expose` is refused here, whatever the model or a program sends
+fn check_exposed(exposed: &HashMap<String, Vec<String>>, tool: &str, arguments: &Value) -> Result<()> {
+    let Some(inputs) = exposed.get(tool) else {
+        return Err(anyhow!("This package does not offer the tool '{tool}'"));
+    };
+    if let Some(arguments) = arguments.as_object() {
+        if let Some(name) = arguments.keys().find(|name| !inputs.contains(name)) {
+            return Err(anyhow!("The tool '{tool}' does not accept the input '{name}' here"));
+        }
+    }
+    Ok(())
+}
+
 /// The server's last tool list on disk (inside the package's cache folder, so a reinstall or
 /// a full cache clear removes it)
 fn tools_list_cache(mcp_dir: &Path) -> PathBuf {
@@ -475,6 +522,22 @@ fn tools_list_cache(mcp_dir: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn expose_limits_tools_and_inputs() {
+        let exposed = HashMap::from([("open".to_string(), vec!["url".to_string()])]);
+        let tools = vec![
+            json!({"name": "open", "inputSchema": {"properties": {"url": {}, "extraArgs": {}}, "required": ["url", "extraArgs"]}}),
+            json!({"name": "eval", "inputSchema": {"properties": {"script": {}}}}),
+        ];
+        let kept = only_exposed(tools, &exposed);
+        assert_eq!(kept.len(), 1);
+        assert_eq!(kept[0]["inputSchema"], json!({"properties": {"url": {}}, "required": ["url"]}));
+
+        assert!(check_exposed(&exposed, "open", &json!({"url": "https://a"})).is_ok());
+        assert!(check_exposed(&exposed, "open", &json!({"extraArgs": ["--x"]})).is_err());
+        assert!(check_exposed(&exposed, "eval", &json!({"script": "1"})).is_err());
+    }
 
     #[test]
     fn test_restart_backoff_and_unavailable() {
