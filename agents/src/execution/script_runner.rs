@@ -30,6 +30,18 @@ pub struct LanguageConfig {
 /// Dynamic, zero-hardcoding multi-language script execution engine
 pub struct DeclarativeScriptRunner;
 
+/// What runs Python here, for `{python}` in a command. Many Linux and macOS systems have only `python3`,
+/// and on Windows `python3` is often a stub that opens the Store.
+fn python_command() -> &'static str {
+    if cfg!(windows) {
+        return "python";
+    }
+    let on_path = |name: &str| {
+        std::env::var_os("PATH").is_some_and(|path| std::env::split_paths(&path).any(|dir| dir.join(name).is_file()))
+    };
+    if on_path("python3") { "python3" } else { "python" }
+}
+
 impl DeclarativeScriptRunner {
     /// Executes a dynamic code script according to the declarative manifest specifications
     pub async fn execute(
@@ -93,6 +105,7 @@ impl DeclarativeScriptRunner {
 
         let tool_dir_str = tool_dir.map(|p| p.display().to_string()).unwrap_or_default();
         let command_line = cmd_template
+            .replace("{python}", python_command())
             .replace("{tool_dir}", &tool_dir_str)
             .replace("{file}", &script_file.display().to_string())
             .replace("{bin}", &bin_file.display().to_string());
@@ -135,7 +148,7 @@ impl DeclarativeScriptRunner {
 
         // 2. Fallback to comprehensive multi-language matrix
         match normalized.as_str() {
-            "python" | "py" => ("python \"{file}\"".to_string(), "py".to_string()),
+            "python" | "py" => ("{python} \"{file}\"".to_string(), "py".to_string()),
             "javascript" | "js" | "node" => ("node \"{file}\"".to_string(), "js".to_string()),
             "typescript" | "ts" => ("npx ts-node \"{file}\"".to_string(), "ts".to_string()),
             "powershell" | "ps1" => ("powershell -File \"{file}\"".to_string(), "ps1".to_string()),
