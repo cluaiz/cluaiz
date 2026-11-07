@@ -22,7 +22,7 @@ pub use settings::{
 };
 pub use units::{BYTE, KIB, MIB, GIB, GIB_F64, MIB_F64, bytes_to_gib, bytes_to_mib, gib_to_bytes, mib_to_bytes};
 pub use chat::{
-    ChatEnvelope, ChatMessage, OutputConstraint, EARLIER_RESULT_NOTE, answer_reserve, oldest_earlier_result, oldest_steps_to_drop, oldest_turns_to_drop, room_to_keep, shift_discard, tokens_to_free,
+    ChatEnvelope, ChatMessage, OutputConstraint, EARLIER_RESULT_NOTE, STEP_RESULT_NOTE, answer_reserve, oldest_earlier_result, oldest_step_result, oldest_steps_to_drop, oldest_turns_to_drop, room_to_keep, shift_discard, tokens_to_free,
 };
 pub use contracts::{UnifiedBackend, StreamingInference, StreamCallback, Modality, EngineError, EmbeddingDriver};
 

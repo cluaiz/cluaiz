@@ -349,6 +349,7 @@ pub(crate) fn stream_tokens_with_media(
                 // By their own sizes: spread, the tool schemas would count as earlier turns that can go,
                 // and the note that replaces a result would look long
                 let earlier_result = cluaiz_core::oldest_earlier_result(&sizes);
+                let step_result = cluaiz_core::oldest_step_result(&sizes);
                 let room = cluaiz_core::room_to_keep(&sizes, prompt_tokens.len(), n_ctx, fit_reserve, gen_reserve);
                 for (_, n) in &mut sizes {
                     *n += per_message;
@@ -374,6 +375,16 @@ pub(crate) fn stream_tokens_with_media(
                     // Only the current request is left. What its tools returned is worth more than
                     // the extra room for thinking: steps go only when the answer's own room is short.
                     let short = (prompt_tokens.len() + gen_reserve).saturating_sub(n_ctx);
+                    // Results go before whole steps: the calls stay, so the model sees what it has done
+                    if let Some(at) = step_result.filter(|_| short > 0) {
+                        info!("🌊 [Context] Left out the result of step message {} ({} tokens); its call stays", at, sizes[at].1);
+                        report.dropped_tokens += sizes[at].1;
+                        report.truncated = true;
+                        structured_messages[at].1 = cluaiz_core::STEP_RESULT_NOTE.to_string();
+                        formatted_prompt = render(llama, &structured_messages)?;
+                        prompt_tokens = tokenize(vocab, &formatted_prompt, add_special, true)?;
+                        continue;
+                    }
                     (start, n_drop, freed) = cluaiz_core::oldest_steps_to_drop(&sizes, short);
                     if short == 0 || n_drop == 0 {
                         break;

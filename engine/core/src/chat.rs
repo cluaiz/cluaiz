@@ -205,6 +205,18 @@ pub fn oldest_earlier_result(messages: &[(&str, usize)]) -> Option<usize> {
     messages[..current].iter().position(|(role, tokens)| role.eq_ignore_ascii_case("tool") && *tokens > EARLIER_RESULT_MIN_TOKENS)
 }
 
+/// What takes the place of a tool result of the current request when the context is short. The call
+/// stays, so the model still sees which steps it has done and does not run them again.
+pub const STEP_RESULT_NOTE: &str = "(This result was left out to make room: the call above already ran. Do not run it again; use the newer results.)";
+
+/// The oldest long tool result of the current request, outside its newest step. It goes before whole
+/// steps do: without the calls, a model forgets what it has done and repeats the same steps.
+pub fn oldest_step_result(messages: &[(&str, usize)]) -> Option<usize> {
+    let first = messages.iter().rposition(|(role, _)| role.eq_ignore_ascii_case("user"))? + 1;
+    let newest = messages.iter().rposition(|(role, _)| !role.eq_ignore_ascii_case("tool"))?;
+    (first..newest).find(|at| messages[*at].0.eq_ignore_ascii_case("tool") && messages[*at].1 > EARLIER_RESULT_MIN_TOKENS)
+}
+
 /// When no earlier turn is left to drop: the oldest whole steps of the current request (an answer with
 /// its tool results) so at least `target` tokens are freed. The request and its newest step stay.
 /// Returns (index of the first message to drop, messages, tokens).
@@ -312,6 +324,16 @@ mod tests {
         // The current request's results stay, and a short one is not worth replacing
         assert_eq!(oldest_earlier_result(&[("user", 20), ("assistant", 10), ("tool", 800)]), None);
         assert_eq!(oldest_earlier_result(&msgs[..4]), None);
+    }
+
+    #[test]
+    fn a_long_step_result_goes_before_its_step() {
+        let msgs = [("system", 100), ("user", 20), ("assistant", 10), ("tool", 30), ("assistant", 10), ("tool", 700), ("assistant", 10), ("tool", 900)];
+        // The oldest long result; a short one and the newest step's result stay
+        assert_eq!(oldest_step_result(&msgs), Some(5));
+        assert_eq!(oldest_step_result(&msgs[..6]), None);
+        assert_eq!(oldest_step_result(&[("user", 20), ("assistant", 10), ("tool", 800)]), None);
+        assert_eq!(oldest_step_result(&[("assistant", 10), ("tool", 800)]), None);
     }
 
     #[test]
