@@ -205,16 +205,40 @@ pub fn oldest_earlier_result(messages: &[(&str, usize)]) -> Option<usize> {
     messages[..current].iter().position(|(role, tokens)| role.eq_ignore_ascii_case("tool") && *tokens > EARLIER_RESULT_MIN_TOKENS)
 }
 
-/// What takes the place of a tool result of the current request when the context is short. The call
-/// stays, so the model still sees which steps it has done and does not run them again.
-pub const STEP_RESULT_NOTE: &str = "(This result was left out to make room: the call above already ran. Do not run it again; use the newer results.)";
+/// Ends a tool result of the current request that was shortened because the context is short. The
+/// call stays, so the model still sees which steps it has done and does not run them again.
+pub const STEP_RESULT_NOTE: &str = "[The rest of this result was left out to make room. The call already ran: do not run it again.]";
 
-/// The oldest long tool result of the current request, outside its newest step. It goes before whole
-/// steps do: without the calls, a model forgets what it has done and repeats the same steps.
-pub fn oldest_step_result(messages: &[(&str, usize)]) -> Option<usize> {
+/// Takes the place of a tool result of the current request that a later call returned again
+pub const SAME_RESULT_NOTE: &str = "[Same result as a later call below.]";
+
+/// Characters a shortened result keeps from its start, where results usually say what matters
+const STEP_RESULT_HEAD_CHARS: usize = 240;
+
+/// One tool result of the current request, outside its newest step, made shorter, as (index, new
+/// content); `None` when none is worth it. First the older copy of a result a later call returned again,
+/// which loses nothing, then the longest result, cut to its start. Results are shortened before whole
+/// steps go: without the calls a model forgets what it has done and repeats the same steps, and without
+/// any of the results it answers from nothing. `messages` = (role, content).
+pub fn shorten_a_step_result(messages: &[(String, String)]) -> Option<(usize, String)> {
     let first = messages.iter().rposition(|(role, _)| role.eq_ignore_ascii_case("user"))? + 1;
     let newest = messages.iter().rposition(|(role, _)| !role.eq_ignore_ascii_case("tool"))?;
-    (first..newest).find(|at| messages[*at].0.eq_ignore_ascii_case("tool") && messages[*at].1 > EARLIER_RESULT_MIN_TOKENS)
+    let is_result = |at: usize| messages[at].0.eq_ignore_ascii_case("tool");
+    let results: Vec<usize> = (first..newest)
+        .filter(|at| is_result(*at) && messages[*at].1 != SAME_RESULT_NOTE && !messages[*at].1.ends_with(STEP_RESULT_NOTE))
+        .collect();
+    let repeated = results.iter().copied().find(|at| {
+        messages[*at].1.chars().count() > SAME_RESULT_NOTE.len() && (at + 1..messages.len()).any(|later| is_result(later) && messages[later].1 == messages[*at].1)
+    });
+    if let Some(at) = repeated {
+        return Some((at, SAME_RESULT_NOTE.to_string()));
+    }
+    let longest = results
+        .into_iter()
+        .filter(|at| messages[*at].1.chars().count() > STEP_RESULT_HEAD_CHARS + STEP_RESULT_HEAD_CHARS / 2)
+        .max_by_key(|at| (messages[*at].1.len(), std::cmp::Reverse(*at)))?;
+    let head: String = messages[longest].1.chars().take(STEP_RESULT_HEAD_CHARS).collect();
+    Some((longest, format!("{head}\n{STEP_RESULT_NOTE}")))
 }
 
 /// When no earlier turn is left to drop: the oldest whole steps of the current request (an answer with
@@ -330,10 +354,23 @@ mod tests {
     fn a_long_step_result_goes_before_its_step() {
         let msgs = [("system", 100), ("user", 20), ("assistant", 10), ("tool", 30), ("assistant", 10), ("tool", 700), ("assistant", 10), ("tool", 900)];
         // The oldest long result; a short one and the newest step's result stay
-        assert_eq!(oldest_step_result(&msgs), Some(5));
-        assert_eq!(oldest_step_result(&msgs[..6]), None);
-        assert_eq!(oldest_step_result(&[("user", 20), ("assistant", 10), ("tool", 800)]), None);
-        assert_eq!(oldest_step_result(&[("assistant", 10), ("tool", 800)]), None);
+        let msgs: Vec<(String, String)> = msgs.iter().map(|(role, n)| (role.to_string(), "x".repeat(*n))).collect();
+        // The longest result, cut to its start; a short one and the newest step's result stay
+        let (at, cut) = shorten_a_step_result(&msgs).unwrap();
+        assert_eq!(at, 5);
+        assert!(cut.starts_with(&"x".repeat(240)) && cut.ends_with(STEP_RESULT_NOTE) && cut.len() < 700);
+        assert_eq!(shorten_a_step_result(&msgs[..6]), None);
+        // A shortened result is not shortened again
+        let mut done = msgs.clone();
+        done[5].1 = cut;
+        assert_eq!(shorten_a_step_result(&done), None);
+        let current = |n: usize| vec![("user".to_string(), String::new()), ("assistant".to_string(), String::new()), ("tool".to_string(), "x".repeat(n))];
+        assert_eq!(shorten_a_step_result(&current(800)), None);
+        // The older copy of a result returned again goes first, even when it is short
+        let mut same = msgs.clone();
+        same[3].1 = "y".repeat(100);
+        same[7].1 = "y".repeat(100);
+        assert_eq!(shorten_a_step_result(&same), Some((3, SAME_RESULT_NOTE.to_string())));
     }
 
     #[test]
