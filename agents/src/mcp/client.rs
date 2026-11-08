@@ -24,6 +24,77 @@ const IDLE_STOP: Duration = Duration::from_secs(10 * 60);
 /// Most servers running at once; starting one more stops the least recently used
 const MAX_RUNNING: usize = 4;
 
+/// The processes of one MCP server. On Windows, ending the launcher (`npx.cmd`, `uvx`) leaves the
+/// server and anything it started running, holding handles they inherited from the Engine, such
+/// as its listening port. A job object ends them all: when the server is stopped, and when the
+/// Engine exits in any way, since its handle to the job then closes.
+#[cfg(windows)]
+mod job {
+    use windows_sys::Win32::Foundation::{CloseHandle, HANDLE};
+    use windows_sys::Win32::System::JobObjects::{
+        AssignProcessToJobObject, CreateJobObjectW, JobObjectExtendedLimitInformation, SetInformationJobObject, TerminateJobObject,
+        JOBOBJECT_EXTENDED_LIMIT_INFORMATION, JOB_OBJECT_LIMIT_BREAKAWAY_OK, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE,
+    };
+
+    pub struct Job(HANDLE);
+    // SAFETY: a job handle may be used and closed from any thread
+    unsafe impl Send for Job {}
+    unsafe impl Sync for Job {}
+
+    impl Job {
+        /// Puts `child` in a new job; `None` if Windows refuses (the server then runs as before)
+        pub fn of(child: &std::process::Child) -> Option<Self> {
+            use std::os::windows::io::AsRawHandle;
+            // SAFETY: plain Win32 calls on a handle this function owns and on the child's live handle
+            unsafe {
+                let job = Job(CreateJobObjectW(std::ptr::null(), std::ptr::null()));
+                if job.0.is_null() {
+                    return None;
+                }
+                let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = std::mem::zeroed();
+                // A process that asks to leave the job may: it chose to outlive its parent
+                info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE | JOB_OBJECT_LIMIT_BREAKAWAY_OK;
+                let size = std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32;
+                if SetInformationJobObject(job.0, JobObjectExtendedLimitInformation, &info as *const _ as *const _, size) == 0 {
+                    return None;
+                }
+                if AssignProcessToJobObject(job.0, child.as_raw_handle() as HANDLE) == 0 {
+                    return None;
+                }
+                Some(job)
+            }
+        }
+
+        /// Ends every process in the job
+        pub fn end(&self) {
+            // SAFETY: the handle is open until drop
+            unsafe {
+                TerminateJobObject(self.0, 1);
+            }
+        }
+    }
+
+    impl Drop for Job {
+        fn drop(&mut self) {
+            // SAFETY: closed once, here; with KILL_ON_JOB_CLOSE this also ends what is left in it
+            unsafe {
+                CloseHandle(self.0);
+            }
+        }
+    }
+}
+
+#[cfg(not(windows))]
+mod job {
+    pub struct Job;
+    impl Job {
+        pub fn of(_child: &std::process::Child) -> Option<Self> {
+            None
+        }
+        pub fn end(&self) {}
+    }
+}
+
 static MCP_TOOL_CACHE: Lazy<Arc<RwLock<HashMap<PathBuf, Vec<Value>>>>> = Lazy::new(|| {
     Arc::new(RwLock::new(HashMap::new()))
 });
@@ -98,6 +169,8 @@ struct McpSession {
     /// `None` once stopped: closing stdin is how a stdio server is told to exit.
     stdin: std::sync::Mutex<Option<ChildStdin>>,
     child: std::sync::Mutex<Child>,
+    /// The server's processes, ended together (Windows)
+    job: Option<job::Job>,
     pending: PendingMap,
     next_id: AtomicU64,
     alive: Arc<AtomicBool>,
@@ -137,6 +210,7 @@ impl McpSession {
 
         let mut child = cmd.spawn()
             .map_err(|e| anyhow!("Failed to spawn MCP server '{}' ({}): {}", manifest.name, exec.command, e))?;
+        let job = job::Job::of(&child);
         let stdin = child.stdin.take().ok_or_else(|| anyhow!("Failed to open MCP stdin"))?;
         let stdout = child.stdout.take().ok_or_else(|| anyhow!("Failed to open MCP stdout"))?;
         if let Some(stderr) = child.stderr.take() {
@@ -155,6 +229,7 @@ impl McpSession {
             workspace,
             stdin: std::sync::Mutex::new(Some(stdin)),
             child: std::sync::Mutex::new(child),
+            job,
             pending: Arc::new(std::sync::Mutex::new(HashMap::new())),
             next_id: AtomicU64::new(1),
             alive: Arc::new(AtomicBool::new(true)),
@@ -284,6 +359,10 @@ impl McpSession {
         self.alive.store(false, Ordering::SeqCst);
         if let Ok(mut stdin) = self.stdin.lock() {
             stdin.take();
+        }
+        // The whole tree: ending only the launcher leaves the server running
+        if let Some(job) = &self.job {
+            job.end();
         }
         if let Ok(mut child) = self.child.lock() {
             let _ = child.kill();
