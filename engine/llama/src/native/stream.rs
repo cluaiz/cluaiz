@@ -331,6 +331,12 @@ pub(crate) fn stream_tokens_with_media(
             // Context shifting before the request: the oldest whole turns go until the prompt and the
             // answer's room fit, counted with the model's own tokenizer. A continuation (pivot) only
             // appends to the conversation already in the context, so it is fitted below by a shift.
+            // Results of this request are shortened in batches. The client sends the whole history
+            // each turn and the Engine shortens it again the same way, so batches keep the shortened
+            // part the same for several turns: the next steps append to the cached prompt instead
+            // of each changing it again, which costs a whole new prefill
+            const SHORTEN_BATCH: usize = 4;
+            let mut shortened = 0usize;
             while !is_pivot {
                 if prompt_tokens.len() + fit_reserve <= n_ctx {
                     break;
@@ -355,8 +361,9 @@ pub(crate) fn stream_tokens_with_media(
                     *n += per_message;
                 }
                 let overflow = (prompt_tokens.len() + room).saturating_sub(n_ctx);
-                let Some(target) = (overflow > 0)
-                    .then(|| cluaiz_core::tokens_to_free(shifting, n_ctx, overflow, can_shift))
+                let batch_open = shortened % SHORTEN_BATCH != 0;
+                let Some(target) = (overflow > 0 || batch_open)
+                    .then(|| cluaiz_core::tokens_to_free(shifting, n_ctx, overflow.max(1), can_shift))
                     .flatten()
                 else {
                     break;
@@ -377,15 +384,16 @@ pub(crate) fn stream_tokens_with_media(
                     let short = (prompt_tokens.len() + gen_reserve).saturating_sub(n_ctx);
                     // Results are shortened before whole steps go: the calls and the start of what
                     // they returned stay, so the model sees what it has done and what it found
-                    if let Some((at, shortened)) = step_result.filter(|_| short > 0) {
+                    if let Some((at, shorter)) = step_result.filter(|_| short > 0 || batch_open) {
+                        shortened += 1;
                         info!(
                             "🌊 [Context] Shortened the result of step message {} ({} to {} characters); its call stays",
                             at,
                             structured_messages[at].1.chars().count(),
-                            shortened.chars().count()
+                            shorter.chars().count()
                         );
                         report.truncated = true;
-                        structured_messages[at].1 = shortened;
+                        structured_messages[at].1 = shorter;
                         formatted_prompt = render(llama, &structured_messages)?;
                         prompt_tokens = tokenize(vocab, &formatted_prompt, add_special, true)?;
                         continue;
