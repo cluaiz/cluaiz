@@ -1,7 +1,7 @@
 //! `cluaiz skill|plugin|mcp config <id> [key] [value]`: settings declared in a component's manifest.
 
 use anyhow::{Result, anyhow};
-use cluaiz_agents::plugins::{net, PluginManifestParser};
+use cluaiz_agents::plugins::net;
 use cluaiz_core::EnvironmentManager;
 
 /// The values a plugin's `permissions` or an MCP package's `user_env` names are kept in the user's
@@ -11,54 +11,47 @@ fn user_setting(kind: &str, id: &str, key: Option<&str>, value: Option<&str>) ->
     let Some(dir) = cluaiz_agents::ToolsEngine::resolve_component_dir(kind, id) else {
         return Ok(false);
     };
-    let (mut names, hidden): (Vec<String>, Vec<String>) = if kind == "plugin" {
-        let Some(permissions) = PluginManifestParser::parse_file(dir.join("package.json")).and_then(|m| m.permissions) else {
-            return Ok(false);
-        };
-        let secrets: Vec<String> = permissions.secrets.keys().cloned().collect();
-        (secrets.iter().cloned().chain(permissions.user_urls).collect(), secrets)
-    } else {
-        let manifest: serde_json::Value = std::fs::read_to_string(dir.join("package.json"))
-            .ok()
-            .and_then(|text| serde_json::from_str(&text).ok())
-            .unwrap_or_default();
-        let names = manifest.get("user_env").cloned().and_then(|list| serde_json::from_value(list).ok()).unwrap_or_default();
-        (names, Vec::new())
-    };
-    names.sort();
-    if names.is_empty() {
+    let config_dir = EnvironmentManager::current().config_dir();
+    let settings = net::user_settings(kind, &dir, &config_dir);
+    if settings.is_empty() {
         return Ok(false);
     }
-    let config_dir = EnvironmentManager::current().config_dir();
-    let plugin_id = dir.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_else(|| id.to_owned());
-    let name = match key {
-        Some(key) if names.iter().any(|name| name == key) => key.to_owned(),
-        Some(_) => return Ok(false),
+    let setting = match key {
+        Some(key) => match settings.iter().find(|setting| setting.name == key) {
+            Some(setting) => setting,
+            None => return Ok(false),
+        },
         None => {
-            let set = net::settings_set(&plugin_id, &config_dir);
-            let shown: Vec<String> = names
+            let shown: Vec<String> = settings
                 .iter()
-                .map(|name| if set.contains(name) { format!("{name} (set)") } else { name.clone() })
+                .map(|setting| if setting.set { format!("{} (set)", setting.name) } else { setting.name.clone() })
                 .collect();
             let Ok(chosen) = inquire::Select::new("Select a setting:", shown).prompt() else {
                 return Ok(true);
             };
-            chosen.trim_end_matches(" (set)").to_owned()
+            let name = chosen.trim_end_matches(" (set)");
+            settings.iter().find(|setting| setting.name == name).ok_or_else(|| anyhow!("unknown setting {name}"))?
         }
     };
+    let name = &setting.name;
     let value = match value {
         Some(value) => value.to_owned(),
-        None if !hidden.contains(&name) => inquire::Text::new(&format!("Enter {name} (empty removes it):")).prompt()?,
+        None if !setting.secret => inquire::Text::new(&format!("Enter {name} (empty removes it):")).prompt()?,
         None => inquire::Password::new(&format!("Enter {name} (empty removes it):"))
             .without_confirmation()
             .with_display_mode(inquire::PasswordDisplayMode::Masked)
             .prompt()?,
     };
-    net::save_setting(&plugin_id, &name, value.trim(), &config_dir)?;
+    net::save_user_setting(kind, &dir, name, &value, &config_dir).map_err(|error| anyhow!(error))?;
+    let tool = dir.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_else(|| id.to_owned());
     if value.trim().is_empty() {
-        println!("✅ [{plugin_id}] {name} removed.");
+        println!("✅ [{tool}] {name} removed.");
     } else {
-        println!("✅ [{plugin_id}] {name} saved.");
+        println!("✅ [{tool}] {name} saved.");
+    }
+    // An MCP server reads its environment when it starts; this command is another process
+    if kind == "mcp" {
+        println!("   A running Engine gives it to {tool} when the server starts again (tools.set_settings does that at once).");
     }
     Ok(true)
 }

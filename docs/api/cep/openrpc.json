@@ -142,6 +142,16 @@
               "boolean",
               "null"
             ]
+          },
+          "user_settings": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Values the tool asks the user for, by name (see `user_settings` in the result), such as an\nAPI key. An empty string removes one. They are saved in the user's settings, never in the\ntool's files, and never returned",
+            "type": [
+              "object",
+              "null"
+            ]
           }
         },
         "type": "object"
@@ -6312,17 +6322,34 @@
           "params": [
             {
               "name": "kind",
-              "value": "mcp"
+              "value": "plugin"
             },
             {
               "name": "name",
-              "value": "filesystem"
+              "value": "web-search"
             }
           ],
           "result": {
             "name": "result",
             "value": {
               "schema": {},
+              "user_settings": [
+                {
+                  "name": "BRAVE_API_KEY",
+                  "secret": true,
+                  "set": false
+                },
+                {
+                  "name": "SEARXNG_URL",
+                  "secret": false,
+                  "set": false
+                },
+                {
+                  "name": "TAVILY_API_KEY",
+                  "secret": true,
+                  "set": true
+                }
+              ],
               "values": {
                 "enabled": true,
                 "execution_mode": "manual",
@@ -6359,7 +6386,7 @@
           "title": "AnyValue"
         }
       },
-      "summary": "Read installed tool settings",
+      "summary": "Read installed tool settings, and the values (such as API keys) it asks the user for, without their values",
       "x-cep": {
         "destructive": false,
         "execution": "sync",
@@ -6825,14 +6852,14 @@
           "data": {
             "type": "invalid_params"
           },
-          "message": "An unknown `security_mode` / `execution_mode`, or a bad `name`"
+          "message": "An unknown `security_mode` / `execution_mode`, a bad `name`, or a `user_settings` name the tool does not ask for"
         },
         {
           "code": -32010,
           "data": {
             "type": "tool_operation_failed"
           },
-          "message": "The tool registry could not be saved"
+          "message": "The tool registry or the user's settings could not be saved"
         }
       ],
       "examples": [
@@ -6841,16 +6868,18 @@
           "params": [
             {
               "name": "kind",
-              "value": "skill"
+              "value": "plugin"
             },
             {
               "name": "name",
-              "value": "installed-tool"
+              "value": "web-search"
             },
             {
               "name": "patch",
               "value": {
-                "enabled": true
+                "user_settings": {
+                  "TAVILY_API_KEY": "tvly-..."
+                }
               }
             }
           ],
@@ -6858,8 +6887,18 @@
             "name": "result",
             "value": {
               "schema": {},
+              "user_settings": [
+                {
+                  "name": "TAVILY_API_KEY",
+                  "secret": true,
+                  "set": true
+                }
+              ],
               "values": {
-                "enabled": true
+                "enabled": true,
+                "execution_mode": "manual",
+                "security_mode": "inherit",
+                "trust_annotations": false
               }
             }
           }

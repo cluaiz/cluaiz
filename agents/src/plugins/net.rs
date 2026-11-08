@@ -260,6 +260,65 @@ pub fn save_setting(plugin_id: &str, name: &str, value: &str, config_dir: &Path)
     Ok(())
 }
 
+/// A value a tool asks the user for, named in its manifest. The value itself is never part of it.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+pub struct UserSetting {
+    pub name: String,
+    /// A key: typed hidden and never shown
+    pub secret: bool,
+    /// The user has given it
+    pub set: bool,
+}
+
+/// The values the tool in `dir` asks the user for, sorted by name: a plugin's
+/// `permissions.secrets` (keys, each sent only to its host) and `permissions.user_urls`, and an MCP
+/// package's `user_env` (given to the server as environment variables, and kept hidden, since
+/// they are often keys). A skill asks for none.
+pub fn user_settings(kind: &str, dir: &Path, config_dir: &Path) -> Vec<UserSetting> {
+    let manifest = dir.join("package.json");
+    let declared: Vec<(String, bool)> = match kind {
+        "plugin" => super::PluginManifestParser::parse_file(&manifest)
+            .and_then(|parsed| parsed.permissions)
+            .map(|permissions| {
+                let keys = permissions.secrets.into_keys().map(|name| (name, true));
+                keys.chain(permissions.user_urls.into_iter().map(|name| (name, false))).collect()
+            })
+            .unwrap_or_default(),
+        "mcp" => std::fs::read_to_string(&manifest)
+            .ok()
+            .and_then(|text| serde_json::from_str::<Value>(&text).ok())
+            .and_then(|parsed| serde_json::from_value::<Vec<String>>(parsed.get("user_env")?.clone()).ok())
+            .map(|names| names.into_iter().map(|name| (name, true)).collect())
+            .unwrap_or_default(),
+        _ => Vec::new(),
+    };
+    let id = dir.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
+    let set = settings_set(&id, config_dir);
+    let mut settings: Vec<UserSetting> = declared
+        .into_iter()
+        .map(|(name, secret)| UserSetting { set: set.contains(&name), name, secret })
+        .collect();
+    settings.sort_by(|a, b| a.name.cmp(&b.name));
+    settings.dedup_by(|a, b| a.name == b.name);
+    settings
+}
+
+/// Saves one value the tool in `dir` asks for (empty removes it). Err names the values it asks
+/// for when `name` is not one of them.
+pub fn save_user_setting(kind: &str, dir: &Path, name: &str, value: &str, config_dir: &Path) -> Result<(), String> {
+    let declared = user_settings(kind, dir, config_dir);
+    if !declared.iter().any(|setting| setting.name == name) {
+        let names: Vec<&str> = declared.iter().map(|setting| setting.name.as_str()).collect();
+        return Err(if names.is_empty() {
+            "this tool asks for no settings".to_string()
+        } else {
+            format!("'{name}' is not one of this tool's settings: {}", names.join(", "))
+        });
+    }
+    let id = dir.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
+    save_setting(&id, name, value.trim(), config_dir).map_err(|error| error.to_string())
+}
+
 /// The names of a plugin's values that are set. The values stay out of it
 pub fn settings_set(plugin_id: &str, config_dir: &Path) -> Vec<String> {
     read_settings(plugin_id, config_dir).into_keys().collect()
@@ -480,6 +539,39 @@ mod tests {
         let base = format!("http://127.0.0.1:{port}");
         let answer = access(&[("OWN_URL", base.as_str())]).fetch(br#"{"url":"{{url:OWN_URL}}/"}"#);
         assert_eq!(code(&answer), "blocked", "{answer}");
+    }
+
+    #[test]
+    fn a_tool_is_asked_only_for_the_settings_its_manifest_names() {
+        let root = std::env::temp_dir().join(format!("cluaiz-user-settings-{}", uuid::Uuid::new_v4()));
+        let (plugin, server, config) = (root.join("search"), root.join("docs"), root.join("config"));
+        std::fs::create_dir_all(&plugin).unwrap();
+        std::fs::create_dir_all(&server).unwrap();
+        std::fs::write(
+            plugin.join("package.json"),
+            r#"{"id":"search","permissions":{"network_access":true,"secrets":{"KEY":"api.example.com"},"user_urls":["BASE_URL"]}}"#,
+        )
+        .unwrap();
+        std::fs::write(server.join("package.json"), r#"{"id":"docs","user_env":["TOKEN"]}"#).unwrap();
+
+        let names = |kind: &str, dir: &Path| -> Vec<(String, bool, bool)> {
+            user_settings(kind, dir, &config).into_iter().map(|s| (s.name, s.secret, s.set)).collect()
+        };
+        assert_eq!(names("plugin", &plugin), [("BASE_URL".into(), false, false), ("KEY".into(), true, false)]);
+        assert_eq!(names("mcp", &server), [("TOKEN".into(), true, false)]);
+        assert!(names("skill", &plugin).is_empty());
+
+        save_user_setting("plugin", &plugin, "KEY", " abc ", &config).unwrap();
+        assert_eq!(read_settings("search", &config).get("KEY").map(String::as_str), Some("abc"));
+        assert!(names("plugin", &plugin).contains(&("KEY".into(), true, true)));
+        // A name the manifest does not give is refused, and nothing is written
+        let refused = save_user_setting("plugin", &plugin, "OTHER", "x", &config).unwrap_err();
+        assert!(refused.contains("BASE_URL, KEY"), "{refused}");
+        assert!(read_settings("search", &config).get("OTHER").is_none());
+        // Empty removes it
+        save_user_setting("plugin", &plugin, "KEY", "", &config).unwrap();
+        assert!(read_settings("search", &config).is_empty());
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]

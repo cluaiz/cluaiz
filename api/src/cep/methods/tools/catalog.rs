@@ -36,6 +36,10 @@ pub struct Patch {
     pub execution_mode: Option<String>,
     /// Trust the MCP server's own read-only / destructive hints
     pub trust_annotations: Option<bool>,
+    /// Values the tool asks the user for, by name (see `user_settings` in the result), such as an
+    /// API key. An empty string removes one. They are saved in the user's settings, never in the
+    /// tool's files, and never returned
+    pub user_settings: Option<std::collections::BTreeMap<String, String>>,
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -94,15 +98,25 @@ pub async fn discover(ctx: CallCtx, call: Call, params: Discover) -> Result<Valu
     }).await
 }
 
-fn settings(entry: &cluaiz_agents::ToolEntry) -> Value {
+/// The values the tool asks the user for: name, whether it is a key, and whether it is set. Never
+/// the values themselves.
+fn user_settings(target: &Target) -> Vec<cluaiz_agents::plugins::net::UserSetting> {
+    let config_dir = cluaiz_core::EnvironmentManager::current().config_dir();
+    ToolsEngine::resolve_component_dir(target.kind.as_str(), &target.name)
+        .map(|dir| cluaiz_agents::plugins::net::user_settings(target.kind.as_str(), &dir, &config_dir))
+        .unwrap_or_default()
+}
+
+fn settings(entry: &cluaiz_agents::ToolEntry, target: &Target) -> Value {
     json!({"schema":{},"values":{"enabled":entry.enabled,"security_mode":entry.security_mode,
-        "execution_mode":entry.execution_mode,"trust_annotations":entry.trust_annotations}})
+        "execution_mode":entry.execution_mode,"trust_annotations":entry.trust_annotations},
+        "user_settings":user_settings(target)})
 }
 
 pub async fn get(ctx: CallCtx, call: Call, target: Target) -> Result<Value, CepError> {
     common::work(ctx, call, move |call, workspace| {
         common::directory(&call, &workspace, &target)?;
-        Ok(settings(&common::entry(&target)?))
+        Ok(settings(&common::entry(&target)?, &target))
     })
     .await
 }
@@ -131,7 +145,9 @@ pub async fn set(ctx: CallCtx, call: Call, params: Set) -> Result<Value, CepErro
             })
         })
         .transpose()?;
-    let stop = params.patch.enabled == Some(false) && target.kind == Kind::Mcp;
+    // A server reads its environment when it starts: new values reach it from its next start
+    let stop = target.kind == Kind::Mcp
+        && (params.patch.enabled == Some(false) || params.patch.user_settings.as_ref().is_some_and(|values| !values.is_empty()));
     let name = target.name.clone();
     let value = common::work(ctx, call, move |call, workspace| {
         common::directory(&call, &workspace, &target)?;
@@ -155,7 +171,24 @@ pub async fn set(ctx: CallCtx, call: Call, params: Set) -> Result<Value, CepErro
         if let Some(value) = params.patch.trust_annotations {
             entry.trust_annotations = value;
         }
-        let result = settings(entry);
+        if let Some(values) = &params.patch.user_settings {
+            let dir = ToolsEngine::resolve_component_dir(target.kind.as_str(), &target.name).ok_or_else(|| common::missing(&target))?;
+            let config_dir = cluaiz_core::EnvironmentManager::current().config_dir();
+            let declared = cluaiz_agents::plugins::net::user_settings(target.kind.as_str(), &dir, &config_dir);
+            // All names are checked before any is saved: a bad patch changes nothing
+            if let Some(unknown) = values.keys().find(|name| !declared.iter().any(|setting| &setting.name == *name)) {
+                let names: Vec<&str> = declared.iter().map(|setting| setting.name.as_str()).collect();
+                return Err(roots::invalid(
+                    "patch.user_settings",
+                    &format!("'{unknown}' is not a setting of this tool; its settings: {}", if names.is_empty() { "none".into() } else { names.join(", ") }),
+                ));
+            }
+            for (setting, value) in values {
+                cluaiz_agents::plugins::net::save_user_setting(target.kind.as_str(), &dir, setting, value, &config_dir)
+                    .map_err(common::unavailable)?;
+            }
+        }
+        let result = settings(entry, &target);
         registry.save().map_err(common::unavailable)?;
         Ok(result)
     })

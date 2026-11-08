@@ -12,7 +12,7 @@
 | [`tools.clear_cache`](./tools/tools.clear_cache.md) | write | sync | Remove cached files without uninstalling tools |
 | [`tools.discover`](./tools/tools.discover.md) | read | sync | Dry-run the existing installed-tool matcher |
 | [`tools.files`](./tools/tools.files.md) | read | sync | Files inside a tool package, with cache counts |
-| [`tools.get_settings`](./tools/tools.get_settings.md) | read | sync | Read installed tool settings |
+| [`tools.get_settings`](./tools/tools.get_settings.md) | read | sync | Read installed tool settings, and the values (such as API keys) it asks the user for, without their values |
 | [`tools.install`](./tools/tools.install.md) | write | task | Install a registry tool; task result reports the actual outcome |
 | [`tools.list`](./tools/tools.list.md) | read | sync | Installed tools with settings and known function schemas |
 | [`tools.open_file`](./tools/tools.open_file.md) | read | sync | Ask the local file editor to open a tool file (owner only) |

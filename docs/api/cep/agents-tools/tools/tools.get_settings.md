@@ -4,7 +4,7 @@ transport: "POST /v1/cep"
 category: "agents-tools"
 category_title: "Agents, MCP & Tools"
 group: "tools"
-summary: "Read installed tool settings"
+summary: "Read installed tool settings, and the values (such as API keys) it asks the user for, without their values"
 scope: "read"
 execution: "sync"
 mcp: false
@@ -16,20 +16,20 @@ params:
     type: "\"skill\" | \"plugin\" | \"mcp\""
     req: true
     desc: "skill, plugin or mcp"
-    example: "mcp"
+    example: "plugin"
   - name: "name"
     type: "string"
     req: true
     desc: "The tool's folder name: 1–64 lowercase letters, digits, dots, underscores or hyphens"
-    example: "filesystem"
+    example: "web-search"
 request_payload: |
   {
     "id": 1,
     "jsonrpc": "2.0",
     "method": "tools.get_settings",
     "params": {
-      "kind": "mcp",
-      "name": "filesystem"
+      "kind": "plugin",
+      "name": "web-search"
     }
   }
 response: |
@@ -38,6 +38,23 @@ response: |
     "jsonrpc": "2.0",
     "result": {
       "schema": {},
+      "user_settings": [
+        {
+          "name": "BRAVE_API_KEY",
+          "secret": true,
+          "set": false
+        },
+        {
+          "name": "SEARXNG_URL",
+          "secret": false,
+          "set": false
+        },
+        {
+          "name": "TAVILY_API_KEY",
+          "secret": true,
+          "set": true
+        }
+      ],
       "values": {
         "enabled": true,
         "execution_mode": "manual",
