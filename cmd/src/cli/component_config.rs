@@ -79,21 +79,15 @@ pub async fn execute(
     }
     let comp_type = final_type.ok_or_else(|| anyhow!("Component type required"))?;
 
-    let env = EnvironmentManager::current();
-    let base_dir = env.global_dir.join(format!("{}s", comp_type));
-
-    // ID Selection
+    // ID Selection: the installed tools of this kind, from the registry (wherever they are installed)
     if final_id.is_none() {
-        let mut options = Vec::new();
-        if base_dir.exists() {
-            if let Ok(entries) = std::fs::read_dir(&base_dir) {
-                for entry in entries.filter_map(|e| e.ok()) {
-                    if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) {
-                        options.push(entry.file_name().to_string_lossy().to_string());
-                    }
-                }
-            }
-        }
+        let mut options: Vec<String> = cluaiz_agents::ToolsEngine::list_all_tools()
+            .unwrap_or_default()
+            .into_iter()
+            .filter(|tool| tool.category == comp_type)
+            .map(|tool| tool.id)
+            .collect();
+        options.sort();
         if options.is_empty() {
             return Err(anyhow!("No {}s installed to configure.", comp_type));
         }
@@ -105,7 +99,8 @@ pub async fn execute(
         return Ok(());
     }
 
-    let comp_dir = cluaiz_agents::ToolsEngine::resolve_component_dir(&comp_type, &comp_id).unwrap_or_else(|| base_dir.join(&comp_id));
+    let comp_dir = cluaiz_agents::ToolsEngine::resolve_component_dir(&comp_type, &comp_id)
+        .ok_or_else(|| anyhow!("{comp_id} is not installed. Install it with: cluaiz {comp_type} install {comp_id}"))?;
     let possible_manifests = [
         "package.json".to_string(),
         "SKILL.md".to_string(),
