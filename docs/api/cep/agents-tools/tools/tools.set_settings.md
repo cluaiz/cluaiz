@@ -16,23 +16,23 @@ params:
     type: "\"skill\" | \"plugin\" | \"mcp\""
     req: true
     desc: "skill, plugin or mcp"
-    example: "skill"
+    example: "plugin"
   - name: "name"
     type: "string"
     req: true
     desc: "The tool's folder name: 1–64 lowercase letters, digits, dots, underscores or hyphens"
-    example: "installed-tool"
+    example: "web-search"
   - name: "patch"
     type: "object"
     req: true
     desc: "Only the fields to change"
-    example: {"enabled":true}
+    example: {"user_settings":{"TAVILY_API_KEY":"tvly-..."}}
     fields:
       - name: "enabled"
         type: "boolean | null"
         req: false
         desc: "false: the tool is not offered to the model (an MCP server is also stopped)"
-        example: true
+        example: null
       - name: "execution_mode"
         type: "string | null"
         req: false
@@ -48,16 +48,23 @@ params:
         req: false
         desc: "Trust the MCP server's own read-only / destructive hints"
         example: null
+      - name: "user_settings"
+        type: "object | null"
+        req: false
+        desc: "Values the tool asks the user for, by name (see `user_settings` in the result), such as an API key. An empty string removes one. They are saved in the user's settings, never in the tool's files, and never returned"
+        example: {"TAVILY_API_KEY":"tvly-..."}
 request_payload: |
   {
     "id": 1,
     "jsonrpc": "2.0",
     "method": "tools.set_settings",
     "params": {
-      "kind": "skill",
-      "name": "installed-tool",
+      "kind": "plugin",
+      "name": "web-search",
       "patch": {
-        "enabled": true
+        "user_settings": {
+          "TAVILY_API_KEY": "tvly-..."
+        }
       }
     }
   }
@@ -67,8 +74,18 @@ response: |
     "jsonrpc": "2.0",
     "result": {
       "schema": {},
+      "user_settings": [
+        {
+          "name": "TAVILY_API_KEY",
+          "secret": true,
+          "set": true
+        }
+      ],
       "values": {
-        "enabled": true
+        "enabled": true,
+        "execution_mode": "manual",
+        "security_mode": "inherit",
+        "trust_annotations": false
       }
     }
   }
@@ -78,10 +95,10 @@ errors:
     when: "No installed tool of this kind and name"
   - code: -32602
     type: "invalid_params"
-    when: "An unknown `security_mode` / `execution_mode`, or a bad `name`"
+    when: "An unknown `security_mode` / `execution_mode`, a bad `name`, or a `user_settings` name the tool does not ask for"
   - code: -32010
     type: "tool_operation_failed"
-    when: "The tool registry could not be saved"
+    when: "The tool registry or the user's settings could not be saved"
 ---
 
 # tools.set_settings

@@ -102,13 +102,18 @@ pub fn register(registry: &mut Registry<CallCtx>) {
     );
     registry.add(
         "tools.get_settings",
-        Meta::new(Scope::Read, "Read installed tool settings")
+        Meta::new(Scope::Read, "Read installed tool settings, and the values (such as API keys) it asks the user for, without their values")
             .no_mcp()
             .error(-32004, "tool_not_found", "No installed tool of this kind and name")
             .error(-32602, "invalid_params", "`name` is not 1–64 lowercase letters, digits, dots, underscores or hyphens")
             .example(
                 json!({"kind":"mcp","name":"filesystem"}),
-                json!({"schema":{},"values":{"enabled":true,"execution_mode":"manual","security_mode":"inherit","trust_annotations":false}}),
+                json!({"schema":{},"values":{"enabled":true,"execution_mode":"manual","security_mode":"inherit","trust_annotations":false},"user_settings":[]}),
+            )
+            .example(
+                json!({"kind":"plugin","name":"web-search"}),
+                json!({"schema":{},"values":{"enabled":true,"execution_mode":"manual","security_mode":"inherit","trust_annotations":false},
+                    "user_settings":[{"name":"BRAVE_API_KEY","secret":true,"set":false},{"name":"SEARXNG_URL","secret":false,"set":false},{"name":"TAVILY_API_KEY","secret":true,"set":true}]}),
             ),
         catalog::get,
     );
@@ -117,11 +122,16 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         Meta::new(Scope::Write, "Validate and save a tool settings patch")
             .no_mcp()
             .error(-32004, "tool_not_found", "No installed tool of this kind and name")
-            .error(-32602, "invalid_params", "An unknown `security_mode` / `execution_mode`, or a bad `name`")
-            .error(-32010, "tool_operation_failed", "The tool registry could not be saved")
+            .error(-32602, "invalid_params", "An unknown `security_mode` / `execution_mode`, a bad `name`, or a `user_settings` name the tool does not ask for")
+            .error(-32010, "tool_operation_failed", "The tool registry or the user's settings could not be saved")
             .example(
                 json!({"kind":"skill","name":"installed-tool","patch":{"enabled":true}}),
-                json!({"schema":{},"values":{"enabled":true}}),
+                json!({"schema":{},"values":{"enabled":true},"user_settings":[]}),
+            )
+            .example(
+                json!({"kind":"plugin","name":"web-search","patch":{"user_settings":{"TAVILY_API_KEY":"tvly-..."}}}),
+                json!({"schema":{},"values":{"enabled":true,"execution_mode":"manual","security_mode":"inherit","trust_annotations":false},
+                    "user_settings":[{"name":"TAVILY_API_KEY","secret":true,"set":true}]}),
             ),
         catalog::set,
     );
