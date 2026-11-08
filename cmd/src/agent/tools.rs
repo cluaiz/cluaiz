@@ -108,6 +108,20 @@ pub struct Tools {
     /// The project's items whose text the model already has in this conversation (`kind:name`):
     /// read with read_item, sent with a message, or a glob rule added to a file's result
     pub sent: HashSet<String>,
+    /// How often each call (name and arguments) was made in this request
+    pub calls: std::collections::HashMap<String, usize>,
+}
+
+/// From this many identical calls in one request, the result says so: a small model whose earlier
+/// steps no longer fit its context starts the same steps again and never answers. Two are often
+/// right (a snapshot after each action), so the note starts at the third.
+const REPEATED_CALL: usize = 3;
+
+/// The note added to the result of a call made `times` times in this request
+fn repeated_call_note(times: usize) -> String {
+    format!(
+        "\n\n[This same call, with the same arguments, has now been made {times} times in this request. The earlier steps were done. If you have what the user asked for, answer now.]"
+    )
 }
 
 /// Most characters of installed tool schemas sent with every request (a small context fills fast).
@@ -146,6 +160,7 @@ impl Tools {
             embedder: None,
             memory_source: "cluaiz agent".into(),
             sent: HashSet::new(),
+            calls: Default::default(),
         }
     }
 
@@ -396,6 +411,11 @@ impl Tools {
         };
         self.display
             .emit(Event::ToolStart(name.into(), describe_call(name, &args)));
+        let times = {
+            let count = self.calls.entry(format!("{name} {args}")).or_insert(0);
+            *count += 1;
+            *count
+        };
         let text = |key: &str| args.get(key).and_then(Value::as_str).map(str::to_string);
         let number = |key: &str| args.get(key).and_then(Value::as_u64).map(|n| n as usize);
 
@@ -466,7 +486,8 @@ impl Tools {
                     summary,
                     content: output.clone(),
                 });
-                clip(&output)
+                let note = if times >= REPEATED_CALL { repeated_call_note(times) } else { String::new() };
+                format!("{}{note}", clip(&output))
             }
             Err(e) => {
                 self.display.emit(Event::ToolEnd {

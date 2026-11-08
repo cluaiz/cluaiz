@@ -268,3 +268,18 @@ async fn a_glob_rule_comes_with_the_first_result_of_a_matching_file() {
     assert!(!tools.run("read_file", r#"{"path": "notes.md"}"#).await.contains("applies to"));
     assert!(tools.sent.contains("rule:typescript"));
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn the_third_identical_call_in_a_request_says_so() {
+    let (mut t, _dir) = tools();
+    let call = r#"{"path": "src/main.rs"}"#;
+    assert!(!t.run("read_file", call).await.contains("same call"));
+    assert!(!t.run("read_file", call).await.contains("same call"));
+    // Other arguments are another call
+    assert!(!t.run("read_file", r#"{"path": "src/main.rs", "offset": 1}"#).await.contains("same call"));
+    let third = t.run("read_file", call).await;
+    assert!(third.starts_with("    1\tfn main() {") && third.contains("made 3 times"), "{third}");
+    // A new request counts again
+    t.calls.clear();
+    assert!(!t.run("read_file", call).await.contains("same call"));
+}
