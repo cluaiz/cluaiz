@@ -237,8 +237,48 @@ pub fn shorten_a_step_result(messages: &[(String, String)]) -> Option<(usize, St
         .into_iter()
         .filter(|at| messages[*at].1.chars().count() > STEP_RESULT_HEAD_CHARS + STEP_RESULT_HEAD_CHARS / 2)
         .max_by_key(|at| (messages[*at].1.len(), std::cmp::Reverse(*at)))?;
-    let head: String = messages[longest].1.chars().take(STEP_RESULT_HEAD_CHARS).collect();
+    let content = &messages[longest].1;
+    // JSON keeps its values, not its start: a result often opens with fields about the call itself,
+    // and what it found comes after them
+    let head: String = match json_values(content) {
+        Some(values) => values.chars().take(2 * STEP_RESULT_HEAD_CHARS).collect(),
+        None => content.chars().take(STEP_RESULT_HEAD_CHARS).collect(),
+    };
     Some((longest, format!("{head}\n{STEP_RESULT_NOTE}")))
+}
+
+/// The text and number values of a JSON text, each once, in order, as `key: value`; `true`,
+/// `false` and `null` say little and are left out. A note the client added after the JSON
+/// (`\n\n[...]`) is dropped. `None` when the text is not JSON.
+fn json_values(text: &str) -> Option<String> {
+    fn walk(key: &str, value: &serde_json::Value, seen: &mut std::collections::HashSet<String>, out: &mut Vec<String>) {
+        let shown = match value {
+            serde_json::Value::Object(map) => {
+                map.iter().for_each(|(k, v)| walk(k, v, seen, out));
+                return;
+            }
+            serde_json::Value::Array(items) => {
+                items.iter().for_each(|v| walk(key, v, seen, out));
+                return;
+            }
+            serde_json::Value::String(s) if !s.trim().is_empty() => s.trim().to_string(),
+            serde_json::Value::Number(n) => n.to_string(),
+            _ => return,
+        };
+        if seen.insert(shown.clone()) {
+            out.push(if key.is_empty() { shown } else { format!("{key}: {shown}") });
+        }
+    }
+    let json = match serde_json::from_str::<serde_json::Value>(text.trim()) {
+        Ok(value) => value,
+        Err(_) => serde_json::from_str(text[..text.rfind("\n\n[")?].trim()).ok()?,
+    };
+    if !(json.is_object() || json.is_array()) {
+        return None;
+    }
+    let (mut seen, mut out) = (std::collections::HashSet::new(), Vec::new());
+    walk("", &json, &mut seen, &mut out);
+    Some(out.join("; "))
 }
 
 /// When no earlier turn is left to drop: the oldest whole steps of the current request (an answer with
@@ -371,6 +411,12 @@ mod tests {
         same[3].1 = "y".repeat(100);
         same[7].1 = "y".repeat(100);
         assert_eq!(shorten_a_step_result(&same), Some((3, SAME_RESULT_NOTE.to_string())));
+        // A JSON result keeps its values, also those after a long opening about the call itself
+        let mut json = msgs.clone();
+        let flags: String = (0..40).map(|i| format!("\"flag{i}\":false,")).collect();
+        json[5].1 = format!("{{{flags}\"messages\":[{{\"text\":\"cart failed to load\",\"type\":\"error\"}},{{\"text\":\"cart failed to load\",\"type\":\"error\"}}],\"status\":404}}");
+        let (_, cut) = shorten_a_step_result(&json).unwrap();
+        assert!(cut.starts_with("text: cart failed to load; type: error; status: 404\n"), "{cut}");
     }
 
     #[test]

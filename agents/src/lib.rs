@@ -315,7 +315,16 @@ impl ToolsEngine {
         let Some(content) = value.get("content").and_then(Value::as_array) else {
             return result.to_owned();
         };
-        let texts: Vec<&str> = content.iter().filter_map(|item| item.get("text").and_then(Value::as_str)).collect();
+        // A text that is indented JSON goes without its indentation: the same data in far fewer
+        // tokens, which a small context needs
+        let texts: Vec<String> = content
+            .iter()
+            .filter_map(|item| item.get("text").and_then(Value::as_str))
+            .map(|text| match serde_json::from_str::<Value>(text) {
+                Ok(json @ (Value::Object(_) | Value::Array(_))) => json.to_string(),
+                _ => text.to_owned(),
+            })
+            .collect();
         if texts.is_empty() {
             return result.to_owned();
         }
