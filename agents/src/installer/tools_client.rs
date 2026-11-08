@@ -65,103 +65,81 @@ impl ToolsInstaller {
                 parts.join("/")
             };
 
-            let registry_resp = client.get(&registry_url).send().await;
-            if let Ok(resp) = registry_resp {
-                if resp.status().is_success() {
-                    if let Ok(registry_json) = resp.json::<serde_json::Value>().await {
-                        let route_category = if component_type == "mcp" {
-                            "mcp".to_string()
-                        } else {
-                            format!("{}s", component_type)
-                        };
+            // Each step must succeed: guessing a version or a download address when Cluaiz Tools
+            // cannot be read gives an error about the wrong file
+            let registry_json = Self::fetch_json(&client, &registry_url, "the Cluaiz Tools registry").await?;
+            let route_category = if component_type == "mcp" {
+                "mcp".to_string()
+            } else {
+                format!("{}s", component_type)
+            };
+            let family_path = registry_json
+                .get("routing")
+                .and_then(|routing| routing.get(&route_category))
+                .and_then(|path| path.as_str())
+                .ok_or_else(|| anyhow::anyhow!("The Cluaiz Tools registry at '{}' lists no '{}' category.", registry_url, route_category))?;
+            let family_url = format!("{}/{}", base_url, family_path);
+            let family_json = Self::fetch_json(&client, &family_url, &format!("the Cluaiz Tools {} list", component_type)).await?;
+            let package_path = family_json
+                .get("items")
+                .and_then(|items| items.get(&component_id))
+                .and_then(|p| p.as_str().or_else(|| p.get("path").and_then(|p| p.as_str())))
+                .ok_or_else(|| anyhow::anyhow!("Component '{}' not found in Cluaiz Tools category '{}'.", component_id, component_type))?;
+            let category_folder = family_path.split('/').next().unwrap_or(component_type);
+            let full_package_url = format!("{}/{}/{}", base_url, category_folder, package_path);
+            let data = Self::fetch_json(&client, &full_package_url, &format!("the package manifest for '{}'", component_id)).await?;
 
-                        if let Some(routing) = registry_json.get("routing").and_then(|r| r.as_object()) {
-                            if let Some(family_path) = routing.get(&route_category).and_then(|p| p.as_str()) {
-                                let family_url = format!("{}/{}", base_url, family_path);
-                                if let Ok(family_resp) = client.get(&family_url).send().await {
-                                    if family_resp.status().is_success() {
-                                        if let Ok(family_json) = family_resp.json::<serde_json::Value>().await {
-                                            if let Some(items) = family_json.get("items").and_then(|i| i.as_object()) {
-                                                if let Some(package_path) = items.get(&component_id).and_then(|p| p.as_str().or_else(|| p.get("path").and_then(|p| p.as_str()))) {
-                                                    let category_folder = family_path.split('/').next().unwrap_or(component_type);
-                                                    let full_package_url = format!("{}/{}/{}", base_url, category_folder, package_path);
-
-                                                    if let Ok(pkg_resp) = client.get(&full_package_url).send().await {
-                                                        if pkg_resp.status().is_success() {
-                                                            if let Ok(data) = pkg_resp.json::<serde_json::Value>().await {
-                                                                // Check version validity if user specified a version
-                                                                if let Some(ref req_ver) = version {
-                                                                    if let Some(versions) = data.get("versions").and_then(|v| v.as_object()) {
-                                                                        if !versions.contains_key(req_ver) {
-                                                                            let available: Vec<&String> = versions.keys().collect();
-                                                                            return Err(anyhow::anyhow!(
-                                                                                "Version '{}' not found for '{}'. Available versions in Cluaiz Tools: {:?}",
-                                                                                req_ver,
-                                                                                component_id,
-                                                                                available
-                                                                            ));
-                                                                        }
-                                                                    }
-                                                                }
-
-                                                                let ver = version.clone().unwrap_or_else(|| {
-                                                                    data.get("latest_version").and_then(|v| v.as_str()).unwrap_or("0.1.0").to_string()
-                                                                });
-                                                                target_version = ver.clone();
-                                                                package = Some((data.clone(), full_package_url.clone()));
-
-                                                                if let Some(versions) = data.get("versions").and_then(|v| v.as_object()) {
-                                                                    if let Some(v_data) = versions.get(&ver).and_then(|v| v.as_object()) {
-                                                                        if let Some(files) = v_data.get("files").and_then(|f| f.as_object()) {
-                                                                            if let Some(url) = files.get("file_directory").and_then(|u| u.as_str()) {
-                                                                                download_url = url.to_string();
-                                                                            }
-                                                                        }
-
-                                                                        if let Some(os_obj) = v_data.get("os").and_then(|o| o.as_object()) {
-                                                                            let os_key = if cfg!(target_os = "windows") {
-                                                                                "windows"
-                                                                            } else if cfg!(target_os = "macos") {
-                                                                                "macos"
-                                                                            } else {
-                                                                                "linux"
-                                                                            };
-                                                                            if let Some(bin_url) = os_obj.get(os_key).and_then(|u| u.as_str()) {
-                                                                                binary_download_url = bin_url.to_string();
-                                                                            }
-                                                                        }
-                                                                    }
-                                                                }
-                                                            }
-                                                        }
-                                                    } else {
-                                                        return Err(anyhow::anyhow!(
-                                                            "Could not fetch the package manifest for '{}' from '{}'.",
-                                                            component_id,
-                                                            full_package_url
-                                                        ));
-                                                    }
-                                                } else {
-                                                    return Err(anyhow::anyhow!(
-                                                        "Component '{}' not found in Cluaiz Tools category '{}'.",
-                                                        component_id,
-                                                        component_type
-                                                    ));
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
+            // Check version validity if user specified a version
+            if let Some(ref req_ver) = version {
+                if let Some(versions) = data.get("versions").and_then(|v| v.as_object()) {
+                    if !versions.contains_key(req_ver) {
+                        let available: Vec<&String> = versions.keys().collect();
+                        return Err(anyhow::anyhow!(
+                            "Version '{}' not found for '{}'. Available versions in Cluaiz Tools: {:?}",
+                            req_ver,
+                            component_id,
+                            available
+                        ));
                     }
                 }
             }
+
+            let ver = match &version {
+                Some(ver) => ver.clone(),
+                None => data
+                    .get("latest_version")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| anyhow::anyhow!("The package manifest for '{}' at '{}' has no latest_version.", component_id, full_package_url))?
+                    .to_string(),
+            };
+            target_version = ver.clone();
+
+            if let Some(v_data) = data.get("versions").and_then(|v| v.get(&ver)).and_then(|v| v.as_object()) {
+                if let Some(url) = v_data.get("files").and_then(|f| f.get("file_directory")).and_then(|u| u.as_str()) {
+                    download_url = url.to_string();
+                }
+                if let Some(os_obj) = v_data.get("os").and_then(|o| o.as_object()) {
+                    let os_key = if cfg!(target_os = "windows") {
+                        "windows"
+                    } else if cfg!(target_os = "macos") {
+                        "macos"
+                    } else {
+                        "linux"
+                    };
+                    if let Some(bin_url) = os_obj.get(os_key).and_then(|u| u.as_str()) {
+                        binary_download_url = bin_url.to_string();
+                    }
+                }
+            }
+            package = Some((data, full_package_url));
+        }
+        if target_version.is_empty() {
+            return Err(anyhow::anyhow!("No Cluaiz Tools registry is set, so '{}' cannot be found.", component_id));
         }
 
-        // Fallback: Construct deterministic GitHub release URLs if not explicitly present in package.json
+        // The release the tools builder makes, when package.json names no other address
         if download_url.is_empty() && !component_id.is_empty() {
-            let ver = if target_version.is_empty() { "1.0.0" } else { &target_version };
+            let ver = &target_version;
             let prefix = match component_type {
                 "skill" => "skill",
                 "plugin" => "plugin",
@@ -178,7 +156,7 @@ impl ToolsInstaller {
         let is_wasm = component_type == "plugin"
             && package.as_ref().is_some_and(|(manifest, _)| manifest["build_type"] == "wasm");
         if is_wasm && binary_download_url.is_empty() {
-            let ver = if target_version.is_empty() { "1.0.0" } else { &target_version };
+            let ver = &target_version;
             binary_download_url = format!(
                 "https://github.com/cluaiz/cluaiz-tools/releases/download/plugin-{}-v{}/{}_v{}.wasm",
                 component_id, ver, component_id, ver
@@ -186,7 +164,7 @@ impl ToolsInstaller {
         }
         let binary_declared = !binary_download_url.is_empty() && (is_wasm || !binary_download_url.contains("/releases/download/plugin-"));
         if binary_download_url.is_empty() && !component_id.is_empty() && component_type == "plugin" {
-            let ver = if target_version.is_empty() { "1.0.0" } else { &target_version };
+            let ver = &target_version;
             let (os_name, ext) = if cfg!(target_os = "windows") {
                 ("windows_x64", "dll")
             } else if cfg!(target_os = "macos") {
@@ -346,6 +324,20 @@ impl ToolsInstaller {
     /// A path inside the package: no root, no drive, no `..`
     fn stays_inside(path: &str) -> bool {
         !path.is_empty() && Path::new(path).components().all(|part| matches!(part, Component::Normal(_)))
+    }
+
+    /// A JSON file from Cluaiz Tools, or an error that says whether the server was unreachable,
+    /// refused, or sent something that is not JSON
+    async fn fetch_json(client: &reqwest::Client, url: &str, what: &str) -> Result<serde_json::Value> {
+        let resp = client.get(url).send().await.map_err(|e| {
+            anyhow::anyhow!("Could not reach {} at '{}': {}. Check the internet connection, or a VPN or firewall that blocks GitHub, and try again.", what, url, e)
+        })?;
+        if !resp.status().is_success() {
+            return Err(anyhow::anyhow!("Could not read {} at '{}'. HTTP Status: {}", what, url, resp.status()));
+        }
+        resp.json::<serde_json::Value>()
+            .await
+            .map_err(|e| anyhow::anyhow!("{} at '{}' is not valid JSON: {}", what, url, e))
     }
 
     /// A package read from the registry's folder: its manifest and every file it lists
