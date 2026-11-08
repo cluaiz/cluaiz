@@ -117,6 +117,25 @@ pub struct Tools {
 /// right (a snapshot after each action), so the note starts at the third.
 const REPEATED_CALL: usize = 3;
 
+/// The arguments without the optional ones that are empty text. Small models fill every optional
+/// parameter with "", and a tool takes "" as a value: an empty filter then matches nothing, and the
+/// model reports that nothing was there. Only with the function's schema, which says what is required.
+fn without_empty_optional(arguments: &str, schema: Option<&Value>) -> String {
+    let (Some(schema), Ok(Value::Object(mut args))) = (schema, serde_json::from_str::<Value>(arguments)) else {
+        return arguments.to_string();
+    };
+    let required: Vec<&str> = schema["function"]["parameters"]["required"]
+        .as_array()
+        .map(|names| names.iter().filter_map(Value::as_str).collect())
+        .unwrap_or_default();
+    let before = args.len();
+    args.retain(|key, value| value.as_str() != Some("") || required.contains(&key.as_str()));
+    if args.len() == before {
+        return arguments.to_string();
+    }
+    Value::Object(args).to_string()
+}
+
 /// The note added to the result of a call made `times` times in this request
 fn repeated_call_note(times: usize) -> String {
     format!(
@@ -274,6 +293,8 @@ impl Tools {
                     BUILT_IN.iter().map(|n| n.to_string()).chain(self.installed_names()).collect::<Vec<_>>().join(", ")
                 )
             })?;
+        let schema = self.installed_schemas.iter().find(|schema| schema["function"]["name"] == name);
+        let arguments = &without_empty_optional(arguments, schema);
         let what = format!("{} {}", target.category, target.component_id);
         self.ask(&format!("{}:{}", target.category, target.component_id), &format!("{what}\narguments: {arguments}"))?;
         let output = cluaiz_agents::ToolsEngine::execute_tool_by_name(

@@ -283,3 +283,14 @@ async fn the_third_identical_call_in_a_request_says_so() {
     t.calls.clear();
     assert!(!t.run("read_file", call).await.contains("same call"));
 }
+
+#[test]
+fn empty_optional_arguments_are_left_out() {
+    let schema = serde_json::json!({"function": {"name": "net", "parameters": {"type": "object", "required": ["url"]}}});
+    let sent = super::without_empty_optional(r#"{"url":"","status":"4xx","method":"","type":""}"#, Some(&schema));
+    let sent: Value = serde_json::from_str(&sent).unwrap();
+    // A required one stays even when empty; the empty optional ones go
+    assert_eq!(sent, serde_json::json!({"url": "", "status": "4xx"}));
+    // Without a schema nothing changes
+    assert_eq!(super::without_empty_optional(r#"{"a":""}"#, None), r#"{"a":""}"#);
+}
