@@ -507,6 +507,7 @@ context    {}", plan.summary(), plan.context_reason)
     /// One request, then the conversation is saved (also after an error: what happened stays)
     async fn turn_prepared(&mut self, text: &str, parts: Vec<PreparedPart>) -> Result<()> {
         self.tools.checkpoints.begin(text, self.history.len());
+        self.tools.calls.clear();
         let result = if text.trim() == "/compact" {
             self.compact().await
         } else if let Some((name, steps, arguments)) = self.workflow(text) {
