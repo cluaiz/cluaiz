@@ -1,0 +1,56 @@
+# The one-command install on clean macOS runners, the way a user runs it: install.sh from main
+# against the newest release, a new login shell finds `cluaiz`, then a small model answers.
+# Only by hand; it builds nothing and changes no release.
+name: Installer smoke (macOS)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Release to install (empty: the newest)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  mac:
+    name: install (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-14]
+    env:
+      CLUAIZ_VERSION: ${{ inputs.version }}
+      CLUAIZ_NONINTERACTIVE: "1"
+    steps:
+      - name: Machine
+        run: |
+          sw_vers
+          uname -m
+          sysctl -n machdep.cpu.brand_string
+          echo "login shell: $SHELL"
+          ls -la ~/.zshrc ~/.bashrc ~/.profile 2>&1 || true
+
+      - name: Install with install.sh
+        run: curl -fsSL https://raw.githubusercontent.com/cluaiz/cluaiz/main/install.sh | bash
+
+      - name: A new zsh finds cluaiz
+        run: zsh -ic 'command -v cluaiz && cluaiz --version'
+
+      # A new macOS account: zsh login shell and no ~/.zshrc yet
+      - name: Fresh account without ~/.zshrc
+        run: |
+          fresh=$(mktemp -d)
+          curl -fsSL https://raw.githubusercontent.com/cluaiz/cluaiz/main/install.sh | HOME="$fresh" SHELL=/bin/zsh bash
+          cat "$fresh/.zshrc"
+          HOME="$fresh" zsh -ic 'command -v cluaiz'
+
+      - name: Status, run, bench
+        run: |
+          B="$HOME/.cluaiz/bin/cluaiz"
+          "$B" status
+          "$B" run unsloth/Qwen3-0.6B-GGUF "Write one sentence about the sea."
+          "$B" bench qwen3-0.6b-gguf-Q4_K_M -r 1
