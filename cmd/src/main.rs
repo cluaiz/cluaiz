@@ -16,7 +16,7 @@ mod ui;
 use crate::core::bootstrapper::Bootstrapper;
 
 #[derive(Parser)]
-#[command(name = "cluaiz", bin_name = "cluaiz", about = "Run and serve local AI models", version = cluaiz_core::VERSION)]
+#[command(name = "cluaiz", bin_name = "cluaiz", about = "Run and serve local AI models", version = cluaiz_core::VERSION_SHOWN)]
 pub struct Cli {
     /// Engine logs on stderr: -v info (with the full plan), -vv debug. The log file always has them.
     /// `cluaiz -v` alone prints the version.

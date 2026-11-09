@@ -4982,6 +4982,7 @@
             "name": "result",
             "value": {
               "cep_version": 1,
+              "channel": "pre-release",
               "engine": "Cluaiz Engine",
               "hardware": {
                 "architecture": "x86_64",

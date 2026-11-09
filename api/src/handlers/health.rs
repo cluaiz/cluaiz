@@ -9,6 +9,7 @@ pub async fn health_check() -> Json<Value> {
         "status": "alive",
         "engine": "Cluaiz Engine",
         "version": cluaiz_core::VERSION,
+        "channel": cluaiz_core::CHANNEL,
         "message": "Cluaiz Engine is alive and operational."
     }))
 }

@@ -1,12 +1,9 @@
 use std::path::{Path, PathBuf};
 use color_eyre::Result;
-use colored::Colorize;
 
 pub struct Bootstrapper;
 
 impl Bootstrapper {
-    const MASTER_REGISTRY_URL: &'static str = "https://raw.githubusercontent.com/cluaiz/cluaiz/main/package.json";
-
     /// 🚀 BOOTSTRAP: The Sovereign Handshake.
     pub async fn ignite(is_dev_sync: bool) -> Result<()> {
         Self::ensure_global_path();
@@ -39,64 +36,10 @@ impl Bootstrapper {
             return Ok(());
         }
 
-        // 🎯 1. Hardware Acceleration & Dynamic Driver Verification (runs before optional registry sync)
+        // 🎯 1. Hardware Acceleration & Dynamic Driver Verification
         Self::sync_neural_stack().await?;
         
-        // Every command runs this: a slow or missing network must not hold the command up
-        let client = reqwest::Client::builder()
-            .user_agent(format!("cluaiz-Bootstrapper/{}", cluaiz_core::VERSION))
-            .connect_timeout(std::time::Duration::from_secs(2))
-            .timeout(std::time::Duration::from_secs(3))
-            .build()?;
-
-        // 🎯 2. Fetch Master Registry (package.json)
-        tracing::info!("🛰️ [cluaiz] Synchronizing Neural Registry...");
-        
-        let master_registry_res = client.get(Self::MASTER_REGISTRY_URL).send().await;
-        
-        let master_registry: serde_json::Value = match master_registry_res {
-            Ok(res) if res.status().is_success() => {
-                match res.json().await {
-                    Ok(json) => json,
-                    Err(_) => {
-                        tracing::warn!("⚠️ [Cluaiz] Network sync skipped (invalid registry format).");
-                        return Ok(());
-                    }
-                }
-            },
-            _ => {
-                tracing::info!("[Cluaiz] Network sync skipped (offline or slow network).");
-                return Ok(());
-            }
-        };
-        
-        // 🏛️ Seal the Master Registry with Atomic Write Protocol
-        let config_dir = cluaiz_core::EnvironmentManager::current().config_dir();
-        let _ = std::fs::create_dir_all(&config_dir);
-        let json_path = config_dir.join("package.json");
-        if let Ok(json_str) = serde_json::to_string_pretty(&master_registry) {
-            let _ = std::fs::write(&json_path, json_str);
-        }
-        tracing::debug!("✅ [Registry] package.json written.");
-
-        // 🎯 3. CLI Lifecycle Check
-        let cli_info = &master_registry["components"]["cli"];
-        let latest_cli = cli_info["version"].as_str().unwrap_or("");
-        let current_cli = cluaiz_core::VERSION;
-        
-        // Only a real newer release (x.y.z above this build); stderr, so command output stays clean
-        if cluaiz_api::update::is_newer(latest_cli, current_cli) {
-            eprintln!(
-                "  {} [cluaiz] Update available: {} -> {} (run `cluaiz self update`)",
-                "🚀".green(),
-                current_cli,
-                latest_cli
-            );
-        } else if latest_cli != current_cli {
-            tracing::debug!("[cluaiz] Registry CLI version '{}' (this build {})", latest_cli, current_cli);
-        }
-
-        // 🎯 4. Unified Binary Verification (Single Binary Architecture)
+        // 🎯 2. Unified Binary Verification (Single Binary Architecture)
         let bin_dir = cluaiz_core::EnvironmentManager::current().bin_dir();
         let exe_name = if cfg!(windows) { "cluaiz.exe" } else { "cluaiz" };
         let exe_path = bin_dir.join(exe_name);

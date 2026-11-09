@@ -13,7 +13,7 @@ Only when started by hand. Pushes and pull requests never start a build.
 
 | Event | What runs |
 |---|---|
-| **Run workflow** on `Release` (manual, with a version such as `0.1.2` that equals `version` in `package.json`) | The core for every platform, the smoke test, both driver workflows, and the GitHub release `v<version>` with `SHA256SUMS.txt`. |
+| **Run workflow** on `Release` (manual, with a version such as `0.1.2` that equals `Cargo.toml`) | The core for every platform, the smoke test, both driver workflows, and the GitHub release `v<version>` with `SHA256SUMS.txt`. |
 | **Run workflow** on a driver workflow | Only those drivers, as run artifacts (no release). |
 | **Run workflow** on `Release` with **drivers_run** set to an earlier run's ID | The core and the release; the GPU drivers are taken from that run instead of being built again. |
 
@@ -45,8 +45,8 @@ Each core is unpacked into an empty folder and run with a fresh `CLUAIZ_HOME` on
 ## Making a release
 
 1. GitHub → **Actions** → **Release** → **Run workflow**.
-2. Set `version` in the root `package.json` to the new version and push it. It is the only place the Engine's version is written: `cluaiz --version`, `system.info`, `/health`, the update check and the Windows file version all read it. Enter the same version (`0.1.2`, without `v`) and keep **pre-release** ticked for test builds.
-   The first job checks the version: it must look like `x.y.z` or `x.y.z-pre` and equal `package.json`, or the run stops before any build. **allow_version_mismatch** skips the second check (not recommended).
+2. Set `[workspace.package] version` in the root `Cargo.toml` to the new version and push it. It is the only place the Engine's version is written: `cluaiz --version`, `system.info`, `/health`, the update check and the Windows file version all read it. `[workspace.metadata.cluaiz] channel` in the same file is `"pre-release"` until the public launch and `"stable"` after it; `cluaiz --version` shows it as `cluaiz 0.1.0 (pre-release)`. Enter the same version (`0.1.2`, without `v`) and keep **pre-release** ticked for test builds.
+   The first job checks the version: it must look like `x.y.z` or `x.y.z-pre` and equal `Cargo.toml`, or the run stops before any build. **allow_version_mismatch** skips the second check (not recommended).
 3. When it finishes, the release page lists the files and their checksums. Running it again with the same version replaces the files.
 
 The CUDA jobs take the longest (the CUDA backend is compiled for every supported GPU generation).

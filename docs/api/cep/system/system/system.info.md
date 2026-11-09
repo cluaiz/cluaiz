@@ -25,6 +25,7 @@ response: |
     "jsonrpc": "2.0",
     "result": {
       "cep_version": 1,
+      "channel": "pre-release",
       "engine": "Cluaiz Engine",
       "hardware": {
         "architecture": "x86_64",
