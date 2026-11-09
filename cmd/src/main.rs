@@ -191,15 +191,6 @@ pub enum ComponentCommand {
     Remove {
         component_name: String,
     },
-    /// Start a component's background daemon (Extensions and MCP only)
-    Start {
-        component_name: String,
-    },
-    /// Link a plugin to a skill (Plugin only)
-    Link {
-        plugin_name: String,
-        skill_name: String,
-    },
     /// View or change a component's settings (asks for missing values)
     Config {
         /// Component id

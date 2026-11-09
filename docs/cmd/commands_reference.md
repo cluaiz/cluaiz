@@ -104,8 +104,6 @@ cluaiz token remove 7898
 | `cluaiz <type> remove <id>` | `rm` | Remove an installed component |
 | `cluaiz <type> cache …` | | Cached files of a component |
 | `cluaiz <type> config <id>` | | View or change a component's settings (asks for missing values) |
-| `cluaiz mcp start <id>` | | Start an MCP server or extension in the background |
-| `cluaiz plugin link …` | | Link a plugin to a skill |
 
 A WebAssembly (`.wasm`) plugin runs inside the Engine and reaches only the time and the OS name. Any other plugin runs as a normal child process with your user's rights.
 
