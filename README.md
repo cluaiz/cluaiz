@@ -223,9 +223,9 @@ What release v0.1.0 ships (core + GPU packs, chosen by the installer) and where 
 | **NVIDIA GPU**, Windows | CUDA 12 / CUDA 13 | `win-x64` core + `llama-cuda12` / `llama-cuda13` | ✅ RTX 3050 Laptop 4 GB, Windows 11 (CUDA 13) |
 | **NVIDIA GPU**, Linux | CUDA 12 / CUDA 13 | `linux-x64` core + `llama-cuda12` / `llama-cuda13` | ✅ Tesla T4 16 GB, Ubuntu 24.04 (CUDA 12 pack, driver 580) |
 | **AMD Radeon RX / Pro, Intel Arc A / B**, Windows and Linux | Vulkan | core + `llama-vulkan` | 🧪 Built, not yet run on this hardware |
-| **Apple Silicon** (M1 or newer) | Metal (inside the core) | `mac-arm64` core | ⚠️ M5, 16 GB, macOS 14 or newer: installs and chats at llama.cpp's speed for the same settings. Auto placement on the Metal GPU was added after that run and has not been run on a Mac yet ([run](test/mac/runs/2026-10-28-m5-air-16gb/SUMMARY.md)) |
-| **x86-64 CPU** (SSE4.2 to AVX-512) | CPU, best build picked at start | any core | ✅ Ryzen 7 7435HS (Windows), Xeon 2.3 GHz (Ubuntu) |
-| **ARM64 Linux** | CPU (NEON and newer) | `linux-arm64` core | 🧪 Built, not yet run on hardware |
+| **Apple Silicon** (M1 or newer), macOS 14 or newer | Metal (inside the core) | `mac-arm64` core | ✅ MacBook Air M5 16 GB: installs and chats at llama.cpp's speed ([run](test/mac/runs/2026-10-28-m5-air-16gb/SUMMARY.md)); macOS 15 (GitHub runner, virtual M1): install, and auto placement on the Metal GPU ([run](test/cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md)) |
+| **x86-64 CPU** (SSE4.2 to AVX-512) | CPU, best build picked at start | any core | ✅ Ryzen 7 7435HS (Windows 11), Xeon 2.3 GHz (Ubuntu), Xeon Platinum 8488C with AVX-512 / AMX (Ubuntu 24.04, Windows Server 2025, Debian 13, Fedora 42) ([run](test/cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md)) |
+| **ARM64 Linux** | CPU (NEON and newer) | `linux-arm64` core | ✅ AWS Graviton2 (Neoverse-N1), Ubuntu 24.04 ([run](test/cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md)) |
 
 ROCm/HIP, OpenVINO, SYCL and CANN builds are not part of the release yet.
 
