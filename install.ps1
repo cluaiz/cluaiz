@@ -176,10 +176,20 @@ try {
     if ($env:CLUAIZ_VERSION) {
         $Tag = 'v' + $env:CLUAIZ_VERSION.TrimStart('v')
     } else {
-        # The newest release, pre-releases included
-        Download-File "https://api.github.com/repos/$Repo/releases?per_page=1" "$Tmp\release.json" 'Release metadata'
-        $Tag = @(Get-Content -LiteralPath "$Tmp\release.json" -Raw | ConvertFrom-Json)[0].tag_name
-        if (-not $Tag) { throw "No release found on github.com/$Repo" }
+        # The newest release, pre-releases included. The GitHub API allows 60 calls an hour per IP, which
+        # offices, CI runners and mobile networks share; the releases feed on github.com has no such limit
+        $Tag = $null
+        try {
+            Download-File "https://api.github.com/repos/$Repo/releases?per_page=1" "$Tmp\release.json" 'Release metadata'
+            $Tag = @(Get-Content -LiteralPath "$Tmp\release.json" -Raw | ConvertFrom-Json)[0].tag_name
+        } catch {
+            Write-Host "  $GRAY- GitHub API not available ($($_.Exception.Message.Split([Environment]::NewLine)[0])); reading the releases feed$NC"
+        }
+        if (-not $Tag) {
+            Download-File "https://github.com/$Repo/releases.atom" "$Tmp\releases.atom" 'Release list'
+            if ((Get-Content -LiteralPath "$Tmp\releases.atom" -Raw) -match '/releases/tag/([^"<]+)') { $Tag = $Matches[1] }
+        }
+        if (-not $Tag) { throw "No release found on github.com/$Repo (set CLUAIZ_VERSION to choose one)" }
     }
     $Version = $Tag.TrimStart('v')
     $Base = "https://github.com/$Repo/releases/download/$Tag"

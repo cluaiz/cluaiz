@@ -223,9 +223,20 @@ if [ -n "${CLUAIZ_VERSION:-}" ]; then
 else
   # The newest release, pre-releases included
   # sed reads the whole answer (grep -m1 stopped early and curl printed "Failure writing output")
-  download_file "https://api.github.com/repos/$REPO/releases?per_page=1" "$tmp/release.json" 'Release metadata'
-  tag=$(sed -n -E 's/.*"tag_name": *"([^"]+)".*/\1/p' "$tmp/release.json" | head -n 1)
-  [ -n "$tag" ] || fail "no release found on github.com/$REPO"
+  # The GitHub API allows 60 calls an hour per IP, which offices, CI runners and mobile networks
+  # share; when it refuses, the releases feed on github.com (no such limit) gives the newest tag
+  tag=''
+  if curl -fsS --retry 2 --connect-timeout 30 --output "$tmp/release.json" \
+      --url "https://api.github.com/repos/$REPO/releases?per_page=1" 2>"$tmp/release.err"; then
+    tag=$(sed -n -E 's/.*"tag_name": *"([^"]+)".*/\1/p' "$tmp/release.json" | head -n 1)
+  else
+    printf "  ${GRAY}- GitHub API not available (%s); reading the releases feed${NC}\n" "$(head -n 1 "$tmp/release.err")"
+  fi
+  if [ -z "$tag" ]; then
+    download_file "https://github.com/$REPO/releases.atom" "$tmp/releases.atom" 'Release list'
+    tag=$(sed -n -E 's#.*/releases/tag/([^"<]+).*#\1#p' "$tmp/releases.atom" | head -n 1)
+  fi
+  [ -n "$tag" ] || fail "no release found on github.com/$REPO (set CLUAIZ_VERSION to choose one)"
 fi
 version=${tag#v}
 base="https://github.com/$REPO/releases/download/$tag"
