@@ -1,4 +1,4 @@
-# BSL 1.1 — Cluaiz Technologies
+# BSL 1.1 — Cluaiz
 #
 # Cargo.toml for comprehensive_e2e_trace test crate
 
@@ -6,7 +6,7 @@
 name = "comprehensive_e2e_trace"
 version = "0.1.0"
 edition = "2021"
-authors = ["Cluaiz Technologies"]
+authors = ["Cluaiz"]
 
 # Its own workspace: it needs the sibling cluaiz-tools checkout, which a clone of this repo
 # does not have (the engine workspace excludes it)
