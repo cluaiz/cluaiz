@@ -1,5 +1,5 @@
 <p align="center">
-  <img alt="Cluaiz" src="assets/logo.png" width="30%">
+  <img alt="Cluaiz" src="assets/logo.webp" width="30%">
 </p>
 
 <h3 align="center">
