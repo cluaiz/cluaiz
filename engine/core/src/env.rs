@@ -256,7 +256,7 @@ impl EnvironmentManager {
         Ok(dir)
     }
 
-    /// Up to v0.1.1 the home had an `engine/` folder: settings in `engine/config`, downloaded NVIDIA
+    /// Early builds had an `engine/` folder in the home: settings in `engine/config`, downloaded NVIDIA
     /// libraries in `engine/drivers`, the native media package in `engine/media` and VRAM
     /// measurements in `engine/vram_margins.json`. They move once, at the first start of a newer
     /// build, to `config/`, `bin/`, `bin/media/` and `config/`. An item already at its new place is

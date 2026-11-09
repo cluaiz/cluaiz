@@ -3,6 +3,7 @@ fn main() {
     println!("cargo:rerun-if-changed=../assets/logo.ico");
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed=Cargo.toml");
+    println!("cargo:rerun-if-changed=../package.json");
     #[cfg(windows)]
     {
         let mut res = winres::WindowsResource::new();
@@ -12,7 +13,14 @@ fn main() {
         res.set("OriginalFilename", "cluaiz.exe");
         res.set("LegalCopyright", "Copyright © 2026 Cluaiz");
         res.set("CompanyName", "Cluaiz");
-        let version = format!("{}.0", env!("CARGO_PKG_VERSION"));
+        // The Engine's version: `version` in the root package.json (as in cluaiz_core::VERSION)
+        let version = std::fs::read_to_string("../package.json")
+            .ok()
+            .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+            .and_then(|json| json["version"].as_str().map(str::to_owned))
+            .unwrap_or_else(|| env!("CARGO_PKG_VERSION").to_owned());
+        // Windows wants four numbers: 0.1.0-rc.1 becomes 0.1.0.0
+        let version = format!("{}.0", version.split(['-', '+']).next().unwrap_or("0.0.0"));
         res.set("FileVersion", &version);
         res.set("ProductVersion", &version);
 

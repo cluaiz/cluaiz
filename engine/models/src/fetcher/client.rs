@@ -169,7 +169,7 @@ pub async fn resolve_model_repo_with_fallback(
         .query(&query)
         .header(
             "User-Agent",
-            concat!("Cluaiz-Inference-Engine/", env!("CARGO_PKG_VERSION")),
+            format!("Cluaiz-Inference-Engine/{}", cluaiz_core::VERSION),
         )
         .header("X-Cluaiz-Client", "native-cli")
         .send()

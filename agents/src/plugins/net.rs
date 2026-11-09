@@ -366,7 +366,7 @@ fn client(url: &Url, addresses: &[SocketAddr], timeout: Duration) -> Result<Clie
     Client::builder()
         .no_proxy()
         .redirect(Policy::none())
-        .user_agent(concat!("Cluaiz/", env!("CARGO_PKG_VERSION"), " (+https://cluaiz.com)"))
+        .user_agent(format!("Cluaiz/{} (+https://cluaiz.com)", cluaiz_core::VERSION))
         .connect_timeout(CONNECT_TIMEOUT)
         .timeout(timeout)
         .resolve_to_addrs(host, addresses)

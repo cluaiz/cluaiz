@@ -44,7 +44,7 @@ impl Bootstrapper {
         
         // Every command runs this: a slow or missing network must not hold the command up
         let client = reqwest::Client::builder()
-            .user_agent(format!("cluaiz-Bootstrapper/{}", env!("CARGO_PKG_VERSION")))
+            .user_agent(format!("cluaiz-Bootstrapper/{}", cluaiz_core::VERSION))
             .connect_timeout(std::time::Duration::from_secs(2))
             .timeout(std::time::Duration::from_secs(3))
             .build()?;

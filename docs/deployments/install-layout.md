@@ -2,7 +2,7 @@
 
 This page lists, file by file, what the installer puts on each operating system and which folders the engine
 creates when it runs. The file lists and sizes are read from the v0.1.0 release archives; the folder layout is
-the one after v0.1.1 (everything in `bin/` and `config/`).
+the current one (everything in `bin/` and `config/`).
 
 ## Summary
 
@@ -202,7 +202,7 @@ No GPU packs for ARM64.
 └── reports/
 ```
 
-Up to v0.1.1 there was also an `engine/` folder: `engine/config/` (now `config/`), `engine/drivers/` (now in
+Early builds also had an `engine/` folder: `engine/config/` (now `config/`), `engine/drivers/` (now in
 `bin/`), `engine/media/` (now `bin/media/`) and `engine/vram_margins.json` (now in `config/`). A newer `cluaiz`
 moves them at its first start and removes `engine/`.
 

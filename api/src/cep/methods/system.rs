@@ -12,7 +12,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         "system.info",
         Meta::new(Scope::Read, "Engine name and version, CEP version, hardware, and the LAN address").example(
             json!({}),
-            json!({ "engine": "Cluaiz Engine", "version": "0.1.0", "cep_version": 1,
+            json!({ "engine": "Cluaiz Engine", "version": cluaiz_core::VERSION, "cep_version": 1,
                     "hardware": { "architecture": "x86_64", "os_name": "Windows", "os_version": "11",
                                   "cpu": { "brand": "AMD Ryzen 7 7435HS", "physical_cores": 8, "logical_threads": 16 },
                                   "memory": { "total_gb": 23.69, "available_gb": 7.47 },
@@ -39,8 +39,8 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         .error(-32010, "update_check_failed", "GitHub could not be reached or returned no release")
         .example(
             json!({}),
-            json!({"current":"0.1.1","update_available":true,
-                   "latest":{"version":"0.1.2","tag":"v0.1.2","url":"https://github.com/cluaiz/cluaiz/releases/tag/v0.1.2",
+            json!({"current":"0.1.0","update_available":true,
+                   "latest":{"version":"0.2.0","tag":"v0.2.0","url":"https://github.com/cluaiz/cluaiz/releases/tag/v0.2.0",
                              "prerelease":true,"published_at":"2026-11-01T08:00:00Z"}}),
         ),
         |_: CallCtx, _: Call, _: NoParams| async move {

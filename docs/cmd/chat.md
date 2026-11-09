@@ -113,7 +113,7 @@ API request's values are; a flag you leave out keeps the setting, then the plann
 
 | You type | You get |
 | :--- | :--- |
-| `cluaiz -v`, `cluaiz -V`, `cluaiz --version` | The version, e.g. `cluaiz 0.1.1` |
+| `cluaiz -v`, `cluaiz -V`, `cluaiz --version` | The version, e.g. `cluaiz 0.1.0` |
 | `cluaiz run <model> -v` | The chat with Engine logs (info) on stderr |
 | `cluaiz run <model> -vv` | The chat with debug logs |
 

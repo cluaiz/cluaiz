@@ -286,7 +286,7 @@ impl McpSession {
         session.request("initialize", json!({
             "protocolVersion": "2025-06-18",
             "capabilities": { "roots": { "listChanged": true } },
-            "clientInfo": { "name": "cluaiz-engine", "version": env!("CARGO_PKG_VERSION") }
+            "clientInfo": { "name": "cluaiz-engine", "version": cluaiz_core::VERSION }
         }), START_TIMEOUT).await
             .map_err(|e| anyhow!("MCP server '{}' did not initialize: {}", manifest.name, e))?;
         session.send(&json!({"jsonrpc": "2.0", "method": "notifications/initialized"}))?;
