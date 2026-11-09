@@ -7,6 +7,7 @@ summary: "Whether the Engine is up; the only route that is always open"
 params: []
 response: |
   {
+    "channel": "pre-release",
     "engine": "Cluaiz Engine",
     "message": "Cluaiz Engine is alive and operational.",
     "status": "alive",

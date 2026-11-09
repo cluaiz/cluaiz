@@ -28,12 +28,14 @@ pub use contracts::{UnifiedBackend, StreamingInference, StreamCallback, Modality
 
 use std::sync::atomic::AtomicBool;
 
-/// The Engine's version: `version` in the repository's root `package.json` (read by build.rs), or the
-/// release's own (`CLUAIZ_RELEASE_VERSION`, set by the release workflow, which checks they match)
-pub const VERSION: &str = match option_env!("CLUAIZ_RELEASE_VERSION") {
-    Some(version) if !version.is_empty() => version,
-    _ => env!("CLUAIZ_VERSION"),
-};
+/// The Engine's version: `[workspace.package] version` in the root Cargo.toml, or the release's own
+/// (`CLUAIZ_RELEASE_VERSION`, set by the release workflow, which checks they match). See build.rs
+pub const VERSION: &str = env!("CLUAIZ_VERSION");
+/// The release channel: `[workspace.metadata.cluaiz] channel` in the root Cargo.toml, such as
+/// "pre-release" or "stable"
+pub const CHANNEL: &str = env!("CLUAIZ_CHANNEL");
+/// The version as people see it: "0.1.0 (pre-release)", or only "0.1.0" for a stable release
+pub const VERSION_SHOWN: &str = env!("CLUAIZ_VERSION_SHOWN");
 
 /// 🛑 Global Cancellation Signal for Graceful Interrupts
 pub static GLOBAL_CANCEL_SIGNAL: AtomicBool = AtomicBool::new(false);

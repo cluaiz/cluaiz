@@ -12,7 +12,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         "system.info",
         Meta::new(Scope::Read, "Engine name and version, CEP version, hardware, and the LAN address").example(
             json!({}),
-            json!({ "engine": "Cluaiz Engine", "version": cluaiz_core::VERSION, "cep_version": 1,
+            json!({ "engine": "Cluaiz Engine", "version": cluaiz_core::VERSION, "channel": cluaiz_core::CHANNEL, "cep_version": 1,
                     "hardware": { "architecture": "x86_64", "os_name": "Windows", "os_version": "11",
                                   "cpu": { "brand": "AMD Ryzen 7 7435HS", "physical_cores": 8, "logical_threads": 16 },
                                   "memory": { "total_gb": 23.69, "available_gb": 7.47 },
@@ -127,6 +127,7 @@ fn info() -> Value {
     json!({
         "engine": "Cluaiz Engine",
         "version": cluaiz_core::VERSION,
+        "channel": cluaiz_core::CHANNEL,
         "cep_version": cluaiz_cep::discover::CEP_VERSION,
         "hardware": HardwareProber::current(),
         "network": { "lan_ip": lan_ip() },

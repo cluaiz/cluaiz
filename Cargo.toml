@@ -26,10 +26,14 @@ exclude = ["test/comprehensive_e2e_trace"]
 resolver = "2"
 
 [workspace.package]
-# Crate version only. The Engine's version is `version` in package.json (see engine/core/build.rs)
+# The Engine's version: the only place it is written (see engine/core/build.rs)
 version = "0.1.0"
 edition = "2021"
-authors = ["Cluaiz Technologies"]
+authors = ["Cluaiz"]
+
+[workspace.metadata.cluaiz]
+# "pre-release" until the public launch, then "stable". Shown as `cluaiz 0.1.0 (pre-release)`
+channel = "pre-release"
 
 [profile.dev]
 debug = false

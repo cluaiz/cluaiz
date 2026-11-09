@@ -13,10 +13,10 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version (the release tag is v<version>); must equal version in package.json"
+        description: "Version (the release tag is v<version>); must equal [workspace.package] version in Cargo.toml"
         required: true
       allow_version_mismatch:
-        description: "Release even when the version differs from package.json (not recommended)"
+        description: "Release even when the version differs from Cargo.toml (not recommended)"
         type: boolean
         default: false
       prerelease:
@@ -41,19 +41,19 @@ env:
   MACOSX_DEPLOYMENT_TARGET: "14.0"
   VERSION: ${{ inputs.version }}
   # Compiled into the Engine (cluaiz_core::VERSION): `cluaiz --version`, system.info and the update
-  # check report the release's version (the version job checks it equals package.json)
+  # check report the release's version (the version job checks it equals Cargo.toml)
   CLUAIZ_RELEASE_VERSION: ${{ inputs.version }}
   # Smoke-test model: small enough for a CI runner's CPU, a real GGUF chat model
   SMOKE_MODEL: unsloth/Qwen3-0.6B-GGUF:Q4_K_M
 
 jobs:
-  # ── Version: the tag must be a version and match package.json, before ~2 hours of builds ─────────
+  # ── Version: the tag must be a version and match Cargo.toml, before ~2 hours of builds ─────────
   version:
     name: check version ${{ inputs.version }}
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: Version is x.y.z[-pre] and equals package.json
+      - name: Version is x.y.z[-pre] and equals Cargo.toml
         env:
           ALLOW_MISMATCH: ${{ inputs.allow_version_mismatch }}
         run: |
@@ -61,21 +61,20 @@ jobs:
             echo "::error::'$VERSION' is not a version like 0.1.2 or 0.2.0-rc.1 (type it without the leading v)"
             exit 1
           fi
-          # The Engine's version has one home: version in package.json (engine/core/build.rs reads it)
-          package_version=$(jq -r '.version // empty' package.json)
-          if [ -z "$package_version" ]; then
-            echo "::error::No version in package.json"
+          cargo_version=$(awk '/^\[workspace.package\]/{w=1; next} /^\[/{w=0} w && /^version *=/{gsub(/[" ]/, "", $0); sub(/^version=/, "", $0); print; exit}' Cargo.toml)
+          if [ -z "$cargo_version" ]; then
+            echo "::error::No [workspace.package] version in Cargo.toml"
             exit 1
           fi
-          if [ "$package_version" != "$VERSION" ]; then
+          if [ "$cargo_version" != "$VERSION" ]; then
             if [ "$ALLOW_MISMATCH" = "true" ]; then
-              echo "::warning::Releasing v$VERSION while package.json says $package_version (allow_version_mismatch)"
+              echo "::warning::Releasing v$VERSION while Cargo.toml says $cargo_version (allow_version_mismatch)"
             else
-              echo "::error::package.json says $package_version but the release is v$VERSION. Set \"version\": \"$VERSION\" in package.json and push first, or start the run with allow_version_mismatch."
+              echo "::error::Cargo.toml says $cargo_version but the release is v$VERSION. Set [workspace.package] version = \"$VERSION\" in Cargo.toml and push first, or start the run with allow_version_mismatch."
               exit 1
             fi
           fi
-          echo "Releasing v$VERSION (package.json $package_version)"
+          echo "Releasing v$VERSION (Cargo.toml $cargo_version)"
 
   # ── Core: everything that runs on the CPU, for every platform ──────────────────────────────────
   core:
