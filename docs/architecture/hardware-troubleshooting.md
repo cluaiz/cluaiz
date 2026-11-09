@@ -4,6 +4,24 @@ This document outlines common hardware bottlenecks, performance limits, and safe
 
 ---
 
+## The GPU is not used
+
+When a GPU pack cannot load (it is not installed, or the driver is missing or too old), llama.cpp skips it and
+models run on the CPU. Nothing fails; it is only slower.
+
+* **Check:** `cluaiz status`. The `backend` line names each GPU backend that loaded, for example
+  `CUDA0: NVIDIA GeForce RTX 3050 Laptop GPU`. `none loaded` next to a listed GPU means the pack for it did not load.
+* **Fix:** install again so the installer adds the pack for this GPU (`CLUAIZ_GPU=cuda` or `CLUAIZ_GPU=vulkan` to
+  choose it), and update the GPU driver.
+
+## The port is already in use
+
+`cluaiz serve` stops with "port 8000 is already in use by another program" when another program listens on that
+port. Stop that program, or choose another port with `cluaiz permission port <number>` (or set `CLUAIZ_PORT` for one
+run).
+
+---
+
 ## 1. PCIe Bandwidth Bottlenecks (PCIe Spills)
 
 When the model size exceeds the physical VRAM limit of your GPU, the Operating System will allocate "Shared GPU Memory" inside System RAM. The GPU will continue computing, but it must pull weights over the PCIe bus continuously.

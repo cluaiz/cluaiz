@@ -444,6 +444,7 @@ fn backend_gpus() -> Vec<cluaiz_hw::GpuSubsystem> {
                 vram_free_bytes: free,
                 vram_total_gb: cluaiz_core::bytes_to_gib(total),
                 vram_available_gb: cluaiz_core::bytes_to_gib(free),
+                integrated: kind == llama_cpp::GGML_BACKEND_DEVICE_TYPE_IGPU,
                 ..Default::default()
             });
         }
@@ -452,6 +453,32 @@ fn backend_gpus() -> Vec<cluaiz_hw::GpuSubsystem> {
         }
     }
     Vec::new()
+}
+
+/// The GPU backends llama.cpp loaded, one entry per device, e.g. "CUDA0: NVIDIA GeForce RTX 3050".
+/// Empty when no GPU pack loaded (none installed, or its driver is missing): models then run on the CPU.
+pub fn loaded_gpu_backends() -> Vec<String> {
+    route_llama_logs();
+    let text = |ptr: *const c_char| {
+        // SAFETY: ggml returns NUL-terminated names that live as long as the device
+        (!ptr.is_null()).then(|| unsafe { std::ffi::CStr::from_ptr(ptr) }.to_string_lossy().into_owned())
+    };
+    let mut names = Vec::new();
+    for i in 0..unsafe { llama_cpp::ggml_backend_dev_count() } {
+        let dev = unsafe { llama_cpp::ggml_backend_dev_get(i) };
+        if dev.is_null() {
+            continue;
+        }
+        let kind = unsafe { llama_cpp::ggml_backend_dev_type(dev) };
+        if kind != llama_cpp::GGML_BACKEND_DEVICE_TYPE_GPU && kind != llama_cpp::GGML_BACKEND_DEVICE_TYPE_IGPU {
+            continue;
+        }
+        let name = text(unsafe { llama_cpp::ggml_backend_dev_name(dev) }).unwrap_or_default();
+        let description = text(unsafe { llama_cpp::ggml_backend_dev_description(dev) }).unwrap_or_default();
+        let integrated = if kind == llama_cpp::GGML_BACKEND_DEVICE_TYPE_IGPU { " (integrated)" } else { "" };
+        names.push(format!("{name}: {description}{integrated}"));
+    }
+    names
 }
 
 /// True when a loaded backend can hold model layers. Without a GPU pack (or its driver) it is false

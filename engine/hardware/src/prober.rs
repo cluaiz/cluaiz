@@ -43,7 +43,16 @@ impl HardwareProber {
         if info.gpus.is_empty() {
             if let Some(source) = BACKEND_GPUS.get() {
                 info.gpus = source();
+                Self::mark_shared_memory(info);
             }
+        }
+    }
+
+    /// An integrated GPU (Vulkan on an AMD APU or an Intel iGPU) uses the RAM: what the planner puts on
+    /// it is counted in RAM too, as on Apple Silicon, not as separate VRAM.
+    fn mark_shared_memory(info: &mut SystemInfo) {
+        if info.gpus.iter().any(|g| g.integrated) {
+            info.memory.is_unified_memory = true;
         }
     }
 
@@ -579,6 +588,7 @@ impl HardwareProber {
                                 pcie_gen,
                                 pcie_width,
                                 pcie_bandwidth_gbps,
+                                integrated: false,
                             });
                         }
                     }
@@ -705,6 +715,14 @@ mod live_memory_tests {
         HardwareProber::add_backend_gpus(&mut nvidia);
         assert_eq!(nvidia.gpus.len(), 1);
         assert_eq!(nvidia.gpus[0].name, "T4");
+    }
+
+    #[test]
+    fn integrated_backend_gpu_shares_the_ram() {
+        let mut info = SystemInfo::default();
+        info.gpus.push(crate::GpuSubsystem { name: "AMD Radeon(TM) Graphics".into(), integrated: true, ..Default::default() });
+        HardwareProber::mark_shared_memory(&mut info);
+        assert!(info.memory.is_unified_memory);
     }
 
     #[test]

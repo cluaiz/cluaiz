@@ -66,8 +66,8 @@ pub async fn run_daemon_with_native_endpoint(endpoint: Option<String>) -> anyhow
             let port = api_port(&perms);
             let host_ip = std::env::var("CLUAIZ_HOST").unwrap_or_else(|_| perms.api_host.clone());
             let addr = format!("{}:{}", host_ip, port);
+            let listener = tokio::net::TcpListener::bind(&addr).await.map_err(|e| bind_error(&addr, port, e))?;
             tracing::info!("🌐 Cluaiz API Server running on http://{}", addr);
-            let listener = tokio::net::TcpListener::bind(&addr).await?;
             axum::serve(listener, app).with_graceful_shutdown(shutdown_signal()).await?;
             Ok(())
         }
@@ -79,6 +79,23 @@ pub async fn run_daemon_with_native_endpoint(endpoint: Option<String>) -> anyhow
     tokio::task::spawn_blocking(cluaiz_media::documents::release_native_providers).await??;
     result?;
     Ok(())
+}
+
+/// A failed bind in words a user can act on: a busy port (8000 is a common development port) names
+/// the setting that changes it.
+fn bind_error(addr: &str, port: u16, error: std::io::Error) -> anyhow::Error {
+    match error.kind() {
+        std::io::ErrorKind::AddrInUse => anyhow::anyhow!(
+            "port {port} is already in use by another program. Stop that program, or choose another port: `cluaiz permission port <number>` (or set CLUAIZ_PORT for one run)"
+        ),
+        std::io::ErrorKind::PermissionDenied => anyhow::anyhow!(
+            "no permission to listen on {addr}. Choose a port above 1024: `cluaiz permission port <number>`"
+        ),
+        std::io::ErrorKind::AddrNotAvailable => anyhow::anyhow!(
+            "{addr} is not an address of this computer. Set the host in permission.json (api_host) or CLUAIZ_HOST"
+        ),
+        _ => anyhow::anyhow!("cannot listen on {addr}: {error}"),
+    }
 }
 
 async fn shutdown_signal() {

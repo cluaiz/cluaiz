@@ -67,6 +67,9 @@ pub struct GpuSubsystem {
     pub pcie_gen: Option<u32>,
     pub pcie_width: Option<u32>,
     pub pcie_bandwidth_gbps: f64,
+    /// An integrated GPU (AMD APU, Intel iGPU): its memory is the system RAM
+    #[serde(default)]
+    pub integrated: bool,
 }
 
 impl GpuSubsystem {
