@@ -15,8 +15,13 @@ use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender;
 
-/// Most generations in one API turn
-pub const MAX_STEPS: usize = 15;
+/// Default maximum generations in one API turn (`0` = unlimited, guarded by repeat detection)
+pub const MAX_STEPS: usize = 100;
+
+/// Resolves the step limit for an API turn (`request.max_steps`, defaulting to [`MAX_STEPS`])
+pub fn max_steps_for(request: &ExternalChatRequest) -> usize {
+    request.max_steps.unwrap_or(MAX_STEPS)
+}
 
 pub struct ApiTurn<'a> {
     state: Arc<AppState>,

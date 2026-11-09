@@ -50,19 +50,25 @@ impl DeclarativeScriptRunner {
         cwd_path: &Path,
         sec_mode: SecurityMode,
     ) -> Result<String> {
-        Self::execute_with_tool_dir(manifest, payload_str, cwd_path, None, sec_mode).await
+        Self::execute_with_tool_dir(manifest, payload_str, cwd_path, None, None, sec_mode).await
     }
 
-    /// Executes a dynamic script with explicit tool_dir interpolation support
+    /// Executes a dynamic script with explicit tool_dir and function name interpolation support
     pub async fn execute_with_tool_dir(
         manifest: &ExecutionManifest,
         payload_str: &str,
         cwd_path: &Path,
         tool_dir: Option<&Path>,
+        tool_fn: Option<&str>,
         sec_mode: SecurityMode,
     ) -> Result<String> {
-        let parsed_payload: Value = serde_json::from_str(payload_str)
+        let mut parsed_payload: Value = serde_json::from_str(payload_str)
             .unwrap_or_else(|_| serde_json::json!({ "code": payload_str }));
+
+        if let (Some(fn_name), Value::Object(ref mut map)) = (tool_fn, &mut parsed_payload) {
+            map.entry("_fn".to_string())
+                .or_insert_with(|| Value::String(fn_name.to_string()));
+        }
 
         let default_lang = manifest.default_language.as_deref().unwrap_or("python");
         let requested_lang = parsed_payload.get("language")
@@ -78,8 +84,13 @@ impl DeclarativeScriptRunner {
             (resolved_template, resolved_ext, false)
         };
 
+        let enriched_json = if is_custom_cmd && tool_fn.is_some() && parsed_payload.is_object() {
+            Some(parsed_payload.to_string())
+        } else {
+            None
+        };
         let content_to_write = if is_custom_cmd {
-            payload_str
+            enriched_json.as_deref().unwrap_or(payload_str)
         } else {
             parsed_payload.get("code")
                 .or_else(|| parsed_payload.get("script"))
