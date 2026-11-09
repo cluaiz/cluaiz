@@ -79,7 +79,7 @@ Direct inference executes as the owner. Local files are canonicalized on the Eng
 3. Match the task and required assets. ONNX is a format, not a promise that every architecture has an executor. GGUF vision/speech packages need matching projectors; image embedding graphs produce vectors rather than captions.
 4. Omitted/automatic model selection follows each domain's active-slot rules. Ingest deliberately differs: omitted/`auto` means native extraction without an LLM.
 
-Selection does not override context/live-memory limits. Missing/incompatible packages return errors rather than fabricated output or silent substitutes. See [model families and limitations](../../modles.md).
+Selection does not override context/live-memory limits. Missing/incompatible packages return errors rather than fabricated output or silent substitutes. See [model families and limitations](../../models.md).
 
 ## Limits, lifecycle and responses
 
