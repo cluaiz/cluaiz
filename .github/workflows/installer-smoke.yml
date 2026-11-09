@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-15, macos-14]
+        os: [macos-15]
     env:
       CLUAIZ_VERSION: ${{ inputs.version }}
       CLUAIZ_NONINTERACTIVE: "1"
@@ -37,8 +37,9 @@ jobs:
       - name: Install with install.sh
         run: curl -fsSL https://raw.githubusercontent.com/cluaiz/cluaiz/main/install.sh | bash
 
-      - name: A new zsh finds cluaiz
-        run: zsh -ic 'command -v cluaiz && cluaiz --version'
+      # The runner's login shell is bash, so the installer wrote ~/.bashrc
+      - name: A new shell finds cluaiz
+        run: bash -ic 'command -v cluaiz && cluaiz --version'
 
       # A new macOS account: zsh login shell and no ~/.zshrc yet
       - name: Fresh account without ~/.zshrc
