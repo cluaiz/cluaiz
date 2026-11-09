@@ -6,3 +6,6 @@ contact_links:
   - name: Security problem
     url: https://github.com/cluaiz/cluaiz/blob/main/SECURITY.md
     about: Please report security problems privately, as SECURITY.md describes
+  - name: Discord
+    url: https://discord.gg/mab8kBURz
+    about: Questions, ideas and talking with the Cluaiz team

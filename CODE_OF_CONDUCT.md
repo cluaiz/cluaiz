@@ -1,8 +1,8 @@
 # Cluaiz Code of Conduct
 
 > [!IMPORTANT]
-> **Pre-Alpha Validation Phase Context**
-> As outlined in our [Contributing Guidelines](CONTRIBUTING.md), Cluaiz is currently in a closed Pre-Alpha testing phase. We are not accepting external pull requests. During this phase, community interactions are primarily limited to issue reporting, discussions, and feedback.
+> **Pre-release**
+> As the [Contributing Guidelines](CONTRIBUTING.md) explain, the Engine does not take pull requests until the alpha release. Issues, hardware reports, feedback and discussion are welcome, and tools are open to contributions in [cluaiz-tools](https://github.com/cluaiz/cluaiz-tools).
 
 ## Our Pledge
 
@@ -17,7 +17,7 @@ Examples of behavior that contributes to creating a positive environment include
 * Gracefully accepting constructive criticism.
 * Focusing on what is best for the community.
 * Showing empathy towards other community members.
-* Respecting the closed nature of the current Pre-Alpha phase (e.g., refraining from spamming PRs or demanding immediate features).
+* Respecting the pre-release policy: no pull requests to the Engine until the alpha release, and no demands for immediate features.
 
 Examples of unacceptable behavior by participants include:
 

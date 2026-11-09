@@ -1,0 +1,11 @@
+name: Feedback or missing feature
+description: Something is missing, could be better, or you have an idea
+labels: ["feedback"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What would you like
+      description: What you tried to do, what is missing or could be better, and why it matters to you
+    validations:
+      required: true
