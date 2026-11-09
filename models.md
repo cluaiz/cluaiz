@@ -1,6 +1,6 @@
 # Models and Architecture Support
 
-Updated: **October 22, 2026**
+Updated: **November 9, 2026**
 
 Cluaiz runs GGUF models through its bundled **llama.cpp/libmtmd** backend and ONNX models through **ONNX Runtime with task-specific adapters**. This catalogue covers chat, vision, speech, embeddings and document ingest.
 
@@ -27,10 +27,10 @@ A family can have many sizes, quantizations and fine-tunes. The architecture in 
 | Audio questions / transcription through chat | GGUF audio-capable backbone + projector | Tested Gemma 4 E4B; other backend families below | Chat |
 | Video questions | Sampled, timestamped frames; compatible visual model | Tested Gemma 4 E4B | Chat |
 | Text-to-speech | ONNX TTS family or GGUF speech pair | Piper, Kokoro; experimental Audio8/Qwen3-TTS | `/v1/audio/speech` |
-| Dedicated speech-to-text | Compatible ONNX STT package | Whisper; Moonshine adapter | `/v1/audio/transcriptions` |
+| Dedicated speech-to-text | Compatible ONNX STT package | Whisper; Moonshine (English) | `/v1/audio/transcriptions` |
 | Text vectors | ONNX or GGUF embedding model | BGE, EmbeddingGemma-2 | `/v1/embeddings` |
 | Image/page vectors | Compatible ONNX image embedding graph | FashionCLIP / compatible CLIP-style exports | Embeddings or ingest |
-| Document text/OCR | Native providers; optional model processing | PDF, DOCX, DOC, text/code, images | `POST /v1/ingest` |
+| Document text/OCR | Native providers; optional model processing. OCR needs the OCR pack (PDFium and Tesseract), which the release packages do not include yet | PDF, DOCX, DOC, text/code, images | `POST /v1/ingest` |
 
 The example column identifies families; it does not give every family the same status. Use the detailed tables below.
 
@@ -40,15 +40,15 @@ These are family names and exact GGUF architecture IDs from the bundled backend.
 
 | Family | Architecture IDs | Cluaiz status |
 |:---|:---|:---|
-| Llama and compatible derivatives | `llama` | Tested with selected Llama 3.2 package |
+| Llama and compatible derivatives | `llama` | Tested with selected Llama 3.2 3B package |
 | Bonsai selected exports | Follows the architecture recorded in each base-model export | Selected packages in the historical regression matrix |
 | Llama 4 | `llama4` | Backend available |
 | Qwen / Qwen2 / compatible Qwen2.5 exports | `qwen`, `qwen2`, `qwen2moe` | Backend available |
-| Qwen3 dense / MoE | `qwen3`, `qwen3moe` | Selected dense Qwen3 package tested; MoE package acceptance pending |
+| Qwen3 dense / MoE | `qwen3`, `qwen3moe` | Selected dense Qwen3 4B package tested; MoE package acceptance pending |
 | Qwen3-Next | `qwen3next` | Backend available |
 | Qwen3.5 dense / MoE | `qwen35`, `qwen35moe` | Backend available |
-| Gemma / Gemma 2 / Gemma 3 / Gemma 3n | `gemma`, `gemma2`, `gemma3`, `gemma3n` | Backend available |
-| Gemma 4 | `gemma4` | Selected E4B package tested for chat and supported media |
+| Gemma / Gemma 2 / Gemma 3 / Gemma 3n | `gemma`, `gemma2`, `gemma3`, `gemma3n` | Gemma 3 12B tested for text generation; others backend available |
+| Gemma 4 | `gemma4` | E4B tested for chat and supported media; 26B A4B (MoE) and 31B tested for text generation |
 | Mistral / Mixtral-compatible earlier exports | Often `llama`; inspect the export | Backend available |
 | Newer Mistral architectures | `mistral3`, `mistral4` | Backend available |
 | Phi | `phi2`, `phi3`, `phimoe` | Backend available |
@@ -64,6 +64,8 @@ These are family names and exact GGUF architecture IDs from the bundled backend.
 | Kimi | `kimi-linear`, `kimi-k3` | Backend available |
 | Hunyuan / ERNIE | Hunyuan and ERNIE IDs in the full inventory below | Backend available |
 | Other current/earlier families | OLMo, Falcon, Plamo, Jais, Mamba, RWKV, StarCoder, GPT-NeoX and others | Full architecture inventory below |
+
+Text generation was also measured with Mistral Small 3.2 24B. The measured packages and speeds are in the [laptop](test/engine_regression/RESULTS.md) and [Tesla T4](test/cloud/runs/2026-10-28-run5-linux-t4-regression/RESULTS.md) results.
 
 Fine-tune names are not separate architecture guarantees. A Qwen-derived reasoning model uses the architecture stored in its export; it does not become a new runtime family because its repository name changes. Base models can generate text, while conversational behavior also depends on instruction tuning and a suitable chat template.
 
@@ -95,10 +97,10 @@ A vision language model reads pixels and generates text. It needs both the langu
 
 | Family | Input / use | Status in Cluaiz |
 |:---|:---|:---|
-| Gemma 4 E4B | Images, PDF page pixels, audio input and sampled video frames | Tested selected package |
+| Gemma 4 E4B | Images, PDF page pixels (with the OCR pack), audio input and sampled video frames | Tested selected package |
 | Gemma 3 / Gemma 3n | Package-specific visual/audio input | Backend available; do not infer audio support from the Gemma 3 name alone |
 | Qwen2-VL / Qwen2.5-VL / Qwen3-VL | Image understanding | Backend available |
-| Qwen2.5-Omni / Qwen3-Omni | Visual and audio input with matching components | Backend available; audio generation is not established by input support |
+| Qwen2.5-Omni / Qwen3-Omni | Visual and audio input with matching components | Qwen2.5-Omni 3B Q4_K_M with its projector tested on the CPU for image, audio and video input; audio generation is not established by input support |
 | LLaVA / MobileVLM / GLM-Edge | Visual input | Backend available |
 | SmolVLM / SmolVLM2 / Idefics3 | Visual input; sampled video for compatible packages | Backend available |
 | Pixtral / visual Mistral packages | Visual input | Backend available |
@@ -111,14 +113,14 @@ A vision language model reads pixels and generates text. It needs both the langu
 
 Chat video is prepared as ordered timestamped frames. Audio is separate and requires audio support when requested. This is not a dedicated full-video encoder or an unlimited-duration pipeline.
 
-For PDFs, compatible visual packages receive rendered page pixels. Text-only packages use native text/OCR extraction. DOCX embedded graphics are not automatically exposed as visual input.
+For PDFs, compatible visual packages receive rendered page pixels when PDFium is installed; it comes with the OCR pack (PDFium and Tesseract), which the release packages do not include yet. Text-only packages use native text/OCR extraction. DOCX embedded graphics are not automatically exposed as visual input.
 
 ## Text-to-speech models
 
 | Family | Format / runtime | Status | Voice / package |
 |:---|:---|:---|:---|
 | Piper / compatible VITS | ONNX | Tested selected Piper packages | Usually one embedded speaker; graph/config and phoneme assets |
-| Kokoro | ONNX | Tested selected English/Hindi synthesis | Preset voice styles; matching model/tokenizer/config and voice bank |
+| Kokoro | ONNX | Tested selected English/Hindi synthesis, including the v1.0 export (uint8) | Preset voice styles; matching model/tokenizer/config and voice bank |
 | Audio8 | ONNX | Experimental; actual audio generation recorded | Slow AR + Fast AR + codec, external weights, tokenizer/runtime manifest; automatic language and encoded reference profiles |
 | Supertonic | ONNX | Experimental; unfinished pipeline | Compatible text encoder, duration predictor, vector estimator and vocoder |
 | Matcha | ONNX | Experimental; incomplete integration | Acoustic flow estimator and vocoder |
@@ -144,14 +146,14 @@ Sources: [runtime family adapters](engine/onnx/src/audio/tts/family_adapter.rs),
 
 | Family | Format | Status | Runtime contract |
 |:---|:---|:---|:---|
-| Whisper | ONNX | Selected large-v3-turbo export tested | Log-Mel encoder, compatible decoder/cache graphs, tokenizer/config |
-| Moonshine | ONNX | Adapter available; package acceptance pending | Compatible raw-waveform encoder/decoder and tokenizer |
+| Whisper | ONNX | Selected large-v3-turbo and base exports tested | Log-Mel encoder, compatible decoder/cache graphs, tokenizer/config |
+| Moonshine | ONNX | `onnx-community/moonshine-tiny-ONNX` tested; English only | Raw-waveform encoder, decoder, decoder with cached keys/values, and tokenizer |
 | SenseVoice / Paraformer / Zipformer / wav2vec2 | Installer recognizes these names | Not supported by dedicated current STT adapters | Different preprocessing/decoding needed |
 | Generic ONNX STT | ONNX label | Not a universal decoder | Must match an implemented family signature |
 | Whisper GGUF / GGML | Installer recognition only | Not supported on the current transcription endpoint | A downloader category does not add whisper.cpp execution |
 | Parakeet | ONNX or native backend components | No dedicated ONNX transcription adapter; native audio package acceptance pending | Native projector presence does not enable the STT API |
 
-`/v1/audio/transcriptions` accepts compatible ONNX packages. GGUF audio understanding belongs to the chat route. Language coverage follows the selected export. Longer recordings use ordered model windows; SSE returns incremental text from a recording. Word timestamps, diarization and bidirectional live-microphone transcription are not included.
+`/v1/audio/transcriptions` accepts compatible ONNX packages. GGUF audio understanding belongs to the chat route. Language coverage follows the selected export. Longer recordings use ordered model windows; SSE returns incremental text from a recording. A language the package does not read is refused before any work (HTTP 400 `unsupported_language`). Word timestamps, diarization and bidirectional live-microphone transcription are not included.
 
 Sources: [STT adapters](engine/onnx/src/audio/stt/families/mod.rs), [installer STT taxonomy](engine/models/src/taxonomy/stt_families.rs), [transcription API](docs/api/inference/audio_transcriptions.md).
 
@@ -178,12 +180,12 @@ Ingest is a processing task, not a separate model architecture. The selected mod
 
 | Mode | Compatible inputs | Output |
 |:---|:---|:---|
-| Native extraction, no model | Text/code/Markdown/CSV, PDF, DOCX, legacy DOC, images | Native text/OCR, chunks and extraction metadata |
+| Native extraction, no model | Text/code/Markdown/CSV, PDF, DOCX, legacy DOC, images | Native text (OCR with the OCR pack), chunks and extraction metadata |
 | ONNX/GGUF text embedding model | Native-extracted document text or OCR | Text vectors, optional extracted text |
-| ONNX image embedding graph | Images or rendered PDF pages | Image/page vectors |
-| GGUF generative vision pair | Images/PDF pixels; native-extracted text for text documents | Model-generated text following the extraction instruction |
+| ONNX image embedding graph | Images, or rendered PDF pages with the OCR pack | Image/page vectors |
+| GGUF generative vision pair | Images, PDF pixels with the OCR pack; native-extracted text for text documents | Model-generated text following the extraction instruction |
 
-Native extraction uses the shared document providers: `pdf-extract` for PDF text, PDFium for page rendering, Tesseract for OCR, and dedicated Word/text readers. It does not require a vision model.
+Native extraction uses the shared document providers: `pdf-extract` for PDF text, PDFium for page rendering, Tesseract for OCR, and dedicated Word/text readers. It does not require a vision model. PDFium and Tesseract come with the OCR pack (PDFium and Tesseract), which the release packages do not include yet: until then digital PDF, DOCX, DOC and text work, and a scanned PDF is reported as unavailable.
 
 A folder named `ingest`, or a registry label such as `document-ocr`, does not turn an embedding graph into a generative OCR model. Dedicated ONNX Florence-2/TrOCR/Donut-style generation pipelines are not implemented. General XLSX/PPTX parsing, DOCX embedded-image reasoning and a persistent vector index are outside current ingest support.
 
