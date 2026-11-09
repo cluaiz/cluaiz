@@ -45,8 +45,8 @@ pub struct RunArgs {
     pub think: ThinkArgs,
 }
 
-/// `cluaiz run`: chat with a model, or answer one prompt. A model that is not installed goes through
-/// the download flow below (unchanged), which ends with the command to run it.
+/// `cluaiz run`: chat with a model, or answer one prompt. A model that is not installed is downloaded
+/// first (a chat model then runs at once); a repository name whose variant is installed runs that variant.
 pub async fn execute(args: RunArgs, verbose: bool) -> Result<()> {
     let name = match args.model.clone() {
         Some(name) => name,
@@ -60,21 +60,30 @@ pub async fn execute(args: RunArgs, verbose: bool) -> Result<()> {
                 let id = cluaiz_models::registry::InstalledStateRegistry::id_for_path(&path);
                 (path, id)
             }
-            Resolved::AlreadyInstalled(id) => {
-                println!("  {} This variant is already downloaded as '{}'. Run it with: cluaiz run {}", "⚠️".yellow(), id.cyan(), id.green());
-                return Ok(());
-            }
+            // The repository name of a model downloaded before: run the installed variant
+            Resolved::AlreadyInstalled(id) => match models::lookup(&id) {
+                Lookup::Found(path, id) => (path, id),
+                _ => {
+                    println!("  {} This variant is already downloaded as '{}'. Run it with: cluaiz run {}", "⚠️".yellow(), id.cyan(), id.green());
+                    return Ok(());
+                }
+            },
             Resolved::Download(plan) => {
                 install::confirm(&plan)?;
                 let path = install::download(&plan).await?;
                 // `run` makes the model it downloaded the active one (as before)
                 let id = cluaiz_models::registry::InstalledStateRegistry::id_for_path(&path);
                 if plan.manifest.architecture_type == "onnx" {
-                    cluaiz_security::PermissionSchema::set_active_embedding_model(id);
+                    cluaiz_security::PermissionSchema::set_active_embedding_model(id.clone());
                 } else {
-                    cluaiz_security::PermissionSchema::set_active_chat_model(id);
+                    cluaiz_security::PermissionSchema::set_active_chat_model(id.clone());
                 }
-                return Ok(());
+                // A chat model is run right away, with the prompt if one was given; other kinds
+                // (embedding, speech) end with the command printed above
+                if plan.manifest.category != "chat" {
+                    return Ok(());
+                }
+                (path, id)
             }
         },
     };
