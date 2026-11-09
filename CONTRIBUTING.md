@@ -20,8 +20,7 @@ machines as possible so it becomes stable quickly. While that happens, parts of 
 widely, for a new platform or an optimization. Merging outside code now would mean asking contributors to redo their
 work again and again.
 
-Pull requests to the Engine open when the pre-release ends with the alpha release. That can take a month or two.
-Until then, a pull request is closed with thanks, and an issue that describes the same change is just as useful: it
+Pull requests to the Engine open when the pre-release ends with the alpha release. Until then, a pull request is closed with thanks, and an issue that describes the same change is just as useful: it
 shows us what to build.
 
 **Tools are open to contributions now.** Skills, plugins and MCP servers live in
@@ -44,7 +43,7 @@ Security problems are never reported in public. See [SECURITY.md](SECURITY.md).
 
 - **[Discord](https://discord.gg/mab8kBURz):** join if you want to contribute once pull requests open, or to talk
   about Cluaiz now. It has channels for contributors.
-- **GitHub:** watch the repository for releases, and star it if Cluaiz is useful to you.
+- **GitHub:** watch the repository to hear about new releases.
 
 ## Code of conduct
 
