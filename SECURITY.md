@@ -41,7 +41,7 @@ Tools declare granular capabilities (`exec`, `fs_write`, `network`). Under `sand
 We take the security of the Cluaiz Engine very seriously. If you discover a vulnerability or security bypass, **please do not open a public issue.** Public disclosure puts early adopters and production instances at risk.
 
 Instead, report it privately:
-1. Email your findings to the core maintainer team at `security@cluaiz.com` (or submit a private GitHub Security Advisory).
+1. Use GitHub's **Report a vulnerability** button on the [Security tab](https://github.com/cluaiz/cluaiz/security).
 2. Include clear, step-by-step instructions to reproduce the vulnerability.
 3. Detail the impact (e.g., directory jail escape, unauthorized command execution, or timing side-channel).
 
