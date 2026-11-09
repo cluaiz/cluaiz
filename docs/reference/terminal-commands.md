@@ -113,8 +113,6 @@ Skills, plugins and MCP servers share one command shape. Aliases: `i` (install),
 | `cluaiz skill\|plugin\|mcp list` | Installed ones | `tools.list` |
 | `cluaiz skill\|plugin\|mcp remove <name>` | Remove one | `tools.remove` |
 | `cluaiz skill\|plugin\|mcp cache …` | Cached files of a tool | `tools.cache`, `tools.clear_cache` |
-| `cluaiz mcp start <name>` | Start an MCP server or extension in the background | — |
-| `cluaiz plugin link …` | Link a plugin to a skill | — |
 | `cluaiz skill\|plugin\|mcp config <name>` | View or change a tool's settings | `tools.get_settings`, `tools.set_settings` |
 
 * **Skills** are instructions (`SKILL.md`) the model loads when it needs them.
