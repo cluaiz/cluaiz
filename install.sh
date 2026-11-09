@@ -23,6 +23,8 @@ BOLD='\033[1m'; WHITE='\033[1;37m'; CYAN='\033[0;36m'; GRAY='\033[0;90m'; GREEN=
 install_step=0
 interactive=0
 if [ -t 1 ] && [ "${TERM:-dumb}" != dumb ]; then interactive=1; fi
+# No color codes in a log file or a CI log
+if [ "$interactive" -eq 0 ]; then BOLD=''; WHITE=''; CYAN=''; GRAY=''; GREEN=''; RED=''; NC=''; fi
 step() { install_step=$((install_step + 1)); printf "\n  ${CYAN}[%s/7]${NC} %s\n" "$install_step" "$1"; }
 done_step() { printf "  ${GREEN}[DONE]${NC} %s\n" "$1"; }
 fail() { printf "\n  ${RED}[ERROR] %s${NC}\n" "$1" >&2; exit 1; }
@@ -60,7 +62,8 @@ download_file() {
   dl_headers="$dl_out.headers"; dl_errors="$dl_out.stderr"
   dl_start=$(date +%s); dl_tick=0; dl_drawn=0; dl_next_log=0
   printf '  %s\n' "$dl_name"
-  curl -fLsS --connect-timeout 30 --speed-limit 1 --speed-time 120 \
+  # --retry: a moment of HTTP 500 / 503 from GitHub (seen right after a release is published) is tried again
+  curl -fLsS --retry 3 --retry-delay 2 --connect-timeout 30 --speed-limit 1 --speed-time 120 \
     --dump-header "$dl_headers" --output "$dl_out" --url "$dl_url" 2>"$dl_errors" &
   download_pid=$!
   while kill -0 "$download_pid" 2>/dev/null; do
