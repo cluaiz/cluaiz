@@ -126,7 +126,8 @@ impl UniversalQuantization {
             .replace(".onnx", "")
             .replace(".bin", "");
         
-        let parts: Vec<&str> = clean.split(&['-', '_', '.'][..]).collect();
+        // Not split on '.': sizes such as 0.6B and 1.5B carry one
+        let parts: Vec<&str> = clean.split(&['-', '_'][..]).collect();
 
         for part in parts {
             let part_upper = part.to_uppercase();
@@ -284,5 +285,20 @@ impl UniversalQuantization {
     pub fn is_executable_weight_file(path: &str) -> bool {
         let lower = path.to_lowercase();
         lower.ends_with(".gguf") || lower.ends_with(".onnx")
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::UniversalQuantization;
+
+    #[test]
+    fn parameters_keep_the_decimal_point() {
+        let p = |name: &str| UniversalQuantization::extract_parameters_from_name(name, "Q4_K_M");
+        assert_eq!(p("Qwen3-0.6B-Q4_K_M.gguf"), "0.6B");
+        assert_eq!(p("Qwen2.5-1.5B-Instruct-Q4_K_M.gguf"), "1.5B");
+        assert_eq!(p("Llama-3.2-3B-Instruct-Q4_K_M.gguf"), "3B");
+        assert_eq!(p("Mixtral-8x7B-v0.1-Q4_K_M.gguf"), "8X7B");
+        assert_eq!(p("Qwen3-4B-Q4_K_M.gguf"), "4B");
     }
 }
