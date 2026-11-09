@@ -1,16 +1,16 @@
 # Cluaiz Engine — Model Support
 
-Updated: October 22, 2026
+Updated: November 9, 2026
 
 Cluaiz runs local models through **llama.cpp for GGUF** and **ONNX Runtime for ONNX**. It provides APIs for chat, speech, embeddings and document processing.
 
-## Release highlights
+## Highlights
 
 - **Multimodal chat:** send text, images, documents, audio or video to a model that supports the relevant input.
 - **Document-to-text or document-to-vector:** use native extraction, select an embedding model, or select a compatible vision model for visual interpretation.
-- **Speech APIs:** synthesize speech with supported ONNX families or experimental GGUF speech models; transcribe recordings with compatible ONNX STT packages.
+- **Speech APIs:** synthesize speech with supported ONNX families or experimental GGUF speech models; transcribe recordings with Whisper or Moonshine ONNX packages.
 - **EmbeddingGemma-2:** GGUF text embedding support includes its projected 768-dimensional output.
-- **Visual PDFs:** compatible GGUF vision models can receive rendered page images, including content that embedded PDF text alone cannot describe.
+- **Images to a vision model:** a compatible GGUF vision model reads an image and returns its text or an answer. Rendering PDF pages for it needs the OCR pack, which the release packages do not include yet.
 - **Model discovery:** installed model IDs, voices and language capabilities are available through the API.
 
 ## Support at a glance
@@ -22,10 +22,10 @@ Cluaiz runs local models through **llama.cpp for GGUF** and **ONNX Runtime for O
 | Audio understanding in chat | Supported by compatible audio-capable models | Use the speech-to-text API |
 | Video understanding | Sampled frames through compatible vision models | Not available as a dedicated pipeline |
 | Text-to-speech | Experimental | Supported families listed below |
-| Speech-to-text | Not available on the transcription API | Whisper; Moonshine adapter available |
+| Speech-to-text | Not available on the transcription API | Whisper; Moonshine (English) |
 | Text embeddings | Supported | Supported |
 | Image embeddings | Not available | Compatible CLIP-style graphs |
-| Document extraction and OCR | Native processing; no AI model required | Native processing; no AI model required |
+| Document extraction | Native processing; no AI model required. OCR needs the OCR pack, not in the release packages yet | Same |
 | Image/video generation | Not available | Not available |
 
 **Supported** means an execution path is available for compatible packages. **Experimental** means a path is available for evaluation but still has integration, quality or performance limitations. **Adapter available** means family-specific code exists and complete-package acceptance is pending.
@@ -38,8 +38,9 @@ GGUF models run through Cluaiz's pinned llama.cpp backend. Multimodal models als
 
 | Family | Capability | Status |
 |:---|:---|:---|
-| Llama 3.2, Qwen3, Bonsai | Text generation | Selected models tested |
+| Llama 3.2, Qwen3, Bonsai, Gemma 3, Gemma 4, Mistral Small 3.2 | Text generation | Tested in the benchmarks ([laptop](test/engine_regression/RESULTS.md), [Tesla T4](test/cloud/runs/2026-10-28-run5-linux-t4-regression/RESULTS.md)): Llama 3.2 3B, Qwen3 4B, Bonsai 4B / 8B / 27B, Gemma 3 12B, Gemma 4 E4B / 26B A4B (MoE) / 31B, Mistral Small 3.2 24B |
 | Gemma 4 E4B | Chat, image understanding, audio input and sampled video frames | Selected package tested |
+| Qwen2.5-Omni 3B | Image, audio and sampled video input | Q4_K_M with its projector tested on the CPU |
 | BGE | Text embeddings | Selected package tested |
 | EmbeddingGemma-2 | Text embeddings | Selected Q8_0 package tested; 768-dimensional output |
 | Qwen3-TTS Base | Speech generation with optional reference audio | Experimental; selected package tested |
@@ -58,7 +59,7 @@ The same chat API handles text and supported media. Images reach the model as pi
 | Family | Status | Package requirements |
 |:---|:---|:---|
 | Piper / compatible VITS | Supported; selected Piper packages tested | Model, configuration and matching phoneme assets |
-| Kokoro | Supported; selected English/Hindi voices tested | Model, tokenizer/configuration and voice styles |
+| Kokoro | Supported; v1.0 export (uint8) and selected English/Hindi voices tested | Model, tokenizer/configuration and voice styles |
 | Audio8 | Experimental; audio generation tested | Slow AR, Fast AR, codec decoder, external weights, tokenizer and runtime manifest |
 | Supertonic | Experimental; pipeline unfinished | Compatible text encoder, duration predictor, vector estimator and vocoder |
 | Matcha | Experimental; integration and package validation incomplete | Acoustic flow model and vocoder |
@@ -78,10 +79,10 @@ Autoregressive models such as Audio8 and Qwen3-TTS can generate more slowly than
 
 | Family | Status | Package requirements |
 |:---|:---|:---|
-| Whisper | Supported; selected large-v3-turbo export tested | Compatible encoder/decoder graphs, tokenizer and preprocessing configuration |
-| Moonshine | Adapter available; complete-package testing pending | Compatible waveform encoder/decoder export and tokenizer |
+| Whisper | Supported; large-v3-turbo and base exports tested | Compatible encoder/decoder graphs, tokenizer and preprocessing configuration |
+| Moonshine | Supported; `onnx-community/moonshine-tiny-ONNX` tested. English only | Waveform encoder, decoder, decoder with cached keys/values, and tokenizer |
 
-Other ONNX STT architectures need their own compatible adapter. Diarization, word timestamps and bidirectional live transcription are not available on the current transcription API.
+A language the package does not read is refused before any work (HTTP 400 `unsupported_language`). Moonshine measurements: [transcriptions](docs/api/inference/audio_transcriptions.md#moonshine). Other ONNX STT architectures need their own compatible adapter. Diarization, word timestamps and bidirectional live transcription are not available on the current transcription API.
 
 Recordings longer than the model's input window are processed in ordered windows. Streaming returns incremental transcription output through SSE. Language selection follows the installed package; audio understanding through a GGUF chat model remains a separate capability from this transcription endpoint.
 
@@ -110,7 +111,7 @@ ONNX image processing currently accepts compatible batch-one F32 RGB graphs with
 |:---|:---|
 | Text, Markdown, source code and CSV | Read text and create chunks |
 | Digital PDF | Extract embedded page text |
-| Scanned PDF and images | Native OCR using packaged PDFium/Tesseract providers |
+| Scanned PDF and images | Needs the OCR pack (PDFium and Tesseract), which the release packages do not include yet. Until then it is reported as unavailable; an image can still be read by a GGUF vision model |
 | DOCX | Extract supported main-body text and tables |
 | Legacy DOC | Extract supported document text |
 
@@ -118,12 +119,12 @@ ONNX image processing currently accepts compatible batch-one F32 RGB graphs with
 
 | Selection | What the engine does | Result |
 |:---|:---|:---|
-| No model / native extraction | Reads document text and uses native OCR where needed | Text, chunks and extraction metadata |
+| No model / native extraction | Reads document text, and uses native OCR where the OCR pack is installed | Text, chunks and extraction metadata |
 | ONNX or GGUF text embedding model | Extracts text, then embeds the chunks | Text vectors, with optional extracted text |
 | ONNX image embedding model | Reads image pixels or renders PDF pages | Image/page vectors |
-| Compatible GGUF vision model | Reads image or PDF page pixels and follows the extraction instruction | Model-generated text |
+| Compatible GGUF vision model | Reads image pixels (PDF pages need the OCR pack to be rendered) and follows the extraction instruction | Model-generated text |
 
-For example, a scanned invoice can be read with native OCR, embedded for search, or interpreted by a vision model. These modes share the same source handling but return different outputs. Generative ingest supports a custom instruction and output-token limit; native-first mode can process extracted text when visual input is unnecessary.
+For example, with the OCR pack a scanned invoice can be read with native OCR, embedded for search, or interpreted by a vision model. These modes share the same source handling but return different outputs. Generative ingest supports a custom instruction and output-token limit; native-first mode can process extracted text when visual input is unnecessary.
 
 Native extraction does not require an AI model. OCR reads characters; vision models can interpret visual content. Neither promises complete layout reconstruction or perfect recognition. Responses include warnings and omissions where applicable.
 
@@ -185,7 +186,7 @@ The APIs provide **OpenAI-style compatibility with documented extensions**. Spee
 
 ## Validation and limitations
 
-Recorded acceptance covers selected Windows packages for chat/media input, speech, document extraction and embeddings. It does not certify every model export, language, platform or device. See [acceptance tests](test/media_regression/README.md) and [historical benchmarks](test/engine_regression/RESULTS.md) for scope and reproduction.
+Recorded acceptance covers selected Windows packages for chat/media input, speech, document extraction and embeddings, and text generation on Linux (Tesla T4, [run](test/cloud/runs/2026-10-28-run5-linux-t4-regression/RESULTS.md)) and macOS (Apple M5, [run](test/mac/runs/2026-10-28-m5-air-16gb/SUMMARY.md)). It does not certify every model export, language, platform or device. See [acceptance tests](test/media_regression/README.md) and [historical benchmarks](test/engine_regression/RESULTS.md) for scope and reproduction.
 
-Not currently included: general ONNX generative chat/vision, image/video generation, GGUF transcription through the STT endpoint, and a built-in persistent RAG index.
+Not currently included: the OCR pack in the release packages, general ONNX generative chat/vision, image/video generation, GGUF transcription through the STT endpoint, and a built-in persistent RAG index.
 
