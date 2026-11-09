@@ -67,7 +67,8 @@ function Download-File ([string]$url, [string]$outPath, [string]$fileName) {
     foreach ($arg in @($url, $outPath, $headers)) {
         if ($arg.Contains('"')) { throw 'Download URL/path contains an unsupported quote' }
     }
-    $arguments = '--fail --location --silent --show-error --connect-timeout 30 --speed-limit 1 --speed-time 120 --dump-header "{0}" --output "{1}" --url "{2}"' -f $headers, $outPath, $url
+    # --retry: a moment of HTTP 500 / 503 from GitHub (seen right after a release is published) is tried again
+    $arguments = '--fail --location --silent --show-error --retry 3 --retry-delay 2 --connect-timeout 30 --speed-limit 1 --speed-time 120 --dump-header "{0}" --output "{1}" --url "{2}"' -f $headers, $outPath, $url
     Write-Host "  $fileName"
     $process = $null; $drawn = $false; $tick = 0; $nextLog = 0
     $clock = [Diagnostics.Stopwatch]::StartNew()
