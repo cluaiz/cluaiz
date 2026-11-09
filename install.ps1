@@ -156,8 +156,14 @@ try {
         $Gpu = 'cpu'
         $names = @(Get-CimInstance Win32_VideoController | ForEach-Object { $_.Name })
         if ($names -match 'NVIDIA') { $Gpu = 'cuda' }
-        # Discrete AMD / Intel Arc; an integrated GPU is often slower than the CPU (CLUAIZ_GPU=vulkan to try it)
-        elseif ($names -match 'AMD|Radeon|Intel\(R\) Arc') { $Gpu = 'vulkan' }
+        # Discrete AMD (Radeon RX / Pro / VII) or Intel Arc (A / B series). An integrated GPU, such as
+        # "AMD Radeon(TM) Graphics" of a Ryzen laptop or "Intel(R) Arc(TM) Graphics" of a Core Ultra,
+        # is often slower than the CPU (CLUAIZ_GPU=vulkan to try it)
+        elseif ($names -match 'Radeon.*\b(RX|Pro|VII)\b|Arc\(TM\) (Pro )?[AB]\d{2,3}\b') { $Gpu = 'vulkan' }
+        elseif ($names -match 'AMD|Radeon|Intel') {
+            $igpu = @($names -match 'AMD|Radeon|Intel')[0]
+            Write-Host "  $GRAY- Integrated GPU found ($igpu); models run on the CPU. To try the GPU, set CLUAIZ_GPU=vulkan$NC"
+        }
     }
 
     Complete-Step "Platform $Platform, requested GPU: $Gpu"

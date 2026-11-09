@@ -11,9 +11,9 @@ Cluaiz ships as a **core** plus optional **GPU packs** (see [Release Workflow](c
 | Windows 10 / 11 x64 | `win-x64` | Tested |
 | Linux x64, glibc 2.38+ (Ubuntu 24.04, Debian 13, Fedora 39 or newer) | `linux-x64` | Tested (Ubuntu 24.04: CPU, and NVIDIA Tesla T4 with the CUDA 12 pack) |
 | Linux ARM64, glibc 2.38+ | `linux-arm64` | Built in CI; not yet run on hardware |
-| macOS Apple Silicon | `mac-arm64` | Run on a MacBook Air M5 16 GB: installs and chats; auto placement does not use the Metal GPU yet ([run](../../test/mac/runs/2026-10-28-m5-air-16gb/SUMMARY.md)) |
+| macOS 14 or newer, Apple Silicon | `mac-arm64` | Run on a MacBook Air M5 16 GB: installs and chats at llama.cpp's speed for the same settings. Auto placement on the Metal GPU was added after that run and has not been run on a Mac yet ([run](../../test/mac/runs/2026-10-28-m5-air-16gb/SUMMARY.md)) |
 
-Older Linux (Ubuntu 22.04, Debian 12) is not supported yet: the bundled ONNX Runtime needs glibc 2.38.
+Older Linux (Ubuntu 22.04, Debian 12, Raspberry Pi OS Bookworm, NVIDIA Jetson on Ubuntu 22.04, and WSL with Ubuntu 22.04) is not supported yet: the bundled ONNX Runtime needs glibc 2.38. The installer stops with this message. macOS before 14, Intel Macs and Windows on ARM are not supported yet either; the installers say so before downloading.
 
 ## CPU
 
@@ -27,9 +27,9 @@ The core carries llama.cpp's CPU backend in several builds (x86: SSE4.2, AVX, AV
 | NVIDIA RTX 20, T4 and other Turing, driver with CUDA 13.4 or newer | `llama-cuda13` + `cudart13` | `onnx-cuda13` |
 | NVIDIA with an older driver, or GTX 900 / 10 series, Volta | `llama-cuda12` + `cudart12` | `onnx-cuda12`; cuDNN is fetched from NVIDIA on first use |
 | NVIDIA with a driver older than CUDA 12.8 (Linux) / 12.4 (Windows), except RTX 30 / 40 | `llama-vulkan` (update the driver for CUDA) | CPU |
-| AMD Radeon, Intel Arc (Windows, Linux) | `llama-vulkan` pack | CPU on Linux; DirectML on Windows (inside the core) |
+| Discrete AMD Radeon (RX, Pro), Intel Arc (A, B series), Windows and Linux | `llama-vulkan` pack | CPU on Linux; DirectML on Windows (inside the core) |
 | Apple Silicon | Metal, inside the macOS core | CPU |
-| Integrated GPUs | CPU by default; the Vulkan pack can be installed by hand (`CLUAIZ_GPU=vulkan`) | as above |
+| Integrated GPUs (Ryzen Radeon graphics, Intel Iris / Arc graphics) | CPU by default; the Vulkan pack can be installed by hand (`CLUAIZ_GPU=vulkan`). The planner counts an integrated GPU's memory as part of the RAM | as above |
 
 The CUDA packs carry ready-made GPU code only for RTX 30, 40 and 50 (llama.cpp's default build); for other NVIDIA GPUs the driver compiles the code on first use, which needs a driver at least as new as the pack's CUDA toolkit (CUDA 13.4 and 12.8 on Linux, 13.4 and 12.4 on Windows). `nvidia-smi` prints the newest CUDA version the driver supports, and the installers choose the pack from it. Example: a Tesla T4 with driver 580 (CUDA 13.0) gets CUDA 12.
 

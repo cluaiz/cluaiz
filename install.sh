@@ -155,6 +155,16 @@ case "$(uname -m)" in
   aarch64 | arm64) arch="arm64" ;;
   *) fail "processor $(uname -m) is not supported yet" ;;
 esac
+if [ "$os" = "mac" ]; then
+  # A terminal under Rosetta reports x86_64 on an Apple Silicon Mac
+  [ "$(sysctl -n hw.optional.arm64 2>/dev/null || true)" = "1" ] && arch="arm64"
+  [ "$arch" = "arm64" ] || fail "Cluaiz needs a Mac with Apple Silicon (M1 or newer); Intel Macs are not supported yet"
+  # The macOS core is built for macOS 14: on an older version it does not start
+  macos=$(sw_vers -productVersion 2>/dev/null || true)
+  if [ -n "$macos" ] && [ "${macos%%.*}" -lt 14 ] 2>/dev/null; then
+    fail "macOS $macos found; Cluaiz needs macOS 14 (Sonoma) or newer"
+  fi
+fi
 platform="$os-$arch"
 
 if [ "$os" = "linux" ]; then
@@ -170,15 +180,27 @@ fi
 
 # ── GPU ───────────────────────────────────────────────────────────────────────────────────────
 exists() { for path in "$@"; do [ -e "$path" ] && return 0; done; return 1; }
+# An AMD GPU with more than 2 GiB of its own memory. An APU (Ryzen with Radeon graphics) has only
+# a small part of the RAM set aside, and on such an integrated GPU the CPU is often as fast
+amd_discrete() {
+  for dev in /sys/class/drm/card*/device; do
+    [ "$(cat "$dev/vendor" 2>/dev/null)" = "0x1002" ] || continue
+    vram=$(cat "$dev/mem_info_vram_total" 2>/dev/null || echo 0)
+    [ "$vram" -gt 2147483648 ] 2>/dev/null && return 0
+  done
+  return 1
+}
 if [ "$GPU" = "auto" ]; then
   GPU="cpu"
   if [ "$os" = "linux" ]; then
     if command -v nvidia-smi >/dev/null 2>&1 && nvidia-smi -L >/dev/null 2>&1; then
       GPU="cuda"
-    elif exists /usr/lib*/libvulkan.so.1 /usr/lib*/*/libvulkan.so.1 && grep -qs 0x1002 /sys/class/drm/card*/device/vendor; then
-      # An AMD GPU with a Vulkan loader. Integrated GPUs are often slower than the CPU, so Intel
-      # and others stay on the CPU unless CLUAIZ_GPU=vulkan is set
+    elif exists /usr/lib*/libvulkan.so.1 /usr/lib*/*/libvulkan.so.1 && amd_discrete; then
+      # A discrete AMD GPU with a Vulkan loader. Integrated GPUs are often slower than the CPU, so
+      # they and Intel GPUs stay on the CPU unless CLUAIZ_GPU=vulkan is set
       GPU="vulkan"
+    elif grep -qs 0x1002 /sys/class/drm/card*/device/vendor; then
+      printf "  ${GRAY}- Integrated AMD GPU found; models run on the CPU. To try the GPU: CLUAIZ_GPU=vulkan${NC}\n"
     fi
   fi
 fi
@@ -289,11 +311,23 @@ case ":$PATH:" in
   *":$INSTALL_DIR:"*) ;;
   *)
     line="export PATH=\"$INSTALL_DIR:\$PATH\""
+    # The login shell's own file is written even when it does not exist yet: a new macOS account
+    # uses zsh and often has no ~/.zshrc
+    login_shell=$(basename "${SHELL:-sh}")
+    shell_rc=''
+    [ "$login_shell" = "zsh" ] && shell_rc="${ZDOTDIR:-$HOME}/.zshrc"
     for rc in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.profile"; do
       if [ -f "$rc" ] && ! grep -qF "$INSTALL_DIR" "$rc"; then
         printf '\n# Cluaiz\n%s\n' "$line" >>"$rc"
       fi
     done
+    if [ -n "$shell_rc" ] && ! grep -qsF "$INSTALL_DIR" "$shell_rc"; then
+      printf '\n# Cluaiz\n%s\n' "$line" >>"$shell_rc"
+    fi
+    if [ "$login_shell" = "fish" ]; then
+      mkdir -p "$HOME/.config/fish/conf.d"
+      printf 'fish_add_path %s\n' "$INSTALL_DIR" >"$HOME/.config/fish/conf.d/cluaiz.fish"
+    fi
     printf "  ${GRAY}Open a new terminal (or run: %s) to use 'cluaiz'${NC}\n" "$line"
     ;;
 esac

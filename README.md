@@ -66,6 +66,10 @@ powershell -c "irm https://cluaiz.com/install.ps1 | iex"
 curl -fsSL https://cluaiz.com/install.sh | bash
 ```
 
+Supported systems: Windows 10 / 11 x64; Linux x64 or ARM64 with glibc 2.38 or newer (Ubuntu 24.04, Debian 13,
+Fedora 39 or newer; Ubuntu 22.04 and Debian 12 are not supported yet); macOS 14 or newer on Apple Silicon (M1 or
+newer). Intel Macs and Windows on ARM are not supported yet.
+
 Update later with `cluaiz self update` (models and settings stay); remove everything with `cluaiz self uninstall`
 (`--keep-models` keeps the models).
 
@@ -218,8 +222,8 @@ What release v0.1.0 ships (core + GPU packs, chosen by the installer) and where 
 | :--- | :--- | :--- | :--- |
 | **NVIDIA GPU**, Windows | CUDA 12 / CUDA 13 | `win-x64` core + `llama-cuda12` / `llama-cuda13` | ✅ RTX 3050 Laptop 4 GB, Windows 11 (CUDA 13) |
 | **NVIDIA GPU**, Linux | CUDA 12 / CUDA 13 | `linux-x64` core + `llama-cuda12` / `llama-cuda13` | ✅ Tesla T4 16 GB, Ubuntu 24.04 (CUDA 12 pack, driver 580) |
-| **AMD Radeon / Intel Arc**, Windows and Linux | Vulkan | core + `llama-vulkan` | 🧪 Built, not yet run on this hardware |
-| **Apple Silicon** (M1 or newer) | Metal (inside the core) | `mac-arm64` core | ⚠️ M5, 16 GB: installs and chats at llama.cpp's speed for the same settings, but auto placement does not use the Metal GPU yet ([run](test/mac/runs/2026-10-28-m5-air-16gb/SUMMARY.md)) |
+| **AMD Radeon RX / Pro, Intel Arc A / B**, Windows and Linux | Vulkan | core + `llama-vulkan` | 🧪 Built, not yet run on this hardware |
+| **Apple Silicon** (M1 or newer) | Metal (inside the core) | `mac-arm64` core | ⚠️ M5, 16 GB, macOS 14 or newer: installs and chats at llama.cpp's speed for the same settings. Auto placement on the Metal GPU was added after that run and has not been run on a Mac yet ([run](test/mac/runs/2026-10-28-m5-air-16gb/SUMMARY.md)) |
 | **x86-64 CPU** (SSE4.2 to AVX-512) | CPU, best build picked at start | any core | ✅ Ryzen 7 7435HS (Windows), Xeon 2.3 GHz (Ubuntu) |
 | **ARM64 Linux** | CPU (NEON and newer) | `linux-arm64` core | 🧪 Built, not yet run on hardware |
 

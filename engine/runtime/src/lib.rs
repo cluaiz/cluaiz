@@ -19,4 +19,9 @@ pub use host::{stream_error, EngineHost, HostResponse, ModelDescription, Placeme
 pub fn gguf_hardware() -> cluaiz_hw::SystemInfo {
     host::native_load::gguf_hardware()
 }
+
+/// The GPU backends llama.cpp loaded ("CUDA0: NVIDIA ..."); empty when models run on the CPU.
+pub fn loaded_gpu_backends() -> Vec<String> {
+    llama_engine::loaded_gpu_backends()
+}
 pub use llama_engine::{ContextReport, GenerationTimings, ThinkingReport};
