@@ -1,6 +1,6 @@
 # 🎙️ Cluaiz ONNX Audio & Multimodal Engine (`engine/onnx`)
 
-Unified ONNX compute engine for Audio STT (Whisper, Moonshine), TTS (Kokoro and Piper/VITS; the CosyVoice, Matcha, Chatterbox, Supertonic and OmniVoice code is experimental, see [`modles.md`](../../modles.md)), and Multimodal Vision.
+Unified ONNX compute engine for Audio STT (Whisper, Moonshine), TTS (Kokoro and Piper/VITS; the CosyVoice, Matcha, Chatterbox, Supertonic and OmniVoice code is experimental, see [`models.md`](../../models.md)), and Multimodal Vision.
 
 TTS control discovery lives in `audio/tts/capabilities.rs`: languages are separate from named voices, using the existing family/configuration/voice metadata owners. Audio8's protocol declares automatic text-language selection; the API rejects an explicit language-forcing option instead of silently ignoring it. Audio8 stage logs separate prefill, Slow AR, Fast AR and codec/output, including tensor transfers and sink backpressure. The runtime applies shared package admission to graph and external-weight bytes before loading sessions; estimates are not peak-memory guarantees or realtime claims.
 

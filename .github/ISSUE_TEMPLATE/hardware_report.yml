@@ -1,0 +1,51 @@
+name: Hardware report
+description: Tell us how Cluaiz runs on your machine, whether it works or not
+labels: ["hardware"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        We have tested Windows and Linux with NVIDIA GPUs. We most need reports from macOS (Apple Silicon and Intel), Intel Arc and integrated GPUs, AMD GPUs, and machines with little RAM.
+  - type: dropdown
+    id: result
+    attributes:
+      label: Result
+      options:
+        - Works
+        - Works, but slow or with problems
+        - Does not work
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The output of `cluaiz --version`
+      placeholder: cluaiz 0.1.0
+    validations:
+      required: true
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Hardware
+      description: The output of `cluaiz status`, plus your GPU driver version
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: install
+    attributes:
+      label: How you installed it
+      placeholder: install.ps1 / install.sh / built from source
+  - type: textarea
+    id: speed
+    attributes:
+      label: Model and speed
+      description: The model you ran and the output of `cluaiz bench`, if it ran
+      render: text
+  - type: textarea
+    id: problems
+    attributes:
+      label: Problems
+      description: What did not work, with the error and the lines around it
+      render: text

@@ -1,0 +1,54 @@
+name: Bug report
+description: Something in the Engine or the CLI does not work as it should
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Cluaiz is a developer pre-release. Thank you for testing it. Please check that the bug is not already reported.
+        Remove tokens, API keys and personal paths from anything you paste.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. cluaiz pull ...
+        2. cluaiz run ...
+        3. ...
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The output of `cluaiz --version`
+      placeholder: cluaiz 0.1.0
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Model
+      description: The model file or ID, if a model was involved
+      placeholder: Qwen3.8-4B-Q4_K_M.gguf
+  - type: textarea
+    id: hardware
+    attributes:
+      label: Hardware
+      description: The output of `cluaiz status`, or your OS, CPU, GPU, GPU driver version and RAM
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: The error and the lines around it. Run the command with `--verbose` for more
+      render: text
