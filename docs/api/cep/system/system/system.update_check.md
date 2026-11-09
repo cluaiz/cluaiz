@@ -24,13 +24,13 @@ response: |
     "id": 1,
     "jsonrpc": "2.0",
     "result": {
-      "current": "0.1.1",
+      "current": "0.1.0",
       "latest": {
         "prerelease": true,
         "published_at": "2026-11-01T08:00:00Z",
-        "tag": "v0.1.2",
-        "url": "https://github.com/cluaiz/cluaiz/releases/tag/v0.1.2",
-        "version": "0.1.2"
+        "tag": "v0.2.0",
+        "url": "https://github.com/cluaiz/cluaiz/releases/tag/v0.2.0",
+        "version": "0.2.0"
       },
       "update_available": true
     }

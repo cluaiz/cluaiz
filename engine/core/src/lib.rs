@@ -28,11 +28,11 @@ pub use contracts::{UnifiedBackend, StreamingInference, StreamCallback, Modality
 
 use std::sync::atomic::AtomicBool;
 
-/// The Engine's version: the release's own (`CLUAIZ_RELEASE_VERSION`, set by the release workflow,
-/// whose tag can be newer than Cargo.toml), else the crate version of a local build
+/// The Engine's version: `version` in the repository's root `package.json` (read by build.rs), or the
+/// release's own (`CLUAIZ_RELEASE_VERSION`, set by the release workflow, which checks they match)
 pub const VERSION: &str = match option_env!("CLUAIZ_RELEASE_VERSION") {
     Some(version) if !version.is_empty() => version,
-    _ => env!("CARGO_PKG_VERSION"),
+    _ => env!("CLUAIZ_VERSION"),
 };
 
 /// 🛑 Global Cancellation Signal for Graceful Interrupts

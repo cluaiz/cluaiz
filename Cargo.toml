@@ -26,7 +26,8 @@ exclude = ["test/comprehensive_e2e_trace"]
 resolver = "2"
 
 [workspace.package]
-version = "0.1.1"
+# Crate version only. The Engine's version is `version` in package.json (see engine/core/build.rs)
+version = "0.1.0"
 edition = "2021"
 authors = ["Cluaiz Technologies"]
 

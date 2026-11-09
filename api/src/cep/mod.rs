@@ -56,7 +56,7 @@ pub fn engine() -> CepEngine {
         TaskStore::new(MAX_RUNNING_TASKS, TASK_TTL_MS, MAX_TASK_TTL_MS),
         Limits::default(),
         "Cluaiz Engine Protocol",
-        env!("CARGO_PKG_VERSION"),
+        cluaiz_core::VERSION,
     )
     .with_audit(Arc::new(cluaiz_security::audit::AuditFile::in_home()))
 }
