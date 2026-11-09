@@ -18,8 +18,9 @@ pub async fn execute_non_streaming(
     let start_time = ctx.start_time;
     let turn_memory = super::preflight::TurnMemory::new(state.clone(), &ctx);
 
+    let max_steps = super::api_turn::max_steps_for(&request);
     let mut turn = super::api_turn::ApiTurn::new(state.clone(), &ctx, &request, dispatch_result, None);
-    if cluaiz_agents::turn::run(&mut turn, super::api_turn::MAX_STEPS).await.is_err() {
+    if cluaiz_agents::turn::run(&mut turn, max_steps).await.is_err() {
         if keep_alive_val == Some(0) {
             state.host.unload_model().await;
         }

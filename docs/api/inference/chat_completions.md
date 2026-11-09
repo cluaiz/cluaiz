@@ -149,6 +149,12 @@ params:
     default: "true"
     allowed: "`true`, `false`"
     desc: "Suggest installed, switched-on tools that fit the message and let the model load them on demand. `false` leaves suggestions out. See Tools on demand."
+  - name: "max_steps"
+    type: "Integer"
+    req: false
+    default: "100"
+    allowed: "`0` or more"
+    desc: "Most model generations in one turn, counting each round of tool calls. `0` means no limit. Repeating the same tool call with the same arguments is caught either way: the third time the model is told to move on, the fourth time the turn ends. Any other value is ignored."
   - name: "history"
     type: "String"
     req: false
@@ -367,6 +373,7 @@ flowchart LR
 | **`tools`** | Array | No | `null` | Array of tool definitions | List of tools the model may call (Function Calling) in the model's own format when its chat template renders tools, else via `<tool_call>` XML (`context_policy: {"tool_format": "inline"}` always uses the XML; see [Native tool calls](../cep/ai-inference/context/README.md#native-tool-calls)). |
 | **`tool_choice`** | String / Object | No | `"auto"` | `"none"`, `"auto"` | `"none"` gives the model no tools (installed, loaded or suggested) for this request; any other value lets the model decide. |
 | **`tool_search`** | Boolean | No | `true` | `true`, `false` | Suggest installed, switched-on tools that fit the message and let the model load them on demand. `false` leaves suggestions out. See [Tools on demand](#-tools-on-demand). |
+| **`max_steps`** | Integer | No | `100` | `0` or more | Most model generations in one turn, counting each round of tool calls. `0` means no limit. Repeating the same tool call with the same arguments is caught either way: the third time the model is told to move on, the fourth time the turn ends. Any other value is ignored. |
 | **`history`** | String | No | `"client"` | `"client"`, `"engine"` | `client`: the request carries the whole conversation. `engine`: send only the new messages; the Engine puts the chat's logged transcript in front of them (needs `session_id`). See [Chat event log](#-chat-event-log). |
 | **`storage`** | String | No | `"engine"` | `"engine"`, `"external"`, `"none"` | Where the chat is kept: on disk (`engine`), by the app with the Engine holding it in RAM only and sending `memory_events` with each answer (`external`), or not at all (`none`). See [Chat History → storage](../cep/ai-inference/memory/README.md#where-a-chat-is-kept-storage). |
 | **`user`** | String | No | — | at most 128 characters | The app's end user (OpenAI's `user`). Notes the model keeps in this chat belong to that user, and only that user's notes reach the model; one Engine can serve many users of an app without their memories mixing. Without it: the Engine's own user. |

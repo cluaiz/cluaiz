@@ -359,6 +359,7 @@ impl ToolsEngine {
                                     payload,
                                     &cwd_path,
                                     Some(&comp_dir),
+                                    tool_name,
                                     sec_mode,
                                 ).await;
                             }

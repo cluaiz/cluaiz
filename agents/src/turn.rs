@@ -76,9 +76,26 @@ pub trait Agent: Send {
     fn stopped(&self) -> bool;
 }
 
-/// Runs one turn: at most `max_steps` generations
+/// Consecutive identical calls before a warning is returned instead of re-running the call
+pub const REPEAT_WARN_THRESHOLD: usize = 3;
+/// Consecutive identical calls that end the turn as stuck (`Ended::StepLimit`)
+pub const REPEAT_STOP_THRESHOLD: usize = 4;
+
+fn call_signature(call: &ToolCall) -> (String, String) {
+    let canonical_args = serde_json::from_str::<serde_json::Value>(&call.arguments)
+        .ok()
+        .and_then(|v| serde_json::to_string(&v).ok())
+        .unwrap_or_else(|| call.arguments.trim().to_owned());
+    (call.name.trim().to_ascii_lowercase(), canonical_args)
+}
+
+/// Runs one turn: at most `max_steps` generations (`0` = unlimited, guarded by repeat detection)
 pub async fn run<A: Agent>(agent: &mut A, max_steps: usize) -> anyhow::Result<Ended> {
-    for step in 0..max_steps {
+    let limit = if max_steps == 0 { usize::MAX } else { max_steps };
+    let mut last_sig: Option<(String, String)> = None;
+    let mut repeat_count: usize = 0;
+
+    for step in 0..limit {
         if agent.stopped() {
             return Ok(Ended::Stopped(String::new()));
         }
@@ -91,6 +108,24 @@ pub async fn run<A: Agent>(agent: &mut A, max_steps: usize) -> anyhow::Result<En
         for call in &calls {
             if agent.stopped() {
                 return Ok(Ended::Stopped(said));
+            }
+            let sig = call_signature(call);
+            if last_sig.as_ref() == Some(&sig) {
+                repeat_count += 1;
+            } else {
+                last_sig = Some(sig);
+                repeat_count = 1;
+            }
+            if repeat_count >= REPEAT_STOP_THRESHOLD {
+                return Ok(Ended::StepLimit);
+            }
+            if repeat_count == REPEAT_WARN_THRESHOLD {
+                let warn = format!(
+                    "Repeated identical tool call '{}' {} times in a row with the same arguments. Do not repeat this call; move to the next step or provide your final answer.",
+                    call.name, REPEAT_WARN_THRESHOLD
+                );
+                agent.record_result(call, &warn);
+                continue;
             }
             match agent.call(call).await {
                 CallRun::Done(result) => agent.record_result(call, &result),
@@ -201,5 +236,37 @@ mod tests {
     async fn a_stopped_generation_ends_the_turn() {
         let mut agent = script(vec![Generated::Stopped { said: "partial".into() }]);
         assert_eq!(run(&mut agent, 5).await.unwrap(), Ended::Stopped("partial".into()));
+    }
+
+    #[tokio::test]
+    async fn distinct_calls_run_past_old_fifteen_step_limit_with_zero_unlimited() {
+        let mut steps: Vec<Generated> = (1..=20)
+            .map(|i| Generated::Answer {
+                said: format!("step {i}"),
+                calls: vec![ToolCall {
+                    name: "research_read".into(),
+                    arguments: format!("{{\"source\":\"S{i}\"}}"),
+                    raw: format!("<call S{i}>"),
+                }],
+            })
+            .collect();
+        steps.push(answer("final report", &[]));
+        let mut agent = script(steps);
+        assert_eq!(run(&mut agent, 0).await.unwrap(), Ended::Answered("final report".into()));
+    }
+
+    #[tokio::test]
+    async fn consecutive_identical_calls_warn_on_third_and_stop_on_fourth() {
+        let mut agent = script(vec![
+            answer("1", &["stuck_tool"]),
+            answer("2", &["stuck_tool"]),
+            answer("3", &["stuck_tool"]),
+            answer("4", &["stuck_tool"]),
+        ]);
+        assert_eq!(run(&mut agent, 0).await.unwrap(), Ended::StepLimit);
+        // The tool itself is only executed twice; the 3rd records a warning and the 4th stops
+        let executed_calls = agent.log.iter().filter(|l| *l == "call stuck_tool").count();
+        assert_eq!(executed_calls, 2);
+        assert!(agent.log.iter().any(|l| l.contains("Repeated identical tool call 'stuck_tool' 3 times")));
     }
 }

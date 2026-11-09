@@ -15,6 +15,11 @@ pub struct StreamSignals {
 pub static ACTIVE_STREAMS: LazyLock<RwLock<HashMap<String, StreamSignals>>> =
     LazyLock::new(|| RwLock::new(HashMap::new()));
 
+/// `max_steps` when it is a whole number of zero or more; anything else leaves the default
+fn steps_or_default<'de, D: serde::Deserializer<'de>>(deserializer: D) -> Result<Option<usize>, D::Error> {
+    Ok(Value::deserialize(deserializer)?.as_u64().and_then(|steps| usize::try_from(steps).ok()))
+}
+
 /// Fallback maximum token generation limit when not explicitly specified
 pub const DEFAULT_MAX_TOKENS: usize = 2048;
 
@@ -63,6 +68,10 @@ pub struct ExternalChatRequest {
     pub logit_bias: Option<std::collections::HashMap<String, f32>>,
     pub tools: Option<Vec<serde_json::Value>>,
     pub tool_choice: Option<serde_json::Value>,
+    /// Maximum tool-call generations in one turn (`0` = unlimited; default `100`). A value that is
+    /// not a whole number of zero or more is ignored, so the default applies
+    #[serde(default, deserialize_with = "steps_or_default")]
+    pub max_steps: Option<usize>,
     /// false: installed tools that fit the message are not suggested (default true)
     pub tool_search: Option<bool>,
     /// How the KV cache is matched to the new prompt: "prefix" (only the common prefix is kept),

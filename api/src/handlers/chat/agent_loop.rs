@@ -163,9 +163,10 @@ pub async fn execute_streaming_loop(
 
         // The turn (cluaiz_agents::turn) runs here; its chunks arrive on `chunks` as it goes
         let (sink, mut chunks) = tokio::sync::mpsc::unbounded_channel::<String>();
+        let max_steps = super::api_turn::max_steps_for(&request);
         let mut turn = super::api_turn::ApiTurn::new(state_clone.clone(), &ctx, &request, HostResponse::TokenStream(initial_rx), Some(sink));
         let outcome = {
-            let core = cluaiz_agents::turn::run(&mut turn, super::api_turn::MAX_STEPS);
+            let core = cluaiz_agents::turn::run(&mut turn, max_steps);
             tokio::pin!(core);
             loop {
                 let next = tokio::select! {
@@ -195,7 +196,7 @@ pub async fn execute_streaming_loop(
             return;
         }
         if matches!(outcome, Ok(cluaiz_agents::turn::Ended::StepLimit)) {
-            tracing::info!("🔁 [API] Turn '{}' reached {} steps", req_id_stream, super::api_turn::MAX_STEPS);
+            tracing::info!("🔁 [API] Turn '{}' stopped at step/repeat limit (max_steps={})", req_id_stream, max_steps);
         }
         let client_call = turn.client_call.is_some();
         turn.flush();
