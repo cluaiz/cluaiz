@@ -197,6 +197,20 @@ impl HardwareProber {
         sys.available_memory()
     }
 
+    /// The OS name and version. sysinfo names every Windows build from 22000 on "Windows 11", Windows
+    /// Server 2022 / 2025 too; for a server its product name ("Windows Server 2025 Datacenter") and
+    /// build number are used instead.
+    fn os_name_and_version() -> (String, String) {
+        let name = System::name().unwrap_or_else(|| "Unknown OS".into());
+        let version = System::os_version().unwrap_or_default();
+        if cfg!(windows) {
+            if let Some(long) = System::long_os_version().filter(|l| l.contains("Server")) {
+                return (long, System::kernel_version().unwrap_or(version));
+            }
+        }
+        (name, version)
+    }
+
     /// Deep hardware probe measuring real silicon properties
     pub fn probe_system() -> SystemInfo {
         let mut sys = System::new_all();
@@ -207,9 +221,10 @@ impl HardwareProber {
         let storage = Self::probe_storage();
         let gpus = Self::probe_gpus();
 
+        let (os_name, os_version) = Self::os_name_and_version();
         SystemInfo {
-            os_name: System::name().unwrap_or_else(|| "Unknown OS".into()),
-            os_version: System::os_version().unwrap_or_default(),
+            os_name,
+            os_version,
             hostname: System::host_name().unwrap_or_default(),
             architecture: std::env::consts::ARCH.to_string(),
             cpu,
