@@ -1,3 +1,11 @@
+## Developer preview
+
+This is a pre-release for developers who read the code, try it and report bugs. It is not ready for everyday use yet.
+
+- Tested: Windows with NVIDIA GPUs (CUDA), and Linux in WSL.
+- Not tested yet: macOS (Apple Silicon and Intel), Intel GPUs, AMD GPUs, and machines with little RAM. If you have one, please try it and tell us with a hardware report issue.
+- Found a bug? Open an issue with the output of `cluaiz --version` and `cluaiz status`. Bugs in a tool (plugins, skills and MCP servers) go to [cluaiz-tools](https://github.com/cluaiz/cluaiz-tools/issues).
+
 ## Install
 
 **Linux and macOS**
