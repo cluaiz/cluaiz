@@ -10,8 +10,8 @@ use crate::cli::models::{self, Lookup};
 
 #[derive(clap::Args)]
 pub struct RunArgs {
-    /// Installed model id, path to a .gguf file, or a registry / Hugging Face id to download
-    /// (default: the active chat model)
+    /// Installed model id, path to a .gguf file, a registry / Hugging Face id to download, or a
+    /// provider's model as <provider>/<model> (default: the active chat model)
     pub model: Option<String>,
     /// Prompt to answer once, then exit (no prompt: piped stdin is the prompt)
     #[arg(trailing_var_arg = true)]
@@ -52,7 +52,18 @@ pub async fn execute(args: RunArgs, verbose: bool) -> Result<()> {
         Some(name) => name,
         None => models::chat_model_or_choose()?,
     };
-    let (path, id) = match models::lookup(&name) {
+    let found = models::lookup(&name);
+    // `<provider>/<model>`: a model of a provider in providers.json (an installed model of that name wins)
+    let provider = match found {
+        Lookup::Found(..) => None,
+        _ => crate::chat::provider::find(&name),
+    };
+    let provider = match provider {
+        Some(target) => Some(crate::cli::provider::with_context(target).await),
+        None => None,
+    };
+    let (path, id) = match found {
+        _ if provider.is_some() => Default::default(),
         Lookup::Found(path, id) => (path, id),
         Lookup::Ambiguous(_) => return models::resolve_installed(&name).map(|_| ()),
         Lookup::NotInstalled => match install::resolve(&name, args.all).await? {
@@ -111,5 +122,8 @@ pub async fn execute(args: RunArgs, verbose: bool) -> Result<()> {
     options.verbose = verbose;
     options.local = args.local;
     let interactive = args.interactive || prompt.is_none();
+    if let Some(target) = provider {
+        return crate::chat::start_provider(target, options, prompt, interactive).await;
+    }
     crate::chat::start(path, id, options, prompt, interactive).await
 }

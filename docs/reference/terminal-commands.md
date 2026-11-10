@@ -78,6 +78,12 @@ What each `cluaiz` command does, and the API method that does the same thing ove
 * The session token and API keys (at most 5).
 * API: CEP `tokens.create`, `tokens.list`, `tokens.revoke`.
 
+### `cluaiz provider add|list|models|test|remove`
+* Model providers (Groq, OpenRouter, a local Ollama, …) in providers.json. Their models are used as
+  `<provider>/<model>` in `run`, `agent -m` and `/v1/chat/completions`. See
+  [Model providers](../engine/providers.md).
+* API: CEP `providers.set`, `providers.list`, `providers.models`, `providers.test`, `providers.remove`.
+
 ### `cluaiz permission [name value]`
 * Without arguments: shows the values. With a name: changes one (`telemetry`, `lazy-load`,
   `port`, …). See [permission.json](../engine/permission.md).

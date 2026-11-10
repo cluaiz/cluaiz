@@ -5,6 +5,7 @@
 pub mod markdown;
 pub mod output;
 pub mod print;
+pub mod provider;
 pub mod remote;
 pub mod repl;
 
@@ -101,6 +102,8 @@ pub struct Session {
     pub history: Vec<ChatMessage>,
     /// The running server that holds the model, when this session uses it
     pub remote: Option<remote::Remote>,
+    /// The provider that runs the model (`<provider>/<model>` in providers.json)
+    pub provider: Option<provider::ProviderChat>,
 }
 
 impl Session {
@@ -126,6 +129,7 @@ impl Session {
                     options,
                     history: Vec::new(),
                     remote: Some(remote),
+                    provider: None,
                 });
             }
         }
@@ -145,11 +149,48 @@ impl Session {
             options,
             history: Vec::new(),
             remote: None,
+            provider: None,
         })
+    }
+
+    /// A provider's model: nothing is loaded here
+    pub fn open_provider(host: Arc<EngineHost>, target: cluaiz_core::providers::Target, options: ChatOptions) -> Self {
+        Self {
+            host,
+            model_id: target.full_name(),
+            model_path: PathBuf::new(),
+            plan: provider::plan(&target),
+            load_ms: 0,
+            options,
+            history: Vec::new(),
+            remote: None,
+            provider: Some(provider::ProviderChat { target }),
+        }
+    }
+
+    /// Switches to a provider's model; the conversation is kept.
+    pub fn switch_provider(&mut self, target: cluaiz_core::providers::Target) {
+        self.model_id = target.full_name();
+        self.model_path = PathBuf::new();
+        self.plan = provider::plan(&target);
+        self.load_ms = 0;
+        self.remote = None;
+        self.provider = Some(provider::ProviderChat { target });
     }
 
     /// Switches to another model; the conversation is kept.
     pub async fn switch(&mut self, model_path: PathBuf, model_id: String) -> Result<()> {
+        // From a provider's model back to an installed one: the running server's copy when there
+        // is one, as at the start
+        if self.provider.take().is_some() && !self.options.local {
+            if let Some((remote, plan)) = remote::Remote::attach(&model_id).await {
+                self.remote = Some(remote);
+                self.plan = plan;
+                self.model_id = model_id;
+                self.model_path = model_path;
+                return Ok(());
+            }
+        }
         if self.remote.is_some() {
             let started = std::time::Instant::now();
             let (remote, plan) = remote::Remote::attach(&model_id)
@@ -222,6 +263,9 @@ impl Session {
         tools: Option<&serde_json::Value>,
         out: &mut dyn output::Output,
     ) -> Result<(String, TurnReport)> {
+        if let Some(provider) = &self.provider {
+            return provider.generate(&self.options, messages, tools, out).await;
+        }
         if let Some(remote) = &self.remote {
             return remote.generate(&self.model_id, &self.options, messages, tools, out).await;
         }
@@ -342,9 +386,25 @@ pub async fn start(
     interactive: bool,
 ) -> Result<()> {
     install_interrupt_handler();
-    let one_shot = prompt.is_some() && !interactive;
     let host = Arc::new(EngineHost::new());
-    let mut session = Session::open(host, model_path, model_id, options).await?;
+    let session = Session::open(host, model_path, model_id, options).await?;
+    talk(session, prompt, interactive).await
+}
+
+/// `cluaiz run <provider>/<model>`: the same chat with a provider's model
+pub async fn start_provider(
+    target: cluaiz_core::providers::Target,
+    options: ChatOptions,
+    prompt: Option<String>,
+    interactive: bool,
+) -> Result<()> {
+    install_interrupt_handler();
+    let session = Session::open_provider(Arc::new(EngineHost::new()), target, options);
+    talk(session, prompt, interactive).await
+}
+
+async fn talk(mut session: Session, prompt: Option<String>, interactive: bool) -> Result<()> {
+    let one_shot = prompt.is_some() && !interactive;
     if !one_shot || session.options.verbose {
         print::plan(&session).await;
     }

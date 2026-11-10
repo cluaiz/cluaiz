@@ -39,16 +39,20 @@ pub fn openai_messages(messages: &[(String, String)]) -> Vec<Value> {
     let mut out = Vec::with_capacity(messages.len());
     let mut calls = 0usize;
     let mut last_call: Option<(String, String)> = None;
+    // Calls of the last assistant message not answered yet: each `tool` message answers the next one
+    let mut waiting: std::collections::VecDeque<(String, String)> = Default::default();
     for (role, content) in messages {
         if role == "assistant" && content.contains(OPEN) {
             let (text, found) = split_calls(content);
             if !found.is_empty() {
+                waiting.clear();
                 let tool_calls: Vec<Value> = found
                     .into_iter()
                     .map(|(name, arguments)| {
                         calls += 1;
                         let id = format!("call_{calls}");
                         last_call = Some((id.clone(), name.clone()));
+                        waiting.push_back((id.clone(), name.clone()));
                         json!({ "type": "function", "id": id, "function": { "name": name, "arguments": arguments } })
                     })
                     .collect();
@@ -58,7 +62,7 @@ pub fn openai_messages(messages: &[(String, String)]) -> Vec<Value> {
         }
         if role == "tool" {
             let mut message = json!({ "role": "tool", "content": content });
-            if let Some((id, name)) = &last_call {
+            if let Some((id, name)) = waiting.pop_front().as_ref().or(last_call.as_ref()) {
                 message["tool_call_id"] = json!(id);
                 message["name"] = json!(name);
             }
@@ -252,6 +256,17 @@ mod tests {
         assert_eq!(out[2]["tool_call_id"], "call_1");
         assert_eq!(out[2]["name"], "read_file");
         assert!(out[3].get("tool_calls").is_none());
+    }
+
+    #[test]
+    fn each_result_answers_its_own_call() {
+        let two = format!("{}\n{}", canonical_call("read_file", "{\"path\": \"a\"}"), canonical_call("list_dir", "{}"));
+        let out = openai_messages(&[msg("user", "look"), msg("assistant", &two), msg("tool", "A"), msg("tool", "B")]);
+        assert_eq!(out[1]["tool_calls"][1]["id"], "call_2");
+        assert_eq!(out[2]["tool_call_id"], "call_1");
+        assert_eq!(out[2]["name"], "read_file");
+        assert_eq!(out[3]["tool_call_id"], "call_2");
+        assert_eq!(out[3]["name"], "list_dir");
     }
 
     #[test]

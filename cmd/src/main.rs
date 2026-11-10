@@ -88,6 +88,11 @@ enum CliCommand {
         #[command(subcommand)]
         command: Option<PermissionCommand>,
     },
+    /// Model providers (OpenRouter, Groq, Ollama, …): their models are used as `<provider>/<model>`
+    Provider {
+        #[command(subcommand)]
+        command: cli::provider::ProviderCommand,
+    },
     /// Manage API access tokens
     Token {
         #[command(subcommand)]
@@ -424,6 +429,9 @@ async fn main() -> Result<()> {
             } else {
                 let perms = cluaiz_security::PermissionSchema::load();
                 eprintln!("Starting the Cluaiz API server on http://localhost:{} ...", cluaiz_api::api_port(&perms));
+                if let Some(warning) = cluaiz_api::providers::open_server_warning(perms.api_auth.required) {
+                    eprintln!("{} {warning}", "Note:".yellow().bold());
+                }
             }
             if let Err(e) = cluaiz_api::run_daemon_with_native_endpoint(native_endpoint).await {
                 fail("serve", e);
@@ -555,6 +563,11 @@ async fn main() -> Result<()> {
                     }
                     Err(err) => fail("token", err),
                 },
+            }
+        }
+        CliCommand::Provider { command } => {
+            if let Err(e) = cli::provider::execute(command).await {
+                fail("provider", e);
             }
         }
         CliCommand::Skill { command } => {

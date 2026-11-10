@@ -10,5 +10,10 @@
 | [`models.list`](./models/models.list.md) | read | sync | Installed registry entries, optionally filtered by category |
 | [`models.load`](./models/models.load.md) | write | sync | Loads an installed GGUF model using the existing Engine host |
 | [`models.remove`](./models/models.remove.md) | write | sync | Unloads the selected model if active and removes its installed package |
+| [`providers.list`](./providers/providers.list.md) | admin | sync | The model providers and their listed models; keys are never returned |
+| [`providers.models`](./providers/providers.models.md) | admin | sync | The models a provider offers (its GET /models), with the context size it reports |
+| [`providers.remove`](./providers/providers.remove.md) | admin | sync | Removes a provider, with its key if it was kept in the file |
+| [`providers.set`](./providers/providers.set.md) | admin | sync | Adds a provider, or changes its URL, key source and listed models |
+| [`providers.test`](./providers/providers.test.md) | admin | sync | Sends one short chat request: the URL, the key and the model work |
 
 All categories: [CEP reference](../README.md). Folder: `docs/api/cep/models/`.

@@ -81,6 +81,23 @@ cluaiz token create
 cluaiz token remove 7898
 ```
 
+## Model providers
+
+| Command | Description |
+|---------|-------------|
+| `cluaiz provider add <name> --url <base_url>` | Add or change a provider. `--key-env <VAR>`: the key's environment variable; `--key <key>` (or `-` for stdin): keep the key in providers.json; `--model <id>[=<context>]`: list a model |
+| `cluaiz provider list` (`ls`) | The providers, where each key comes from, and their listed models |
+| `cluaiz provider models <name> [filter]` | The models the provider offers, with their context size |
+| `cluaiz provider test <name> [model]` | One short request: the URL, the key and the model work |
+| `cluaiz provider remove <name>` (`rm`) | Remove a provider |
+
+A provider's model is used as `<provider>/<model>`: `cluaiz run groq/qwen/qwen3-32b`, `cluaiz agent -m groq/qwen/qwen3-32b`. See [Model providers](../engine/providers.md).
+
+```bash
+cluaiz provider add groq --url https://api.groq.com/openai/v1 --key-env GROQ_API_KEY
+cluaiz provider test groq qwen/qwen3-32b
+```
+
 ---
 
 ## This machine

@@ -11,6 +11,7 @@ pub mod list;
 pub mod mcp_server;
 pub mod models;
 pub mod ps;
+pub mod provider;
 pub mod pull;
 pub mod rm;
 pub mod self_cmd;

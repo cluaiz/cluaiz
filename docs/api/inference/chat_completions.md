@@ -16,7 +16,7 @@ params:
     req: false
     default: "\"auto\""
     allowed: "Model ID or `\"auto\"`"
-    desc: "Model to use. `\"auto\"` uses the active model loaded in the chat or vision slot."
+    desc: "Model to use. `\"auto\"` uses the active model loaded in the chat or vision slot. A provider's model, `<provider>/<model>` from providers.json, is sent to that provider (see Model providers)."
   - name: "stream"
     type: "Boolean"
     req: false
@@ -323,6 +323,10 @@ The content fragments later in this page belong inside `messages`. A complete re
 
 Use a URL serving a real image, an authorized server-local path, or a real data URI. A browser-local filename alone does not upload its bytes. Multiple parts keep their message order; do not nest an embeddings-style `{type:"image",source:...}` inside chat.
 
+
+### A provider's model
+
+A model named `<provider>/<model>`, such as `groq/qwen/qwen3-32b`, belongs to a provider in providers.json ([Model providers](../../engine/providers.md)). The Engine sends the request's OpenAI fields to that provider and returns its answer, streamed or whole, as the provider sent it. The Engine's own fields and features (`session_id`, memory, server-side tools, context planning) do not apply to it. `/v1/models` lists these models with `provider` and `context_window`.
 
 ## Request flow
 

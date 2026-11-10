@@ -7,7 +7,7 @@ use colored::Colorize;
 /// Groups in the order a new user needs them; a command missing here goes under "More"
 const GROUPS: &[(&str, &[&str])] = &[
     ("Chat and agent", &["agent", "run"]),
-    ("Models", &["pull", "list", "show", "rm", "model", "ps"]),
+    ("Models", &["pull", "list", "show", "rm", "model", "provider", "ps"]),
     ("Server", &["serve", "mcp-server", "token", "permission"]),
     ("This machine", &["status", "calibrate", "bench"]),
     ("Tools", &["skill", "plugin", "mcp"]),
