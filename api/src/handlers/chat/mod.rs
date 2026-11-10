@@ -57,23 +57,6 @@ pub(crate) fn engine_history(request: &mut types::ExternalChatRequest) {
     }
 }
 
-/// POST /v1/chat/completions: a provider's model (providers.json) is forwarded to the provider;
-/// every other request is the Engine's own chat
-pub async fn chat_entry(State(state): State<Arc<AppState>>, body: axum::body::Bytes) -> Response {
-    if crate::providers_configured() {
-        if let Ok(raw) = serde_json::from_slice::<serde_json::Value>(&body) {
-            if let Some(target) = crate::providers::target_of(&raw) {
-                tracing::info!("chat request for {} sent to the provider", target.full_name());
-                return crate::providers::forward(target, raw, format!("chatcmpl-{}", uuid::Uuid::new_v4().simple())).await;
-            }
-        }
-    }
-    match Json::<types::ExternalChatRequest>::from_bytes(&body) {
-        Ok(request) => chat_completions(State(state), request).await,
-        Err(rejection) => rejection.into_response(),
-    }
-}
-
 /// POST /v1/chat/completions (Full OpenAI-compatible endpoint)
 pub async fn chat_completions(
     State(state): State<Arc<AppState>>,

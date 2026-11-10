@@ -13,7 +13,8 @@ pub async fn execute_non_streaming(
     ctx: PreparedChatContext,
     dispatch_result: HostResponse,
 ) -> axum::response::Response {
-    let keep_alive_val = request.keep_alive;
+    // keep_alive is about a loaded model: a provider's chat loaded none
+    let keep_alive_val = request.keep_alive.filter(|_| ctx.provider.is_none());
     let req_session_id = request.session_id.clone();
     let start_time = ctx.start_time;
     let turn_memory = super::preflight::TurnMemory::new(state.clone(), &ctx);
@@ -57,7 +58,7 @@ pub async fn execute_non_streaming(
     }
 
     // The engine's own count and stop reason for the last generation ("length" = max_tokens or context)
-    let context_report = state.host.last_context().await;
+    let context_report = ctx.last_context(&state.host).await;
     let finish_reason = if client_call.is_some() {
         "tool_calls"
     } else {

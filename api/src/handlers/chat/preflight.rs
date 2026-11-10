@@ -75,6 +75,8 @@ pub struct PreparedChatContext {
     pub project_sent: Vec<String>,
     /// Keeps idle-time jobs away until the request ends
     _foreground: super::background::Foreground,
+    /// A provider's model (providers.json) answers instead of a loaded one
+    pub provider: Option<Arc<crate::providers::ProviderRun>>,
     pub json_prompt: String,
     pub prepared_media: Option<cluaiz_core::ChatEnvelope<Vec<cluaiz_core::media::PreparedPart>>>,
     media_lease: Option<cluaiz_runtime::media_admission::MediaLease>,
@@ -129,6 +131,9 @@ pub(super) fn error_response(
         axum::http::StatusCode::SERVICE_UNAVAILABLE
     } else if error_type == "permission_error" {
         axum::http::StatusCode::FORBIDDEN
+    } else if error_type == "provider_error" {
+        // The provider refused or failed the request (its own message says why)
+        axum::http::StatusCode::BAD_GATEWAY
     } else if error_type == "engine_error" || error_type == "engine_load_error" {
         axum::http::StatusCode::INTERNAL_SERVER_ERROR
     } else {
@@ -174,10 +179,33 @@ impl PreparedChatContext {
             ],
         );
 
-        let mut active_model_path = crate::utils::slots::resolve_model_path(&schema, target_slot);
+        // A provider's model: nothing is loaded here; the Engine prepares the chat as for an
+        // installed model and the provider generates it
+        let provider = crate::providers::target_for_model(request.model.as_deref()).map(|target| {
+            let mut extra = serde_json::Map::new();
+            if let Some(stop) = request.stop.as_ref().filter(|s| !s.is_empty()) {
+                extra.insert("stop".into(), json!(stop));
+            }
+            if let Some(bias) = request.logit_bias.as_ref().filter(|b| !b.is_empty()) {
+                extra.insert("logit_bias".into(), json!(bias));
+            }
+            if let Some(user) = request.user.as_ref() {
+                extra.insert("user".into(), json!(user));
+            }
+            Arc::new(crate::providers::ProviderRun::new(target, request.max_tokens, extra))
+        });
+        if let Some(run) = &provider {
+            if let Err(message) = run.target.check_kind("chat") {
+                return Err(error_response(request, request_id, message, "invalid_request_error", Some("model_kind")));
+            }
+        }
+        let mut active_model_path = if provider.is_some() { None } else { crate::utils::slots::resolve_model_path(&schema, target_slot) };
         let mut resolved_model_name = "default-system-model".to_string();
 
-        if let Some(ref m_id) = request.model {
+        if let Some(run) = &provider {
+            resolved_model_name = run.target.full_name();
+            tracing::info!("🤖 [API] {} answers at the provider {}", resolved_model_name, run.target.provider);
+        } else if let Some(ref m_id) = request.model {
             if !m_id.trim().is_empty() {
                 if let Some(explicit_path) = crate::utils::slots::resolve_model_by_id(m_id) {
                     tracing::info!(
@@ -216,7 +244,7 @@ impl PreparedChatContext {
         };
 
         // Ensure we actually have a path to load (Auto-heal fallback)
-        if active_model_path.is_none() && !has_media {
+        if active_model_path.is_none() && !has_media && provider.is_none() {
             let installed = cluaiz_models::registry::InstalledStateRegistry::load();
             for (id, entry) in &installed.installed_models {
                 if entry.category == "chat" {
@@ -230,7 +258,7 @@ impl PreparedChatContext {
             }
         }
 
-        if active_model_path.is_none() {
+        if active_model_path.is_none() && provider.is_none() {
             let err_msg = format!(
                 "No model is currently loaded in slot '{}' and no valid override was provided.",
                 target_slot
@@ -264,7 +292,9 @@ impl PreparedChatContext {
             .and_then(|e| e.to_str())
             .map(|e| e.eq_ignore_ascii_case("gguf"))
             .unwrap_or(false);
-        let document_images = if has_media {
+        // A provider's model reads what the provider supports (it says when it does not); files
+        // arrive as their text
+        let document_images = if has_media && provider.is_none() {
             let capability_check =
                 (|| -> anyhow::Result<bool> {
                     if !is_gguf {
@@ -390,6 +420,7 @@ impl PreparedChatContext {
 
         // GGUF: context llama.cpp created at load. Other formats: the registry's context window.
         let dynamic_context_limit = match (is_gguf, cluaiz_core::active_context_tokens()) {
+            _ if provider.is_some() => provider.as_ref().map(|run| run.target.context() as usize).unwrap_or(2048),
             (true, Some(n)) => n as usize,
             (true, None) => {
                 return Err(axum::response::Json(json!({
@@ -422,7 +453,9 @@ impl PreparedChatContext {
 
         // 🧬 Resolve Dynamic Model Thinking Markers Directly from llama.cpp Native Engine (Zero Hardcoding)
         let (dyn_think_start, dyn_think_end): (Option<String>, Option<String>) =
-            {
+            if provider.is_some() {
+                (Some(crate::providers::THINK_START.to_string()), Some(crate::providers::THINK_END.to_string()))
+            } else {
                 let native_tags = state.host.get_thinking_tags(chat_tmpl.as_deref()).await;
                 if native_tags.0.is_some() || native_tags.1.is_some() {
                     native_tags
@@ -473,8 +506,9 @@ impl PreparedChatContext {
         let history_mode = context_plan::HistoryMode::parse(request.history_mode.as_deref());
         let policy = context_plan::policy(request.context_policy.as_ref());
         // Native tool calls: the template renders tool turns itself, so results are tool messages
-        let native_tools = policy.tool_format == "native" && super::tool_turns::template_renders_tools(chat_tmpl.as_deref());
-        let tool_role = native_tools || super::tool_turns::template_has_tool_role(chat_tmpl.as_deref());
+        // A provider's model: OpenAI function calling, results as `tool` messages
+        let native_tools = policy.tool_format == "native" && (provider.is_some() || super::tool_turns::template_renders_tools(chat_tmpl.as_deref()));
+        let tool_role = native_tools || provider.is_some() || super::tool_turns::template_has_tool_role(chat_tmpl.as_deref());
         let render_started = std::time::Instant::now();
         let rendered = context_plan::render_history(&request.messages, ledger.as_ref(), tool_role, history_mode, policy.recent_turns_min);
         let render_ms = render_started.elapsed().as_millis() as u64;
@@ -1299,6 +1333,7 @@ impl PreparedChatContext {
             json_prompt,
             prepared_media,
             media_lease,
+            provider,
             request_settings: settings,
             cancel_signal,
             progress,
@@ -1319,6 +1354,15 @@ impl PreparedChatContext {
         pivot: Option<&str>,
         max_tokens: usize,
     ) -> cluaiz_runtime::HostResponse {
+        if let Some(run) = &self.provider {
+            if let Some(prepared) = &self.prepared_media {
+                return match media_continuation(prepared, pivot) {
+                    Ok(prepared) => run.dispatch_prepared(prepared, &self.start_prompt, &self.active_think_mode, self.active_reasoning_effort, Arc::clone(&self.cancel_signal)).await,
+                    Err(error) => cluaiz_runtime::HostResponse::Error(error.to_string()),
+                };
+            }
+            return run.dispatch(pivot.unwrap_or(&self.start_prompt), &self.active_think_mode, self.active_reasoning_effort, Arc::clone(&self.cancel_signal)).await;
+        }
         if let Some(prepared) = &self.prepared_media {
             let prepared = match media_continuation(prepared, pivot) {
                 Ok(prepared) => prepared,
@@ -1372,7 +1416,8 @@ pub struct TurnMemory {
 
 impl TurnMemory {
     pub fn new(state: Arc<crate::state::AppState>, ctx: &PreparedChatContext) -> Self {
-        Self { state, chat: ctx.chat_id.clone() }
+        // A provider's chat has no KV here to save
+        Self { state, chat: ctx.chat_id.clone().filter(|_| ctx.provider.is_none()) }
     }
 
     /// Saves now, before anything that may unload the model (`keep_alive: 0`)
@@ -1390,6 +1435,23 @@ impl Drop for TurnMemory {
             if let Ok(runtime) = tokio::runtime::Handle::try_current() {
                 runtime.spawn(async move { state.host.save_chat_memory(&chat).await });
             }
+        }
+    }
+}
+
+impl PreparedChatContext {
+    /// The last generation's report: the provider's for a provider's model, else the loaded model's
+    pub async fn last_context(&self, host: &cluaiz_runtime::EngineHost) -> Option<cluaiz_runtime::ContextReport> {
+        match &self.provider {
+            Some(run) => run.last_report(),
+            None => host.last_context().await,
+        }
+    }
+
+    /// `keep_alive: 0` unloads the loaded model; a provider's chat loaded none
+    pub async fn unload_after(&self, host: &cluaiz_runtime::EngineHost) {
+        if self.provider.is_none() {
+            host.unload_model().await;
         }
     }
 }

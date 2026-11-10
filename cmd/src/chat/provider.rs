@@ -139,53 +139,10 @@ pub fn summary(target: &Target) -> String {
     )
 }
 
-/// The conversation in the OpenAI format. Every call gets an answer (a call without a result, such
-/// as one stopped before it ran, is answered "not run"), and a result without a call is user text.
+/// The conversation in the OpenAI format, with the terminal's attachments
+/// (`cluaiz_api::providers::openai_conversation_with_parts`)
 pub fn messages(messages: Vec<ChatMessage<Vec<PreparedPart>>>) -> Result<Vec<Value>> {
-    let mut pairs = Vec::with_capacity(messages.len());
-    for message in messages {
-        let mut text = String::new();
-        for part in message.content {
-            match part {
-                PreparedPart::Text { text: part } => text.push_str(&part),
-                _ => return Err(eyre!("attachments are not sent to provider models yet; use a local model for files and images")),
-            }
-        }
-        pairs.push((message.role, text));
-    }
-    let converted = cluaiz_core::tool_calls::openai_messages(&pairs);
-    let mut out: Vec<Value> = Vec::with_capacity(converted.len());
-    let mut waiting: Vec<String> = Vec::new();
-    for mut message in converted {
-        let role = message["role"].as_str().unwrap_or_default().to_owned();
-        if role == "tool" {
-            let id = message["tool_call_id"].as_str().map(str::to_owned);
-            match id.and_then(|id| waiting.iter().position(|w| *w == id)) {
-                Some(at) => {
-                    waiting.remove(at);
-                    out.push(message);
-                }
-                None => out.push(json!({ "role": "user", "content": format!("Tool result:\n{}", message["content"].as_str().unwrap_or_default()) })),
-            }
-            continue;
-        }
-        close_calls(&mut out, &mut waiting);
-        if let Some(calls) = message["tool_calls"].as_array() {
-            waiting = calls.iter().filter_map(|c| c["id"].as_str().map(str::to_owned)).collect();
-            if message["content"].as_str().is_some_and(str::is_empty) {
-                message["content"] = Value::Null;
-            }
-        }
-        out.push(message);
-    }
-    close_calls(&mut out, &mut waiting);
-    Ok(out)
-}
-
-fn close_calls(out: &mut Vec<Value>, waiting: &mut Vec<String>) {
-    for id in waiting.drain(..) {
-        out.push(json!({ "role": "tool", "tool_call_id": id, "content": "(not run)" }));
-    }
+    cluaiz_api::providers::openai_conversation_with_parts(messages).map_err(|e| eyre!(e))
 }
 
 /// A call being streamed: providers send its name first and its arguments in pieces
@@ -369,6 +326,25 @@ mod tests {
 
     fn text(role: &str, text: &str) -> ChatMessage<Vec<PreparedPart>> {
         ChatMessage { role: role.into(), content: vec![PreparedPart::Text { text: text.into() }] }
+    }
+
+    #[test]
+    fn an_attached_image_and_sound_become_content_parts() {
+        let image = cluaiz_core::media::DecodedImage::new(2, 1, std::sync::Arc::from(vec![255u8, 0, 0, 0, 0, 255])).unwrap();
+        let audio = cluaiz_core::media::DecodedAudio::new(16_000, 1, std::sync::Arc::from(vec![0.0f32; 160])).unwrap();
+        let out = messages(vec![
+            text("system", "You help."),
+            ChatMessage {
+                role: "user".into(),
+                content: vec![PreparedPart::Text { text: "What is this?".into() }, PreparedPart::Image { image }, PreparedPart::Audio { audio }],
+            },
+        ])
+        .unwrap();
+        let parts = out[1]["content"].as_array().expect("content parts");
+        assert_eq!(parts[0], json!({ "type": "text", "text": "What is this?" }));
+        assert!(parts[1]["image_url"]["url"].as_str().unwrap().starts_with("data:image/png;base64,iVBOR"));
+        assert_eq!(parts[2]["input_audio"]["format"], "wav");
+        assert_eq!(out[0]["content"], "You help.");
     }
 
     #[test]

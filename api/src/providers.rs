@@ -9,13 +9,6 @@ use std::time::Duration;
 use cluaiz_core::providers::{redact, Provider, Target};
 use serde_json::{json, Value};
 
-/// Fields of an OpenAI chat request a provider receives; the Engine's own fields stay here
-const OPENAI_FIELDS: &[&str] = &[
-    "model", "messages", "stream", "stream_options", "temperature", "top_p", "max_tokens", "max_completion_tokens",
-    "stop", "seed", "presence_penalty", "frequency_penalty", "response_format", "tools", "tool_choice",
-    "parallel_tool_calls", "logit_bias", "logprobs", "top_logprobs", "n", "user", "reasoning_effort",
-];
-
 /// One client for every provider call: it keeps connections open between requests
 pub fn client() -> reqwest::Client {
     static CLIENT: std::sync::OnceLock<reqwest::Client> = std::sync::OnceLock::new();
@@ -38,24 +31,6 @@ pub fn request(provider: &Provider, method: reqwest::Method, url: &str) -> Resul
         builder = builder.bearer_auth(key);
     }
     Ok((builder, key))
-}
-
-/// The chat request a provider receives: only OpenAI fields, with the provider's model id
-pub fn chat_body(target: &Target, request: &Value) -> Value {
-    let mut body = serde_json::Map::new();
-    if let Some(fields) = request.as_object() {
-        for (name, value) in fields {
-            if OPENAI_FIELDS.contains(&name.as_str()) && !value.is_null() {
-                body.insert(name.clone(), value.clone());
-            }
-        }
-    }
-    body.insert("model".into(), json!(target.model));
-    // The Engine's thinking levels are words or a token count; a provider takes only low/medium/high
-    if body.get("reasoning_effort").is_some_and(|v| !matches!(v.as_str(), Some("low" | "medium" | "high"))) {
-        body.remove("reasoning_effort");
-    }
-    Value::Object(body)
 }
 
 /// A failed provider answer in plain words. A context overflow says "exceeds the available
@@ -207,52 +182,9 @@ pub fn open_server_warning(auth_required: bool) -> Option<String> {
     })
 }
 
-/// The provider model a chat request names: `model` in providers.json, or, for no model or "auto",
-/// the default chat model when that is a provider's. None when no provider is set up.
+/// The provider model a chat request names (see `target_for_model`)
 pub fn target_of(request: &Value) -> Option<Target> {
-    let providers = cluaiz_core::providers::Providers::load_or_empty();
-    if providers.providers.is_empty() {
-        return None;
-    }
-    let installed = |name: &str| cluaiz_models::registry::InstalledStateRegistry::load().installed_models.contains_key(name);
-    match request.get("model").and_then(Value::as_str).filter(|m| !m.is_empty() && *m != "auto") {
-        Some(name) => providers.find(name).filter(|_| !installed(name)),
-        None => {
-            let active = cluaiz_security::PermissionSchema::load().get_active_chat_model()?;
-            providers.find(&active).filter(|_| !installed(&active))
-        }
-    }
-}
-
-/// Fields of the request a provider does not take (the Engine's own, such as `session_id` or
-/// `think_mode`): they are left out and named in the `X-Cluaiz-Ignored` header
-pub fn ignored_fields(request: &Value) -> Vec<String> {
-    let mut ignored: Vec<String> = request
-        .as_object()
-        .map(|fields| fields.iter().filter(|(name, value)| !value.is_null() && !OPENAI_FIELDS.contains(&name.as_str())).map(|(name, _)| name.clone()).collect())
-        .unwrap_or_default();
-    if request.get("reasoning_effort").is_some_and(|v| !v.is_null() && !matches!(v.as_str(), Some("low" | "medium" | "high"))) {
-        ignored.push("reasoning_effort".into());
-    }
-    ignored.sort();
-    ignored
-}
-
-/// The sampler settings of settings.json, for the fields the request does not set (as a request
-/// to an installed model gets them). top_k, min_p and repetition_penalty are not OpenAI fields.
-pub fn add_sampler_defaults(body: &mut Value, samplers: &cluaiz_core::SamplerDefaults) {
-    let defaults = [
-        ("temperature", samplers.temp.map(|v| json!(v))),
-        ("top_p", samplers.top_p.map(|v| json!(v))),
-        ("presence_penalty", samplers.presence_penalty.map(|v| json!(v))),
-        ("frequency_penalty", samplers.frequency_penalty.map(|v| json!(v))),
-        ("seed", samplers.seed.map(|v| json!(v))),
-    ];
-    for (name, value) in defaults {
-        if let (Some(value), Some(fields)) = (value, body.as_object_mut()) {
-            fields.entry(name).or_insert(value);
-        }
-    }
+    target_for_model(request.get("model").and_then(Value::as_str))
 }
 
 /// Takes out the oldest turn (a user message and every message after it up to the next user
@@ -271,166 +203,6 @@ const MOST_DROPS: usize = 16;
 
 /// The words every context overflow carries, from the Engine and from a provider
 pub const CONTEXT_FULL: &str = "exceeds the available context";
-
-/// `/v1/chat/completions` for a provider's model. The request's OpenAI fields go to the provider,
-/// with settings.json's samplers for those it leaves out; when it does not fit the provider's
-/// context, the oldest turns are left out, as for an installed model. A stream gets this request's
-/// id, so `chat.cancel` stops it, and `model` is the full name in the answer.
-///
-/// Headers: `X-Cluaiz-Provider`, `X-Cluaiz-Ignored` (the Engine fields left out),
-/// `X-Cluaiz-Dropped-Messages` (messages left out to fit).
-pub async fn forward(target: Target, request: Value, request_id: String) -> axum::response::Response {
-    use axum::response::IntoResponse;
-    let fail = |status: u16, message: String| {
-        let status = axum::http::StatusCode::from_u16(status).unwrap_or(axum::http::StatusCode::BAD_GATEWAY);
-        (status, axum::Json(json!({ "error": { "message": message, "type": "provider_error", "provider": target.provider } }))).into_response()
-    };
-    if let Err(message) = target.check_kind("chat") {
-        return fail(400, message);
-    }
-    let ignored = ignored_fields(&request);
-    if !ignored.is_empty() {
-        tracing::info!("{}: fields a provider does not take were left out: {}", target.full_name(), ignored.join(", "));
-    }
-    let mut body = chat_body(&target, &request);
-    add_sampler_defaults(&mut body, &cluaiz_core::Settings::current().samplers);
-    let streaming = body.get("stream").and_then(Value::as_bool).unwrap_or(false);
-    let mut dropped = 0usize;
-    let mut turns_dropped = 0usize;
-    let (response, key) = loop {
-        let (builder, key) = match request_for_chat(&target) {
-            Ok(found) => found,
-            Err(message) => return fail(400, message),
-        };
-        let response = match builder.body(body.to_string()).send().await {
-            Ok(response) => response,
-            Err(error) => return fail(502, send_error(&target, &error, key.as_deref())),
-        };
-        let status = response.status().as_u16();
-        if (200..300).contains(&status) {
-            break (response, key);
-        }
-        let text = response.text().await.unwrap_or_default();
-        let message = error_message(&target, status, &text, key.as_deref());
-        if message.contains(CONTEXT_FULL) && turns_dropped < MOST_DROPS {
-            let removed = body.get_mut("messages").and_then(Value::as_array_mut).map(drop_oldest_turn).unwrap_or(0);
-            if removed > 0 {
-                dropped += removed;
-                turns_dropped += 1;
-                tracing::info!("{}: the request did not fit; {dropped} oldest messages left out", target.full_name());
-                continue;
-            }
-        }
-        return fail(status, message);
-    };
-    let status = response.status().as_u16();
-    let content_type = response
-        .headers()
-        .get(reqwest::header::CONTENT_TYPE)
-        .and_then(|v| v.to_str().ok())
-        .unwrap_or(if streaming { "text/event-stream" } else { "application/json" })
-        .to_string();
-    let mut reply = axum::response::Response::builder()
-        .status(status)
-        .header(axum::http::header::CONTENT_TYPE, content_type.clone())
-        .header(axum::http::header::CACHE_CONTROL, "no-cache")
-        .header("x-cluaiz-provider", target.provider.clone());
-    if !ignored.is_empty() {
-        reply = reply.header("x-cluaiz-ignored", ignored.join(","));
-    }
-    if dropped > 0 {
-        reply = reply.header("x-cluaiz-dropped-messages", dropped.to_string());
-    }
-    let full_name = target.full_name();
-    if !streaming || !content_type.contains("event-stream") {
-        let text = response.text().await.unwrap_or_default();
-        let text = match serde_json::from_str::<Value>(&text) {
-            Ok(mut value) if value.is_object() => {
-                value["model"] = json!(full_name);
-                value.to_string()
-            }
-            _ => text,
-        };
-        return reply.body(axum::body::Body::from(text)).unwrap_or_else(|_| fail(500, "the provider's answer could not be passed on".into()));
-    }
-
-    // chat.cancel finds the stream by this request's id; chat.skip_reasoning says it cannot
-    let cancel = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
-    if let Ok(mut streams) = crate::handlers::chat::types::ACTIVE_STREAMS.write() {
-        streams.insert(
-            request_id.clone(),
-            crate::handlers::chat::types::StreamSignals { cancel: cancel.clone(), skip_reasoning: Default::default(), reasoning_supported: false },
-        );
-    }
-    let mut response = response;
-    let stream = async_stream::stream! {
-        let _registered = Registered(request_id.clone());
-        let mut pending = String::new();
-        let mut tick = tokio::time::interval(Duration::from_millis(150));
-        loop {
-            let chunk = tokio::select! {
-                chunk = response.chunk() => chunk,
-                _ = tick.tick() => {
-                    if cancel.load(std::sync::atomic::Ordering::Relaxed) {
-                        // Dropping the provider's stream ends the request there
-                        yield Ok::<_, std::io::Error>(axum::body::Bytes::from_static(b"data: [DONE]\n\n"));
-                        break;
-                    }
-                    continue;
-                }
-            };
-            match chunk {
-                Ok(Some(chunk)) => {
-                    pending.push_str(&String::from_utf8_lossy(&chunk));
-                    let mut out = String::new();
-                    while let Some(end) = pending.find('\n') {
-                        let line: String = pending.drain(..=end).collect();
-                        out.push_str(&renamed_line(&line, &request_id, &full_name));
-                    }
-                    if !out.is_empty() {
-                        yield Ok(axum::body::Bytes::from(out));
-                    }
-                }
-                Ok(None) => {
-                    if !pending.is_empty() {
-                        yield Ok(axum::body::Bytes::from(renamed_line(&pending, &request_id, &full_name)));
-                    }
-                    break;
-                }
-                Err(error) => {
-                    tracing::warn!("provider stream ended early: {}", redact(&error.to_string(), key.as_deref()));
-                    break;
-                }
-            }
-        }
-    };
-    reply.body(axum::body::Body::from_stream(stream)).unwrap_or_else(|_| fail(500, "the provider's answer could not be passed on".into()))
-}
-
-/// The stream's entry in the registry `chat.cancel` reads, taken out when the stream ends or the
-/// client goes away
-struct Registered(String);
-
-impl Drop for Registered {
-    fn drop(&mut self) {
-        if let Ok(mut streams) = crate::handlers::chat::types::ACTIVE_STREAMS.write() {
-            streams.remove(&self.0);
-        }
-    }
-}
-
-/// One line of the provider's stream with this request's id and the model's full name
-fn renamed_line(line: &str, request_id: &str, full_name: &str) -> String {
-    let Some(data) = line.trim_end().strip_prefix("data:").map(str::trim) else { return line.to_string() };
-    match serde_json::from_str::<Value>(data) {
-        Ok(mut event) if event.is_object() => {
-            event["id"] = json!(request_id);
-            event["model"] = json!(full_name);
-            format!("data: {event}\n")
-        }
-        _ => line.to_string(),
-    }
-}
 
 fn request_for_chat(target: &Target) -> Result<(reqwest::RequestBuilder, Option<String>), String> {
     let (builder, key) = request(&target.config, reqwest::Method::POST, &target.config.chat_url())?;
@@ -694,6 +466,432 @@ pub async fn forward_transcription(state: std::sync::Arc<crate::AppState>, targe
         .unwrap_or_else(|_| provider_error(&target, 500, "the provider's answer could not be passed on".into()))
 }
 
+/// The provider's model a chat names: `model`, or for no model or "auto" the default chat model
+/// when that is a provider's. An installed model of the same name wins. None without providers.
+pub fn target_for_model(model: Option<&str>) -> Option<Target> {
+    let providers = cluaiz_core::providers::Providers::load_or_empty();
+    if providers.providers.is_empty() {
+        return None;
+    }
+    let installed = |name: &str| cluaiz_models::registry::InstalledStateRegistry::load().installed_models.contains_key(name);
+    let name = match model.filter(|m| !m.trim().is_empty() && *m != "auto") {
+        Some(name) => name.to_string(),
+        None => cluaiz_security::PermissionSchema::load().get_active_chat_model()?,
+    };
+    providers.find(&name).filter(|_| !installed(&name))
+}
+
+/// A conversation in the Engine's form (`<tool_call>` blocks in assistant text, `tool` results)
+/// in the OpenAI form: calls become `tool_calls`, each result answers its call by `tool_call_id`,
+/// a call without a result is answered "(not run)", and a result without a call is user text.
+pub fn openai_conversation(pairs: &[(String, String)]) -> Vec<Value> {
+    let converted = cluaiz_core::tool_calls::openai_messages(pairs);
+    let mut out: Vec<Value> = Vec::with_capacity(converted.len());
+    let mut waiting: Vec<String> = Vec::new();
+    let close = |out: &mut Vec<Value>, waiting: &mut Vec<String>| {
+        for id in waiting.drain(..) {
+            out.push(json!({ "role": "tool", "tool_call_id": id, "content": "(not run)" }));
+        }
+    };
+    for mut message in converted {
+        if message["role"] == "tool" {
+            let id = message["tool_call_id"].as_str().map(str::to_owned);
+            match id.and_then(|id| waiting.iter().position(|w| *w == id)) {
+                Some(at) => {
+                    waiting.remove(at);
+                    out.push(message);
+                }
+                None => out.push(json!({ "role": "user", "content": format!("Tool result:\n{}", message["content"].as_str().unwrap_or_default()) })),
+            }
+            continue;
+        }
+        close(&mut out, &mut waiting);
+        if let Some(calls) = message["tool_calls"].as_array() {
+            waiting = calls.iter().filter_map(|c| c["id"].as_str().map(str::to_owned)).collect();
+            if message["content"].as_str().is_some_and(str::is_empty) {
+                message["content"] = Value::Null;
+            }
+        }
+        out.push(message);
+    }
+    close(&mut out, &mut waiting);
+    out
+}
+
+/// A conversation with attachments in the OpenAI form: as `openai_conversation`, and a message
+/// with images or sounds gets content parts (images as PNG `image_url`, sounds as WAV
+/// `input_audio`). Files arrive as their text already.
+pub fn openai_conversation_with_parts(messages: Vec<cluaiz_core::ChatMessage<Vec<cluaiz_core::media::PreparedPart>>>) -> Result<Vec<Value>, String> {
+    use base64::Engine as _;
+    use cluaiz_core::media::PreparedPart;
+    let encode = |bytes: &[u8]| base64::engine::general_purpose::STANDARD.encode(bytes);
+    // A message with attachments is marked in its text, converted with the others, then given
+    // its content parts
+    let mut attached: Vec<Vec<Value>> = Vec::new();
+    let mut pairs = Vec::with_capacity(messages.len());
+    for message in messages {
+        let mut text = String::new();
+        let mut parts = Vec::new();
+        for part in message.content {
+            match part {
+                PreparedPart::Text { text: part } => text.push_str(&part),
+                PreparedPart::Image { image } => {
+                    let png = cluaiz_media::image::encode_png(&image).map_err(|e| format!("an attached image could not be prepared: {e}"))?;
+                    parts.push(json!({ "type": "image_url", "image_url": { "url": format!("data:image/png;base64,{}", encode(&png)) } }));
+                }
+                PreparedPart::Audio { audio } => {
+                    let channels = audio.channels().max(1) as usize;
+                    let mono: Vec<f32> = audio.samples().chunks(channels).map(|f| f.iter().sum::<f32>() / f.len() as f32).collect();
+                    let wav = cluaiz_media::wav::encode_pcm16(&mono, audio.sample_rate(), Default::default()).map_err(|e| format!("an attached sound could not be prepared: {e}"))?;
+                    parts.push(json!({ "type": "input_audio", "input_audio": { "data": encode(&wav), "format": "wav" } }));
+                }
+            }
+        }
+        if !parts.is_empty() {
+            text = format!("{MEDIA_MARK}{}\u{1}{text}", attached.len());
+            attached.push(parts);
+        }
+        pairs.push((message.role, text));
+    }
+    let mut out = openai_conversation(&pairs);
+    for message in &mut out {
+        let Some(text) = message["content"].as_str().and_then(|t| t.strip_prefix(MEDIA_MARK)).map(str::to_owned) else { continue };
+        let Some((index, rest)) = text.split_once('\u{1}') else { continue };
+        let Some(parts) = index.parse::<usize>().ok().and_then(|i| attached.get(i)) else { continue };
+        let mut content = vec![json!({ "type": "text", "text": rest })];
+        content.extend(parts.iter().cloned());
+        message["content"] = json!(content);
+    }
+    Ok(out)
+}
+
+/// Marks a message whose attachments are put back after the conversion
+const MEDIA_MARK: &str = "\u{1}cluaiz-attached-";
+
+/// A provider's model as the model of the Engine's own chat (`/v1/chat/completions` with memory,
+/// the chat's ledger, Engine tools, context planning and stream controls). The Engine renders the
+/// conversation as for an installed model; `dispatch` sends it to the provider and streams the
+/// answer back as tokens in the Engine's form: thinking between `<think>` tags, calls as
+/// `<tool_call>` blocks.
+pub struct ProviderRun {
+    pub target: Target,
+    /// The request's own `max_tokens` (the Engine's default, the whole context, is not sent)
+    pub max_tokens: Option<usize>,
+    /// OpenAI fields the Engine's prompt does not carry (`stop`, `logit_bias`, `user`)
+    pub extra: serde_json::Map<String, Value>,
+    /// What the last generation used, in the form of a loaded model's report
+    pub report: std::sync::Arc<std::sync::Mutex<Option<cluaiz_runtime::ContextReport>>>,
+}
+
+/// Sent once when a provider refused a call to a function it was not given
+const TOOLS_REMINDER: &str = "Call only the functions listed in tools. To use another installed tool, call load_tool with its id first; its functions are then listed.";
+
+/// The provider refused a call because the function was not in `tools`
+fn tool_call_refused(body: &str) -> bool {
+    let lower = body.to_lowercase();
+    lower.contains("tool_use_failed") || lower.contains("tool call validation failed") || lower.contains("not in request.tools")
+}
+
+/// The call(s) the model made, from the refusal (`failed_generation`), in the Engine's
+/// `<tool_call>` form; None when the refusal does not carry them as JSON
+fn refused_calls(body: &str) -> Option<String> {
+    let error: Value = serde_json::from_str(body).ok()?;
+    let failed = error.pointer("/error/failed_generation")?.as_str()?.trim();
+    let start = failed.find(['{', '['])?;
+    let value: Value = serde_json::from_str(&failed[start..]).ok()?;
+    let calls: Vec<Value> = match value {
+        Value::Array(calls) => calls,
+        call => vec![call],
+    };
+    let text: Vec<String> = calls
+        .iter()
+        .filter_map(|call| {
+            let call = call.get("function").unwrap_or(call);
+            let name = call.get("name")?.as_str()?;
+            let arguments = match call.get("arguments").or_else(|| call.get("parameters")) {
+                Some(Value::String(text)) => text.clone(),
+                Some(arguments) => arguments.to_string(),
+                None => "{}".into(),
+            };
+            Some(cluaiz_core::tool_calls::canonical_call(name, &arguments))
+        })
+        .collect();
+    (!text.is_empty()).then(|| text.join("\n"))
+}
+
+/// The thinking tags provider answers are streamed with
+pub const THINK_START: &str = "<think>";
+pub const THINK_END: &str = "</think>";
+
+impl ProviderRun {
+    pub fn new(target: Target, max_tokens: Option<usize>, extra: serde_json::Map<String, Value>) -> Self {
+        Self { target, max_tokens, extra, report: Default::default() }
+    }
+
+    pub fn last_report(&self) -> Option<cluaiz_runtime::ContextReport> {
+        self.report.lock().ok().and_then(|report| report.clone())
+    }
+
+    /// One generation of the turn: `prompt` is the Engine's prompt (a chat envelope as JSON)
+    pub async fn dispatch(&self, prompt: &str, think_mode: &str, effort: cluaiz_core::ThinkingBudget, cancel: std::sync::Arc<std::sync::atomic::AtomicBool>) -> cluaiz_runtime::HostResponse {
+        use cluaiz_runtime::HostResponse;
+        let envelope: Value = match serde_json::from_str(prompt) {
+            Ok(envelope) => envelope,
+            Err(error) => return HostResponse::Error(format!("the prompt for {} is not a chat envelope: {error}", self.target.full_name())),
+        };
+        let pairs: Vec<(String, String)> = envelope["messages"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|m| {
+                let content = match &m["content"] {
+                    Value::String(text) => text.clone(),
+                    other => other.to_string(),
+                };
+                (m["role"].as_str().unwrap_or("user").to_string(), content)
+            })
+            .collect();
+        self.send(openai_conversation(&pairs), &envelope, think_mode, effort, cancel).await
+    }
+
+    /// One generation of a turn with attachments: `prepared` holds the decoded images and sounds;
+    /// `prompt` (the turn's text envelope) gives the tools and the samplers
+    pub async fn dispatch_prepared(&self, prepared: cluaiz_core::ChatEnvelope<Vec<cluaiz_core::media::PreparedPart>>, prompt: &str, think_mode: &str, effort: cluaiz_core::ThinkingBudget, cancel: std::sync::Arc<std::sync::atomic::AtomicBool>) -> cluaiz_runtime::HostResponse {
+        let envelope: Value = serde_json::from_str(prompt).unwrap_or_else(|_| json!({}));
+        match openai_conversation_with_parts(prepared.messages) {
+            Ok(messages) => self.send(messages, &envelope, think_mode, effort, cancel).await,
+            Err(error) => cluaiz_runtime::HostResponse::Error(error),
+        }
+    }
+
+    async fn send(&self, messages: Vec<Value>, envelope: &Value, think_mode: &str, effort: cluaiz_core::ThinkingBudget, cancel: std::sync::Arc<std::sync::atomic::AtomicBool>) -> cluaiz_runtime::HostResponse {
+        use cluaiz_runtime::HostResponse;
+        let mut body = json!({
+            "model": self.target.model,
+            "messages": messages,
+            "stream": true,
+            "stream_options": { "include_usage": true },
+        });
+        // The request's samplers (llama names), then settings.json, as for an installed model
+        let saved = cluaiz_core::Settings::current().samplers;
+        let sent = &envelope["samplers"];
+        let pick = |name: &str, fallback: Option<Value>| sent.get(name).filter(|v| !v.is_null()).cloned().or(fallback);
+        for (field, value) in [
+            ("temperature", pick("temp", saved.temp.map(|v| json!(v)))),
+            ("top_p", pick("top_p", saved.top_p.map(|v| json!(v)))),
+            ("presence_penalty", pick("presence_penalty", saved.presence_penalty.map(|v| json!(v)))),
+            ("frequency_penalty", pick("frequency_penalty", saved.frequency_penalty.map(|v| json!(v)))),
+            ("seed", pick("seed", saved.seed.map(|v| json!(v)))),
+        ] {
+            if let Some(value) = value {
+                body[field] = value;
+            }
+        }
+        if let Some(tools) = envelope.get("tools").filter(|t| t.as_array().is_some_and(|a| !a.is_empty())) {
+            body["tools"] = tools.clone();
+        }
+        if let Some(format) = envelope.get("response_format").filter(|v| !v.is_null()) {
+            body["response_format"] = format.clone();
+        }
+        if let Some(max) = self.max_tokens {
+            body["max_tokens"] = json!(max);
+        }
+        let effort = match effort {
+            cluaiz_core::ThinkingBudget::Low => Some("low"),
+            cluaiz_core::ThinkingBudget::Medium => Some("medium"),
+            cluaiz_core::ThinkingBudget::High => Some("high"),
+            _ => None,
+        };
+        if let (Some(effort), false) = (effort, think_mode == "off") {
+            body["reasoning_effort"] = json!(effort);
+        }
+        for (field, value) in &self.extra {
+            body[field] = value.clone();
+        }
+
+        // Sent; a request the provider says does not fit loses its oldest turns
+        let target = self.target.clone();
+        let mut dropped = 0usize;
+        let mut turns_dropped = 0usize;
+        let mut reminded = false;
+        let (response, key) = loop {
+            let (builder, key) = match request_for_chat(&target) {
+                Ok(found) => found,
+                Err(message) => return HostResponse::Error(message),
+            };
+            let response = match builder.header(reqwest::header::ACCEPT, "text/event-stream").body(body.to_string()).send().await {
+                Ok(response) => response,
+                Err(error) => return HostResponse::Error(send_error(&target, &error, key.as_deref())),
+            };
+            let status = response.status().as_u16();
+            if (200..300).contains(&status) {
+                break (response, key);
+            }
+            let text = response.text().await.unwrap_or_default();
+            let message = error_message(&target, status, &text, key.as_deref());
+            if message.contains(CONTEXT_FULL) && turns_dropped < MOST_DROPS {
+                let removed = body.get_mut("messages").and_then(Value::as_array_mut).map(drop_oldest_turn).unwrap_or(0);
+                if removed > 0 {
+                    dropped += removed;
+                    turns_dropped += 1;
+                    continue;
+                }
+            }
+            // The model called a function that is not in `tools` (such as a suggested tool it did
+            // not load), and the provider refused it. The Engine answers such a call itself, as
+            // for an installed model: the call the provider names is passed on; without one, the
+            // request is sent once more with a reminder of how tools are loaded.
+            if status == 400 && tool_call_refused(&text) {
+                if let Some(calls) = refused_calls(&text) {
+                    let (tx, rx) = tokio::sync::mpsc::channel::<String>(1);
+                    let _ = tx.try_send(calls);
+                    return HostResponse::TokenStream(rx);
+                }
+                if !reminded {
+                    reminded = true;
+                    if let Some(messages) = body.get_mut("messages").and_then(Value::as_array_mut) {
+                        messages.push(json!({ "role": "system", "content": TOOLS_REMINDER }));
+                    }
+                    continue;
+                }
+            }
+            return HostResponse::Error(message);
+        };
+
+        let (tx, rx) = tokio::sync::mpsc::channel::<String>(512);
+        let report = std::sync::Arc::clone(&self.report);
+        let show_thinking = think_mode != "off";
+        let n_ctx = target.context() as usize;
+        tokio::spawn(async move {
+            let mut response = response;
+            let mut pending = String::new();
+            let mut in_think = false;
+            let mut finish = "eos";
+            let mut usage: Option<(usize, usize)> = None;
+            let mut calls: std::collections::BTreeMap<u64, (String, String)> = Default::default();
+            let mut tick = tokio::time::interval(Duration::from_millis(100));
+            'read: loop {
+                let chunk = tokio::select! {
+                    chunk = response.chunk() => chunk,
+                    _ = tick.tick() => {
+                        if cancel.load(std::sync::atomic::Ordering::Relaxed) || tx.is_closed() {
+                            finish = "cancel";
+                            break;
+                        }
+                        continue;
+                    }
+                };
+                let chunk = match chunk {
+                    Ok(Some(chunk)) => chunk,
+                    Ok(None) => break,
+                    Err(error) => {
+                        let _ = tx.send(format!("[ERROR: {}]", send_error(&target, &error, key.as_deref()))).await;
+                        return;
+                    }
+                };
+                pending.push_str(&String::from_utf8_lossy(&chunk));
+                while let Some(end) = pending.find('\n') {
+                    let line: String = pending.drain(..=end).collect();
+                    let Some(data) = line.trim().strip_prefix("data:").map(str::trim) else { continue };
+                    if data == "[DONE]" {
+                        break 'read;
+                    }
+                    let Ok(event) = serde_json::from_str::<Value>(data) else { continue };
+                    if let Some(message) = event.pointer("/error/message").and_then(Value::as_str) {
+                        // A refused call to a function not in `tools` goes on to the Engine, which
+                        // answers it as for an installed model (see `refused_calls`)
+                        if let Some(calls) = tool_call_refused(data).then(|| refused_calls(data)).flatten() {
+                            pending.clear();
+                            let mut text = String::new();
+                            if in_think {
+                                text.push_str(THINK_END);
+                                in_think = false;
+                            }
+                            text.push('\n');
+                            text.push_str(&calls);
+                            let _ = tx.send(text).await;
+                            break 'read;
+                        }
+                        let _ = tx.send(format!("[ERROR: {}: {}]", target.provider, redact(message, key.as_deref()))).await;
+                        return;
+                    }
+                    if let Some(u) = event.get("usage").filter(|u| u.is_object()).or_else(|| event.pointer("/x_groq/usage")) {
+                        let prompt = u["prompt_tokens"].as_u64().unwrap_or(0) as usize;
+                        let total = u["total_tokens"].as_u64().map(|t| t as usize).unwrap_or(prompt + u["completion_tokens"].as_u64().unwrap_or(0) as usize);
+                        usage = Some((prompt, total));
+                    }
+                    let Some(choice) = event["choices"].get(0) else { continue };
+                    if choice["finish_reason"].as_str() == Some("length") {
+                        finish = "limit";
+                    }
+                    let delta = &choice["delta"];
+                    let mut out = String::new();
+                    for field in ["reasoning_content", "reasoning"] {
+                        if let Some(thinking) = delta[field].as_str().filter(|t| show_thinking && !t.is_empty()) {
+                            if !in_think {
+                                out.push_str(THINK_START);
+                                in_think = true;
+                            }
+                            out.push_str(thinking);
+                        }
+                    }
+                    if let Some(text) = delta["content"].as_str().filter(|t| !t.is_empty()) {
+                        if in_think {
+                            out.push_str(THINK_END);
+                            in_think = false;
+                        }
+                        out.push_str(text);
+                    }
+                    for (position, call) in delta["tool_calls"].as_array().into_iter().flatten().enumerate() {
+                        let index = call["index"].as_u64().unwrap_or(position as u64);
+                        let entry = calls.entry(index).or_default();
+                        if let Some(name) = call.pointer("/function/name").and_then(Value::as_str) {
+                            entry.0.push_str(name);
+                        }
+                        match call.pointer("/function/arguments") {
+                            Some(Value::String(arguments)) => entry.1.push_str(arguments),
+                            Some(arguments) if arguments.is_object() => entry.1.push_str(&arguments.to_string()),
+                            _ => {}
+                        }
+                    }
+                    if !out.is_empty() && tx.send(out).await.is_err() {
+                        finish = "cancel";
+                        break 'read;
+                    }
+                }
+            }
+            let mut tail = String::new();
+            if in_think {
+                tail.push_str(THINK_END);
+            }
+            for (name, arguments) in calls.into_values().filter(|(name, _)| !name.is_empty()) {
+                let arguments = if arguments.trim().is_empty() { "{}".to_string() } else { arguments };
+                tail.push('\n');
+                tail.push_str(&cluaiz_core::tool_calls::canonical_call(&name, &arguments));
+            }
+            if !tail.is_empty() {
+                let _ = tx.send(tail).await;
+            }
+            let (prompt_tokens, n_tokens) = usage.unwrap_or((0, 0));
+            if let Ok(mut slot) = report.lock() {
+                *slot = Some(cluaiz_runtime::ContextReport {
+                    n_ctx,
+                    prompt_tokens,
+                    processed_tokens: prompt_tokens,
+                    n_tokens,
+                    dropped_messages: dropped,
+                    truncated: finish == "limit" || dropped > 0,
+                    stop: finish,
+                    kv_reuse: "prefix",
+                    cause: "provider",
+                    ..Default::default()
+                });
+            }
+        });
+        HostResponse::TokenStream(rx)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -701,20 +899,6 @@ mod tests {
 
     fn target() -> Target {
         Target { provider: "groq".into(), config: Provider::new("https://api.groq.com/openai/v1"), model: "qwen/qwen3-32b".into() }
-    }
-
-    #[test]
-    fn the_engine_fields_stay_out_of_a_provider_request() {
-        let body = chat_body(&target(), &json!({
-            "model": "groq/qwen/qwen3-32b", "messages": [], "stream": true, "temperature": 0.2,
-            "session_id": "abc", "think_mode": "on", "tool_search": true, "top_k": 40, "reasoning_effort": 2048, "stop": null,
-        }));
-        assert_eq!(body["model"], "qwen/qwen3-32b");
-        assert_eq!(body["temperature"], 0.2);
-        for engine_only in ["session_id", "think_mode", "tool_search", "top_k", "reasoning_effort", "stop"] {
-            assert!(body.get(engine_only).is_none(), "{engine_only}");
-        }
-        assert_eq!(chat_body(&target(), &json!({ "reasoning_effort": "high" }))["reasoning_effort"], "high");
     }
 
     #[test]
@@ -759,28 +943,6 @@ mod tests {
     }
 
     #[test]
-    fn engine_fields_are_named_and_saved_samplers_fill_the_gaps() {
-        let request = json!({ "model": "m", "messages": [], "session_id": "c", "think_mode": "off", "reasoning_effort": "max", "top_k": null });
-        assert_eq!(ignored_fields(&request), vec!["reasoning_effort", "session_id", "think_mode"]);
-        let mut body = json!({ "temperature": 0.9 });
-        let saved = cluaiz_core::SamplerDefaults { temp: Some(0.2), top_p: Some(0.8), top_k: Some(40), ..Default::default() };
-        add_sampler_defaults(&mut body, &saved);
-        assert_eq!(body["temperature"], 0.9);
-        assert!((body["top_p"].as_f64().unwrap() - 0.8).abs() < 1e-6);
-        assert!(body.get("top_k").is_none());
-    }
-
-    #[test]
-    fn stream_lines_carry_this_requests_id_and_the_full_name() {
-        let line = renamed_line("data: {\"id\":\"x\",\"model\":\"m\",\"choices\":[]}\n", "chatcmpl-1", "myapi/m");
-        let event: Value = serde_json::from_str(line.trim().strip_prefix("data: ").unwrap()).unwrap();
-        assert_eq!(event["id"], "chatcmpl-1");
-        assert_eq!(event["model"], "myapi/m");
-        assert_eq!(renamed_line("data: [DONE]\n", "chatcmpl-1", "myapi/m"), "data: [DONE]\n");
-        assert_eq!(renamed_line("\n", "chatcmpl-1", "myapi/m"), "\n");
-    }
-
-    #[test]
     fn a_streamed_wav_gets_its_real_sizes() {
         let mut wav = b"RIFF\xff\xff\xff\xffWAVEfmt \x10\x00\x00\x00".to_vec();
         wav.extend_from_slice(&[0u8; 16]);
@@ -803,5 +965,16 @@ mod tests {
         assert!(text.contains("name=\"file\"; filename=\"audio.wav\"\r\nContent-Type: audio/wav\r\n\r\nRIFFdata\r\n"));
         assert!(text.ends_with(&format!("--{boundary}--\r\n")));
         assert_eq!(ignored_of(&json!({ "model": "m", "input": "x", "keep_alive": 5, "user": null }), &["model", "input"]), vec!["keep_alive"]);
+    }
+
+    #[test]
+    fn a_refused_call_is_passed_on_to_the_engine() {
+        let body = r#"{"error":{"message":"tool call validation failed: attempted to call tool 'math_evaluate' which was not in request.tools","type":"invalid_request_error","code":"tool_use_failed","failed_generation":"{\"name\": \"math_evaluate\", \"arguments\": {\"expression\": \"2**40\"}}"}}"#;
+        assert!(tool_call_refused(body));
+        let calls = refused_calls(body).unwrap();
+        let (_, found) = cluaiz_core::tool_calls::split_calls(&calls);
+        assert_eq!(found, vec![("math_evaluate".to_string(), "{\"expression\":\"2**40\"}".to_string())]);
+        assert!(refused_calls(r#"{"error":{"message":"tool call validation failed","failed_generation":"I will call it"}}"#).is_none());
+        assert!(!tool_call_refused(r#"{"error":{"message":"Invalid API Key"}}"#));
     }
 }

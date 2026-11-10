@@ -214,7 +214,7 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
                 return Ok(Generated::Answer { said: text, calls: Vec::new() });
             }
             HostResponse::Error(error) => {
-                self.error = Some((error.clone(), "engine_error"));
+                self.error = Some((error.clone(), error_kind(self.ctx, &error)));
                 anyhow::bail!(error);
             }
         };
@@ -229,7 +229,7 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
                 break;
             }
             if let Some(error) = cluaiz_runtime::stream_error(&token) {
-                self.error = Some((error.to_owned(), super::types::engine_error_type(error)));
+                self.error = Some((error.to_owned(), error_kind(self.ctx, error)));
                 anyhow::bail!(error.to_owned());
             }
             text.push_str(&token);
@@ -520,4 +520,14 @@ fn tool_icon(comp_type: &str, comp_name: &str) -> Option<String> {
         .into_iter()
         .find(|p| p.exists())
         .and_then(|p| std::fs::read_to_string(p).ok())
+}
+
+/// The API error type of a failed generation: a provider's own errors are `provider_error`
+/// (a full context stays `exceed_context_size_error`), the Engine's as `engine_error_type` says
+fn error_kind(ctx: &super::preflight::PreparedChatContext, error: &str) -> &'static str {
+    match &ctx.provider {
+        Some(_) if error.contains(crate::providers::CONTEXT_FULL) => "exceed_context_size_error",
+        Some(_) => "provider_error",
+        None => super::types::engine_error_type(error),
+    }
 }
