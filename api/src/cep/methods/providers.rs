@@ -1,6 +1,6 @@
-//! `providers.*`: the model providers in providers.json (OpenRouter, Groq, a local Ollama, …),
+//! `providers.*`: the model providers in providers.json (services with an OpenAI-compatible API),
 //! whose models a chat request names as `<provider>/<model>`. Replies never hold a key: only where
-//! it comes from (`env GROQ_API_KEY`, `file gsk_…a1b2`). API authentication stays the owner's
+//! it comes from (`env MYAPI_KEY`, `file sk-a…a1b2`). API authentication stays the owner's
 //! setting; these methods only add a `warning` when it is off and keys are set up.
 
 use std::collections::BTreeMap;
@@ -15,17 +15,17 @@ use serde_json::{json, Value};
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
 struct SetParams {
-    /// Provider name, the first part of its model names (`groq` → `groq/<model>`): letters, digits, - and _
+    /// Provider name, the first part of its model names (`myapi` → `myapi/<model>`): letters, digits, - and _
     name: String,
-    /// OpenAI-compatible base URL, such as `https://api.groq.com/openai/v1`
+    /// OpenAI-compatible base URL, such as `https://api.example.com/v1`
     base_url: String,
-    /// Name of the environment variable that holds the key, such as `GROQ_API_KEY`
+    /// Name of the environment variable that holds the key, such as `MYAPI_KEY`
     #[serde(default)]
     api_key_env: Option<String>,
     /// The key itself, kept in providers.json. Leave both out to keep the current key
     #[serde(default)]
     api_key: Option<String>,
-    /// Models to list, with their context size in tokens: `{"qwen/qwen3-32b": {"context": 131072}}`
+    /// Models to list, with their context size in tokens: `{"model-name": {"context": 32768}}`
     #[serde(default)]
     models: Option<BTreeMap<String, ModelParams>>,
 }
@@ -91,7 +91,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             "providers.list",
             Meta::new(Scope::Admin, "The model providers and their listed models; keys are never returned").no_mcp().example(
                 json!({}),
-                json!({ "providers": [{ "name": "groq", "type": "openai", "base_url": "https://api.groq.com/openai/v1", "key": "env GROQ_API_KEY", "models": [{ "id": "qwen/qwen3-32b", "model": "groq/qwen/qwen3-32b", "context": 131072 }] }] }),
+                json!({ "providers": [{ "name": "myapi", "type": "openai", "base_url": "https://api.example.com/v1", "key": "env MYAPI_KEY", "models": [{ "id": "model-name", "model": "myapi/model-name", "context": 32768 }] }] }),
             ),
             |ctx: CallCtx, _: Call, _: NoParams| async move {
                 let all = load()?;
@@ -106,8 +106,8 @@ pub fn register(registry: &mut Registry<CallCtx>) {
                 .error(-32602, "invalid_params", "The name or the URL is not valid, or both api_key and api_key_env were sent")
                 .error(-32010, "settings_not_saved", "providers.json could not be written")
                 .example(
-                    json!({ "name": "groq", "base_url": "https://api.groq.com/openai/v1", "api_key_env": "GROQ_API_KEY", "models": { "qwen/qwen3-32b": { "context": 131072 } } }),
-                    json!({ "provider": { "name": "groq", "type": "openai", "base_url": "https://api.groq.com/openai/v1", "key": "env GROQ_API_KEY", "models": [{ "id": "qwen/qwen3-32b", "model": "groq/qwen/qwen3-32b", "context": 131072 }] } }),
+                    json!({ "name": "myapi", "base_url": "https://api.example.com/v1", "api_key_env": "MYAPI_KEY", "models": { "model-name": { "context": 32768 } } }),
+                    json!({ "provider": { "name": "myapi", "type": "openai", "base_url": "https://api.example.com/v1", "key": "env MYAPI_KEY", "models": [{ "id": "model-name", "model": "myapi/model-name", "context": 32768 }] } }),
                 ),
             |ctx: CallCtx, _: Call, p: SetParams| async move {
                 if !providers::valid_name(&p.name) {
@@ -146,7 +146,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
                 .destructive()
                 .error(-32004, "provider_not_found", "No provider has this name")
                 .error(-32010, "settings_not_saved", "providers.json could not be written")
-                .example(json!({ "name": "groq" }), json!({ "removed": "groq" })),
+                .example(json!({ "name": "myapi" }), json!({ "removed": "myapi" })),
             |_ctx: CallCtx, _: Call, p: NameParams| async move {
                 let mut all = load()?;
                 find(&all, &p.name)?;
@@ -162,8 +162,8 @@ pub fn register(registry: &mut Registry<CallCtx>) {
                 .error(-32004, "provider_not_found", "No provider has this name")
                 .error(-32010, "provider_unavailable", "The provider did not answer, or refused the key")
                 .example(
-                    json!({ "name": "groq" }),
-                    json!({ "models": [{ "id": "qwen/qwen3-32b", "model": "groq/qwen/qwen3-32b", "context": 131072 }] }),
+                    json!({ "name": "myapi" }),
+                    json!({ "models": [{ "id": "model-name", "model": "myapi/model-name", "context": 32768 }] }),
                 ),
             |_ctx: CallCtx, _: Call, p: NameParams| async move {
                 let all = load()?;
@@ -181,8 +181,8 @@ pub fn register(registry: &mut Registry<CallCtx>) {
                 .error(-32602, "invalid_params", "No model was sent and the provider lists none")
                 .error(-32010, "provider_unavailable", "The provider did not answer, or refused the request")
                 .example(
-                    json!({ "name": "groq", "model": "qwen/qwen3-32b" }),
-                    json!({ "model": "groq/qwen/qwen3-32b", "answer": "ready", "ms": 420 }),
+                    json!({ "name": "myapi", "model": "model-name" }),
+                    json!({ "model": "myapi/model-name", "answer": "ready", "ms": 420 }),
                 ),
             |_ctx: CallCtx, _: Call, p: TestParams| async move {
                 let all = load()?;

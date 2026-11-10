@@ -16,14 +16,14 @@ params:
     type: "string"
     req: true
     desc: "Provider name"
-    example: "groq"
+    example: "myapi"
 request_payload: |
   {
     "id": 1,
     "jsonrpc": "2.0",
     "method": "providers.models",
     "params": {
-      "name": "groq"
+      "name": "myapi"
     }
   }
 response: |
@@ -33,9 +33,9 @@ response: |
     "result": {
       "models": [
         {
-          "context": 131072,
-          "id": "qwen/qwen3-32b",
-          "model": "groq/qwen/qwen3-32b"
+          "context": 32768,
+          "id": "model-name",
+          "model": "myapi/model-name"
         }
       ]
     }

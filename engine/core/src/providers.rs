@@ -1,6 +1,6 @@
-//! Model providers: other services the Engine can send a chat to, such as OpenRouter, Groq or a
-//! local Ollama. `config/providers.json` lists them; a model is named `<provider>/<model>`, such as
-//! `groq/qwen/qwen3-32b`. Every provider speaks the OpenAI Chat Completions format for now.
+//! Model providers: other services with an OpenAI-compatible API that the Engine can send a chat
+//! to. `config/providers.json` lists them; a model is named `<provider>/<model>`, such as
+//! `myapi/model-name`. Every provider speaks the OpenAI Chat Completions format for now.
 //!
 //! A key is read from the environment variable named in `api_key_env` (the Engine also reads
 //! `config/.env`), or from `api_key` in the file. Keys are never logged or shown in full.
@@ -27,9 +27,9 @@ pub struct Provider {
     /// Request format; only "openai" so far
     #[serde(rename = "type", default = "openai_type")]
     pub kind: String,
-    /// Such as `https://api.groq.com/openai/v1`; the Engine adds `/chat/completions` and `/models`
+    /// Such as `https://api.example.com/v1`; the Engine adds `/chat/completions` and `/models`
     pub base_url: String,
-    /// Name of the environment variable that holds the key, such as `GROQ_API_KEY`
+    /// Name of the environment variable that holds the key, such as `MYAPI_KEY`
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub api_key_env: Option<String>,
     /// The key itself, when it is kept in this file
@@ -156,7 +156,7 @@ impl Provider {
     }
 
     /// The key: from the environment variable when one is named, else from the file. None when
-    /// the provider needs none (a local Ollama). Err names the missing variable.
+    /// the provider needs none (a server on this computer). Err names the missing variable.
     pub fn key(&self) -> Result<Option<String>, String> {
         if let Some(var) = self.api_key_env.as_deref().filter(|v| !v.is_empty()) {
             return match env_value(var) {
@@ -170,7 +170,7 @@ impl Provider {
         Ok(self.api_key.clone().filter(|k| !k.trim().is_empty()))
     }
 
-    /// Where the key comes from, without the key: "env GROQ_API_KEY", "file gsk_…a1b2" or "none"
+    /// Where the key comes from, without the key: "env MYAPI_KEY", "file sk-a…a1b2" or "none"
     pub fn key_source(&self) -> String {
         if let Some(var) = self.api_key_env.as_deref().filter(|v| !v.is_empty()) {
             let set = env_value(var).is_some();

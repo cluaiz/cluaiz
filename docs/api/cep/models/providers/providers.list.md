@@ -26,16 +26,16 @@ response: |
     "result": {
       "providers": [
         {
-          "base_url": "https://api.groq.com/openai/v1",
-          "key": "env GROQ_API_KEY",
+          "base_url": "https://api.example.com/v1",
+          "key": "env MYAPI_KEY",
           "models": [
             {
-              "context": 131072,
-              "id": "qwen/qwen3-32b",
-              "model": "groq/qwen/qwen3-32b"
+              "context": 32768,
+              "id": "model-name",
+              "model": "myapi/model-name"
             }
           ],
-          "name": "groq",
+          "name": "myapi",
           "type": "openai"
         }
       ]
@@ -59,7 +59,7 @@ Lists the model providers in `config/providers.json` and the models listed for e
 | `providers[].models[]` | Listed models: `id` at the provider, `model` as the full name, `context` in tokens |
 | `warning` | Present only when API authentication is off and a provider has a key |
 
-Replies never contain a key. `key` says only where it comes from: `env GROQ_API_KEY` (an environment variable, also read from `config/.env` in the Cluaiz folder), `file gsk_…a1b2` (kept in providers.json, shown masked) or `none`.
+Replies never contain a key. `key` says only where it comes from: `env MYAPI_KEY` (an environment variable, also read from `config/.env` in the Cluaiz folder), `file sk-a…a1b2` (kept in providers.json, shown masked) or `none`.
 
 When API authentication is off (`api_auth.required` is false) and a provider has a key, the result also has a `warning`: anyone who can reach the server can then use that key. Authentication stays the owner's setting; this method does not change it. Turn it on with `cluaiz token create` or `tokens.create` plus `api_auth.required`.
 

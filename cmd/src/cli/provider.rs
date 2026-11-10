@@ -1,5 +1,5 @@
-//! `cluaiz provider`: the model providers in providers.json (OpenRouter, Groq, a local Ollama, …).
-//! A provider's model is then used as `<provider>/<model>`: `cluaiz agent -m groq/qwen/qwen3-32b`.
+//! `cluaiz provider`: the model providers in providers.json (services with an OpenAI-compatible API).
+//! A provider's model is then used as `<provider>/<model>`: `cluaiz agent -m myapi/model-name`.
 
 use clap::Subcommand;
 use cluaiz_core::providers::{self, Provider, ProviderModel, Providers, Target};
@@ -11,18 +11,18 @@ use std::io::Read;
 pub enum ProviderCommand {
     /// Add a provider, or change one: its URL and where its key comes from
     Add {
-        /// Name, used as the first part of its model names (`groq` → `groq/<model>`)
+        /// Name, used as the first part of its model names (`myapi` → `myapi/<model>`)
         name: String,
-        /// OpenAI-compatible base URL, such as https://api.groq.com/openai/v1
+        /// OpenAI-compatible base URL, such as https://api.example.com/v1 or http://localhost:11434/v1 (Ollama)
         #[arg(long)]
         url: String,
-        /// Environment variable that holds the key, such as GROQ_API_KEY (the key stays out of the file)
+        /// Environment variable that holds the key, such as MYAPI_KEY (the key stays out of the file)
         #[arg(long = "key-env", value_name = "VAR", conflicts_with = "key")]
         key_env: Option<String>,
         /// The key itself, kept in providers.json; `-` reads it from stdin
         #[arg(long, value_name = "KEY")]
         key: Option<String>,
-        /// A model to list, with its context size: `qwen/qwen3-32b` or `qwen/qwen3-32b=131072`
+        /// A model to list, with its context size: `model-name` or `model-name=32768`
         #[arg(long = "model", value_name = "ID[=CONTEXT]")]
         models: Vec<String>,
     },
@@ -88,7 +88,7 @@ pub async fn execute(command: ProviderCommand) -> Result<()> {
         }
         ProviderCommand::List => {
             if all.providers.is_empty() {
-                println!("No providers. Add one: cluaiz provider add groq --url https://api.groq.com/openai/v1 --key-env GROQ_API_KEY");
+                println!("No providers. Add one: cluaiz provider add myapi --url https://api.example.com/v1 --key-env MYAPI_KEY");
                 return Ok(());
             }
             for (name, provider) in &all.providers {
