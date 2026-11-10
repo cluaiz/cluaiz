@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Currently, Cluaiz is in an Active Validation Phase. We provide security updates for the `main` branch and the most recent pre-release tags.
+Cluaiz is in pre-release. Security fixes go to the `main` branch and into the next release.
 
 | Version | Supported          |
 | ------- | ------------------ |
@@ -11,21 +11,21 @@ Currently, Cluaiz is in an Active Validation Phase. We provide security updates 
 
 ---
 
-## Security Architecture & Core Commitments
+## How the Engine protects you
 
-Cluaiz enforces defense-in-depth principles across local, LAN, and remote cloud deployments. For an exhaustive breakdown of threat models and cryptographic protocols, refer to our [Security & Authentication Architecture](docs/architecture/security-and-auth-architecture.md).
+What the Engine does today. The details are in [Security & Authentication Architecture](docs/architecture/security-and-auth-architecture.md).
 
 ### 1. Dual-Token Bearer Authentication
 All incoming requests are evaluated through our standard HTTP Bearer token middleware (`auth::auth_middleware`):
-* **Configured API Keys (`sk-cluaiz-...`):** Saved securely in `permission.json` and configurable via the Developer Hub UI.
-* **Boot Session Token:** Generated dynamically on engine startup into `~/.cluaiz/session.token` with restricted (`0600`) POSIX permissions for zero-configuration local desktop security.
-* **Constant-Time Validation:** All token evaluations use `constant_time_compare()` to eliminate microsecond side-channel timing attacks.
+* **Configured API keys (`sk-cluaiz-...`):** saved in `permission.json` and managed with `cluaiz token create`, `list` and `remove`.
+* **Session token:** created when the Engine starts, in `~/.cluaiz/session.token`, readable only by your user (`0600` on Linux and macOS), so local apps can connect without setup.
+* **Constant-time comparison:** tokens are compared with `constant_time_compare()`, so the time a check takes does not reveal how much of a token was right.
 * **One rule for every route:** only `/health` is open; every other route, CEP (`/v1/cep`, `/mcp`) included, follows the owner's `api_auth.required` setting. What a caller may then do is CEP's scope and path check, and `system.exec` asks the owner on every call.
 
 ### 2. Workspace Canonical Jail & Ancestor Walking
 Filesystem interactions are strictly bound to the active workspace directory:
-* **Canonical Path Normalization:** Every path is resolved and validated using `std::fs::canonicalize` to eliminate symlink attacks, directory traversal sequences (`../../`), and Windows extended-length prefix variations (`\\?\`).
-* **Ancestor Walking:** New write operations verify the closest existing parent directory before creating files, ensuring agents cannot escape outside the workspace perimeter.
+* **Canonical paths:** every path is resolved with `std::fs::canonicalize` before it is checked, so symlinks, `../` sequences and Windows extended-length prefixes (`\\?\`) are resolved first.
+* **Closest existing parent:** before a new file is created, the closest folder that already exists is checked, so a new path outside the workspace is refused.
 * `fs.delete` and `fs.rename` act on a link itself, never on its target. See [Security & Auth Architecture](docs/architecture/security-and-auth-architecture.md) and the [CEP reference](docs/api/cep/README.md).
 
 ### 3. Capability-Based Human-in-the-Loop (HITL) Gate
@@ -38,11 +38,11 @@ Tools declare granular capabilities (`exec`, `fs_write`, `network`). Under `sand
 
 ## Reporting a Vulnerability
 
-We take the security of the Cluaiz Engine very seriously. If you discover a vulnerability or security bypass, **please do not open a public issue.** Public disclosure puts early adopters and production instances at risk.
+If you find a vulnerability or a way around a protection, **please do not open a public issue.** A public report puts everyone running the Engine at risk.
 
 Instead, report it privately:
 1. Use GitHub's **Report a vulnerability** button on the [Security tab](https://github.com/cluaiz/cluaiz/security).
 2. Include clear, step-by-step instructions to reproduce the vulnerability.
 3. Detail the impact (e.g., directory jail escape, unauthorized command execution, or timing side-channel).
 
-We will acknowledge receipt within 48 hours and work with you on a coordinated fix and disclosure timeline.
+Every report is read. During the pre-release there is no fixed response time; when a report is confirmed, the fix and the time it is made public are agreed with you.
