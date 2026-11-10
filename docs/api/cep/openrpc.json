@@ -5071,6 +5071,18 @@
             "description": "Provider name",
             "type": "string"
           }
+        },
+        {
+          "name": "voice",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "For a text-to-speech model: the voice, when the provider needs one",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
         }
       ],
       "result": {

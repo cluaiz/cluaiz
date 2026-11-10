@@ -56,6 +56,9 @@ struct TestParams {
     /// The model to try; default: the first listed one
     #[serde(default)]
     model: Option<String>,
+    /// For a text-to-speech model: the voice, when the provider needs one
+    #[serde(default)]
+    voice: Option<String>,
 }
 
 fn load() -> Result<Providers, CepError> {
@@ -199,7 +202,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
                     .ok_or_else(|| CepError::invalid_params("Send `model`: this provider lists no models (see providers.models)", vec![], None))?;
                 let target = Target { provider: p.name.clone(), config: provider.clone(), model };
                 let started = std::time::Instant::now();
-                let answer = crate::providers::test(&target).await.map_err(|e| CepError::unavailable("provider_unavailable", e))?;
+                let answer = crate::providers::test(&target, p.voice.as_deref()).await.map_err(|e| CepError::unavailable("provider_unavailable", e))?;
                 Ok(json!({ "model": target.full_name(), "answer": answer, "ms": started.elapsed().as_millis() as u64 }))
             },
         );

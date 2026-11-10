@@ -22,6 +22,11 @@ params:
     req: true
     desc: "Provider name"
     example: "myapi"
+  - name: "voice"
+    type: "string | null"
+    req: false
+    desc: "For a text-to-speech model: the voice, when the provider needs one"
+    example: null
 request_payload: |
   {
     "id": 1,
@@ -56,7 +61,7 @@ errors:
 
 # providers.test
 
-Sends one short request of the model's listed kind to check that the URL, the key and the model work: a chat message ("Reply with the single word: ready", at most 64 tokens), or for an `embedding` or `tts` model a short text to `/embeddings` or `/audio/speech`. An `stt` model is tested by sending audio to `/v1/audio/transcriptions`. The result has the model's answer and the time the request took in `ms`.
+Sends one short request of the model's listed kind to check that the URL, the key and the model work: a chat message ("Reply with the single word: ready", at most 64 tokens), or for an `embedding` or `tts` model a short text to `/embeddings` or `/audio/speech`. An `stt` model is tested by sending audio to `/v1/audio/transcriptions`. `voice` is passed to a `tts` model's request, for providers that need one. The result has the model's answer and the time the request took in `ms`.
 
 `model` is the model id at the provider, such as `model-name`. Without it, the first listed model is used.
 

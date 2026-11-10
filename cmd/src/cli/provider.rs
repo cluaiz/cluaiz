@@ -52,6 +52,9 @@ pub enum ProviderCommand {
         name: String,
         /// The model to try (default: the first listed one)
         model: Option<String>,
+        /// For a text-to-speech model: the voice, when the provider needs one
+        #[arg(long)]
+        voice: Option<String>,
     },
 }
 
@@ -135,14 +138,14 @@ pub async fn execute(command: ProviderCommand) -> Result<()> {
             }
             println!("{}", format!("{} of {} models", shown.len(), offered.len()).dimmed());
         }
-        ProviderCommand::Test { name, model } => {
+        ProviderCommand::Test { name, model, voice } => {
             let provider = all.providers.get(&name).ok_or_else(|| eyre!("no provider '{name}' (see `cluaiz provider list`)"))?;
             let model = model
                 .or_else(|| provider.models.keys().next().cloned())
                 .ok_or_else(|| eyre!("name a model: cluaiz provider test {name} <model> (see `cluaiz provider models {name}`)"))?;
             let target = Target { provider: name.clone(), config: provider.clone(), model };
             let started = std::time::Instant::now();
-            let answer = cluaiz_api::providers::test(&target).await.map_err(|e| eyre!(e))?;
+            let answer = cluaiz_api::providers::test(&target, voice.as_deref()).await.map_err(|e| eyre!(e))?;
             println!("{} {} answered in {:.1} s: {}", "OK".green().bold(), target.full_name(), started.elapsed().as_secs_f64(), answer);
         }
     }

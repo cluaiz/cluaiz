@@ -119,11 +119,11 @@ API authentication stays your setting. When it is off and a provider has a key, 
 
 For transcription, the audio is read as for an installed model: `input_source` or `file` may be a data URI, a URL or an allowed local file, in any format the Engine decodes. It is sent to the provider as one-channel WAV.
 
-Each provider has its own voices, languages and limits. The Engine passes `voice` and `language` on as they are; the provider's answer says when one is not accepted. Fields a provider does not take are named in `X-Cluaiz-Ignored`, as for chat.
+Each provider has its own voices, languages and limits. The Engine passes `voice` on as it is; the provider's answer says when one is not accepted, and many providers need one. A WAV whose header has no length (as streamed audio often has) gets its real sizes, so players and the Engine read it whole. Fields a provider does not take are named in `X-Cluaiz-Ignored`, as for chat.
 
 Engine memory, document ingest and workspace indexes keep using an installed embedding model: vectors from different models do not mix, and these features would otherwise send every text they index to the provider. `cluaiz model set-vector` therefore takes an installed model only.
 
-`cluaiz provider test <name> <model>` sends a request of the model's listed kind: a short text for an embedding or text-to-speech model, a chat message otherwise. A speech-to-text model is tested by sending audio to `/v1/audio/transcriptions`.
+`cluaiz provider test <name> <model>` sends a request of the model's listed kind: a short text for an embedding or text-to-speech model (`--voice <name>` when the provider needs a voice), a chat message otherwise. A speech-to-text model is tested by sending audio to `/v1/audio/transcriptions`.
 
 ## Not yet
 
