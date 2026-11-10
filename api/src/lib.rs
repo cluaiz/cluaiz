@@ -6,6 +6,12 @@ pub mod boot;
 pub mod cep;
 pub mod handlers;
 pub mod native;
+pub mod providers;
+
+/// providers.json lists at least one provider (a cheap check before reading a chat request twice)
+pub fn providers_configured() -> bool {
+    std::fs::metadata(cluaiz_core::providers::Providers::path()).is_ok_and(|m| m.len() > 20)
+}
 pub mod routes;
 pub mod state;
 pub mod update;

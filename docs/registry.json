@@ -170,7 +170,12 @@
           { "slug": "cep-models-inspect", "title": "models.inspect", "file_path": "docs/api/cep/models/models/models.inspect.md" },
           { "slug": "cep-models-list", "title": "models.list", "file_path": "docs/api/cep/models/models/models.list.md" },
           { "slug": "cep-models-load", "title": "models.load", "file_path": "docs/api/cep/models/models/models.load.md" },
-          { "slug": "cep-models-remove", "title": "models.remove", "file_path": "docs/api/cep/models/models/models.remove.md" }
+          { "slug": "cep-models-remove", "title": "models.remove", "file_path": "docs/api/cep/models/models/models.remove.md" },
+          { "slug": "cep-providers-list", "title": "providers.list", "file_path": "docs/api/cep/models/providers/providers.list.md" },
+          { "slug": "cep-providers-models", "title": "providers.models", "file_path": "docs/api/cep/models/providers/providers.models.md" },
+          { "slug": "cep-providers-remove", "title": "providers.remove", "file_path": "docs/api/cep/models/providers/providers.remove.md" },
+          { "slug": "cep-providers-set", "title": "providers.set", "file_path": "docs/api/cep/models/providers/providers.set.md" },
+          { "slug": "cep-providers-test", "title": "providers.test", "file_path": "docs/api/cep/models/providers/providers.test.md" }
         ]
       },
       {
@@ -263,6 +268,7 @@
           { "slug": "dual-engine-architecture", "title": "⚙️ llama.cpp & ONNX Runtime", "file_path": "docs/engine/dual_engine_architecture.md" },
           { "slug": "prefix-caching-architecture", "title": "⚡ KV Cache Reuse", "file_path": "docs/engine/prefix_caching_architecture.md" },
           { "slug": "permission", "title": "🔒 permission.json", "file_path": "docs/engine/permission.md" },
+          { "slug": "providers", "title": "🔗 Model Providers", "file_path": "docs/engine/providers.md" },
           { "slug": "system-control", "title": "⚙️ Hardware Profile", "file_path": "docs/engine/system_control.md" }
         ]
       },

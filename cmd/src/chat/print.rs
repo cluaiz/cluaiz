@@ -266,6 +266,13 @@ fn argument_preview(arguments: &str) -> String {
 
 /// Plan the model was loaded with (stderr). `-v` adds the full planner banner.
 pub async fn plan(session: &Session) {
+    if let Some(provider) = &session.provider {
+        eprintln!("{} {} {}", "Using".green().bold(), session.model_id.bold(), format!("at {}", provider.target.provider).dimmed());
+        for line in super::provider::summary(&provider.target).lines() {
+            eprintln!("  {}", line.dimmed());
+        }
+        return;
+    }
     let loaded = if session.load_ms > 0 { format!(" in {:.2} s", session.load_ms as f64 / 1000.0) } else { String::new() };
     match &session.remote {
         Some(remote) => eprintln!("{} {} {}{}", "Using".green().bold(), session.model_id.bold(), format!("in the running server at {}", remote.url).dimmed(), loaded),

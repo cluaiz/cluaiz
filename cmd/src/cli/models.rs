@@ -51,7 +51,8 @@ pub fn default_chat_model() -> Option<String> {
 /// the user picks one in a list. A model chosen here becomes the active one, so it is asked once.
 pub fn chat_model_or_choose() -> color_eyre::Result<String> {
     use color_eyre::eyre::eyre;
-    if let Some(active) = default_chat_model().filter(|id| matches!(lookup(id), Lookup::Found(..))) {
+    // The default may be installed, or a provider's model (`cluaiz model set-chat groq/<model>`)
+    if let Some(active) = default_chat_model().filter(|id| matches!(lookup(id), Lookup::Found(..)) || crate::chat::provider::find(id).is_some()) {
         return Ok(active);
     }
     let mut installed: Vec<String> = InstalledStateRegistry::load()

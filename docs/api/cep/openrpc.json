@@ -112,6 +112,22 @@
           }
         ]
       },
+      "ModelParams": {
+        "additionalProperties": false,
+        "properties": {
+          "context": {
+            "default": null,
+            "description": "Context size in tokens",
+            "format": "uint32",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        "type": "object"
+      },
       "Patch": {
         "additionalProperties": false,
         "properties": {
@@ -4635,6 +4651,406 @@
         "mcp": true,
         "owner_only": false,
         "scope": "write"
+      }
+    },
+    {
+      "errors": [],
+      "examples": [
+        {
+          "name": "example",
+          "params": [],
+          "result": {
+            "name": "result",
+            "value": {
+              "providers": [
+                {
+                  "base_url": "https://api.groq.com/openai/v1",
+                  "key": "env GROQ_API_KEY",
+                  "models": [
+                    {
+                      "context": 131072,
+                      "id": "qwen/qwen3-32b",
+                      "model": "groq/qwen/qwen3-32b"
+                    }
+                  ],
+                  "name": "groq",
+                  "type": "openai"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "name": "providers.list",
+      "paramStructure": "by-name",
+      "params": [],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "The model providers and their listed models; keys are never returned",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": false,
+        "owner_only": false,
+        "scope": "admin"
+      }
+    },
+    {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "provider_not_found"
+          },
+          "message": "No provider has this name"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "provider_unavailable"
+          },
+          "message": "The provider did not answer, or refused the key"
+        }
+      ],
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "name",
+              "value": "groq"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "models": [
+                {
+                  "context": 131072,
+                  "id": "qwen/qwen3-32b",
+                  "model": "groq/qwen/qwen3-32b"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "name": "providers.models",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "description": "Provider name",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "The models a provider offers (its GET /models), with the context size it reports",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": false,
+        "owner_only": false,
+        "scope": "admin"
+      }
+    },
+    {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "provider_not_found"
+          },
+          "message": "No provider has this name"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "settings_not_saved"
+          },
+          "message": "providers.json could not be written"
+        }
+      ],
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "name",
+              "value": "groq"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "removed": "groq"
+            }
+          }
+        }
+      ],
+      "name": "providers.remove",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "description": "Provider name",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Removes a provider, with its key if it was kept in the file",
+      "x-cep": {
+        "destructive": true,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": false,
+        "owner_only": false,
+        "scope": "admin"
+      }
+    },
+    {
+      "errors": [
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "The name or the URL is not valid, or both api_key and api_key_env were sent"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "settings_not_saved"
+          },
+          "message": "providers.json could not be written"
+        }
+      ],
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "api_key_env",
+              "value": "GROQ_API_KEY"
+            },
+            {
+              "name": "base_url",
+              "value": "https://api.groq.com/openai/v1"
+            },
+            {
+              "name": "models",
+              "value": {
+                "qwen/qwen3-32b": {
+                  "context": 131072
+                }
+              }
+            },
+            {
+              "name": "name",
+              "value": "groq"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "provider": {
+                "base_url": "https://api.groq.com/openai/v1",
+                "key": "env GROQ_API_KEY",
+                "models": [
+                  {
+                    "context": 131072,
+                    "id": "qwen/qwen3-32b",
+                    "model": "groq/qwen/qwen3-32b"
+                  }
+                ],
+                "name": "groq",
+                "type": "openai"
+              }
+            }
+          }
+        }
+      ],
+      "name": "providers.set",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "api_key",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "The key itself, kept in providers.json. Leave both out to keep the current key",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "api_key_env",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "Name of the environment variable that holds the key, such as `GROQ_API_KEY`",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "base_url",
+          "required": true,
+          "schema": {
+            "description": "OpenAI-compatible base URL, such as `https://api.groq.com/openai/v1`",
+            "type": "string"
+          }
+        },
+        {
+          "name": "models",
+          "required": false,
+          "schema": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/ModelParams"
+            },
+            "description": "Models to list, with their context size in tokens: `{\"qwen/qwen3-32b\": {\"context\": 131072}}`",
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "description": "Provider name, the first part of its model names (`groq` → `groq/<model>`): letters, digits, - and _",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Adds a provider, or changes its URL, key source and listed models",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": false,
+        "owner_only": false,
+        "scope": "admin"
+      }
+    },
+    {
+      "errors": [
+        {
+          "code": -32004,
+          "data": {
+            "type": "provider_not_found"
+          },
+          "message": "No provider has this name"
+        },
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "No model was sent and the provider lists none"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "provider_unavailable"
+          },
+          "message": "The provider did not answer, or refused the request"
+        }
+      ],
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "model",
+              "value": "qwen/qwen3-32b"
+            },
+            {
+              "name": "name",
+              "value": "groq"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "answer": "ready",
+              "model": "groq/qwen/qwen3-32b",
+              "ms": 420
+            }
+          }
+        }
+      ],
+      "name": "providers.test",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "model",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "The model to try; default: the first listed one",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "name",
+          "required": true,
+          "schema": {
+            "description": "Provider name",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Sends one short chat request: the URL, the key and the model work",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": false,
+        "mcp": false,
+        "owner_only": false,
+        "scope": "admin"
       }
     },
     {

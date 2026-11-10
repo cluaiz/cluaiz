@@ -213,6 +213,13 @@ fn set(session: &mut Session, args: &str) -> Result<()> {
 }
 
 async fn show(session: &Session, what: &str) -> Result<()> {
+    if let (Some(provider), "info" | "plan") = (&session.provider, what) {
+        println!("  {:<16}{}", "model", session.model_id);
+        for line in super::provider::summary(&provider.target).lines() {
+            println!("  {line}");
+        }
+        return Ok(());
+    }
     match what {
         "info" => {
             let desc = session.host.model_description().await;

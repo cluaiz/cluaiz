@@ -62,7 +62,8 @@ pub struct AgentArgs {
         conflicts_with = "words"
     )]
     pub prompt: Option<String>,
-    /// Installed model id or path to a .gguf file (default: the active chat model)
+    /// Installed model id, path to a .gguf file, or a provider's model as <provider>/<model>
+    /// (default: the active chat model)
     #[arg(short = 'm', long = "model", value_name = "MODEL")]
     pub model: Option<String>,
     /// Folder to work in (default: the current folder)
@@ -150,7 +151,18 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
         Some(name) => name,
         None => models::chat_model_or_choose()?,
     };
-    let (path, id) = match models::lookup(&name) {
+    let found = models::lookup(&name);
+    // `<provider>/<model>`: a model of a provider in providers.json (an installed model of that name wins)
+    let provider = match found {
+        Lookup::Found(..) => None,
+        _ => crate::chat::provider::find(&name),
+    };
+    let provider = match provider {
+        Some(target) => Some(crate::cli::provider::with_context(target).await),
+        None => None,
+    };
+    let (path, id) = match found {
+        _ if provider.is_some() => Default::default(),
         Lookup::Found(path, id) => (path, id),
         _ => models::resolve_installed(&name)?,
     };
@@ -185,7 +197,10 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
     if !screen_enabled {
         crate::chat::install_interrupt_handler();
     }
-    let session = Session::open(Arc::new(EngineHost::new()), path, id, options).await?;
+    let session = match provider {
+        Some(target) => Session::open_provider(Arc::new(EngineHost::new()), target, options),
+        None => Session::open(Arc::new(EngineHost::new()), path, id, options).await?,
+    };
     if (interactive || verbose) && !screen_enabled {
         print::plan(&session).await;
     }
@@ -326,7 +341,10 @@ impl Agent {
     fn status(&self) -> String {
         format!(
             "{} · {} · {} · Think {}",
-            plan_note(&self.session.plan),
+            match &self.session.provider {
+                Some(provider) => format!("Provider {}", provider.target.provider),
+                None => plan_note(&self.session.plan),
+            },
             context_note(self.session.plan.context_window),
             if self.tools.strict {
                 "Strict Approval"
@@ -358,6 +376,9 @@ impl Agent {
                 self.session_id = sessions::new_id();
                 self.tools.checkpoints = checkpoints::Checkpoints::open(sessions::checkpoints_dir(self.tools.root(), &self.session_id));
                 "Conversation cleared.".into()
+            }
+            "/plan" if self.session.provider.is_some() => {
+                crate::chat::provider::summary(&self.session.provider.as_ref().unwrap().target)
             }
             "/plan" => {
                 let plan = &self.session.plan;
@@ -623,9 +644,23 @@ context    {}", plan.summary(), plan.context_reason)
 
     /// `/model <id>`: the conversation goes on with another installed model
     async fn switch_model(&mut self, id: &str) -> Result<()> {
-        let (path, id) = models::resolve_installed(id)?;
-        self.display.emit(Event::Message("Model".into(), format!("Loading {id}…")));
-        self.session.switch(path, id.clone()).await?;
+        let provider = match models::lookup(id) {
+            Lookup::Found(..) => None,
+            _ => crate::chat::provider::find(id),
+        };
+        let id = match provider {
+            Some(target) => {
+                let id = target.full_name();
+                self.session.switch_provider(target);
+                id
+            }
+            None => {
+                let (path, id) = models::resolve_installed(id)?;
+                self.display.emit(Event::Message("Model".into(), format!("Loading {id}…")));
+                self.session.switch(path, id.clone()).await?;
+                id
+            }
+        };
         self.usage = None;
         // Another model has another context: the project's files get another share
         self.rebuild_system();
