@@ -326,7 +326,7 @@ Use a URL serving a real image, an authorized server-local path, or a real data 
 
 ### A provider's model
 
-A model named `<provider>/<model>`, such as `myapi/model-name`, belongs to a provider in providers.json ([Model providers](../../engine/providers.md)). The Engine sends the request's OpenAI fields to that provider and returns its answer, streamed or whole, as the provider sent it. The Engine's own fields and features (`session_id`, memory, server-side tools, context planning) do not apply to it. `/v1/models` lists these models with `provider` and `context_window`.
+A model named `<provider>/<model>`, such as `myapi/model-name`, belongs to a provider in providers.json ([Model providers](../../engine/providers.md)). The Engine sends the request's OpenAI fields to that provider, with settings.json's samplers for those it leaves out, and returns its answer, streamed or whole, with `model` set to the full name. When the provider says the request does not fit, the oldest turns are left out and it is sent again (`X-Cluaiz-Dropped-Messages`). A stream carries this request's id, so `chat.cancel` stops it. The Engine's own fields are left out and named in `X-Cluaiz-Ignored`; its own features (`session_id`, memory, server-side tools, context planning) do not apply. `/v1/models` lists these models with `provider` and `context_window`. See [Model providers](../../engine/providers.md).
 
 ## Request flow
 

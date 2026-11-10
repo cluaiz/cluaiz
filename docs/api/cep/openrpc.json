@@ -3211,6 +3211,13 @@
         {
           "code": -32005,
           "data": {
+            "type": "provider_model"
+          },
+          "message": "The model is a provider's (`<provider>/<model>` in providers.json); this method works on installed models only"
+        },
+        {
+          "code": -32005,
+          "data": {
             "type": "pull_running"
           },
           "message": "This model is being downloaded already (from the task's result)"
@@ -3394,6 +3401,13 @@
             "type": "model_not_found"
           },
           "message": "No installed model with this id, or its weight file is missing"
+        },
+        {
+          "code": -32005,
+          "data": {
+            "type": "provider_model"
+          },
+          "message": "The model is a provider's (`<provider>/<model>` in providers.json); this method works on installed models only"
         },
         {
           "code": -32602,
@@ -3604,6 +3618,13 @@
           "message": "No installed model with this id, or its weight file is missing"
         },
         {
+          "code": -32005,
+          "data": {
+            "type": "provider_model"
+          },
+          "message": "The model is a provider's (`<provider>/<model>` in providers.json); this method works on installed models only"
+        },
+        {
           "code": -32602,
           "data": {
             "type": "invalid_params"
@@ -3686,6 +3707,13 @@
             "type": "model_not_found"
           },
           "message": "No installed model with this id, or its weight file is missing"
+        },
+        {
+          "code": -32005,
+          "data": {
+            "type": "provider_model"
+          },
+          "message": "The model is a provider's (`<provider>/<model>` in providers.json); this method works on installed models only"
         },
         {
           "code": -32602,
@@ -5521,6 +5549,13 @@
             "type": "model_not_found"
           },
           "message": "No installed model with this id, and no usable `model_path`"
+        },
+        {
+          "code": -32005,
+          "data": {
+            "type": "provider_model"
+          },
+          "message": "The model is a provider's (`<provider>/<model>` in providers.json); this method works on installed models only"
         },
         {
           "code": -32002,

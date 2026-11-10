@@ -43,6 +43,9 @@ errors:
     type: "invalid_params"
     when: "`model` is empty, over 512 characters, or has control characters"
   - code: -32005
+    type: "provider_model"
+    when: "The model is a provider's (`<provider>/<model>` in providers.json); this method works on installed models only"
+  - code: -32005
     type: "pull_running"
     when: "This model is being downloaded already (from the task's result)"
   - code: -32010

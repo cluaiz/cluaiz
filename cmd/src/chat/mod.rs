@@ -21,6 +21,7 @@ use cluaiz_models::StreamingReasoningFilter;
 use cluaiz_plan::ExecutionPlan;
 use cluaiz_runtime::{EngineHost, GenerationTimings, HostResponse, ThinkingReport};
 use color_eyre::{eyre::eyre, Result};
+use colored::Colorize;
 
 use crate::cli::args::{LoadArgs, SampleArgs, ThinkArgs};
 
@@ -104,6 +105,8 @@ pub struct Session {
     pub remote: Option<remote::Remote>,
     /// The provider that runs the model (`<provider>/<model>` in providers.json)
     pub provider: Option<provider::ProviderChat>,
+    /// Tokens in the context after the last answer, of its size
+    pub last_context: Option<(usize, usize)>,
 }
 
 impl Session {
@@ -130,6 +133,7 @@ impl Session {
                     history: Vec::new(),
                     remote: Some(remote),
                     provider: None,
+                    last_context: None,
                 });
             }
         }
@@ -150,32 +154,36 @@ impl Session {
             history: Vec::new(),
             remote: None,
             provider: None,
+            last_context: None,
         })
     }
 
     /// A provider's model: nothing is loaded here
     pub fn open_provider(host: Arc<EngineHost>, target: cluaiz_core::providers::Target, options: ChatOptions) -> Self {
+        let chat = provider::prepare(target, &options);
         Self {
             host,
-            model_id: target.full_name(),
+            model_id: chat.target.full_name(),
             model_path: PathBuf::new(),
-            plan: provider::plan(&target),
+            plan: provider::plan(&chat.target),
             load_ms: 0,
             options,
             history: Vec::new(),
             remote: None,
-            provider: Some(provider::ProviderChat { target }),
+            provider: Some(chat),
+            last_context: None,
         }
     }
 
     /// Switches to a provider's model; the conversation is kept.
     pub fn switch_provider(&mut self, target: cluaiz_core::providers::Target) {
-        self.model_id = target.full_name();
+        let chat = provider::prepare(target, &self.options);
+        self.model_id = chat.target.full_name();
         self.model_path = PathBuf::new();
-        self.plan = provider::plan(&target);
+        self.plan = provider::plan(&chat.target);
         self.load_ms = 0;
         self.remote = None;
-        self.provider = Some(provider::ProviderChat { target });
+        self.provider = Some(chat);
     }
 
     /// Switches to another model; the conversation is kept.
@@ -220,17 +228,45 @@ impl Session {
 
     /// Sends `text` as the next user message and streams the answer into `out`.
     pub async fn send(&mut self, text: &str, out: &mut print::StreamPrinter) -> Result<TurnReport> {
-        let mut messages = Vec::with_capacity(self.history.len() + 2);
-        if let Some(system) = self.options.system.as_ref().filter(|s| !s.is_empty()) {
-            messages.push(ChatMessage::new("system", system.clone()));
+        // A provider's model: nothing on the way fits the conversation into its context, so the
+        // oldest turns are left out here, when the last answer nearly filled it or the provider
+        // says it is full (an installed model's Engine does this itself)
+        let nearly_full = self.last_context.is_some_and(|(used, size)| size > 0 && used * 100 >= size * 90);
+        if self.provider.is_some() && nearly_full && self.drop_oldest_turn() {
+            eprintln!("{}", "Context nearly full: the oldest messages were left out.".dimmed());
         }
-        messages.extend(self.history.iter().cloned());
-        messages.push(ChatMessage::new("user", text));
-
-        let (answer, report) = self.generate(messages, None, out).await?;
+        let (answer, report) = loop {
+            let mut messages = Vec::with_capacity(self.history.len() + 2);
+            if let Some(system) = self.options.system.as_ref().filter(|s| !s.is_empty()) {
+                messages.push(ChatMessage::new("system", system.clone()));
+            }
+            messages.extend(self.history.iter().cloned());
+            messages.push(ChatMessage::new("user", text));
+            match self.generate(messages, None, out).await {
+                Err(error)
+                    if self.provider.is_some()
+                        && error.to_string().contains(cluaiz_api::providers::CONTEXT_FULL)
+                        && self.drop_oldest_turn() =>
+                {
+                    eprintln!("{}", "Context full: the oldest messages were left out.".dimmed());
+                }
+                result => break result?,
+            }
+        };
+        self.last_context = report.context;
         self.history.push(ChatMessage::new("user", text));
         self.history.push(ChatMessage::new("assistant", answer));
         Ok(report)
+    }
+
+    /// Takes the oldest question and its answer out of the conversation; false when none is left
+    fn drop_oldest_turn(&mut self) -> bool {
+        if self.history.len() < 2 {
+            return false;
+        }
+        self.history.drain(..2);
+        self.last_context = None;
+        true
     }
 
     /// One answer to `messages` (system prompt and history included), streamed into `out`. `tools`
@@ -407,6 +443,8 @@ async fn talk(mut session: Session, prompt: Option<String>, interactive: bool) -
     let one_shot = prompt.is_some() && !interactive;
     if !one_shot || session.options.verbose {
         print::plan(&session).await;
+    } else {
+        print::notes(&session);
     }
     if one_shot {
         let prompt = prompt.unwrap_or_default();

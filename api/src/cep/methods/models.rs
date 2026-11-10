@@ -208,6 +208,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             "Raw GGUF metadata and tensor table of an installed model",
         )
         .error(-32004, "model_not_found", "No installed model with this id, or its weight file is missing")
+        .error(-32005, "provider_model", "The model is a provider's (`<provider>/<model>` in providers.json); this method works on installed models only")
         .error(-32602, "invalid_params", "`model` is empty or looks like a path")
         .error(-32002, "forbidden", "The model's folder is outside the caller's roots (`data.needs: \"roots\"`)")
         .error(-32602, "invalid_params", "`file` leaves the model's folder")
@@ -231,6 +232,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             "Loads an installed GGUF model using the existing Engine host",
         )
         .error(-32004, "model_not_found", "No installed model with this id, or its weight file is missing")
+        .error(-32005, "provider_model", "The model is a provider's (`<provider>/<model>` in providers.json); this method works on installed models only")
         .error(-32602, "invalid_params", "`model` is empty or looks like a path")
         .error(-32002, "forbidden", "The model's folder is outside the caller's roots (`data.needs: \"roots\"`)")
         .error(-32007, "not_implemented", "The model is not a GGUF (ONNX models load on their first request)")
@@ -263,6 +265,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         )
         .destructive()
         .error(-32004, "model_not_found", "No installed model with this id, or its weight file is missing")
+        .error(-32005, "provider_model", "The model is a provider's (`<provider>/<model>` in providers.json); this method works on installed models only")
         .error(-32602, "invalid_params", "`model` is empty or looks like a path")
         .error(-32002, "forbidden", "The model's folder is outside the caller's roots (`data.needs: \"roots\"`)")
         .error(-32010, "model_remove_failed", "The folder or the registry entry could not be removed")
@@ -298,6 +301,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         .task()
         .idempotent(false)
         .error(-32602, "invalid_params", "`model` is empty, over 512 characters, or has control characters")
+        .error(-32005, "provider_model", "The model is a provider's (`<provider>/<model>` in providers.json); this method works on installed models only")
         .error(-32005, "pull_running", "This model is being downloaded already (from the task's result)")
         .error(-32010, "download_failed", "Resolving or downloading failed: no such repo or variant, network, disk (from the task's result)")
         .error(-32008, "cancelled", "`tasks.cancel` stopped the download (from the task's result)")
@@ -305,6 +309,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         |_: CallCtx, call: Call, params: DownloadParams| async move {
             let model = params.model.trim().to_string();
             models::check_pull_id(&model).map_err(|message| roots::invalid("model", message))?;
+            crate::providers::refuse_provider_model(&model, "models.download")?;
             call.start_task(move |task| async move {
                 let abort = task.cancel_flag();
                 let updates = task.clone();
@@ -388,6 +393,7 @@ async fn selected(
     file: Option<String>,
     directory: bool,
 ) -> Result<(ModelRegistryEntry, PathBuf), CepError> {
+    crate::providers::refuse_provider_model(&model, "this method")?;
     validate_id(&model)?;
     let workspace = ctx.state.current_workspace_dir.read().await.clone();
     worker(move || {

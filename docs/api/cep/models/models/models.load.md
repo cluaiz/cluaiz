@@ -39,6 +39,9 @@ errors:
   - code: -32004
     type: "model_not_found"
     when: "No installed model with this id, or its weight file is missing"
+  - code: -32005
+    type: "provider_model"
+    when: "The model is a provider's (`<provider>/<model>` in providers.json); this method works on installed models only"
   - code: -32602
     type: "invalid_params"
     when: "`model` is empty or looks like a path"
