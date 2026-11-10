@@ -45,6 +45,23 @@ pub struct ProviderModel {
     /// Context size in tokens
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub context: Option<u32>,
+    /// What the model does, as the Engine's model categories: "chat" (the default), "embedding",
+    /// "tts" (text to speech) or "stt" (speech to text)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub kind: Option<String>,
+}
+
+/// The kinds a provider's model can have, as the Engine's model categories, with the route each uses
+pub const KINDS: [(&str, &str); 4] = [
+    ("chat", "/v1/chat/completions"),
+    ("embedding", "/v1/embeddings"),
+    ("tts", "/v1/audio/speech"),
+    ("stt", "/v1/audio/transcriptions"),
+];
+
+/// `kind` when it is one of `KINDS`
+pub fn valid_kind(kind: &str) -> bool {
+    KINDS.iter().any(|(k, _)| *k == kind)
 }
 
 fn openai_type() -> String {
@@ -70,6 +87,23 @@ impl Target {
     /// The context size of this model: from the file, else the default
     pub fn context(&self) -> u32 {
         self.config.models.get(&self.model).and_then(|m| m.context).unwrap_or(DEFAULT_CONTEXT)
+    }
+
+    /// The kind providers.json gives this model; None when it is not listed or has none
+    pub fn listed_kind(&self) -> Option<&str> {
+        self.config.models.get(&self.model).and_then(|m| m.kind.as_deref())
+    }
+
+    /// An error when providers.json lists this model as another kind than `wanted`: such as an
+    /// embedding model sent to the chat route. A model without a kind fits every route.
+    pub fn check_kind(&self, wanted: &str) -> Result<(), String> {
+        match self.listed_kind() {
+            Some(kind) if kind != wanted => {
+                let route = KINDS.iter().find(|(k, _)| *k == kind).map(|(_, r)| *r).unwrap_or("its own route");
+                Err(format!("{} is listed with kind \"{kind}\" in providers.json: use it with {route}", self.full_name()))
+            }
+            _ => Ok(()),
+        }
     }
 }
 
@@ -124,12 +158,14 @@ impl Providers {
         Some(Target { provider: provider.to_string(), config: config.clone(), model: model.to_string() })
     }
 
-    /// Every listed model as its full name, with its context size
-    pub fn listed_models(&self) -> Vec<(String, u32)> {
+    /// Every listed model as its full name, with its context size and kind ("chat" when none)
+    pub fn listed_models(&self) -> Vec<(String, u32, String)> {
         self.providers
             .iter()
             .flat_map(|(name, provider)| {
-                provider.models.iter().map(move |(model, info)| (format!("{name}/{model}"), info.context.unwrap_or(DEFAULT_CONTEXT)))
+                provider.models.iter().map(move |(model, info)| {
+                    (format!("{name}/{model}"), info.context.unwrap_or(DEFAULT_CONTEXT), info.kind.clone().unwrap_or_else(|| "chat".into()))
+                })
             })
             .collect()
     }
@@ -222,7 +258,7 @@ mod tests {
         let mut providers = Providers::default();
         let mut groq = Provider::new("https://api.groq.com/openai/v1/");
         groq.api_key_env = Some("CLUAIZ_TEST_NO_SUCH_KEY".into());
-        groq.models.insert("qwen/qwen3-32b".into(), ProviderModel { context: Some(131_072) });
+        groq.models.insert("qwen/qwen3-32b".into(), ProviderModel { context: Some(131_072), kind: None });
         providers.providers.insert("groq".into(), groq);
         providers.providers.insert("ollama".into(), Provider::new("http://localhost:11434/v1"));
         providers
@@ -238,6 +274,13 @@ mod tests {
         assert_eq!(target.config.chat_url(), "https://api.groq.com/openai/v1/chat/completions");
         // A model the file does not list still works, with the default context
         assert_eq!(providers.find("ollama/qwen3:8b").unwrap().context(), DEFAULT_CONTEXT);
+        // A kind is checked only when the file gives one
+        assert!(target.check_kind("embedding").is_ok());
+        let mut whisper = providers.find("groq/whisper-large-v3").unwrap();
+        whisper.config.models.insert("whisper-large-v3".into(), ProviderModel { context: None, kind: Some("stt".into()) });
+        assert!(whisper.check_kind("stt").is_ok());
+        assert!(whisper.check_kind("chat").unwrap_err().contains("/v1/audio/transcriptions"));
+        assert!(valid_kind("tts") && !valid_kind("speech"));
         // Not a provider: a local or Hugging Face id
         assert!(providers.find("unsloth/Qwen3-4B-GGUF").is_none());
         assert!(providers.find("groq/").is_none());

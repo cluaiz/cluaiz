@@ -124,6 +124,14 @@
               "integer",
               "null"
             ]
+          },
+          "kind": {
+            "default": null,
+            "description": "What the model does: \"chat\" (default), \"embedding\", \"tts\" or \"stt\"",
+            "type": [
+              "string",
+              "null"
+            ]
           }
         },
         "type": "object"
@@ -4865,7 +4873,7 @@
           "data": {
             "type": "invalid_params"
           },
-          "message": "The name or the URL is not valid, or both api_key and api_key_env were sent"
+          "message": "The name, the URL or a model's kind is not valid, or both api_key and api_key_env were sent"
         },
         {
           "code": -32010,
@@ -5071,7 +5079,7 @@
           "title": "AnyValue"
         }
       },
-      "summary": "Sends one short chat request: the URL, the key and the model work",
+      "summary": "Sends one short request of the model's kind: the URL, the key and the model work",
       "x-cep": {
         "destructive": false,
         "execution": "sync",

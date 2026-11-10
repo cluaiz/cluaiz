@@ -463,6 +463,9 @@ async fn main() -> Result<()> {
                 println!("Active chat model: {}", model_id);
             }
             ModelCommand::SetVector { model_id } => {
+                if chat::provider::find(&model_id).is_some() {
+                    fail("model", format!("{model_id} is a provider's model: use it in /v1/embeddings by its name. Engine memory and indexes use an installed embedding model, so the default vector model stays an installed one"));
+                }
                 cluaiz_security::PermissionSchema::set_active_embedding_model(model_id.clone());
                 println!("Active vector model: {}", model_id);
             }

@@ -2,7 +2,7 @@
 //! A provider's model is then used as `<provider>/<model>`: `cluaiz agent -m myapi/model-name`.
 
 use clap::Subcommand;
-use cluaiz_core::providers::{self, Provider, ProviderModel, Providers, Target};
+use cluaiz_core::providers::{self, Provider, Providers, Target};
 use color_eyre::{eyre::eyre, Result};
 use colored::Colorize;
 use std::io::Read;
@@ -22,9 +22,18 @@ pub enum ProviderCommand {
         /// The key itself, kept in providers.json; `-` reads it from stdin
         #[arg(long, value_name = "KEY")]
         key: Option<String>,
-        /// A model to list, with its context size: `model-name` or `model-name=32768`
+        /// A chat model to list, with its context size: `model-name` or `model-name=32768`
         #[arg(long = "model", value_name = "ID[=CONTEXT]")]
         models: Vec<String>,
+        /// An embedding model to list (used with /v1/embeddings)
+        #[arg(long = "embedding", value_name = "ID")]
+        embedding: Vec<String>,
+        /// A text-to-speech model to list (used with /v1/audio/speech)
+        #[arg(long = "tts", value_name = "ID")]
+        tts: Vec<String>,
+        /// A speech-to-text model to list (used with /v1/audio/transcriptions)
+        #[arg(long = "stt", value_name = "ID")]
+        stt: Vec<String>,
     },
     /// List the providers
     #[command(alias = "ls")]
@@ -49,7 +58,7 @@ pub enum ProviderCommand {
 pub async fn execute(command: ProviderCommand) -> Result<()> {
     let mut all = Providers::load().map_err(|e| eyre!(e))?;
     match command {
-        ProviderCommand::Add { name, url, key_env, key, models } => {
+        ProviderCommand::Add { name, url, key_env, key, models, embedding, tts, stt } => {
             if !providers::valid_name(&name) {
                 return Err(eyre!("'{name}': a provider name has letters, digits, - and _ only"));
             }
@@ -78,7 +87,14 @@ pub async fn execute(command: ProviderCommand) -> Result<()> {
                     Some((id, n)) => (id.to_string(), Some(n.parse::<u32>().map_err(|_| eyre!("'{model}': the context is a number of tokens"))?)),
                     None => (model, None),
                 };
-                provider.models.insert(id, ProviderModel { context });
+                let entry = provider.models.entry(id).or_default();
+                entry.context = context;
+                entry.kind = None;
+            }
+            for (kind, ids) in [("embedding", embedding), ("tts", tts), ("stt", stt)] {
+                for id in ids {
+                    provider.models.entry(id).or_default().kind = Some(kind.to_string());
+                }
             }
             all.providers.insert(name.clone(), provider.clone());
             all.save().map_err(|e| eyre!(e))?;
@@ -95,7 +111,8 @@ pub async fn execute(command: ProviderCommand) -> Result<()> {
                 println!("{}  {}  key: {}", name.bold(), provider.base_url, provider.key_source());
                 for (model, info) in &provider.models {
                     let context = info.context.map(|n| format!("  context {n}")).unwrap_or_default();
-                    println!("    {name}/{model}{}", context.dimmed());
+                    let kind = info.kind.as_deref().map(|k| format!("  {k}")).unwrap_or_default();
+                    println!("    {name}/{model}{}{}", kind.cyan(), context.dimmed());
                 }
             }
             println!("{}", format!("File: {}", Providers::path().display()).dimmed());
@@ -142,10 +159,10 @@ pub async fn with_context(mut target: Target) -> Target {
     let Some(context) = listed.ok().and_then(Result::ok).and_then(|models| models.into_iter().find(|m| m.id == target.model)?.context) else {
         return target;
     };
-    target.config.models.insert(target.model.clone(), ProviderModel { context: Some(context) });
+    target.config.models.entry(target.model.clone()).or_default().context = Some(context);
     if let Ok(mut all) = Providers::load() {
         if let Some(provider) = all.providers.get_mut(&target.provider) {
-            provider.models.insert(target.model.clone(), ProviderModel { context: Some(context) });
+            provider.models.entry(target.model.clone()).or_default().context = Some(context);
             let _ = all.save();
         }
     }

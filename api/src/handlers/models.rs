@@ -60,7 +60,7 @@ pub async fn v1_models(State(state): State<Arc<AppState>>) -> Json<Value> {
         }));
     }
     // The models listed in providers.json, by their full name (`groq/<model>`)
-    for (id, context) in cluaiz_core::providers::Providers::load_or_empty().listed_models() {
+    for (id, context, kind) in cluaiz_core::providers::Providers::load_or_empty().listed_models() {
         let provider = id.split('/').next().unwrap_or_default().to_string();
         data.push(json!({
             "id": id,
@@ -70,8 +70,8 @@ pub async fn v1_models(State(state): State<Arc<AppState>>) -> Json<Value> {
             "permission": [],
             "root": id,
             "parent": null,
-            "category": "chat",
-            "context_window": context,
+            "category": kind,
+            "context_window": if kind == "chat" { json!(context) } else { Value::Null },
             "provider": provider,
         }));
     }

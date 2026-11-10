@@ -4,7 +4,7 @@ transport: "POST /v1/cep"
 category: "models"
 category_title: "Models & Engine Vault"
 group: "providers"
-summary: "Sends one short chat request: the URL, the key and the model work"
+summary: "Sends one short request of the model's kind: the URL, the key and the model work"
 scope: "admin"
 execution: "sync"
 mcp: false
@@ -56,7 +56,7 @@ errors:
 
 # providers.test
 
-Sends one short chat request to the provider ("Reply with the single word: ready", at most 64 tokens) to check that the URL, the key and the model work. The result has the model's answer and the time the request took in `ms`.
+Sends one short request of the model's listed kind to check that the URL, the key and the model work: a chat message ("Reply with the single word: ready", at most 64 tokens), or for an `embedding` or `tts` model a short text to `/embeddings` or `/audio/speech`. An `stt` model is tested by sending audio to `/v1/audio/transcriptions`. The result has the model's answer and the time the request took in `ms`.
 
 `model` is the model id at the provider, such as `model-name`. Without it, the first listed model is used.
 

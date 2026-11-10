@@ -124,6 +124,22 @@ fn validate(payload: &EmbeddingRequest) -> anyhow::Result<()> {
     }
     Ok(())
 }
+/// POST /v1/embeddings: a provider's model (providers.json) goes to the provider; every other
+/// request is the Engine's own
+pub async fn embeddings_entry(state: State<Arc<AppState>>, body: axum::body::Bytes) -> Response {
+    if crate::providers_configured() {
+        if let Ok(raw) = serde_json::from_slice::<serde_json::Value>(&body) {
+            if let Some(target) = crate::providers::named_target(&raw) {
+                return crate::providers::forward_embeddings(target, raw).await;
+            }
+        }
+    }
+    match Json::<EmbeddingRequest>::from_bytes(&body) {
+        Ok(request) => generate_embeddings(state, request).await,
+        Err(rejection) => rejection.into_response(),
+    }
+}
+
 /// POST /v1/embeddings: string/string batch, or one image with optional text parts.
 pub async fn generate_embeddings(
     State(state): State<Arc<AppState>>,

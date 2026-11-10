@@ -36,6 +36,9 @@ struct ModelParams {
     /// Context size in tokens
     #[serde(default)]
     context: Option<u32>,
+    /// What the model does: "chat" (default), "embedding", "tts" or "stt"
+    #[serde(default)]
+    kind: Option<String>,
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -71,7 +74,7 @@ fn shown(name: &str, provider: &Provider) -> Value {
     let models: Vec<Value> = provider
         .models
         .iter()
-        .map(|(id, info)| json!({ "id": id, "model": format!("{name}/{id}"), "context": info.context.unwrap_or(providers::DEFAULT_CONTEXT) }))
+        .map(|(id, info)| json!({ "id": id, "model": format!("{name}/{id}"), "kind": info.kind.as_deref().unwrap_or("chat"), "context": info.context.unwrap_or(providers::DEFAULT_CONTEXT) }))
         .collect();
     json!({ "name": name, "type": provider.kind, "base_url": provider.base_url, "key": provider.key_source(), "models": models })
 }
@@ -103,7 +106,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             "providers.set",
             Meta::new(Scope::Admin, "Adds a provider, or changes its URL, key source and listed models")
                 .no_mcp()
-                .error(-32602, "invalid_params", "The name or the URL is not valid, or both api_key and api_key_env were sent")
+                .error(-32602, "invalid_params", "The name, the URL or a model's kind is not valid, or both api_key and api_key_env were sent")
                 .error(-32010, "settings_not_saved", "providers.json could not be written")
                 .example(
                     json!({ "name": "myapi", "base_url": "https://api.example.com/v1", "api_key_env": "MYAPI_KEY", "models": { "model-name": { "context": 32768 } } }),
@@ -132,7 +135,10 @@ pub fn register(registry: &mut Registry<CallCtx>) {
                     provider.api_key_env = None;
                 }
                 if let Some(models) = p.models {
-                    provider.models = models.into_iter().map(|(id, m)| (id, ProviderModel { context: m.context })).collect();
+                    if let Some((id, kind)) = models.iter().find_map(|(id, m)| m.kind.as_deref().filter(|k| !providers::valid_kind(k)).map(|k| (id.clone(), k.to_string()))) {
+                        return Err(CepError::invalid_params(format!("{id}: kind '{kind}' is not chat, embedding, tts or stt"), vec![], None));
+                    }
+                    provider.models = models.into_iter().map(|(id, m)| (id, ProviderModel { context: m.context, kind: m.kind })).collect();
                 }
                 all.providers.insert(p.name.clone(), provider.clone());
                 save(&all)?;
@@ -175,7 +181,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         )
         .add(
             "providers.test",
-            Meta::new(Scope::Admin, "Sends one short chat request: the URL, the key and the model work")
+            Meta::new(Scope::Admin, "Sends one short request of the model's kind: the URL, the key and the model work")
                 .no_mcp()
                 .error(-32004, "provider_not_found", "No provider has this name")
                 .error(-32602, "invalid_params", "No model was sent and the provider lists none")

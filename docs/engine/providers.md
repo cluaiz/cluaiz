@@ -1,6 +1,6 @@
 # Model providers
 
-A model provider is another service with an OpenAI-compatible API, on the internet or on the same computer. Once a provider is added, its models work in `cluaiz run`, `cluaiz agent` and `/v1/chat/completions`, next to the models installed in Cluaiz.
+A model provider is another service with an OpenAI-compatible API, on the internet or on the same computer. Once a provider is added, its chat models work in `cluaiz run`, `cluaiz agent` and `/v1/chat/completions`, and its embedding, text-to-speech and speech-to-text models in `/v1/embeddings`, `/v1/audio/speech` and `/v1/audio/transcriptions`, next to the models installed in Cluaiz.
 
 A provider's model is named `<provider>/<model>`: `myapi/model-name` is the model `model-name` at the provider named `myapi`. The names in this page are placeholders: use your service's base URL, key and model ids.
 
@@ -14,7 +14,8 @@ cluaiz provider add myapi --url https://api.example.com/v1 --key-env MYAPI_KEY
 - `--key-env` names the environment variable that holds the key. The key stays out of the file. The Engine also reads the variable from `config/.env` in the Cluaiz folder (`~/.cluaiz/config/.env`), as a line `MYAPI_KEY=<key>`.
 - `--key <key>` keeps the key in `providers.json` instead; `--key -` reads it from stdin, which keeps it out of the shell history.
 - A provider that needs no key, such as Ollama on the same computer (`--url http://localhost:11434/v1`), needs neither.
-- `--model <id>=<context>` lists a model with its context size, such as `--model model-name=32768`.
+- `--model <id>=<context>` lists a chat model with its context size, such as `--model model-name=32768`.
+- `--embedding <id>`, `--tts <id>` and `--stt <id>` list an embedding, text-to-speech or speech-to-text model. Listing gives the model its kind: `/v1/models` shows it in that category, and the other routes answer with a clear error instead of sending it to the provider. A model that is not listed works with any route.
 
 The base URL is in your service's documentation; it usually ends in `/v1`.
 
@@ -67,7 +68,7 @@ curl http://localhost:8000/v1/chat/completions \
 | `base_url` | OpenAI-compatible base URL |
 | `api_key_env` | Name of the environment variable that holds the key |
 | `api_key` | The key itself, when it is kept in the file. On Linux and macOS the file is then readable by its owner only |
-| `models` | Listed models and their context size in tokens. Other models of the provider work too |
+| `models` | Listed models: `context` (tokens) and `kind` (`chat`, the default, `embedding`, `tts` or `stt`). Other models of the provider work too |
 
 A model that is not listed gets its context size from the provider's model list the first time `cluaiz run` or `cluaiz agent` uses it, and it is then recorded in the file. Without one, 32768 tokens is assumed.
 
@@ -107,6 +108,22 @@ API authentication stays your setting. When it is off and a provider has a key, 
 3. When the provider says the request does not fit its context, the oldest turns are left out (system messages and the last question stay) and the request is sent again. The `X-Cluaiz-Dropped-Messages` header says how many messages went.
 4. The answer comes back with `model` set to the full name (`myapi/model-name`). A stream's chunks carry this request's id, so `chat.cancel` with that `stream_id` stops it.
 5. `X-Cluaiz-Provider` names the provider. Errors are `{"error": {"type": "provider_error", "provider": "...", "message": "..."}}` with the provider's status code, and say the cause in plain words: a refused key, an unknown model, a rate limit or a full context.
+
+## Embeddings, speech and transcription
+
+| Route | Sent to the provider | What comes back |
+|---|---|---|
+| `/v1/embeddings` | `{base_url}/embeddings` with `input`, `encoding_format`, `dimensions`, `user` | The provider's answer, with `model` set to the full name |
+| `/v1/audio/speech` | `{base_url}/audio/speech` with `input`, `voice`, `speed`, WAV audio | The Engine's own shape: `output.audio_data` as `data:audio/wav;base64,…`; with `stream`, one `speech.audio.delta` event and the `done` event |
+| `/v1/audio/transcriptions` | `{base_url}/audio/transcriptions` as a file upload, with `language`, `prompt`, `temperature` | The Engine's own shape: `output.text`, and `output.segments` with `timestamps: true`; with `stream`, the `done` event |
+
+For transcription, the audio is read as for an installed model: `input_source` or `file` may be a data URI, a URL or an allowed local file, in any format the Engine decodes. It is sent to the provider as one-channel WAV.
+
+Each provider has its own voices, languages and limits. The Engine passes `voice` and `language` on as they are; the provider's answer says when one is not accepted. Fields a provider does not take are named in `X-Cluaiz-Ignored`, as for chat.
+
+Engine memory, document ingest and workspace indexes keep using an installed embedding model: vectors from different models do not mix, and these features would otherwise send every text they index to the provider. `cluaiz model set-vector` therefore takes an installed model only.
+
+`cluaiz provider test <name> <model>` sends a request of the model's listed kind: a short text for an embedding or text-to-speech model, a chat message otherwise. A speech-to-text model is tested by sending audio to `/v1/audio/transcriptions`.
 
 ## Not yet
 

@@ -39,7 +39,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/api/chat", chat)
         .route(
             "/v1/embeddings",
-            post(handlers::embeddings::generate_embeddings).layer(from_fn(attachment_body_limit)),
+            post(handlers::embeddings::embeddings_entry).layer(from_fn(attachment_body_limit)),
         )
         .route(
             "/v1/audio/speech",

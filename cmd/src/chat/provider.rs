@@ -404,7 +404,7 @@ mod tests {
     #[test]
     fn flags_without_meaning_at_a_provider_are_named_and_c_sets_the_context() {
         let mut config = cluaiz_core::providers::Provider::new("https://api.example.com/v1");
-        config.models.insert("m".into(), cluaiz_core::providers::ProviderModel { context: Some(8192) });
+        config.models.insert("m".into(), cluaiz_core::providers::ProviderModel { context: Some(8192), kind: None });
         let target = Target { provider: "myapi".into(), config, model: "m".into() };
         let mut options = ChatOptions::default();
         options.load.ctx_size = Some(32768);
