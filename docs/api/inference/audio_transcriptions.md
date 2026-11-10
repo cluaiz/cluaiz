@@ -103,6 +103,8 @@ Transcribes a recording using a compatible installed ONNX STT package (for examp
 
 ## Choose an installed model
 
+A provider's speech-to-text model, `<provider>/<model>` from providers.json, is sent to that provider, and its text comes back in the shape below; see [Model providers](../../engine/providers.md#embeddings-speech-and-transcription).
+
 ```mermaid
 flowchart LR
     C["POST /v1/audio/transcriptions: file or input_source"] --> A["Auth, source authorization and byte limits"]

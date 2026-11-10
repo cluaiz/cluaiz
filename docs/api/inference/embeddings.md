@@ -100,6 +100,8 @@ Unsupported GGUF architectures, models without supported sequence pooling, reran
 
 ## Choose the model and input
 
+A provider's embedding model, `<provider>/<model>` from providers.json, is sent to that provider; see [Model providers](../../engine/providers.md#embeddings-speech-and-transcription).
+
 ```mermaid
 flowchart TD
     C["POST /v1/embeddings"] --> V["Validate input shape and float encoding"]

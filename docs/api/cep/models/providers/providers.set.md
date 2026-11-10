@@ -76,7 +76,7 @@ response: |
 errors:
   - code: -32602
     type: "invalid_params"
-    when: "The name or the URL is not valid, or both api_key and api_key_env were sent"
+    when: "The name, the URL or a model's kind is not valid, or both api_key and api_key_env were sent"
   - code: -32010
     type: "settings_not_saved"
     when: "providers.json could not be written"
@@ -94,7 +94,7 @@ Adds a provider to `config/providers.json`, or changes one with the same `name`.
 | `base_url` | Yes | OpenAI-compatible base URL, such as `https://api.example.com/v1`. The Engine adds `/chat/completions` and `/models` |
 | `api_key_env` | No | Name of the environment variable that holds the key. The key itself stays out of the file |
 | `api_key` | No | The key, kept in providers.json. Send this or `api_key_env`, not both |
-| `models` | No | Listed models with their context size: `{"model-name": {"context": 32768}}`. When sent, it replaces the list |
+| `models` | No | Listed models with their context size and kind: `{"model-name": {"context": 32768}, "embed-name": {"kind": "embedding"}}`. `kind` is `chat` (the default), `embedding`, `tts` or `stt`. When sent, it replaces the list |
 
 When neither `api_key_env` nor `api_key` is sent, the provider keeps its current key source. A provider that needs no key, such as Ollama on the same computer (`http://localhost:11434/v1`), needs neither.
 

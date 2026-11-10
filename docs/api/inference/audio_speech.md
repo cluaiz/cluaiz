@@ -124,6 +124,8 @@ Synthesizes speech with an installed ONNX TTS package or a GGUF speech backbone 
 
 ## Choose the model, language and voice
 
+A provider's text-to-speech model, `<provider>/<model>` from providers.json, is sent to that provider, and its audio comes back in the shape below; see [Model providers](../../engine/providers.md#embeddings-speech-and-transcription).
+
 ```mermaid
 flowchart LR
     C["POST /v1/audio/speech: input text"] --> A["Auth, typed controls and model selection"]

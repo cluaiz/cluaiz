@@ -640,6 +640,9 @@ pub async fn speech(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<Value>,
 ) -> Response {
+    if let Some(target) = crate::providers::named_target(&payload) {
+        return crate::providers::forward_speech(target, payload).await;
+    }
     let payload: SpeechRequest = match serde_json::from_value(payload) {
         Ok(request) => request,
         Err(e) => return http_error(StatusCode::BAD_REQUEST, "invalid_input", e),
@@ -667,6 +670,9 @@ pub async fn transcriptions(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<Value>,
 ) -> Response {
+    if let Some(target) = crate::providers::named_target(&payload) {
+        return crate::providers::forward_transcription(state, target, payload).await;
+    }
     let payload: TranscriptionRequest = match serde_json::from_value(payload) {
         Ok(request) => request,
         Err(e) => return http_error(StatusCode::BAD_REQUEST, "invalid_input", e),
