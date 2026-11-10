@@ -66,8 +66,8 @@ powershell -c "irm https://cluaiz.com/install.ps1 | iex"
 curl -fsSL https://cluaiz.com/install.sh | bash
 ```
 
-Supported systems: Windows 10 / 11 x64; Linux x64 or ARM64 with glibc 2.38 or newer (Ubuntu 24.04, Debian 13,
-Fedora 39 or newer; Ubuntu 22.04 and Debian 12 are not supported yet); macOS 14 or newer on Apple Silicon (M1 or
+Supported systems: Windows 10 / 11 x64; Linux x64 or ARM64 with glibc 2.39 or newer (Ubuntu 24.04, Debian 13,
+Fedora 40 or newer; Ubuntu 22.04 and Debian 12 are not supported yet); macOS 14 or newer on Apple Silicon (M1 or
 newer). Intel Macs and Windows on ARM are not supported yet.
 
 Update later with `cluaiz self update` (models and settings stay); remove everything with `cluaiz self uninstall`
@@ -352,7 +352,7 @@ Gemma 4 31B 4 vs 4 t/s.
   (GPU, GPU + RAM, CPU) from live hardware measurements.
 - **Backends:** `llama.cpp` (cluaiz fork, linked into the engine) for GGUF models; ONNX Runtime for speech and
   vision models.
-- **Platforms:** Windows x64 (MSVC), Linux x64 / ARM64 (glibc 2.38+), macOS Apple Silicon.
+- **Platforms:** Windows x64 (MSVC), Linux x64 / ARM64 (glibc 2.39+), macOS Apple Silicon.
 - **Delivery:** a CPU core plus optional GPU packs (CUDA 12, CUDA 13, Vulkan); the engine loads the GPU backend
   libraries it finds next to its executable at start.
 
