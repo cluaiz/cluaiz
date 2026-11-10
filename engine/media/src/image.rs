@@ -5,6 +5,15 @@ use anyhow::{bail, Context, Result};
 use cluaiz_core::{media::DecodedImage, media_limits::MediaLimits};
 use std::io::Cursor;
 
+/// A decoded image as PNG bytes (for a service that takes images as files, such as a provider)
+pub fn encode_png(image: &DecodedImage) -> Result<Vec<u8>> {
+    let rgb = ::image::RgbImage::from_raw(image.width(), image.height(), image.pixels().to_vec())
+        .context("Image pixels do not match its size")?;
+    let mut encoded = Cursor::new(Vec::new());
+    ::image::DynamicImage::ImageRgb8(rgb).write_to(&mut encoded, ::image::ImageOutputFormat::Png)?;
+    Ok(encoded.into_inner())
+}
+
 /// Decodes into packed RGB8 with bounded decoding and checked conversion/copy peaks.
 pub fn decode_image(bytes: &[u8], limits: MediaLimits) -> Result<DecodedImage> {
     limits.check_input_bytes(u64::try_from(bytes.len())?)?;

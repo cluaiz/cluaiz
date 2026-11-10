@@ -110,7 +110,7 @@ async fn process(agent: &mut Agent, display: &Display, input: Input) {
                 &mut agent.tools,
                 agent.session.options.settings()?.media,
                 &agent.history,
-                &agent.session.model_path,
+                Some(agent.session.model_path.as_path()).filter(|_| agent.session.provider.is_none()),
             )
             .await?
         };

@@ -37,7 +37,7 @@ pub async fn execute_streaming_loop(
             }
             let err_chunk = json!({
                 "id": ctx.request_id.clone(),
-                "error": {"message": err, "type": "engine_error"}
+                "error": {"message": err, "type": if ctx.provider.is_some() { "provider_error" } else { "engine_error" }}
             });
             let stream = async_stream::stream! {
                 yield Ok::<_, Infallible>(Event::default().data(err_chunk.to_string()));
@@ -50,7 +50,8 @@ pub async fn execute_streaming_loop(
     let state_clone = state.clone();
     let req_session_id = request.session_id.clone();
     let req_id_stream = ctx.request_id.clone();
-    let keep_alive_val = request.keep_alive;
+    // keep_alive is about a loaded model: a provider's chat loaded none
+    let keep_alive_val = request.keep_alive.filter(|_| ctx.provider.is_none());
 
     // 🛡️ Multi-Tenant Stream Registry Registration
     if let Ok(mut lock) = ACTIVE_STREAMS.write() {
@@ -59,7 +60,9 @@ pub async fn execute_streaming_loop(
             StreamSignals {
                 cancel: Arc::clone(&ctx.cancel_signal),
                 skip_reasoning: Arc::clone(&ctx.skip_reasoning),
-                reasoning_supported: ctx.active_think_mode != "off"
+                // A provider's stream has no native reasoning control
+                reasoning_supported: ctx.provider.is_none()
+                    && ctx.active_think_mode != "off"
                     && ctx
                         .dyn_think_start
                         .as_ref()
@@ -191,7 +194,7 @@ pub async fn execute_streaming_loop(
                 "error": {"message": message, "type": kind}
             }).to_string()));
             if let Ok(mut lock) = ACTIVE_STREAMS.write() { lock.remove(&req_id_stream); }
-            if keep_alive_val == Some(0) { state_clone.host.unload_model().await; }
+            if keep_alive_val == Some(0) { ctx.unload_after(&state_clone.host).await; }
             yield Ok::<_, Infallible>(Event::default().data("[DONE]"));
             return;
         }
@@ -211,7 +214,7 @@ pub async fn execute_streaming_loop(
         let tool_turns = turn.tool_turns;
 
         // OpenAI's closing chunk: why the answer ended ("length" = max_tokens or the context)
-        let context_report = state_clone.host.last_context().await;
+        let context_report = ctx.last_context(&state_clone.host).await;
         let finish_reason = if client_call {
             "tool_calls"
         } else {

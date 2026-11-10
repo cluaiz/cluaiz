@@ -16,7 +16,7 @@ params:
     req: false
     default: "\"auto\""
     allowed: "Model ID or `\"auto\"`"
-    desc: "Model to use. `\"auto\"` uses the active model loaded in the chat or vision slot. A provider's model, `<provider>/<model>` from providers.json, is sent to that provider (see Model providers)."
+    desc: "Model to use. `\"auto\"` uses the active model loaded in the chat or vision slot. A provider's model, `<provider>/<model>` from providers.json, runs through this chat with the provider generating the answer (see Model providers)."
   - name: "stream"
     type: "Boolean"
     req: false
@@ -326,7 +326,7 @@ Use a URL serving a real image, an authorized server-local path, or a real data 
 
 ### A provider's model
 
-A model named `<provider>/<model>`, such as `myapi/model-name`, belongs to a provider in providers.json ([Model providers](../../engine/providers.md)). The Engine sends the request's OpenAI fields to that provider, with settings.json's samplers for those it leaves out, and returns its answer, streamed or whole, with `model` set to the full name. When the provider says the request does not fit, the oldest turns are left out and it is sent again (`X-Cluaiz-Dropped-Messages`). A stream carries this request's id, so `chat.cancel` stops it. The Engine's own fields are left out and named in `X-Cluaiz-Ignored`; its own features (`session_id`, memory, server-side tools, context planning) do not apply. `/v1/models` lists these models with `provider` and `context_window`. See [Model providers](../../engine/providers.md).
+A model named `<provider>/<model>`, such as `myapi/model-name`, belongs to a provider in providers.json ([Model providers](../../engine/providers.md)). It runs through this same chat: memory, `session_id`, Engine tools, context planning, attachments and `chat.cancel` work as for an installed model, and the provider generates the answer. Load settings (`llama`, `keep_alive`), `top_k`, `min_p`, `repetition_penalty` and `grammar` do not apply to it; `chat.skip_reasoning` answers `reasoning_unavailable`. Errors from the provider have `type: "provider_error"`. `/v1/models` lists these models with `provider` and `context_window`.
 
 ## Request flow
 

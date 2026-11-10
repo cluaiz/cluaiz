@@ -82,32 +82,31 @@ API authentication stays your setting. When it is off and a provider has a key, 
 
 ## What works with a provider's model
 
+A provider's chat model runs through the Engine's own chat, as an installed model does: the Engine prepares the conversation (memory, notes, the chat's ledger, Engine tools, context planning) and the provider generates the answer.
+
 | | Installed model | Provider's model |
 |---|---|---|
 | Chat, streaming | Yes | Yes |
-| Agent tools (`cluaiz agent`) | Yes | Yes, through the provider's function calling |
-| Tools sent by an app in `tools` | Yes | Yes: the calls come back to the app to run |
-| Agent auto-compact when the context is nearly full | Yes | Yes, from the token counts the provider reports |
-| Oldest messages left out when the context is full | Yes | Yes: in `cluaiz run`, in the agent and in `/v1/chat/completions` |
-| `temperature`, `top_p`, `presence_penalty`, `frequency_penalty`, `seed` | Yes | Yes: from the request or the flags, else from settings.json |
+| Engine memory: `session_id`, `history: "engine"`, `storage`, the chat's events, notes, recall | Yes | Yes |
+| Engine tools: tools bound by the request or the chat, suggested tools, `load_tool`, approvals | Yes | Yes, through the provider's function calling |
+| Tools sent by an app as OpenAI `function`s | Yes | Yes: the calls come back to the app to run |
+| Agent tools (`cluaiz agent`) | Yes | Yes |
+| Context planning: the oldest turns left out to fit, agent auto-compact | Yes | Yes, with the context in providers.json; when the provider still says the request is too long, its oldest turns are left out and it is sent again |
+| Attachments: images and sounds (API and terminal) | Yes | Yes, when the provider's model reads them; files arrive as their text |
+| `temperature`, `top_p`, `presence_penalty`, `frequency_penalty`, `seed`, `stop`, `response_format`, `max_tokens` | Yes | Yes: from the request or the flags, else settings.json for the samplers |
 | `chat.cancel` on a stream | Yes | Yes |
-| Thinking shown | Yes | When the provider sends it (`reasoning_content`, `reasoning`, or `<think>` tags); `--think off` hides it |
-| `--reasoning-effort` / `reasoning_effort` | Yes | `low`, `medium` and `high` only |
-| Context size (`-c`) | Sets the loaded context | Sets how much of the conversation is kept; the provider's own limit still applies |
-| Load settings: GPU layers, VRAM and RAM buffers, KV cache, threads, batch, mmap, flash attention | Yes | No: the provider runs the model. A flag given is named in a note |
-| `top_k`, `min_p`, `repeat_penalty` | Yes | No: not part of the OpenAI format. A flag given is named in a note |
+| Thinking shown | Yes | When the provider sends it (`reasoning_content`, `reasoning`, or `<think>` tags); `think_mode: "off"` / `--think off` hides it |
+| `reasoning_effort` | Yes | `low`, `medium` and `high` only |
+| Context size (`-c`, `n_ctx`) | Sets the loaded context | Sets how much of the conversation is kept; the provider's own limit still applies |
+| Load settings: GPU layers, VRAM and RAM buffers, KV cache, threads, batch, mmap, flash attention, `keep_alive` | Yes | No: the provider runs the model. A terminal flag given is named in a note |
+| `top_k`, `min_p`, `repeat_penalty`, `grammar` | Yes | No: not part of the OpenAI format |
 | `chat.skip_reasoning` | Yes | No: it answers `reasoning_unavailable` |
 | `models.load`, `models.inspect`, `models.remove`, `models.download`, `system.plan` | Yes | No: they answer `provider_model` |
-| Engine memory, `session_id`, server-side tools, context planning, KV cache | Yes | No: the request goes to the provider |
-| Files and images in the terminal | Yes | Not yet |
+| The chat's KV cache, idle-time cards written by the model | Yes | No: nothing is loaded here |
 
-## What `/v1/chat/completions` does with a provider's model
+A model that calls a function it was not given (such as a suggested tool it did not load first) is refused by some providers. The Engine then answers that call itself, as it does for an installed model, so the turn goes on.
 
-1. It sends the OpenAI fields of the request (`messages`, `tools`, `temperature`, `max_tokens` and the like). The Engine's own fields (`session_id`, `think_mode`, `top_k`, …) are left out and named in the `X-Cluaiz-Ignored` response header.
-2. Sampler fields the request leaves out come from settings.json, as for an installed model.
-3. When the provider says the request does not fit its context, the oldest turns are left out (system messages and the last question stay) and the request is sent again. The `X-Cluaiz-Dropped-Messages` header says how many messages went.
-4. The answer comes back with `model` set to the full name (`myapi/model-name`). A stream's chunks carry this request's id, so `chat.cancel` with that `stream_id` stops it.
-5. `X-Cluaiz-Provider` names the provider. Errors are `{"error": {"type": "provider_error", "provider": "...", "message": "..."}}` with the provider's status code, and say the cause in plain words: a refused key, an unknown model, a rate limit or a full context.
+Errors from the provider have `"type": "provider_error"` (HTTP 502 for a whole answer) and say the cause in plain words: a refused key, an unknown model, a rate limit; a full context is `exceed_context_size_error`.
 
 ## Embeddings, speech and transcription
 
@@ -119,7 +118,7 @@ API authentication stays your setting. When it is off and a provider has a key, 
 
 For transcription, the audio is read as for an installed model: `input_source` or `file` may be a data URI, a URL or an allowed local file, in any format the Engine decodes. It is sent to the provider as one-channel WAV.
 
-Each provider has its own voices, languages and limits. The Engine passes `voice` on as it is; the provider's answer says when one is not accepted, and many providers need one. A WAV whose header has no length (as streamed audio often has) gets its real sizes, so players and the Engine read it whole. Fields a provider does not take are named in `X-Cluaiz-Ignored`, as for chat.
+Each provider has its own voices, languages and limits. The Engine passes `voice` on as it is; the provider's answer says when one is not accepted, and many providers need one. A WAV whose header has no length (as streamed audio often has) gets its real sizes, so players and the Engine read it whole. Fields a provider does not take are named in the `X-Cluaiz-Ignored` response header, and `X-Cluaiz-Provider` names the provider.
 
 Engine memory, document ingest and workspace indexes keep using an installed embedding model: vectors from different models do not mix, and these features would otherwise send every text they index to the provider. `cluaiz model set-vector` therefore takes an installed model only.
 
@@ -128,6 +127,4 @@ Engine memory, document ingest and workspace indexes keep using an installed emb
 ## Not yet
 
 - Providers with their own request format, not OpenAI-compatible. A service that also offers an OpenAI-compatible URL can be used through that URL.
-- Files and images sent to a provider's model from the terminal.
-- Engine memory for a provider's chats, and its server-side tools.
 - A settings page in the App.

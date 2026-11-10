@@ -212,22 +212,26 @@ pub async fn prepare(
     tools: &mut Tools,
     settings: MediaSettings,
     history: &[ChatMessage<Vec<PreparedPart>>],
-    model: &Path,
+    model: Option<&Path>,
 ) -> Result<Vec<PreparedPart>> {
     let cancel = Arc::new(AtomicBool::new(false));
     let mut guard = cluaiz_media::request::PreparationGuard::new(cancel.clone());
-    let package = cluaiz_models::capabilities::PackageCapabilities::inspect(model)
-        .map_err(|e| eyre!("{e:#}"))?;
+    // An installed model says what it reads; a provider's model (None) gets text, images and
+    // sounds, and the provider says when it does not read one. Documents arrive as their text.
+    let (supported, document_images) = match model {
+        Some(model) => {
+            let package = cluaiz_models::capabilities::PackageCapabilities::inspect(model).map_err(|e| eyre!("{e:#}"))?;
+            let supported = package.supported_inputs();
+            let images = supported.contains(&cluaiz_core::Modality::Image);
+            (supported, images)
+        }
+        None => (vec![cluaiz_core::Modality::Text, cluaiz_core::Modality::Image, cluaiz_core::Modality::Audio], false),
+    };
     let resolver = SourceResolver::from_environment(settings)
         .map_err(|e| eyre!("{e:#}"))?
-        .with_document_images(
-            package
-                .supported_inputs()
-                .contains(&cluaiz_core::Modality::Image),
-        )
+        .with_document_images(document_images)
         .with_cancellation(cancel.clone());
     let mut retained = PreparedPart::request_bytes(history).map_err(|error| eyre!("{error:#}"))?;
-    let supported = package.supported_inputs();
     let mut result = Vec::new();
     for attachment in input {
         let parts = match attachment.payload {

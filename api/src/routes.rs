@@ -27,7 +27,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         ])
         .allow_origin(tower_http::cors::Any);
 
-    let chat = post(handlers::chat::chat_entry).layer(from_fn(attachment_body_limit));
+    let chat = post(handlers::chat::chat_completions).layer(from_fn(attachment_body_limit));
 
     Router::new()
         // ── 1. Core Health & Info ──
