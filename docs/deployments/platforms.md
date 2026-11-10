@@ -9,11 +9,11 @@ Cluaiz ships as a **core** plus optional **GPU packs** (see [Release Workflow](c
 | Platform | Core | Status |
 |---|---|---|
 | Windows 10 / 11 x64, Windows Server 2025 | `win-x64` | Tested (Windows 11: CPU and RTX 3050 with the CUDA 13 pack; Windows Server 2025: CPU, [run](../../test/cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md)) |
-| Linux x64, glibc 2.38+ (Ubuntu 24.04, Debian 13, Fedora 39 or newer) | `linux-x64` | Tested (Ubuntu 24.04: CPU, and NVIDIA Tesla T4 with the CUDA 12 pack; Debian 13 and Fedora 42: CPU, [run](../../test/cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md)) |
-| Linux ARM64, glibc 2.38+ | `linux-arm64` | Tested (AWS Graviton2, Ubuntu 24.04: CPU, [run](../../test/cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md)) |
+| Linux x64, glibc 2.39+ (Ubuntu 24.04, Debian 13, Fedora 40 or newer) | `linux-x64` | Tested (Ubuntu 24.04: CPU, and NVIDIA Tesla T4 with the CUDA 12 pack; Debian 13 and Fedora 42: CPU, [run](../../test/cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md)) |
+| Linux ARM64, glibc 2.39+ | `linux-arm64` | Tested (AWS Graviton2, Ubuntu 24.04: CPU, [run](../../test/cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md)) |
 | macOS 14 or newer, Apple Silicon | `mac-arm64` | Run on a MacBook Air M5 16 GB: installs and chats at llama.cpp's speed for the same settings ([run](../../test/mac/runs/2026-10-28-m5-air-16gb/SUMMARY.md)). macOS 15 on a GitHub runner (virtual M1): install, and auto placement on the Metal GPU ([run](../../test/cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md)); speed with that placement on a real Mac is not measured yet |
 
-Older Linux (Ubuntu 22.04, Debian 12, Raspberry Pi OS Bookworm, NVIDIA Jetson on Ubuntu 22.04, and WSL with Ubuntu 22.04) is not supported yet: the bundled ONNX Runtime needs glibc 2.38. The installer stops with this message. macOS before 14, Intel Macs and Windows on ARM are not supported yet either; the installers say so before downloading.
+Older Linux (Ubuntu 22.04, Debian 12, Raspberry Pi OS Bookworm, NVIDIA Jetson on Ubuntu 22.04, and WSL with Ubuntu 22.04) is not supported yet: the release is built on Ubuntu 24.04 and needs glibc 2.39. The installer stops with this message. macOS before 14, Intel Macs and Windows on ARM are not supported yet either; the installers say so before downloading.
 
 ## CPU
 

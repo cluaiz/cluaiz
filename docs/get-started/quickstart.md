@@ -36,7 +36,7 @@ curl -fsSL https://cluaiz.com/install.sh | bash
 *   **Silent Secure Flags (`-fsSL`):** Sets curl to fail silently on server errors, suppress progress bars, allow redirects, and connect securely over SSL.
 *   **Piped Shell (`| bash`):** Directs the downloaded shell instructions directly to the bash shell interpreter.
 *   **Behind the Scenes:**
-    *   It downloads the core for your OS and processor (Linux x64 / ARM64 with glibc 2.38+, macOS 14 or newer on Apple Silicon) from the newest GitHub release. The core picks the fastest CPU code for your processor at start, so there is no separate AVX2 / AVX-512 download.
+    *   It downloads the core for your OS and processor (Linux x64 / ARM64 with glibc 2.39+, macOS 14 or newer on Apple Silicon) from the newest GitHub release. The core picks the fastest CPU code for your processor at start, so there is no separate AVX2 / AVX-512 download.
     *   On Linux it adds the CUDA pack when `nvidia-smi` finds an NVIDIA GPU, or the Vulkan pack for an AMD GPU. Set `CLUAIZ_GPU=cpu|cuda|vulkan` to choose yourself.
     *   Every file is checked against the release's `SHA256SUMS.txt`, unpacked into `~/.cluaiz/bin`, and that folder is added to your shell profile (`.bashrc` / `.zshrc` / `.profile`).
 

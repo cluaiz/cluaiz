@@ -171,12 +171,12 @@ fi
 platform="$os-$arch"
 
 if [ "$os" = "linux" ]; then
-  # The release is built on Ubuntu 24.04: it needs glibc 2.38 or newer
+  # The release is built on Ubuntu 24.04: the cluaiz binary needs glibc 2.39 or newer
   glibc=$(ldd --version 2>/dev/null | head -n1 | grep -oE '[0-9]+\.[0-9]+$' || true)
   if [ -n "$glibc" ]; then
     major=${glibc%.*}; minor=${glibc#*.}
-    if [ "$major" -lt 2 ] || { [ "$major" -eq 2 ] && [ "$minor" -lt 38 ]; }; then
-      fail "glibc $glibc found; Cluaiz needs glibc 2.38 or newer (Ubuntu 24.04, Debian 13, Fedora 39 or newer)"
+    if [ "$major" -lt 2 ] || { [ "$major" -eq 2 ] && [ "$minor" -lt 39 ]; }; then
+      fail "glibc $glibc found; Cluaiz needs glibc 2.39 or newer (Ubuntu 24.04, Debian 13, Fedora 40 or newer)"
     fi
   fi
 fi
