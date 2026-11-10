@@ -4664,16 +4664,16 @@
             "value": {
               "providers": [
                 {
-                  "base_url": "https://api.groq.com/openai/v1",
-                  "key": "env GROQ_API_KEY",
+                  "base_url": "https://api.example.com/v1",
+                  "key": "env MYAPI_KEY",
                   "models": [
                     {
-                      "context": 131072,
-                      "id": "qwen/qwen3-32b",
-                      "model": "groq/qwen/qwen3-32b"
+                      "context": 32768,
+                      "id": "model-name",
+                      "model": "myapi/model-name"
                     }
                   ],
-                  "name": "groq",
+                  "name": "myapi",
                   "type": "openai"
                 }
               ]
@@ -4723,7 +4723,7 @@
           "params": [
             {
               "name": "name",
-              "value": "groq"
+              "value": "myapi"
             }
           ],
           "result": {
@@ -4731,9 +4731,9 @@
             "value": {
               "models": [
                 {
-                  "context": 131072,
-                  "id": "qwen/qwen3-32b",
-                  "model": "groq/qwen/qwen3-32b"
+                  "context": 32768,
+                  "id": "model-name",
+                  "model": "myapi/model-name"
                 }
               ]
             }
@@ -4791,13 +4791,13 @@
           "params": [
             {
               "name": "name",
-              "value": "groq"
+              "value": "myapi"
             }
           ],
           "result": {
             "name": "result",
             "value": {
-              "removed": "groq"
+              "removed": "myapi"
             }
           }
         }
@@ -4853,39 +4853,39 @@
           "params": [
             {
               "name": "api_key_env",
-              "value": "GROQ_API_KEY"
+              "value": "MYAPI_KEY"
             },
             {
               "name": "base_url",
-              "value": "https://api.groq.com/openai/v1"
+              "value": "https://api.example.com/v1"
             },
             {
               "name": "models",
               "value": {
-                "qwen/qwen3-32b": {
-                  "context": 131072
+                "model-name": {
+                  "context": 32768
                 }
               }
             },
             {
               "name": "name",
-              "value": "groq"
+              "value": "myapi"
             }
           ],
           "result": {
             "name": "result",
             "value": {
               "provider": {
-                "base_url": "https://api.groq.com/openai/v1",
-                "key": "env GROQ_API_KEY",
+                "base_url": "https://api.example.com/v1",
+                "key": "env MYAPI_KEY",
                 "models": [
                   {
-                    "context": 131072,
-                    "id": "qwen/qwen3-32b",
-                    "model": "groq/qwen/qwen3-32b"
+                    "context": 32768,
+                    "id": "model-name",
+                    "model": "myapi/model-name"
                   }
                 ],
-                "name": "groq",
+                "name": "myapi",
                 "type": "openai"
               }
             }
@@ -4912,7 +4912,7 @@
           "required": false,
           "schema": {
             "default": null,
-            "description": "Name of the environment variable that holds the key, such as `GROQ_API_KEY`",
+            "description": "Name of the environment variable that holds the key, such as `MYAPI_KEY`",
             "type": [
               "string",
               "null"
@@ -4923,7 +4923,7 @@
           "name": "base_url",
           "required": true,
           "schema": {
-            "description": "OpenAI-compatible base URL, such as `https://api.groq.com/openai/v1`",
+            "description": "OpenAI-compatible base URL, such as `https://api.example.com/v1`",
             "type": "string"
           }
         },
@@ -4934,7 +4934,7 @@
             "additionalProperties": {
               "$ref": "#/components/schemas/ModelParams"
             },
-            "description": "Models to list, with their context size in tokens: `{\"qwen/qwen3-32b\": {\"context\": 131072}}`",
+            "description": "Models to list, with their context size in tokens: `{\"model-name\": {\"context\": 32768}}`",
             "type": [
               "object",
               "null"
@@ -4945,7 +4945,7 @@
           "name": "name",
           "required": true,
           "schema": {
-            "description": "Provider name, the first part of its model names (`groq` → `groq/<model>`): letters, digits, - and _",
+            "description": "Provider name, the first part of its model names (`myapi` → `myapi/<model>`): letters, digits, - and _",
             "type": "string"
           }
         }
@@ -4996,18 +4996,18 @@
           "params": [
             {
               "name": "model",
-              "value": "qwen/qwen3-32b"
+              "value": "model-name"
             },
             {
               "name": "name",
-              "value": "groq"
+              "value": "myapi"
             }
           ],
           "result": {
             "name": "result",
             "value": {
               "answer": "ready",
-              "model": "groq/qwen/qwen3-32b",
+              "model": "myapi/model-name",
               "ms": 420
             }
           }

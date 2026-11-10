@@ -88,7 +88,7 @@ enum CliCommand {
         #[command(subcommand)]
         command: Option<PermissionCommand>,
     },
-    /// Model providers (OpenRouter, Groq, Ollama, …): their models are used as `<provider>/<model>`
+    /// Model providers (OpenAI-compatible APIs): their models are used as `<provider>/<model>`
     Provider {
         #[command(subcommand)]
         command: cli::provider::ProviderCommand,

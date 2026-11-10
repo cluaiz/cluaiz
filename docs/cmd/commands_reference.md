@@ -91,11 +91,11 @@ cluaiz token remove 7898
 | `cluaiz provider test <name> [model]` | One short request: the URL, the key and the model work |
 | `cluaiz provider remove <name>` (`rm`) | Remove a provider |
 
-A provider's model is used as `<provider>/<model>`: `cluaiz run groq/qwen/qwen3-32b`, `cluaiz agent -m groq/qwen/qwen3-32b`. See [Model providers](../engine/providers.md).
+A provider's model is used as `<provider>/<model>`: `cluaiz run myapi/model-name`, `cluaiz agent -m myapi/model-name`. See [Model providers](../engine/providers.md).
 
 ```bash
-cluaiz provider add groq --url https://api.groq.com/openai/v1 --key-env GROQ_API_KEY
-cluaiz provider test groq qwen/qwen3-32b
+cluaiz provider add myapi --url https://api.example.com/v1 --key-env MYAPI_KEY
+cluaiz provider test myapi model-name
 ```
 
 ---

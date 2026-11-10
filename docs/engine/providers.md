@@ -1,51 +1,41 @@
 # Model providers
 
-A model provider is another service that runs models, such as Groq, OpenRouter, OpenAI, or Ollama and LM Studio on the same computer. Once a provider is added, its models work in `cluaiz run`, `cluaiz agent` and `/v1/chat/completions`, next to the models installed in Cluaiz.
+A model provider is another service with an OpenAI-compatible API, on the internet or on the same computer. Once a provider is added, its models work in `cluaiz run`, `cluaiz agent` and `/v1/chat/completions`, next to the models installed in Cluaiz.
 
-A provider's model is named `<provider>/<model>`: `groq/qwen/qwen3-32b` is the model `qwen/qwen3-32b` at the provider named `groq`.
+A provider's model is named `<provider>/<model>`: `myapi/model-name` is the model `model-name` at the provider named `myapi`. The names in this page are placeholders: use your service's base URL, key and model ids.
 
 ## Add a provider
 
 ```bash
-cluaiz provider add groq --url https://api.groq.com/openai/v1 --key-env GROQ_API_KEY
+cluaiz provider add myapi --url https://api.example.com/v1 --key-env MYAPI_KEY
 ```
 
 - `--url` is the provider's OpenAI-compatible base URL. The Engine adds `/chat/completions` and `/models` to it.
-- `--key-env` names the environment variable that holds the key. The key stays out of the file. The Engine also reads the variable from `config/.env` in the Cluaiz folder (`~/.cluaiz/config/.env`), as a line `GROQ_API_KEY=<key>`.
+- `--key-env` names the environment variable that holds the key. The key stays out of the file. The Engine also reads the variable from `config/.env` in the Cluaiz folder (`~/.cluaiz/config/.env`), as a line `MYAPI_KEY=<key>`.
 - `--key <key>` keeps the key in `providers.json` instead; `--key -` reads it from stdin, which keeps it out of the shell history.
-- A provider that needs no key, such as a local Ollama, needs neither.
-- `--model <id>=<context>` lists a model with its context size, such as `--model qwen/qwen3-32b=131072`.
+- A provider that needs no key, such as Ollama on the same computer (`--url http://localhost:11434/v1`), needs neither.
+- `--model <id>=<context>` lists a model with its context size, such as `--model model-name=32768`.
 
-Base URLs of some services:
-
-| Service | `--url` |
-|---|---|
-| Groq | `https://api.groq.com/openai/v1` |
-| OpenRouter | `https://openrouter.ai/api/v1` |
-| OpenAI | `https://api.openai.com/v1` |
-| Ollama on this computer | `http://localhost:11434/v1` |
-| LM Studio on this computer | `http://localhost:1234/v1` |
-
-These are the services' published addresses; check the service's own documentation if one changes.
+The base URL is in your service's documentation; it usually ends in `/v1`.
 
 ## Use its models
 
 ```bash
-cluaiz provider models groq           # the models it offers, with their context size
-cluaiz provider test groq qwen/qwen3-32b
-cluaiz run groq/qwen/qwen3-32b "Explain this error"
-cluaiz agent -m groq/qwen/qwen3-32b
-cluaiz model set-chat groq/qwen/qwen3-32b   # the default for `cluaiz agent` and model "auto"
+cluaiz provider models myapi           # the models it offers, with their context size
+cluaiz provider test myapi model-name
+cluaiz run myapi/model-name "Explain this error"
+cluaiz agent -m myapi/model-name
+cluaiz model set-chat myapi/model-name   # the default for `cluaiz agent` and model "auto"
 ```
 
-In the agent, `/model groq/<model>` switches to a provider's model and `/model <installed id>` switches back; the conversation is kept.
+In the agent, `/model myapi/<model>` switches to a provider's model and `/model <installed id>` switches back; the conversation is kept.
 
 From an app, send the full name as `model`:
 
 ```bash
 curl http://localhost:8000/v1/chat/completions \
   -H "Content-Type: application/json" \
-  -d '{"model": "groq/qwen/qwen3-32b", "messages": [{"role": "user", "content": "Hello"}], "stream": true}'
+  -d '{"model": "myapi/model-name", "messages": [{"role": "user", "content": "Hello"}], "stream": true}'
 ```
 
 `/v1/models` lists the models in providers.json too, with `provider` and `context_window`.
@@ -57,11 +47,11 @@ curl http://localhost:8000/v1/chat/completions \
 ```json
 {
   "providers": {
-    "groq": {
+    "myapi": {
       "type": "openai",
-      "base_url": "https://api.groq.com/openai/v1",
-      "api_key_env": "GROQ_API_KEY",
-      "models": { "qwen/qwen3-32b": { "context": 131072 } }
+      "base_url": "https://api.example.com/v1",
+      "api_key_env": "MYAPI_KEY",
+      "models": { "model-name": { "context": 32768 } }
     },
     "ollama": {
       "type": "openai",
@@ -85,7 +75,7 @@ Apps manage the same file through CEP: [`providers.list`](../api/cep/models/prov
 
 ## Keys and API authentication
 
-A key is sent only to its provider's own URL, in the `Authorization` header. It is never logged, and every list and error shows it masked or names only where it comes from (`env GROQ_API_KEY`, `file gsk_…a1b2`).
+A key is sent only to its provider's own URL, in the `Authorization` header. It is never logged, and every list and error shows it masked or names only where it comes from (`env MYAPI_KEY`, `file sk-a…a1b2`).
 
 API authentication stays your setting. When it is off and a provider has a key, anyone who can reach the server can use that key through it. `cluaiz provider add`, `cluaiz provider list`, `cluaiz serve` and the CEP replies then say so. On your own computer that is often fine; on a shared network or a server, turn authentication on with `cluaiz token create`, and send `Authorization: Bearer <token>` with each request.
 

@@ -16,14 +16,14 @@ params:
     type: "string"
     req: true
     desc: "Provider name"
-    example: "groq"
+    example: "myapi"
 request_payload: |
   {
     "id": 1,
     "jsonrpc": "2.0",
     "method": "providers.remove",
     "params": {
-      "name": "groq"
+      "name": "myapi"
     }
   }
 response: |
@@ -31,7 +31,7 @@ response: |
     "id": 1,
     "jsonrpc": "2.0",
     "result": {
-      "removed": "groq"
+      "removed": "myapi"
     }
   }
 errors:

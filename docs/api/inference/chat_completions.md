@@ -326,7 +326,7 @@ Use a URL serving a real image, an authorized server-local path, or a real data 
 
 ### A provider's model
 
-A model named `<provider>/<model>`, such as `groq/qwen/qwen3-32b`, belongs to a provider in providers.json ([Model providers](../../engine/providers.md)). The Engine sends the request's OpenAI fields to that provider and returns its answer, streamed or whole, as the provider sent it. The Engine's own fields and features (`session_id`, memory, server-side tools, context planning) do not apply to it. `/v1/models` lists these models with `provider` and `context_window`.
+A model named `<provider>/<model>`, such as `myapi/model-name`, belongs to a provider in providers.json ([Model providers](../../engine/providers.md)). The Engine sends the request's OpenAI fields to that provider and returns its answer, streamed or whole, as the provider sent it. The Engine's own fields and features (`session_id`, memory, server-side tools, context planning) do not apply to it. `/v1/models` lists these models with `provider` and `context_window`.
 
 ## Request flow
 

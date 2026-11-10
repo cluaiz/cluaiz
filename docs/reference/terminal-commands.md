@@ -79,7 +79,7 @@ What each `cluaiz` command does, and the API method that does the same thing ove
 * API: CEP `tokens.create`, `tokens.list`, `tokens.revoke`.
 
 ### `cluaiz provider add|list|models|test|remove`
-* Model providers (Groq, OpenRouter, a local Ollama, …) in providers.json. Their models are used as
+* Model providers (services with an OpenAI-compatible API) in providers.json. Their models are used as
   `<provider>/<model>` in `run`, `agent -m` and `/v1/chat/completions`. See
   [Model providers](../engine/providers.md).
 * API: CEP `providers.set`, `providers.list`, `providers.models`, `providers.test`, `providers.remove`.

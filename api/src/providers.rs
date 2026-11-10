@@ -100,7 +100,7 @@ pub struct OfferedModel {
 }
 
 /// `GET {base_url}/models`: the models the provider offers. Context sizes come from the fields
-/// providers use (`context_length` at OpenRouter, `context_window` at Groq, and others).
+/// providers use (`context_length`, `context_window` and others).
 pub async fn models(name: &str, provider: &Provider) -> Result<Vec<OfferedModel>, String> {
     let target = Target { provider: name.to_string(), config: provider.clone(), model: String::new() };
     let (builder, key) = request(provider, reqwest::Method::GET, &provider.models_url())?;
