@@ -97,7 +97,7 @@ A provider's chat model runs through the Engine's own chat, as an installed mode
 | `chat.cancel` on a stream | Yes | Yes |
 | Thinking shown | Yes | When the provider sends it (`reasoning_content`, `reasoning`, or `<think>` tags); `think_mode: "off"` / `--think off` hides it |
 | `reasoning_effort` | Yes | `low`, `medium` and `high` only |
-| Context size (`-c`, `n_ctx`) | Sets the loaded context | Sets how much of the conversation is kept; the provider's own limit still applies |
+| Context size: `-c` in the terminal, `llama.n_ctx` in a request | Sets the loaded context | `-c` sets how much of the conversation is kept; `llama.n_ctx` is a load setting and does not apply. The provider's own limit still applies |
 | Load settings: GPU layers, VRAM and RAM buffers, KV cache, threads, batch, mmap, flash attention, `keep_alive` | Yes | No: the provider runs the model. A terminal flag given is named in a note |
 | `top_k`, `min_p`, `repeat_penalty`, `grammar` | Yes | No: not part of the OpenAI format |
 | `chat.skip_reasoning` | Yes | No: it answers `reasoning_unavailable` |

@@ -1,6 +1,6 @@
 # Cluaiz Engine — Model Support
 
-Updated: November 9, 2026
+Updated: November 10, 2026
 
 Cluaiz runs local models through **llama.cpp for GGUF** and **ONNX Runtime for ONNX**. It provides APIs for chat, speech, embeddings and document processing.
 
@@ -12,6 +12,7 @@ Cluaiz runs local models through **llama.cpp for GGUF** and **ONNX Runtime for O
 - **EmbeddingGemma-2:** GGUF text embedding support includes its projected 768-dimensional output.
 - **Images to a vision model:** a compatible GGUF vision model reads an image and returns its text or an answer. Rendering PDF pages for it needs the OCR pack, which the release packages do not include yet.
 - **Model discovery:** installed model IDs, voices and language capabilities are available through the API.
+- **Model providers:** models of an OpenAI-compatible API, added in `providers.json`, work as `<provider>/<model>` in chat, embeddings, speech and transcription, beside the installed models. See [Model providers](docs/engine/providers.md).
 
 ## Support at a glance
 
@@ -174,13 +175,13 @@ Quantization support depends on the native kernels or ONNX export/provider combi
 | [`POST /v1/audio/speech`](docs/api/inference/audio_speech.md) | Text-to-speech |
 | [`POST /v1/audio/transcriptions`](docs/api/inference/audio_transcriptions.md) | ONNX speech-to-text |
 | [`POST /v1/embeddings`](docs/api/inference/embeddings.md) | Text or supported image vectors |
-| `GET /v1/models` | Installed models (OpenAI format) |
+| `GET /v1/models` | Installed models and providers' models (OpenAI format) |
 | [`POST /v1/ingest`](docs/api/inference/ingest.md) | Direct document/image extraction, optional selected-model text or vectors; final JSON response |
 | [`POST /v1/cep`](docs/api/cep/README.md) | Engine controls as CEP methods: `audio.run`, `audio.voices`, `audio.languages`, `models.list`, … |
 
-Use the exact installed model ID in the request.
+Use the exact installed model ID in the request, or `<provider>/<model>` for a provider's model.
 
-Requests use Bearer authentication. Media can be supplied through actual data URIs, authorized engine-local paths or permitted HTTP(S) sources. Size limits and resource admission apply before expensive processing. Streaming and retention controls are documented per endpoint; they are not identical across all tasks.
+Requests use Bearer authentication when it is turned on. Media can be supplied through actual data URIs, authorized engine-local paths or permitted HTTP(S) sources. Size limits and resource admission apply before expensive processing. Streaming and retention controls are documented per endpoint; they are not identical across all tasks.
 
 The APIs provide **OpenAI-style compatibility with documented extensions**. Speech returns JSON/Base64 WAV or SSE; transcription accepts JSON rather than multipart uploads. Check each endpoint's payload examples before using an SDK.
 

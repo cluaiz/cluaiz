@@ -116,10 +116,13 @@ pub async fn test(target: &Target, voice: Option<&str>) -> Result<String, String
             Some(format!("a vector of {size} numbers"))
         })
         .await,
-        Some("tts") => test_other(target, "/audio/speech", json!({ "model": target.model, "input": "ready", "response_format": "wav", "voice": voice }), |body| {
-            Some(format!("{} bytes of audio", body.len()))
-        })
-        .await,
+        Some("tts") => {
+            let mut body = json!({ "model": target.model, "input": "ready", "response_format": "wav" });
+            if let Some(voice) = voice {
+                body["voice"] = json!(voice);
+            }
+            test_other(target, "/audio/speech", body, |body| Some(format!("{} bytes of audio", body.len()))).await
+        }
         Some("stt") => Err(format!("{} is a speech-to-text model: test it by sending audio to /v1/audio/transcriptions", target.full_name())),
         _ => test_chat(target).await,
     }
@@ -619,6 +622,24 @@ fn refused_calls(body: &str) -> Option<String> {
     (!text.is_empty()).then(|| text.join("\n"))
 }
 
+/// The complete lines of a server-sent event stream, after `chunk` is added to `pending`. A line
+/// is decoded only when whole, so a character split between two chunks arrives intact.
+pub fn sse_lines(pending: &mut Vec<u8>, chunk: &[u8]) -> Vec<String> {
+    pending.extend_from_slice(chunk);
+    let mut lines = Vec::new();
+    while let Some(end) = pending.iter().position(|&b| b == b'\n') {
+        let line: Vec<u8> = pending.drain(..=end).collect();
+        lines.push(String::from_utf8_lossy(&line).into_owned());
+    }
+    lines
+}
+
+/// The thinking in a stream delta: providers name it `reasoning_content` or `reasoning`, and some
+/// send both with the same text, so only the first is taken
+pub fn delta_reasoning(delta: &Value) -> Option<&str> {
+    ["reasoning_content", "reasoning"].iter().find_map(|field| delta[*field].as_str().filter(|t| !t.is_empty()))
+}
+
 /// The thinking tags provider answers are streamed with
 pub const THINK_START: &str = "<think>";
 pub const THINK_END: &str = "</think>";
@@ -764,7 +785,7 @@ impl ProviderRun {
         let n_ctx = target.context() as usize;
         tokio::spawn(async move {
             let mut response = response;
-            let mut pending = String::new();
+            let mut pending: Vec<u8> = Vec::new();
             let mut in_think = false;
             let mut finish = "eos";
             let mut usage: Option<(usize, usize)> = None;
@@ -789,9 +810,7 @@ impl ProviderRun {
                         return;
                     }
                 };
-                pending.push_str(&String::from_utf8_lossy(&chunk));
-                while let Some(end) = pending.find('\n') {
-                    let line: String = pending.drain(..=end).collect();
+                for line in sse_lines(&mut pending, &chunk) {
                     let Some(data) = line.trim().strip_prefix("data:").map(str::trim) else { continue };
                     if data == "[DONE]" {
                         break 'read;
@@ -826,14 +845,12 @@ impl ProviderRun {
                     }
                     let delta = &choice["delta"];
                     let mut out = String::new();
-                    for field in ["reasoning_content", "reasoning"] {
-                        if let Some(thinking) = delta[field].as_str().filter(|t| show_thinking && !t.is_empty()) {
-                            if !in_think {
-                                out.push_str(THINK_START);
-                                in_think = true;
-                            }
-                            out.push_str(thinking);
+                    if let Some(thinking) = delta_reasoning(delta).filter(|_| show_thinking) {
+                        if !in_think {
+                            out.push_str(THINK_START);
+                            in_think = true;
                         }
+                        out.push_str(thinking);
                     }
                     if let Some(text) = delta["content"].as_str().filter(|t| !t.is_empty()) {
                         if in_think {
@@ -965,6 +982,18 @@ mod tests {
         assert!(text.contains("name=\"file\"; filename=\"audio.wav\"\r\nContent-Type: audio/wav\r\n\r\nRIFFdata\r\n"));
         assert!(text.ends_with(&format!("--{boundary}--\r\n")));
         assert_eq!(ignored_of(&json!({ "model": "m", "input": "x", "keep_alive": 5, "user": null }), &["model", "input"]), vec!["keep_alive"]);
+    }
+
+    #[test]
+    fn a_character_split_between_chunks_arrives_whole() {
+        let line = "data: {\"t\":\"नमस्ते 👋\"}\n".as_bytes();
+        let cut = line.iter().position(|&b| b >= 0x80).unwrap() + 1;
+        let mut pending = Vec::new();
+        assert!(sse_lines(&mut pending, &line[..cut]).is_empty());
+        assert_eq!(sse_lines(&mut pending, &line[cut..]), vec!["data: {\"t\":\"नमस्ते 👋\"}\n".to_string()]);
+        assert!(pending.is_empty());
+        assert_eq!(delta_reasoning(&json!({ "reasoning_content": "a", "reasoning": "a" })), Some("a"));
+        assert_eq!(delta_reasoning(&json!({ "reasoning_content": "", "reasoning": "b" })), Some("b"));
     }
 
     #[test]

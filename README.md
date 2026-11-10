@@ -210,6 +210,8 @@ Reference: [`docs/api/README.md`](docs/api/README.md) and [`docs/api/cep/README.
 | `cluaiz run <model> ["prompt"]` | Chat in the terminal, or answer one prompt ([guide](docs/cmd/chat.md)) |
 | `cluaiz agent ["task"]` | Coding agent in a folder: reads, searches, edits files, runs commands; asks before changes ([guide](docs/cmd/agent.md)) |
 | `cluaiz pull`, `list`, `rm`, `show` | Download, list, remove, inspect models (with the plan) |
+| `cluaiz model set-chat`, `set-vector` | The default chat and embedding models |
+| `cluaiz provider add`, `list`, `models`, `test`, `remove` | Models of an OpenAI-compatible API, used as `<provider>/<model>` ([guide](docs/engine/providers.md)) |
 | `cluaiz serve`, `ps` | Start the API server; show the loaded model |
 | `cluaiz bench <model>` | Prompt and generation speed (llama-bench) |
 | `cluaiz status`, `calibrate` | The hardware the planner sees; re-scan after a hardware change |

@@ -32,6 +32,7 @@ response: |
             {
               "context": 32768,
               "id": "model-name",
+              "kind": "chat",
               "model": "myapi/model-name"
             }
           ],
@@ -46,7 +47,7 @@ errors: []
 
 # providers.list
 
-Lists the model providers in `config/providers.json` and the models listed for each. A provider's model is used by its full name, `<provider>/<model>`, in `/v1/chat/completions`, `cluaiz run` and `cluaiz agent -m`.
+Lists the model providers in `config/providers.json` and the models listed for each. A provider's model is used by its full name, `<provider>/<model>`, in `/v1/chat/completions`, `/v1/embeddings`, `/v1/audio/*`, `cluaiz run` and `cluaiz agent -m`.
 
 ## Result
 
@@ -56,14 +57,14 @@ Lists the model providers in `config/providers.json` and the models listed for e
 | `providers[].type` | Request format. Only `openai` (OpenAI Chat Completions) for now |
 | `providers[].base_url` | The provider's OpenAI-compatible base URL |
 | `providers[].key` | Where the key comes from (see below) |
-| `providers[].models[]` | Listed models: `id` at the provider, `model` as the full name, `context` in tokens |
+| `providers[].models[]` | Listed models: `id` at the provider, `model` as the full name, `kind` (`chat`, `embedding`, `tts` or `stt`), `context` in tokens |
 | `warning` | Present only when API authentication is off and a provider has a key |
 
 Replies never contain a key. `key` says only where it comes from: `env MYAPI_KEY` (an environment variable, also read from `config/.env` in the Cluaiz folder), `file sk-a…a1b2` (kept in providers.json, shown masked) or `none`.
 
 When API authentication is off (`api_auth.required` is false) and a provider has a key, the result also has a `warning`: anyone who can reach the server can then use that key. Authentication stays the owner's setting; this method does not change it. Turn it on with `cluaiz token create` or `tokens.create` plus `api_auth.required`.
 
-A provider's other models can be used too; listing a model only records its context size.
+A provider's other models can be used too; listing a model records its context size and its kind.
 
 ## Related
 

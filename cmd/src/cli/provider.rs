@@ -90,8 +90,11 @@ pub async fn execute(command: ProviderCommand) -> Result<()> {
                     Some((id, n)) => (id.to_string(), Some(n.parse::<u32>().map_err(|_| eyre!("'{model}': the context is a number of tokens"))?)),
                     None => (model, None),
                 };
+                // A context recorded before stays when none is given now
                 let entry = provider.models.entry(id).or_default();
-                entry.context = context;
+                if context.is_some() {
+                    entry.context = context;
+                }
                 entry.kind = None;
             }
             for (kind, ids) in [("embedding", embedding), ("tts", tts), ("stt", stt)] {

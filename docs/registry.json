@@ -251,7 +251,9 @@
         "group": "Command Manual",
         "pages": [
           { "slug": "cli-manual", "title": "⚙️ CLI Manual", "file_path": "docs/cmd/manual.md" },
-          { "slug": "commands-reference", "title": "📋 Commands Reference", "file_path": "docs/cmd/commands_reference.md" }
+          { "slug": "commands-reference", "title": "📋 Commands Reference", "file_path": "docs/cmd/commands_reference.md" },
+          { "slug": "terminal-chat", "title": "💬 Terminal Chat", "file_path": "docs/cmd/chat.md" },
+          { "slug": "coding-agent", "title": "🤖 Coding Agent", "file_path": "docs/cmd/agent.md" }
         ]
       }
     ]
@@ -269,6 +271,7 @@
           { "slug": "prefix-caching-architecture", "title": "⚡ KV Cache Reuse", "file_path": "docs/engine/prefix_caching_architecture.md" },
           { "slug": "permission", "title": "🔒 permission.json", "file_path": "docs/engine/permission.md" },
           { "slug": "providers", "title": "🔗 Model Providers", "file_path": "docs/engine/providers.md" },
+          { "slug": "moe-ssd-streaming", "title": "🧩 MoE Models on Small GPUs", "file_path": "docs/engine/moe_ssd_streaming.md" },
           { "slug": "system-control", "title": "⚙️ Hardware Profile", "file_path": "docs/engine/system_control.md" }
         ]
       },
@@ -304,7 +307,8 @@
       {
         "group": "Platform Matrix",
         "pages": [
-          { "slug": "platforms", "title": "🌌 Platform Support Matrix", "file_path": "docs/deployments/platforms.md" }
+          { "slug": "platforms", "title": "🌌 Platform Support Matrix", "file_path": "docs/deployments/platforms.md" },
+          { "slug": "install-layout", "title": "📂 What Gets Installed Where", "file_path": "docs/deployments/install-layout.md" }
         ]
       },
       {
