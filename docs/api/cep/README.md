@@ -49,7 +49,7 @@ Every method has its own page, grouped like the App's API sidebar:
 | AI & Inference Core | `chat`, `audio`, `memory`, `notes`, `prompts`, `context`, `kv`; direct Ingest is separate | [ai-inference/](ai-inference/README.md) |
 | Agents, MCP & Tools | `tools`, `approvals` | [agents-tools/](agents-tools/README.md) |
 | Filesystem & Security Jail | `fs`, `workspace` | [filesystem/](filesystem/README.md) |
-| Models & Engine Vault | `models` | [models/](models/README.md) |
+| Models & Engine Vault | `models`, `providers` | [models/](models/README.md) |
 | System & Infrastructure | `system`, `config`, `storage`, `tokens`, `tasks`, `rpc` | [system/](system/README.md) |
 
 The machine-readable list of every method is [openrpc.json](openrpc.json), the same document `rpc.discover` returns.

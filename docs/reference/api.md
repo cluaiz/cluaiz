@@ -14,7 +14,7 @@ The default base URL is `http://127.0.0.1:8000`; use your configured host/port. 
 | STT | POST | `/v1/audio/transcriptions` | JSON `input_source` or `file` → transcription JSON or token SSE | [Speech to text](../api/inference/audio_transcriptions.md) |
 | Embeddings | POST | `/v1/embeddings` | Text, text batch, or one compatible image input → float vector list | [Embeddings](../api/inference/embeddings.md) |
 | Ingest | POST | `/v1/ingest` | `source`, optional model and controls → final ordered source results | [Ingest](../api/inference/ingest.md) |
-| Models | GET | `/v1/models` | No body → installed model list in the `object/data` shape | [List models](../api/models/list_models.md) |
+| Models | GET | `/v1/models` | No body → installed models and providers' models in the `object/data` shape | [List models](../api/models/list_models.md) |
 | Models | GET | `/api/tags` | No body → installed model list in the tags shape | [List models](../api/models/list_models.md) |
 | Models | POST | `/api/pull` | Model identifier/download controls → pull progress/result | [Pull](../api/models/pull_model.md) |
 | System | GET | `/health` | No body → Engine liveness JSON | [Health](../api/system/health.md) |

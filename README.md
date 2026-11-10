@@ -127,6 +127,12 @@ from `permission.json` (`cluaiz permission port <n>`).
 
 Families and the models tested with each are listed in [`RELEASE.md`](RELEASE.md).
 
+**Model providers.** Models of an OpenAI-compatible API can be added in `providers.json` (`cluaiz provider add`, or
+the CEP `providers.*` methods) and used as `<provider>/<model>` beside the installed models: chat, embeddings,
+text-to-speech and speech-to-text. A provider's chat model runs through the Engine's own chat, so memory, Engine
+tools, context planning and attachments work with it; load settings do not apply. Keys are read from the
+environment or `config/.env` and are never returned in full. See [`docs/engine/providers.md`](docs/engine/providers.md).
+
 ### Documents and ingest
 
 `POST /v1/ingest` and `cluaiz ingest <file>` turn documents and images into text, chunks or vectors. A model is
@@ -179,8 +185,8 @@ Not included yet: the OCR pack and a persistent vector index. Details:
 | `POST /v1/embeddings` | Text and image embeddings |
 | `POST /v1/audio/speech`, `POST /v1/audio/transcriptions` | Text-to-speech, speech-to-text |
 | `POST /v1/ingest` | Document to text or vectors |
-| `GET /v1/models`, `GET /api/tags`, `POST /api/pull` | Installed models, downloads |
-| `POST /v1/cep`, `POST /mcp`, `cluaiz mcp-server` | CEP methods: system, settings, models, files, tools, chat memory, approvals, tasks |
+| `GET /v1/models`, `GET /api/tags`, `POST /api/pull` | Installed models (and providers' models in `/v1/models`), downloads |
+| `POST /v1/cep`, `POST /mcp`, `cluaiz mcp-server` | CEP methods: system, settings, models, model providers, files, tools, chat memory, approvals, tasks |
 | `cep_call` / `cep_free` (C ABI) | The same CEP messages for apps that embed the engine |
 
 Reference: [`docs/api/README.md`](docs/api/README.md) and [`docs/api/cep/README.md`](docs/api/cep/README.md).
@@ -542,6 +548,7 @@ sequenceDiagram
 | HTTP API | [`docs/api/README.md`](docs/api/README.md) |
 | CEP (engine protocol) | [`docs/api/cep/README.md`](docs/api/cep/README.md) |
 | Model families and formats | [`RELEASE.md`](RELEASE.md) |
+| Model providers (OpenAI-compatible APIs) | [`docs/engine/providers.md`](docs/engine/providers.md) |
 | Platforms and GPU packs | [`docs/deployments/platforms.md`](docs/deployments/platforms.md) |
 | Release workflow | [`docs/deployments/cicd.md`](docs/deployments/cicd.md) |
 | Security and auth | [`docs/architecture/security-and-auth-architecture.md`](docs/architecture/security-and-auth-architecture.md) |
