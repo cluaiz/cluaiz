@@ -75,6 +75,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         )
         .error(-32602, "invalid_params", "`model` is empty, `n_ctx` is below -1, `batch_tokens` is 0, or a buffer is negative")
         .error(-32004, "model_not_found", "No installed model with this id, and no usable `model_path`")
+        .error(-32005, "provider_model", "The model is a provider's (`<provider>/<model>` in providers.json); this method works on installed models only")
         .error(-32002, "forbidden", "`model_path` is outside the caller's roots (`data.needs: \"roots\"`)")
         .error(-32010, "gguf_probe_failed", "The GGUF header could not be read")
         .error(-32010, "onnx_probe_failed", "The ONNX package could not be inspected")
@@ -91,6 +92,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
                    "hardware_info":{},"candidates":[]}),
         ),
         |ctx: CallCtx, call: Call, payload: PlanRequest| async move {
+            crate::providers::refuse_provider_model(&payload.model, "system.plan")?;
             plan_execution(ctx, call, payload).await
         },
     );

@@ -103,6 +103,9 @@ errors:
   - code: -32004
     type: "model_not_found"
     when: "No installed model with this id, and no usable `model_path`"
+  - code: -32005
+    type: "provider_model"
+    when: "The model is a provider's (`<provider>/<model>` in providers.json); this method works on installed models only"
   - code: -32002
     type: "forbidden"
     when: "`model_path` is outside the caller's roots (`data.needs: \"roots\"`)"

@@ -76,7 +76,7 @@ pub fn error_message(target: &Target, status: u16, body: &str, key: Option<&str>
         404 => format!("{} has no model '{}' ({status}); see `cluaiz provider models {}`", target.provider, target.model, target.provider),
         429 => format!("{} is rate limiting this key ({status}); wait, or use another model", target.provider),
         400 | 413 if lower.contains("context") || lower.contains("too long") || lower.contains("too large") || lower.contains("reduce the length") => {
-            format!("the request exceeds the available context of {name} ({status})")
+            format!("the request {CONTEXT_FULL} of {name} ({status})")
         }
         _ => format!("{} answered {status}", target.provider),
     };
@@ -189,42 +189,176 @@ pub fn target_of(request: &Value) -> Option<Target> {
     }
 }
 
-/// `/v1/chat/completions` for a provider's model: the request goes to the provider with its OpenAI
-/// fields, and its answer (a stream or JSON) comes back as the provider sent it. The Engine's own
-/// features (memory, server-side tools, context control) do not apply to it.
-pub async fn forward(target: Target, request: Value) -> axum::response::Response {
+/// Fields of the request a provider does not take (the Engine's own, such as `session_id` or
+/// `think_mode`): they are left out and named in the `X-Cluaiz-Ignored` header
+pub fn ignored_fields(request: &Value) -> Vec<String> {
+    let mut ignored: Vec<String> = request
+        .as_object()
+        .map(|fields| fields.iter().filter(|(name, value)| !value.is_null() && !OPENAI_FIELDS.contains(&name.as_str())).map(|(name, _)| name.clone()).collect())
+        .unwrap_or_default();
+    if request.get("reasoning_effort").is_some_and(|v| !v.is_null() && !matches!(v.as_str(), Some("low" | "medium" | "high"))) {
+        ignored.push("reasoning_effort".into());
+    }
+    ignored.sort();
+    ignored
+}
+
+/// The sampler settings of settings.json, for the fields the request does not set (as a request
+/// to an installed model gets them). top_k, min_p and repetition_penalty are not OpenAI fields.
+pub fn add_sampler_defaults(body: &mut Value, samplers: &cluaiz_core::SamplerDefaults) {
+    let defaults = [
+        ("temperature", samplers.temp.map(|v| json!(v))),
+        ("top_p", samplers.top_p.map(|v| json!(v))),
+        ("presence_penalty", samplers.presence_penalty.map(|v| json!(v))),
+        ("frequency_penalty", samplers.frequency_penalty.map(|v| json!(v))),
+        ("seed", samplers.seed.map(|v| json!(v))),
+    ];
+    for (name, value) in defaults {
+        if let (Some(value), Some(fields)) = (value, body.as_object_mut()) {
+            fields.entry(name).or_insert(value);
+        }
+    }
+}
+
+/// Takes out the oldest turn (a user message and every message after it up to the next user
+/// message); system messages at the start stay. Returns how many messages went: 0 when only the
+/// last turn is left, which is never taken out.
+pub fn drop_oldest_turn(messages: &mut Vec<Value>) -> usize {
+    let is_user = |m: &Value| m.get("role").and_then(Value::as_str) == Some("user");
+    let Some(first) = messages.iter().position(is_user) else { return 0 };
+    let Some(next) = messages.iter().skip(first + 1).position(is_user).map(|at| at + first + 1) else { return 0 };
+    messages.drain(first..next);
+    next - first
+}
+
+/// Most turns taken out of one request before the context error is returned as it is
+const MOST_DROPS: usize = 16;
+
+/// The words every context overflow carries, from the Engine and from a provider
+pub const CONTEXT_FULL: &str = "exceeds the available context";
+
+/// `/v1/chat/completions` for a provider's model. The request's OpenAI fields go to the provider,
+/// with settings.json's samplers for those it leaves out; when it does not fit the provider's
+/// context, the oldest turns are left out, as for an installed model. A stream gets this request's
+/// id, so `chat.cancel` stops it, and `model` is the full name in the answer.
+///
+/// Headers: `X-Cluaiz-Provider`, `X-Cluaiz-Ignored` (the Engine fields left out),
+/// `X-Cluaiz-Dropped-Messages` (messages left out to fit).
+pub async fn forward(target: Target, request: Value, request_id: String) -> axum::response::Response {
     use axum::response::IntoResponse;
     let fail = |status: u16, message: String| {
         let status = axum::http::StatusCode::from_u16(status).unwrap_or(axum::http::StatusCode::BAD_GATEWAY);
         (status, axum::Json(json!({ "error": { "message": message, "type": "provider_error", "provider": target.provider } }))).into_response()
     };
-    let body = chat_body(&target, &request);
+    let ignored = ignored_fields(&request);
+    if !ignored.is_empty() {
+        tracing::info!("{}: fields a provider does not take were left out: {}", target.full_name(), ignored.join(", "));
+    }
+    let mut body = chat_body(&target, &request);
+    add_sampler_defaults(&mut body, &cluaiz_core::Settings::current().samplers);
     let streaming = body.get("stream").and_then(Value::as_bool).unwrap_or(false);
-    let (builder, key) = match request_for_chat(&target) {
-        Ok(found) => found,
-        Err(message) => return fail(400, message),
-    };
-    let response = match builder.body(body.to_string()).send().await {
-        Ok(response) => response,
-        Err(error) => return fail(502, send_error(&target, &error, key.as_deref())),
+    let mut dropped = 0usize;
+    let mut turns_dropped = 0usize;
+    let (response, key) = loop {
+        let (builder, key) = match request_for_chat(&target) {
+            Ok(found) => found,
+            Err(message) => return fail(400, message),
+        };
+        let response = match builder.body(body.to_string()).send().await {
+            Ok(response) => response,
+            Err(error) => return fail(502, send_error(&target, &error, key.as_deref())),
+        };
+        let status = response.status().as_u16();
+        if (200..300).contains(&status) {
+            break (response, key);
+        }
+        let text = response.text().await.unwrap_or_default();
+        let message = error_message(&target, status, &text, key.as_deref());
+        if message.contains(CONTEXT_FULL) && turns_dropped < MOST_DROPS {
+            let removed = body.get_mut("messages").and_then(Value::as_array_mut).map(drop_oldest_turn).unwrap_or(0);
+            if removed > 0 {
+                dropped += removed;
+                turns_dropped += 1;
+                tracing::info!("{}: the request did not fit; {dropped} oldest messages left out", target.full_name());
+                continue;
+            }
+        }
+        return fail(status, message);
     };
     let status = response.status().as_u16();
-    if !(200..300).contains(&status) {
-        let text = response.text().await.unwrap_or_default();
-        return fail(status, error_message(&target, status, &text, key.as_deref()));
-    }
     let content_type = response
         .headers()
         .get(reqwest::header::CONTENT_TYPE)
         .and_then(|v| v.to_str().ok())
         .unwrap_or(if streaming { "text/event-stream" } else { "application/json" })
         .to_string();
+    let mut reply = axum::response::Response::builder()
+        .status(status)
+        .header(axum::http::header::CONTENT_TYPE, content_type.clone())
+        .header(axum::http::header::CACHE_CONTROL, "no-cache")
+        .header("x-cluaiz-provider", target.provider.clone());
+    if !ignored.is_empty() {
+        reply = reply.header("x-cluaiz-ignored", ignored.join(","));
+    }
+    if dropped > 0 {
+        reply = reply.header("x-cluaiz-dropped-messages", dropped.to_string());
+    }
+    let full_name = target.full_name();
+    if !streaming || !content_type.contains("event-stream") {
+        let text = response.text().await.unwrap_or_default();
+        let text = match serde_json::from_str::<Value>(&text) {
+            Ok(mut value) if value.is_object() => {
+                value["model"] = json!(full_name);
+                value.to_string()
+            }
+            _ => text,
+        };
+        return reply.body(axum::body::Body::from(text)).unwrap_or_else(|_| fail(500, "the provider's answer could not be passed on".into()));
+    }
+
+    // chat.cancel finds the stream by this request's id; chat.skip_reasoning says it cannot
+    let cancel = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    if let Ok(mut streams) = crate::handlers::chat::types::ACTIVE_STREAMS.write() {
+        streams.insert(
+            request_id.clone(),
+            crate::handlers::chat::types::StreamSignals { cancel: cancel.clone(), skip_reasoning: Default::default(), reasoning_supported: false },
+        );
+    }
     let mut response = response;
     let stream = async_stream::stream! {
+        let _registered = Registered(request_id.clone());
+        let mut pending = String::new();
+        let mut tick = tokio::time::interval(Duration::from_millis(150));
         loop {
-            match response.chunk().await {
-                Ok(Some(chunk)) => yield Ok::<_, std::io::Error>(chunk),
-                Ok(None) => break,
+            let chunk = tokio::select! {
+                chunk = response.chunk() => chunk,
+                _ = tick.tick() => {
+                    if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                        // Dropping the provider's stream ends the request there
+                        yield Ok::<_, std::io::Error>(axum::body::Bytes::from_static(b"data: [DONE]\n\n"));
+                        break;
+                    }
+                    continue;
+                }
+            };
+            match chunk {
+                Ok(Some(chunk)) => {
+                    pending.push_str(&String::from_utf8_lossy(&chunk));
+                    let mut out = String::new();
+                    while let Some(end) = pending.find('\n') {
+                        let line: String = pending.drain(..=end).collect();
+                        out.push_str(&renamed_line(&line, &request_id, &full_name));
+                    }
+                    if !out.is_empty() {
+                        yield Ok(axum::body::Bytes::from(out));
+                    }
+                }
+                Ok(None) => {
+                    if !pending.is_empty() {
+                        yield Ok(axum::body::Bytes::from(renamed_line(&pending, &request_id, &full_name)));
+                    }
+                    break;
+                }
                 Err(error) => {
                     tracing::warn!("provider stream ended early: {}", redact(&error.to_string(), key.as_deref()));
                     break;
@@ -232,17 +366,47 @@ pub async fn forward(target: Target, request: Value) -> axum::response::Response
             }
         }
     };
-    axum::response::Response::builder()
-        .status(status)
-        .header(axum::http::header::CONTENT_TYPE, content_type)
-        .header(axum::http::header::CACHE_CONTROL, "no-cache")
-        .body(axum::body::Body::from_stream(stream))
-        .unwrap_or_else(|_| fail(500, "the provider's answer could not be passed on".into()))
+    reply.body(axum::body::Body::from_stream(stream)).unwrap_or_else(|_| fail(500, "the provider's answer could not be passed on".into()))
+}
+
+/// The stream's entry in the registry `chat.cancel` reads, taken out when the stream ends or the
+/// client goes away
+struct Registered(String);
+
+impl Drop for Registered {
+    fn drop(&mut self) {
+        if let Ok(mut streams) = crate::handlers::chat::types::ACTIVE_STREAMS.write() {
+            streams.remove(&self.0);
+        }
+    }
+}
+
+/// One line of the provider's stream with this request's id and the model's full name
+fn renamed_line(line: &str, request_id: &str, full_name: &str) -> String {
+    let Some(data) = line.trim_end().strip_prefix("data:").map(str::trim) else { return line.to_string() };
+    match serde_json::from_str::<Value>(data) {
+        Ok(mut event) if event.is_object() => {
+            event["id"] = json!(request_id);
+            event["model"] = json!(full_name);
+            format!("data: {event}\n")
+        }
+        _ => line.to_string(),
+    }
 }
 
 fn request_for_chat(target: &Target) -> Result<(reqwest::RequestBuilder, Option<String>), String> {
     let (builder, key) = request(&target.config, reqwest::Method::POST, &target.config.chat_url())?;
     Ok((builder.timeout(Duration::from_secs(24 * 3600)).header(reqwest::header::CONTENT_TYPE, "application/json"), key))
+}
+
+/// A provider's model named in a CEP call that works on installed models only: a clear error
+/// instead of "not found"
+pub fn refuse_provider_model(model: &str, what: &str) -> Result<(), cluaiz_cep::CepError> {
+    let Some(target) = target_of(&json!({ "model": model })) else { return Ok(()) };
+    Err(cluaiz_cep::CepError::conflict(
+        "provider_model",
+        format!("{} runs at the provider {}: {what} works on installed models only. Use it in /v1/chat/completions; providers.* manages it", target.full_name(), target.provider),
+    ))
 }
 
 #[cfg(test)]
@@ -290,5 +454,44 @@ mod tests {
         ]}));
         let ids: Vec<_> = models.iter().map(|m| (m.id.as_str(), m.context)).collect();
         assert_eq!(ids, vec![("a", Some(8192)), ("b", Some(131072)), ("c", Some(4096)), ("d", None)]);
+    }
+
+    #[test]
+    fn the_oldest_turn_goes_and_the_system_prompt_and_last_turn_stay() {
+        let mut messages = vec![
+            json!({ "role": "system", "content": "s" }),
+            json!({ "role": "user", "content": "1" }),
+            json!({ "role": "assistant", "tool_calls": [] }),
+            json!({ "role": "tool", "content": "r" }),
+            json!({ "role": "assistant", "content": "a1" }),
+            json!({ "role": "user", "content": "2" }),
+        ];
+        assert_eq!(drop_oldest_turn(&mut messages), 4);
+        assert_eq!(messages.len(), 2);
+        assert_eq!(messages[0]["role"], "system");
+        assert_eq!(messages[1]["content"], "2");
+        assert_eq!(drop_oldest_turn(&mut messages), 0);
+    }
+
+    #[test]
+    fn engine_fields_are_named_and_saved_samplers_fill_the_gaps() {
+        let request = json!({ "model": "m", "messages": [], "session_id": "c", "think_mode": "off", "reasoning_effort": "max", "top_k": null });
+        assert_eq!(ignored_fields(&request), vec!["reasoning_effort", "session_id", "think_mode"]);
+        let mut body = json!({ "temperature": 0.9 });
+        let saved = cluaiz_core::SamplerDefaults { temp: Some(0.2), top_p: Some(0.8), top_k: Some(40), ..Default::default() };
+        add_sampler_defaults(&mut body, &saved);
+        assert_eq!(body["temperature"], 0.9);
+        assert!((body["top_p"].as_f64().unwrap() - 0.8).abs() < 1e-6);
+        assert!(body.get("top_k").is_none());
+    }
+
+    #[test]
+    fn stream_lines_carry_this_requests_id_and_the_full_name() {
+        let line = renamed_line("data: {\"id\":\"x\",\"model\":\"m\",\"choices\":[]}\n", "chatcmpl-1", "myapi/m");
+        let event: Value = serde_json::from_str(line.trim().strip_prefix("data: ").unwrap()).unwrap();
+        assert_eq!(event["id"], "chatcmpl-1");
+        assert_eq!(event["model"], "myapi/m");
+        assert_eq!(renamed_line("data: [DONE]\n", "chatcmpl-1", "myapi/m"), "data: [DONE]\n");
+        assert_eq!(renamed_line("\n", "chatcmpl-1", "myapi/m"), "\n");
     }
 }

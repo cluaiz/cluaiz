@@ -333,7 +333,8 @@ async fn main() -> Result<()> {
     // Bare `cluaiz`: the agent when there is a terminal and a chat model, else the help
     let agent_by_default = std::io::stdin().is_terminal()
         && std::io::stdout().is_terminal()
-        && cluaiz_models::registry::InstalledStateRegistry::load().installed_models.values().any(|m| m.category == "chat");
+        && (cluaiz_models::registry::InstalledStateRegistry::load().installed_models.values().any(|m| m.category == "chat")
+            || cluaiz_security::PermissionSchema::load().get_active_chat_model().is_some_and(|m| chat::provider::find(&m).is_some()));
     if cli.command.is_none() && !agent_by_default {
         cli::help::print::<Cli>();
         ghost_note();

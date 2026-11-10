@@ -271,6 +271,7 @@ pub async fn plan(session: &Session) {
         for line in super::provider::summary(&provider.target).lines() {
             eprintln!("  {}", line.dimmed());
         }
+        notes(session);
         return;
     }
     let loaded = if session.load_ms > 0 { format!(" in {:.2} s", session.load_ms as f64 / 1000.0) } else { String::new() };
@@ -285,6 +286,13 @@ pub async fn plan(session: &Session) {
         if let Some(banner) = session.host.plan_report.lock().await.as_ref() {
             eprintln!("{}", banner);
         }
+    }
+}
+
+/// What this run's flags do with a provider's model (stderr), when the header is not shown
+pub fn notes(session: &Session) {
+    for note in session.provider.iter().flat_map(|p| p.notes.iter()) {
+        eprintln!("  {} {}", "Note:".yellow(), note);
     }
 }
 

@@ -16,6 +16,76 @@ use super::{output, ChatOptions, TurnReport, GENERATING};
 
 pub struct ProviderChat {
     pub target: Target,
+    /// What this run's flags do with a provider's model (shown once, at the start)
+    pub notes: Vec<String>,
+}
+
+/// The provider's model with this run's flags: `-c N` keeps the conversation within N tokens (the
+/// provider's own limit still applies); load flags have no meaning there and are named in a note,
+/// as are thinking flags a provider cannot take.
+pub fn prepare(mut target: Target, options: &ChatOptions) -> ProviderChat {
+    let mut notes = Vec::new();
+    let load = &options.load;
+    if let Some(n) = load.ctx_size.filter(|n| *n > 0) {
+        let n = n.min(u32::MAX as i64) as u32;
+        let known = target.config.models.get(&target.model).and_then(|m| m.context);
+        let used = known.map_or(n, |limit| n.min(limit));
+        if known.is_some_and(|limit| n > limit) {
+            notes.push(format!("-c {n}: {} takes at most {used} tokens; using {used}", target.full_name()));
+        } else {
+            notes.push(format!("-c {n}: the conversation is kept within {n} tokens"));
+        }
+        target.config.models.entry(target.model.clone()).or_default().context = Some(used);
+    }
+    let flags: [(&str, bool); 14] = [
+        ("--n-gpu-layers", load.n_gpu_layers.is_some()),
+        ("--n-cpu-moe", load.n_cpu_moe.is_some()),
+        ("--cache-type-k", load.cache_type_k.is_some()),
+        ("--cache-type-v", load.cache_type_v.is_some()),
+        ("--flash-attn", load.flash_attn.is_some()),
+        ("--batch-size", load.batch_size.is_some()),
+        ("--ubatch-size", load.ubatch_size.is_some()),
+        ("--threads", load.threads.is_some()),
+        ("--threads-batch", load.threads_batch.is_some()),
+        ("--mmap", load.mmap),
+        ("--no-mmap", load.no_mmap),
+        ("--no-kv-offload", load.no_kv_offload),
+        ("--no-op-offload", load.no_op_offload),
+        ("--vram-buffer", load.vram_buffer.is_some()),
+    ];
+    let ignored: Vec<&str> = flags.iter().filter(|(_, set)| *set).map(|(name, _)| *name).collect();
+    if !ignored.is_empty() {
+        notes.push(format!("{} not used: {} runs the model, not this computer", ignored.join(", "), target.provider));
+    }
+    let samplers = &options.samplers;
+    let not_openai: Vec<&str> = [("--top-k", samplers.top_k.is_some()), ("--min-p", samplers.min_p.is_some()), ("--repeat-penalty", samplers.repeat_penalty.is_some())]
+        .iter()
+        .filter(|(_, set)| *set)
+        .map(|(name, _)| *name)
+        .collect();
+    if !not_openai.is_empty() {
+        notes.push(format!("{} not sent: the OpenAI format has no such field", not_openai.join(", ")));
+    }
+    if options.think == Some(cluaiz_core::FeatureState::Off) {
+        notes.push("--think off: the thinking is not shown; whether the model thinks is the provider's choice".into());
+    }
+    if options.effort.is_some_and(|effort| effort_name(effort).is_none()) {
+        notes.push("--reasoning-effort: a provider takes only low, medium or high; not sent".into());
+    }
+    if options.budget_message.is_some() {
+        notes.push("--reasoning-budget-message: not sent to a provider".into());
+    }
+    ProviderChat { target, notes }
+}
+
+/// The OpenAI `reasoning_effort` of a thinking budget, when it has one
+fn effort_name(effort: cluaiz_core::ThinkingBudget) -> Option<&'static str> {
+    match effort {
+        cluaiz_core::ThinkingBudget::Low => Some("low"),
+        cluaiz_core::ThinkingBudget::Medium => Some("medium"),
+        cluaiz_core::ThinkingBudget::High => Some("high"),
+        _ => None,
+    }
 }
 
 /// The provider model `name` names (`<provider>/<model>`), when providers.json has that provider.
@@ -141,7 +211,17 @@ impl ProviderChat {
             "stream": true,
             "stream_options": { "include_usage": true },
         });
-        let s = &options.samplers;
+        // This run's flags, then settings.json, as for an installed model
+        let saved = cluaiz_core::Settings::current().samplers;
+        let flags = &options.samplers;
+        let s = cluaiz_core::SamplerDefaults {
+            temp: flags.temp.or(saved.temp),
+            top_p: flags.top_p.or(saved.top_p),
+            presence_penalty: flags.presence_penalty.or(saved.presence_penalty),
+            frequency_penalty: flags.frequency_penalty.or(saved.frequency_penalty),
+            seed: flags.seed.or(saved.seed),
+            ..Default::default()
+        };
         let fields: [(&str, Option<Value>); 5] = [
             ("temperature", s.temp.map(|v| json!(v))),
             ("top_p", s.top_p.map(|v| json!(v))),
@@ -157,13 +237,17 @@ impl ProviderChat {
         if let Some(max) = options.max_tokens {
             body["max_tokens"] = json!(max);
         }
+        if let Some(effort) = options.effort.and_then(effort_name) {
+            body["reasoning_effort"] = json!(effort);
+        }
         if let Some(tools) = tools.filter(|t| t.as_array().is_some_and(|a| !a.is_empty())) {
             body["tools"] = tools.clone();
         }
 
         cluaiz_core::live::start();
         GENERATING.store(true, Ordering::SeqCst);
-        let result = self.stream(body, out).await;
+        let show_thinking = options.think != Some(cluaiz_core::FeatureState::Off);
+        let result = self.stream(body, show_thinking, out).await;
         GENERATING.store(false, Ordering::SeqCst);
         let cancelled = cluaiz_core::GLOBAL_CANCEL_SIGNAL.swap(false, Ordering::SeqCst);
         out.finish();
@@ -178,7 +262,7 @@ impl ProviderChat {
     }
 
     /// The answer, why it ended, and the tokens the provider counted (prompt + answer)
-    async fn stream(&self, body: Value, out: &mut dyn output::Output) -> Result<(String, String, Option<usize>)> {
+    async fn stream(&self, body: Value, show_thinking: bool, out: &mut dyn output::Output) -> Result<(String, String, Option<usize>)> {
         let target = &self.target;
         let (builder, key) = cluaiz_api::providers::request(&target.config, reqwest::Method::POST, &target.config.chat_url()).map_err(|e| eyre!(e))?;
         let mut response = builder
@@ -203,7 +287,7 @@ impl ProviderChat {
         let mut pending = String::new();
         let mut tick = tokio::time::interval(Duration::from_millis(120));
         let emit = |(content, reasoning): (Option<String>, Option<String>), out: &mut dyn output::Output, answer: &mut String| {
-            if let Some(r) = reasoning.filter(|r| !r.is_empty()) {
+            if let Some(r) = reasoning.filter(|r| show_thinking && !r.is_empty()) {
                 out.reasoning(&r);
             }
             if let Some(c) = content.filter(|c| !c.is_empty()) {
@@ -245,7 +329,7 @@ impl ProviderChat {
                 }
                 let delta = &choice["delta"];
                 for field in ["reasoning_content", "reasoning"] {
-                    if let Some(thinking) = delta[field].as_str().filter(|t| !t.is_empty()) {
+                    if let Some(thinking) = delta[field].as_str().filter(|t| show_thinking && !t.is_empty()) {
                         out.reasoning(thinking);
                     }
                 }
@@ -315,5 +399,28 @@ mod tests {
         let out = messages(vec![text("user", "go"), text("tool", "orphan")]).unwrap();
         assert_eq!(out[1]["role"], "user");
         assert!(out[1]["content"].as_str().unwrap().contains("orphan"));
+    }
+
+    #[test]
+    fn flags_without_meaning_at_a_provider_are_named_and_c_sets_the_context() {
+        let mut config = cluaiz_core::providers::Provider::new("https://api.example.com/v1");
+        config.models.insert("m".into(), cluaiz_core::providers::ProviderModel { context: Some(8192) });
+        let target = Target { provider: "myapi".into(), config, model: "m".into() };
+        let mut options = ChatOptions::default();
+        options.load.ctx_size = Some(32768);
+        options.load.vram_buffer = Some(1.0);
+        options.load.threads = Some(4);
+        options.samplers.top_k = Some(40);
+        options.think = Some(cluaiz_core::FeatureState::Off);
+        options.effort = Some(cluaiz_core::ThinkingBudget::Tokens(512));
+        let chat = prepare(target, &options);
+        assert_eq!(chat.target.context(), 8192, "-c above the model's limit keeps the limit");
+        let notes = chat.notes.join("\n");
+        for named in ["-c 32768", "--threads", "--vram-buffer", "--top-k", "--think off", "--reasoning-effort"] {
+            assert!(notes.contains(named), "{named} in {notes}");
+        }
+        assert_eq!(effort_name(cluaiz_core::ThinkingBudget::Medium), Some("medium"));
+        let plain = prepare(chat.target.clone(), &ChatOptions::default());
+        assert!(plain.notes.is_empty());
     }
 }

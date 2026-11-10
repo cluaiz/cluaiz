@@ -203,6 +203,8 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
     };
     if (interactive || verbose) && !screen_enabled {
         print::plan(&session).await;
+    } else if !screen_enabled {
+        print::notes(&session);
     }
 
     // The system prompt is built once the project's agent files and the installed tools are known
@@ -260,6 +262,11 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
     // The project's agent files, and the installed skills, plugins and MCP servers
     agent.tools.load_installed(agent.session.plan.context_window as usize).await;
     agent.rebuild_system();
+    if screen_enabled {
+        for note in agent.session.provider.iter().flat_map(|p| p.notes.clone()) {
+            agent.display.emit(Event::Message("Provider".into(), note));
+        }
+    }
     if !screen_enabled {
         for problem in &agent.settings.problems {
             eprintln!("{} {problem}", "Agent settings:".yellow());
@@ -269,7 +276,7 @@ pub async fn execute(args: AgentArgs, verbose: bool) -> Result<()> {
         return terminal::run(agent, task, interactive).await;
     }
     if interactive {
-        eprintln!("{}", context_note(agent.session.plan.context_window).dimmed());
+        eprintln!("{}", context_note(agent.session.plan.context_window, agent.session.provider.is_some()).dimmed());
         eprintln!("{} {}", "Working in".dimmed(), agent.tools.root().display());
         eprintln!("{}", "Type a task, /? for help, /bye to exit.".dimmed());
     }
@@ -345,7 +352,7 @@ impl Agent {
                 Some(provider) => format!("Provider {}", provider.target.provider),
                 None => plan_note(&self.session.plan),
             },
-            context_note(self.session.plan.context_window),
+            context_note(self.session.plan.context_window, self.session.provider.is_some()),
             if self.tools.strict {
                 "Strict Approval"
             } else {
@@ -1061,8 +1068,9 @@ fn plan_note(plan: &cluaiz_plan::ExecutionPlan) -> String {
 }
 
 /// "Context N", with what to do when N is too small for agent work
-fn context_note(tokens: u32) -> String {
-    if tokens < SMALL_CONTEXT {
+fn context_note(tokens: u32, provider: bool) -> String {
+    // A provider sets its own context: the advice about this computer does not apply
+    if tokens < SMALL_CONTEXT && !provider {
         format!("Context {tokens} (small: long files will not fit; close other model processes or start with -c 16384)")
     } else {
         format!("Context {tokens}")
@@ -1107,8 +1115,9 @@ mod context_tests {
 
     #[test]
     fn a_small_context_says_what_to_do() {
-        assert_eq!(context_note(16384), "Context 16384");
-        assert!(context_note(4096).contains("-c 16384"));
+        assert_eq!(context_note(16384, false), "Context 16384");
+        assert_eq!(context_note(4096, true), "Context 4096");
+        assert!(context_note(4096, false).contains("-c 16384"));
     }
 
     #[test]

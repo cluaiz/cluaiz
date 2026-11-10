@@ -86,14 +86,31 @@ API authentication stays your setting. When it is off and a provider has a key, 
 | Chat, streaming | Yes | Yes |
 | Agent tools (`cluaiz agent`) | Yes | Yes, through the provider's function calling |
 | Tools sent by an app in `tools` | Yes | Yes: the calls come back to the app to run |
-| Thinking shown | Yes | When the provider sends it (`reasoning_content`, `reasoning`, or `<think>` tags) |
+| Agent auto-compact when the context is nearly full | Yes | Yes, from the token counts the provider reports |
+| Oldest messages left out when the context is full | Yes | Yes: in `cluaiz run`, in the agent and in `/v1/chat/completions` |
+| `temperature`, `top_p`, `presence_penalty`, `frequency_penalty`, `seed` | Yes | Yes: from the request or the flags, else from settings.json |
+| `chat.cancel` on a stream | Yes | Yes |
+| Thinking shown | Yes | When the provider sends it (`reasoning_content`, `reasoning`, or `<think>` tags); `--think off` hides it |
+| `--reasoning-effort` / `reasoning_effort` | Yes | `low`, `medium` and `high` only |
+| Context size (`-c`) | Sets the loaded context | Sets how much of the conversation is kept; the provider's own limit still applies |
+| Load settings: GPU layers, VRAM and RAM buffers, KV cache, threads, batch, mmap, flash attention | Yes | No: the provider runs the model. A flag given is named in a note |
+| `top_k`, `min_p`, `repeat_penalty` | Yes | No: not part of the OpenAI format. A flag given is named in a note |
+| `chat.skip_reasoning` | Yes | No: it answers `reasoning_unavailable` |
+| `models.load`, `models.inspect`, `models.remove`, `models.download`, `system.plan` | Yes | No: they answer `provider_model` |
+| Engine memory, `session_id`, server-side tools, context planning, KV cache | Yes | No: the request goes to the provider |
 | Files and images in the terminal | Yes | Not yet |
-| Engine memory, `session_id`, server-side tools, context planning, KV cache | Yes | No: the request goes to the provider as it is |
 
-For `/v1/chat/completions`, the Engine sends the OpenAI fields of the request (`messages`, `tools`, `temperature`, `max_tokens` and the like) and leaves out its own (`session_id`, `think_mode`, `top_k`, …). The provider's answer comes back as the provider sent it, so `model` in it is the provider's model id.
+## What `/v1/chat/completions` does with a provider's model
+
+1. It sends the OpenAI fields of the request (`messages`, `tools`, `temperature`, `max_tokens` and the like). The Engine's own fields (`session_id`, `think_mode`, `top_k`, …) are left out and named in the `X-Cluaiz-Ignored` response header.
+2. Sampler fields the request leaves out come from settings.json, as for an installed model.
+3. When the provider says the request does not fit its context, the oldest turns are left out (system messages and the last question stay) and the request is sent again. The `X-Cluaiz-Dropped-Messages` header says how many messages went.
+4. The answer comes back with `model` set to the full name (`myapi/model-name`). A stream's chunks carry this request's id, so `chat.cancel` with that `stream_id` stops it.
+5. `X-Cluaiz-Provider` names the provider. Errors are `{"error": {"type": "provider_error", "provider": "...", "message": "..."}}` with the provider's status code, and say the cause in plain words: a refused key, an unknown model, a rate limit or a full context.
 
 ## Not yet
 
-- Providers with their own request format, such as Anthropic's Messages API, Google Vertex AI and AWS Bedrock. A service that also offers an OpenAI-compatible URL can be used through that URL.
+- Providers with their own request format, not OpenAI-compatible. A service that also offers an OpenAI-compatible URL can be used through that URL.
 - Files and images sent to a provider's model from the terminal.
+- Engine memory for a provider's chats, and its server-side tools.
 - A settings page in the App.
