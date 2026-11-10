@@ -97,7 +97,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             "providers.list",
             Meta::new(Scope::Admin, "The model providers and their listed models; keys are never returned").no_mcp().example(
                 json!({}),
-                json!({ "providers": [{ "name": "myapi", "type": "openai", "base_url": "https://api.example.com/v1", "key": "env MYAPI_KEY", "models": [{ "id": "model-name", "model": "myapi/model-name", "context": 32768 }] }] }),
+                json!({ "providers": [{ "name": "myapi", "type": "openai", "base_url": "https://api.example.com/v1", "key": "env MYAPI_KEY", "models": [{ "id": "model-name", "model": "myapi/model-name", "kind": "chat", "context": 32768 }] }] }),
             ),
             |ctx: CallCtx, _: Call, _: NoParams| async move {
                 let all = load()?;
@@ -113,7 +113,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
                 .error(-32010, "settings_not_saved", "providers.json could not be written")
                 .example(
                     json!({ "name": "myapi", "base_url": "https://api.example.com/v1", "api_key_env": "MYAPI_KEY", "models": { "model-name": { "context": 32768 } } }),
-                    json!({ "provider": { "name": "myapi", "type": "openai", "base_url": "https://api.example.com/v1", "key": "env MYAPI_KEY", "models": [{ "id": "model-name", "model": "myapi/model-name", "context": 32768 }] } }),
+                    json!({ "provider": { "name": "myapi", "type": "openai", "base_url": "https://api.example.com/v1", "key": "env MYAPI_KEY", "models": [{ "id": "model-name", "model": "myapi/model-name", "kind": "chat", "context": 32768 }] } }),
                 ),
             |ctx: CallCtx, _: Call, p: SetParams| async move {
                 if !providers::valid_name(&p.name) {

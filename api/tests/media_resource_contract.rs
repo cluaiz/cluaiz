@@ -34,17 +34,19 @@ async fn test_busy_attachment_rejects_before_fetch_and_releases_for_retry() -> R
         )
         .await?;
     assert_eq!(denied.status(), StatusCode::UNAUTHORIZED);
+    // A wrong model name is the caller's error (400) also while attachments are busy, and it is
+    // answered before the source is fetched (cf. preflight: the model check comes first)
     let (status, body) =
         support::post(&router, "/v1/chat/completions", request.clone()).await?;
-    assert_eq!(status, StatusCode::SERVICE_UNAVAILABLE, "{body}");
+    assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
     let body: Value = serde_json::from_str(&body)?;
-    assert_eq!(body["error"]["code"], "media_busy");
+    assert_eq!(body["error"]["code"], "model_not_found");
     request["stream"] = json!(true);
     request["return_progress"] = json!(true);
     let (status, body) =
         support::post(&router, "/v1/chat/completions", request.clone()).await?;
     assert_eq!(status, StatusCode::OK);
-    assert!(body.contains("\"code\":\"media_busy\""), "{body}");
+    assert!(body.contains("\"code\":\"model_not_found\"") && !body.contains("media_busy"), "{body}");
     assert!(body.contains("\"state\":\"failed\""), "{body}");
     assert_eq!(body.matches("data: [DONE]").count(), 1, "{body}");
 

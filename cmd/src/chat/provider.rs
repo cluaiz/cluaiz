@@ -241,7 +241,7 @@ impl ProviderChat {
         let mut finish = String::from("stop");
         let mut used = None;
         let mut calls: BTreeMap<u64, PartialCall> = BTreeMap::new();
-        let mut pending = String::new();
+        let mut pending: Vec<u8> = Vec::new();
         let mut tick = tokio::time::interval(Duration::from_millis(120));
         let emit = |(content, reasoning): (Option<String>, Option<String>), out: &mut dyn output::Output, answer: &mut String| {
             if let Some(r) = reasoning.filter(|r| show_thinking && !r.is_empty()) {
@@ -265,9 +265,7 @@ impl ProviderChat {
                 }
             };
             let Some(chunk) = chunk else { break };
-            pending.push_str(&String::from_utf8_lossy(&chunk));
-            while let Some(end) = pending.find('\n') {
-                let line: String = pending.drain(..=end).collect();
+            for line in cluaiz_api::providers::sse_lines(&mut pending, &chunk) {
                 let Some(data) = line.trim().strip_prefix("data:").map(str::trim) else { continue };
                 if data == "[DONE]" {
                     break 'read;
@@ -285,10 +283,8 @@ impl ProviderChat {
                     finish = reason.to_owned();
                 }
                 let delta = &choice["delta"];
-                for field in ["reasoning_content", "reasoning"] {
-                    if let Some(thinking) = delta[field].as_str().filter(|t| show_thinking && !t.is_empty()) {
-                        out.reasoning(thinking);
-                    }
+                if let Some(thinking) = cluaiz_api::providers::delta_reasoning(delta).filter(|_| show_thinking) {
+                    out.reasoning(thinking);
                 }
                 if let Some(text) = delta["content"].as_str() {
                     cluaiz_core::live::token();

@@ -29,8 +29,6 @@ Fixed. It now prints 4.0, the average of [2, 4, 6].
 - [Instructions: AGENTS.md](#instructions-agentsmd)
 - [Skills: SKILL.md](#skills-skillmd)
 - [Choosing a model and a context size](#choosing-a-model-and-a-context-size)
-- [All options](#all-options)
-- [Limits](#limits)
 - [Troubleshooting](#troubleshooting)
 - [How it works](#how-it-works)
 

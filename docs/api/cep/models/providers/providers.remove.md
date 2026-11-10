@@ -47,7 +47,7 @@ errors:
 
 Removes a provider from `config/providers.json`. A key kept in the file goes with it; an environment variable named in `api_key_env` is not touched.
 
-Requests for the removed provider's models then fail with "model not found", as for any unknown model.
+Requests for the removed provider's models then fail as for any unknown model.
 
 ## Related
 

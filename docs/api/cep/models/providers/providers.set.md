@@ -65,6 +65,7 @@ response: |
           {
             "context": 32768,
             "id": "model-name",
+            "kind": "chat",
             "model": "myapi/model-name"
           }
         ],

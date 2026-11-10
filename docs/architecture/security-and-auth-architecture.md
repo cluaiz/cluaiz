@@ -79,6 +79,8 @@ Implemented in `api/src/auth.rs` (`auth_middleware`).
 
 Auth on/off, the tokens, the host/IP, the port and CORS are the owner's settings (`permission.json`, `settings.json`). The Engine does not change their defaults and does not force a token. A valid token is the session token or one of `api_auth.tokens`.
 
+Model provider keys (`providers.json`, see [Model providers](../engine/providers.md)) are sent only to their provider's own URL, in the `Authorization` header. They are read from an environment variable, `config/.env` or the file itself, never logged, and lists and errors show them masked. When `api_auth.required` is off and a provider has a key, anyone who can reach the server can use that key through it: `cluaiz provider add`, `cluaiz provider list`, `cluaiz serve` and the `providers.*` replies say so, and the setting stays the owner's. The `providers.*` methods are `admin` scope, so MCP callers do not see them.
+
 What the caller may do comes after authentication, in CEP:
 
 | Caller | Principal | Scopes | Paths |
