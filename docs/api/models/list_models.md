@@ -26,6 +26,13 @@ Send `Authorization: Bearer <token>` when API authentication is enabled. There i
 no request body or category filter on this route. An empty inventory returns
 `{"object":"list","data":[]}` with HTTP 200.
 
+The models listed in providers.json follow the installed ones, by their full name
+`<provider>/<model>` ([Model providers](../../engine/providers.md)). For these,
+`owned_by` and `provider` are the provider's name, `category` is the model's kind
+(chat, embedding, tts or stt), `context_window` is the number from providers.json
+for a chat model and `null` otherwise, and `package_capabilities` and
+`task_support` are absent. `/api/tags` lists installed models only.
+
 ## Response fields
 
 | Field | Meaning |
@@ -35,7 +42,7 @@ no request body or category filter on this route. An empty inventory returns
 | `data[].id` | Exact ID accepted by requests that select an installed model |
 | `data[].object` | `"model"` |
 | `data[].created` | Unix timestamp generated when the list is requested; not the model's download date |
-| `data[].owned_by` | `"cluaiz"` |
+| `data[].owned_by` | `"cluaiz"`; the provider's name for a provider's model |
 | `data[].root` | Same installed ID |
 | `data[].parent` | `null` |
 | `data[].permission` | Empty array; not a list of the caller's CEP scopes |

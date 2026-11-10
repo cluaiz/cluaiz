@@ -59,7 +59,7 @@ pub async fn v1_models(State(state): State<Arc<AppState>>) -> Json<Value> {
             "task_support": task_support
         }));
     }
-    // The models listed in providers.json, by their full name (`groq/<model>`)
+    // The models listed in providers.json, by their full name (`<provider>/<model>`)
     for (id, context, kind) in cluaiz_core::providers::Providers::load_or_empty().listed_models() {
         let provider = id.split('/').next().unwrap_or_default().to_string();
         data.push(json!({

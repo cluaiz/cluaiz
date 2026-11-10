@@ -42,7 +42,8 @@ The current middleware bypasses Bearer checks when `api_auth.required` is false.
 - **STT:** [POST /v1/audio/transcriptions](./inference/audio_transcriptions.md).
 - **Embeddings:** [POST /v1/embeddings](./inference/embeddings.md).
 - **Ingest:** [POST /v1/ingest](./inference/ingest.md), one final document-processing response.
-- **Controls:** [POST /v1/cep](./cep/README.md), JSON-RPC methods for files, system, settings, models, tools, memory, notes, context, audio tasks and approvals.
+- **Controls:** [POST /v1/cep](./cep/README.md), JSON-RPC methods for files, system, settings, models, model providers, tools, memory, notes, context, audio tasks and approvals.
+- **Model providers:** a model named `<provider>/<model>` from providers.json works in chat, embeddings, speech and transcription; see [Model providers](../engine/providers.md).
 - Model-list/download routes, `/health` and `/mcp` retain their individual contracts. See the [complete twelve-route reference](../reference/api.md).
 
 These are Cluaiz APIs. Chat and embeddings use familiar route/response shapes. TTS returns a WAV data URI inside JSON; STT takes JSON rather than multipart. Do not assume every option from another provider's SDK is supported.
