@@ -10,8 +10,10 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-/// The only request format so far: OpenAI Chat Completions (`POST {base_url}/chat/completions`)
+/// Request format: OpenAI Chat Completions (`POST {base_url}/chat/completions`), the default
 pub const OPENAI: &str = "openai";
+/// Request format: Anthropic Messages (`POST {base_url}/messages`; on Vertex AI, `:streamRawPredict`)
+pub const ANTHROPIC: &str = "anthropic";
 
 /// Context used when neither the file nor the provider names one
 pub const DEFAULT_CONTEXT: u32 = 32_768;
@@ -24,7 +26,8 @@ pub struct Providers {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Provider {
-    /// Request format; only "openai" so far
+    /// Request format: "openai" (the default) or "anthropic". Anthropic's own URLs are told
+    /// from the base URL, so "openai" there still means the Anthropic format.
     #[serde(rename = "type", default = "openai_type")]
     pub kind: String,
     /// Such as `https://api.example.com/v1`; the Engine adds `/chat/completions` and `/models`
@@ -38,6 +41,56 @@ pub struct Provider {
     /// Models with their context size. Other models of the provider can be used too.
     #[serde(default)]
     pub models: BTreeMap<String, ProviderModel>,
+    /// How this provider differs from the OpenAI format, when the Engine does not tell it from
+    /// the URL (`api/src/providers/compat.rs` detects the known ones; each field set here wins)
+    #[serde(default, skip_serializing_if = "Compat::is_empty")]
+    pub compat: Compat,
+    /// How the key is sent: "bearer" (`Authorization: Bearer`), "api-key" (Azure),
+    /// "x-api-key" (Anthropic, Claude in Amazon Bedrock), "google" (a Google Cloud access token
+    /// from Application Default Credentials or gcloud; no key), "aws" (AWS credentials, each
+    /// request signed), "azure" (a Microsoft Entra ID token), or "none". Unset, the base URL
+    /// decides (`api/src/providers/http.rs`): Bedrock and Azure URLs without a key use their sign-in.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auth: Option<String>,
+    /// Headers sent with every request, such as `anthropic-version` or OpenRouter's `HTTP-Referer`
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub headers: BTreeMap<String, String>,
+}
+
+/// A provider's differences from the OpenAI Chat Completions format. Every field is optional:
+/// unset, the Engine's detection from the base URL decides.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
+pub struct Compat {
+    /// How thinking is turned on and off, and shown: "openai" (`reasoning_effort`), "gemini",
+    /// "qwen" (`enable_thinking`), "qwen-template" (`chat_template_kwargs`), "zai" and
+    /// "deepseek" (`thinking.type`), "openrouter" (`reasoning.effort`), "together"
+    /// (`reasoning.enabled`), or "none" (nothing is sent)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub thinking: Option<String>,
+    /// Whether `reasoning_effort` is taken
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning_effort: Option<bool>,
+    /// The answer limit's field: "max_tokens" or "max_completion_tokens"
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub max_tokens_field: Option<String>,
+    /// Whether `stream_options.include_usage` is taken
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub usage_in_stream: Option<bool>,
+    /// Whether an assistant message with calls needs `reasoning_content` (DeepSeek)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub reasoning_content_on_calls: Option<bool>,
+    /// The form tool call ids must have: "any", or "alnum9" (nine letters and digits, Mistral)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_call_ids: Option<String>,
+    /// Whether an assistant message with calls needs "" instead of a null `content`
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub content_not_null: Option<bool>,
+}
+
+impl Compat {
+    pub fn is_empty(&self) -> bool {
+        *self == Self::default()
+    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
@@ -190,7 +243,7 @@ pub fn valid_name(name: &str) -> bool {
 
 impl Provider {
     pub fn new(base_url: &str) -> Self {
-        Self { kind: OPENAI.to_string(), base_url: base_url.trim().trim_end_matches('/').to_string(), api_key_env: None, api_key: None, models: BTreeMap::new() }
+        Self { kind: OPENAI.to_string(), base_url: base_url.trim().trim_end_matches('/').to_string(), api_key_env: None, api_key: None, models: BTreeMap::new(), compat: Compat::default(), auth: None, headers: BTreeMap::new() }
     }
 
     /// `{base_url}/chat/completions`
@@ -218,8 +271,29 @@ impl Provider {
         Ok(self.api_key.clone().filter(|k| !k.trim().is_empty()))
     }
 
+    /// The platform sign-in used instead of a key, when there is one: providers.json's `auth`, else
+    /// the URL (Vertex AI always; Amazon Bedrock and Azure when no key is set). The same rule as
+    /// `Auth::of` in `api/src/providers/http.rs`.
+    pub fn sign_in(&self) -> Option<&'static str> {
+        let url = self.base_url.to_ascii_lowercase();
+        let has_key = self.api_key_env.as_deref().is_some_and(|v| !v.trim().is_empty()) || self.api_key.as_deref().is_some_and(|k| !k.trim().is_empty());
+        match self.auth.as_deref().map(|a| a.trim().to_ascii_lowercase()).as_deref() {
+            Some("google") | Some("gcloud") => Some("Google Cloud sign-in"),
+            Some("aws") | Some("sigv4") => Some("AWS credentials"),
+            Some("azure") | Some("entra") => Some("Microsoft Entra sign-in"),
+            Some(_) => None,
+            None if url.contains("aiplatform.googleapis.com") => Some("Google Cloud sign-in"),
+            None if !has_key && (url.contains(".amazonaws.com") || url.contains(".api.aws")) => Some("AWS credentials"),
+            None if !has_key && (url.contains(".openai.azure.com") || url.contains(".cognitiveservices.azure.com") || url.contains(".services.ai.azure.com")) => Some("Microsoft Entra sign-in"),
+            None => None,
+        }
+    }
+
     /// Where the key comes from, without the key: "env MYAPI_KEY", "file sk-a…a1b2" or "none"
     pub fn key_source(&self) -> String {
+        if let Some(sign_in) = self.sign_in() {
+            return sign_in.to_string();
+        }
         if let Some(var) = self.api_key_env.as_deref().filter(|v| !v.is_empty()) {
             let set = env_value(var).is_some();
             return format!("env {var}{}", if set { "" } else { " (not set)" });
@@ -316,6 +390,9 @@ mod tests {
         let mut provider = Provider::new("https://x/v1");
         provider.api_key = Some(key.into());
         assert_eq!(provider.key_source(), "file gsk_…3456");
+        assert_eq!(Provider::new("https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1").key_source(), "AWS credentials");
+        assert_eq!(Provider::new("https://res.openai.azure.com/openai/v1").key_source(), "Microsoft Entra sign-in");
+        assert_eq!(Provider::new("https://aiplatform.googleapis.com/v1/projects/p/locations/global/endpoints/openapi").key_source(), "Google Cloud sign-in");
         assert_eq!(provider.key().unwrap().as_deref(), Some(key));
     }
 

@@ -1,0 +1,7 @@
+: DeepSeek (reasoner), written from its documented stream format: the thinking in reasoning_content, then the answer in content
+data: {"id":"d1","object":"chat.completion.chunk","model":"deepseek-reasoner","choices":[{"index":0,"delta":{"role":"assistant","content":null,"reasoning_content":""},"finish_reason":null}]}
+data: {"id":"d1","object":"chat.completion.chunk","model":"deepseek-reasoner","choices":[{"index":0,"delta":{"content":null,"reasoning_content":"17 times 20 is 340, "},"finish_reason":null}]}
+data: {"id":"d1","object":"chat.completion.chunk","model":"deepseek-reasoner","choices":[{"index":0,"delta":{"content":null,"reasoning_content":"plus 51 is 391."},"finish_reason":null}]}
+data: {"id":"d1","object":"chat.completion.chunk","model":"deepseek-reasoner","choices":[{"index":0,"delta":{"content":"391","reasoning_content":null},"finish_reason":null}]}
+data: {"id":"d1","object":"chat.completion.chunk","model":"deepseek-reasoner","choices":[{"index":0,"delta":{"content":"","reasoning_content":null},"finish_reason":"stop"}],"usage":{"prompt_tokens":14,"completion_tokens":30,"total_tokens":44,"completion_tokens_details":{"reasoning_tokens":28}}}
+data: [DONE]

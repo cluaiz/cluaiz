@@ -85,7 +85,7 @@ cluaiz token remove 7898
 
 | Command | Description |
 |---------|-------------|
-| `cluaiz provider add <name> --url <base_url>` | Add or change a provider. `--key-env <VAR>`: the key's environment variable; `--key <key>` (or `-` for stdin): keep the key in providers.json; `--model <id>[=<context>]`: list a chat model; `--embedding`, `--tts`, `--stt <id>`: list a model of that kind |
+| `cluaiz provider add <name> --url <base_url>` | Add or change a provider. `--key-env <VAR>`: the key's environment variable; `--key <key>` (or `-` for stdin): keep the key in providers.json; `--model <id>[=<context>]`: list a chat model; `--embedding`, `--tts`, `--stt <id>`: list a model of that kind; `--type anthropic`: the Anthropic Messages format at a URL the Engine does not know; `--auth bearer\|api-key\|x-api-key\|google\|aws\|azure\|none`: how the key is sent, when the URL does not tell |
 | `cluaiz provider list` (`ls`) | The providers, where each key comes from, and their listed models |
 | `cluaiz provider models <name> [filter]` | The models the provider offers, with their context size |
 | `cluaiz provider test <name> [model]` (`--voice`) | One short request of the model's kind: the URL, the key and the model work |

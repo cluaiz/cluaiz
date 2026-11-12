@@ -1,0 +1,6 @@
+: A server that leaves the thinking in the text between <think> tags (Qwen3 or DeepSeek-R1 on vLLM, llama.cpp or Groq with reasoning_format raw); the tags are cut between events
+data: {"choices":[{"index":0,"delta":{"role":"assistant","content":"<thi"},"finish_reason":null}]}
+data: {"choices":[{"index":0,"delta":{"content":"nk>\nAdd the tens"},"finish_reason":null}]}
+data: {"choices":[{"index":0,"delta":{"content":" first.\n</th"},"finish_reason":null}]}
+data: {"choices":[{"index":0,"delta":{"content":"ink>\n\n391"},"finish_reason":"stop"}]}
+data: [DONE]

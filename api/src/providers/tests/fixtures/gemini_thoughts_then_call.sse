@@ -1,0 +1,5 @@
+: Gemini 3.1 flash-lite with include_thoughts and a tool call
+: recorded 2026-11-11; thought signatures shortened, ids and text as sent
+data: {"choices":[{"delta":{"role":"assistant","tool_calls":[{"extra_content":{"google":{"thought_signature":"EpsDCpgDAWkU…"}},"function":{"arguments":"{\"path\":\".\"}","name":"list_dir"},"id":"call_14775623863483970257","type":"function"}]},"index":0}],"created":1794403604,"id":"FG30aomIE93e694PwJ-AoAY","model":"gemini-3.1-flash-lite","object":"chat.completion.chunk","usage":{"completion_tokens":16,"prompt_tokens":95,"total_tokens":181}}
+data: {"choices":[{"delta":{"role":"assistant"},"finish_reason":"stop","index":0}],"created":1794403604,"id":"FG30aomIE93e694PwJ-AoAY","model":"gemini-3.1-flash-lite","object":"chat.completion.chunk","usage":{"completion_tokens":16,"prompt_tokens":95,"total_tokens":181}}
+data: [DONE]

@@ -3,10 +3,10 @@
 //! `<tool_call>` form become `tool_calls`, each tool result answers its call by `tool_call_id`, and
 //! the calls the provider returns come back in the `<tool_call>` form the agent reads.
 
-use std::collections::BTreeMap;
 use std::sync::atomic::Ordering;
 use std::time::Duration;
 
+use cluaiz_api::providers::{chat_body, data_of, ChatParts, open, sse_lines, Compat, Decoder, Opened, Read, Room, Sampling, Thinking};
 use cluaiz_core::{media::PreparedPart, providers::Target, ChatMessage};
 use cluaiz_models::StreamingReasoningFilter;
 use color_eyre::{eyre::eyre, Result};
@@ -67,10 +67,12 @@ pub fn prepare(mut target: Target, options: &ChatOptions) -> ProviderChat {
         notes.push(format!("{} not sent: the OpenAI format has no such field", not_openai.join(", ")));
     }
     if options.think == Some(cluaiz_core::FeatureState::Off) {
-        notes.push("--think off: the thinking is not shown; whether the model thinks is the provider's choice".into());
+        notes.push("--think off: the provider is asked not to think where it can turn thinking off; nothing of it is shown".into());
     }
-    if options.effort.is_some_and(|effort| effort_name(effort).is_none()) {
-        notes.push("--reasoning-effort: a provider takes only low, medium or high; not sent".into());
+    if let Some(budget) = options.effort.filter(|e| matches!(e, cluaiz_core::ThinkingBudget::Tokens(n) if *n > 0)) {
+        if let Some(level) = Thinking::of("auto", budget).effort {
+            notes.push(format!("--reasoning-effort {}: a provider takes a level; sent as {}", effort_label(budget), level.name()));
+        }
     }
     if options.budget_message.is_some() {
         notes.push("--reasoning-budget-message: not sent to a provider".into());
@@ -78,13 +80,20 @@ pub fn prepare(mut target: Target, options: &ChatOptions) -> ProviderChat {
     ProviderChat { target, notes }
 }
 
-/// The OpenAI `reasoning_effort` of a thinking budget, when it has one
-fn effort_name(effort: cluaiz_core::ThinkingBudget) -> Option<&'static str> {
-    match effort {
-        cluaiz_core::ThinkingBudget::Low => Some("low"),
-        cluaiz_core::ThinkingBudget::Medium => Some("medium"),
-        cluaiz_core::ThinkingBudget::High => Some("high"),
-        _ => None,
+/// A thinking budget as the flag gave it
+fn effort_label(budget: cluaiz_core::ThinkingBudget) -> String {
+    match budget {
+        cluaiz_core::ThinkingBudget::Tokens(n) => format!("{n} tokens"),
+        other => format!("{other:?}").to_lowercase(),
+    }
+}
+
+/// `--think` as the chat's think mode
+fn think_mode(options: &ChatOptions) -> &'static str {
+    match options.think {
+        Some(cluaiz_core::FeatureState::Off) => "off",
+        Some(cluaiz_core::FeatureState::On) => "on",
+        _ => "auto",
     }
 }
 
@@ -139,21 +148,16 @@ pub fn summary(target: &Target) -> String {
     )
 }
 
-/// The conversation in the OpenAI format, with the terminal's attachments
+/// The conversation in the OpenAI format for `to`, with the terminal's attachments
 /// (`cluaiz_api::providers::openai_conversation_with_parts`)
-pub fn messages(messages: Vec<ChatMessage<Vec<PreparedPart>>>) -> Result<Vec<Value>> {
-    cluaiz_api::providers::openai_conversation_with_parts(messages).map_err(|e| eyre!(e))
-}
-
-/// A call being streamed: providers send its name first and its arguments in pieces
-#[derive(Default)]
-struct PartialCall {
-    name: String,
-    arguments: String,
+pub fn messages(messages: Vec<ChatMessage<Vec<PreparedPart>>>, to: Option<&Target>) -> Result<Vec<Value>> {
+    cluaiz_api::providers::openai_conversation_with_parts(messages, to).map_err(|e| eyre!(e))
 }
 
 impl ProviderChat {
-    /// One answer, streamed into `out`; the provider's calls come back in the `<tool_call>` form
+    /// One answer, streamed into `out`; the provider's calls come back in the `<tool_call>` form.
+    /// The request is built and read by the same code as the server's chat
+    /// (`cluaiz_api::providers`): samplers, thinking on/off and level, retries, refused fields.
     pub async fn generate(
         &self,
         options: &ChatOptions,
@@ -162,49 +166,25 @@ impl ProviderChat {
         out: &mut dyn output::Output,
     ) -> Result<(String, TurnReport)> {
         let target = &self.target;
-        let mut body = json!({
-            "model": target.model,
-            "messages": self::messages(messages)?,
-            "stream": true,
-            "stream_options": { "include_usage": true },
-        });
         // This run's flags, then settings.json, as for an installed model
         let saved = cluaiz_core::Settings::current().samplers;
         let flags = &options.samplers;
-        let s = cluaiz_core::SamplerDefaults {
-            temp: flags.temp.or(saved.temp),
-            top_p: flags.top_p.or(saved.top_p),
-            presence_penalty: flags.presence_penalty.or(saved.presence_penalty),
-            frequency_penalty: flags.frequency_penalty.or(saved.frequency_penalty),
-            seed: flags.seed.or(saved.seed),
-            ..Default::default()
+        let sampling = Sampling {
+            temperature: flags.temp.or(saved.temp).map(|v| json!(v)),
+            top_p: flags.top_p.or(saved.top_p).map(|v| json!(v)),
+            presence_penalty: flags.presence_penalty.or(saved.presence_penalty).map(|v| json!(v)),
+            frequency_penalty: flags.frequency_penalty.or(saved.frequency_penalty).map(|v| json!(v)),
+            seed: flags.seed.or(saved.seed).map(|v| json!(v)),
+            max_tokens: options.max_tokens,
         };
-        let fields: [(&str, Option<Value>); 5] = [
-            ("temperature", s.temp.map(|v| json!(v))),
-            ("top_p", s.top_p.map(|v| json!(v))),
-            ("presence_penalty", s.presence_penalty.map(|v| json!(v))),
-            ("frequency_penalty", s.frequency_penalty.map(|v| json!(v))),
-            ("seed", s.seed.map(|v| json!(v))),
-        ];
-        for (name, value) in fields {
-            if let Some(value) = value {
-                body[name] = value;
-            }
-        }
-        if let Some(max) = options.max_tokens {
-            body["max_tokens"] = json!(max);
-        }
-        if let Some(effort) = options.effort.and_then(effort_name) {
-            body["reasoning_effort"] = json!(effort);
-        }
-        if let Some(tools) = tools.filter(|t| t.as_array().is_some_and(|a| !a.is_empty())) {
-            body["tools"] = tools.clone();
-        }
+        let thinking = Thinking::of(think_mode(options), options.effort.unwrap_or_default());
+        let compat = Compat::of(target);
+        let parts = ChatParts { model: &target.model, messages: self::messages(messages, Some(target))?, sampling: &sampling, thinking, tools, response_format: None, extra: None };
+        let body = chat_body(&compat, parts);
 
         cluaiz_core::live::start();
         GENERATING.store(true, Ordering::SeqCst);
-        let show_thinking = options.think != Some(cluaiz_core::FeatureState::Off);
-        let result = self.stream(body, show_thinking, out).await;
+        let result = self.stream(body, &compat, thinking.shown(), out).await;
         GENERATING.store(false, Ordering::SeqCst);
         let cancelled = cluaiz_core::GLOBAL_CANCEL_SIGNAL.swap(false, Ordering::SeqCst);
         out.finish();
@@ -218,101 +198,102 @@ impl ProviderChat {
         Ok((answer, TurnReport { timings: None, thinking: None, cancelled, stop, context, dropped: 0 }))
     }
 
-    /// The answer, why it ended, and the tokens the provider counted (prompt + answer)
-    async fn stream(&self, body: Value, show_thinking: bool, out: &mut dyn output::Output) -> Result<(String, String, Option<usize>)> {
+    /// The answer, why it ended, and the tokens the provider counted (prompt + answer). An
+    /// answer that gave nothing at all is asked for once more.
+    async fn stream(&self, mut body: Value, compat: &Compat, show_thinking: bool, out: &mut dyn output::Output) -> Result<(String, String, Option<usize>)> {
         let target = &self.target;
-        let (builder, key) = cluaiz_api::providers::request(&target.config, reqwest::Method::POST, &target.config.chat_url()).map_err(|e| eyre!(e))?;
-        let mut response = builder
-            .timeout(Duration::from_secs(24 * 3600))
-            .header(reqwest::header::CONTENT_TYPE, "application/json")
-            .header(reqwest::header::ACCEPT, "text/event-stream")
-            .body(body.to_string())
-            .send()
-            .await
-            .map_err(|e| eyre!(cluaiz_api::providers::send_error(target, &e, key.as_deref())))?;
-        if !response.status().is_success() {
-            let status = response.status().as_u16();
-            let text = response.text().await.unwrap_or_default();
-            return Err(eyre!(cluaiz_api::providers::error_message(target, status, &text, key.as_deref())));
-        }
-        // Some providers put the thinking into the text between <think> tags
-        let mut filter = StreamingReasoningFilter::new(Some("<think>".into()), Some("</think>".into()), false, false);
-        let mut answer = String::new();
-        let mut finish = String::from("stop");
-        let mut used = None;
-        let mut calls: BTreeMap<u64, PartialCall> = BTreeMap::new();
-        let mut pending: Vec<u8> = Vec::new();
-        let mut tick = tokio::time::interval(Duration::from_millis(120));
-        let emit = |(content, reasoning): (Option<String>, Option<String>), out: &mut dyn output::Output, answer: &mut String| {
-            if let Some(r) = reasoning.filter(|r| show_thinking && !r.is_empty()) {
-                out.reasoning(&r);
-            }
-            if let Some(c) = content.filter(|c| !c.is_empty()) {
-                out.content(&c);
-                answer.push_str(&c);
-            }
-        };
-        'read: loop {
-            let chunk = tokio::select! {
-                chunk = response.chunk() => chunk.map_err(|e| eyre!(cluaiz_api::providers::send_error(target, &e, key.as_deref())))?,
-                _ = tick.tick() => {
-                    out.tick();
-                    // Ctrl+C: dropping the stream ends the request at the provider
-                    if cluaiz_core::GLOBAL_CANCEL_SIGNAL.load(Ordering::SeqCst) {
-                        break;
-                    }
-                    continue;
+        let cancel = Some(&cluaiz_core::GLOBAL_CANCEL_SIGNAL);
+        // The agent makes room itself when the context is full (`make_room`)
+        let room = Room { drop_turns: false };
+        let mut empty_tries = 0;
+        loop {
+            let (mut response, key) = match open(target, &mut body, room, cancel).await.map_err(|e| eyre!(e))? {
+                (Opened::Stream { response, key }, _) => (response, key),
+                // A call the provider refused goes on as the answer: the agent answers it
+                (Opened::Calls(calls), _) => {
+                    out.content(&calls);
+                    return Ok((calls, "tool_calls".into(), None));
                 }
             };
-            let Some(chunk) = chunk else { break };
-            for line in cluaiz_api::providers::sse_lines(&mut pending, &chunk) {
-                let Some(data) = line.trim().strip_prefix("data:").map(str::trim) else { continue };
-                if data == "[DONE]" {
-                    break 'read;
+            // Thinking between <think> tags in the text (and Gemini's <thought>, read as <think>)
+            let mut filter = StreamingReasoningFilter::new(Some("<think>".into()), Some("</think>".into()), false, false);
+            let mut answer = String::new();
+            let mut decoder = Decoder::new(compat);
+            let mut pending: Vec<u8> = Vec::new();
+            let mut tick = tokio::time::interval(Duration::from_millis(120));
+            let mut broken: Option<String> = None;
+            let emit = |(content, reasoning): (Option<String>, Option<String>), out: &mut dyn output::Output, answer: &mut String| {
+                if let Some(r) = reasoning.filter(|r| show_thinking && !r.is_empty()) {
+                    out.reasoning(&r);
                 }
-                let Ok(event) = serde_json::from_str::<Value>(data) else { continue };
-                if let Some(message) = event["error"]["message"].as_str() {
-                    return Err(eyre!("{}: {}", target.provider, cluaiz_core::providers::redact(message, key.as_deref())));
+                if let Some(c) = content.filter(|c| !c.is_empty()) {
+                    out.content(&c);
+                    answer.push_str(&c);
                 }
-                let usage = event.get("usage").filter(|u| u.is_object()).or_else(|| event.pointer("/x_groq/usage"));
-                if let Some(total) = usage.and_then(|u| u["total_tokens"].as_u64().or_else(|| Some(u["prompt_tokens"].as_u64()? + u["completion_tokens"].as_u64().unwrap_or(0)))) {
-                    used = Some(total as usize);
-                }
-                let Some(choice) = event["choices"].get(0) else { continue };
-                if let Some(reason) = choice["finish_reason"].as_str() {
-                    finish = reason.to_owned();
-                }
-                let delta = &choice["delta"];
-                if let Some(thinking) = cluaiz_api::providers::delta_reasoning(delta).filter(|_| show_thinking) {
-                    out.reasoning(thinking);
-                }
-                if let Some(text) = delta["content"].as_str() {
-                    cluaiz_core::live::token();
-                    emit(filter.process_token(text), out, &mut answer);
-                }
-                for (position, call) in delta["tool_calls"].as_array().into_iter().flatten().enumerate() {
-                    let index = call["index"].as_u64().unwrap_or(position as u64);
-                    let partial = calls.entry(index).or_default();
-                    if let Some(name) = call["function"]["name"].as_str() {
-                        partial.name.push_str(name);
+            };
+            'read: loop {
+                let chunk = tokio::select! {
+                    chunk = response.chunk() => chunk,
+                    _ = tick.tick() => {
+                        out.tick();
+                        // Ctrl+C: dropping the stream ends the request at the provider
+                        if cluaiz_core::GLOBAL_CANCEL_SIGNAL.load(Ordering::SeqCst) {
+                            break;
+                        }
+                        continue;
                     }
-                    if let Some(arguments) = call["function"]["arguments"].as_str() {
-                        partial.arguments.push_str(arguments);
-                    } else if call["function"]["arguments"].is_object() {
-                        partial.arguments.push_str(&call["function"]["arguments"].to_string());
+                };
+                let chunk = match chunk {
+                    Ok(Some(chunk)) => chunk,
+                    Ok(None) => break,
+                    Err(error) => {
+                        broken = Some(cluaiz_api::providers::send_error(target, &error, key.as_deref()));
+                        break;
                     }
-                    cluaiz_core::live::set_call(&partial.name, &partial.arguments);
+                };
+                for line in sse_lines(&mut pending, &chunk) {
+                    let Some(data) = data_of(&line) else { continue };
+                    match decoder.read(data) {
+                        Read::Done => break 'read,
+                        Read::Nothing => {}
+                        Read::Error { message, .. } => {
+                            broken = Some(format!("{}: {}", target.provider, cluaiz_core::providers::redact(&message, key.as_deref())));
+                            break 'read;
+                        }
+                        Read::Piece { thinking, text, call } => {
+                            if let Some(thinking) = thinking.filter(|_| show_thinking) {
+                                out.reasoning(&thinking);
+                            }
+                            if let Some(text) = text {
+                                cluaiz_core::live::token();
+                                emit(filter.process_token(&text), out, &mut answer);
+                            }
+                            if let Some((name, arguments)) = call {
+                                cluaiz_core::live::set_call(&name, &arguments);
+                            }
+                        }
+                    }
                 }
             }
+            let cancelled = cluaiz_core::GLOBAL_CANCEL_SIGNAL.load(Ordering::SeqCst);
+            if !decoder.produced() && !cancelled && empty_tries < 1 {
+                empty_tries += 1;
+                continue;
+            }
+            if let Some(message) = broken {
+                return Err(eyre!(message));
+            }
+            let finished = decoder.finish(&target.provider);
+            emit(filter.process_token(&finished.text), out, &mut answer);
+            emit(filter.flush_final(), out, &mut answer);
+            for block in finished.calls {
+                let block = format!("\n{block}");
+                out.content(&block);
+                answer.push_str(&block);
+            }
+            let used = finished.usage.map(|(_, total)| total);
+            return Ok((answer, finished.finish.unwrap_or_else(|| "stop".into()), used));
         }
-        emit(filter.flush_final(), out, &mut answer);
-        for call in calls.into_values().filter(|c| !c.name.is_empty()) {
-            let arguments = if call.arguments.trim().is_empty() { "{}" } else { call.arguments.as_str() };
-            let block = format!("\n{}", cluaiz_core::tool_calls::canonical_call(&call.name, arguments));
-            out.content(&block);
-            answer.push_str(&block);
-        }
-        Ok((answer, finish, used))
     }
 }
 
@@ -334,7 +315,7 @@ mod tests {
                 role: "user".into(),
                 content: vec![PreparedPart::Text { text: "What is this?".into() }, PreparedPart::Image { image }, PreparedPart::Audio { audio }],
             },
-        ])
+        ], None)
         .unwrap();
         let parts = out[1]["content"].as_array().expect("content parts");
         assert_eq!(parts[0], json!({ "type": "text", "text": "What is this?" }));
@@ -352,7 +333,7 @@ mod tests {
             text("assistant", &call),
             text("tool", "hello"),
             text("assistant", "It says hello."),
-        ])
+        ], None)
         .unwrap();
         assert_eq!(out[2]["content"], Value::Null);
         assert_eq!(out[2]["tool_calls"][0]["function"]["name"], "read_file");
@@ -362,13 +343,32 @@ mod tests {
     }
 
     #[test]
+    fn a_providers_call_goes_back_to_it_with_its_signature() {
+        // As Gemini 3 streams a call: its id and thought signature beside the function
+        let mut calls = cluaiz_api::providers::StreamedCalls::default();
+        calls.add(&json!({ "tool_calls": [{ "index": 0, "id": "call_77", "type": "function", "extra_content": { "google": { "thought_signature": "SIG" } }, "function": { "name": "read_file", "arguments": "{\"path\":\"a.txt\"}" } }] }));
+        let block = calls.blocks("gemini").remove(0);
+        let conversation = || vec![text("user", "read a.txt"), text("assistant", &block), text("tool", "hello")];
+        let gemini = Target { provider: "gemini".into(), config: cluaiz_core::providers::Provider::new("https://generativelanguage.googleapis.com/v1beta/openai"), model: "m".into() };
+        let out = messages(conversation(), Some(&gemini)).unwrap();
+        assert_eq!(out[1]["tool_calls"][0]["extra_content"]["google"]["thought_signature"], "SIG");
+        assert_eq!(out[1]["tool_calls"][0]["id"], "call_77");
+        assert_eq!(out[2]["tool_call_id"], "call_77");
+        // Another provider gets only the name and the arguments
+        let groq = Target { provider: "groq".into(), config: cluaiz_core::providers::Provider::new("https://api.groq.com/openai/v1"), model: "m".into() };
+        let out = messages(conversation(), Some(&groq)).unwrap();
+        assert!(out[1]["tool_calls"][0].get("extra_content").is_none());
+        assert_eq!(out[1]["tool_calls"][0]["id"], "call_1");
+    }
+
+    #[test]
     fn a_call_without_a_result_is_answered_and_a_lone_result_is_user_text() {
         let call = cluaiz_core::tool_calls::canonical_call("run_command", r#"{"command":"ls"}"#);
-        let out = messages(vec![text("user", "go"), text("assistant", &call), text("user", "stop, do this instead")]).unwrap();
+        let out = messages(vec![text("user", "go"), text("assistant", &call), text("user", "stop, do this instead")], None).unwrap();
         assert_eq!(out[2]["role"], "tool");
         assert_eq!(out[2]["content"], "(not run)");
         assert_eq!(out[3]["role"], "user");
-        let out = messages(vec![text("user", "go"), text("tool", "orphan")]).unwrap();
+        let out = messages(vec![text("user", "go"), text("tool", "orphan")], None).unwrap();
         assert_eq!(out[1]["role"], "user");
         assert!(out[1]["content"].as_str().unwrap().contains("orphan"));
     }
@@ -391,7 +391,7 @@ mod tests {
         for named in ["-c 32768", "--threads", "--vram-buffer", "--top-k", "--think off", "--reasoning-effort"] {
             assert!(notes.contains(named), "{named} in {notes}");
         }
-        assert_eq!(effort_name(cluaiz_core::ThinkingBudget::Medium), Some("medium"));
+        assert!(notes.contains("sent as low"), "{notes}");
         let plain = prepare(chat.target.clone(), &ChatOptions::default());
         assert!(plain.notes.is_empty());
     }

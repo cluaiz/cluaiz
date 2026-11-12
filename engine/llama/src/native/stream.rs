@@ -225,6 +225,9 @@ pub(crate) fn stream_tokens_with_media(
             // No caller sends pre-formatted prompts, so the text is never guessed to be one by its markers.
             structured_messages.push(("user".to_string(), actual_prompt.clone()));
         }
+        // Calls a provider's model made earlier in the chat keep what that provider sent with
+        // them (a thought signature); this model sees only their names and arguments
+        let mut structured_messages = cluaiz_core::tool_calls::without_provider_data(&structured_messages);
 
         let vocab = llama_cpp::llama_model_get_vocab(llama.model_ptr);
         let n_vocab = llama_cpp::llama_vocab_n_tokens(vocab);

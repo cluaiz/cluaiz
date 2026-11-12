@@ -97,6 +97,8 @@ Adds a provider to `config/providers.json`, or changes one with the same `name`.
 | `api_key` | No | The key, kept in providers.json. Send this or `api_key_env`, not both |
 | `models` | No | Listed models with their context size and kind: `{"model-name": {"context": 32768}, "embed-name": {"kind": "embedding"}}`. `kind` is `chat` (the default), `embedding`, `tts` or `stt`. When sent, it replaces the list |
 
+A changed provider keeps its `compat` (how it differs from the OpenAI format, set in providers.json; see [Provider differences](../../../../engine/providers.md#provider-differences)).
+
 When neither `api_key_env` nor `api_key` is sent, the provider keeps its current key source. A provider that needs no key, such as Ollama on the same computer (`http://localhost:11434/v1`), needs neither.
 
 Replies never contain a key. `key` says only where it comes from: `env MYAPI_KEY` (an environment variable, also read from `config/.env` in the Cluaiz folder), `file sk-a…a1b2` (kept in providers.json, shown masked) or `none`.

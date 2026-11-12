@@ -31,6 +31,8 @@ async-stream = "0.3"
 chrono = "0.4"
 uuid = { version = "1", features = ["v4"] }
 base64 = "0.22"
+# RS256 signing of a Google service account token request (providers/google.rs); already built for rustls
+ring = "0.17"
 futures = "0.3"
 sysinfo = "0.33"
 dirs = "5.0"

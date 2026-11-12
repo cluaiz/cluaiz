@@ -34,6 +34,15 @@ pub enum ProviderCommand {
         /// A speech-to-text model to list (used with /v1/audio/transcriptions)
         #[arg(long = "stt", value_name = "ID")]
         stt: Vec<String>,
+        /// Request format: openai or anthropic. Anthropic's own URLs (the Claude API, Claude in
+        /// Amazon Bedrock, Claude on Vertex AI) are told without it
+        #[arg(long = "type", value_name = "FORMAT")]
+        kind: Option<String>,
+        /// How the key is sent: bearer, api-key (Azure), x-api-key (Anthropic), google (a Google
+        /// Cloud sign-in, for Vertex AI), aws (AWS credentials, signed), azure (a Microsoft Entra
+        /// sign-in) or none. Told from the URL when not given
+        #[arg(long, value_name = "HOW")]
+        auth: Option<String>,
     },
     /// List the providers
     #[command(alias = "ls")]
@@ -61,7 +70,7 @@ pub enum ProviderCommand {
 pub async fn execute(command: ProviderCommand) -> Result<()> {
     let mut all = Providers::load().map_err(|e| eyre!(e))?;
     match command {
-        ProviderCommand::Add { name, url, key_env, key, models, embedding, tts, stt } => {
+        ProviderCommand::Add { name, url, key_env, key, models, embedding, tts, stt, kind, auth } => {
             if !providers::valid_name(&name) {
                 return Err(eyre!("'{name}': a provider name has letters, digits, - and _ only"));
             }
@@ -70,6 +79,20 @@ pub async fn execute(command: ProviderCommand) -> Result<()> {
             }
             let mut provider = all.providers.get(&name).cloned().unwrap_or_else(|| Provider::new(&url));
             provider.base_url = url.trim().trim_end_matches('/').to_string();
+            if let Some(kind) = kind {
+                let kind = kind.trim().to_ascii_lowercase();
+                if kind != providers::OPENAI && kind != providers::ANTHROPIC {
+                    return Err(eyre!("'{kind}': the format is openai or anthropic"));
+                }
+                provider.kind = kind;
+            }
+            if let Some(auth) = auth {
+                let auth = auth.trim().to_ascii_lowercase();
+                if !["bearer", "api-key", "x-api-key", "google", "aws", "azure", "none"].contains(&auth.as_str()) {
+                    return Err(eyre!("'{auth}': the auth is bearer, api-key, x-api-key, google, aws, azure or none"));
+                }
+                provider.auth = Some(auth);
+            }
             if let Some(var) = key_env {
                 provider.api_key_env = Some(var);
                 provider.api_key = None;
