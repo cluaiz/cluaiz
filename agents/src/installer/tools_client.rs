@@ -22,7 +22,74 @@ pub struct CacheClearReport {
 pub type ToolHubInstaller = ToolsInstaller;
 
 impl ToolsInstaller {
+    /// Installs a tool and then the tools its `package.json` lists under `dependencies` that
+    /// are not installed yet. A dependency that fails leaves the tool installed and returns an
+    /// error naming each missing dependency.
     pub async fn install_component(component_type: &str, component_id_raw: &str) -> Result<()> {
+        let mut seen = std::collections::HashSet::new();
+        Self::install_with_dependencies(component_type, component_id_raw, &mut seen).await
+    }
+
+    fn install_with_dependencies<'a>(
+        component_type: &'a str,
+        component_id_raw: &'a str,
+        seen: &'a mut std::collections::HashSet<String>,
+    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + 'a>> {
+        Box::pin(async move {
+            let component_id = component_id_raw.split('@').next().unwrap_or(component_id_raw);
+            seen.insert(format!("{}:{}", component_type, component_id));
+            Self::install_one(component_type, component_id_raw).await?;
+
+            let Some(folder) = Self::component_dir(component_type, component_id) else {
+                return Ok(());
+            };
+            let mut failed = Vec::new();
+            for (kind, dep_id) in Self::declared_dependencies(&folder) {
+                if !seen.insert(format!("{}:{}", kind, dep_id)) || Self::is_installed(kind, &dep_id) {
+                    continue;
+                }
+                tracing::info!("📦 [ToolsEngine] {} '{}' needs {} '{}'; installing it", component_type, component_id, kind, dep_id);
+                if let Err(e) = Self::install_with_dependencies(kind, &dep_id, seen).await {
+                    failed.push(format!("{} '{}' ({}; install it with `cluaiz {} install {}`)", kind, dep_id, e, kind, dep_id));
+                }
+            }
+            if !failed.is_empty() {
+                return Err(anyhow::anyhow!(
+                    "{} '{}' is installed, but these tools it needs could not be installed: {}",
+                    component_type,
+                    component_id,
+                    failed.join("; ")
+                ));
+            }
+            Ok(())
+        })
+    }
+
+    /// The tools an installed package lists under `dependencies`, as (`skill` | `plugin` |
+    /// `mcp`, id). Only the ids are used; version ranges are not checked yet.
+    fn declared_dependencies(folder: &Path) -> Vec<(&'static str, String)> {
+        let Ok(text) = std::fs::read_to_string(folder.join("package.json")) else {
+            return Vec::new();
+        };
+        let Ok(manifest) = serde_json::from_str::<serde_json::Value>(&text) else {
+            return Vec::new();
+        };
+        let mut found = Vec::new();
+        for (key, kind) in [("plugins", "plugin"), ("mcp", "mcp"), ("skills", "skill")] {
+            if let Some(entries) = manifest["dependencies"][key].as_object() {
+                for dep_id in entries.keys() {
+                    if Self::is_valid_component_id(dep_id) {
+                        found.push((kind, dep_id.clone()));
+                    } else {
+                        tracing::warn!("⚠️ [ToolsEngine] Ignoring dependency with an invalid name '{}'", dep_id);
+                    }
+                }
+            }
+        }
+        found
+    }
+
+    async fn install_one(component_type: &str, component_id_raw: &str) -> Result<()> {
         let (component_id, version) = if component_id_raw.contains('@') {
             let parts: Vec<&str> = component_id_raw.split('@').collect();
             (parts[0].to_string(), Some(parts[1].to_string()))
@@ -595,6 +662,23 @@ mod package_file_tests {
         assert!(ToolsInstaller::has_program(&dir, Some(&json!({"execution": {"command": "node"}}))));
         std::fs::write(dir.join("logic.wasm"), "x").unwrap();
         assert!(ToolsInstaller::has_program(&dir, None));
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn dependencies_are_read_by_kind() {
+        let dir = std::env::temp_dir().join(format!("cluaiz-deps-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        assert!(ToolsInstaller::declared_dependencies(&dir).is_empty());
+        let manifest = json!({"dependencies": {
+            "plugins": {"web-search": {"version": "^1.0.0", "url": "u"}},
+            "mcp": {"browser": {"version": "^1.0.0", "url": "u"}, "../bad": {}},
+            "skills": {},
+            "extensions": {"x": {}}
+        }});
+        std::fs::write(dir.join("package.json"), manifest.to_string()).unwrap();
+        let got = ToolsInstaller::declared_dependencies(&dir);
+        assert_eq!(got, vec![("plugin", "web-search".to_string()), ("mcp", "browser".to_string())]);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
