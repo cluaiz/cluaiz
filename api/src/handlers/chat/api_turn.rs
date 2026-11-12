@@ -160,6 +160,21 @@ impl<'a> ApiTurn<'a> {
         }
     }
 
+    /// A generation that ends with `call` (found in `answer`, its part outside thinking): `said`
+    /// is the whole text before the call
+    fn answer_with_call(&mut self, text: String, answer: &str, call: tool_parser::ExtractedToolCall) -> Generated {
+        self.call_text_guard.clear();
+        let open = cluaiz_core::tool_calls::OPEN;
+        let call_text = answer.find(open).map_or("", |at| &answer[at..]);
+        let at = text.rfind(call_text).filter(|_| !call_text.is_empty()).or_else(|| text.rfind(open)).unwrap_or(text.len());
+        let said = text[..at].to_owned();
+        self.last_raw = text;
+        Generated::Answer {
+            said,
+            calls: vec![ToolCall { name: call.raw_fn_name, arguments: call.payload_str, raw: call.raw_json }],
+        }
+    }
+
     /// A generated token: shown as answer or reasoning text (streaming)
     fn show_token(&mut self, token: &str) {
         self.token_count += 1;
@@ -219,6 +234,15 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
             }
         };
         let mut text = String::new();
+        // Calls are read from the answer only: a call written inside thinking is the model's
+        // thinking, not a call (the engine closes thinking left open, so the call comes again)
+        let mut answer_filter = cluaiz_models::StreamingReasoningFilter::new(
+            self.ctx.dyn_think_start.clone(),
+            self.ctx.dyn_think_end.clone(),
+            false,
+            self.ctx.active_think_mode == "off",
+        );
+        let mut answer = String::new();
         while let Some(token) = rx.recv().await {
             if self.ctx.cancel_signal.load(Ordering::Relaxed) {
                 tracing::info!("🛑 [StreamControl] Stopping '{}' on the user's cancel", self.ctx.request_id);
@@ -233,19 +257,23 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
                 anyhow::bail!(error.to_owned());
             }
             text.push_str(&token);
-            if let Some(call) = tool_parser::extract_tool_call(&text) {
+            if let (Some(content), _) = answer_filter.process_token(&token) {
+                answer.push_str(&content);
+            }
+            if let Some(call) = tool_parser::extract_tool_call(&answer) {
                 // The call is complete: stop generating now (the worker stops at its next token),
                 // instead of after the tool ran or its approval was answered
                 rx.close();
-                self.call_text_guard.clear();
-                self.last_raw = text.clone();
-                let said = text.split(cluaiz_core::tool_calls::OPEN).next().unwrap_or_default().to_owned();
-                return Ok(Generated::Answer {
-                    said,
-                    calls: vec![ToolCall { name: call.raw_fn_name, arguments: call.payload_str, raw: call.raw_json }],
-                });
+                return Ok(self.answer_with_call(text, &answer, call));
             }
             self.show_token(&token);
+        }
+        // The filter may still hold the end of the answer (a tag can span tokens)
+        if let (Some(content), _) = answer_filter.flush_final() {
+            answer.push_str(&content);
+        }
+        if let Some(call) = tool_parser::extract_tool_call(&answer) {
+            return Ok(self.answer_with_call(text, &answer, call));
         }
         self.last_raw = text.clone();
         Ok(Generated::Answer { said: text, calls: Vec::new() })

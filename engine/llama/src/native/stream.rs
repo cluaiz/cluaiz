@@ -814,6 +814,8 @@ pub(crate) fn stream_tokens_with_media(
             );
         }
         let mut ended_by = "model";
+        // Thinking still open at the model's end was closed for it (once per generation)
+        let mut closed_open_thinking = false;
         let mut thought = false;
         // What is written to close thinking early: the optional budget message, then the end tag
         let close_text = match &req_budget_message {
@@ -875,6 +877,17 @@ pub(crate) fn stream_tokens_with_media(
 
             // Upstream standard: check if token is end of generation
             if llama_cpp::llama_vocab_is_eog(vocab, next_token_id) {
+                // The model ended while its thinking was still open: its answer or tool call is
+                // inside the thinking, where no parser takes it and the user sees nothing. Thinking
+                // is closed for it once, as the thinking budget closes it (llama.cpp's reasoning
+                // sampler writes the template's end tag), and the model goes on outside it.
+                if in_think_block && !think_end_tag.is_empty() && !closed_open_thinking && reasoning.force() {
+                    closed_open_thinking = true;
+                    ended_by = "closed";
+                    info!("🧠 [NativeStream] The model ended inside its thinking; thinking closed so it answers outside it");
+                    next_token_id = crate::native::sampler::sample_token(safe_sampler.sampler, checked_grammar, llama.ctx_ptr, n_vocab);
+                    continue;
+                }
                 tracing::info!(
                     "🛑 [NativeStream] EOG reached for token={}. Gracefully terminating generation.",
                     next_token_id
