@@ -501,6 +501,12 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
         self.tool_turns.push(&call.raw, &call.name, result);
     }
 
+    fn record_correction(&mut self, _said: &str, _note: &str) -> bool {
+        // The continuation holds tool steps only; an unreadable call here comes back to the model
+        // as the result of a call (see `call`), so the API turn makes no corrections of its own
+        false
+    }
+
     fn stopped(&self) -> bool {
         self.ctx.cancel_signal.load(Ordering::Relaxed)
             || self.sink.as_ref().is_some_and(|sink| sink.is_closed())

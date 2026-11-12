@@ -99,6 +99,8 @@ Lists every prompt.
 | `agent.compact_system` | The system prompt of the `/compact` request | none |
 | `agent.compact_summary` | After `/compact`, the message that carries the summary | `summary` |
 | `agent.compact_ack` | After `/compact`, the assistant reply to the summary | none |
+| `agent.call_unreadable` | Told to the model when a tool call of its answer could not be read; nothing ran, and it answers again (at most twice in a row) | `call` |
+| `agent.no_answer` | Told to the model when its answer had no text and no call outside its thinking; it answers again (at most twice in a row) | none |
 | `workspace.instructions` | Heading of the project's AGENTS.md files in the agent's system prompt | none |
 | `workspace.rules` | Heading of the project's always-on rules | none |
 | `workspace.index` | Heading of the index of rules, workflows and skills read on demand, and of the project's memory facts | none |
