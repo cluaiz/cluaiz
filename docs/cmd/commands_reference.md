@@ -131,6 +131,8 @@ cluaiz plugin ls
 cluaiz mcp rm sqlite-bridge
 ```
 
+Installing a tool also installs the tools its `package.json` lists under `dependencies` (plugins, MCP servers, skills) that are not installed yet, and their own dependencies. Tools already installed are kept as they are; version ranges are not checked yet. If a dependency fails, the tool stays installed and the error names each missing dependency and the command to install it.
+
 ---
 
 ## Documents, storage and settings
