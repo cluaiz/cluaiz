@@ -12,7 +12,7 @@ use std::collections::HashSet;
 
 use cluaiz_core::prompts;
 
-use super::{Item, Trigger, Workspace};
+use super::{Item, Kind, Trigger, Workspace};
 use crate::tool_search::{CatalogEntry, Level, ToolSearch};
 
 /// Most items whose text is added to one message
@@ -115,13 +115,18 @@ impl Workspace {
         let mut sent = Vec::new();
         for item in items {
             let body = item.body().unwrap_or_default();
-            let block = format!("\n\n## {} ({})\n{}", item.name, item.kind.name(), body);
+            // A skill's text links its own files (`references/...`): where they are, as read_item says
+            let kind = match item.kind {
+                Kind::Skill => format!("{}; its files are in {}", item.kind.name(), item.folder().display()),
+                _ => item.kind.name().to_owned(),
+            };
+            let block = format!("\n\n## {} ({kind})\n{}", item.name, body);
             if !body.is_empty() && block.len() <= left {
                 left -= block.len();
                 text.push_str(&block);
                 sent.push(key(item));
             } else {
-                let line = format!("\n\n## {} ({})\n{}", item.name, item.kind.name(), prompts::render("workspace.matched_read", &[("name", &item.name)]));
+                let line = format!("\n\n## {} ({kind})\n{}", item.name, prompts::render("workspace.matched_read", &[("name", &item.name)]));
                 if line.len() <= left {
                     left -= line.len();
                     text.push_str(&line);

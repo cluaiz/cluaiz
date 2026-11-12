@@ -333,6 +333,12 @@ fn items_that_fit_a_message_go_into_its_context_block() {
     assert!(small.contains("read_item") && !small.contains("paste the output"), "{small}");
     assert!(keys.is_empty());
     assert!(workspace.context_block(&items, 10).is_none());
+    // A skill says where its own files are, as read_item does: its text links them
+    let items = workspace.matched("make a pdf report of the sales", None, &known);
+    let (block, _) = workspace.context_block(&items, 2_000).unwrap();
+    let folder = items[0].folder();
+    assert!(folder.ends_with("pdf-report") && folder.is_dir());
+    assert!(block.contains(&format!("## pdf-report (skill; its files are in {})", folder.display())), "{block}");
     let _ = std::fs::remove_dir_all(base);
 }
 
