@@ -124,6 +124,8 @@ Providers that call themselves OpenAI-compatible still differ: how thinking is t
 | Anthropic Messages (`api.anthropic.com`, `bedrock-mantle…/anthropic`, Vertex AI Claude) | `thinking: {type: "adaptive", display: "summarized"}` with `output_config.effort`; off leaves `thinking` out and asks for `low` effort (newer Claude models cannot turn thinking off) | `max_tokens` is required (32000 when the request sets none, 8192 for a model that takes less); `temperature` and `top_p` are not sent (API version 2026-10-21 refuses them); each answer's thinking block goes back unchanged, with its signature, before that answer's calls |
 | Anything else (Groq, Ollama, a server on this computer) | `reasoning_effort` | The plain OpenAI format |
 
+Thinking off only asks the model not to think; it hides nothing. A model that thinks anyway has its thinking shown apart from the answer, as with thinking on. A model that cannot stop thinking and refuses the request (OpenRouter: "Reasoning is mandatory for this endpoint and cannot be disabled") gets the same request once more without the off field, and its thinking is shown. To hide thinking, use `--hide-thinking` (terminal) or ignore `reasoning_content` (API).
+
 For a provider the Engine does not know, or to change what it detects, set `compat` in providers.json. Every field is optional:
 
 ```json

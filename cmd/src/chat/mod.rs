@@ -336,7 +336,9 @@ impl Session {
             let tag = |t: &str| Some(t.to_string()).filter(|t| !t.is_empty());
             (tag(&dna.think_tag_schema), tag(&dna.think_end_schema))
         };
-        let no_thinking = think == FeatureState::Off || (start_tag.is_none() && end_tag.is_none());
+        // With thinking off the tags are still read: a model that thinks anyway has its thinking
+        // shown apart (or hidden by --hide-thinking), not mixed into the answer
+        let no_thinking = start_tag.is_none() && end_tag.is_none();
         let mut filter = StreamingReasoningFilter::new(start_tag, end_tag, false, no_thinking);
 
         cluaiz_core::live::start();

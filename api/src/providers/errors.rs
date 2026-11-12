@@ -147,6 +147,27 @@ pub(super) fn tool_call_refused(body: &str) -> bool {
         || lower.contains("not in request.tools")
 }
 
+/// The model cannot stop thinking and the provider refused the request that asked it to
+/// ("Reasoning is mandatory for this endpoint and cannot be disabled")
+pub(super) fn thinking_required(status: u16, body: &str) -> bool {
+    let lower = body.to_lowercase();
+    matches!(status, 400 | 422)
+        && (lower.contains("reasoning") || lower.contains("thinking"))
+        && [
+            "mandatory",
+            "cannot be disabled",
+            "can't be disabled",
+            "can not be disabled",
+            "cannot be turned off",
+            "cannot disable",
+            "must be enabled",
+            "always on",
+            "is required",
+        ]
+        .iter()
+        .any(|phrase| lower.contains(phrase))
+}
+
 /// The call(s) the model made, from the refusal (`failed_generation`), in the Engine's
 /// `<tool_call>` form; None when the refusal does not carry them as JSON
 pub(super) fn refused_calls(body: &str) -> Option<String> {
@@ -339,5 +360,16 @@ mod tests {
             None
         );
         assert_eq!(refused_field(400, "unknown field logit_bias", &sent), None);
+    }
+
+    #[test]
+    fn a_model_that_cannot_stop_thinking_is_known() {
+        let openrouter = r#"{"error":{"message":"Reasoning is mandatory for this endpoint and cannot be disabled.","code":400}}"#;
+        assert!(thinking_required(400, openrouter));
+        assert!(thinking_required(422, "thinking cannot be turned off for this model"));
+        // Another status, or a refusal about something else
+        assert!(!thinking_required(500, openrouter));
+        assert!(!thinking_required(400, "temperature is required"));
+        assert!(!thinking_required(400, "reasoning_effort must be one of low, medium, high"));
     }
 }
