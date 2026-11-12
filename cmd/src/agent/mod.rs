@@ -852,6 +852,20 @@ context    {}", plan.summary(), plan.context_reason)
                 "Stopped".into(),
                 format!("Stopped after {} steps; say how to go on.", self.max_steps),
             )),
+            cluaiz_agents::turn::Ended::Unusable { said, problem } => {
+                if !said.trim().is_empty() {
+                    self.history.push(message("assistant", said));
+                }
+                let tries = cluaiz_agents::turn::MOST_CORRECTIONS + 1;
+                return Err(eyre!(match problem {
+                    cluaiz_agents::turn::Unusable::UnreadableCall(_) => format!(
+                        "The model's tool call could not be read, {tries} times in a row; nothing was run. This model may not handle tool calls well: try again, or another model."
+                    ),
+                    cluaiz_agents::turn::Unusable::NoAnswer => format!(
+                        "The model gave no answer outside its thinking, {tries} times in a row. Try again, or another model."
+                    ),
+                }));
+            }
         }
         Ok(())
     }
@@ -891,7 +905,7 @@ struct CliTurn<'a> {
 
 impl cluaiz_agents::turn::Agent for CliTurn<'_> {
     async fn generate(&mut self, _step: usize) -> anyhow::Result<cluaiz_agents::turn::Generated> {
-        use cluaiz_agents::turn::{Generated, ToolCall};
+        use cluaiz_agents::turn::{Generated, ToolCall, Unusable};
         self.generated = true;
         let agent = &mut *self.agent;
         let (answer, report) = loop {
@@ -920,13 +934,28 @@ impl cluaiz_agents::turn::Agent for CliTurn<'_> {
             agent.display.emit(Event::Message("Stopped".into(), "Generation cancelled.".into()));
             return Ok(Generated::Stopped { said });
         }
-        let (said, calls) = validation::calls(&answer, report.stop).map_err(|error| anyhow::anyhow!(error))?;
+        let (said, calls) = match validation::calls(&answer, report.stop) {
+            Ok(found) => found,
+            // Not run: the model is told what it wrote and asked again (cluaiz_agents::turn)
+            Err(validation::Refused::Unreadable(call)) => {
+                agent.display.emit(Event::Message("Tool call".into(), "The model's tool call could not be read; nothing ran, and the model is asked again.".into()));
+                let said = answer.split(cluaiz_core::tool_calls::OPEN).next().unwrap_or_default().to_owned();
+                return Ok(Generated::Unusable { said, problem: Unusable::UnreadableCall(call) });
+            }
+            Err(refused) => return Err(anyhow::anyhow!(refused.message())),
+        };
+        // Only thinking (or nothing): the user would see no answer
+        if said.trim().is_empty() && calls.is_empty() && report.stop != "limit" {
+            agent.display.emit(Event::Message("Answer".into(), "The model wrote no answer outside its thinking; it is asked again.".into()));
+            return Ok(Generated::Unusable { said, problem: Unusable::NoAnswer });
+        }
         let calls = calls
             .into_iter()
-            .map(|(name, arguments)| ToolCall {
-                raw: cluaiz_core::tool_calls::canonical_call(&name, &arguments),
-                name,
-                arguments,
+            .map(|call| ToolCall {
+                // What the provider sent with the call (Gemini's thought signature) stays with it
+                raw: cluaiz_core::tool_calls::canonical_call_with(&call.name, &call.arguments, call.provider_data.as_ref()),
+                name: call.name,
+                arguments: call.arguments,
             })
             .collect();
         Ok(Generated::Answer { said, calls })
@@ -948,6 +977,15 @@ impl cluaiz_agents::turn::Agent for CliTurn<'_> {
 
     fn record_result(&mut self, _call: &cluaiz_agents::turn::ToolCall, result: &str) {
         self.agent.history.push(message("tool", result.to_owned()));
+    }
+
+    fn record_correction(&mut self, said: &str, note: &str) -> bool {
+        // Roles keep alternating (some templates refuse two user messages in a row), and a
+        // template drops an empty message: an answer with no text is kept as an ellipsis
+        let said = said.trim();
+        self.agent.history.push(message("assistant", if said.is_empty() { "…".to_owned() } else { said.to_owned() }));
+        self.agent.history.push(message("user", note.to_owned()));
+        true
     }
 
     fn stopped(&self) -> bool {

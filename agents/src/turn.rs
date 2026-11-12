@@ -10,6 +10,10 @@
 //! message history), which tools exist and how a call is approved, and where the user sees it (SSE
 //! chunks or the terminal). The order of the steps, the step limit and what a stop means are
 //! decided here once.
+//!
+//! An answer that cannot be used as it is (a tool call that cannot be read, or nothing but
+//! thinking) is not run and does not end the turn at once: the model is told what was wrong and
+//! answers again, at most [`MOST_CORRECTIONS`] times in a row.
 
 use std::future::Future;
 
@@ -31,6 +35,39 @@ pub enum Generated {
     Answer { said: String, calls: Vec<ToolCall> },
     /// The user or the client stopped the generation; `said` is what was written before that
     Stopped { said: String },
+    /// Nothing in it can be run or shown as the answer; `said` is the text before the problem
+    Unusable { said: String, problem: Unusable },
+}
+
+/// Why an answer could not be used as it is
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Unusable {
+    /// A tool call that could not be read (half a block, arguments that are not a JSON object,
+    /// markup the model's parser did not take); the text is the call as written
+    UnreadableCall(String),
+    /// No answer and no call: the model wrote only thinking, or nothing
+    NoAnswer,
+}
+
+/// Longest part of an unreadable call quoted back to the model
+const QUOTED_CHARS: usize = 300;
+
+impl Unusable {
+    /// What the model is told before it answers again (managed prompts `agent.call_unreadable`,
+    /// `agent.no_answer`)
+    pub fn note(&self) -> String {
+        match self {
+            Unusable::UnreadableCall(text) => {
+                let text = text.trim();
+                let mut quoted: String = text.chars().take(QUOTED_CHARS).collect();
+                if text.chars().count() > QUOTED_CHARS {
+                    quoted.push_str(" ...");
+                }
+                cluaiz_core::prompts::render("agent.call_unreadable", &[("call", &quoted)])
+            }
+            Unusable::NoAnswer => cluaiz_core::prompts::text("agent.no_answer"),
+        }
+    }
 }
 
 /// What running one call came to
@@ -55,6 +92,9 @@ pub enum Ended {
     Stopped(String),
     /// `max_steps` generations made calls; the last results are in the conversation
     StepLimit,
+    /// The model's answer could not be used, also after [`MOST_CORRECTIONS`] corrections (or the
+    /// front end cannot add a correction); `said` is the last answer's text before the problem
+    Unusable { said: String, problem: Unusable },
 }
 
 /// A front end's part of a turn. Futures are `Send` so an API turn can run in its own task.
@@ -72,6 +112,11 @@ pub trait Agent: Send {
     /// A call's result joins the conversation
     fn record_result(&mut self, call: &ToolCall, result: &str);
 
+    /// An unusable answer (its text before the problem) and what the model is told about it join
+    /// the conversation, so the next generation can do better. False: this front end cannot add
+    /// them, and the turn ends with [`Ended::Unusable`].
+    fn record_correction(&mut self, said: &str, note: &str) -> bool;
+
     /// The user or the client stopped the turn (checked before each generation and call)
     fn stopped(&self) -> bool;
 }
@@ -80,6 +125,8 @@ pub trait Agent: Send {
 pub const REPEAT_WARN_THRESHOLD: usize = 3;
 /// Consecutive identical calls that end the turn as stuck (`Ended::StepLimit`)
 pub const REPEAT_STOP_THRESHOLD: usize = 4;
+/// Unusable answers in a row the model is asked to correct; the next one ends the turn
+pub const MOST_CORRECTIONS: usize = 2;
 
 fn call_signature(call: &ToolCall) -> (String, String) {
     let canonical_args = serde_json::from_str::<serde_json::Value>(&call.arguments)
@@ -94,6 +141,7 @@ pub async fn run<A: Agent>(agent: &mut A, max_steps: usize) -> anyhow::Result<En
     let limit = if max_steps == 0 { usize::MAX } else { max_steps };
     let mut last_sig: Option<(String, String)> = None;
     let mut repeat_count: usize = 0;
+    let mut corrections: usize = 0;
 
     for step in 0..limit {
         if agent.stopped() {
@@ -101,9 +149,17 @@ pub async fn run<A: Agent>(agent: &mut A, max_steps: usize) -> anyhow::Result<En
         }
         let (said, calls) = match agent.generate(step).await? {
             Generated::Stopped { said } => return Ok(Ended::Stopped(said)),
+            Generated::Unusable { said, problem } => {
+                corrections += 1;
+                if corrections > MOST_CORRECTIONS || !agent.record_correction(&said, &problem.note()) {
+                    return Ok(Ended::Unusable { said, problem });
+                }
+                continue;
+            }
             Generated::Answer { said, calls } if calls.is_empty() => return Ok(Ended::Answered(said)),
             Generated::Answer { said, calls } => (said, calls),
         };
+        corrections = 0;
         agent.record_answer(&said, &calls);
         for call in &calls {
             if agent.stopped() {
@@ -149,6 +205,8 @@ mod tests {
         stop_on_call: Option<&'static str>,
         log: Vec<String>,
         stopped: bool,
+        /// Whether corrections can be added to the conversation
+        corrects: bool,
     }
 
     fn call(name: &str) -> ToolCall {
@@ -160,7 +218,7 @@ mod tests {
     }
 
     fn script(answers: Vec<Generated>) -> Script {
-        Script { answers: answers.into(), client: vec![], stop_on_call: None, log: vec![], stopped: false }
+        Script { answers: answers.into(), client: vec![], stop_on_call: None, log: vec![], stopped: false, corrects: true }
     }
 
     impl Agent for Script {
@@ -184,6 +242,10 @@ mod tests {
         }
         fn record_result(&mut self, call: &ToolCall, result: &str) {
             self.log.push(format!("result {} {result}", call.name));
+        }
+        fn record_correction(&mut self, said: &str, _note: &str) -> bool {
+            self.log.push(format!("correction '{said}'"));
+            self.corrects
         }
         fn stopped(&self) -> bool {
             self.stopped
@@ -268,5 +330,47 @@ mod tests {
         let executed_calls = agent.log.iter().filter(|l| *l == "call stuck_tool").count();
         assert_eq!(executed_calls, 2);
         assert!(agent.log.iter().any(|l| l.contains("Repeated identical tool call 'stuck_tool' 3 times")));
+    }
+
+    fn unusable(said: &str, problem: Unusable) -> Generated {
+        Generated::Unusable { said: said.into(), problem }
+    }
+
+    #[tokio::test]
+    async fn an_unusable_answer_is_corrected_and_the_turn_goes_on() {
+        let mut agent = script(vec![
+            unusable("", Unusable::NoAnswer),
+            unusable("let me read", Unusable::UnreadableCall("<tool_call><function=read>".into())),
+            answer("reading", &["read"]),
+            unusable("", Unusable::NoAnswer),
+            answer("done", &[]),
+        ]);
+        assert_eq!(run(&mut agent, 0).await.unwrap(), Ended::Answered("done".into()));
+        assert_eq!(agent.log.iter().filter(|l| l.starts_with("correction")).count(), 3);
+        assert!(agent.log.iter().any(|l| l == "call read"), "the corrected call ran: {:?}", agent.log);
+    }
+
+    #[tokio::test]
+    async fn unusable_answers_end_the_turn_after_the_most_corrections() {
+        let mut answers: Vec<Generated> = (0..=MOST_CORRECTIONS).map(|_| unusable("", Unusable::NoAnswer)).collect();
+        answers.push(answer("never reached", &[]));
+        let mut agent = script(answers);
+        assert_eq!(run(&mut agent, 0).await.unwrap(), Ended::Unusable { said: String::new(), problem: Unusable::NoAnswer });
+        assert_eq!(agent.log.iter().filter(|l| l.starts_with("correction")).count(), MOST_CORRECTIONS);
+    }
+
+    #[tokio::test]
+    async fn a_front_end_without_corrections_ends_the_turn_at_once() {
+        let mut agent = script(vec![unusable("x", Unusable::UnreadableCall("<tool_call>?".into())), answer("never", &[])]);
+        agent.corrects = false;
+        assert!(matches!(run(&mut agent, 0).await.unwrap(), Ended::Unusable { problem: Unusable::UnreadableCall(_), .. }));
+        assert_eq!(agent.log.iter().filter(|l| l.starts_with("generate")).count(), 1);
+    }
+
+    #[test]
+    fn the_note_quotes_a_long_unreadable_call_in_part() {
+        let note = Unusable::UnreadableCall("x".repeat(QUOTED_CHARS * 2)).note();
+        assert!(note.contains(&"x".repeat(QUOTED_CHARS)) && !note.contains(&"x".repeat(QUOTED_CHARS + 1)));
+        assert!(!Unusable::NoAnswer.note().is_empty());
     }
 }
