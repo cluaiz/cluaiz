@@ -1,7 +1,8 @@
 # Cluaiz CLI Reference
 
 What each `cluaiz` command does, and the API method that does the same thing over HTTP.
-`cluaiz --help` and `cluaiz <command> --help` list every flag.
+`cluaiz --help` and `cluaiz <command> --help` list every flag. `cluaiz help all` lists every
+command and subcommand at once; `cluaiz help <command> all` lists one command's.
 
 ---
 
@@ -36,7 +37,8 @@ What each `cluaiz` command does, and the API method that does the same thing ove
 * Downloads a model (Hugging Face or the Cluaiz catalog) into `~/.cluaiz/models/` and registers
   it. In a terminal it asks which variant when a repository has several, then asks to go on.
 * No questions (Q4_K_M, else the smallest variant; no confirmation) when `CLUAIZ_NONINTERACTIVE` is set or
-  stdin is not a terminal (scripts, CI, pipes). `--all` (pick files by hand) needs a terminal.
+  stdin is not a terminal (scripts, CI, pipes). To pick files by hand, use `cluaiz run <model> --all`
+  (it needs a terminal).
 * API: CEP `models.download`, or `POST /api/pull` for Ollama clients.
 
 ### `cluaiz list` (`ls`)
@@ -185,4 +187,10 @@ Skills, plugins and MCP servers share one command shape. Aliases: `i` (install),
 ## Development
 
 ### `cluaiz dev-sync`
-* Copies development builds (core, drivers) into `~/.cluaiz`. For Engine developers only.
+* Copies development builds (core, drivers) into `~/.cluaiz`. For Engine developers only, so it
+  is not shown in `cluaiz --help`.
+* `cluaiz dev-sync core`: the release `cluaiz` executable and its llama / ggml libraries, plus the
+  repository's `.cluaiz/brain` and `.cluaiz/skills`. `driver <name>`: one ONNX / GPU runtime
+  library. `all` (the default): both. `--profile debug` copies the debug build.
+* Run it from the repository with the new build: `target\release\cluaiz.exe dev-sync core`. Stop
+  any server that runs the installed `cluaiz` first.
