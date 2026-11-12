@@ -299,9 +299,12 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
             return CallRun::Client;
         }
 
+        // A saved flow offered in this turn: it runs in Automation, after the chat's own approval
+        let extension = ctx.extension_tools.iter().find(|t| t.function == raw_fn_name).cloned();
+
         // find_tools / load_tool / unload_tool, memory and project reads are answered by the Engine
         // itself; a tool called by its id before it was loaded is answered as load_tool
-        let implicit_load = super::tool_turns::needs_load(ctx, &self.tool_turns, session_id.as_deref(), raw_fn_name);
+        let implicit_load = extension.is_none() && super::tool_turns::needs_load(ctx, &self.tool_turns, session_id.as_deref(), raw_fn_name);
         let is_meta_tool = implicit_load
             || (ctx.tool_load_room.is_some() && cluaiz_agents::ToolSearch::is_meta_tool(raw_fn_name))
             || ((ctx.memory_tools || raw_fn_name == super::recall::TASK_UPDATE_TOOL)
@@ -313,7 +316,7 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
         } else {
             (raw_fn_name, payload_str.clone())
         };
-        let resolved_target = if is_meta_tool {
+        let resolved_target = if is_meta_tool || extension.is_some() {
             None
         } else if let Some(ref sid) = session_id {
             cluaiz_agents::ToolsEngine::resolve_function_target_for_session(sid, raw_fn_name)
@@ -321,7 +324,9 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
         } else {
             cluaiz_agents::ToolsEngine::resolve_function_target(raw_fn_name, &[])
         };
-        let (comp_type, comp_name, tool_sub_func) = if is_meta_tool {
+        let (comp_type, comp_name, tool_sub_func) = if let Some(flow) = &extension {
+            ("flow".to_string(), flow.tool.clone(), None)
+        } else if is_meta_tool {
             ("tools".to_string(), raw_fn_name.to_string(), None)
         } else if let Some(target) = resolved_target {
             (target.category, target.component_id, target.sub_function)
@@ -358,7 +363,9 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
             .unwrap_or(cluaiz_agents::SecurityMode::Inherit);
 
         // Human-in-the-loop approval gate; searching other chats asks first (policy cross_chat: ask)
-        let assessment = if is_meta_tool
+        let assessment = if let Some(flow) = &extension {
+            super::authorize::Assessment { requires_approval: flow.confirm, capabilities: vec!["flow:run".to_string()] }
+        } else if is_meta_tool
             && super::recall::needs_cross_chat_approval(meta_name, &meta_payload, ctx.chat_id.as_deref())
         {
             super::authorize::Assessment { requires_approval: true, capabilities: vec!["memory:other_chats".to_string()] }
@@ -418,7 +425,9 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
                     "message": "Executing tool in background process"
                 }}
             }])));
-            let executed = if is_meta_tool {
+            let executed = if let Some(flow) = &extension {
+                super::flows::run(&self.state, flow, &payload_str, ctx.chat_id.as_deref()).await.map_err(|e| anyhow::anyhow!(e))
+            } else if is_meta_tool {
                 let outcome = super::tool_turns::run_meta_tool(&self.state, ctx, &self.tool_turns, session_id.as_deref(), meta_name, &meta_payload).await;
                 if meta_name == cluaiz_agents::LOAD_TOOL_NAME && outcome.text.contains("Loaded tool") {
                     if let Some(id) = serde_json::from_str::<Value>(&meta_payload)

@@ -30,6 +30,18 @@ pub fn request_with_timeout(method: reqwest::Method, path: &str, timeout: std::t
 
 /// One authenticated CEP request for CLI callers. RPC errors are real command failures.
 pub async fn cep(method: &str, params: serde_json::Value) -> color_eyre::Result<serde_json::Value> {
+    cep_reply(method, params).await?.map_err(|error| {
+        color_eyre::eyre::eyre!(
+            "{method}: {} (code {})",
+            error["message"].as_str().unwrap_or("CEP error"),
+            error["code"]
+        )
+    })
+}
+
+/// Like [`cep`], but an RPC error comes back as its `error` object, for commands that act on
+/// `error.data` (a confirmation the owner gives, then the same call again)
+pub async fn cep_reply(method: &str, params: serde_json::Value) -> color_eyre::Result<Result<serde_json::Value, serde_json::Value>> {
     use color_eyre::eyre::eyre;
     let response = request(reqwest::Method::POST, "/v1/cep")
         .json(&serde_json::json!({"jsonrpc":"2.0","id":1,"method":method,"params":params}))
@@ -45,14 +57,11 @@ pub async fn cep(method: &str, params: serde_json::Value) -> color_eyre::Result<
         return Err(eyre!("Invalid CEP response for {method}"));
     }
     if let Some(error) = reply.get("error") {
-        return Err(eyre!(
-            "{method}: {} (code {})",
-            error["message"].as_str().unwrap_or("CEP error"),
-            error["code"]
-        ));
+        return Ok(Err(error.clone()));
     }
     reply
         .get("result")
         .cloned()
+        .map(Ok)
         .ok_or_else(|| eyre!("Missing CEP result for {method}"))
 }

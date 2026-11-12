@@ -13,6 +13,7 @@ path = "src/main.rs"
 [dependencies]
 # ── Root Architecture ──
 cluaiz_api = { package = "cluaiz-api", path = "../api", default-features = false }
+cluaiz-automation-host = { path = "../automation/host" }
 cluaiz-core = { path = "../engine/core" }
 cluaiz-hw = { path = "../engine/hardware" }
 cluaiz-models = { path = "../engine/models" }

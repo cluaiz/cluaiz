@@ -36,6 +36,8 @@ routes. See [docs/api/cep/README.md](docs/api/cep/README.md).
 | `llama-engine` | `engine/llama/` | Rust bindings to llama.cpp (GGUF): chat, multimodal, speech, embeddings |
 | `onnx-engine` | `engine/onnx/` | ONNX Runtime: TTS, STT, text and image embeddings, CUDA/cuDNN setup |
 | `cluaiz-media` | `engine/media/` | Image, audio, video and document decoding |
+| `cluaiz-automation` | `automation/core/` | Automation, outside the Engine: the flow format, checks, expressions, runner and run records |
+| `cluaiz-automation-host` | `automation/host/` | Runs Automation next to the server: the `flows.*` methods, and steps that reach the Engine only through CEP methods and the chat pipeline |
 
 ## 3. How a chat request runs
 

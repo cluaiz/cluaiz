@@ -11,6 +11,7 @@ mod display;
 mod terminal;
 mod terminal_state;
 mod checkpoints;
+mod flows;
 mod instructions;
 mod skills;
 mod line_diff;

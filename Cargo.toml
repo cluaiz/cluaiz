@@ -16,6 +16,8 @@ members = [
     "ffi",
     "cmd",
     "terminal",
+    "automation/core",
+    "automation/host",
     "tools/cluaiz-builder",
     "test/plugin_testing",
 ]

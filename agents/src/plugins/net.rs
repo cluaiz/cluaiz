@@ -54,6 +54,8 @@ struct Request {
 /// What one plugin call may reach, and how much of it it has used
 pub struct NetAccess {
     allowed: bool,
+    /// When set, the only hosts reachable (`api.example.com`, `*.example.com`)
+    hosts: Option<Vec<String>>,
     secrets: HashMap<String, String>,
     user_urls: Vec<String>,
     settings: HashMap<String, String>,
@@ -73,9 +75,31 @@ impl NetAccess {
         Self::new(permissions, settings)
     }
 
+    /// For a flow's `code` step: only these hosts (`permissions.network`), no secrets or settings
+    pub fn for_hosts(hosts: Vec<String>) -> Self {
+        let mut access = Self::new(None, HashMap::new());
+        // Every request is checked against `hosts`; an empty list reaches nothing
+        access.allowed = true;
+        access.hosts = Some(hosts);
+        access
+    }
+
+    fn host_allowed(&self, url: &Url) -> bool {
+        let Some(hosts) = &self.hosts else { return true };
+        let host = url.host_str().unwrap_or_default().to_ascii_lowercase();
+        hosts.iter().any(|pattern| {
+            let pattern = pattern.to_ascii_lowercase();
+            match pattern.strip_prefix("*.") {
+                Some(domain) => host.ends_with(&format!(".{domain}")),
+                None => host == pattern,
+            }
+        })
+    }
+
     fn new(permissions: Option<&PluginPermissions>, settings: HashMap<String, String>) -> Self {
         Self {
             allowed: permissions.is_some_and(|p| p.network_access),
+            hosts: None,
             secrets: permissions.map(|p| p.secrets.clone()).unwrap_or_default(),
             user_urls: permissions.map(|p| p.user_urls.clone()).unwrap_or_default(),
             settings,
@@ -116,6 +140,9 @@ impl NetAccess {
         let timeout = remaining.min(REQUEST_TIMEOUT);
 
         for _ in 0..=MAX_REDIRECTS {
+            if !self.host_allowed(&url) {
+                return refuse("no_permission", format!("{} is not in the flow's permissions.network", url.host_str().unwrap_or_default()));
+            }
             let addresses = check_target(&url, trusted.as_ref())?;
             let client = client(&url, &addresses, timeout)?;
             let mut outgoing = client.request(method.clone(), url.clone()).headers(headers.clone());
@@ -420,6 +447,16 @@ mod tests {
     use super::*;
     use std::io::Write;
     use std::net::TcpListener;
+
+    #[test]
+    fn a_flow_module_reaches_only_its_hosts() {
+        let mut access = NetAccess::for_hosts(vec!["api.example.com".into(), "*.github.com".into()]);
+        let refused = access.fetch(br#"{"url":"https://evil.example.net/x"}"#);
+        assert_eq!(refused["code"], "no_permission");
+        assert!(access.host_allowed(&Url::parse("https://api.github.com/").unwrap()));
+        assert!(!access.host_allowed(&Url::parse("https://github.com.evil.net/").unwrap()));
+        assert_eq!(NetAccess::for_hosts(vec![]).fetch(br#"{"url":"https://api.example.com/"}"#)["code"], "no_permission");
+    }
 
     fn access(settings: &[(&str, &str)]) -> NetAccess {
         let permissions = PluginPermissions {

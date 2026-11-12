@@ -49,6 +49,7 @@ pub async fn install(ctx: CallCtx, call: Call, target: Target) -> Result<Value, 
         }
         let entry = common::entry(&target)?;
         handle.event(json!({"stage":"installed","kind":target.kind,"name":target.name}));
+        cluaiz_cep::events::publish("tool.installed", json!({"kind":target.kind,"name":target.name}));
         serde_json::to_value(entry).map_err(common::unavailable)
     })
 }
@@ -60,6 +61,7 @@ pub async fn remove(ctx: CallCtx, call: Call, target: Target) -> Result<Value, C
     ToolsInstaller::remove_component(target.kind.as_str(), &target.name)
         .await
         .map_err(common::unavailable)?;
+    cluaiz_cep::events::publish("tool.removed", json!({"kind":target.kind,"name":target.name}));
     Ok(json!({"kind":target.kind,"name":target.name}))
 }
 

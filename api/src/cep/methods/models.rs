@@ -318,10 +318,12 @@ pub fn register(registry: &mut Registry<CallCtx>) {
                     (Some(done), total) => updates.progress(Progress { done, total, unit: Some("bytes".into()), message: None }),
                     _ => updates.event(update),
                 };
-                models::pull(&model, on_update, abort).await.map_err(|error| match error {
+                let pulled = models::pull(&model, on_update, abort).await.map_err(|error| match error {
                     models::PullError::Busy => CepError::conflict("pull_running", error.to_string()),
                     models::PullError::Failed(message) => CepError::unavailable("download_failed", message),
-                })
+                })?;
+                cluaiz_cep::events::publish("model.downloaded", json!({ "model": model }));
+                Ok(pulled)
             })
         },
     );

@@ -46,6 +46,9 @@ pub struct PreparedChatContext {
     /// Functions the client runs itself (OpenAI `tools` of type "function"): a call to one is
     /// returned to the client as `tool_calls` instead of being run here
     pub client_tools: Vec<String>,
+    /// Tools of layers outside the Engine (Automation's flows) that fit this message and were
+    /// offered; a call to one runs in that layer
+    pub extension_tools: Vec<super::flows::OfferedTool>,
     /// Chat id and key of the current user message, for recording this turn in the chat's
     /// ledger (None for private chats and requests without a session)
     pub ledger_turn: Option<(String, String)>,
@@ -783,6 +786,19 @@ impl PreparedChatContext {
             }
         }
 
+        // Saved flows that fit the message, offered as tools (none fit: nothing changes)
+        let mut extension_tools = Vec::new();
+        if tools_allowed {
+            let (offered, schemas) = super::flows::offer(state, &initial_user_query, previous_user_query.as_deref()).await;
+            if !offered.is_empty() {
+                tracing::info!("🧩 [Flows] offered for this message: {:?}", offered.iter().map(|o| o.tool.as_str()).collect::<Vec<_>>());
+                hint_lines.push_str(&format!("{}\n", super::flows::hint(&offered)));
+                meta_schemas.extend(schemas);
+                offer_meta_tools = true;
+                extension_tools = offered;
+            }
+        }
+
         if project_read && hint_lines.is_empty() {
             hint_lines = format!("{}\n", cluaiz_core::prompts::text("workspace.read_item_hint"));
         }
@@ -1330,6 +1346,7 @@ impl PreparedChatContext {
             active_tool_ids: tool_ids_to_compile,
             tool_load_room,
             client_tools,
+            extension_tools,
             json_prompt,
             prepared_media,
             media_lease,

@@ -1,0 +1,28 @@
+[package]
+name = "cluaiz-automation-host"
+description = "Runs Cluaiz Automation next to the Engine: its flows.* methods, and the StepHost that reaches the Engine through its public doors (CEP methods, the chat pipeline, approvals)."
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[lib]
+name = "cluaiz_automation_host"
+
+[dependencies]
+cluaiz-automation = { path = "../core" }
+cluaiz_api = { package = "cluaiz-api", path = "../../api", default-features = false }
+cluaiz-cep = { path = "../../cep" }
+cluaiz-core = { path = "../../engine/core" }
+cluaiz-agents = { path = "../../agents" }
+cluaiz-security = { path = "../../security" }
+axum = "0.8"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+schemars = "1"
+tokio = { version = "1", features = ["sync", "time", "rt", "macros"] }
+async-trait = "0.1"
+tracing = "0.1"
+dirs = "5"
+chrono = "0.4"
+notify = "6.1"
+uuid = { version = "1", features = ["v4"] }

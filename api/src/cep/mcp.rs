@@ -1,7 +1,8 @@
 //! `POST /mcp`: the Engine as an MCP server (Streamable HTTP, JSON responses), built on the CEP
 //! registry. A tool is a CEP method with the same name, its params schema
 //! as `inputSchema`; a call goes through the same dispatcher as `/v1/cep`. MCP clients act as the
-//! `mcp` principal: read-only methods.
+//! `mcp` principal: read-only methods. Layers outside the Engine may add their own tools
+//! (`Extension::mcp_tools`): Automation offers the flows their owner made tools.
 
 use super::CallCtx;
 use crate::state::AppState;
@@ -56,6 +57,13 @@ fn tools(state: &AppState) -> Vec<Value> {
         .collect()
 }
 
+/// The Engine's methods and the extensions' tools
+async fn all_tools(state: &Arc<AppState>) -> Vec<Value> {
+    let mut list = tools(state);
+    list.extend(super::extensions::tools(state).await);
+    list
+}
+
 /// A method's result or error as an MCP tool result: errors go back to the model (`isError`)
 /// so it can correct the call
 fn tool_result(outcome: Result<Value, CepError>) -> Value {
@@ -83,7 +91,7 @@ async fn answer(state: &Arc<AppState>, method: &str, params: Map<String, Value>)
             }))
         }
         "ping" => Ok(json!({})),
-        "tools/list" => Ok(json!({ "tools": tools(state) })),
+        "tools/list" => Ok(json!({ "tools": all_tools(state).await })),
         "tools/call" => {
             let name = params.get("name").and_then(Value::as_str).unwrap_or_default().to_string();
             let arguments = match params.get("arguments") {
@@ -91,6 +99,10 @@ async fn answer(state: &Arc<AppState>, method: &str, params: Map<String, Value>)
                 Some(Value::Object(arguments)) => arguments.clone(),
                 Some(_) => return Err(CepError::invalid_params("`arguments` must be an object", Vec::new(), None)),
             };
+            let caller = super::extensions::Caller { kind: "mcp", chat_id: None, confirmed: false };
+            if let Some(call) = super::extensions::call_tool(state, &name, arguments.clone(), caller) {
+                return Ok(tool_result(call.await));
+            }
             let ctx = CallCtx { state: state.clone() };
             match state.cep.invoke(ctx, MCP.clone(), &name, arguments, CallMeta::default()).await {
                 Err(error) if error.code == METHOD_NOT_FOUND => Err(CepError::invalid_params(format!("Unknown tool: {name}"), Vec::new(), None)),
