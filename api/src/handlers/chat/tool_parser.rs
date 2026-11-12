@@ -18,7 +18,19 @@ pub fn extract_tool_call(text: &str) -> Option<ExtractedToolCall> {
         return None;
     }
 
-    let call_start_idx = text.rfind(start_tag)?;
+    // The first block that is a whole call: a provider's answer brings all its calls at once, and
+    // the first carries what the provider wants back (Gemini signs only the first of parallel
+    // calls). Without one, the last block, read leniently below.
+    let first_call = text.match_indices(start_tag).map(|(at, _)| at).find(|&at| {
+        let after = &text[at + start_tag.len()..];
+        after.find(end_tag).is_some_and(|end| {
+            serde_json::from_str::<Value>(after[..end].trim()).is_ok_and(|call| call.get("name").and_then(Value::as_str).is_some())
+        })
+    });
+    let call_start_idx = match first_call {
+        Some(at) => at,
+        None => text.rfind(start_tag)?,
+    };
     if !text.is_char_boundary(call_start_idx) {
         return None;
     }
@@ -181,6 +193,15 @@ mod tests {
         let call = extract_tool_call(input).expect("Should extract fenced tool call");
         assert_eq!(call.raw_fn_name, "search");
         assert_eq!(call.payload_str, "rust lang");
+    }
+
+    #[test]
+    fn the_first_of_several_calls_is_taken_with_what_its_provider_sent() {
+        let first = cluaiz_core::tool_calls::canonical_call_with("a", "{}", Some(&serde_json::json!({ "provider": "gemini", "call": { "extra_content": { "google": { "thought_signature": "SIG" } } } })));
+        let input = format!("<tool_call>broken</tool_call>\n{first}\n{}", cluaiz_core::tool_calls::canonical_call("b", "{}"));
+        let call = extract_tool_call(&input).unwrap();
+        assert_eq!(call.raw_fn_name, "a");
+        assert!(call.raw_json.contains("SIG"), "the call keeps its provider data: {}", call.raw_json);
     }
 
     #[test]

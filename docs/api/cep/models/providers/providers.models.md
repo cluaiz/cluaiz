@@ -64,4 +64,4 @@ When the provider does not answer or refuses the key, the error is `provider_una
 ## Implementation reference
 
 - [api/src/cep/methods/providers.rs](../../../../../api/src/cep/methods/providers.rs)
-- [api/src/providers.rs](../../../../../api/src/providers.rs)
+- [api/src/providers/models.rs](../../../../../api/src/providers/models.rs)

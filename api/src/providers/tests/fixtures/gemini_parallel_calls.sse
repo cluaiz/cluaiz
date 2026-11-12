@@ -1,0 +1,6 @@
+: Gemini 3.1 flash-lite, OpenAI-compatible URL: two parallel calls, each sent whole with its own id and no index; the first carries the thought signature
+: recorded 2026-11-11; thought signatures shortened, ids and text as sent
+data: {"choices":[{"delta":{"role":"assistant","tool_calls":[{"extra_content":{"google":{"thought_signature":"EnMKcQFpFH0T…"}},"function":{"arguments":"{\"path\":\"notes.txt\"}","name":"read_file"},"id":"call_17270009350365942365","type":"function"}]},"index":0}],"created":1794403599,"id":"D230avW_HKiQ3LUPkIqniQE","model":"gemini-3.1-flash-lite","object":"chat.completion.chunk","usage":{"completion_tokens":18,"prompt_tokens":100,"total_tokens":118}}
+data: {"choices":[{"delta":{"role":"assistant","tool_calls":[{"function":{"arguments":"{\"path\":\"docs\"}","name":"list_dir"},"id":"call_17270009350365942742","type":"function"}]},"index":0}],"created":1794403599,"id":"D230avW_HKiQ3LUPkIqniQE","model":"gemini-3.1-flash-lite","object":"chat.completion.chunk","usage":{"completion_tokens":34,"prompt_tokens":100,"total_tokens":134}}
+data: {"choices":[{"delta":{"role":"assistant"},"finish_reason":"stop","index":0}],"created":1794403599,"id":"D230avW_HKiQ3LUPkIqniQE","model":"gemini-3.1-flash-lite","object":"chat.completion.chunk","usage":{"completion_tokens":34,"prompt_tokens":100,"total_tokens":134}}
+data: [DONE]

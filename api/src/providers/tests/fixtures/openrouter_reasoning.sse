@@ -1,0 +1,8 @@
+: OPENROUTER PROCESSING
+: OpenRouter, written from its documented stream format: comment lines while it works, the thinking in reasoning (and reasoning_details), usage with cost
+data: {"id":"gen-1","provider":"Anthropic","model":"anthropic/claude-sonnet-4.5","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"The user wants a greeting.","reasoning_details":[{"type":"reasoning.text","text":"The user wants a greeting.","format":"anthropic-claude-v1","index":0}]},"finish_reason":null}]}
+: OPENROUTER PROCESSING
+data: {"id":"gen-1","provider":"Anthropic","model":"anthropic/claude-sonnet-4.5","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"role":"assistant","content":"Hello there!","reasoning":null},"finish_reason":null}]}
+data: {"id":"gen-1","provider":"Anthropic","model":"anthropic/claude-sonnet-4.5","object":"chat.completion.chunk","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":"stop"}]}
+data: {"id":"gen-1","provider":"Anthropic","model":"anthropic/claude-sonnet-4.5","object":"chat.completion.chunk","choices":[],"usage":{"prompt_tokens":12,"completion_tokens":20,"total_tokens":32,"cost":0.0003}}
+data: [DONE]

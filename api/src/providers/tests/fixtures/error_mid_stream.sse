@@ -1,0 +1,3 @@
+: A provider that fails after it began (Anthropic and OpenRouter send an error event, then close)
+data: {"choices":[{"index":0,"delta":{"role":"assistant","content":"Let me"},"finish_reason":null}]}
+data: {"error":{"message":"Overloaded","code":529}}

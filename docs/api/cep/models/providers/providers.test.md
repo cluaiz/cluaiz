@@ -76,4 +76,4 @@ Errors name the cause in plain words: a refused key (401 or 403), an unknown mod
 ## Implementation reference
 
 - [api/src/cep/methods/providers.rs](../../../../../api/src/cep/methods/providers.rs)
-- [api/src/providers.rs](../../../../../api/src/providers.rs)
+- [api/src/providers/models.rs](../../../../../api/src/providers/models.rs)

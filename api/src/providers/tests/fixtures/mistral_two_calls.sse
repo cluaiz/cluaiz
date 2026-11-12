@@ -1,0 +1,4 @@
+: Mistral, written from its documented stream format: both calls whole in one delta, nine-character ids, no index
+data: {"id":"m1","object":"chat.completion.chunk","model":"mistral-large-latest","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":null}]}
+data: {"id":"m1","object":"chat.completion.chunk","model":"mistral-large-latest","choices":[{"index":0,"delta":{"tool_calls":[{"id":"D681PevKs","function":{"name":"read_file","arguments":"{\"path\": \"notes.txt\"}"}},{"id":"k8Ra9xQ2p","function":{"name":"list_dir","arguments":"{\"path\": \"docs\"}"}}]},"finish_reason":"tool_calls"}],"usage":{"prompt_tokens":90,"total_tokens":120,"completion_tokens":30}}
+data: [DONE]
