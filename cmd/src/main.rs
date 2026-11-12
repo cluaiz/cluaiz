@@ -28,6 +28,19 @@ pub struct Cli {
     command: Option<CliCommand>,
 }
 
+/// The forms of a model id and what `pull` does with each (shown by `-h` and `--help`)
+const PULL_HELP: &str = "\
+Examples:
+  cluaiz pull qwen3:8b                              a Cluaiz catalogue id
+  cluaiz pull unsloth/Qwen3.5-4B-GGUF               a Hugging Face repository
+  cluaiz pull unsloth/Qwen3.5-4B-GGUF:Q4_K_M        one quantization of it
+  cluaiz pull hf://unsloth/Qwen3.5-4B-GGUF          an hf:// or https://huggingface.co URL
+
+In a terminal it asks which variant when a repository has several, then asks to go on.
+With CLUAIZ_NONINTERACTIVE set, or in a script or pipe, it asks nothing (Q4_K_M, else the smallest).
+A stopped download continues from where it stopped when you pull again.
+The model goes to ~/.cluaiz/models; `cluaiz list` shows it, `cluaiz run <id>` chats with it.";
+
 #[derive(Subcommand)]
 enum CliCommand {
     /// Chat with a model, or answer one prompt (`cluaiz run <model> "<prompt>"`)
@@ -40,9 +53,9 @@ enum CliCommand {
     #[command(visible_alias = "ls")]
     List,
     /// Download and register a model into the local vault.
-    #[command(alias = "install", alias = "i")]
+    #[command(alias = "install", alias = "i", after_help = PULL_HELP)]
     Pull {
-        /// Model ID (e.g. gemma2:2b, unsloth/Qwen3.5-4B-GGUF)
+        /// A catalogue id, or a Hugging Face repository owner/name, optionally with :QUANT
         model_id: String,
     },
     /// Remove a model from the local vault.
@@ -126,7 +139,9 @@ enum CliCommand {
     /// Manage temporary storage and media of the running server
     #[command(alias = "store")]
     Storage(cli::storage::StorageCli),
-    /// Sync compiled development artifacts (engines, drivers) to ~/.cluaiz manually
+    /// Sync compiled development artifacts (engines, drivers) to ~/.cluaiz manually.
+    /// For Engine developers only, so not in the help (docs/reference/terminal-commands.md).
+    #[command(hide = true)]
     DevSync {
         /// Target to sync (all, core, driver)
         #[arg(default_value = "all")]
@@ -320,6 +335,14 @@ async fn main() -> Result<()> {
     if raw.len() == 2 && matches!(raw[1].as_str(), "-h" | "--help" | "help") {
         cli::help::print::<Cli>();
         ghost_note();
+        return Ok(());
+    }
+    // `cluaiz help all`, `cluaiz help <command…> all`: every command and subcommand at once
+    if raw.len() >= 3 && raw[1] == "help" && raw[2..].iter().any(|a| a == "all" || a == "--all") {
+        let path: Vec<String> = raw[2..].iter().filter(|a| *a != "all" && *a != "--all").cloned().collect();
+        if let Err(e) = cli::help::print_all::<Cli>(&path) {
+            fail("help", e);
+        }
         return Ok(());
     }
     // The window / tab title names the command ("Cluaiz · pull"), not the exe path the shell shows;

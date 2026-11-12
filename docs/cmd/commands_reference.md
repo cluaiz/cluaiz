@@ -10,7 +10,8 @@
 | Command | Description |
 |---------|-------------|
 | `cluaiz` | In a terminal with a default chat model: the [agent](agent.md) in the current folder. Otherwise the help |
-| `cluaiz --help`, `cluaiz -h`, `cluaiz help` | Every command in groups; `cluaiz <command> --help` for its flags |
+| `cluaiz --help`, `cluaiz -h`, `cluaiz help` | Every command in groups; `cluaiz <command> --help` (or `cluaiz help <command>`) for its flags |
+| `cluaiz help all` | Every command and subcommand to the full depth, each with its arguments; `cluaiz help <command> all` for one command (`cluaiz help provider all`) |
 | `cluaiz -v`, `-V`, `--version` | The version (`-v` with a command means verbose: engine logs on stderr, `-vv` debug) |
 
 ---
@@ -157,7 +158,7 @@ These are not `cluaiz` commands. They run in the repository.
 |---------|-------------|
 | `cargo build --release -p cmd` | Build the `cluaiz` program |
 | `cargo build --release -p cmd -p cluaiz-ffi` | Also build the C library |
-| `cluaiz dev-sync` | Copy development builds (core, drivers) into `~/.cluaiz` |
+| `cluaiz dev-sync [all\|core\|driver]` | Copy development builds (core, drivers) into `~/.cluaiz`. For Engine developers; not shown in the help |
 
 ---
 
