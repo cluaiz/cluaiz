@@ -88,6 +88,11 @@ enum CliCommand {
         #[command(subcommand)]
         command: Option<PermissionCommand>,
     },
+    /// Automation: flows that run steps with your tools, models and the Engine's methods
+    Flow {
+        #[command(subcommand)]
+        command: cli::flow::FlowCommand,
+    },
     /// Model providers (OpenAI-compatible APIs): their models are used as `<provider>/<model>`
     Provider {
         #[command(subcommand)]
@@ -434,6 +439,8 @@ async fn main() -> Result<()> {
                     eprintln!("{} {warning}", "Note:".yellow().bold());
                 }
             }
+            // Automation runs next to the Engine and serves its flows.* methods at /v1/cep
+            cluaiz_automation_host::install();
             if let Err(e) = cluaiz_api::run_daemon_with_native_endpoint(native_endpoint).await {
                 fail("serve", e);
             }
@@ -567,6 +574,11 @@ async fn main() -> Result<()> {
                     }
                     Err(err) => fail("token", err),
                 },
+            }
+        }
+        CliCommand::Flow { command } => {
+            if let Err(e) = cli::flow::execute(command).await {
+                fail("flow", e);
             }
         }
         CliCommand::Provider { command } => {

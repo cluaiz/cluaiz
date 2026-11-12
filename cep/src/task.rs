@@ -189,11 +189,17 @@ impl TaskStore {
         let handle = TaskHandle { store: self.clone(), id: id.clone(), cancel };
         let future = work(handle);
         let store = self.clone();
+        let method = method.to_string();
         tokio::spawn(async move {
             let outcome = future.await;
-            let mut tasks = store.tasks();
-            if let Some(task) = tasks.get_mut(&id) {
+            let notice = {
+                let mut tasks = store.tasks();
+                let Some(task) = tasks.get_mut(&id) else { return };
                 // A cancelled task stays cancelled, whatever the work returned
+                let notice = (task.status != Status::Cancelled).then(|| match &outcome {
+                    Ok(_) => ("task.done", json!({ "task_id": id, "method": method })),
+                    Err(error) => ("task.failed", json!({ "task_id": id, "method": method, "error": { "code": error.code, "message": error.message } })),
+                });
                 if task.status != Status::Cancelled {
                     task.status = if outcome.is_ok() { Status::Completed } else { Status::Failed };
                     if let Err(error) = &outcome {
@@ -203,6 +209,10 @@ impl TaskStore {
                 }
                 task.updated_ms = now_ms();
                 let _ = task.finished.send(true);
+                notice
+            };
+            if let Some((name, data)) = notice {
+                crate::events::publish(name, data);
             }
         });
         Ok(view)

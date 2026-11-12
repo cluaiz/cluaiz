@@ -132,6 +132,7 @@ Lists every prompt.
 | `chat.recall_hint` | In `<tools_hint>`: earlier messages are not all shown; how to look them up | none |
 | `chat.remember_hint` | In `<tools_hint>`: when `remember` is offered | none |
 | `chat.task_hint` | In `<tools_hint>`: while a task is open | none |
+| `chat.flow_hint` | In `<tools_hint>`: saved flows that fit the message, offered as tools | `flows` |
 | `chat.no_memory` | A memory tool result in a chat that keeps no memory | none |
 | `tools.header` | Heading before the inline `<tools>` block | none |
 | `tools.call_format` | How a model writes a `<tool_call>` block | none |

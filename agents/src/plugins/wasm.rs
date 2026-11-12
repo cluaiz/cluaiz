@@ -33,6 +33,48 @@ pub fn run_file(path: &Path, payload: &[u8], max_memory_mb: Option<u64>, net: Ne
     run(&std::fs::read(path)?, payload, max_memory_mb, net)
 }
 
+/// What one module call may use (a flow's `code` step names its own)
+#[derive(Debug, Clone)]
+pub struct Budget {
+    /// The exported function: `(ptr, len) -> (answer_ptr << 32) | answer_len`
+    pub function: String,
+    pub memory_bytes: usize,
+    pub fuel: u64,
+}
+
+/// Why a module call failed
+#[derive(Debug)]
+pub enum ModuleError {
+    /// Out of fuel or memory
+    Limit(String),
+    /// Not a module, a missing export, a trap, a bad answer address
+    Failed(String),
+}
+
+impl std::fmt::Display for ModuleError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ModuleError::Limit(m) | ModuleError::Failed(m) => f.write_str(m),
+        }
+    }
+}
+
+/// Runs `budget.function` of a module with `payload` as its input; the same host functions and
+/// network rules as plugins
+pub fn run_module(wasm: &[u8], payload: &[u8], budget: &Budget, net: NetAccess) -> Result<Vec<u8>, ModuleError> {
+    run_budget(wasm, payload, &budget.function, budget.memory_bytes.min(MAX_MEMORY_BYTES), budget.fuel, net).map_err(|error| {
+        let out_of_fuel = error.chain().any(|e| e.downcast_ref::<wasmtime::Trap>() == Some(&wasmtime::Trap::OutOfFuel));
+        let text = format!("{error:#}");
+        if out_of_fuel || text.contains("all fuel consumed") {
+            ModuleError::Limit(format!("the module ran out of fuel (more than {} instructions)", budget.fuel))
+        } else if text.contains("memory") && (text.contains("limit") || text.contains("grow") || text.contains("minimum")) {
+            ModuleError::Limit(format!("the module needs more memory than allowed ({} bytes)", budget.memory_bytes))
+        } else {
+            ModuleError::Failed(text)
+        }
+    })
+}
+
 /// `http_fetch(ptr, len) -> (ptr << 32) | len`: the request and the answer are JSON in the plugin's memory
 fn http_fetch(mut caller: Caller<'_, HostState>, start: i32, length: u32) -> Result<u64> {
     let memory = caller
@@ -57,14 +99,18 @@ fn http_fetch(mut caller: Caller<'_, HostState>, start: i32, length: u32) -> Res
 }
 
 fn run(wasm: &[u8], payload: &[u8], max_memory_mb: Option<u64>, net: NetAccess) -> Result<Vec<u8>> {
-    let engine = ENGINE.as_ref().map_err(|e| anyhow!("WebAssembly is not available: {e}"))?;
-    let module = Module::new(engine, wasm).map_err(|e| anyhow!("Not a valid WebAssembly plugin: {e}"))?;
     let memory_limit = max_memory_mb
         .map_or(MAX_MEMORY_BYTES, |mb| (mb as usize).saturating_mul(1024 * 1024).min(MAX_MEMORY_BYTES));
+    run_budget(wasm, payload, "execute_cel", memory_limit, FUEL, net)
+}
+
+fn run_budget(wasm: &[u8], payload: &[u8], function: &str, memory_limit: usize, fuel: u64, net: NetAccess) -> Result<Vec<u8>> {
+    let engine = ENGINE.as_ref().map_err(|e| anyhow!("WebAssembly is not available: {e}"))?;
+    let module = Module::new(engine, wasm).map_err(|e| anyhow!("Not a valid WebAssembly plugin: {e}"))?;
     let limits: StoreLimits = StoreLimitsBuilder::new().memory_size(memory_limit).build();
     let mut store = Store::new(engine, HostState { limits, net });
     store.limiter(|state| &mut state.limits);
-    store.set_fuel(FUEL).map_err(|e| anyhow!("{e}"))?;
+    store.set_fuel(fuel).map_err(|e| anyhow!("{e}"))?;
 
     let mut linker: Linker<HostState> = Linker::new(engine);
     linker
@@ -101,8 +147,8 @@ fn run(wasm: &[u8], payload: &[u8], max_memory_mb: Option<u64>, net: NetAccess) 
         .get_typed_func::<u32, i32>(&mut store, "allocate")
         .map_err(|e| anyhow!("The plugin has no 'allocate': {e}"))?;
     let execute = instance
-        .get_typed_func::<(i32, u32), u64>(&mut store, "execute_cel")
-        .map_err(|e| anyhow!("The plugin has no 'execute_cel': {e}"))?;
+        .get_typed_func::<(i32, u32), u64>(&mut store, function)
+        .map_err(|e| anyhow!("The plugin has no '{function}': {e}"))?;
     let memory = instance
         .get_memory(&mut store, "memory")
         .ok_or_else(|| anyhow!("The plugin has no 'memory'"))?;
@@ -184,6 +230,19 @@ mod tests {
             (func (export "allocate") (param i32) (result i32) i32.const 0)
             (func (export "execute_cel") (param i32 i32) (result i64) i64.const 0))"#;
         assert!(run(&wasm(big), b"x", Some(1)).is_err());
+    }
+
+    #[test]
+    fn a_module_runs_its_named_function_within_its_budget() {
+        let named = ECHO.replace("execute_cel", "main");
+        let budget = super::Budget { function: "main".into(), memory_bytes: 1 << 20, fuel: 1_000_000 };
+        assert_eq!(super::run_module(&wasm(&named), b"[1]", &budget, NetAccess::none()).unwrap(), b"[1]");
+        let forever = r#"(module (memory (export "memory") 1)
+            (func (export "allocate") (param i32) (result i32) i32.const 0)
+            (func (export "main") (param i32 i32) (result i64) (loop $l (br $l)) i64.const 0))"#;
+        assert!(matches!(super::run_module(&wasm(forever), b"x", &budget, NetAccess::none()), Err(super::ModuleError::Limit(_))));
+        let missing = super::Budget { function: "absent".into(), ..budget };
+        assert!(matches!(super::run_module(&wasm(&named), b"x", &missing, NetAccess::none()), Err(super::ModuleError::Failed(_))));
     }
 
     #[test]

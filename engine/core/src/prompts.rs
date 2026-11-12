@@ -63,6 +63,7 @@ const DEFAULTS: &[&str] = &[
     include_str!("../prompts/chat.recall_hint.md"),
     include_str!("../prompts/chat.remember_hint.md"),
     include_str!("../prompts/chat.task_hint.md"),
+    include_str!("../prompts/chat.flow_hint.md"),
     include_str!("../prompts/chat.no_memory.md"),
     include_str!("../prompts/tools.header.md"),
     include_str!("../prompts/tools.call_format.md"),

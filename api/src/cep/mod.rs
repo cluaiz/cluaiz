@@ -2,6 +2,7 @@
 //! method registry, and the `POST /v1/cep` endpoint. The protocol itself (envelope, registry,
 //! approvals, tasks, discovery) is the `cluaiz-cep` crate. Reference: `docs/api/cep/`.
 
+pub mod extensions;
 pub mod http;
 pub mod mcp;
 pub mod methods;
@@ -50,8 +51,12 @@ pub async fn error_from_response(response: axum::response::Response) -> cluaiz_c
 }
 
 pub fn engine() -> CepEngine {
+    let mut registry = methods::registry();
+    for extension in extensions::installed() {
+        extension.register(&mut registry);
+    }
     Engine::new(
-        methods::registry(),
+        registry,
         ApprovalStore::new(APPROVAL_TTL),
         TaskStore::new(MAX_RUNNING_TASKS, TASK_TTL_MS, MAX_TASK_TTL_MS),
         Limits::default(),

@@ -4,6 +4,7 @@ pub mod bench;
 pub mod component;
 pub mod component_config;
 pub mod config_cmd;
+pub mod flow;
 pub mod ingest;
 pub mod install;
 pub mod keys;

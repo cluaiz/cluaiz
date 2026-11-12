@@ -64,6 +64,8 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
             state.clone(),
             crate::auth::auth_middleware,
         ))
+        // Extension routes (Automation's webhooks) prove their callers themselves
+        .merge(crate::cep::extensions::routes())
         .layer(cors)
         .with_state(state)
 }

@@ -110,6 +110,8 @@ pub struct Tools {
     pub sent: HashSet<String>,
     /// How often each call (name and arguments) was made in this request
     pub calls: std::collections::HashMap<String, usize>,
+    /// Saved flows offered as tools by the running server (`tool` trigger); none without a server
+    flows: Vec<super::flows::FlowTool>,
 }
 
 /// From this many identical calls in one request, the result says so: a small model whose earlier
@@ -180,6 +182,7 @@ impl Tools {
             memory_source: "cluaiz agent".into(),
             sent: HashSet::new(),
             calls: Default::default(),
+            flows: Vec::new(),
         }
     }
 
@@ -198,6 +201,14 @@ impl Tools {
         let mut ids: Vec<String> = ids.into_iter().map(|tool| tool.id).collect();
         ids.sort();
         self.workspace = super::instructions::scan(&self.root);
+        // A flow that asks first and that nobody can approve in this run is not offered (as for
+        // installed tools): the model would only be refused
+        let mut flows = super::flows::load().await;
+        flows.retain(|f| !f.confirm || self.can_be_allowed(&format!("flow:{}", f.name)));
+        self.flows = flows;
+        if !self.flows.is_empty() {
+            self.display.emit(Event::Message("Flows".into(), format!("{} saved flow(s) offered as tools: {}", self.flows.len(), self.flows.iter().map(|f| f.name.as_str()).collect::<Vec<_>>().join(", "))));
+        }
         if !waiting.is_empty() {
             self.display.emit(Event::Message(
                 "Tools".into(),
@@ -264,10 +275,11 @@ impl Tools {
         super::skills::summary(&self.workspace.skills, &self.root, super::instructions::user_home().as_deref())
     }
 
-    /// Names of the installed tools offered to the model
+    /// Names of the installed tools (and saved flows) offered to the model
     pub fn installed_names(&self) -> Vec<String> {
         self.installed_schemas
             .iter()
+            .chain(self.flows.iter().map(|f| &f.schema))
             .filter_map(|schema| schema["function"]["name"].as_str().map(str::to_owned))
             .collect()
     }
@@ -281,7 +293,20 @@ impl Tools {
         all.push(cluaiz_agents::workspace::memory::schema());
         all.push(cluaiz_agents::workspace::memory::forget_schema());
         all.extend(self.installed_schemas.iter().cloned());
+        all.extend(self.flows.iter().map(|f| f.schema.clone()));
         Value::Array(all)
+    }
+
+    /// One call of a saved flow, on the running server; asked first when the flow says so
+    async fn run_flow(&mut self, function: &str, arguments: &Value) -> Result<(String, String), String> {
+        let Some(flow) = self.flows.iter().find(|f| f.function == function).cloned() else {
+            return Err(format!("there is no flow {function}"));
+        };
+        if flow.confirm {
+            self.ask(&format!("flow:{}", flow.name), &format!("flow {}\narguments: {arguments}", flow.name))?;
+        }
+        let output = super::flows::run(&flow, arguments).await?;
+        Ok((format!("flow {}: {} characters", flow.name, output.len()), output))
     }
 
     /// One call of an installed skill, plugin or MCP tool, asked first like a command
@@ -486,6 +511,7 @@ impl Tools {
                 self.remember(&text("name").unwrap_or_default(), &text("fact").unwrap_or_default(), &text("replaces").unwrap_or_default()).await
             }
             cluaiz_agents::workspace::FORGET => self.forget(&text("name").unwrap_or_default()),
+            other if self.flows.iter().any(|f| f.function == other) => self.run_flow(other, &args).await,
             other => self.run_installed(other, arguments).await,
         };
         // A file a glob rule is for: the rule comes with the result, once in a conversation

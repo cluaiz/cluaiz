@@ -97,6 +97,9 @@ pub fn params_digest(params: &Value) -> [u8; 32] {
     Sha256::digest(text.as_bytes()).into()
 }
 
+/// The longest an approval stays open
+const MAX_TTL: Duration = Duration::from_secs(90 * 24 * 3600);
+
 impl ApprovalStore {
     pub fn new(ttl: Duration) -> Self {
         Self { ttl, items: Mutex::new(HashMap::new()), waiters: Mutex::new(HashMap::new()) }
@@ -114,10 +117,17 @@ impl ApprovalStore {
         }
     }
 
-    /// A new pending approval
+    /// A new pending approval, open for the store's usual time
     pub fn request(&self, principal: &str, method: &str, digest: [u8; 32], target: &str) -> Approval {
+        self.request_for(principal, method, digest, target, None)
+    }
+
+    /// A new pending approval, open for `ttl` (at most 90 days) instead of the usual time: a
+    /// flow's `approve` step may wait hours or days for the owner
+    pub fn request_for(&self, principal: &str, method: &str, digest: [u8; 32], target: &str, ttl: Option<Duration>) -> Approval {
         let now = now_ms();
-        let expires_ms = now + self.ttl.as_millis() as u64;
+        let ttl = ttl.unwrap_or(self.ttl).min(MAX_TTL);
+        let expires_ms = now + ttl.as_millis() as u64;
         let approval = Approval {
             id: format!("ap_{}", uuid::Uuid::new_v4().simple()),
             principal: principal.into(),
@@ -129,9 +139,12 @@ impl ApprovalStore {
             status: Status::Pending,
             expires_ms,
         };
-        let mut items = self.items();
-        Self::prune(&mut items, now);
-        items.insert(approval.id.clone(), approval.clone());
+        {
+            let mut items = self.items();
+            Self::prune(&mut items, now);
+            items.insert(approval.id.clone(), approval.clone());
+        }
+        crate::events::publish("approval.requested", serde_json::json!({ "approval_id": approval.id, "method": approval.method, "principal": approval.principal }));
         approval
     }
 
@@ -168,6 +181,7 @@ impl ApprovalStore {
         if let Some(waiter) = self.waiters.lock().unwrap_or_else(|e| e.into_inner()).remove(id) {
             let _ = waiter.send(Decision { approved, feedback });
         }
+        crate::events::publish("approval.decided", serde_json::json!({ "approval_id": id, "status": if approved { "approved" } else { "rejected" } }));
         Ok(decided)
     }
 
@@ -218,6 +232,18 @@ mod tests {
         // Used up
         assert!(!store.consume(&approval.id, "extension:e", "fs.write", digest));
         assert!(store.decide(&approval.id, true, None).is_err());
+    }
+
+    #[test]
+    fn test_one_approval_may_stay_open_longer() {
+        let store = ApprovalStore::new(Duration::from_millis(0));
+        let digest = params_digest(&json!({}));
+        let quick = store.request("flow:f", "flows.run", digest, "x");
+        let long = store.request_for("flow:f", "flows.run", digest, "x", Some(Duration::from_secs(4 * 3600)));
+        assert!(store.decide(&quick.id, true, None).is_err(), "the usual time has passed");
+        assert!(store.decide(&long.id, true, None).is_ok());
+        let capped = store.request_for("flow:f", "flows.run", digest, "x", Some(Duration::from_secs(400 * 24 * 3600)));
+        assert!(capped.expires_ms - now_ms() <= MAX_TTL.as_millis() as u64);
     }
 
     #[test]

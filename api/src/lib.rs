@@ -35,11 +35,13 @@ pub async fn run_daemon() -> anyhow::Result<()> {
 /// The explicit native mode serves the same router without opening a TCP listener.
 pub async fn run_daemon_with_native_endpoint(endpoint: Option<String>) -> anyhow::Result<()> {
     let native = endpoint.as_deref().map(native::NativeListener::bind).transpose()?;
-    let state = boot::boot();
+    let state = Arc::new(boot::boot());
     let host = state.host.clone();
     let perms = cluaiz_security::PermissionSchema::load();
     let session_token = state.session_token.clone();
-    let app = create_router(state);
+    cep::extensions::start(&state);
+    cluaiz_cep::events::publish("engine.started", serde_json::json!({ "version": env!("CARGO_PKG_VERSION") }));
+    let app = routes::build_api_router(state);
 
     // Optional background async warmup if lazy_load_model is disabled (never blocks daemon port binding)
     let warmup = if !perms.lazy_load_model {
@@ -74,6 +76,8 @@ pub async fn run_daemon_with_native_endpoint(endpoint: Option<String>) -> anyhow
             let addr = format!("{}:{}", host_ip, port);
             let listener = tokio::net::TcpListener::bind(&addr).await.map_err(|e| bind_error(&addr, port, e))?;
             tracing::info!("🌐 Cluaiz API Server running on http://{}", addr);
+            // The caller's address reaches handlers that ask for it (a webhook's `trigger.remote`)
+            let app = app.into_make_service_with_connect_info::<std::net::SocketAddr>();
             axum::serve(listener, app).with_graceful_shutdown(shutdown_signal()).await?;
             Ok(())
         }

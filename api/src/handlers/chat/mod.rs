@@ -6,6 +6,7 @@ mod api_turn;
 pub(crate) mod authorize;
 pub(crate) mod background;
 pub(crate) mod context_plan;
+pub(crate) mod flows;
 pub(crate) mod ingest_events;
 pub(crate) mod recall;
 pub mod semantic;

@@ -9,6 +9,7 @@ pub mod discover;
 pub mod dispatch;
 pub mod envelope;
 pub mod error;
+pub mod events;
 pub mod principal;
 mod protocol;
 pub mod registry;

@@ -150,6 +150,10 @@ impl EnvironmentManager {
     pub fn tools_dir(&self) -> PathBuf {
         self.global_dir.join("tools")
     }
+    /// Automation: the user's flow files, and their runs and state below it
+    pub fn flows_dir(&self) -> PathBuf {
+        self.global_dir.join("flows")
+    }
     pub fn skills_dir(&self) -> PathBuf {
         self.tools_dir().join("skills")
     }

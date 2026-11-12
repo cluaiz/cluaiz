@@ -11,6 +11,7 @@ const GROUPS: &[(&str, &[&str])] = &[
     ("Server", &["serve", "mcp-server", "token", "permission"]),
     ("This machine", &["status", "calibrate", "bench"]),
     ("Tools", &["skill", "plugin", "mcp"]),
+    ("Automation", &["flow"]),
     ("Documents and storage", &["ingest", "storage"]),
     ("Settings", &["config"]),
     ("Update and remove", &["self"]),
