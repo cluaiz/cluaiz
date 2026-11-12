@@ -93,7 +93,9 @@ impl<'a> ApiTurn<'a> {
                 ctx.dyn_think_end.clone(),
                 // The engine sends the start tag itself when the rendered prompt opened the block
                 false,
-                ctx.active_think_mode == "off",
+                // Thinking off with known tags still reads them: a model that thinks anyway
+                // has its thinking shown apart, not mixed into the answer
+                ctx.active_think_mode == "off" && ctx.dyn_think_start.is_none() && ctx.dyn_think_end.is_none(),
             ),
             call_text_guard: tool_parser::ToolCallTextGuard::default(),
             visible_answer: String::new(),
@@ -240,7 +242,7 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
             self.ctx.dyn_think_start.clone(),
             self.ctx.dyn_think_end.clone(),
             false,
-            self.ctx.active_think_mode == "off",
+            self.ctx.active_think_mode == "off" && self.ctx.dyn_think_start.is_none() && self.ctx.dyn_think_end.is_none(),
         );
         let mut answer = String::new();
         while let Some(token) = rx.recv().await {

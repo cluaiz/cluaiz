@@ -104,10 +104,38 @@ impl Thinking {
         }
     }
 
-    /// Whether thinking that arrives is shown
-    pub fn shown(&self) -> bool {
-        self.mode != ThinkMode::Off
+}
+
+/// Takes out of `body` every field that asks the provider not to think (the forms
+/// `add_thinking` writes); true when one was there. Used when a model refuses to stop thinking:
+/// the request goes again without them, and the model's thinking is shown as it comes.
+pub fn drop_thinking_off(body: &mut Value) -> bool {
+    let Some(fields) = body.as_object_mut() else {
+        return false;
+    };
+    let mut dropped = false;
+    let mut remove_if = |fields: &mut Map<String, Value>, key: &str, off: &dyn Fn(&Value) -> bool| {
+        if fields.get(key).is_some_and(off) {
+            fields.remove(key);
+            dropped = true;
+        }
+    };
+    remove_if(fields, "reasoning_effort", &|v| v == "none");
+    remove_if(fields, "enable_thinking", &|v| v == false);
+    remove_if(fields, "thinking", &|v| v["type"] == "disabled");
+    remove_if(fields, "reasoning", &|v| {
+        v["effort"] == "none" || v["enabled"] == false
+    });
+    if let Some(kwargs) = fields
+        .get_mut("chat_template_kwargs")
+        .and_then(Value::as_object_mut)
+    {
+        remove_if(kwargs, "enable_thinking", &|v| v == false);
+        if kwargs.is_empty() {
+            fields.remove("chat_template_kwargs");
+        }
     }
+    dropped
 }
 
 /// Fields the Engine adds on its own: a provider that refuses one gets the request again without
@@ -371,6 +399,50 @@ mod tests {
             Some(Effort::Medium)
         );
         assert_eq!(Thinking::of("off", ThinkingBudget::High).effort, None);
+    }
+
+    #[test]
+    fn every_form_of_thinking_off_can_be_taken_out_again() {
+        for format in [
+            ThinkingFormat::Gemini,
+            ThinkingFormat::Qwen,
+            ThinkingFormat::QwenTemplate,
+            ThinkingFormat::Nvidia,
+            ThinkingFormat::Zai,
+            ThinkingFormat::DeepSeek,
+            ThinkingFormat::OpenRouter,
+            ThinkingFormat::Together,
+        ] {
+            let compat = Compat {
+                thinking: format,
+                reasoning_effort: true,
+                ..Compat::default()
+            };
+            let sampling = Sampling::default();
+            let parts = |mode| ChatParts {
+                model: "m",
+                messages: vec![],
+                sampling: &sampling,
+                thinking: Thinking::of(mode, ThinkingBudget::Auto),
+                tools: None,
+                response_format: None,
+                extra: None,
+            };
+            let mut off = chat_body(&compat, parts("off"));
+            assert!(drop_thinking_off(&mut off), "{format:?}");
+            // Gemini's auto also asks for the thoughts to be shown; the others send nothing
+            if format != ThinkingFormat::Gemini {
+                assert_eq!(off, chat_body(&compat, parts("auto")), "{format:?}");
+            }
+            for field in ["reasoning_effort", "enable_thinking", "thinking", "reasoning", "chat_template_kwargs"] {
+                assert!(off.get(field).is_none(), "{format:?} {field}");
+            }
+            assert!(!drop_thinking_off(&mut off), "{format:?}");
+        }
+        // Thinking asked for is kept
+        let mut on = body(ThinkingFormat::Nvidia, "on", ThinkingBudget::High);
+        assert!(!drop_thinking_off(&mut on));
+        assert_eq!(on["chat_template_kwargs"]["enable_thinking"], true);
     }
 
     #[test]

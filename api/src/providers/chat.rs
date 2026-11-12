@@ -13,10 +13,11 @@ use serde_json::{json, Value};
 
 use super::compat::Compat;
 use super::errors::{
-    classify, error_message, refused_calls, refused_field, send_error, tool_call_refused, Failure,
+    classify, error_message, refused_calls, refused_field, send_error, thinking_required,
+    tool_call_refused, Failure,
 };
 use super::history::{drop_oldest_turn, openai_conversation, openai_conversation_with_parts};
-use super::request::{chat_body, ChatParts, Sampling, Thinking, OPTIONAL_FIELDS};
+use super::request::{chat_body, drop_thinking_off, ChatParts, Sampling, Thinking, OPTIONAL_FIELDS};
 use super::stream::{data_of, sse_lines, Decoder, Read, THINK_END, THINK_START};
 use super::{http, retry};
 
@@ -53,6 +54,8 @@ pub struct Opening {
     pub dropped: usize,
     /// Optional fields the provider refused, left out
     pub left_out: Vec<String>,
+    /// The model refused thinking off (it always thinks); the request went without it
+    pub thinks_always: bool,
 }
 
 /// Sends a chat request until it is answered or cannot be: a rate limit or a busy provider is
@@ -135,6 +138,13 @@ pub async fn open(
             && Compat::wire_of(&target.config) == super::compat::Wire::Anthropic
         {
             body["max_tokens"] = json!(super::anthropic::SMALL_MAX_TOKENS);
+            continue;
+        }
+        // A model that cannot stop thinking refused a request that asked it to: sent again
+        // without that ask; its thinking is shown as it comes
+        if thinking_required(status, &text) && drop_thinking_off(body) {
+            tracing::warn!("🧠 [Provider] {} thinks always ({}); asked again without thinking off", target.full_name(), message);
+            opening.thinks_always = true;
             continue;
         }
         // A field the Engine added on its own that this provider does not take
@@ -291,7 +301,6 @@ impl ProviderRun {
         let (tx, rx) = tokio::sync::mpsc::channel::<String>(512);
         let report = Arc::clone(&self.report);
         let n_ctx = target.context() as usize;
-        let show_thinking = thinking.shown();
         tokio::spawn(async move {
             let mut response = response;
             let mut key = key;
@@ -351,9 +360,11 @@ impl ProviderRun {
                                 ));
                                 break 'read;
                             }
+                            // Thinking is passed on as it comes, also with thinking off (a
+                            // model may think anyway); whether it is shown is the caller's
                             Read::Piece { thinking, text, .. } => {
                                 let mut out = String::new();
-                                if let Some(thinking) = thinking.filter(|_| show_thinking) {
+                                if let Some(thinking) = thinking {
                                     if !in_think {
                                         out.push_str(THINK_START);
                                         in_think = true;

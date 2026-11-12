@@ -67,7 +67,7 @@ pub fn prepare(mut target: Target, options: &ChatOptions) -> ProviderChat {
         notes.push(format!("{} not sent: the OpenAI format has no such field", not_openai.join(", ")));
     }
     if options.think == Some(cluaiz_core::FeatureState::Off) {
-        notes.push("--think off: the provider is asked not to think where it can turn thinking off; nothing of it is shown".into());
+        notes.push("--think off: the provider is asked not to think; a model that thinks anyway has its thinking shown, and one that cannot stop thinking is asked again without the ask (--hide-thinking hides it)".into());
     }
     if let Some(budget) = options.effort.filter(|e| matches!(e, cluaiz_core::ThinkingBudget::Tokens(n) if *n > 0)) {
         if let Some(level) = Thinking::of("auto", budget).effort {
@@ -184,7 +184,7 @@ impl ProviderChat {
 
         cluaiz_core::live::start();
         GENERATING.store(true, Ordering::SeqCst);
-        let result = self.stream(body, &compat, thinking.shown(), out).await;
+        let result = self.stream(body, &compat, out).await;
         GENERATING.store(false, Ordering::SeqCst);
         let cancelled = cluaiz_core::GLOBAL_CANCEL_SIGNAL.swap(false, Ordering::SeqCst);
         out.finish();
@@ -199,8 +199,9 @@ impl ProviderChat {
     }
 
     /// The answer, why it ended, and the tokens the provider counted (prompt + answer). An
-    /// answer that gave nothing at all is asked for once more.
-    async fn stream(&self, mut body: Value, compat: &Compat, show_thinking: bool, out: &mut dyn output::Output) -> Result<(String, String, Option<usize>)> {
+    /// answer that gave nothing at all is asked for once more. Thinking goes to `out` as it
+    /// comes, also with --think off (a model may think anyway); `out` hides it for --hide-thinking.
+    async fn stream(&self, mut body: Value, compat: &Compat, out: &mut dyn output::Output) -> Result<(String, String, Option<usize>)> {
         let target = &self.target;
         let cancel = Some(&cluaiz_core::GLOBAL_CANCEL_SIGNAL);
         // The agent makes room itself when the context is full (`make_room`)
@@ -223,7 +224,7 @@ impl ProviderChat {
             let mut tick = tokio::time::interval(Duration::from_millis(120));
             let mut broken: Option<String> = None;
             let emit = |(content, reasoning): (Option<String>, Option<String>), out: &mut dyn output::Output, answer: &mut String| {
-                if let Some(r) = reasoning.filter(|r| show_thinking && !r.is_empty()) {
+                if let Some(r) = reasoning.filter(|r| !r.is_empty()) {
                     out.reasoning(&r);
                 }
                 if let Some(c) = content.filter(|c| !c.is_empty()) {
@@ -261,7 +262,7 @@ impl ProviderChat {
                             break 'read;
                         }
                         Read::Piece { thinking, text, call } => {
-                            if let Some(thinking) = thinking.filter(|_| show_thinking) {
+                            if let Some(thinking) = thinking {
                                 out.reasoning(&thinking);
                             }
                             if let Some(text) = text {
