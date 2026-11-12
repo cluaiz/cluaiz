@@ -115,7 +115,8 @@ pub struct ThinkingReport {
     pub capped: bool,
     /// Thinking tokens the model used
     pub used_tokens: usize,
-    /// "model" = the model ended it, "budget" / "skip" = the engine closed it
+    /// "model" = the model ended it, "budget" / "skip" = the engine closed it, "closed" = the
+    /// model ended its answer with thinking still open and the engine closed it so it answers
     pub ended_by: &'static str,
 }
 

@@ -29,7 +29,8 @@ impl ReasoningHandle {
         if requested && unsafe { self.force() } {
             *ended_by = "skip";
             tracing::info!("Native reasoning sampler accepted this request's skip signal");
-        } else if *ended_by != "skip" && unsafe { self.is_forcing() } {
+        } else if *ended_by == "model" && unsafe { self.is_forcing() } {
+            // Forcing that the generation started itself ("closed") keeps its own name
             *ended_by = "budget";
         }
     }
