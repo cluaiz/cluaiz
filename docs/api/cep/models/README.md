@@ -4,6 +4,7 @@
 
 | Method | Scope | Runs as | Summary |
 |---|---|---|---|
+| [`models.discard`](./models/models.discard.md) | write | sync | Deletes what a stopped models.download left (its `.part` and finished files), so the next download starts over; an installed model is never touched |
 | [`models.download`](./models/models.download.md) | write | task | Downloads and registers a model (catalog id, or Hugging Face owner/name[:QUANT]) as `cluaiz pull` does; the `:QUANT` variant, else the first |
 | [`models.embedding_room`](./models/models.embedding_room.md) | read | sync | Where each embedding model would run beside the chat model (GPU, CPU or no room) on today's free memory, and the one to recommend |
 | [`models.inspect`](./models/models.inspect.md) | read | sync | Raw GGUF metadata and tensor table of an installed model |

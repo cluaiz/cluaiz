@@ -4,7 +4,8 @@
 //!
 //! A file is written to `<name>.part` and renamed when every byte has arrived. A dropped
 //! connection continues from the bytes already in `.part` with an HTTP `Range` request, for as
-//! long as bytes keep arriving; a later run of the same download continues too. A server that
+//! long as bytes keep arriving; a later run of the same download continues too. A download the
+//! user stops keeps its `.part` (a pause); `ModelDownloader::discard` removes it. A server that
 //! ignores `Range` sends the whole file again, and `.part` starts over.
 
 use futures_util::StreamExt;
@@ -100,7 +101,6 @@ impl FileDownloader {
                     tracing::warn!(url, error = %last_error, have, failures, "download interrupted; resuming");
                     tokio::time::sleep(std::time::Duration::from_secs(wait)).await;
                     if abort.load(Ordering::Relaxed) {
-                        let _ = tokio::fs::remove_file(&part_path).await;
                         return Err(ABORTED.to_string());
                     }
                 }
@@ -192,12 +192,13 @@ impl FileDownloader {
         let start_time = std::time::Instant::now();
         let mut last_flush = std::time::Instant::now();
         while let Some(item) = stream.next().await {
+            // Stopped: the bytes so far stay in `.part`, and the same download continues from them
             if abort.load(Ordering::Relaxed) {
+                let _ = file.flush().await;
                 if let Some(ref p) = pb {
                     p.abandon();
                 }
                 drop(file);
-                let _ = tokio::fs::remove_file(part_path).await;
                 return Err(Failure::Fatal(ABORTED.to_string()));
             }
             let chunk = match item {
@@ -434,5 +435,35 @@ mod tests {
             let from: u64 = ranges[1].as_deref().unwrap().parse().unwrap();
             assert!(from > 0 && from <= body.len() as u64 / 2, "{from}");
         }
+    }
+
+    /// Stopping keeps `.part` (a pause); the same download then continues from it with `Range`
+    #[tokio::test]
+    async fn test_a_stopped_download_keeps_part_and_continues_from_it() {
+        let body: Vec<u8> = (0..200_000u32).map(|i| (i % 251) as u8).collect();
+        let (url, ranges) = dropping_server(body.clone(), true).await;
+        let dir = tempfile::tempdir().unwrap();
+        let dest = dir.path().join("model.gguf");
+        let (tx, mut rx) = mpsc::channel(1024);
+        // Stopped once the first bytes are written
+        let abort = Arc::new(AtomicBool::new(false));
+        let stop = Arc::clone(&abort);
+        let watcher = tokio::spawn(async move {
+            while let Some(event) = rx.recv().await {
+                if matches!(event, DownloadEvent::Progress(..)) {
+                    stop.store(true, Ordering::Relaxed);
+                }
+            }
+        });
+        let stopped = FileDownloader::download_single_file(&Client::new(), &url, &dest, tx.clone(), abort).await;
+        assert_eq!(stopped.unwrap_err(), ABORTED);
+        let kept = std::fs::metadata(part_path(&dest)).unwrap().len();
+        assert!(kept > 0 && kept < body.len() as u64, "{kept}");
+        FileDownloader::download_single_file(&Client::new(), &url, &dest, tx, Arc::new(AtomicBool::new(false))).await.unwrap();
+        assert_eq!(std::fs::read(&dest).unwrap(), body);
+        watcher.abort();
+        let ranges = ranges.lock().unwrap().clone();
+        assert_eq!(ranges[0], None);
+        assert_eq!(ranges[1].as_deref(), Some(kept.to_string().as_str()), "the second run asked for the rest");
     }
 }

@@ -327,6 +327,29 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             })
         },
     );
+    registry.add(
+        "models.discard",
+        Meta::new(
+            Scope::Write,
+            "Deletes what a stopped models.download left (its `.part` and finished files), so the next download starts over; an installed model is never touched",
+        )
+        .destructive()
+        .idempotent(true)
+        .error(-32602, "invalid_params", "`model` is empty, over 512 characters, or has control characters")
+        .error(-32005, "provider_model", "The model is a provider's (`<provider>/<model>` in providers.json); this method works on downloads only")
+        .error(-32005, "pull_running", "This model is still downloading; stop it with `tasks.cancel` first")
+        .error(-32010, "discard_failed", "Resolving the model, or deleting its files, failed (the folder holds an installed model, or a file is in use)")
+        .example(json!({"model": "owner/name-GGUF:Q4_K_M"}), json!({"model": "owner/name-GGUF:Q4_K_M", "removed": "models/chat/name-GGUF-Q4_K_M"})),
+        |_: CallCtx, _call: Call, params: DownloadParams| async move {
+            let model = params.model.trim().to_string();
+            models::check_pull_id(&model).map_err(|message| roots::invalid("model", message))?;
+            crate::providers::refuse_provider_model(&model, "models.discard")?;
+            models::discard(&model).await.map_err(|error| match error {
+                models::PullError::Busy => CepError::conflict("pull_running", "This model is still downloading; stop it with `tasks.cancel` first"),
+                models::PullError::Failed(message) => CepError::unavailable("discard_failed", message),
+            })
+        },
+    );
 }
 
 fn validate_id(model: &str) -> Result<(), CepError> {

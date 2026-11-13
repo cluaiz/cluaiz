@@ -11,7 +11,7 @@ pub use auto_heal::AutoHeal;
 pub use client::{parse_hf_repository, resolve_model_repo, resolve_model_repo_with_fallback, RegistryClient, RegistryResolveError};
 pub use downloader::{DownloadEvent, FileDownloader};
 pub use hf_hub::{HfTreeItem, HfVariant, HuggingFaceHub};
-pub use resolve::{default_variant, pull, resolve, DownloadPlan, FirstVariant, Pulled, ResolveStep, ResolveUi, Resolved};
+pub use resolve::{default_variant, discard, pull, resolve, DownloadPlan, FirstVariant, Pulled, ResolveStep, ResolveUi, Resolved};
 
 use crate::models::types::manifest::{ModelAsset, ModelManifest};
 use std::path::{Path, PathBuf};
@@ -204,9 +204,42 @@ impl ModelDownloader {
         Ok(dir)
     }
 
+    /// The manifest and files a download of `files` fetches: an ONNX model's helper files come with it
+    async fn bundle(manifest: &ModelManifest, files: &[String]) -> Result<(ModelManifest, Vec<String>), String> {
+        if files.len() == 1 && files[0].ends_with(".onnx") && !manifest.huggingface_repo.is_empty() {
+            HuggingFaceHub::bundle_for_manifest(manifest).await
+        } else {
+            Ok((manifest.clone(), files.to_vec()))
+        }
+    }
+
+    /// Removes what a download that did not finish left (its `.part` and finished files): the vault
+    /// folder `install` would use for `files`, when no installed model is registered in it. Returns
+    /// the folder removed, or `None` when there was nothing to remove.
+    pub async fn discard(manifest: &ModelManifest, files: &[String]) -> Result<Option<PathBuf>, String> {
+        let (manifest, _) = Self::bundle(manifest, files).await?;
+        let dir = Self::model_dir(&manifest.category, &manifest.id);
+        if !dir.exists() {
+            return Ok(None);
+        }
+        let registry = crate::models::registry::InstalledStateRegistry::load();
+        let folder = dir.canonicalize().unwrap_or_else(|_| dir.clone());
+        if registry.installed_models.values().any(|entry| {
+            let local = Path::new(&entry.local_dir);
+            local.canonicalize().map(|path| path == folder).unwrap_or(local == dir)
+        }) {
+            return Err(format!("{} holds an installed model; remove it instead", dir.display()));
+        }
+        let folder = dir.clone();
+        tokio::task::spawn_blocking(move || Self::remove_folder(&folder))
+            .await
+            .map_err(|error| error.to_string())??;
+        Ok(Some(dir))
+    }
+
     /// Downloads `files` of a model into its vault folder and registers it in model_registry.json, as the
-    /// old ModelManager did: files already on disk are kept, a failed download removes only the files this
-    /// call created, and nothing is registered unless the primary weight file is there.
+    /// old ModelManager did: files already on disk are kept, a failed or stopped download keeps what arrived
+    /// (the next run continues from it), and nothing is registered unless the primary weight file is there.
     /// Relocates graph-parent files together and preserves shared helper folders.
     /// Returns the primary weight file.
     pub async fn install(
@@ -215,16 +248,8 @@ impl ModelDownloader {
         tx: mpsc::Sender<DownloadEvent>,
         abort: Arc<AtomicBool>,
     ) -> Result<PathBuf, String> {
-        let resolved;
-        let (manifest, files) = if files.len() == 1
-            && files[0].ends_with(".onnx")
-            && !manifest.huggingface_repo.is_empty()
-        {
-            resolved = HuggingFaceHub::bundle_for_manifest(manifest).await?;
-            (&resolved.0, resolved.1.as_slice())
-        } else {
-            (manifest, files)
-        };
+        let (manifest, files) = Self::bundle(manifest, files).await?;
+        let (manifest, files) = (&manifest, files.as_slice());
         let dir = Self::model_dir(&manifest.category, &manifest.id);
         std::fs::create_dir_all(&dir)
             .map_err(|e| format!("could not create {}: {}", dir.display(), e))?;
@@ -242,7 +267,6 @@ impl ModelDownloader {
             .build()
             .map_err(|e| e.to_string())?;
 
-        let mut created: Vec<PathBuf> = Vec::new();
         // `huggingface_filename` is the primary's flat name; its repository path (e.g.
         // `onnx/encoder_model.onnx`) decides which folder is placed at the top of the vault folder
         let primary_repo_path = files
@@ -289,17 +313,10 @@ impl ModelDownloader {
             )
             .await
             {
-                // Finished files and the `.part` stay, so running the pull again continues; a
-                // download the user stopped leaves nothing behind
-                if e == downloader::ABORTED {
-                    for path in &created {
-                        let _ = std::fs::remove_file(path);
-                    }
-                    let _ = std::fs::remove_dir(&dir); // only when nothing else is in it
-                }
+                // Finished files and the `.part` stay, so running the pull again continues; this
+                // is also how a download the user stopped is paused. `discard` removes them.
                 return Err(format!("{}: {}", rel_path, e));
             }
-            created.push(dest);
         }
 
         let primary = dir.join(&primary_name);

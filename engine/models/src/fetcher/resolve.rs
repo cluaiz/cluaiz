@@ -306,6 +306,15 @@ pub async fn pull(
     }
 }
 
+/// Removes what a stopped or failed download of `model_id` left, resolved as `pull` resolves it.
+/// An installed model is never touched: `None` when it is installed or nothing was left.
+pub async fn discard(model_id: &str) -> Result<Option<PathBuf>, String> {
+    match resolve(model_id, false, &FirstVariant(|_: ResolveStep<'_>| {})).await? {
+        Resolved::Download(plan) => ModelDownloader::discard(&plan.manifest, &plan.files).await,
+        Resolved::OnDisk(_) | Resolved::AlreadyInstalled(_) => Ok(None),
+    }
+}
+
 #[cfg(test)]
 mod default_variant_tests {
     use super::*;

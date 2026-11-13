@@ -194,6 +194,10 @@ Copy the returned `result.task.task_id`. Task state is in memory and is caller-o
 
 Inspect tasks.result for the shared pull pipeline’s final object or its pull_running/download_failed/cancelled error. Verify the resulting runtime id through models.list before using inference.
 
+### Pause, resume and cancel
+
+`tasks.cancel` pauses a download: the bytes that arrived stay in `<file>.part`, and finished files stay too. Calling `models.download` again with the same `model` continues from them with an HTTP `Range` request (a server that ignores `Range` sends the file again). To cancel instead, stop the task, then call [`models.discard`](./models.discard.md) with the same `model` to delete what arrived.
+
 ## Errors and recovery
 
 | Code / boundary | Meaning | Recovery |
@@ -204,7 +208,7 @@ Inspect tasks.result for the shared pull pipeline’s final object or its pull_r
 | `-32602` / `invalid_params` | `model` is empty, over 512 characters, or has control characters | Correct the option/value combination; install required assets where relevant |
 | `-32005` / `pull_running` | This model is being downloaded already (from the task's result) | Inspect current state before retrying; avoid a tight retry loop |
 | `-32010` / `download_failed` | Resolving or downloading failed: no such repo or variant, network, disk (from the task's result) | Read the error message, correct the backend/filesystem/configuration condition, then retry deliberately |
-| `-32008` / `cancelled` | `tasks.cancel` stopped the download (from the task's result) | Treat as cancelled; review partial side effects before starting new work |
+| `-32008` / `cancelled` | `tasks.cancel` stopped the download (from the task's result) | Paused: download the same `model` again to continue, or call `models.discard` to delete what arrived |
 
 ### Invalid-field example
 
