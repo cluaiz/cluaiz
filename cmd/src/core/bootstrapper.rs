@@ -83,8 +83,13 @@ impl Bootstrapper {
     /// 🛠️ Artifact Sync: Synchronizes local build artifacts to .cluaiz.
     /// This ensures cargo run or the first boot always uses the latest compiled binaries.
     pub fn sync_dev_artifacts(target: &str, driver_name: Option<&str>, hub_path: PathBuf, profile: &str) -> Result<()> {
-        let root = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-        
+        // The repository: the one this development build runs from (`<repo>/target/<profile>/cluaiz`),
+        // so the command works from any folder; otherwise the current folder
+        let root = std::env::current_exe()
+            .ok()
+            .and_then(|exe| exe.parent()?.parent().filter(|dir| dir.ends_with("target"))?.parent().map(PathBuf::from))
+            .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+
         let ext = if cfg!(windows) { "dll" } else if cfg!(target_os = "macos") { "dylib" } else { "so" };
         let release_dir = root.join("target").join("release");
         let debug_dir = root.join("target").join("debug");
@@ -215,12 +220,16 @@ impl Bootstrapper {
             let _ = std::fs::create_dir_all(&bin_dir);
             let exe_dest = bin_dir.join(exe_name);
             
-            if exe_src.exists() {
-                if let Err(e) = copy_with_rename(&exe_src, &exe_dest) {
-                    tracing::warn!("⚠️ [DevSync] CLI Executable Sync Failed (File might be in use): {}.", e);
-                } else {
-                    tracing::info!("🚀 [DevSync] CLI Executable Synced: {:?}", exe_dest);
-                }
+            // Said on the terminal, not only in the log: a silent miss looked like a finished update
+            if !exe_src.exists() {
+                color_eyre::eyre::bail!("No build at {}: build it first (cargo build --release -p cmd)", exe_src.display());
+            }
+            if same_file(&exe_src, &exe_dest) {
+                println!("🚀 [DevSync] {} is already this build", exe_dest.display());
+            } else if let Err(e) = copy_with_rename(&exe_src, &exe_dest) {
+                color_eyre::eyre::bail!("Could not replace {}: {e}. Stop the running `cluaiz serve` first, then run this again", exe_dest.display());
+            } else {
+                println!("🚀 [DevSync] Copied {} to {}", exe_src.display(), exe_dest.display());
             }
             // The llama / ggml libraries and backends the executable loads from its own folder
             for entry in std::fs::read_dir(target_dir).into_iter().flatten().flatten() {
@@ -321,4 +330,9 @@ impl Bootstrapper {
                 .output();
         }
     }
+}
+
+/// Both paths name the same file (running the installed copy's own dev-sync)
+fn same_file(a: &Path, b: &Path) -> bool {
+    matches!((a.canonicalize(), b.canonicalize()), (Ok(a), Ok(b)) if a == b)
 }
