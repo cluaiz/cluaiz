@@ -16,8 +16,9 @@ use tokio::time::timeout;
 use super::manifest::McpManifestParser;
 use once_cell::sync::Lazy;
 
-/// First start can include a package download (`npx -y`, `uvx`).
-const START_TIMEOUT: Duration = Duration::from_secs(90);
+/// First start can include a package download (`npx -y`, `uvx`), and a server's first call can
+/// still be fetching what it needs, so the first call of a new process waits as long
+const START_TIMEOUT: Duration = Duration::from_secs(180);
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 /// A server with no request for this long is stopped (started again on its next call)
 const IDLE_STOP: Duration = Duration::from_secs(10 * 60);
@@ -176,6 +177,8 @@ struct McpSession {
     alive: Arc<AtomicBool>,
     /// Set when the Engine stops it: its exit is then not a crash
     stopping: AtomicBool,
+    /// Set once a tool call of this process has been answered
+    warm: AtomicBool,
 }
 
 impl McpSession {
@@ -238,6 +241,7 @@ impl McpSession {
             next_id: AtomicU64::new(1),
             alive: Arc::new(AtomicBool::new(true)),
             stopping: AtomicBool::new(false),
+            warm: AtomicBool::new(false),
         });
 
         // One reader owns stdout: responses go to their waiting request, server requests
@@ -528,8 +532,10 @@ impl McpClient {
             check_exposed(&exposed, tool_name, &arguments)?;
         }
         let session = session_for(mcp_dir).await?;
-        let result = session.request("tools/call", json!({ "name": tool_name, "arguments": arguments }), REQUEST_TIMEOUT).await
+        let limit = if session.warm.load(Ordering::SeqCst) { REQUEST_TIMEOUT } else { START_TIMEOUT };
+        let result = session.request("tools/call", json!({ "name": tool_name, "arguments": arguments }), limit).await
             .map_err(|e| anyhow!("MCP tool error: {}", e))?;
+        session.warm.store(true, Ordering::SeqCst);
 
         // A tool-level failure is a result with `isError: true` (MCP spec).
         if result.get("isError").and_then(|e| e.as_bool()) == Some(true) {
