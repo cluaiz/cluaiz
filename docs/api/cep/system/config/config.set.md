@@ -173,6 +173,24 @@ Use actual validated policy fields; changing percentages is not a one-off chat c
 }
 ```
 
+### 5. Change the agent's security mode
+
+Section `engine` saves `agent_security_mode` (`full_access`, `sandboxed` or `strict`), `wasm_firewall` (`auto`, `strict` or `off`) and the switches `stream_telemetry`, `lazy_load_model`, `model_header_info`, `vectorize_user_input`, `vectorize_ai_response` and `enable_kvcache`, besides `api_auth`, `active_slots`, `chat_models`, `vector_models` and `exec`. A wrong value for one of these is `invalid_params` and saves nothing. The address fields `api_port`, `api_host` and `connection_protocol` are not changed by this method. The next tool call reads the new mode.
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "config.set",
+  "params": {
+    "section": "engine",
+    "patch": {
+      "agent_security_mode": "full_access"
+    }
+  }
+}
+```
+
 ## Response and field meanings
 
 The result is keyed by section, for example {kv:{...}}. It reflects the saved settings after the update, not necessarily values captured by already loaded models. An empty patch is not a documented reset-to-default operation.

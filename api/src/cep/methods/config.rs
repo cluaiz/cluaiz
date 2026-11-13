@@ -289,7 +289,7 @@ async fn set(ctx: &CallCtx, section: Section, patch: Value) -> Result<(), CepErr
         Section::Kv => set_kv(patch),
         Section::Engine => {
             let mut schema = ctx.state.permission_schema.read().await.clone();
-            schema.merge_patch(&patch);
+            schema.merge_patch(&patch).map_err(|message| bad_patch(section, message))?;
             schema.save().map_err(save_error)?;
             *ctx.state.permission_schema.write().await = schema;
             Ok(())
