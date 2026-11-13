@@ -3231,6 +3231,83 @@
           "data": {
             "type": "provider_model"
           },
+          "message": "The model is a provider's (`<provider>/<model>` in providers.json); this method works on downloads only"
+        },
+        {
+          "code": -32005,
+          "data": {
+            "type": "pull_running"
+          },
+          "message": "This model is still downloading; stop it with `tasks.cancel` first"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "discard_failed"
+          },
+          "message": "Resolving the model, or deleting its files, failed (the folder holds an installed model, or a file is in use)"
+        }
+      ],
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "model",
+              "value": "owner/name-GGUF:Q4_K_M"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "model": "owner/name-GGUF:Q4_K_M",
+              "removed": "models/chat/name-GGUF-Q4_K_M"
+            }
+          }
+        }
+      ],
+      "name": "models.discard",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "model",
+          "required": true,
+          "schema": {
+            "description": "A catalog id, or a Hugging Face repo `owner/name` (optionally `:QUANT`, an `hf://` or https URL)",
+            "type": "string"
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Deletes what a stopped models.download left (its `.part` and finished files), so the next download starts over; an installed model is never touched",
+      "x-cep": {
+        "destructive": true,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "errors": [
+        {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "`model` is empty, over 512 characters, or has control characters"
+        },
+        {
+          "code": -32005,
+          "data": {
+            "type": "provider_model"
+          },
           "message": "The model is a provider's (`<provider>/<model>` in providers.json); this method works on installed models only"
         },
         {

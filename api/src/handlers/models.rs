@@ -199,6 +199,21 @@ impl std::fmt::Display for PullError {
 /// Models being pulled now: a second pull of the same model is refused instead of racing it
 static PULLING: LazyLock<Mutex<HashSet<String>>> = LazyLock::new(Default::default);
 
+/// Removes what a stopped download of `model` left (its `.part` and finished files). A download that is
+/// still stopping is waited for (a few seconds); one still running is refused. Answers
+/// `{"model", "removed"}`: the folder removed, or null when nothing was left.
+pub(crate) async fn discard(model: &str) -> Result<Value, PullError> {
+    let key = model.to_lowercase();
+    for _ in 0..20 {
+        if !PULLING.lock().unwrap_or_else(|e| e.into_inner()).contains(&key) {
+            let removed = cluaiz_models::fetcher::discard(model).await.map_err(PullError::Failed)?;
+            return Ok(json!({ "model": model, "removed": removed }));
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    }
+    Err(PullError::Busy)
+}
+
 /// Resolves `model` (the `:QUANT` variant, else the first one), downloads and registers it: what
 /// `cluaiz pull` does, without questions. Used by `/api/pull` and CEP `models.download`.
 /// `on_update` gets Ollama-shaped lines: `{"status"}` per step, plus `total` / `completed` (bytes)
