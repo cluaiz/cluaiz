@@ -192,13 +192,17 @@ impl McpSession {
         tracing::info!("🔌 [McpClient] Starting MCP server '{}' in {:?}: {} {:?}",
             manifest.name, workspace, exec.command, exec.args);
 
+        // The server's environment: the system basics, its fixed `execution.env`, and the values
+        // named in its `env`. Not the Engine's own: that holds the user's provider keys.
+        let mut own_env = exec.env.clone();
+        own_env.extend(user_env(mcp_dir, &cluaiz_core::EnvironmentManager::current().config_dir()));
         let mut cmd = Command::new(program_path(&exec.command));
         // Servers start in the open workspace, as other MCP clients do. The package folder
         // holds Cluaiz's own package.json, which npm would read as an npm project.
         cmd.args(&exec.args)
             .current_dir(&workspace)
-            .envs(&exec.env)
-            .envs(user_env(mcp_dir, &cluaiz_core::EnvironmentManager::current().config_dir()))
+            .env_clear()
+            .envs(crate::execution::environment::EnvironmentResolver::for_tool(&own_env))
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());

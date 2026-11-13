@@ -139,8 +139,8 @@ impl SandboxTerminalRunner {
         Self::execute_streaming(command_line, cwd, security_mode, venv_dir, stdin_input, timeout_secs, cancel_rx, None, None).await
     }
 
-    /// [`Self::execute_advanced`] with extra environment values on top of the resolved ones: a
-    /// tool's own settings, named in its `env`
+    /// [`Self::execute_advanced`] for a tool's program: the system basics and the tool's own
+    /// settings, named in its `env`, and nothing else of the Engine's environment
     #[allow(clippy::too_many_arguments)]
     pub async fn execute_with_env(
         command_line: &str,
@@ -210,12 +210,14 @@ impl SandboxTerminalRunner {
             StdinMode::Inherit => { cmd.stdin(Stdio::inherit()); }
         }
 
-        // Apply clean resolved environment
+        // Apply clean resolved environment; a tool's program gets only the system basics and its
+        // own values
         cmd.env_clear();
-        for (k, v) in &env_resolved.env_vars {
-            cmd.env(k, v);
-        }
-        for (k, v) in extra_env.into_iter().flatten() {
+        let env_vars = match extra_env {
+            Some(tool_env) => EnvironmentResolver::for_tool(tool_env),
+            None => env_resolved.env_vars.clone(),
+        };
+        for (k, v) in &env_vars {
             cmd.env(k, v);
         }
 
