@@ -46,6 +46,11 @@ impl ToolsEngine {
     /// Records the open workspace. Tools run there: MCP servers start in it and receive it
     /// as their root, and scripts / terminal commands use it as their working directory.
     pub fn set_workspace_dir(dir: PathBuf) {
+        // A canonical Windows path (`\\?\C:\...`) breaks programs started in it, such as Node
+        let dir = match dir.to_str().and_then(|text| text.strip_prefix(r"\\?\")) {
+            Some(rest) if !rest.starts_with(r"UNC\") => PathBuf::from(rest),
+            _ => dir,
+        };
         if let Ok(mut current) = WORKSPACE_DIR.write() {
             *current = Some(dir);
         }
