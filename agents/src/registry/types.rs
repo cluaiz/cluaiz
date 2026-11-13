@@ -151,9 +151,39 @@ pub struct ToolEntry {
 }
 
 impl ToolEntry {
+    /// A plugin that runs as WebAssembly inside the Engine
+    pub fn is_wasm_plugin(&self) -> bool {
+        self.category == "plugin"
+            && (self.binary_path.as_deref().is_some_and(|p| p.to_ascii_lowercase().ends_with(".wasm"))
+                || std::fs::read_dir(&self.local_dir).is_ok_and(|entries| {
+                    entries.flatten().any(|e| e.path().extension().is_some_and(|x| x.eq_ignore_ascii_case("wasm")))
+                }))
+    }
+
+    /// The permissions this tool declares that the user switched off (or never allowed)
+    pub fn permissions_off(&self) -> Vec<String> {
+        let Some(manifest) = std::fs::read_to_string(std::path::Path::new(&self.local_dir).join("package.json"))
+            .ok()
+            .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+        else {
+            return Vec::new();
+        };
+        let config_dir = cluaiz_core::EnvironmentManager::current().config_dir();
+        crate::permissions::effective(&config_dir, &self.category, &self.id, &manifest)
+            .into_iter()
+            .filter(|p| !p.on)
+            .map(|p| p.kind)
+            .collect()
+    }
+
     /// Evaluates if this tool execution requires Human-In-The-Loop approval
     /// based on master security mode, category, execution mode, and declared capabilities.
     pub fn requires_approval(&self, master_security_mode: &str) -> bool {
+        // A permission the user switched off: a WebAssembly plugin is refused that access by the
+        // Engine itself; any other tool runs as a normal program, so each call is asked about
+        if !self.is_wasm_plugin() && !self.permissions_off().is_empty() {
+            return true;
+        }
         match master_security_mode.to_lowercase().as_str() {
             "full_access" => {
                 // In Full Access: tool executes automatically unless user specifically marked it RequireApproval
@@ -220,6 +250,7 @@ impl ToolEntry {
             && !master_security_mode.eq_ignore_ascii_case("strict")
             && hint("readOnlyHint") == Some(true)
             && hint("destructiveHint") != Some(true)
+            && self.permissions_off().is_empty()
     }
 
     /// Returns resolved capabilities (or fallback to permissions or ["undeclared"])
@@ -265,6 +296,24 @@ mod tests {
         assert_eq!(SecurityMode::from_raw("require_approval"), Some(SecurityMode::RequireApproval));
         assert_eq!(SecurityMode::from_raw("always_allow"), Some(SecurityMode::AlwaysAllow));
         assert_eq!(SecurityMode::from_raw("unknown"), None);
+    }
+
+    #[test]
+    fn a_tool_with_a_permission_off_is_asked_about_in_every_mode() {
+        let dir = std::env::temp_dir().join(format!("cluaiz-entry-perm-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        // `location` is sensitive, so it stays off until the user allows it
+        std::fs::write(dir.join("package.json"), r#"{"permissions": {"location": {"why": "your city"}}}"#).unwrap();
+        let skill = ToolEntry { id: "where".into(), category: "skill".into(), local_dir: dir.to_string_lossy().into(), ..Default::default() };
+        assert_eq!(skill.permissions_off(), ["location"]);
+        assert!(skill.requires_approval("full_access"));
+        let mut mcp = ToolEntry { category: "mcp".into(), trust_annotations: true, ..skill.clone() };
+        mcp.id = "where-mcp".into();
+        let read_only = serde_json::json!({ "readOnlyHint": true });
+        assert!(!mcp.read_only_trusted("sandboxed", Some(&read_only)), "trusted annotations do not skip an off permission");
+        let plain = ToolEntry { category: "skill".into(), ..Default::default() };
+        assert!(!plain.requires_approval("full_access"));
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]

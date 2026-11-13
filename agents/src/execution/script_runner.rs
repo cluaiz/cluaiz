@@ -127,14 +127,20 @@ impl DeclarativeScriptRunner {
             .and_then(|t| t.as_u64())
             .or(Some(30));
 
-        let run_result = SandboxTerminalRunner::execute_advanced(
+        // The tool's own settings, named in its `env`: the system environment first, then saved values
+        let tool_env = tool_dir
+            .map(|dir| {
+                let id = dir.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
+                let config_dir = cluaiz_core::EnvironmentManager::current().config_dir();
+                crate::tool_env::values(&id, &crate::tool_env::manifest_in(dir), &config_dir)
+            })
+            .unwrap_or_default();
+        let run_result = SandboxTerminalRunner::execute_with_env(
             &command_line,
             cwd_path,
             sec_mode,
-            None,
-            None,
             timeout_secs,
-            None,
+            &tool_env,
         ).await?;
 
         // Cleanup temporary files

@@ -1,5 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use std::path::Path;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -19,7 +18,8 @@ pub struct PluginManifest {
     #[serde(default)]
     pub activation: Option<PluginActivation>,
     #[serde(default)]
-    pub permissions: Option<PluginPermissions>,
+    /// Limits the plugin lowers below the Engine's (`limits` in `package.json`)
+    pub limits: Option<PluginLimits>,
     #[serde(default)]
     pub execution: Option<PluginExecution>,
 }
@@ -42,22 +42,11 @@ pub struct PluginActivation {
     pub trigger_on: Vec<String>,
 }
 
+/// `limits` in `package.json`: a plugin may only lower the Engine's limits
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
-pub struct PluginPermissions {
-    pub max_memory_mb: Option<u64>,
-    pub max_cpu_time_ms: Option<u64>,
-    #[serde(default)]
-    pub network_access: bool,
-    #[serde(default)]
-    pub vram_kv_inject: bool,
-    #[serde(default)]
-    pub file_system: String,
-    /// A setting's name -> the one host its value may be sent to
-    #[serde(default)]
-    pub secrets: HashMap<String, String>,
-    /// Settings that hold an address the user chose, which alone may be local
-    #[serde(default)]
-    pub user_urls: Vec<String>,
+pub struct PluginLimits {
+    /// Memory per call, in MB, below the Engine's 256
+    pub memory_mb: Option<u64>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
@@ -103,8 +92,8 @@ impl PluginManifestParser {
         let mut exec = PluginExecution::default();
         exec.envelope = if btype == "binary" { "NATIVE".to_string() } else { "WASM".to_string() };
         manifest.execution = Some(exec);
-        // Permissions that cannot be read grant nothing
-        manifest.permissions = val.get("permissions").and_then(|p| serde_json::from_value(p.clone()).ok());
+        // Limits that cannot be read lower nothing; permissions are read by crate::permissions
+        manifest.limits = val.get("limits").and_then(|l| serde_json::from_value(l.clone()).ok());
         Some(manifest)
     }
 }

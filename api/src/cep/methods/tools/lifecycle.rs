@@ -32,25 +32,66 @@ pub struct Execute {
     pub input: Value,
 }
 
+/// How long an install waits for the owner to answer its questions; then they count as no
+const INSTALL_QUESTION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(600);
+
 pub async fn install(ctx: CallCtx, call: Call, target: Target) -> Result<Value, CepError> {
     common::validate_name(&target.name)?;
     let workspace = ctx.state.current_workspace_dir.read().await.clone();
     common::installer_directory(&call, &workspace, &target, true)?;
+    let state = ctx.state.clone();
     call.start_task(move |handle| async move {
         if handle.is_cancelled() {
             return Err(CepError::cancelled());
         }
+        // What the user's mode allows is done; the rest is asked through approvals
+        let plan = ToolsInstaller::plan_install(target.kind.as_str(), &target.name)
+            .await
+            .map_err(common::unavailable)?;
+        handle.event(json!({"stage":"planned","kind":target.kind,"name":target.name,"plan":plan}));
+        let approved = if plan.has_questions() {
+            let approvals = &state.cep.shared().approvals;
+            let plan_json = serde_json::to_value(&plan).map_err(common::unavailable)?;
+            let approval = approvals.request_for(
+                "installer",
+                &format!("install:{}:{}", target.kind.as_str(), target.name),
+                cluaiz_cep::approval::params_digest(&plan_json),
+                &plan_json.to_string(),
+                Some(INSTALL_QUESTION_TIMEOUT),
+            );
+            handle.event(json!({"stage":"approval","kind":target.kind,"name":target.name,"approval_id":approval.id,"plan":plan_json}));
+            let decision = tokio::time::timeout(INSTALL_QUESTION_TIMEOUT, approvals.wait(&approval.id)).await;
+            approvals.forget(&approval.id);
+            match decision {
+                // Yes to everything, or the selection in `feedback`: {"tools": [...], "permissions": [...]}
+                Ok(Ok(decision)) if decision.approved => decision
+                    .feedback
+                    .as_deref()
+                    .and_then(|text| serde_json::from_str::<Value>(text).ok())
+                    .and_then(|value| cluaiz_agents::Approved::from_json(&value))
+                    .unwrap_or_else(|| cluaiz_agents::Approved::all(&plan)),
+                // Rejected, or nobody answered within the time: every question is no
+                _ => cluaiz_agents::Approved::default(),
+            }
+        } else {
+            cluaiz_agents::Approved::default()
+        };
+        if handle.is_cancelled() {
+            return Err(CepError::cancelled());
+        }
         handle.event(json!({"stage":"installing","kind":target.kind,"name":target.name}));
-        ToolsInstaller::install_component(target.kind.as_str(), &target.name)
+        let report = ToolsInstaller::install_with_plan(&plan, &approved)
             .await
             .map_err(common::unavailable)?;
         if handle.is_cancelled() {
             return Err(CepError::cancelled());
         }
         let entry = common::entry(&target)?;
-        handle.event(json!({"stage":"installed","kind":target.kind,"name":target.name}));
+        handle.event(json!({"stage":"installed","kind":target.kind,"name":target.name,"report":report}));
         cluaiz_cep::events::publish("tool.installed", json!({"kind":target.kind,"name":target.name}));
-        serde_json::to_value(entry).map_err(common::unavailable)
+        let mut result = serde_json::to_value(entry).map_err(common::unavailable)?;
+        result["install_report"] = json!(report);
+        Ok(result)
     })
 }
 

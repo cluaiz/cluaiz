@@ -136,7 +136,20 @@ impl SandboxTerminalRunner {
         timeout_secs: Option<u64>,
         cancel_rx: Option<watch::Receiver<bool>>,
     ) -> Result<TerminalRunResult> {
-        Self::execute_streaming(command_line, cwd, security_mode, venv_dir, stdin_input, timeout_secs, cancel_rx, None).await
+        Self::execute_streaming(command_line, cwd, security_mode, venv_dir, stdin_input, timeout_secs, cancel_rx, None, None).await
+    }
+
+    /// [`Self::execute_advanced`] with extra environment values on top of the resolved ones: a
+    /// tool's own settings, named in its `env`
+    #[allow(clippy::too_many_arguments)]
+    pub async fn execute_with_env(
+        command_line: &str,
+        cwd: &Path,
+        security_mode: SecurityMode,
+        timeout_secs: Option<u64>,
+        extra_env: &std::collections::HashMap<String, String>,
+    ) -> Result<TerminalRunResult> {
+        Self::execute_streaming(command_line, cwd, security_mode, None, None, timeout_secs, None, None, Some(extra_env)).await
     }
 
     /// [`Self::execute_advanced`] that also sends each stdout / stderr line to `on_line` as it is
@@ -151,6 +164,7 @@ impl SandboxTerminalRunner {
         timeout_secs: Option<u64>,
         mut cancel_rx: Option<watch::Receiver<bool>>,
         on_line: Option<tokio::sync::mpsc::UnboundedSender<String>>,
+        extra_env: Option<&std::collections::HashMap<String, String>>,
     ) -> Result<TerminalRunResult> {
         Self::validate_command(command_line, cwd, security_mode)?;
 
@@ -199,6 +213,9 @@ impl SandboxTerminalRunner {
         // Apply clean resolved environment
         cmd.env_clear();
         for (k, v) in &env_resolved.env_vars {
+            cmd.env(k, v);
+        }
+        for (k, v) in extra_env.into_iter().flatten() {
             cmd.env(k, v);
         }
 
@@ -455,7 +472,7 @@ mod tests {
         #[cfg(not(target_os = "windows"))]
         let cmd = "echo one; echo two";
         let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel();
-        let result = SandboxTerminalRunner::execute_streaming(cmd, &temp_dir, SecurityMode::Inherit, None, None, Some(30), None, Some(tx))
+        let result = SandboxTerminalRunner::execute_streaming(cmd, &temp_dir, SecurityMode::Inherit, None, None, Some(30), None, Some(tx), None)
             .await
             .expect("streaming run");
         let mut live = Vec::new();

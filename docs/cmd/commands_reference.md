@@ -131,7 +131,15 @@ cluaiz plugin ls
 cluaiz mcp rm sqlite-bridge
 ```
 
-Installing a tool also installs the tools its `package.json` lists under `dependencies` (plugins, MCP servers, skills) that are not installed yet, and their own dependencies. Tools already installed are kept as they are; version ranges are not checked yet. If a dependency fails, the tool stays installed and the error names each missing dependency and the command to install it.
+Before installing, the command shows a plan: the tool, the tools it depends on (`required`, `recommended` or `optional`), and the permissions each asks for. Your agent mode (`full_access`, `sandboxed`, `strict`) decides what is done without asking; the rest is asked in the terminal. `--yes` says yes to every question; `--no-recommended` leaves recommended dependencies out. Without a terminal, questions count as no; a required dependency that is not approved stops the install.
+
+```bash
+cluaiz skill install deep-research --yes
+cluaiz plugin permission web-search              # list its permissions
+cluaiz plugin permission web-search network off  # switch one off
+```
+
+A permission that is off is refused to a WebAssembly plugin (it answers `permission_off` with the command to turn it on); any other tool is asked about before each call.
 
 ---
 

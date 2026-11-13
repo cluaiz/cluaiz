@@ -37,16 +37,34 @@ response: |
     "id": 1,
     "jsonrpc": "2.0",
     "result": {
+      "permissions": [
+        {
+          "chosen": false,
+          "default": true,
+          "info": "Sends searches to search services and reads the pages that are chosen",
+          "kind": "network",
+          "on": true,
+          "options": { "access": "full" },
+          "sensitive": false,
+          "title": "Internet"
+        }
+      ],
       "schema": {},
       "user_settings": [
         {
+          "in_system": false,
+          "info": "...",
           "name": "BRAVE_API_KEY",
+          "required": false,
           "secret": true,
           "set": false
         },
         {
+          "in_system": false,
+          "info": "...",
           "name": "SEARXNG_URL",
-          "secret": false,
+          "required": false,
+          "secret": true,
           "set": false
         },
         {

@@ -4,7 +4,7 @@ transport: "POST /v1/cep"
 category: "agents-tools"
 category_title: "Agents, MCP & Tools"
 group: "tools"
-summary: "Install a registry tool; task result reports the actual outcome"
+summary: "Install a registry tool and the tools it depends on; what the user's mode leaves open is asked through approvals; task result reports the actual outcome"
 scope: "write"
 execution: "task"
 mcp: true
@@ -52,7 +52,7 @@ errors:
     when: "The tool folder is outside the caller's roots (`data.needs: \"roots\"`)"
   - code: -32010
     type: "tool_operation_failed"
-    when: "The installer, registry or tool itself failed (its message is passed on)"
+    when: "The installer, registry or tool itself failed, or a required dependency was not approved (its message is passed on)"
   - code: -32008
     type: "cancelled"
     when: "`tasks.cancel` stopped it before or after the download (from the task's result)"
@@ -62,7 +62,17 @@ errors:
 
 Install a named registry tool through the existing installer as a CEP task. Tool package resolution/runtime setup remain owned by ToolsInstaller; do not treat the returned task id as proof the package is ready.
 
-Installing a tool also installs the tools its `package.json` lists under `dependencies` (plugins, MCP servers, skills) that are not installed yet, and their own dependencies. Tools already installed are kept as they are; version ranges are not checked yet. If a dependency fails, the tool stays installed and the error names each missing dependency and the command to install it.
+Before downloading, the installer makes a plan: the tool, the tools its `package.json` lists under `dependencies` that are missing (each `required`, `recommended` or `optional`), and the permissions each asks for. The owner's agent mode (`full_access`, `sandboxed`, `strict`) decides what is done without asking:
+
+| | `full_access` | `sandboxed` | `strict` |
+|---|---|---|---|
+| `required` dependency | Installed | Installed, unless it asks for a sensitive permission | Asked |
+| `recommended` dependency | Installed | Asked | Asked |
+| `optional` dependency | Suggested only | Suggested only | Suggested only |
+| Permission (not sensitive) | Its default | Its default | Asked |
+| Sensitive permission (`programs`, `location`, `media`, `native`, `files` beyond reading the workspace, `clipboard` read, `system` hostname or username) | Asked | Asked | Asked |
+
+When something is asked, the task emits a `stage: "approval"` event with `approval_id` and the `plan`, and the request waits in `approvals.list` (method `install:<kind>:<name>`, the plan as `target`) for up to 10 minutes. `approvals.approve` says yes to every question, or, with `feedback` set to `{"tools": ["plugin:web-search"], "permissions": ["plugin:time:location"]}`, to those only. `approvals.reject` or no answer counts as no. A `required` dependency that is not approved stops the install, and nothing is installed. The final result is the installed entry with `install_report`: what was installed, the permissions recorded, what was skipped and what could help. Version ranges and `url` are not checked yet; `extensions` are not installed.
 
 ## Endpoint, execution and permissions
 

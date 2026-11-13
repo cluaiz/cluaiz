@@ -4,7 +4,7 @@ use anyhow::{Result, anyhow};
 use cluaiz_agents::plugins::net;
 use cluaiz_core::EnvironmentManager;
 
-/// The values a plugin's `permissions` or an MCP package's `user_env` names are kept in the user's
+/// The values for the names in a tool's `env` are kept in the user's
 /// settings, not in the tool's files: an update replaces those, and a key must never be printed or
 /// sent elsewhere. False when this tool has none, or `key` is not one of them.
 fn user_setting(kind: &str, id: &str, key: Option<&str>, value: Option<&str>) -> Result<bool> {

@@ -153,6 +153,16 @@
               "null"
             ]
           },
+          "permissions": {
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "description": "Switch the tool's permissions on or off by kind (see `permissions` in the result), such as\n`{\"network\": false}`. Only types the tool asks for",
+            "type": [
+              "object",
+              "null"
+            ]
+          },
           "security_mode": {
             "description": "inherit, require_approval or always_allow",
             "type": [
@@ -6806,6 +6816,17 @@
           "result": {
             "name": "result",
             "value": {
+              "permissions": [
+                {
+                  "chosen": false,
+                  "default": true,
+                  "kind": "network",
+                  "on": true,
+                  "sensitive": false,
+                  "title": "Internet",
+                  "why": "Searches the web and reads pages"
+                }
+              ],
               "schema": {},
               "user_settings": [
                 {
@@ -6891,7 +6912,7 @@
           "data": {
             "type": "tool_operation_failed"
           },
-          "message": "The installer, registry or tool itself failed (its message is passed on)"
+          "message": "The installer, registry or tool itself failed, or a required dependency was not approved (its message is passed on)"
         },
         {
           "code": -32008,
@@ -6951,7 +6972,7 @@
           "title": "AnyValue"
         }
       },
-      "summary": "Install a registry tool; task result reports the actual outcome",
+      "summary": "Install a registry tool and the tools it depends on; what the user's mode leaves open is asked through approvals; task result reports the actual outcome",
       "x-cep": {
         "destructive": false,
         "execution": "task",
@@ -7326,7 +7347,7 @@
           "data": {
             "type": "invalid_params"
           },
-          "message": "An unknown `security_mode` / `execution_mode`, a bad `name`, or a `user_settings` name the tool does not ask for"
+          "message": "An unknown `security_mode` / `execution_mode`, a bad `name`, or a `user_settings` name or permission the tool does not ask for"
         },
         {
           "code": -32010,
@@ -7351,8 +7372,8 @@
             {
               "name": "patch",
               "value": {
-                "user_settings": {
-                  "TAVILY_API_KEY": "tvly-..."
+                "permissions": {
+                  "network": false
                 }
               }
             }
@@ -7360,14 +7381,19 @@
           "result": {
             "name": "result",
             "value": {
-              "schema": {},
-              "user_settings": [
+              "permissions": [
                 {
-                  "name": "TAVILY_API_KEY",
-                  "secret": true,
-                  "set": true
+                  "chosen": true,
+                  "default": true,
+                  "kind": "network",
+                  "on": false,
+                  "sensitive": false,
+                  "title": "Internet",
+                  "why": "Searches the web and reads pages"
                 }
               ],
+              "schema": {},
+              "user_settings": [],
               "values": {
                 "enabled": true,
                 "execution_mode": "manual",

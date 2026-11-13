@@ -19,8 +19,6 @@ pub struct McpManifest {
     #[serde(default)]
     pub activation: Option<McpActivation>,
     #[serde(default)]
-    pub permissions: Option<McpPermissions>,
-    #[serde(default)]
     pub execution: Option<McpExecution>,
 }
 
@@ -41,16 +39,6 @@ pub struct McpActivation {
     pub lazy_load: bool,
     #[serde(default)]
     pub trigger_on: Vec<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
-pub struct McpPermissions {
-    #[serde(default)]
-    pub network_access: bool,
-    #[serde(default)]
-    pub allowed_hosts: Vec<String>,
-    #[serde(default)]
-    pub file_system: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
