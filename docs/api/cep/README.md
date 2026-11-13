@@ -158,7 +158,7 @@ The statuses match MCP tasks: `working`, `completed`, `failed`, `cancelled`. A t
 
 ## Approvals
 
-A call that needs the owner's yes fails with `-32003` and `data.approval_id`. Today that is every `system.exec` call, and a call outside the caller's roots when its principal asks instead of refusing. The chat agent's tool approvals use the same store; their stream's `permission_request.request_id` is the same id.
+A call that needs the owner's yes fails with `-32003` and `data.approval_id`. Today that is every `system.exec` call, a `tools.call` of a tool that is not WebAssembly while one of its permissions is switched off or not yet allowed, and a call outside the caller's roots when its principal asks instead of refusing. The chat agent's tool approvals use the same store; their stream's `permission_request.request_id` is the same id.
 
 1. The owner answers with [`approvals.approve`](agents-tools/approvals/approvals.approve.md) `{approval_id}` or [`approvals.reject`](agents-tools/approvals/approvals.reject.md) `{approval_id, feedback?}`.
 2. The caller sends the **same** call again with `"_meta": {"approval": "<id>"}` in its params.

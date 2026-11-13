@@ -62,6 +62,9 @@ errors:
   - code: -32002
     type: "forbidden"
     when: "The tool folder is outside the caller's roots (`data.needs: \"roots\"`)"
+  - code: -32003
+    type: "approval_required"
+    when: "A tool that is not WebAssembly has a permission switched off or not yet allowed: the owner approves this exact call, then it is sent again with `_meta.approval`"
   - code: -32010
     type: "tool_operation_failed"
     when: "The installer, registry or tool itself failed (its message is passed on)"
@@ -194,6 +197,7 @@ The following response is an illustrative shape. IDs, byte counts, timings and a
 | `-32004` / `tool_not_found` | No installed tool of this kind and name | Refresh the relevant inventory/IDs and check whether the resource expired |
 | `-32602` / `invalid_params` | A bad `name`, or `fn` looks like a path | Correct the option/value combination; install required assets where relevant |
 | `-32002` / `forbidden` | The tool folder is outside the caller's roots (`data.needs: "roots"`) | Read the error message, correct the backend/filesystem/configuration condition, then retry deliberately |
+| `-32003` / `approval_required` | The tool is not WebAssembly and one of its permissions is switched off or not yet allowed; `data.target` names them. The Engine cannot block a normal program's access, so it asks first, as the chat does | The owner answers with `approvals.approve {approval_id}` (or `approvals.reject`); send the same call again with `params._meta.approval`. One approval covers that one call. Allowing the permission with `tools.set_settings` stops the question. A WebAssembly plugin is never asked: the Engine refuses it the access itself |
 | `-32010` / `tool_operation_failed` | The installer, registry or tool itself failed (its message is passed on) | Read the error message, correct the backend/filesystem/configuration condition, then retry deliberately |
 
 ### Invalid-field example
