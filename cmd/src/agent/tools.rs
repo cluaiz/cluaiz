@@ -321,7 +321,19 @@ impl Tools {
         let schema = self.installed_schemas.iter().find(|schema| schema["function"]["name"] == name);
         let arguments = &without_empty_optional(arguments, schema);
         let what = format!("{} {}", target.category, target.component_id);
-        self.ask(&format!("{}:{}", target.category, target.component_id), &format!("{what}\narguments: {arguments}"))?;
+        // A permission the user switched off: a tool that is not WebAssembly is asked about every time
+        let off = cluaiz_agents::ToolsEngine::get_tool(&target.component_id)
+            .ok()
+            .flatten()
+            .filter(|entry| !entry.is_wasm_plugin())
+            .map(|entry| entry.permissions_off())
+            .unwrap_or_default();
+        let why = if off.is_empty() {
+            format!("{what}\narguments: {arguments}")
+        } else {
+            format!("{what}\narguments: {arguments}\npermissions you switched off for it: {}", off.join(", "))
+        };
+        self.ask_with(&format!("{}:{}", target.category, target.component_id), &why, !off.is_empty())?;
         let output = cluaiz_agents::ToolsEngine::execute_tool_by_name(
             &target.category,
             &target.component_id,
@@ -858,6 +870,7 @@ impl Tools {
                 Some(timeout as u64),
                 Some(cancel_rx),
                 live.then_some(line_tx),
+                None,
             )
             .await
         };
@@ -1020,12 +1033,19 @@ impl Tools {
 
     /// The user's answer to one call; Err is what the model is told when it is not allowed.
     fn ask(&mut self, tool: &str, why: &str) -> Result<(), String> {
+        self.ask_with(tool, why, false)
+    }
+
+    /// `always_ask`: a saved allow rule, Full Access or an earlier "this session" does not skip
+    /// the question (a tool with a permission the user switched off). Deny rules still apply.
+    fn ask_with(&mut self, tool: &str, why: &str, always_ask: bool) -> Result<(), String> {
         match self.rules.check(tool, why) {
             super::rules::Verdict::Deny(reason) => {
                 self.refused = true;
                 return Err(reason);
             }
-            super::rules::Verdict::Allow => return Ok(()),
+            super::rules::Verdict::Allow if !always_ask => return Ok(()),
+            super::rules::Verdict::Allow => {}
             super::rules::Verdict::Ask => {}
         }
         let edit = matches!(tool, "write_file" | "edit_file");
@@ -1038,7 +1058,7 @@ impl Tools {
         }
         // Memory outlives the session: saving or deleting a fact is always seen
         let remember = tool == cluaiz_agents::workspace::REMEMBER || tool == cluaiz_agents::workspace::FORGET;
-        if !remember && (self.allow_all || self.always.contains(tool)) {
+        if !remember && !always_ask && (self.allow_all || self.always.contains(tool)) {
             return Ok(());
         }
         if !self.display.screen_enabled() && !std::io::stdin().is_terminal() {

@@ -45,10 +45,14 @@ impl PluginExecutor {
 
         tracing::info!("⚡ [PluginExecutor] Executing plugin binary at: {:?}", binary);
         if binary.extension().is_some_and(|ext| ext.eq_ignore_ascii_case("wasm")) {
-            let max_memory_mb = manifest.permissions.as_ref().and_then(|p| p.max_memory_mb).map(u64::from);
+            let max_memory_mb = manifest.limits.as_ref().and_then(|limits| limits.memory_mb);
             let plugin_id = plugin_dir.file_name().map(|name| name.to_string_lossy()).unwrap_or_default();
             let config_dir = cluaiz_core::EnvironmentManager::current().config_dir();
-            let net = super::net::NetAccess::for_plugin(&plugin_id, manifest.permissions.as_ref(), &config_dir);
+            let raw = std::fs::read_to_string(&manifest_path)
+                .ok()
+                .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+                .unwrap_or_default();
+            let net = super::net::NetAccess::for_plugin(&plugin_id, &raw, &config_dir);
             return super::wasm::run_file(&binary, payload, max_memory_mb, net);
         }
         

@@ -41,12 +41,12 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         "tools.install",
         Meta::new(
             Scope::Write,
-            "Install a registry tool; task result reports the actual outcome",
+            "Install a registry tool and the tools it depends on; what the user's mode leaves open is asked through approvals; task result reports the actual outcome",
         )
         .task()
         .error(-32602, "invalid_params", "`name` is not 1–64 lowercase letters, digits, dots, underscores or hyphens")
         .error(-32002, "forbidden", "The tool folder is outside the caller's roots (`data.needs: \"roots\"`)")
-        .error(-32010, "tool_operation_failed", "The installer, registry or tool itself failed (its message is passed on)")
+        .error(-32010, "tool_operation_failed", "The installer, registry or tool itself failed, or a required dependency was not approved (its message is passed on)")
         .error(-32008, "cancelled", "`tasks.cancel` stopped it before or after the download (from the task's result)")
         .example(
             json!({"kind":"skill","name":"registry-tool"}),
@@ -113,7 +113,8 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             .example(
                 json!({"kind":"plugin","name":"web-search"}),
                 json!({"schema":{},"values":{"enabled":true,"execution_mode":"manual","security_mode":"inherit","trust_annotations":false},
-                    "user_settings":[{"name":"BRAVE_API_KEY","secret":true,"set":false},{"name":"SEARXNG_URL","secret":false,"set":false},{"name":"TAVILY_API_KEY","secret":true,"set":true}]}),
+                    "user_settings":[{"name":"BRAVE_API_KEY","secret":true,"set":false},{"name":"SEARXNG_URL","secret":false,"set":false},{"name":"TAVILY_API_KEY","secret":true,"set":true}],
+                    "permissions":[{"kind":"network","title":"Internet","why":"Searches the web and reads pages","sensitive":false,"default":true,"on":true,"chosen":false}]}),
             ),
         catalog::get,
     );
@@ -122,7 +123,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         Meta::new(Scope::Write, "Validate and save a tool settings patch")
             .no_mcp()
             .error(-32004, "tool_not_found", "No installed tool of this kind and name")
-            .error(-32602, "invalid_params", "An unknown `security_mode` / `execution_mode`, a bad `name`, or a `user_settings` name the tool does not ask for")
+            .error(-32602, "invalid_params", "An unknown `security_mode` / `execution_mode`, a bad `name`, or a `user_settings` name or permission the tool does not ask for")
             .error(-32010, "tool_operation_failed", "The tool registry or the user's settings could not be saved")
             .example(
                 json!({"kind":"skill","name":"installed-tool","patch":{"enabled":true}}),
@@ -132,6 +133,12 @@ pub fn register(registry: &mut Registry<CallCtx>) {
                 json!({"kind":"plugin","name":"web-search","patch":{"user_settings":{"TAVILY_API_KEY":"tvly-..."}}}),
                 json!({"schema":{},"values":{"enabled":true,"execution_mode":"manual","security_mode":"inherit","trust_annotations":false},
                     "user_settings":[{"name":"TAVILY_API_KEY","secret":true,"set":true}]}),
+            )
+            .example(
+                json!({"kind":"plugin","name":"web-search","patch":{"permissions":{"network":false}}}),
+                json!({"schema":{},"values":{"enabled":true,"execution_mode":"manual","security_mode":"inherit","trust_annotations":false},
+                    "user_settings":[],
+                    "permissions":[{"kind":"network","title":"Internet","why":"Searches the web and reads pages","sensitive":false,"default":true,"on":false,"chosen":true}]}),
             ),
         catalog::set,
     );

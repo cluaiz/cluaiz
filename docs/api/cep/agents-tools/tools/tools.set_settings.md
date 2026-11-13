@@ -26,7 +26,7 @@ params:
     type: "object"
     req: true
     desc: "Only the fields to change"
-    example: {"user_settings":{"TAVILY_API_KEY":"tvly-..."}}
+    example: {"permissions":{"network":false}}
     fields:
       - name: "enabled"
         type: "boolean | null"
@@ -38,6 +38,11 @@ params:
         req: false
         desc: "auto, manual or confirm_destructive"
         example: null
+      - name: "permissions"
+        type: "object | null"
+        req: false
+        desc: "Switch the tool's permissions on or off by kind (see `permissions` in the result), such as `{\"network\": false}`. Only types the tool asks for"
+        example: {"network":false}
       - name: "security_mode"
         type: "string | null"
         req: false
@@ -52,7 +57,7 @@ params:
         type: "object | null"
         req: false
         desc: "Values the tool asks the user for, by name (see `user_settings` in the result), such as an API key. An empty string removes one. They are saved in the user's settings, never in the tool's files, and never returned"
-        example: {"TAVILY_API_KEY":"tvly-..."}
+        example: null
 request_payload: |
   {
     "id": 1,
@@ -62,8 +67,8 @@ request_payload: |
       "kind": "plugin",
       "name": "web-search",
       "patch": {
-        "user_settings": {
-          "TAVILY_API_KEY": "tvly-..."
+        "permissions": {
+          "network": false
         }
       }
     }
@@ -73,14 +78,20 @@ response: |
     "id": 1,
     "jsonrpc": "2.0",
     "result": {
-      "schema": {},
-      "user_settings": [
+      "permissions": [
         {
-          "name": "TAVILY_API_KEY",
-          "secret": true,
-          "set": true
+          "chosen": true,
+          "default": true,
+          "info": "Sends searches to search services and reads the pages that are chosen",
+          "kind": "network",
+          "on": false,
+          "options": { "access": "full" },
+          "sensitive": false,
+          "title": "Internet"
         }
       ],
+      "schema": {},
+      "user_settings": [],
       "values": {
         "enabled": true,
         "execution_mode": "manual",
@@ -95,7 +106,7 @@ errors:
     when: "No installed tool of this kind and name"
   - code: -32602
     type: "invalid_params"
-    when: "An unknown `security_mode` / `execution_mode`, a bad `name`, or a `user_settings` name the tool does not ask for"
+    when: "An unknown `security_mode` / `execution_mode`, a bad `name`, or a `user_settings` name or permission the tool does not ask for"
   - code: -32010
     type: "tool_operation_failed"
     when: "The tool registry or the user's settings could not be saved"
@@ -104,6 +115,8 @@ errors:
 # tools.set_settings
 
 Validate and save a supported tool-policy patch while leaving omitted policy fields unchanged. This is a small typed policy contract rather than an arbitrary package JSON editor.
+
+`patch.permissions` switches the tool's permissions on or off by kind, such as `{"network": false}`. Only types the tool asks for are accepted; `tools.get_settings` lists them under `permissions` with `title`, `info`, `options` (such as `access` and `hosts`), `sensitive`, `default`, `on` and `chosen`. The types and their options are in cluaiz-tools `docs/reference/permissions.md`. `user_settings` sets values for the names in the tool's `env`; a value in the system environment comes first. The choice is kept in the Engine's `config/tool_permissions.json`, so an update of the tool keeps it.
 
 ## Endpoint, execution and permissions
 

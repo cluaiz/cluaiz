@@ -570,21 +570,12 @@ impl McpClient {
     }
 }
 
-/// Environment values the user set with `cluaiz mcp config`, limited to the names in the package's
-/// `user_env`, so a package cannot read another's values or anything else the user keeps there.
+/// The values of the settings named in the package's `env`: the system environment first, then
+/// what the user saved with `cluaiz mcp config`. Only those names, so a package cannot read
+/// another's values or anything else the user keeps there.
 fn user_env(mcp_dir: &Path, config_dir: &Path) -> HashMap<String, String> {
-    let names: Vec<String> = std::fs::read_to_string(mcp_dir.join("package.json"))
-        .ok()
-        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
-        .and_then(|manifest| serde_json::from_value(manifest.get("user_env")?.clone()).ok())
-        .unwrap_or_default();
-    if names.is_empty() {
-        return HashMap::new();
-    }
     let id = mcp_dir.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
-    let mut values = crate::plugins::net::read_settings(&id, config_dir);
-    values.retain(|name, _| names.contains(name));
-    values
+    crate::tool_env::values(&id, &crate::tool_env::manifest_in(mcp_dir), config_dir)
 }
 
 /// `expose` in a package: the only tools of the server the model gets, each with the only inputs
@@ -642,7 +633,7 @@ mod tests {
         let root = std::env::temp_dir().join(format!("cluaiz-env-{}", uuid::Uuid::new_v4()));
         let dir = root.join("server");
         std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(dir.join("package.json"), r#"{"user_env":["WANTED"]}"#).unwrap();
+        std::fs::write(dir.join("package.json"), r#"{"env":{"WANTED":{"info":"a value"}}}"#).unwrap();
         std::fs::write(
             root.join("tool_settings.json"),
             r#"{"server":{"WANTED":"1","OTHER":"2"},"another":{"WANTED":"3"}}"#,

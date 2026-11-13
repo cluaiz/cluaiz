@@ -22,71 +22,143 @@ pub struct CacheClearReport {
 pub type ToolHubInstaller = ToolsInstaller;
 
 impl ToolsInstaller {
-    /// Installs a tool and then the tools its `package.json` lists under `dependencies` that
-    /// are not installed yet. A dependency that fails leaves the tool installed and returns an
-    /// error naming each missing dependency.
+    /// Installs a tool without asking anyone: what the user's mode allows is installed, and every
+    /// question is answered no (see [`Self::plan_install`]). A required dependency that would have
+    /// to be asked about stops the install; the error says to run it with `--yes`.
     pub async fn install_component(component_type: &str, component_id_raw: &str) -> Result<()> {
-        let mut seen = std::collections::HashSet::new();
-        Self::install_with_dependencies(component_type, component_id_raw, &mut seen).await
+        let plan = Self::plan_install(component_type, component_id_raw).await?;
+        let report = Self::install_with_plan(&plan, &super::plan::Approved::default()).await?;
+        for line in &report {
+            tracing::info!("📦 [ToolsEngine] {}", line);
+        }
+        Ok(())
     }
 
-    fn install_with_dependencies<'a>(
-        component_type: &'a str,
-        component_id_raw: &'a str,
-        seen: &'a mut std::collections::HashSet<String>,
-    ) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<()>> + Send + 'a>> {
-        Box::pin(async move {
-            let component_id = component_id_raw.split('@').next().unwrap_or(component_id_raw);
-            seen.insert(format!("{}:{}", component_type, component_id));
-            Self::install_one(component_type, component_id_raw).await?;
+    /// What installing a tool will do in the user's mode: the tool, the tools it depends on
+    /// (dependencies first), and the permissions each asks for. Nothing is installed.
+    pub async fn plan_install(component_type: &str, component_id_raw: &str) -> Result<super::plan::InstallPlan> {
+        use super::plan::{decide_tool, dependencies, plan_permissions, Choice, Need, PlannedTool};
+        let component_id = component_id_raw.split('@').next().unwrap_or(component_id_raw);
+        if !Self::is_valid_component_id(component_id) || Self::component_dir(component_type, component_id).is_none() {
+            return Err(anyhow::anyhow!("Invalid {} name '{}'.", component_type, component_id_raw));
+        }
+        let mode = super::plan::mode_of(&cluaiz_security::PermissionSchema::load().agent_security_mode).to_owned();
+        let client = Self::client()?;
+        let root_key = format!("{component_type}:{component_id}");
+        let root = Self::registry_manifest(&client, component_type, component_id).await?;
 
-            let Some(folder) = Self::component_dir(component_type, component_id) else {
-                return Ok(());
-            };
-            let mut failed = Vec::new();
-            for (kind, dep_id) in Self::declared_dependencies(&folder) {
-                if !seen.insert(format!("{}:{}", kind, dep_id)) || Self::is_installed(kind, &dep_id) {
+        let mut tools: Vec<PlannedTool> = Vec::new();
+        let mut permissions = plan_permissions(&root_key, &root, &mode);
+        let mut seen = std::collections::HashSet::from([root_key.clone()]);
+        // Breadth first; reversed at the end so the deepest dependencies install first
+        let mut queue = std::collections::VecDeque::from([(root_key, root)]);
+        while let Some((parent, manifest)) = queue.pop_front() {
+            for (kind, id, need, info) in dependencies(&manifest) {
+                if !seen.insert(format!("{kind}:{id}")) {
                     continue;
                 }
-                tracing::info!("📦 [ToolsEngine] {} '{}' needs {} '{}'; installing it", component_type, component_id, kind, dep_id);
-                if let Err(e) = Self::install_with_dependencies(kind, &dep_id, seen).await {
-                    failed.push(format!("{} '{}' ({}; install it with `cluaiz {} install {}`)", kind, dep_id, e, kind, dep_id));
+                let mut planned = PlannedTool { kind: kind.to_owned(), id: id.clone(), need, info, needed_by: parent.clone(), choice: Choice::Installed };
+                if Self::is_installed(kind, &id) {
+                    tools.push(planned);
+                    continue;
                 }
-            }
-            if !failed.is_empty() {
-                return Err(anyhow::anyhow!(
-                    "{} '{}' is installed, but these tools it needs could not be installed: {}",
-                    component_type,
-                    component_id,
-                    failed.join("; ")
-                ));
-            }
-            Ok(())
-        })
-    }
-
-    /// The tools an installed package lists under `dependencies`, as (`skill` | `plugin` |
-    /// `mcp`, id). Only the ids are used; version ranges are not checked yet.
-    fn declared_dependencies(folder: &Path) -> Vec<(&'static str, String)> {
-        let Ok(text) = std::fs::read_to_string(folder.join("package.json")) else {
-            return Vec::new();
-        };
-        let Ok(manifest) = serde_json::from_str::<serde_json::Value>(&text) else {
-            return Vec::new();
-        };
-        let mut found = Vec::new();
-        for (key, kind) in [("plugins", "plugin"), ("mcp", "mcp"), ("skills", "skill")] {
-            if let Some(entries) = manifest["dependencies"][key].as_object() {
-                for dep_id in entries.keys() {
-                    if Self::is_valid_component_id(dep_id) {
-                        found.push((kind, dep_id.clone()));
-                    } else {
-                        tracing::warn!("⚠️ [ToolsEngine] Ignoring dependency with an invalid name '{}'", dep_id);
-                    }
+                if need == Need::Optional {
+                    planned.choice = Choice::Suggest;
+                    tools.push(planned);
+                    continue;
                 }
+                let manifest = Self::registry_manifest(&client, kind, &id)
+                    .await
+                    .map_err(|e| anyhow::anyhow!("{parent} needs {kind} '{id}', which cannot be found: {e}"))?;
+                let wants_sensitive = crate::permissions::declared(&manifest).iter().any(|p| p.sensitive);
+                planned.choice = decide_tool(need, &mode, wants_sensitive);
+                permissions.extend(plan_permissions(&planned.key(), &manifest, &mode));
+                queue.push_back((planned.key(), manifest));
+                tools.push(planned);
             }
         }
-        found
+        tools.reverse();
+        tools.push(PlannedTool {
+            kind: component_type.to_owned(),
+            id: component_id_raw.to_owned(),
+            need: Need::Required,
+            info: String::new(),
+            needed_by: String::new(),
+            choice: Choice::Install,
+        });
+        Ok(super::plan::InstallPlan { mode, tools, permissions })
+    }
+
+    /// Installs what the plan and the answers allow, dependencies first, then records the
+    /// permissions that were asked about. Returns lines for the user: installed, permissions,
+    /// skipped, suggested. A dependency that fails leaves the tool installed and names it.
+    pub async fn install_with_plan(plan: &super::plan::InstallPlan, approved: &super::plan::Approved) -> Result<Vec<String>> {
+        let resolved = plan.resolve(approved).map_err(|e| anyhow::anyhow!(e))?;
+        let Some((root_kind, root_id)) = resolved.install.last().cloned() else {
+            return Err(anyhow::anyhow!("Nothing to install."));
+        };
+        let mut report = Vec::new();
+        let mut failed = Vec::new();
+        for (kind, id) in &resolved.install[..resolved.install.len() - 1] {
+            match Self::install_one(kind, id).await {
+                Ok(()) => report.push(format!("installed {kind} '{id}'")),
+                Err(e) => failed.push(format!("{kind} '{id}' ({e}; install it with `cluaiz {kind} install {id}`)")),
+            }
+        }
+        Self::install_one(&root_kind, &root_id).await?;
+        let root_bare = root_id.split('@').next().unwrap_or(&root_id).to_owned();
+        report.push(format!("installed {root_kind} '{root_bare}'"));
+
+        let config_dir = EnvironmentManager::current().config_dir();
+        for (kind, id, permission, on) in &resolved.permissions {
+            let id = id.split('@').next().unwrap_or(id);
+            if let Err(e) = crate::permissions::set(&config_dir, kind, id, permission, *on) {
+                tracing::warn!("⚠️ [ToolsEngine] Could not record permission {} for {} '{}': {}", permission, kind, id, e);
+            }
+            let state = if *on { "on" } else { "off" };
+            report.push(format!("permission {permission} for {kind} '{id}': {state} (change it with `cluaiz {kind} permission {id} {permission} on|off`)"));
+        }
+        report.extend(resolved.skipped.iter().map(|s| format!("not installed, not approved: {s}")));
+        report.extend(resolved.suggested.iter().map(|s| format!("could help: {s}")));
+        if !failed.is_empty() {
+            return Err(anyhow::anyhow!(
+                "{} '{}' is installed, but these tools it needs could not be installed: {}",
+                root_kind,
+                root_bare,
+                failed.join("; ")
+            ));
+        }
+        Ok(report)
+    }
+
+    fn client() -> Result<reqwest::Client> {
+        Ok(reqwest::Client::builder().connect_timeout(CONNECT_TIMEOUT).read_timeout(READ_TIMEOUT).build()?)
+    }
+
+    /// A tool's `package.json` from the Cluaiz Tools registry
+    async fn registry_manifest(client: &reqwest::Client, component_type: &str, component_id: &str) -> Result<serde_json::Value> {
+        let registry_url = Self::get_registry_url().ok_or_else(|| anyhow::anyhow!("No Cluaiz Tools registry is set."))?;
+        let base_url = match registry_url.strip_suffix("/registry.json") {
+            Some(base) => base.to_owned(),
+            None => registry_url.rsplit_once('/').map_or(registry_url.clone(), |(base, _)| base.to_owned()),
+        };
+        let registry_json = Self::fetch_json(client, &registry_url, "the Cluaiz Tools registry").await?;
+        let route_category = if component_type == "mcp" { "mcp".to_string() } else { format!("{}s", component_type) };
+        let family_path = registry_json
+            .get("routing")
+            .and_then(|routing| routing.get(&route_category))
+            .and_then(|path| path.as_str())
+            .ok_or_else(|| anyhow::anyhow!("The Cluaiz Tools registry at '{}' lists no '{}' category.", registry_url, route_category))?;
+        let family_url = format!("{}/{}", base_url, family_path);
+        let family_json = Self::fetch_json(client, &family_url, &format!("the Cluaiz Tools {} list", component_type)).await?;
+        let package_path = family_json
+            .get("items")
+            .and_then(|items| items.get(component_id))
+            .and_then(|p| p.as_str().or_else(|| p.get("path").and_then(|p| p.as_str())))
+            .ok_or_else(|| anyhow::anyhow!("Component '{}' not found in Cluaiz Tools category '{}'.", component_id, component_type))?;
+        let category_folder = family_path.split('/').next().unwrap_or(component_type);
+        let package_url = format!("{}/{}/{}", base_url, category_folder, package_path);
+        Self::fetch_json(client, &package_url, &format!("the package manifest for '{}'", component_id)).await
     }
 
     async fn install_one(component_type: &str, component_id_raw: &str) -> Result<()> {
@@ -543,6 +615,7 @@ impl ToolsInstaller {
             crate::McpClient::stop_server(&component_dir).await;
         }
         std::fs::remove_dir_all(&component_dir)?;
+        crate::permissions::forget(&EnvironmentManager::current().config_dir(), component_type, component_id);
 
         if let Ok(mut reg) = ToolsRegistry::load() {
             let _ = reg.sync_with_filesystem();
@@ -662,23 +735,6 @@ mod package_file_tests {
         assert!(ToolsInstaller::has_program(&dir, Some(&json!({"execution": {"command": "node"}}))));
         std::fs::write(dir.join("logic.wasm"), "x").unwrap();
         assert!(ToolsInstaller::has_program(&dir, None));
-        std::fs::remove_dir_all(&dir).unwrap();
-    }
-
-    #[test]
-    fn dependencies_are_read_by_kind() {
-        let dir = std::env::temp_dir().join(format!("cluaiz-deps-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
-        assert!(ToolsInstaller::declared_dependencies(&dir).is_empty());
-        let manifest = json!({"dependencies": {
-            "plugins": {"web-search": {"version": "^1.0.0", "url": "u"}},
-            "mcp": {"browser": {"version": "^1.0.0", "url": "u"}, "../bad": {}},
-            "skills": {},
-            "extensions": {"x": {}}
-        }});
-        std::fs::write(dir.join("package.json"), manifest.to_string()).unwrap();
-        let got = ToolsInstaller::declared_dependencies(&dir);
-        assert_eq!(got, vec![("plugin", "web-search".to_string()), ("mcp", "browser".to_string())]);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 

@@ -202,6 +202,21 @@ pub enum ComponentCommand {
     Install {
         /// Name of the component to install (e.g., 'cluaiz-search' or 'cluaiz-search@0.1.0')
         component_name: String,
+        /// Say yes to every question: dependencies and permissions
+        #[arg(long)]
+        yes: bool,
+        /// Install only what is required; leave recommended dependencies out
+        #[arg(long)]
+        no_recommended: bool,
+    },
+    /// Show a component's permissions, or switch one on or off
+    Permission {
+        /// Component id
+        component_id: String,
+        /// Permission: network, clock, notifications, files_read, location, files_write, run_programs
+        permission: Option<String>,
+        /// on or off
+        state: Option<String>,
     },
     /// List all locally installed components
     #[command(alias = "ls")]

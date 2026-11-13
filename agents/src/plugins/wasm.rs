@@ -114,6 +114,7 @@ fn run_budget(wasm: &[u8], payload: &[u8], function: &str, memory_limit: usize, 
 
     let mut linker: Linker<HostState> = Linker::new(engine);
     linker
+        // The time and the operating system's name are always available: they are not permissions
         .func_wrap("cluaiz", "now_utc_ms", || -> i64 {
             std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -134,9 +135,7 @@ fn run_budget(wasm: &[u8], payload: &[u8], function: &str, memory_limit: usize, 
         })
         .map_err(|e| anyhow!("{e}"))?;
     linker
-        .func_wrap("cluaiz", "utc_offset_minutes", || -> i32 {
-            chrono::Local::now().offset().local_minus_utc() / 60
-        })
+        .func_wrap("cluaiz", "utc_offset_minutes", || -> i32 { chrono::Local::now().offset().local_minus_utc() / 60 })
         .map_err(|e| anyhow!("{e}"))?;
     linker.func_wrap("cluaiz", "http_fetch", http_fetch).map_err(|e| anyhow!("{e}"))?;
 
@@ -158,9 +157,7 @@ fn run_budget(wasm: &[u8], payload: &[u8], function: &str, memory_limit: usize, 
     memory
         .write(&mut store, input as u32 as usize, payload)
         .map_err(|e| anyhow!("The plugin gave a bad input address: {e}"))?;
-    let result = execute
-        .call(&mut store, (input, length))
-        .map_err(|e| anyhow!("The plugin failed: {e:#}"))?;
+    let result = execute.call(&mut store, (input, length)).map_err(|e| anyhow!("The plugin failed: {e:#}"))?;
 
     let (start, length) = ((result >> 32) as usize, (result & 0xFFFF_FFFF) as usize);
     let answer = start
@@ -213,6 +210,12 @@ mod tests {
                 local.get $p local.get $l call $fetch))"#;
         let answer = run(&wasm(caller), br#"{"url":"https://example.com/"}"#, None).unwrap();
         assert!(String::from_utf8_lossy(&answer).contains("no_permission"));
+    }
+
+    #[test]
+    fn the_time_needs_no_permission() {
+        let answer = run_with(&wasm(ECHO), b"{}", None, NetAccess::none()).unwrap();
+        assert_eq!(answer, b"{}", "a plugin that reads the clock runs without any permission");
     }
 
     #[test]

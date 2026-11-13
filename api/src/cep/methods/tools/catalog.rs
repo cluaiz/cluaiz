@@ -40,6 +40,9 @@ pub struct Patch {
     /// API key. An empty string removes one. They are saved in the user's settings, never in the
     /// tool's files, and never returned
     pub user_settings: Option<std::collections::BTreeMap<String, String>>,
+    /// Switch the tool's permissions on or off by kind (see `permissions` in the result), such as
+    /// `{"network": false}`. Only types the tool asks for
+    pub permissions: Option<std::collections::BTreeMap<String, bool>>,
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -107,10 +110,20 @@ fn user_settings(target: &Target) -> Vec<cluaiz_agents::plugins::net::UserSettin
         .unwrap_or_default()
 }
 
+/// The tool's `package.json`, or null
+fn manifest(entry: &cluaiz_agents::ToolEntry) -> Value {
+    std::fs::read_to_string(std::path::Path::new(&entry.local_dir).join("package.json"))
+        .ok()
+        .and_then(|text| serde_json::from_str(&text).ok())
+        .unwrap_or_default()
+}
+
 fn settings(entry: &cluaiz_agents::ToolEntry, target: &Target) -> Value {
+    let config_dir = cluaiz_core::EnvironmentManager::current().config_dir();
+    let permissions = cluaiz_agents::permissions::effective(&config_dir, target.kind.as_str(), &target.name, &manifest(entry));
     json!({"schema":{},"values":{"enabled":entry.enabled,"security_mode":entry.security_mode,
         "execution_mode":entry.execution_mode,"trust_annotations":entry.trust_annotations},
-        "user_settings":user_settings(target)})
+        "user_settings":user_settings(target),"permissions":permissions})
 }
 
 pub async fn get(ctx: CallCtx, call: Call, target: Target) -> Result<Value, CepError> {
@@ -186,6 +199,21 @@ pub async fn set(ctx: CallCtx, call: Call, params: Set) -> Result<Value, CepErro
             for (setting, value) in values {
                 cluaiz_agents::plugins::net::save_user_setting(target.kind.as_str(), &dir, setting, value, &config_dir)
                     .map_err(common::unavailable)?;
+            }
+        }
+        if let Some(values) = &params.patch.permissions {
+            let declared = cluaiz_agents::permissions::declared(&manifest(entry));
+            // All kinds are checked before any is saved: a bad patch changes nothing
+            if let Some(unknown) = values.keys().find(|kind| !declared.iter().any(|p| &p.kind == *kind)) {
+                let kinds: Vec<&str> = declared.iter().map(|p| p.kind.as_str()).collect();
+                return Err(roots::invalid(
+                    "patch.permissions",
+                    &format!("'{unknown}' is not a permission this tool asks for; it asks for: {}", if kinds.is_empty() { "none".into() } else { kinds.join(", ") }),
+                ));
+            }
+            let config_dir = cluaiz_core::EnvironmentManager::current().config_dir();
+            for (kind, on) in values {
+                cluaiz_agents::permissions::set(&config_dir, target.kind.as_str(), &target.name, kind, *on).map_err(common::unavailable)?;
             }
         }
         let result = settings(entry, &target);

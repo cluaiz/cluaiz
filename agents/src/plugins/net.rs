@@ -1,12 +1,14 @@
 //! The one door a WebAssembly plugin has to the network: `cluaiz.http_fetch`.
 //!
-//! A plugin gets it by naming `permissions.network_access` in its `package.json`. Only public
-//! addresses over https are reachable, and every redirect is checked again. The plugin never sees
-//! the user's keys: it writes `{{secret:NAME}}` in a header and the Engine fills it in, only for
-//! the host the manifest binds that name to. `{{url:NAME}}` at the start of a URL means an address
-//! the user chose in their settings, such as their own SearXNG, which alone may be local.
+//! A plugin gets it by declaring the `network` permission in its `package.json`: `full` access
+//! reaches any public host, `strict` only its `hosts`. Only public addresses over https are
+//! reachable, and every redirect is checked again. The plugin never sees the user's keys: it writes
+//! `{{secret:NAME}}` in a header and the Engine fills it in, for a name in the manifest's `env`.
+//! `{{url:NAME}}` at the start of a URL means an address the user chose in such a setting, such as
+//! their own SearXNG, which alone may be local.
 //!
-//! Settings are per plugin, in `config/tool_settings.json`: `{ "<plugin id>": { "NAME": "value" } }`.
+//! Saved values are per tool, in `config/tool_settings.json`: `{ "<tool id>": { "NAME": "value" } }`.
+//! A value in the system environment comes first (see `crate::tool_env`).
 
 use reqwest::blocking::Client;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue, LOCATION};
@@ -19,7 +21,6 @@ use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-use super::manifest::PluginPermissions;
 
 const MAX_BODY_BYTES: u64 = 5 * 1024 * 1024;
 const MAX_REQUESTS: u32 = 16;
@@ -54,10 +55,13 @@ struct Request {
 /// What one plugin call may reach, and how much of it it has used
 pub struct NetAccess {
     allowed: bool,
+    /// Set when the plugin declares the network but the user refused it
+    off: Option<String>,
     /// When set, the only hosts reachable (`api.example.com`, `*.example.com`)
     hosts: Option<Vec<String>>,
-    secrets: HashMap<String, String>,
-    user_urls: Vec<String>,
+    /// The names in the manifest's `env`: the only ones `{{secret:NAME}}` and `{{url:NAME}}` may use
+    names: Vec<String>,
+    /// Their values: the system environment first, then the user's saved values
     settings: HashMap<String, String>,
     requests: u32,
     started: Instant,
@@ -65,19 +69,28 @@ pub struct NetAccess {
 
 impl NetAccess {
     pub fn none() -> Self {
-        Self::new(None, HashMap::new())
+        Self::new(Vec::new(), HashMap::new())
     }
 
-    /// `plugin_id` is the installed folder's name, so a plugin reads only its own settings
-    pub fn for_plugin(plugin_id: &str, permissions: Option<&PluginPermissions>, config_dir: &Path) -> Self {
-        let allowed = permissions.is_some_and(|p| p.network_access);
-        let settings = if allowed { read_settings(plugin_id, config_dir) } else { HashMap::new() };
-        Self::new(permissions, settings)
+    /// `plugin_id` is the installed folder's name, so a plugin reads only its own settings.
+    /// `manifest` is the plugin's `package.json`; the user's permission choices apply to it.
+    pub fn for_plugin(plugin_id: &str, manifest: &Value, config_dir: &Path) -> Self {
+        use crate::permissions as perm;
+        let declared = perm::effective(config_dir, "plugin", plugin_id, manifest);
+        let network = declared.iter().find(|p| p.kind == "network");
+        let allowed = network.is_some_and(|p| p.on);
+        let names = crate::tool_env::declared(manifest).into_iter().map(|setting| setting.name).collect();
+        let settings = if allowed { crate::tool_env::values(plugin_id, manifest, config_dir) } else { HashMap::new() };
+        let mut access = Self::new(names, settings);
+        access.allowed = allowed;
+        access.off = network.filter(|p| !p.on).map(|_| perm::off_message("plugin", plugin_id, "network"));
+        access.hosts = network.and_then(|p| p.strict_hosts());
+        access
     }
 
     /// For a flow's `code` step: only these hosts (`permissions.network`), no secrets or settings
     pub fn for_hosts(hosts: Vec<String>) -> Self {
-        let mut access = Self::new(None, HashMap::new());
+        let mut access = Self::none();
         // Every request is checked against `hosts`; an empty list reaches nothing
         access.allowed = true;
         access.hosts = Some(hosts);
@@ -96,12 +109,12 @@ impl NetAccess {
         })
     }
 
-    fn new(permissions: Option<&PluginPermissions>, settings: HashMap<String, String>) -> Self {
+    fn new(names: Vec<String>, settings: HashMap<String, String>) -> Self {
         Self {
-            allowed: permissions.is_some_and(|p| p.network_access),
+            allowed: false,
+            off: None,
             hosts: None,
-            secrets: permissions.map(|p| p.secrets.clone()).unwrap_or_default(),
-            user_urls: permissions.map(|p| p.user_urls.clone()).unwrap_or_default(),
+            names,
             settings,
             requests: 0,
             started: Instant::now(),
@@ -114,6 +127,9 @@ impl NetAccess {
     }
 
     fn try_fetch(&mut self, raw: &[u8]) -> Result<Value, Refused> {
+        if let Some(message) = &self.off {
+            return refuse("permission_off", message.clone());
+        }
         if !self.allowed {
             return refuse("no_permission", "This plugin does not have network access in its package.json");
         }
@@ -200,8 +216,8 @@ impl NetAccess {
         let Some((name, path)) = rest.split_once("}}") else {
             return refuse("bad_request", "An unfinished {{url:NAME}}");
         };
-        if !self.user_urls.iter().any(|allowed| allowed == name) {
-            return refuse("no_permission", format!("{name} is not in permissions.user_urls"));
+        if !self.names.iter().any(|allowed| allowed == name) {
+            return refuse("no_permission", format!("{name} is not in the plugin's env"));
         }
         let Some(base) = self.settings.get(name).filter(|value| !value.trim().is_empty()) else {
             return refuse("missing_setting", format!("{name} is not set"));
@@ -233,6 +249,8 @@ impl NetAccess {
         Ok(headers)
     }
 
+    /// A key goes to the request's host only if that host may be reached: any public host with
+    /// `full` access, a listed one with `strict`. A redirect to another host drops the headers.
     fn fill_secrets(&self, text: &str, url: &Url) -> Result<String, Refused> {
         let mut filled = String::new();
         let mut rest = text;
@@ -242,10 +260,11 @@ impl NetAccess {
             let Some((name, tail)) = after.split_once("}}") else {
                 return refuse("bad_request", "An unfinished {{secret:NAME}}");
             };
-            match self.secrets.get(name) {
-                Some(host) if url.host_str() == Some(host.as_str()) => {}
-                Some(host) => return refuse("no_permission", format!("{name} may only be sent to {host}")),
-                None => return refuse("no_permission", format!("{name} is not in permissions.secrets")),
+            if !self.names.iter().any(|allowed| allowed == name) {
+                return refuse("no_permission", format!("{name} is not in the plugin's env"));
+            }
+            if !self.host_allowed(url) {
+                return refuse("no_permission", format!("{name} may not be sent to {}", url.host_str().unwrap_or_default()));
             }
             let Some(value) = self.settings.get(name).filter(|value| !value.trim().is_empty()) else {
                 return refuse("missing_setting", format!("{name} is not set"));
@@ -287,47 +306,43 @@ pub fn save_setting(plugin_id: &str, name: &str, value: &str, config_dir: &Path)
     Ok(())
 }
 
-/// A value a tool asks the user for, named in its manifest. The value itself is never part of it.
+/// A value a tool asks the user for, named in its manifest's `env`. The value itself is never part
+/// of it.
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 pub struct UserSetting {
     pub name: String,
-    /// A key: typed hidden and never shown
+    /// One sentence from the package: what the value is
+    pub info: String,
+    /// The tool cannot work without it
+    pub required: bool,
+    /// Typed hidden and never shown. Every value is treated as a key
     pub secret: bool,
-    /// The user has given it
+    /// The user has saved it, or the system environment has it
     pub set: bool,
+    /// The system environment has it, which comes before a saved value
+    pub in_system: bool,
 }
 
-/// The values the tool in `dir` asks the user for, sorted by name: a plugin's
-/// `permissions.secrets` (keys, each sent only to its host) and `permissions.user_urls`, and an MCP
-/// package's `user_env` (given to the server as environment variables, and kept hidden, since
-/// they are often keys). A skill asks for none.
-pub fn user_settings(kind: &str, dir: &Path, config_dir: &Path) -> Vec<UserSetting> {
-    let manifest = dir.join("package.json");
-    let declared: Vec<(String, bool)> = match kind {
-        "plugin" => super::PluginManifestParser::parse_file(&manifest)
-            .and_then(|parsed| parsed.permissions)
-            .map(|permissions| {
-                let keys = permissions.secrets.into_keys().map(|name| (name, true));
-                keys.chain(permissions.user_urls.into_iter().map(|name| (name, false))).collect()
-            })
-            .unwrap_or_default(),
-        "mcp" => std::fs::read_to_string(&manifest)
-            .ok()
-            .and_then(|text| serde_json::from_str::<Value>(&text).ok())
-            .and_then(|parsed| serde_json::from_value::<Vec<String>>(parsed.get("user_env")?.clone()).ok())
-            .map(|names| names.into_iter().map(|name| (name, true)).collect())
-            .unwrap_or_default(),
-        _ => Vec::new(),
-    };
+/// The values the tool in `dir` asks the user for, sorted by name: the names in its `env`. The
+/// same rule holds for every tool type.
+pub fn user_settings(_kind: &str, dir: &Path, config_dir: &Path) -> Vec<UserSetting> {
+    let manifest = crate::tool_env::manifest_in(dir);
     let id = dir.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
-    let set = settings_set(&id, config_dir);
-    let mut settings: Vec<UserSetting> = declared
+    let saved = settings_set(&id, config_dir);
+    crate::tool_env::declared(&manifest)
         .into_iter()
-        .map(|(name, secret)| UserSetting { set: set.contains(&name), name, secret })
-        .collect();
-    settings.sort_by(|a, b| a.name.cmp(&b.name));
-    settings.dedup_by(|a, b| a.name == b.name);
-    settings
+        .map(|setting| {
+            let in_system = crate::tool_env::in_system(&setting.name);
+            UserSetting {
+                set: in_system || saved.contains(&setting.name),
+                in_system,
+                secret: true,
+                required: setting.required,
+                info: setting.info,
+                name: setting.name,
+            }
+        })
+        .collect()
 }
 
 /// Saves one value the tool in `dir` asks for (empty removes it). Err names the values it asks
@@ -352,11 +367,7 @@ pub fn settings_set(plugin_id: &str, config_dir: &Path) -> Vec<String> {
 }
 
 pub(crate) fn read_settings(plugin_id: &str, config_dir: &Path) -> HashMap<String, String> {
-    std::fs::read_to_string(config_dir.join("tool_settings.json"))
-        .ok()
-        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
-        .and_then(|all| serde_json::from_value(all.get(plugin_id)?.clone()).ok())
-        .unwrap_or_default()
+    crate::tool_env::saved(plugin_id, config_dir)
 }
 
 /// The addresses to connect to, already checked. Connecting to these, not to a second lookup,
@@ -449,6 +460,27 @@ mod tests {
     use std::net::TcpListener;
 
     #[test]
+    fn the_users_choice_switches_the_network() {
+        let dir = std::env::temp_dir().join(format!("cluaiz-net-perm-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let manifest = json!({"permissions": {"network": {"info": "x", "access": "strict", "hosts": ["api.example.com"]}}});
+        let on = NetAccess::for_plugin("p", &manifest, &dir);
+        assert!(on.allowed);
+        assert!(!on.host_allowed(&Url::parse("https://other.example.org/").unwrap()), "strict access limits the plugin");
+        let full = json!({"permissions": {"network": {"info": "x", "access": "full", "hosts": ["api.example.com"]}}});
+        assert!(NetAccess::for_plugin("p", &full, &dir).host_allowed(&Url::parse("https://other.example.org/").unwrap()), "full access reaches any host");
+        crate::permissions::set(&dir, "plugin", "p", "network", false).unwrap();
+        let mut off = NetAccess::for_plugin("p", &manifest, &dir);
+        let answer = off.fetch(br#"{"url":"https://api.example.com/"}"#);
+        assert_eq!(answer["code"], "permission_off");
+        assert!(answer["error"].as_str().unwrap().contains("cluaiz plugin permission p network on"));
+        let undeclared = NetAccess::for_plugin("q", &json!({}), &dir).fetch(br#"{"url":"https://api.example.com/"}"#);
+        assert_eq!(undeclared["code"], "no_permission");
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
     fn a_flow_module_reaches_only_its_hosts() {
         let mut access = NetAccess::for_hosts(vec!["api.example.com".into(), "*.github.com".into()]);
         let refused = access.fetch(br#"{"url":"https://evil.example.net/x"}"#);
@@ -459,14 +491,21 @@ mod tests {
     }
 
     fn access(settings: &[(&str, &str)]) -> NetAccess {
-        let permissions = PluginPermissions {
-            network_access: true,
-            secrets: HashMap::from([("KEY".to_string(), "api.example.com".to_string())]),
-            user_urls: vec!["OWN_URL".to_string()],
-            ..Default::default()
-        };
         let settings = settings.iter().map(|(k, v)| (k.to_string(), v.to_string())).collect();
-        NetAccess::new(Some(&permissions), settings)
+        let mut access = NetAccess::new(vec!["KEY".to_string(), "OWN_URL".to_string()], settings);
+        access.allowed = true;
+        access
+    }
+
+    #[test]
+    fn a_key_goes_only_where_the_plugin_may_reach() {
+        let url = Url::parse("https://api.example.com/").unwrap();
+        let mut strict = access(&[("KEY", "abc")]);
+        strict.hosts = Some(vec!["api.example.com".into()]);
+        assert_eq!(strict.fill_secrets("Bearer {{secret:KEY}}", &url).ok().as_deref(), Some("Bearer abc"));
+        let other = Url::parse("https://evil.example.net/").unwrap();
+        assert!(strict.fill_secrets("{{secret:KEY}}", &other).is_err(), "strict access keeps a key to its hosts");
+        assert!(strict.fill_secrets("{{secret:UNLISTED}}", &url).is_err(), "a name not in env is refused");
     }
 
     fn code(answer: &Value) -> &str {
@@ -516,16 +555,6 @@ mod tests {
     fn a_url_with_a_password_is_refused() {
         let answer = access(&[]).fetch(br#"{"url":"https://me:secret@example.com/"}"#);
         assert_eq!(code(&answer), "blocked");
-    }
-
-    #[test]
-    fn a_secret_goes_only_to_its_own_host() {
-        let net = access(&[("KEY", "abc")]);
-        let right = Url::parse("https://api.example.com/x").unwrap();
-        let wrong = Url::parse("https://other.example.com/x").unwrap();
-        assert_eq!(net.fill_secrets("Bearer {{secret:KEY}}", &right).ok().as_deref(), Some("Bearer abc"));
-        assert_eq!(net.fill_secrets("{{secret:KEY}}", &wrong).err().map(|r| r.code), Some("no_permission"));
-        assert_eq!(net.fill_secrets("{{secret:OTHER}}", &right).err().map(|r| r.code), Some("no_permission"));
     }
 
     #[test]
@@ -586,17 +615,17 @@ mod tests {
         std::fs::create_dir_all(&server).unwrap();
         std::fs::write(
             plugin.join("package.json"),
-            r#"{"id":"search","permissions":{"network_access":true,"secrets":{"KEY":"api.example.com"},"user_urls":["BASE_URL"]}}"#,
+            r#"{"id":"search","permissions":{"network":{"info":"x","access":"full"}},"env":{"KEY":{"info":"a key","need":"required"},"BASE_URL":{"info":"your server"}}}"#,
         )
         .unwrap();
-        std::fs::write(server.join("package.json"), r#"{"id":"docs","user_env":["TOKEN"]}"#).unwrap();
+        std::fs::write(server.join("package.json"), r#"{"id":"docs","env":{"TOKEN":{"info":"a token"}}}"#).unwrap();
 
         let names = |kind: &str, dir: &Path| -> Vec<(String, bool, bool)> {
-            user_settings(kind, dir, &config).into_iter().map(|s| (s.name, s.secret, s.set)).collect()
+            user_settings(kind, dir, &config).into_iter().map(|s| (s.name, s.required, s.set)).collect()
         };
         assert_eq!(names("plugin", &plugin), [("BASE_URL".into(), false, false), ("KEY".into(), true, false)]);
-        assert_eq!(names("mcp", &server), [("TOKEN".into(), true, false)]);
-        assert!(names("skill", &plugin).is_empty());
+        assert_eq!(names("mcp", &server), [("TOKEN".into(), false, false)]);
+        assert_eq!(names("skill", &plugin).len(), 2, "every tool type follows the same rule");
 
         save_user_setting("plugin", &plugin, "KEY", " abc ", &config).unwrap();
         assert_eq!(read_settings("search", &config).get("KEY").map(String::as_str), Some("abc"));

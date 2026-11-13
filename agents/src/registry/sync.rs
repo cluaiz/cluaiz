@@ -319,14 +319,7 @@ impl ToolsRegistry {
                     } else if let Some(t_arr) = val.get("triggers").and_then(|t| t.as_array()) {
                         triggers = t_arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect();
                     }
-                    if let Some(p) = val.get("permissions") {
-                        if p.get("network_access").and_then(|n| n.as_bool()).unwrap_or(false) {
-                            perms.push("net:fetch".to_string());
-                        }
-                        if p.get("file_system").and_then(|f| f.as_str()).unwrap_or("none") != "none" {
-                            perms.push("fs:access".to_string());
-                        }
-                    }
+                    perms = crate::permissions::approval_tags(&val);
                     sec_mode = Self::parse_security_mode(val.get("security_mode").and_then(|m| m.as_str()));
                     mode = Self::parse_execution_mode(val.get("execution_mode").and_then(|m| m.as_str()), ExecutionMode::Auto);
                     default_turns = val.get("default_turns").and_then(|t| t.as_i64()).unwrap_or(-1) as i32;
@@ -378,11 +371,7 @@ impl ToolsRegistry {
                     } else if let Some(t_arr) = val.get("triggers").and_then(|t| t.as_array()) {
                         triggers = t_arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect();
                     }
-                    if let Some(p) = val.get("permissions") {
-                        if p.get("network_access").and_then(|n| n.as_bool()).unwrap_or(false) {
-                            perms.push("net:fetch".to_string());
-                        }
-                    }
+                    perms = crate::permissions::approval_tags(&val);
                     sec_mode = Self::parse_security_mode(
                         val.get("security_mode")
                             .or_else(|| val.get("mcp").and_then(|m| m.get("security_mode")))
@@ -397,3 +386,4 @@ impl ToolsRegistry {
         (name, version, desc, triggers, perms, sec_mode, mode, default_turns)
     }
 }
+

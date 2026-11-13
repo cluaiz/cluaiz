@@ -5,6 +5,8 @@ pub mod execution;
 pub mod installer;
 pub mod lifecycle;
 pub mod mcp;
+pub mod permissions;
+pub mod tool_env;
 pub mod memory;
 pub mod plugins;
 pub mod prompt_compiler;
@@ -24,7 +26,7 @@ use serde_json::Value;
 static WORKSPACE_DIR: LazyLock<RwLock<Option<PathBuf>>> = LazyLock::new(|| RwLock::new(None));
 
 pub use execution::{CancelHandle, DeclarativeScriptRunner, EnvironmentResolver, ExecutionManifest, ExecutionPolicy, PolicyDecision, SandboxTerminalRunner, TerminalRunResult};
-pub use installer::{EnvironmentStatus, RuntimeEnvironmentManager, RuntimeType, ToolsInstaller, ToolHubInstaller};
+pub use installer::{Approved, InstallPlan, EnvironmentStatus, RuntimeEnvironmentManager, RuntimeType, ToolsInstaller, ToolHubInstaller};
 pub use lifecycle::{turn_key, ChatLedger, RecordedStep, SessionToolBinding, SessionToolManager, TurnLifecycleEngine, TurnRecord};
 pub use mcp::{McpClient, McpManifest};
 pub use plugins::{PluginExecutor, PluginManifest};
