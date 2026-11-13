@@ -213,6 +213,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         .error(-32004, "tool_not_found", "No installed tool of this kind and name")
         .error(-32602, "invalid_params", "A bad `name`, or `fn` looks like a path")
         .error(-32002, "forbidden", "The tool folder is outside the caller's roots (`data.needs: \"roots\"`)")
+        .error(-32003, "approval_required", "A tool that is not WebAssembly has a permission switched off or not yet allowed: the owner approves this exact call, then it is sent again with `_meta.approval`")
         .error(-32010, "tool_operation_failed", "The installer, registry or tool itself failed (its message is passed on)")
         .example(
             json!({"kind":"plugin","name":"installed-tool","fn":"run","input":{}}),

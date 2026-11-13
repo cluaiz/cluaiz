@@ -6411,6 +6411,13 @@
           "message": "The tool folder is outside the caller's roots (`data.needs: \"roots\"`)"
         },
         {
+          "code": -32003,
+          "data": {
+            "type": "approval_required"
+          },
+          "message": "A tool that is not WebAssembly has a permission switched off or not yet allowed: the owner approves this exact call, then it is sent again with `_meta.approval`"
+        },
+        {
           "code": -32010,
           "data": {
             "type": "tool_operation_failed"

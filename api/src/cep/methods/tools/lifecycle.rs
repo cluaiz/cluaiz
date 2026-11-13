@@ -196,6 +196,15 @@ pub async fn execute(ctx: CallCtx, call: Call, params: Execute) -> Result<Value,
         name: params.name,
     };
     common::directory(&call, &workspace, &target)?;
+    // A permission the user switched off, or never allowed: a WebAssembly plugin is refused that
+    // access by the Engine itself; any other tool runs as a normal program, so the owner is asked
+    // first, as in the chat (`approval_required`, then the same call with `_meta.approval`)
+    if let Ok(entry) = common::entry(&target) {
+        let off = if entry.is_wasm_plugin() { Vec::new() } else { entry.permissions_off() };
+        if !off.is_empty() {
+            call.require_approval(&format!("{} {}: permissions switched off: {}", target.kind.as_str(), target.name, off.join(", ")))?;
+        }
+    }
     // A plain skill is content, not the executor's fallback pretend-workflow success.
     if target.kind == Kind::Skill {
         let base = ToolsEngine::resolve_component_dir(target.kind.as_str(), &target.name)
