@@ -314,8 +314,56 @@ impl PermissionSchema {
         let _ = schema.save();
     }
 
-    pub fn merge_patch(&mut self, patch: &serde_json::Value) {
-        if let Some(obj) = patch.as_object() {
+    /// Applies the known fields of `patch`. A known field with a wrong value is an error and
+    /// changes nothing; unknown fields are ignored. The address fields (`api_port`, `api_host`,
+    /// `connection_protocol`) are not changed here.
+    pub fn merge_patch(&mut self, patch: &serde_json::Value) -> Result<(), String> {
+        let Some(obj) = patch.as_object() else { return Ok(()) };
+        // Checked first, so a bad patch changes nothing
+        let text = |name: &str, allowed: &[&str]| -> Result<Option<String>, String> {
+            match obj.get(name) {
+                None => Ok(None),
+                Some(value) => value
+                    .as_str()
+                    .filter(|v| allowed.contains(v))
+                    .map(|v| Some(v.to_string()))
+                    .ok_or_else(|| format!("{name} must be one of: {}", allowed.join(", "))),
+            }
+        };
+        let flag = |name: &str| -> Result<Option<bool>, String> {
+            match obj.get(name) {
+                None => Ok(None),
+                Some(value) => value.as_bool().map(Some).ok_or_else(|| format!("{name} must be true or false")),
+            }
+        };
+        let mode = text("agent_security_mode", &["full_access", "sandboxed", "strict"])?;
+        let firewall = text("wasm_firewall", &["auto", "strict", "off"])?;
+        let flags = [
+            ("vectorize_user_input", flag("vectorize_user_input")?),
+            ("vectorize_ai_response", flag("vectorize_ai_response")?),
+            ("stream_telemetry", flag("stream_telemetry")?),
+            ("lazy_load_model", flag("lazy_load_model")?),
+            ("enable_kvcache", flag("enable_kvcache")?),
+            ("model_header_info", flag("model_header_info")?),
+        ];
+        if let Some(mode) = mode {
+            self.agent_security_mode = mode;
+        }
+        if let Some(firewall) = firewall {
+            self.wasm_firewall = firewall;
+        }
+        for (name, value) in flags {
+            let Some(value) = value else { continue };
+            match name {
+                "vectorize_user_input" => self.vectorize_user_input = value,
+                "vectorize_ai_response" => self.vectorize_ai_response = value,
+                "stream_telemetry" => self.stream_telemetry = value,
+                "lazy_load_model" => self.lazy_load_model = value,
+                "enable_kvcache" => self.enable_kvcache = value,
+                _ => self.model_header_info = value,
+            }
+        }
+        {
             if let Some(auth_val) = obj.get("api_auth") {
                 if let Ok(incoming) = serde_json::from_value::<ApiAuth>(auth_val.clone()) {
                     self.api_auth = incoming;
@@ -342,5 +390,27 @@ impl PermissionSchema {
                 }
             }
         }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod merge_tests {
+    use super::*;
+
+    #[test]
+    fn the_security_mode_and_switches_are_saved_and_a_wrong_value_changes_nothing() {
+        let mut schema = PermissionSchema::default();
+        schema.merge_patch(&serde_json::json!({"agent_security_mode": "full_access", "stream_telemetry": true})).unwrap();
+        assert_eq!(schema.agent_security_mode, "full_access");
+        assert!(schema.stream_telemetry);
+
+        let error = schema.merge_patch(&serde_json::json!({"agent_security_mode": "anything", "model_header_info": true}));
+        assert!(error.is_err());
+        assert_eq!(schema.agent_security_mode, "full_access", "a bad patch changes nothing");
+        assert!(!schema.model_header_info);
+
+        schema.merge_patch(&serde_json::json!({"api_port": 9999, "api_host": "0.0.0.0"})).unwrap();
+        assert_eq!(schema.api_port, default_api_port(), "the address is not changed here");
     }
 }
