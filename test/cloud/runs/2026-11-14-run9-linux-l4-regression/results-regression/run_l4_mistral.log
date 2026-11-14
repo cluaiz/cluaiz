@@ -1,0 +1,8 @@
+
+model                                            mode   result   engine pp/tg      llama.cpp pp/tg   notes
+mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M  auto   PASS     922 / 17.1        972 / 17.1        
+mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M  gpu    PASS     916 / 17.1        968 / 17.1        
+mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M  split  PASS     153 / 3.4         204 / 3.4         
+
+3 passed, 0 failed, 0 skipped / not fitting
+report written: /home/Aryan/results-regression/RESULTS_l4_mistral.md

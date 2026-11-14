@@ -1,0 +1,8 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'unsloth/gemma-4-31B-it-GGUF:Q4_K_M'...
+  🔍 Scanning HuggingFace Hub for 'unsloth/gemma-4-31B-it-GGUF'...
+  ⚡ Direct Quantization Tag Matched: ':Q4_K_M' -> gemma-4-31B-it-Q4_K_M.gguf (18.66 GB)
+
+  ⚠️ Warning: This exact variant is already downloaded locally under ID: 'gemma-4-31b-it-gguf-Q4_K_M'
+     If you wish to re-download, please delete the old one first using: cluaiz rm gemma-4-31b-it-gguf-Q4_K_M
+

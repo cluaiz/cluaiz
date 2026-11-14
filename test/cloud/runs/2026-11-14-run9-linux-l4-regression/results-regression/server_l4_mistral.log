@@ -1,0 +1,238 @@
+2026-11-14T16:37:15.763468Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-14T16:37:15.800572Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-14T16:37:15.800775Z  INFO ⚡ NVIDIA CUDA + cuDNN 9 runtime libraries verified.
+Starting the Cluaiz API server on http://localhost:8011 ...
+2026-11-14T16:37:15.801055Z  INFO 🔒 [Auth] Initialized local session secret at /home/Aryan/ch-reg/session.token
+2026-11-14T16:37:15.966205Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-14T16:37:15.973041Z  INFO 🌐 Cluaiz API Server running on http://127.0.0.1:8011
+2026-11-14T16:37:17.024702Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-14T16:37:17.026170Z  INFO 🤖 [API] Model override requested. Resolved 'mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M' to "/home/Aryan/ch/models/chat/mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf"
+2026-11-14T16:37:17.026213Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-14T16:37:17.094406Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M
+║   • Architecture    : llama | 40 layers | heads 32 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 13.35 GB | input embeddings 0.35 GB (always CPU) | output head 0.51 GB | vocab 131072
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 131072 tokens
+║   • Active context  : 16384 tokens, KV Kv16 (Auto: 16384 tokens, KV Kv16, buffer 1.24 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 22.08 of 22.49 GB | buffer kept free 1.24 GB (measured: GPU pool +0.24 GB + 1.00 GB reserve; estimate corrected by llama.cpp's dry run +0.04 GB)
+║   • RAM             : free 30.07 of 31.35 GB | Cluaiz may use 28.51 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 40 on GPU, 0 in RAM (of 40)
+║   • VRAM            : 15.78 GB (weights + KV 2.50 + logits)
+║   • RAM             : 0.35 GB (incl. KV 0.00)
+║   • Reason          : Full GPU: weights 12.99 + KV 2.50 + buffers 0.29 = 15.78 GB vs usable VRAM 20.84 GB
+║   • Speed           : 17.3 tokens/s generation, 1023.3 tokens/s prompt, measured by cluaiz bench
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM 15.78 GB | RAM  0.35 GB | weights 12.99 + KV 2.50 + buffers 0.29 = 15.78 GB vs usable VRAM 20.84 GB | 17.3 t/s measured (prompt 1023.3 t/s)
+║   • GPU + RAM split  [FITS]     VRAM 15.39 GB | RAM  0.75 GB | 39 / 40 blocks + output head on GPU (15.39 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM 16.09 GB | weights 13.34 + KV 2.50 + logits 0.25 = 16.09 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-14T16:37:17.094450Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-14T16:37:17.094642Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 4, n_threads_batch = 4
+2026-11-14T16:37:17.094647Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch/models/chat/mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf | ctx: 16384 tokens
+2026-11-14T16:38:36.948739Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/home/Aryan/ch/models/chat/mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M"
+2026-11-14T16:38:36.967185Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16384 tokens
+2026-11-14T16:38:36.967276Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-14T16:38:36.967282Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-14T16:38:36.967290Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-14T16:38:36.967297Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 4/4
+2026-11-14T16:38:37.576700Z  INFO 🔍 [EngineHost] VRAM planned 15.78 GB, taken 16.02 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-14T16:38:37.576997Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /home/Aryan/ch/models/chat/mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf
+2026-11-14T16:38:37.598056Z  INFO 🧮 [Tokens] Conversation 528 tokens (1 messages) counted in 2.03 ms
+2026-11-14T16:38:37.604310Z  INFO ⏱️ [Preflight] 80579 ms total | model load 80550 ms | registry + template + tags 18 ms | skills + tools 8 ms | rest 0 ms
+2026-11-14T16:38:37.618220Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (5146 bytes) in 13 ms
+2026-11-14T16:38:38.624654Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1794674318
+2026-11-14T16:38:42.255482Z  INFO 🛑 [NativeStream] EOG reached for token=2. Gracefully terminating generation.
+2026-11-14T16:38:42.255542Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1085 tokens in 1088 ms (997.23 t/s) | generation 60 tokens in 3512 ms (17.08 t/s)
+2026-11-14T16:38:42.255549Z  INFO 🧠 [Context] prompt 1085 tokens (0 from the cache) | context 1145 of 16384 | stop eos
+2026-11-14T16:38:42.257272Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-14T16:38:42.258725Z  INFO 🤖 [API] Model override requested. Resolved 'mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M' to "/home/Aryan/ch/models/chat/mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf"
+2026-11-14T16:38:42.276615Z  INFO 📏 [EngineHost] The loaded model now takes +0.25 GB over its estimate; learned for its next load
+2026-11-14T16:38:42.279437Z  INFO 🧮 [Tokens] Conversation 528 tokens (1 messages) counted in 1.82 ms
+2026-11-14T16:38:42.283617Z  INFO ⏱️ [Preflight] 26 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 5 ms | rest 0 ms
+2026-11-14T16:38:42.297435Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (5146 bytes) in 13 ms
+2026-11-14T16:38:42.800186Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1794674322
+2026-11-14T16:38:45.522347Z  INFO 🛑 [NativeStream] EOG reached for token=2. Gracefully terminating generation.
+2026-11-14T16:38:45.522387Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 527 tokens in 564 ms (934.02 t/s) | generation 45 tokens in 2630 ms (17.11 t/s)
+2026-11-14T16:38:45.522394Z  INFO 🧠 [Context] prompt 1085 tokens (558 from the cache) | context 1130 of 16384 | stop eos
+2026-11-14T16:38:45.523825Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-14T16:38:45.525161Z  INFO 🤖 [API] Model override requested. Resolved 'mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M' to "/home/Aryan/ch/models/chat/mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf"
+2026-11-14T16:38:45.546707Z  INFO 🧮 [Tokens] Conversation 528 tokens (1 messages) counted in 1.87 ms
+2026-11-14T16:38:45.550908Z  INFO ⏱️ [Preflight] 27 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 5 ms | rest 0 ms
+2026-11-14T16:38:45.564657Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (5146 bytes) in 13 ms
+2026-11-14T16:38:46.082204Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1794674326
+2026-11-14T16:38:48.686912Z  INFO 🛑 [NativeStream] EOG reached for token=2. Gracefully terminating generation.
+2026-11-14T16:38:48.686929Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 527 tokens in 579 ms (910.34 t/s) | generation 43 tokens in 2514 ms (17.10 t/s)
+2026-11-14T16:38:48.686937Z  INFO 🧠 [Context] prompt 1085 tokens (558 from the cache) | context 1128 of 16384 | stop eos
+2026-11-14T16:38:48.687264Z  INFO ♻️ [Memory] Unloading model post-generation due to keep_alive: 0
+2026-11-14T16:38:48.790534Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-14T16:39:10.763152Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-14T16:39:10.764543Z  INFO 🤖 [API] Model override requested. Resolved 'mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M' to "/home/Aryan/ch/models/chat/mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf"
+2026-11-14T16:39:10.764598Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-14T16:39:10.798054Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M
+║   • Architecture    : llama | 40 layers | heads 32 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 13.35 GB | input embeddings 0.35 GB (always CPU) | output head 0.51 GB | vocab 131072
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 131072 tokens
+║   • Active context  : 16384 tokens, KV Kv16 (Auto: 16384 tokens, KV Kv16, buffer 1.25 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 21.86 of 22.49 GB | buffer kept free 1.25 GB (measured: GPU pool +0.25 GB + 1.00 GB reserve; estimate corrected by llama.cpp's dry run +0.04 GB)
+║   • RAM             : free 29.93 of 31.35 GB | Cluaiz may use 28.37 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 40 on GPU, 0 in RAM (of 40)
+║   • VRAM            : 15.78 GB (weights + KV 2.50 + logits)
+║   • RAM             : 0.35 GB (incl. KV 0.00)
+║   • Reason          : User setting: planner bypassed: n_gpu_layers -1 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 15.78 of usable 20.61 GB
+║   • Speed           : 17.3 tokens/s generation, 1023.3 tokens/s prompt, measured by cluaiz bench
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM 15.78 GB | RAM  0.35 GB | planner bypassed: n_gpu_layers -1 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 15.78 of usable 20.61 GB | 17.3 t/s measured (prompt 1023.3 t/s)
+║   • Full GPU         [FITS]     VRAM 15.78 GB | RAM  0.35 GB | weights 12.99 + KV 2.50 + buffers 0.29 = 15.78 GB vs usable VRAM 20.61 GB | 17.3 t/s measured (prompt 1023.3 t/s)
+║   • GPU + RAM split  [FITS]     VRAM 15.39 GB | RAM  0.75 GB | 39 / 40 blocks + output head on GPU (15.39 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM 16.09 GB | weights 13.34 + KV 2.50 + logits 0.25 = 16.09 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-14T16:39:10.798089Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-14T16:39:10.798246Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 4, n_threads_batch = 4
+2026-11-14T16:39:10.798251Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch/models/chat/mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf | ctx: 16384 tokens
+2026-11-14T16:39:15.105674Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/home/Aryan/ch/models/chat/mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M"
+2026-11-14T16:39:15.123666Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16384 tokens
+2026-11-14T16:39:15.123686Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-14T16:39:15.123698Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-14T16:39:15.123703Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-14T16:39:15.123708Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 4/4
+2026-11-14T16:39:15.687111Z  INFO 🔍 [EngineHost] VRAM planned 15.78 GB, taken 15.82 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-14T16:39:15.687363Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /home/Aryan/ch/models/chat/mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf
+2026-11-14T16:39:15.707793Z  INFO 🧮 [Tokens] Conversation 528 tokens (1 messages) counted in 1.92 ms
+2026-11-14T16:39:15.712231Z  INFO ⏱️ [Preflight] 4949 ms total | model load 4922 ms | registry + template + tags 18 ms | skills + tools 6 ms | rest 0 ms
+2026-11-14T16:39:15.726183Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (5146 bytes) in 13 ms
+2026-11-14T16:39:16.738715Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1794674356
+2026-11-14T16:39:19.838360Z  INFO 🛑 [NativeStream] EOG reached for token=2. Gracefully terminating generation.
+2026-11-14T16:39:19.838396Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1085 tokens in 1095 ms (990.76 t/s) | generation 51 tokens in 2985 ms (17.09 t/s)
+2026-11-14T16:39:19.838404Z  INFO 🧠 [Context] prompt 1085 tokens (0 from the cache) | context 1136 of 16384 | stop eos
+2026-11-14T16:39:19.840305Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-14T16:39:19.841797Z  INFO 🤖 [API] Model override requested. Resolved 'mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M' to "/home/Aryan/ch/models/chat/mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf"
+2026-11-14T16:39:19.863122Z  INFO 🧮 [Tokens] Conversation 528 tokens (1 messages) counted in 1.84 ms
+2026-11-14T16:39:19.866467Z  INFO ⏱️ [Preflight] 26 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 5 ms | rest 0 ms
+2026-11-14T16:39:19.880189Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (5146 bytes) in 13 ms
+2026-11-14T16:39:20.390738Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1794674360
+2026-11-14T16:39:23.938507Z  INFO 🛑 [NativeStream] EOG reached for token=2. Gracefully terminating generation.
+2026-11-14T16:39:23.938523Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 527 tokens in 572 ms (921.29 t/s) | generation 59 tokens in 3450 ms (17.10 t/s)
+2026-11-14T16:39:23.938531Z  INFO 🧠 [Context] prompt 1085 tokens (558 from the cache) | context 1144 of 16384 | stop eos
+2026-11-14T16:39:23.939908Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-14T16:39:23.941258Z  INFO 🤖 [API] Model override requested. Resolved 'mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M' to "/home/Aryan/ch/models/chat/mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf"
+2026-11-14T16:39:23.962705Z  INFO 🧮 [Tokens] Conversation 528 tokens (1 messages) counted in 1.87 ms
+2026-11-14T16:39:23.966031Z  INFO ⏱️ [Preflight] 26 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 5 ms | rest 0 ms
+2026-11-14T16:39:23.979905Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (5146 bytes) in 13 ms
+2026-11-14T16:39:24.497286Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1794674364
+2026-11-14T16:39:27.751781Z  INFO 🛑 [NativeStream] EOG reached for token=2. Gracefully terminating generation.
+2026-11-14T16:39:27.751798Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 527 tokens in 579 ms (910.24 t/s) | generation 54 tokens in 3159 ms (17.09 t/s)
+2026-11-14T16:39:27.751807Z  INFO 🧠 [Context] prompt 1085 tokens (558 from the cache) | context 1139 of 16384 | stop eos
+2026-11-14T16:39:27.752127Z  INFO ♻️ [Memory] Unloading model post-generation due to keep_alive: 0
+2026-11-14T16:39:27.854692Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-14T16:39:49.770586Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-14T16:39:49.772153Z  INFO 🤖 [API] Model override requested. Resolved 'mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M' to "/home/Aryan/ch/models/chat/mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf"
+2026-11-14T16:39:49.772192Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-14T16:39:49.805293Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M
+║   • Architecture    : llama | 40 layers | heads 32 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 13.35 GB | input embeddings 0.35 GB (always CPU) | output head 0.51 GB | vocab 131072
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 131072 tokens
+║   • Active context  : 16384 tokens, KV Kv16 (Auto: 16384 tokens, KV Kv16, buffer 1.25 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 21.86 of 22.49 GB | buffer kept free 1.25 GB (measured: GPU pool +0.25 GB + 1.00 GB reserve; estimate corrected by llama.cpp's dry run +0.04 GB)
+║   • RAM             : free 29.91 of 31.35 GB | Cluaiz may use 28.35 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : GPU + RAM split
+║   • llama.cpp       : n_gpu_layers = 21 | n_cpu_moe = 0 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 20 on GPU, 20 in RAM (of 40)
+║   • VRAM            : 8.29 GB (weights + KV 1.25 + logits)
+║   • RAM             : 7.84 GB (incl. KV 1.25)
+║   • Reason          : User setting: planner bypassed: n_gpu_layers 21 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 8.29 of usable 20.61 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM  8.29 GB | RAM  7.84 GB | planner bypassed: n_gpu_layers 21 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 8.29 of usable 20.61 GB
+║   • Full GPU         [FITS]     VRAM 15.78 GB | RAM  0.35 GB | weights 12.99 + KV 2.50 + buffers 0.29 = 15.78 GB vs usable VRAM 20.61 GB | 17.3 t/s measured (prompt 1023.3 t/s)
+║   • GPU + RAM split  [FITS]     VRAM 15.39 GB | RAM  0.75 GB | 39 / 40 blocks + output head on GPU (15.39 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM 16.09 GB | weights 13.34 + KV 2.50 + logits 0.25 = 16.09 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-14T16:39:49.805332Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-14T16:39:49.805558Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = 21, load_mode = 1, n_threads = 4, n_threads_batch = 4
+2026-11-14T16:39:49.805566Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch/models/chat/mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf | ctx: 16384 tokens
+2026-11-14T16:39:52.546707Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/home/Aryan/ch/models/chat/mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M"
+2026-11-14T16:39:52.564228Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16384 tokens
+2026-11-14T16:39:52.564240Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-14T16:39:52.564245Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-14T16:39:52.564250Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-14T16:39:52.564255Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 4/4
+2026-11-14T16:39:55.265079Z  INFO 🔍 [EngineHost] VRAM planned 8.29 GB, taken 8.36 GB | n_ctx planned 16384 created 16384 | n_gpu_layers 21 n_cpu_moe 0
+2026-11-14T16:39:55.265256Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /home/Aryan/ch/models/chat/mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf
+2026-11-14T16:39:55.285327Z  INFO 🧮 [Tokens] Conversation 528 tokens (1 messages) counted in 1.78 ms
+2026-11-14T16:39:55.288753Z  INFO ⏱️ [Preflight] 5518 ms total | model load 5493 ms | registry + template + tags 18 ms | skills + tools 5 ms | rest 0 ms
+2026-11-14T16:39:55.302669Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (5146 bytes) in 13 ms
+2026-11-14T16:40:00.584914Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1794674400
+2026-11-14T16:40:17.613608Z  INFO 🛑 [NativeStream] EOG reached for token=2. Gracefully terminating generation.
+2026-11-14T16:40:17.613652Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1085 tokens in 5320 ms (203.97 t/s) | generation 58 tokens in 16954 ms (3.42 t/s)
+2026-11-14T16:40:17.613666Z  INFO 🧠 [Context] prompt 1085 tokens (0 from the cache) | context 1143 of 16384 | stop eos
+2026-11-14T16:40:17.615986Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-14T16:40:17.617531Z  INFO 🤖 [API] Model override requested. Resolved 'mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M' to "/home/Aryan/ch/models/chat/mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf"
+2026-11-14T16:40:17.646673Z  INFO 🧮 [Tokens] Conversation 528 tokens (1 messages) counted in 2.05 ms
+2026-11-14T16:40:17.650625Z  INFO ⏱️ [Preflight] 34 ms total | model load 26 ms | registry + template + tags 0 ms | skills + tools 5 ms | rest 0 ms
+2026-11-14T16:40:17.664947Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (5146 bytes) in 13 ms
+2026-11-14T16:40:20.968468Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1794674420
+2026-11-14T16:40:33.088143Z  INFO 🛑 [NativeStream] EOG reached for token=2. Gracefully terminating generation.
+2026-11-14T16:40:33.088159Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 527 tokens in 3445 ms (152.98 t/s) | generation 41 tokens in 11950 ms (3.43 t/s)
+2026-11-14T16:40:33.088168Z  INFO 🧠 [Context] prompt 1085 tokens (558 from the cache) | context 1126 of 16384 | stop eos
+2026-11-14T16:40:33.089646Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-14T16:40:33.091030Z  INFO 🤖 [API] Model override requested. Resolved 'mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M' to "/home/Aryan/ch/models/chat/mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf"
+2026-11-14T16:40:33.119366Z  INFO 🧮 [Tokens] Conversation 528 tokens (1 messages) counted in 1.77 ms
+2026-11-14T16:40:33.122803Z  INFO ⏱️ [Preflight] 33 ms total | model load 25 ms | registry + template + tags 0 ms | skills + tools 5 ms | rest 0 ms
+2026-11-14T16:40:33.136795Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (5146 bytes) in 13 ms
+2026-11-14T16:40:36.449614Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1794674436
+2026-11-14T16:40:52.119551Z  INFO 🛑 [NativeStream] EOG reached for token=2. Gracefully terminating generation.
+2026-11-14T16:40:52.119567Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 527 tokens in 3453 ms (152.61 t/s) | generation 53 tokens in 15495 ms (3.42 t/s)
+2026-11-14T16:40:52.119576Z  INFO 🧠 [Context] prompt 1085 tokens (558 from the cache) | context 1138 of 16384 | stop eos
+2026-11-14T16:40:52.119895Z  INFO ♻️ [Memory] Unloading model post-generation due to keep_alive: 0
+2026-11-14T16:40:52.397807Z  INFO ♻️ [EngineHost] Model unloaded from process memory
