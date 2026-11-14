@@ -25,6 +25,10 @@ graph TD
 | [`registry/`](src/registry/) | Installed models catalog, local vault, and state management. |
 | [`taxonomy/`](src/taxonomy/) | Audio STT/TTS family classification (Kokoro, Whisper, CosyVoice, etc.). |
 | [`prober/`](src/prober/) | Vision mmproj projector and format detection. |
+| [`prober/fallback.rs`](src/prober/fallback.rs) | `FallbackProber::probe_directory`: reads `config.json` and `tokenizer_config.json` when the weights carry no metadata (architecture, context, chat template). |
+| [`types/`](src/types/README.md) | Manifest and registry entry shapes, slots, and the streaming reasoning filter ([README](src/types/README.md)). |
+| [`taxonomy/`](src/taxonomy/README.md), [`registry/`](src/registry/README.md), [`fetcher/`](src/fetcher/README.md) | Each has its own README. |
+| [`capabilities_tests.rs`](src/capabilities_tests.rs), [`test_fixtures.rs`](src/test_fixtures.rs) | Tests of capability detection, and minimal GGUF v3 fixtures for metadata tests (never compiled into the library or the CLI). |
 | [`capabilities.rs`](src/capabilities.rs) | Tri-state native input declarations, actual same-folder projector inventory and conservative pairing status. |
 | [`gguf.rs`](src/gguf.rs) | Single unified GGUF reader with correct Sliding Window Attention (SWA) math. |
 

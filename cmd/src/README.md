@@ -140,3 +140,11 @@ cluaiz run qwen3                                              # chat
 
 Chat turns are sent with `cluaiz_core::ChatEnvelope` and the same context rules (`trim_history`,
 `answer_budget`) as the API's `/v1/chat/completions`, so the CLI and the API behave the same.
+
+## More files
+
+- [`chat/provider.rs`](chat/provider.rs): a provider's model (`config/providers.json`) as the model of `cluaiz run` and `cluaiz agent`. `prepare` names the flags that mean nothing at a provider (load flags, `--top-k`) and what `--think off` does; `generate` builds the request with the server's own code (`cluaiz_api::providers`) and streams the answer, thinking apart, calls back in the `<tool_call>` form.
+- [`chat/remote.rs`](chat/remote.rs): a running `cluaiz serve` as the model: the CLI sends its turns to `/v1/chat/completions` instead of loading the model a second time (two copies would split the VRAM and shrink the context). Tools go as OpenAI function definitions, so the server returns their calls unexecuted and the CLI runs them, asking first. `--local` loads in the CLI instead.
+- [`ui/spinner.rs`](ui/spinner.rs): the terminal spinner used while a command waits.
+- [`ui/apps/registry/table.rs`](ui/apps/registry/table.rs), [`details.rs`](ui/apps/registry/details.rs): the model library table (column widths, rows, a health mark from RAM and GPU need) and one model's detail view, for the terminal model browser.
+- [`../build.rs`](../build.rs): build-time step of the `cmd` crate (Windows resources such as the program icon).
