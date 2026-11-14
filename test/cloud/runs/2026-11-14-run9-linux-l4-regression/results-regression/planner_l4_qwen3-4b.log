@@ -1,0 +1,108 @@
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3-4b-gguf-Q4_K_M
+║   • Architecture    : qwen3 | 36 layers | heads 32 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 2.33 GB | input embeddings 0.30 GB (always CPU) | output head 0.30 GB | vocab 151936
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 40960 tokens
+║   • Active context  : 16384 tokens, KV Kv16 (Auto: 16384 tokens, KV Kv16, buffer 1.23 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 22.08 of 22.49 GB | buffer kept free 1.23 GB (measured: GPU pool +0.23 GB + 1.00 GB reserve; estimate corrected by llama.cpp's dry run +0.02 GB)
+║   • RAM             : free 30.03 of 31.35 GB | Cluaiz may use 28.48 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 36 on GPU, 0 in RAM (of 36)
+║   • VRAM            : 4.88 GB (weights + KV 2.25 + logits)
+║   • RAM             : 0.30 GB (incl. KV 0.00)
+║   • Reason          : Full GPU: weights 2.32 + KV 2.25 + buffers 0.31 = 4.88 GB vs usable VRAM 20.85 GB
+║   • Speed           : 85.1 tokens/s generation, 5128.4 tokens/s prompt, measured by cluaiz bench
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  4.88 GB | RAM  0.30 GB | weights 2.32 + KV 2.25 + buffers 0.31 = 4.88 GB vs usable VRAM 20.85 GB | 85.1 t/s measured (prompt 5128.4 t/s)
+║   • GPU + RAM split  [FITS]     VRAM  4.76 GB | RAM  0.42 GB | 35 / 36 blocks + output head on GPU (4.76 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  4.86 GB | weights 2.32 + KV 2.25 + logits 0.29 = 4.86 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+2026-11-14T16:33:15.721649Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf | ctx: 16384 tokens
+2026-11-14T16:33:30.049657Z  INFO 🔍 [EngineHost] VRAM planned 4.88 GB, taken 5.11 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-14T16:33:34.916095Z  INFO 📏 [EngineHost] The loaded model now takes +0.23 GB over its estimate; learned for its next load
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3-4b-gguf-Q4_K_M
+║   • Architecture    : qwen3 | 36 layers | heads 32 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 2.33 GB | input embeddings 0.30 GB (always CPU) | output head 0.30 GB | vocab 151936
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 40960 tokens
+║   • Active context  : 16384 tokens, KV Kv16 (Auto: 16384 tokens, KV Kv16, buffer 1.23 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 21.86 of 22.49 GB | buffer kept free 1.23 GB (measured: GPU pool +0.23 GB + 1.00 GB reserve; estimate corrected by llama.cpp's dry run +0.02 GB)
+║   • RAM             : free 29.86 of 31.35 GB | Cluaiz may use 28.30 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 36 on GPU, 0 in RAM (of 36)
+║   • VRAM            : 4.88 GB (weights + KV 2.25 + logits)
+║   • RAM             : 0.30 GB (incl. KV 0.00)
+║   • Reason          : User setting: planner bypassed: n_gpu_layers -1 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 4.88 of usable 20.63 GB
+║   • Speed           : 85.1 tokens/s generation, 5128.4 tokens/s prompt, measured by cluaiz bench
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM  4.88 GB | RAM  0.30 GB | planner bypassed: n_gpu_layers -1 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 4.88 of usable 20.63 GB | 85.1 t/s measured (prompt 5128.4 t/s)
+║   • Full GPU         [FITS]     VRAM  4.88 GB | RAM  0.30 GB | weights 2.32 + KV 2.25 + buffers 0.31 = 4.88 GB vs usable VRAM 20.63 GB | 85.1 t/s measured (prompt 5128.4 t/s)
+║   • GPU + RAM split  [FITS]     VRAM  4.76 GB | RAM  0.42 GB | 35 / 36 blocks + output head on GPU (4.76 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  4.86 GB | weights 2.32 + KV 2.25 + logits 0.29 = 4.86 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+2026-11-14T16:33:42.768689Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf | ctx: 16384 tokens
+2026-11-14T16:33:43.985006Z  INFO 🔍 [EngineHost] VRAM planned 4.88 GB, taken 4.91 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3-4b-gguf-Q4_K_M
+║   • Architecture    : qwen3 | 36 layers | heads 32 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 2.33 GB | input embeddings 0.30 GB (always CPU) | output head 0.30 GB | vocab 151936
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 40960 tokens
+║   • Active context  : 16384 tokens, KV Kv16 (Auto: 16384 tokens, KV Kv16, buffer 1.23 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 21.86 of 22.49 GB | buffer kept free 1.23 GB (measured: GPU pool +0.23 GB + 1.00 GB reserve; estimate corrected by llama.cpp's dry run +0.02 GB)
+║   • RAM             : free 29.75 of 31.35 GB | Cluaiz may use 28.20 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : GPU + RAM split
+║   • llama.cpp       : n_gpu_layers = 19 | n_cpu_moe = 0 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 18 on GPU, 18 in RAM (of 36)
+║   • VRAM            : 2.75 GB (weights + KV 1.12 + logits)
+║   • RAM             : 2.43 GB (incl. KV 1.12)
+║   • Reason          : User setting: planner bypassed: n_gpu_layers 19 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 2.75 of usable 20.63 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM  2.75 GB | RAM  2.43 GB | planner bypassed: n_gpu_layers 19 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 2.75 of usable 20.63 GB
+║   • Full GPU         [FITS]     VRAM  4.88 GB | RAM  0.30 GB | weights 2.32 + KV 2.25 + buffers 0.31 = 4.88 GB vs usable VRAM 20.63 GB | 85.1 t/s measured (prompt 5128.4 t/s)
+║   • GPU + RAM split  [FITS]     VRAM  4.76 GB | RAM  0.42 GB | 35 / 36 blocks + output head on GPU (4.76 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  4.86 GB | weights 2.32 + KV 2.25 + logits 0.29 = 4.86 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+2026-11-14T16:33:55.210034Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf | ctx: 16384 tokens
+2026-11-14T16:33:57.223018Z  INFO 🔍 [EngineHost] VRAM planned 2.75 GB, taken 2.76 GB | n_ctx planned 16384 created 16384 | n_gpu_layers 19 n_cpu_moe 0

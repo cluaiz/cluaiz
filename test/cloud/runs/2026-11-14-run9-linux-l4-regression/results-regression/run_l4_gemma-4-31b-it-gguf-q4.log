@@ -1,0 +1,8 @@
+
+model                       mode   result   engine pp/tg      llama.cpp pp/tg   notes
+gemma-4-31b-it-gguf-Q4_K_M  auto   PASS     443 / 8.8         450 / 8.8         
+gemma-4-31b-it-gguf-Q4_K_M  gpu    PASS     586 / 12.4        648 / 12.4        
+gemma-4-31b-it-gguf-Q4_K_M  split  PASS     116 / 2.4         118 / 2.4         
+
+3 passed, 0 failed, 0 skipped / not fitting
+report written: /home/Aryan/results-regression/RESULTS_l4_gemma-4-31b-it-gguf-q4.md

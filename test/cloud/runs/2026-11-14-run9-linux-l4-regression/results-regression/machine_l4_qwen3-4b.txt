@@ -1,0 +1,30 @@
+== hardware
+CPU(s):                                  8
+Model name:                              Intel(R) Xeon(R) CPU @ 2.20GHz
+               total        used        free      shared  buff/cache   available
+Mem:              31           0          30           0           0          30
+Swap:              0           0           0
+Sat Nov 14 16:19:19 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 620.70.06              KMD Version: 620.70.06     CUDA UMD Version: 13.5     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA L4                      On  |   00000000:00:03.0 Off |                    0 |
+| N/A   34C    P8             13W /   72W |       0MiB /  23034MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p1  148G   66G   76G  47% /
+== disk read speed
+sudo: hdparm: command not found

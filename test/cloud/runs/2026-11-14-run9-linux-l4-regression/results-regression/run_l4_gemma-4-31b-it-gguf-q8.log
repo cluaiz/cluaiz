@@ -1,0 +1,8 @@
+
+model                     mode   result   engine pp/tg      llama.cpp pp/tg   notes
+gemma-4-31b-it-gguf-Q8_0  auto   PASS     87 / 2.0          88 / 2.0          
+gemma-4-31b-it-gguf-Q8_0  gpu    FAIL                                         empty answer; request failed: HTTP Error 500: Internal Server Error
+gemma-4-31b-it-gguf-Q8_0  split  PASS     71 / 1.7          60 / 1.7          
+
+2 passed, 1 failed, 0 skipped / not fitting
+report written: /home/Aryan/results-regression/RESULTS_l4_gemma-4-31b-it-gguf-q8.md

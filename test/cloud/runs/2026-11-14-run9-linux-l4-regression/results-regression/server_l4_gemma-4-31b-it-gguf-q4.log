@@ -1,0 +1,246 @@
+2026-11-14T16:41:59.392246Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-14T16:41:59.427453Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-14T16:41:59.427649Z  INFO ⚡ NVIDIA CUDA + cuDNN 9 runtime libraries verified.
+Starting the Cluaiz API server on http://localhost:8011 ...
+2026-11-14T16:41:59.427934Z  INFO 🔒 [Auth] Initialized local session secret at /home/Aryan/ch-reg/session.token
+2026-11-14T16:41:59.591308Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-14T16:41:59.597909Z  INFO 🌐 Cluaiz API Server running on http://127.0.0.1:8011
+2026-11-14T16:42:00.652854Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-14T16:42:00.654405Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-4-31b-it-gguf-Q4_K_M' to "/home/Aryan/ch/models/chat/gemma-4-31b-it-gguf-Q4_K_M/gemma-4-31B-it-Q4_K_M.gguf"
+2026-11-14T16:42:00.654451Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-14T16:42:00.746949Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : gemma-4-31b-it-gguf-Q4_K_M
+║   • Architecture    : gemma4 | 60 layers | heads 32 | KV heads 16 | head size K 512 / V 512, sliding window 1024 on 50 layers | dense
+║   • Weights         : file 17.07 GB | input embeddings 0.74 GB (always CPU) | output head 0.74 GB | vocab 262144
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 8192 tokens, KV Kv8 (Auto: 8192 tokens, KV Kv8; the model does not fit on one device, so it is split)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 22.08 of 22.49 GB | buffer kept free 3.16 GB (measured: GPU pool +2.16 GB + 1.00 GB reserve; estimate corrected by llama.cpp's dry run +1.09 GB)
+║   • RAM             : free 30.06 of 31.35 GB | Cluaiz may use 28.50 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : GPU + RAM split
+║   • llama.cpp       : n_gpu_layers = 58 | n_cpu_moe = 0 | n_ctx = 8192 | KV Kv8 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 57 on GPU, 3 in RAM (of 60)
+║   • VRAM            : 18.70 GB (weights + KV 0.92 + logits)
+║   • RAM             : 1.63 GB (incl. KV 0.04)
+║   • Reason          : GPU + RAM split: 57 / 60 blocks + output head on GPU (18.70 GB), 3 blocks in RAM
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [NO]       VRAM 19.59 GB | RAM  0.74 GB | does not fit in VRAM: weights 17.05 + KV 0.95 + buffers 1.59 = 19.59 GB vs usable VRAM 18.92 GB
+║   • GPU + RAM split  [FITS]     VRAM 18.70 GB | RAM  1.63 GB | 57 / 60 blocks + output head on GPU (18.70 GB), 3 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM 18.51 GB | weights 17.05 + KV 0.95 + logits 0.50 = 18.51 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-14T16:42:00.746985Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-14T16:42:00.747147Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = 58, load_mode = 1, n_threads = 4, n_threads_batch = 4
+2026-11-14T16:42:00.747156Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch/models/chat/gemma-4-31b-it-gguf-Q4_K_M/gemma-4-31B-it-Q4_K_M.gguf | ctx: 8192 tokens
+2026-11-14T16:42:01.751112Z  WARN [llama.cpp] load: '</s>' is a normal token here, removing it from EOG list
+2026-11-14T16:43:42.310237Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/home/Aryan/ch/models/chat/gemma-4-31b-it-gguf-Q4_K_M"
+2026-11-14T16:43:42.324426Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<|channel>thought"
+2026-11-14T16:43:42.324437Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "<channel|>"
+2026-11-14T16:43:42.324443Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 8192 tokens
+2026-11-14T16:43:42.324453Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-14T16:43:42.324458Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-14T16:43:42.324466Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-14T16:43:42.324473Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 4/4
+2026-11-14T16:43:43.630921Z  INFO 🔍 [EngineHost] VRAM planned 18.70 GB, taken 20.41 GB | n_ctx planned 8192 created 8192 | n_gpu_layers 58 n_cpu_moe 0
+2026-11-14T16:43:43.670527Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /home/Aryan/ch/models/chat/gemma-4-31b-it-gguf-Q4_K_M/gemma-4-31B-it-Q4_K_M.gguf
+2026-11-14T16:43:43.691259Z  INFO 🧮 [Tokens] Conversation 528 tokens (1 messages) counted in 2.62 ms
+2026-11-14T16:43:43.700826Z  INFO ⏱️ [Preflight] 103048 ms total | model load 103016 ms | registry + template + tags 18 ms | skills + tools 11 ms | rest 0 ms
+2026-11-14T16:43:43.703559Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (2752 bytes) in 1 ms
+2026-11-14T16:43:45.062585Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1794674625
+2026-11-14T16:44:19.680163Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-14T16:44:19.680188Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 544 tokens in 1231 ms (442.08 t/s) | generation 299 tokens in 34263 ms (8.73 t/s)
+2026-11-14T16:44:19.680196Z  INFO 🧠 [Context] prompt 544 tokens (0 from the cache) | context 843 of 8192 | stop eos
+2026-11-14T16:44:19.682131Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-14T16:44:19.683508Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-4-31b-it-gguf-Q4_K_M' to "/home/Aryan/ch/models/chat/gemma-4-31b-it-gguf-Q4_K_M/gemma-4-31B-it-Q4_K_M.gguf"
+2026-11-14T16:44:19.712910Z  INFO 🧮 [Tokens] Conversation 528 tokens (1 messages) counted in 2.51 ms
+2026-11-14T16:44:19.716753Z  INFO ⏱️ [Preflight] 34 ms total | model load 26 ms | registry + template + tags 0 ms | skills + tools 6 ms | rest 0 ms
+2026-11-14T16:44:19.718589Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (2748 bytes) in 1 ms
+2026-11-14T16:44:21.072481Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1794674661
+2026-11-14T16:44:25.475759Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-14T16:44:25.475792Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 539 tokens in 1214 ms (443.95 t/s) | generation 38 tokens in 4309 ms (8.82 t/s)
+2026-11-14T16:44:25.475800Z  INFO 🧠 [Context] prompt 541 tokens (2 from the cache) | context 579 of 8192 | stop eos
+2026-11-14T16:44:25.479045Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-14T16:44:25.480655Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-4-31b-it-gguf-Q4_K_M' to "/home/Aryan/ch/models/chat/gemma-4-31b-it-gguf-Q4_K_M/gemma-4-31B-it-Q4_K_M.gguf"
+2026-11-14T16:44:25.510583Z  INFO 🧮 [Tokens] Conversation 528 tokens (1 messages) counted in 2.55 ms
+2026-11-14T16:44:25.514392Z  INFO ⏱️ [Preflight] 35 ms total | model load 26 ms | registry + template + tags 0 ms | skills + tools 6 ms | rest 0 ms
+2026-11-14T16:44:25.516842Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (2748 bytes) in 1 ms
+2026-11-14T16:44:26.871880Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1794674666
+2026-11-14T16:44:31.034624Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-14T16:44:31.034641Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 535 tokens in 1211 ms (441.86 t/s) | generation 36 tokens in 4072 ms (8.84 t/s)
+2026-11-14T16:44:31.034649Z  INFO 🧠 [Context] prompt 541 tokens (6 from the cache) | context 577 of 8192 | stop eos
+2026-11-14T16:44:31.035080Z  INFO ♻️ [Memory] Unloading model post-generation due to keep_alive: 0
+2026-11-14T16:44:31.261509Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-14T16:45:04.673004Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-14T16:45:04.674488Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-4-31b-it-gguf-Q4_K_M' to "/home/Aryan/ch/models/chat/gemma-4-31b-it-gguf-Q4_K_M/gemma-4-31B-it-Q4_K_M.gguf"
+2026-11-14T16:45:04.674524Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-14T16:45:04.706883Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : gemma-4-31b-it-gguf-Q4_K_M
+║   • Architecture    : gemma4 | 60 layers | heads 32 | KV heads 16 | head size K 512 / V 512, sliding window 1024 on 50 layers | dense
+║   • Weights         : file 17.07 GB | input embeddings 0.74 GB (always CPU) | output head 0.74 GB | vocab 262144
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 8192 tokens, KV Kv8 (Auto: 8192 tokens, KV Kv8; the model does not fit on one device, so it is split)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 21.85 of 22.49 GB | buffer kept free 3.16 GB (measured: GPU pool +2.16 GB + 1.00 GB reserve; estimate corrected by llama.cpp's dry run +1.09 GB)
+║   • RAM             : free 29.89 of 31.35 GB | Cluaiz may use 28.33 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 8192 | KV Kv8 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 60 on GPU, 0 in RAM (of 60)
+║   • VRAM            : 19.59 GB (weights + KV 0.95 + logits)
+║   • RAM             : 0.74 GB (incl. KV 0.00)
+║   • Reason          : User setting: planner bypassed: n_gpu_layers -1 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 19.59 of usable 18.69 GB; 0.90 GB over usable VRAM (llama.cpp may fail, or Windows moves the rest to shared GPU memory)
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM 19.59 GB | RAM  0.74 GB | planner bypassed: n_gpu_layers -1 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 19.59 of usable 18.69 GB; 0.90 GB over usable VRAM (llama.cpp may fail, or Windows moves the rest to shared GPU memory)
+║   • Full GPU         [NO]       VRAM 19.59 GB | RAM  0.74 GB | does not fit in VRAM: weights 17.05 + KV 0.95 + buffers 1.59 = 19.59 GB vs usable VRAM 18.69 GB
+║   • GPU + RAM split  [FITS]     VRAM 18.41 GB | RAM  1.92 GB | 56 / 60 blocks + output head on GPU (18.41 GB), 4 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM 18.51 GB | weights 17.05 + KV 0.95 + logits 0.50 = 18.51 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-14T16:45:04.706923Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-14T16:45:04.707081Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 4, n_threads_batch = 4
+2026-11-14T16:45:04.707087Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch/models/chat/gemma-4-31b-it-gguf-Q4_K_M/gemma-4-31B-it-Q4_K_M.gguf | ctx: 8192 tokens
+2026-11-14T16:45:05.578521Z  WARN [llama.cpp] load: '</s>' is a normal token here, removing it from EOG list
+2026-11-14T16:45:10.743597Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/home/Aryan/ch/models/chat/gemma-4-31b-it-gguf-Q4_K_M"
+2026-11-14T16:45:10.754935Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<|channel>thought"
+2026-11-14T16:45:10.754945Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "<channel|>"
+2026-11-14T16:45:10.754963Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 8192 tokens
+2026-11-14T16:45:10.754982Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-14T16:45:10.754986Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-14T16:45:10.754992Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-14T16:45:10.754996Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 4/4
+2026-11-14T16:45:11.555121Z  INFO 🔍 [EngineHost] VRAM planned 19.59 GB, taken 21.27 GB | n_ctx planned 8192 created 8192 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-14T16:45:11.555363Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /home/Aryan/ch/models/chat/gemma-4-31b-it-gguf-Q4_K_M/gemma-4-31B-it-Q4_K_M.gguf
+2026-11-14T16:45:11.569760Z  INFO 🧮 [Tokens] Conversation 528 tokens (1 messages) counted in 2.39 ms
+2026-11-14T16:45:11.573176Z  INFO ⏱️ [Preflight] 6900 ms total | model load 6880 ms | registry + template + tags 11 ms | skills + tools 5 ms | rest 0 ms
+2026-11-14T16:45:11.574977Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (2752 bytes) in 1 ms
+2026-11-14T16:45:12.652780Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1794674712
+2026-11-14T16:45:40.387761Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-14T16:45:40.387789Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 544 tokens in 933 ms (583.31 t/s) | generation 339 tokens in 27344 ms (12.40 t/s)
+2026-11-14T16:45:40.387797Z  INFO 🧠 [Context] prompt 544 tokens (0 from the cache) | context 883 of 8192 | stop eos
+2026-11-14T16:45:40.390208Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-14T16:45:40.391927Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-4-31b-it-gguf-Q4_K_M' to "/home/Aryan/ch/models/chat/gemma-4-31b-it-gguf-Q4_K_M/gemma-4-31B-it-Q4_K_M.gguf"
+2026-11-14T16:45:40.422130Z  INFO 🧮 [Tokens] Conversation 528 tokens (1 messages) counted in 2.80 ms
+2026-11-14T16:45:40.426450Z  INFO ⏱️ [Preflight] 36 ms total | model load 26 ms | registry + template + tags 0 ms | skills + tools 6 ms | rest 0 ms
+2026-11-14T16:45:40.428680Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (2748 bytes) in 1 ms
+2026-11-14T16:45:41.500463Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1794674741
+2026-11-14T16:45:44.326865Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-14T16:45:44.326881Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 539 tokens in 909 ms (592.78 t/s) | generation 34 tokens in 2743 ms (12.40 t/s)
+2026-11-14T16:45:44.326888Z  INFO 🧠 [Context] prompt 541 tokens (2 from the cache) | context 575 of 8192 | stop eos
+2026-11-14T16:45:44.328415Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-14T16:45:44.329843Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-4-31b-it-gguf-Q4_K_M' to "/home/Aryan/ch/models/chat/gemma-4-31b-it-gguf-Q4_K_M/gemma-4-31B-it-Q4_K_M.gguf"
+2026-11-14T16:45:44.358856Z  INFO 🧮 [Tokens] Conversation 528 tokens (1 messages) counted in 2.39 ms
+2026-11-14T16:45:44.362088Z  INFO ⏱️ [Preflight] 33 ms total | model load 25 ms | registry + template + tags 0 ms | skills + tools 5 ms | rest 0 ms
+2026-11-14T16:45:44.364191Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (2748 bytes) in 1 ms
+2026-11-14T16:45:45.446274Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1794674745
+2026-11-14T16:45:48.685473Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-14T16:45:48.685491Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 535 tokens in 925 ms (578.61 t/s) | generation 39 tokens in 3149 ms (12.38 t/s)
+2026-11-14T16:45:48.685498Z  INFO 🧠 [Context] prompt 541 tokens (6 from the cache) | context 580 of 8192 | stop eos
+2026-11-14T16:45:48.685794Z  INFO ♻️ [Memory] Unloading model post-generation due to keep_alive: 0
+2026-11-14T16:45:48.898160Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-14T16:46:16.449812Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-14T16:46:16.451198Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-4-31b-it-gguf-Q4_K_M' to "/home/Aryan/ch/models/chat/gemma-4-31b-it-gguf-Q4_K_M/gemma-4-31B-it-Q4_K_M.gguf"
+2026-11-14T16:46:16.451240Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-14T16:46:16.502889Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : gemma-4-31b-it-gguf-Q4_K_M
+║   • Architecture    : gemma4 | 60 layers | heads 32 | KV heads 16 | head size K 512 / V 512, sliding window 1024 on 50 layers | dense
+║   • Weights         : file 17.07 GB | input embeddings 0.74 GB (always CPU) | output head 0.74 GB | vocab 262144
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 8192 tokens, KV Kv8 (Auto: 8192 tokens, KV Kv8; the model does not fit on one device, so it is split)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 21.84 of 22.49 GB | buffer kept free 3.16 GB (measured: GPU pool +2.16 GB + 1.00 GB reserve; estimate corrected by llama.cpp's dry run +1.09 GB)
+║   • RAM             : free 29.72 of 31.35 GB | Cluaiz may use 28.15 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : GPU + RAM split
+║   • llama.cpp       : n_gpu_layers = 31 | n_cpu_moe = 0 | n_ctx = 8192 | KV Kv8 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 30 on GPU, 30 in RAM (of 60)
+║   • VRAM            : 10.99 GB (weights + KV 0.48 + logits)
+║   • RAM             : 9.34 GB (incl. KV 0.48)
+║   • Reason          : User setting: planner bypassed: n_gpu_layers 31 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 10.99 of usable 18.69 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM 10.99 GB | RAM  9.34 GB | planner bypassed: n_gpu_layers 31 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 10.99 of usable 18.69 GB
+║   • Full GPU         [NO]       VRAM 19.59 GB | RAM  0.74 GB | does not fit in VRAM: weights 17.05 + KV 0.95 + buffers 1.59 = 19.59 GB vs usable VRAM 18.69 GB
+║   • GPU + RAM split  [FITS]     VRAM 18.41 GB | RAM  1.92 GB | 56 / 60 blocks + output head on GPU (18.41 GB), 4 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM 18.51 GB | weights 17.05 + KV 0.95 + logits 0.50 = 18.51 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-14T16:46:16.502928Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-14T16:46:16.503122Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = 31, load_mode = 1, n_threads = 4, n_threads_batch = 4
+2026-11-14T16:46:16.503128Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch/models/chat/gemma-4-31b-it-gguf-Q4_K_M/gemma-4-31B-it-Q4_K_M.gguf | ctx: 8192 tokens
+2026-11-14T16:46:17.349274Z  WARN [llama.cpp] load: '</s>' is a normal token here, removing it from EOG list
+2026-11-14T16:46:20.460500Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/home/Aryan/ch/models/chat/gemma-4-31b-it-gguf-Q4_K_M"
+2026-11-14T16:46:20.471689Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<|channel>thought"
+2026-11-14T16:46:20.471698Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "<channel|>"
+2026-11-14T16:46:20.471703Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 8192 tokens
+2026-11-14T16:46:20.471709Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-14T16:46:20.471713Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-14T16:46:20.471719Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-14T16:46:20.471724Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 4/4
+2026-11-14T16:46:24.016621Z  INFO 🔍 [EngineHost] VRAM planned 10.99 GB, taken 11.31 GB | n_ctx planned 8192 created 8192 | n_gpu_layers 31 n_cpu_moe 0
+2026-11-14T16:46:24.016846Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /home/Aryan/ch/models/chat/gemma-4-31b-it-gguf-Q4_K_M/gemma-4-31B-it-Q4_K_M.gguf
+2026-11-14T16:46:24.031025Z  INFO 🧮 [Tokens] Conversation 528 tokens (1 messages) counted in 2.32 ms
+2026-11-14T16:46:24.034369Z  INFO ⏱️ [Preflight] 7584 ms total | model load 7565 ms | registry + template + tags 11 ms | skills + tools 5 ms | rest 0 ms
+2026-11-14T16:46:24.036158Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (2752 bytes) in 1 ms
+2026-11-14T16:46:28.794060Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1794674788
+2026-11-14T16:48:14.610167Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-14T16:48:14.610192Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 544 tokens in 4706 ms (115.60 t/s) | generation 251 tokens in 105511 ms (2.38 t/s)
+2026-11-14T16:48:14.610200Z  INFO 🧠 [Context] prompt 544 tokens (0 from the cache) | context 795 of 8192 | stop eos
+2026-11-14T16:48:14.612231Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-14T16:48:14.613782Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-4-31b-it-gguf-Q4_K_M' to "/home/Aryan/ch/models/chat/gemma-4-31b-it-gguf-Q4_K_M/gemma-4-31B-it-Q4_K_M.gguf"
+2026-11-14T16:48:14.634656Z  INFO 🧮 [Tokens] Conversation 528 tokens (1 messages) counted in 2.46 ms
+2026-11-14T16:48:14.638407Z  INFO ⏱️ [Preflight] 26 ms total | model load 17 ms | registry + template + tags 0 ms | skills + tools 5 ms | rest 0 ms
+2026-11-14T16:48:14.640500Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (2748 bytes) in 1 ms
+2026-11-14T16:48:19.326362Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1794674899
+2026-11-14T16:48:34.605411Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-14T16:48:34.605465Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 539 tokens in 4636 ms (116.27 t/s) | generation 37 tokens in 15187 ms (2.44 t/s)
+2026-11-14T16:48:34.605474Z  INFO 🧠 [Context] prompt 541 tokens (2 from the cache) | context 578 of 8192 | stop eos
+2026-11-14T16:48:34.608152Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-14T16:48:34.609638Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-4-31b-it-gguf-Q4_K_M' to "/home/Aryan/ch/models/chat/gemma-4-31b-it-gguf-Q4_K_M/gemma-4-31B-it-Q4_K_M.gguf"
+2026-11-14T16:48:34.630612Z  INFO 🧮 [Tokens] Conversation 528 tokens (1 messages) counted in 2.53 ms
+2026-11-14T16:48:34.634369Z  INFO ⏱️ [Preflight] 26 ms total | model load 17 ms | registry + template + tags 0 ms | skills + tools 6 ms | rest 0 ms
+2026-11-14T16:48:34.636582Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (2748 bytes) in 1 ms
+2026-11-14T16:48:39.328922Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1794674919
+2026-11-14T16:48:54.979855Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-14T16:48:54.979872Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 535 tokens in 4641 ms (115.28 t/s) | generation 38 tokens in 15559 ms (2.44 t/s)
+2026-11-14T16:48:54.979880Z  INFO 🧠 [Context] prompt 541 tokens (6 from the cache) | context 579 of 8192 | stop eos
+2026-11-14T16:48:54.980264Z  INFO ♻️ [Memory] Unloading model post-generation due to keep_alive: 0
+2026-11-14T16:48:55.386074Z  INFO ♻️ [EngineHost] Model unloaded from process memory
