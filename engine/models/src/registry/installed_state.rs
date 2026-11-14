@@ -14,6 +14,14 @@ use tracing::info;
 /// on disk.
 static PARSED: LazyLock<Mutex<Option<(PathBuf, u64, ModelRegistry)>>> = LazyLock::new(|| Mutex::new(None));
 
+/// Moves a file that could not be read to `<name>.broken-<unix seconds>` beside it
+fn set_aside_broken(path: &Path) -> Option<PathBuf> {
+    let seconds = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    let name = path.file_name()?.to_string_lossy().into_owned();
+    let kept = path.with_file_name(format!("{name}.broken-{seconds}"));
+    std::fs::rename(path, &kept).ok().map(|_| kept)
+}
+
 fn content_hash(bytes: &[u8]) -> u64 {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     bytes.hash(&mut hasher);
@@ -87,8 +95,19 @@ impl InstalledStateRegistry {
                 }
             }
         }
-        let Ok(reg) = serde_json::from_slice::<ModelRegistry>(&bytes) else {
-            return ModelRegistry::default();
+        let reg = match serde_json::from_slice::<ModelRegistry>(&bytes) {
+            Ok(reg) => reg,
+            // A file that cannot be read is kept aside, so the next save (a scan of the model
+            // folders) does not write over it; the models are registered again from their folders
+            Err(error) => {
+                let kept = set_aside_broken(path);
+                tracing::warn!(
+                    "⚠️ [Registry] {} could not be read ({error}); kept as {} and the models are registered again from their folders",
+                    path.display(),
+                    kept.as_ref().map(|p| p.display().to_string()).unwrap_or_else(|| "nothing (it could not be moved)".into())
+                );
+                return ModelRegistry::default();
+            }
         };
         *PARSED.lock().unwrap_or_else(|e| e.into_inner()) = Some((path.to_path_buf(), hash, reg.clone()));
         reg
@@ -121,7 +140,10 @@ impl InstalledStateRegistry {
         let content =
             serde_json::to_string_pretty(reg).map_err(|e| format!("Serialization error: {}", e))?;
 
-        std::fs::write(&path, &content).map_err(|e| format!("Write error: {}", e))?;
+        // A temporary file beside it, then a rename: a crash never leaves half a registry
+        let temporary = path.with_extension("json.tmp");
+        std::fs::write(&temporary, &content).map_err(|e| format!("Write error: {}", e))?;
+        std::fs::rename(&temporary, &path).map_err(|e| format!("Write error: {}", e))?;
         *PARSED.lock().unwrap_or_else(|e| e.into_inner()) =
             Some((path, content_hash(content.as_bytes()), reg.clone()));
         Ok(())

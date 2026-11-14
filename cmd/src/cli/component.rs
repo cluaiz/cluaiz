@@ -210,7 +210,15 @@ async fn remove_component(component_type: &str, component_name: &str) -> Result<
 
 async fn list_components(component_type: &str) -> Result<()> {
     println!("\n  {} [Cluaiz Tools] Installed {}:", "📦".cyan(), component_type.to_uppercase());
-    if let Ok(reg) = ToolsEngine::registry() {
+    let registry = ToolsEngine::registry();
+    if let Some(kept) = cluaiz_agents::ToolsRegistry::recovered_from() {
+        println!(
+            "    {} tools_registry.json could not be read; it was kept as {} and the list was built again from the tool folders. Each tool's own settings (security mode, execution mode, trust, turns) are back to their defaults.",
+            "⚠".yellow(),
+            kept.display()
+        );
+    }
+    if let Ok(reg) = registry {
         let tools: Vec<_> = reg.installed_tools.values().filter(|t| t.category == component_type).collect();
         if tools.is_empty() {
             println!("    No {} installed yet. Use `cluaiz {} install <name>`.\n", component_type, component_type);
