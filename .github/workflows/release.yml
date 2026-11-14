@@ -112,7 +112,10 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install ccache autoconf automake libtool
 
-      - uses: dtolnay/rust-toolchain@stable
+      # Pinned: Rust 1.100 moved build-script folders (target/<profile>/build/<crate>/<hash>/out), and
+      # ort-sys and engine/llama/build.rs find target/<profile> as OUT_DIR's third parent. Move the
+      # pin up only after both handle the new layout.
+      - uses: dtolnay/rust-toolchain@1.99.1
 
       - name: Test Windows runtime isolation
         if: runner.os == 'Windows'
