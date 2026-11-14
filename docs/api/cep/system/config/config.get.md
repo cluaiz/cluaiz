@@ -129,7 +129,7 @@ The returned key is onnx; settings remain in their saved representation.
 
 ## Response and field meanings
 
-Each key maps to that section’s saved contract. GGUF hardware_and_execution/samplers/flags preserve nullable/automatic fields. This is not the same as system.plan’s chosen resolved execution plan. Engine permission data can include sensitive API/auth/model-slot settings. `engine.unused_fields` lists the saved fields that do nothing, so a settings screen can hide them or mark them as not working; sending it back in `config.set` is ignored.
+Each key maps to that section’s saved contract. GGUF hardware_and_execution/samplers/flags preserve nullable/automatic fields. This is not the same as system.plan’s chosen resolved execution plan. Engine permission data can include sensitive API/auth/model-slot settings. `engine.unused_fields` lists the saved fields that do nothing, so a settings screen can hide them or mark them as not working. `engine.security_modes` lists the values of `agent_security_mode` with `id`, `title`, `summary` (what runs without asking and what is asked) and `default` (the mode a new install starts in), so a settings screen shows the Engine's rules instead of its own text. Sending either back in `config.set` is ignored.
 
 The following response is an illustrative shape. IDs, byte counts, timings and array contents depend on the actual request and machine; shortened nested objects are not a second schema or a measured result.
 
