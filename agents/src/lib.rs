@@ -447,11 +447,44 @@ impl ToolsEngine {
                 Ok(format!("Skill '{}' active. Ready for workflow execution.", name))
             }
             "plugin" | _ => {
+                // A plugin finds its function from the arguments, so a name it does not have would
+                // silently run another function: refuse it here
+                if let (Some(function), Some(dir)) = (tool_name, Self::resolve_component_dir("plugin", name)) {
+                    let functions = plugin_functions(&dir);
+                    if !functions.is_empty() && !functions.iter().any(|f| f == function) {
+                        anyhow::bail!("Plugin '{}' has no function '{}'. Its functions: {}", name, function, functions.join(", "));
+                    }
+                }
                 // A plugin may wait on the network, and that must not hold up the async workers
                 let (plugin, input) = (name.to_owned(), payload.as_bytes().to_vec());
                 let bytes = tokio::task::spawn_blocking(move || Self::execute_plugin_by_name(&plugin, &input)).await??;
                 Ok(String::from_utf8_lossy(&bytes).to_string())
             }
         }
+    }
+}
+
+/// The function names a plugin's `package.json` lists under `functions`
+fn plugin_functions(dir: &Path) -> Vec<String> {
+    std::fs::read_to_string(dir.join("package.json"))
+        .ok()
+        .and_then(|text| serde_json::from_str::<Value>(&text).ok())
+        .and_then(|manifest| manifest.get("functions").and_then(Value::as_array).cloned())
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|f| f.get("name").and_then(Value::as_str).map(str::to_owned))
+        .collect()
+}
+
+#[cfg(test)]
+mod plugin_function_tests {
+    #[test]
+    fn the_functions_a_plugin_lists_are_read_from_its_package() {
+        let dir = std::env::temp_dir().join(format!("cluaiz-fn-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("package.json"), r#"{"functions": [{"name": "time_now"}, {"name": "calendar"}]}"#).unwrap();
+        assert_eq!(super::plugin_functions(&dir), ["time_now", "calendar"]);
+        assert!(super::plugin_functions(&dir.join("missing")).is_empty());
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }
