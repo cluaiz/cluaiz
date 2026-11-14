@@ -213,7 +213,7 @@ pub enum ComponentCommand {
     Permission {
         /// Component id
         component_id: String,
-        /// Permission: network, clock, notifications, files_read, location, files_write, run_programs
+        /// Permission type, as the tool lists it: network, files, programs, system, location, media, clipboard, notifications, native, engine
         permission: Option<String>,
         /// on or off
         state: Option<String>,

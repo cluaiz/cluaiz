@@ -123,12 +123,17 @@ Skills, plugins and MCP servers share one command shape. Aliases: `i` (install),
 | `cluaiz skill\|plugin\|mcp remove <name>` | Remove one | `tools.remove` |
 | `cluaiz skill\|plugin\|mcp cache …` | Cached files of a tool | `tools.cache`, `tools.clear_cache` |
 | `cluaiz skill\|plugin\|mcp config <name>` | View or change a tool's settings | `tools.get_settings`, `tools.set_settings` |
+| `cluaiz skill\|plugin\|mcp permission <name> [permission] [on\|off]` | Show a tool's permissions, or switch one on or off | `tools.get_settings`, `tools.set_settings` (`permissions`) |
 
 * **Skills** are instructions (`SKILL.md`) the model loads when it needs them.
 * **Plugins** are programs. A WebAssembly (`.wasm`) plugin runs inside the Engine and reaches only
   the time and the OS name. Any other plugin runs as a normal child process with your user's
   rights, so install only plugins you trust.
 * **MCP servers** run over stdio and are started only when the model loads them.
+* A tool's program (an MCP server, a plugin that is not WebAssembly, a skill's script) starts
+  with only the system variables a program needs, plus the values the tool names in its `env`.
+  Your provider keys and other tools' values are not passed to it. See
+  [Tools: permissions and environment](../engine/tools.md).
 
 ---
 
@@ -140,9 +145,33 @@ Skills, plugins and MCP servers share one command shape. Aliases: `i` (install),
   stored.
 * API: `POST /v1/ingest`.
 
-### `cluaiz storage status|clean`
-* Temporary media of the running server.
+### `cluaiz storage temp-status|temp-clean`
+* Temporary media of the running server: how much is used, or delete it all.
 * API: CEP `storage.status`, `storage.clean`.
+
+---
+
+## Automation
+
+### `cluaiz flow …`
+Flows are files of steps that start on a trigger (a time, a folder, a webhook, an event) or by
+hand. See the [Automation guide](../automation/guide.md) and the
+[Automation reference](automation.md).
+
+| Command | What it does | API |
+|---|---|---|
+| `cluaiz flow list` | The flows of the project and your own, with their last run | `flows.list` |
+| `cluaiz flow validate <file>` | Check a flow file (`.flow.json`, `.flow.yaml`) without saving it | `flows.validate` |
+| `cluaiz flow save <file>` | Save a flow file; you confirm the permissions it needs | `flows.save` |
+| `cluaiz flow run <name>` | Run a saved flow and wait for it | `flows.run` |
+| `cluaiz flow rerun <run-id> --from <step>` | Run a failed run again from one step; the steps before it are not run again | `flows.rerun_from` |
+| `cluaiz flow logs <name>` (`--run <id>`) | The last runs of a flow, or one run's steps | `flows.runs`, `flows.run_get` |
+| `cluaiz flow enable\|disable <name>` | Turn a flow's triggers on or off; a disabled flow can still be run by hand | `flows.enable`, `flows.disable` |
+| `cluaiz flow remove <name>` | Remove a flow and its runs | `flows.remove` |
+| `cluaiz flow draft "<request>"` | A model writes a flow from a description; it is checked and tested, not saved | `flows.draft` |
+| `cluaiz flow explain <flow>` | A flow in plain words (a saved flow's name, or a flow file) | `flows.explain` |
+| `cluaiz flow fix <run-id>` | A model reads a failed run and proposes a corrected flow; nothing is saved | `flows.fix` |
+| `cluaiz flow nodes [query]` | What steps can use here: installed tools and methods | `flows.nodes` |
 
 ---
 

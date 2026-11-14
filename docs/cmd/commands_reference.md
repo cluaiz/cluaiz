@@ -122,6 +122,7 @@ cluaiz provider test myapi model-name
 | `cluaiz <type> remove <id>` | `rm` | Remove an installed component |
 | `cluaiz <type> cache …` | | Cached files of a component |
 | `cluaiz <type> config <id>` | | View or change a component's settings (asks for missing values) |
+| `cluaiz <type> permission <id> [permission] [on\|off]` | | Show a component's permissions, or switch one on or off |
 
 A WebAssembly (`.wasm`) plugin runs inside the Engine and reaches only the time and the OS name. Any other plugin runs as a normal child process with your user's rights.
 
@@ -141,6 +142,8 @@ cluaiz plugin permission web-search network off  # switch one off
 
 A permission that is off is refused to a WebAssembly plugin (it answers `permission_off` with the command to turn it on); any other tool is asked about before each call.
 
+A tool's program starts with only the system variables a program needs and the values the tool names in its `env`; your provider keys are not passed to it ([tools: permissions and environment](../engine/tools.md)).
+
 ---
 
 ## Documents, storage and settings
@@ -148,7 +151,7 @@ A permission that is off is refused to a WebAssembly plugin (it answers `permiss
 | Command | Description |
 |---------|-------------|
 | `cluaiz ingest <file-path>` | Read a document (PDF, DOCX, DOC, text, code) or image and print its chunks; with an embedding model set, also make vectors. Nothing is stored |
-| `cluaiz storage status\|clean` | Temporary media of the running server |
+| `cluaiz storage temp-status\|temp-clean` | Temporary media of the running server: usage, or delete it all |
 | `cluaiz config list\|get\|set\|reset\|path` | `settings.json` ([engine configuration](../reference/engine-configuration.md)) |
 
 ```bash
@@ -157,6 +160,27 @@ cluaiz config get optimization.n_gpu_layers
 cluaiz config set optimization.n_gpu_layers 20
 cluaiz config set optimization.n_gpu_layers auto
 ```
+
+---
+
+## Automation
+
+| Command | Description |
+|---------|-------------|
+| `cluaiz flow list` | The flows of the project and your own, with their last run |
+| `cluaiz flow validate <file>` | Check a flow file (`.flow.json`, `.flow.yaml`) without saving it |
+| `cluaiz flow save <file>` | Save a flow file; you confirm the permissions it needs |
+| `cluaiz flow run <name>` | Run a saved flow and wait for it |
+| `cluaiz flow rerun <run-id> --from <step>` | Run a failed run again from one step |
+| `cluaiz flow logs <name>` (`--run <id>`) | The last runs of a flow, or one run's steps |
+| `cluaiz flow enable\|disable <name>` | Turn a flow's triggers on or off |
+| `cluaiz flow remove <name>` | Remove a flow and its runs |
+| `cluaiz flow draft "<request>"` | A model writes a flow from a description; checked and tested, not saved |
+| `cluaiz flow explain <flow>` | A flow in plain words |
+| `cluaiz flow fix <run-id>` | A model proposes a corrected flow for a failed run; nothing is saved |
+| `cluaiz flow nodes [query]` | What steps can use here: installed tools and methods |
+
+The [Automation guide](../automation/guide.md) explains flows step by step.
 
 ---
 

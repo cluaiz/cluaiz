@@ -235,6 +235,12 @@
         "pages": [
           { "slug": "engine-configuration", "title": "⚙️ Engine Configurations", "file_path": "docs/reference/engine-configuration.md" }
         ]
+      },
+      {
+        "group": "Automation Reference",
+        "pages": [
+          { "slug": "automation-reference", "title": "⚙️ Automation Reference", "file_path": "docs/reference/automation.md" }
+        ]
       }
     ]
   },
@@ -272,6 +278,7 @@
           { "slug": "prefix-caching-architecture", "title": "⚡ KV Cache Reuse", "file_path": "docs/engine/prefix_caching_architecture.md" },
           { "slug": "permission", "title": "🔒 permission.json", "file_path": "docs/engine/permission.md" },
           { "slug": "providers", "title": "🔗 Model Providers", "file_path": "docs/engine/providers.md" },
+          { "slug": "tools-permissions", "title": "🧰 Tools: Permissions and Environment", "file_path": "docs/engine/tools.md" },
           { "slug": "moe-ssd-streaming", "title": "🧩 MoE Models on Small GPUs", "file_path": "docs/engine/moe_ssd_streaming.md" },
           { "slug": "system-control", "title": "⚙️ Hardware Profile", "file_path": "docs/engine/system_control.md" }
         ]
@@ -297,6 +304,84 @@
           { "slug": "cli-architecture", "title": "💻 CLI Architecture (old draft)", "file_path": "docs/architecture/cli-architecture.md" },
           { "slug": "cli-deep-audit", "title": "🔍 CLI Audit (old)", "file_path": "docs/architecture/cli-deep-audit.md" },
           { "slug": "cli-process-design", "title": "⚙️ CLI Process Design (old draft)", "file_path": "docs/architecture/cli-process-design.md" }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "automation",
+    "title": "⚙️ Automation",
+    "groups": [
+      {
+        "group": "Overview",
+        "pages": [
+          { "slug": "automation", "title": "⚙️ Cluaiz Automation", "file_path": "docs/automation/README.md" },
+          { "slug": "automation-guide", "title": "🧭 Your First Flows", "file_path": "docs/automation/guide.md" },
+          { "slug": "automation-examples", "title": "📋 Flow Examples", "file_path": "docs/automation/examples.md" }
+        ]
+      },
+      {
+        "group": "Flows",
+        "pages": [
+          { "slug": "automation-file", "title": "📄 The Flow File", "file_path": "docs/automation/file.md" },
+          { "slug": "automation-triggers", "title": "⏰ Triggers", "file_path": "docs/automation/triggers.md" },
+          { "slug": "automation-events", "title": "📣 Events", "file_path": "docs/automation/events.md" },
+          { "slug": "automation-webhooks", "title": "🪝 Webhooks", "file_path": "docs/automation/webhooks.md" },
+          { "slug": "automation-expressions", "title": "🧮 Expressions", "file_path": "docs/automation/expressions.md" },
+          { "slug": "automation-references", "title": "🔗 References", "file_path": "docs/automation/references.md" },
+          { "slug": "automation-validation", "title": "✅ Validation", "file_path": "docs/automation/validation.md" }
+        ]
+      },
+      {
+        "group": "Steps",
+        "pages": [
+          { "slug": "automation-steps", "title": "🧩 Steps", "file_path": "docs/automation/steps/README.md" },
+          { "slug": "automation-step-ask", "title": "`ask`", "file_path": "docs/automation/steps/ask.md" },
+          { "slug": "automation-step-agent", "title": "`agent`", "file_path": "docs/automation/steps/agent.md" },
+          { "slug": "automation-step-tool", "title": "`tool`", "file_path": "docs/automation/steps/tool.md" },
+          { "slug": "automation-step-call", "title": "`call`", "file_path": "docs/automation/steps/call.md" },
+          { "slug": "automation-step-code", "title": "`code`", "file_path": "docs/automation/steps/code.md" },
+          { "slug": "automation-step-run", "title": "`run`", "file_path": "docs/automation/steps/run.md" },
+          { "slug": "automation-step-approve", "title": "`approve`", "file_path": "docs/automation/steps/approve.md" },
+          { "slug": "automation-step-wait", "title": "`wait`", "file_path": "docs/automation/steps/wait.md" },
+          { "slug": "automation-step-set", "title": "`set`", "file_path": "docs/automation/steps/set.md" },
+          { "slug": "automation-step-if", "title": "`if`", "file_path": "docs/automation/steps/if.md" },
+          { "slug": "automation-step-switch", "title": "`switch`", "file_path": "docs/automation/steps/switch.md" },
+          { "slug": "automation-step-each", "title": "`each`", "file_path": "docs/automation/steps/each.md" },
+          { "slug": "automation-step-repeat", "title": "`repeat`", "file_path": "docs/automation/steps/repeat.md" },
+          { "slug": "automation-step-parallel", "title": "`parallel`", "file_path": "docs/automation/steps/parallel.md" },
+          { "slug": "automation-step-emit-return-fail", "title": "`emit`, `return`, `fail`", "file_path": "docs/automation/steps/emit-return-fail.md" }
+        ]
+      },
+      {
+        "group": "Running Flows",
+        "pages": [
+          { "slug": "automation-runs", "title": "📜 Runs and Records", "file_path": "docs/automation/runs.md" },
+          { "slug": "automation-errors", "title": "🔁 Errors and Retries", "file_path": "docs/automation/errors.md" },
+          { "slug": "automation-limits", "title": "📏 Limits and Concurrency", "file_path": "docs/automation/limits.md" },
+          { "slug": "automation-permissions", "title": "🔐 Permissions and Security", "file_path": "docs/automation/permissions.md" }
+        ]
+      },
+      {
+        "group": "Methods (CEP)",
+        "pages": [
+          { "slug": "automation-methods", "title": "🔗 Automation Methods", "file_path": "docs/automation/methods/README.md" },
+          { "slug": "cep-flows-disable", "title": "flows.disable", "file_path": "docs/automation/methods/flows.disable.md" },
+          { "slug": "cep-flows-draft", "title": "flows.draft", "file_path": "docs/automation/methods/flows.draft.md" },
+          { "slug": "cep-flows-enable", "title": "flows.enable", "file_path": "docs/automation/methods/flows.enable.md" },
+          { "slug": "cep-flows-explain", "title": "flows.explain", "file_path": "docs/automation/methods/flows.explain.md" },
+          { "slug": "cep-flows-fix", "title": "flows.fix", "file_path": "docs/automation/methods/flows.fix.md" },
+          { "slug": "cep-flows-get", "title": "flows.get", "file_path": "docs/automation/methods/flows.get.md" },
+          { "slug": "cep-flows-list", "title": "flows.list", "file_path": "docs/automation/methods/flows.list.md" },
+          { "slug": "cep-flows-nodes", "title": "flows.nodes", "file_path": "docs/automation/methods/flows.nodes.md" },
+          { "slug": "cep-flows-remove", "title": "flows.remove", "file_path": "docs/automation/methods/flows.remove.md" },
+          { "slug": "cep-flows-rerun-from", "title": "flows.rerun_from", "file_path": "docs/automation/methods/flows.rerun_from.md" },
+          { "slug": "cep-flows-run", "title": "flows.run", "file_path": "docs/automation/methods/flows.run.md" },
+          { "slug": "cep-flows-run-get", "title": "flows.run_get", "file_path": "docs/automation/methods/flows.run_get.md" },
+          { "slug": "cep-flows-runs", "title": "flows.runs", "file_path": "docs/automation/methods/flows.runs.md" },
+          { "slug": "cep-flows-save", "title": "flows.save", "file_path": "docs/automation/methods/flows.save.md" },
+          { "slug": "cep-flows-schema", "title": "flows.schema", "file_path": "docs/automation/methods/flows.schema.md" },
+          { "slug": "cep-flows-validate", "title": "flows.validate", "file_path": "docs/automation/methods/flows.validate.md" }
         ]
       }
     ]
