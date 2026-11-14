@@ -1,0 +1,15 @@
+== hardware
+CPU(s):                                  8
+Model name:                              Intel(R) Xeon(R) CPU @ 2.80GHz
+               total        used        free      shared  buff/cache   available
+Mem:              31           0          30           0           0          30
+Swap:              0           0           0
+NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running.
+
+no NVIDIA GPU
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/root        96G   59G   38G  62% /
+== os
+Ubuntu 24.04.5 LTS
+ldd (Ubuntu GLIBC 2.39-0ubuntu8.9) 2.39
+== LD_LIBRARY_PATH=<unset>

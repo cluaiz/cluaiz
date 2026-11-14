@@ -1,0 +1,30 @@
+2026-11-14T15:49:22.587669Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-14T15:49:22.625286Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-14T15:49:22.625519Z  INFO ⚡ NVIDIA CUDA + cuDNN 9 runtime libraries verified.
+Starting the Cluaiz API server on http://localhost:8012 ...
+2026-11-14T15:49:22.625813Z  INFO 🔒 [Auth] Initialized local session secret at /home/Aryan/ch/session.token
+2026-11-14T15:49:22.854328Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-14T15:49:22.860455Z  INFO 🌐 Cluaiz API Server running on http://127.0.0.1:8012
+2026-11-14T15:49:23.727472Z  INFO TTS package load admission (estimates, not a reservation) model=kokoro-82m-v1.0-onnx-UINT8 gpu=true host_estimate_bytes=1251206456 device_estimate_bytes=1251206456
+2026-11-14T15:49:23.765721Z  INFO 📦 [ONNX Engine] Loading primary model from: /home/Aryan/ch/models/tts/kokoro-82m-v1.0-onnx-UINT8/model_uint8.onnx (pool_size: 1)
+2026-11-14T15:49:23.784432Z  INFO 📡 [Telemetry] 22.1GB VRAM free, 0.2GB needed: running on the GPU.
+2026-11-14T15:49:25.539533Z  WARN 241 Memcpy nodes are added to the graph main_graph for CUDAExecutionProvider. It might have negative impact on performance (including unable to run CUDA graph). Set session_options.log_severity_level=1 to see the detail logs before this message.
+2026-11-14T15:49:25.568638Z  WARN Some nodes were not assigned to the preferred execution providers which may or may not have an negative impact on performance. e.g. ORT explicitly assigns shape related ops to CPU to improve perf.
+2026-11-14T15:49:26.009139Z  WARN ScatterND with reduction=='none' only guarantees to be correct if indices are not duplicated.
+2026-11-14T15:49:26.097515Z  INFO CUDA provider registered and session created session=0
+2026-11-14T15:49:26.097737Z  INFO ✅ [ONNX Pool] 1 session(s) loaded and ready.
+2026-11-14T15:49:26.115929Z  INFO 📏 [ONNX] onnx:kokoro-82m-v1.0-onnx-UINT8:text_to_speech:cuda takes 0.45 GB on the GPU
+2026-11-14T15:49:26.190546Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-14T15:49:26.235224Z  INFO 📖 [Lexicon] Loaded 125927 words for 'en-us' from en_US.txt
+2026-11-14T15:49:26.643733Z  INFO 🔤 [G2P Router] Dictionary rewritten into the model's 'misaki' phoneme symbols
+2026-11-14T15:49:27.570814Z  INFO 📏 [ONNX] onnx:kokoro-82m-v1.0-onnx-UINT8:text_to_speech:cuda takes 0.46 GB on the GPU
+2026-11-14T15:49:27.618255Z  INFO 🎙️ [Kokoro Handler] Voice 'hf_alpha' for language 'hi'
+2026-11-14T15:49:27.621102Z  INFO 📖 [Lexicon] No pronunciation dictionary for language 'hi'
+2026-11-14T15:49:29.227628Z  WARN 453 Memcpy nodes are added to the graph main_graph for CUDAExecutionProvider. It might have negative impact on performance (including unable to run CUDA graph). Set session_options.log_severity_level=1 to see the detail logs before this message.
+2026-11-14T15:49:29.250637Z  WARN Some nodes were not assigned to the preferred execution providers which may or may not have an negative impact on performance. e.g. ORT explicitly assigns shape related ops to CPU to improve perf.
+2026-11-14T15:49:30.887265Z  WARN 89 Memcpy nodes are added to the graph main_graph for CUDAExecutionProvider. It might have negative impact on performance (including unable to run CUDA graph). Set session_options.log_severity_level=1 to see the detail logs before this message.
+2026-11-14T15:49:30.892603Z  WARN Some nodes were not assigned to the preferred execution providers which may or may not have an negative impact on performance. e.g. ORT explicitly assigns shape related ops to CPU to improve perf.
+2026-11-14T15:49:31.982274Z  WARN 80 Memcpy nodes are added to the graph main_graph for CUDAExecutionProvider. It might have negative impact on performance (including unable to run CUDA graph). Set session_options.log_severity_level=1 to see the detail logs before this message.
+2026-11-14T15:49:31.986924Z  WARN Some nodes were not assigned to the preferred execution providers which may or may not have an negative impact on performance. e.g. ORT explicitly assigns shape related ops to CPU to improve perf.
+2026-11-14T15:49:32.180750Z  INFO 📏 [ONNX] onnx:whisper-large-v3-turbo-INT8:speech_to_text:cuda takes 0.92 GB on the GPU
+2026-11-14T15:49:35.313125Z  INFO 📏 [ONNX] onnx:whisper-large-v3-turbo-INT8:speech_to_text:cuda takes 2.27 GB on the GPU

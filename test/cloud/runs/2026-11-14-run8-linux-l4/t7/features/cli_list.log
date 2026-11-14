@@ -1,0 +1,10 @@
+== cli_list
+$ /home/Aryan/.cluaiz/bin/cluaiz list
+ID                                                 CATEGORY    FORMAT        SIZE
+gemma-3-12b-it-gguf-Q4_K_M                         chat        gguf      7.59 GiB
+mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M    chat        gguf     14.17 GiB
+qwen3-4b-gguf-Q4_K_M                               chat        gguf      2.33 GiB
+qwen3-tts-12hz-1.7b-base-gguf-Q4_K_M               chat        gguf      1.59 GiB
+bge-m3-q8_0-gguf                                   embedding   gguf      0.59 GiB
+whisper-large-v3-turbo-INT8                        stt         onnx      1.41 GiB
+kokoro-82m-v1.0-onnx-UINT8                         tts         onnx      0.17 GiB

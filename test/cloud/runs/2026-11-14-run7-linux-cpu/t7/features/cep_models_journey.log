@@ -1,0 +1,10 @@
+== cep_models_journey
+$ python3 /home/Aryan/cluaiz/test/cep/wave_b/models_http_journey.py --exe /home/Aryan/.cluaiz/bin/cluaiz --seed-home /home/Aryan/ch --home /home/Aryan/jh-models --port 8015
+Traceback (most recent call last):
+  File "/home/Aryan/cluaiz/test/cep/wave_b/models_http_journey.py", line 160, in <module>
+    main()
+  File "/home/Aryan/cluaiz/test/cep/wave_b/models_http_journey.py", line 30, in main
+    validate_paths(exe, seed, home, args.port)
+  File "/home/Aryan/cluaiz/test/cep/wave_b/journey_home.py", line 40, in validate_paths
+    raise ValueError("Seed must be an existing isolated test home, not ~/.cluaiz")
+ValueError: Seed must be an existing isolated test home, not ~/.cluaiz

@@ -1,0 +1,6 @@
+== cli_plugin_list
+$ /home/Aryan/.cluaiz/bin/cluaiz plugin list
+
+  📦 [Cluaiz Tools] Installed PLUGIN:
+    No plugin installed yet. Use `cluaiz plugin install <name>`.
+

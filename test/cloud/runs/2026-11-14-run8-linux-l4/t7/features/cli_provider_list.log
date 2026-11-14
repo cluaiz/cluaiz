@@ -1,0 +1,3 @@
+== cli_provider_list
+$ /home/Aryan/.cluaiz/bin/cluaiz provider list
+No providers. Add one: cluaiz provider add myapi --url https://api.example.com/v1 --key-env MYAPI_KEY

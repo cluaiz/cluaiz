@@ -1,0 +1,18 @@
+== cli_show_qwen3-tts-12hz-1.7b-base-gguf-Q4_K_M
+$ /home/Aryan/.cluaiz/bin/cluaiz show qwen3-tts-12hz-1.7b-base-gguf-Q4_K_M
+  Model
+    id                qwen3-tts-12hz-1.7b-base-gguf-Q4_K_M
+    file              /home/Aryan/ch/models/chat/qwen3-tts-12hz-1.7b-base-gguf-Q4_K_M/Qwen3-TTS-12Hz-1.7B-Base-Q4_K_M.gguf (0.96 GiB)
+    architecture      qwen3tts
+    parameters        1.7B
+    context length    32768
+    layers            28
+    embedding         2048
+    attention heads   16 (KV 8)
+  Capabilities
+    chat template     no
+  Plan on this machine now
+    placement  Full GPU | 28 of 28 blocks on GPU, 0 in RAM | n_gpu_layers -1
+    context    16384 tokens | KV Kv16 next to its layers
+    memory     VRAM 2.84 GB | RAM 0.17 GB
+    reason     Full GPU: weights 0.79 + KV 1.75 + buffers 0.30 = 2.84 GB vs usable VRAM 21.08 GB

@@ -1,0 +1,7 @@
+== cli_status
+$ /home/Aryan/.cluaiz/bin/cluaiz status
+os        Ubuntu 24.04 (x86_64)
+cpu       Intel(R) Xeon(R) CPU @ 2.80GHz | 4 cores, 8 threads
+ram       30.38 GB free of 31.34 GB
+gpu       none (CPU only)
+backend   none, models run on the CPU

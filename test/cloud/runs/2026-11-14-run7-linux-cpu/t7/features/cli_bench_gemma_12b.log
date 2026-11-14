@@ -1,0 +1,8 @@
+== cli_bench_gemma_12b
+$ /home/Aryan/.cluaiz/bin/cluaiz bench gemma-3-12b-it-gguf-Q4_K_M -r 1
+running pp512 on CPU only (1 runs)...
+running tg128 on CPU only (1 runs)...
+| model | size | params | placement | ngl | n_ctx | test | t/s |
+| ----- | ---: | -----: | --------- | --: | ----: | ---: | --: |
+| gemma3 12B Q4_K - Medium | 6.79 GiB | 11.77 B | CPU only | 0 | 4096 | pp512 | 20.75 ± 0.00 |
+| gemma3 12B Q4_K - Medium | 6.79 GiB | 11.77 B | CPU only | 0 | 4096 | tg128 | 4.88 ± 0.00 |

@@ -1,0 +1,8 @@
+== bench_gemma-3-12b-it-gguf-Q4_K_M
+$ /home/Aryan/.cluaiz/bin/cluaiz bench gemma-3-12b-it-gguf-Q4_K_M -r 2
+running pp512 on Full GPU (2 runs)...
+running tg128 on Full GPU (2 runs)...
+| model | size | params | placement | ngl | n_ctx | test | t/s |
+| ----- | ---: | -----: | --------- | --: | ----: | ---: | --: |
+| gemma3 12B Q4_K - Medium | 6.79 GiB | 11.77 B | Full GPU | -1 | 16384 | pp512 | 1863.47 ± 89.85 |
+| gemma3 12B Q4_K - Medium | 6.79 GiB | 11.77 B | Full GPU | -1 | 16384 | tg128 | 31.35 ± 0.06 |

@@ -1,0 +1,9 @@
+/home/Aryan/.cluaiz/bin/libcublas.so.13
+/home/Aryan/.cluaiz/bin/libcublasLt.so.13
+/home/Aryan/.cluaiz/bin/libcudart.so.13
+/home/Aryan/.cluaiz/bin/libggml-base.so.0.26.0
+/home/Aryan/.cluaiz/bin/libggml-cpu-cascadelake.so
+/home/Aryan/.cluaiz/bin/libggml-cuda.so
+/home/Aryan/.cluaiz/bin/libggml.so.0.26.0
+/home/Aryan/.cluaiz/bin/libllama-common.so.0.6.0
+/home/Aryan/.cluaiz/bin/libllama.so.0.6.0

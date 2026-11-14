@@ -1,0 +1,3 @@
+== flow_logs
+$ /home/Aryan/.cluaiz/bin/cluaiz flow logs vm-hello
+run_9b92197f503e  succeeded  2026-11-14T15:43:16.253Z  3101 ms

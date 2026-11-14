@@ -1,0 +1,7 @@
+== cli_show_kokoro-82m-v1.0-onnx-UINT8
+$ /home/Aryan/.cluaiz/bin/cluaiz show kokoro-82m-v1.0-onnx-UINT8
+  Model
+    id                kokoro-82m-v1.0-onnx-UINT8
+    file              /home/Aryan/ch/models/tts/kokoro-82m-v1.0-onnx-UINT8/model_uint8.onnx
+
+  Details and plans are shown for GGUF models only.

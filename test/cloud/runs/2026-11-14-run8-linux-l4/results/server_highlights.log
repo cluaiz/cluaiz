@@ -1,0 +1,27 @@
+2026-11-14T15:25:25.113009Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+2026-11-14T15:25:26.279587Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+║   • Mode            : Full GPU
+║   • Reason          : Full GPU: weights 2.32 + KV 2.25 + buffers 0.31 = 4.88 GB vs usable VRAM 21.08 GB
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  4.88 GB | RAM  0.30 GB | weights 2.32 + KV 2.25 + buffers 0.31 = 4.88 GB vs usable VRAM 21.08 GB
+2026-11-14T15:25:30.552902Z  INFO 📏 [EngineHost] The loaded model now takes +0.05 GB over its estimate; learned for its next load
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+║   • Mode            : Full GPU
+║   • Reason          : Full GPU: weights 6.79 + KV 6.00 + buffers 0.54 = 13.33 GB vs usable VRAM 20.87 GB
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM 13.33 GB | RAM  0.77 GB | weights 6.79 + KV 6.00 + buffers 0.54 = 13.33 GB vs usable VRAM 20.87 GB
+2026-11-14T15:25:37.523338Z  INFO 📏 [EngineHost] The loaded model now takes +0.05 GB over its estimate; learned for its next load
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+║   • Mode            : Full GPU
+║   • Reason          : Full GPU: weights 12.99 + KV 2.50 + buffers 0.29 = 15.78 GB vs usable VRAM 20.86 GB
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM 15.78 GB | RAM  0.35 GB | weights 12.99 + KV 2.50 + buffers 0.29 = 15.78 GB vs usable VRAM 20.86 GB
+2026-11-14T15:25:55.246000Z  INFO CUDA/cuDNN 9 runtime libraries not yet present; spawning background provisioning thread and using CPU/DirectML for the current session drivers_dir="/home/Aryan/ch/bin"
+2026-11-14T15:26:11.318917Z  INFO 📏 [Embedding] bge-m3-q8_0-gguf took 0.32 GB on the GPU, -0.79 GB over its estimate; learned for its next load
+2026-11-14T15:26:14.816631Z  INFO 📏 [Speech] qwen3-tts-12hz-1.7b-base-gguf-Q4_K_M took 3.39 GB on the GPU, +0.24 GB over its estimate; learned for its next load
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+║   • Mode            : Full GPU
+║   • Reason          : Full GPU: weights 2.32 + KV 2.25 + buffers 0.31 = 4.88 GB vs usable VRAM 17.10 GB
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  4.88 GB | RAM  0.30 GB | weights 2.32 + KV 2.25 + buffers 0.31 = 4.88 GB vs usable VRAM 17.10 GB

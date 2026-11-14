@@ -1,0 +1,3 @@
+== cli_show_not_installed
+$ /home/Aryan/.cluaiz/bin/cluaiz show unsloth/no-such-model
+error: show: model 'unsloth/no-such-model' is not installed (see `cluaiz list`, or `cluaiz pull unsloth/no-such-model`)

@@ -1,0 +1,3 @@
+== flow_remove
+$ printf 'y\n' | /home/Aryan/.cluaiz/bin/cluaiz flow remove vm-hello
+removed vm-hello and 1 runs

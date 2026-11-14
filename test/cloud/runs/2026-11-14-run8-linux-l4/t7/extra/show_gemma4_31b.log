@@ -1,0 +1,21 @@
+== show_gemma4_31b
+$ /home/Aryan/.cluaiz/bin/cluaiz show unsloth/gemma-4-31B-it-GGUF:Q4_K_M
+  Model
+    id                gemma-4-31b-it-gguf-Q4_K_M
+    file              /home/Aryan/ch/models/chat/gemma-4-31b-it-gguf-Q4_K_M/gemma-4-31B-it-Q4_K_M.gguf (17.07 GiB)
+    architecture      gemma4
+    name              Gemma-4-31B-It
+    parameters        31B
+    context length    262144
+    layers            60
+    embedding         5376
+    attention heads   32 (KV 16)
+    sliding window    1024
+  Capabilities
+    chat template     yes
+    thinking          yes (<|channel>thought ... <channel|>)
+  Plan on this machine now
+    placement  Full GPU | 60 of 60 blocks on GPU, 0 in RAM | n_gpu_layers -1
+    context    16384 tokens | KV Kv16 next to its layers
+    memory     VRAM 19.97 GB | RAM 0.74 GB
+    reason     Full GPU: weights 17.05 + KV 2.42 + buffers 0.50 = 19.97 GB vs usable VRAM 21.08 GB

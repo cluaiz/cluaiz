@@ -1,0 +1,33 @@
+== pull_gemma4_31b
+$ /home/Aryan/.cluaiz/bin/cluaiz pull unsloth/gemma-4-31B-it-GGUF:Q4_K_M
+
+  ⚙️ [cluaiz] Initializing Kernel for 'unsloth/gemma-4-31B-it-GGUF:Q4_K_M'...
+  🔍 Scanning HuggingFace Hub for 'unsloth/gemma-4-31B-it-GGUF'...
+  ⚡ Direct Quantization Tag Matched: ':Q4_K_M' -> gemma-4-31B-it-Q4_K_M.gguf (18.66 GB)
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: gemma-4-31b-it-gguf-Q4_K_M
+    ├─ 📦 Format: GGUF
+    ├─ 🏷️  Precision / Quant Tag: Q4_K_M
+    ├─ 🧠 Architecture: gemma4
+    ├─ 📁 Category: chat
+    ├─ 🧩 Parameters: 31B
+    ├─ 💾 Total Download Size: 18.66 GB
+    └─ 📁 Files to Download (4 files):
+       ├─ ⚖️  gemma-4-31B-it-Q4_K_M.gguf
+       ├─ ⚖️  mmproj-F16.gguf
+       ├─ ⚖️  MTP/mtp-gemma-4-31B-it-Q8_0.gguf
+       └─ 📄 config.json
+   ├─ [1/4] Downloading gemma-4-31B-it-Q4_K_M.gguf
+   ├─ [2/4] Downloading mmproj-F16.gguf
+   ├─ [3/4] Downloading MTP/mtp-gemma-4-31B-it-Q8_0.gguf
+   ├─ [4/4] Downloading config.json
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  gemma-4-31b-it-gguf-Q4_K_M
+  │ 📁 Vault Path:     /home/Aryan/ch/models/chat/gemma-4-31b-it-gguf-Q4_K_M
+  │ 🚀 Run Command:   cluaiz run gemma-4-31b-it-gguf-Q4_K_M
+  └─────────────────────────────────────────────────────────────┘
+

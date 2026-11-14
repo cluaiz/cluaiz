@@ -1,0 +1,8 @@
+== bench_mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M
+$ /home/Aryan/.cluaiz/bin/cluaiz bench mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M -r 2
+running pp512 on Full GPU (2 runs)...
+running tg128 on Full GPU (2 runs)...
+| model | size | params | placement | ngl | n_ctx | test | t/s |
+| ----- | ---: | -----: | --------- | --: | ----: | ---: | --: |
+| llama 13B Q4_K - Medium | 13.34 GiB | 23.57 B | Full GPU | -1 | 16384 | pp512 | 1023.26 ± 14.10 |
+| llama 13B Q4_K - Medium | 13.34 GiB | 23.57 B | Full GPU | -1 | 16384 | tg128 | 17.34 ± 0.00 |

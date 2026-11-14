@@ -1,0 +1,8 @@
+flow: cluaiz.flow/1
+name: vm-hello
+on: [{ manual: {} }]
+steps:
+  - id: info
+    call: system.info
+  - id: answer
+    ask: "In one short sentence, say hello to the test VM."

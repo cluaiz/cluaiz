@@ -1,0 +1,58 @@
+2026-11-14T15:19:33.139902Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+Starting the Cluaiz API server on http://localhost:8012 ...
+2026-11-14T15:19:33.793122Z  INFO 🔒 [Auth] Initialized local session secret at /home/Aryan/ch/session.token
+2026-11-14T15:19:33.804660Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload not available, models run on the CPU
+2026-11-14T15:19:33.846118Z  INFO 🌐 Cluaiz API Server running on http://127.0.0.1:8012
+2026-11-14T15:19:40.930759Z  INFO 🤖 [API] No model specified (null). Falling back to default 'chat_slot' model.
+2026-11-14T15:19:40.931793Z  INFO 🔄 [API] Missing slot model auto-healed fallback to installed 'gemma-3-12b-it-gguf-Q4_K_M' ("/home/Aryan/ch/models/chat/gemma-3-12b-it-gguf-Q4_K_M/gemma-3-12b-it-Q4_K_M.gguf")
+2026-11-14T15:19:40.934275Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-14T15:19:41.606131Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : gemma-3-12b-it-gguf-Q4_K_M
+║   • Architecture    : gemma3 | 48 layers | heads 16 | KV heads 8 | head size K 256 / V 256 | dense
+║   • Weights         : file 6.80 GB | input embeddings 0.77 GB (always CPU) | output head 0.77 GB | vocab 262208
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 131072 tokens
+║   • Active context  : 4096 tokens, KV Kv16 (Auto on the CPU: 4096 tokens, KV Kv16 (the floor; RAM is not filled with context))
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : none | free 0.00 of 0.00 GB | buffer kept free 0.00 GB (0 MiB rule, model not measured on this machine yet)
+║   • RAM             : free 30.46 of 31.34 GB | Cluaiz may use 28.90 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : CPU only
+║   • llama.cpp       : n_gpu_layers = 0 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 0 on GPU, 48 in RAM (of 48)
+║   • VRAM            : 0.00 GB (weights + KV 0.00 + logits)
+║   • RAM             : 8.79 GB (incl. KV 1.50)
+║   • Reason          : CPU only: weights 6.79 + KV 1.50 + logits 0.50 = 8.79 GB in RAM
+║   • Speed           : 4.9 tokens/s generation, 20.7 tokens/s prompt, measured by cluaiz bench
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  8.79 GB | weights 6.79 + KV 1.50 + logits 0.50 = 8.79 GB in RAM | 4.9 t/s measured (prompt 20.7 t/s)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-14T15:19:41.606154Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-14T15:19:41.606265Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = 0, load_mode = 1, n_threads = 4, n_threads_batch = 4
+2026-11-14T15:19:41.606268Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch/models/chat/gemma-3-12b-it-gguf-Q4_K_M/gemma-3-12b-it-Q4_K_M.gguf | ctx: 4096 tokens
+2026-11-14T15:19:46.974431Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/home/Aryan/ch/models/chat/gemma-3-12b-it-gguf-Q4_K_M"
+2026-11-14T15:19:46.977793Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 4096 tokens
+2026-11-14T15:19:46.977802Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-14T15:19:46.977805Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 4/4
+2026-11-14T15:19:48.386037Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /home/Aryan/ch/models/chat/gemma-3-12b-it-gguf-Q4_K_M/gemma-3-12b-it-Q4_K_M.gguf
+2026-11-14T15:19:48.405276Z  INFO 🧮 [Tokens] Conversation 4796 tokens (2 messages) counted in 13.58 ms
+2026-11-14T15:19:48.405396Z  INFO ⏱️ [Preflight] 7475 ms total | model load 7455 ms | registry + template + tags 4 ms | skills + tools 13 ms | rest 0 ms
+2026-11-14T15:19:48.409790Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (17857 bytes) in 1 ms
+2026-11-14T15:19:48.433428Z  INFO Automation: the model's answer with a schema failed (request (4806 tokens) exceeds the available context size (4096 tokens), try increasing it); asking without one
+2026-11-14T15:19:48.433503Z  INFO 🤖 [API] No model specified (null). Falling back to default 'chat_slot' model.
+2026-11-14T15:19:48.434430Z  INFO 🔄 [API] Missing slot model auto-healed fallback to installed 'gemma-3-12b-it-gguf-Q4_K_M' ("/home/Aryan/ch/models/chat/gemma-3-12b-it-gguf-Q4_K_M/gemma-3-12b-it-Q4_K_M.gguf")
+2026-11-14T15:19:48.435013Z  INFO 🧮 [Tokens] Conversation 4796 tokens (2 messages) counted in 0.01 ms
+2026-11-14T15:19:48.435083Z  INFO ⏱️ [Preflight] 1 ms total | model load 0 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-14T15:19:48.436997Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (17857 bytes) in 1 ms

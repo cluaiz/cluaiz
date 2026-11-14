@@ -1,0 +1,9 @@
+== agent_task2
+$ /home/Aryan/.cluaiz/bin/cluaiz agent List the files in this folder and say how many there are.
+● list_dir /home/Aryan/t7/features/agent-work
+  ⎿ 2 entries
+The files in the folder are:
+- one.txt
+- two.txt
+
+There are 2 files in total.

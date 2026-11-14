@@ -1,0 +1,4 @@
+== flow_run
+$ /home/Aryan/.cluaiz/bin/cluaiz flow run vm-hello
+run run_9b92197f503e started
+succeeded in 3101 ms, 2 steps

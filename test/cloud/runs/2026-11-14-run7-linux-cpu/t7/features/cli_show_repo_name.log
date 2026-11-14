@@ -1,0 +1,20 @@
+== cli_show_repo_name
+$ /home/Aryan/.cluaiz/bin/cluaiz show unsloth/Qwen3-4B-GGUF
+  Model
+    id                qwen3-4b-gguf-Q4_K_M
+    file              /home/Aryan/ch/models/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf (2.33 GiB)
+    architecture      qwen3
+    name              Qwen3-4B
+    parameters        4B
+    context length    40960
+    layers            36
+    embedding         2560
+    attention heads   32 (KV 8)
+  Capabilities
+    chat template     yes
+    thinking          yes (<think> ... </think>)
+  Plan on this machine now
+    placement  CPU only | 0 of 36 blocks on GPU, 36 in RAM | n_gpu_layers 0
+    context    4096 tokens | KV Kv16 in RAM
+    memory     VRAM 0.00 GB | RAM 3.17 GB
+    reason     CPU only: weights 2.32 + KV 0.56 + logits 0.29 = 3.17 GB in RAM

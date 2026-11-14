@@ -1,0 +1,16 @@
+step	exit	seconds
+model_set_chat	0	0
+bench_qwen3-4b-gguf-Q4_K_M	0	41
+bench_gemma-3-12b-it-gguf-Q4_K_M	0	112
+bench_mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M	0	222
+tts_kokoro_en	0	4
+tts_kokoro_hi	0	1
+tts_qwen3_en	0	31
+stt_kokoro_en	0	17
+stt_qwen3_en	0	5
+flow_save	0	1
+flow_run	0	19
+flow_logs	0	1
+flow_explain	0	1
+flow_remove	0	0
+agent_task	0	163

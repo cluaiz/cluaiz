@@ -1,0 +1,94 @@
+== flow_nodes
+$ /home/Aryan/.cluaiz/bin/cluaiz flow nodes
+call  audio.languages                          Languages declared by the selected transcription model
+call  audio.run                                Run the existing speech/transcription executor; chunks are task events
+call  audio.voices                             Voice inventory and speech capabilities without loading weights
+call  chat.cancel                              Stops a running chat stream
+call  chat.import_app                          Imports the App's old chats (read-only) into the Engine's event logs, as a task
+call  chat.set_tools                           Attaches, updates or detaches a chat's tools
+call  chat.skip_reasoning                      Ends the model's reasoning; the same stream continues with the answer
+call  chat.telemetry                           How a chat's context is used by its tools, for a model
+call  chat.tools                               The tools attached to a chat, with their turns left
+call  config.get                               The saved settings: one section, or all of them
+call  context.jobs                             The idle-time scheduler's queue, counts and recent results
+call  context.preview                          The plan and tool choices a chat request would get, without generating (loads the model fo
+call  context.report                           One of a chat's last 20 context reports (kept in memory)
+call  context.reports                          Ids of a chat's kept context reports, newest last
+call  flows.explain                            A flow in plain words: what starts it, what each step does, what it may touch
+call  flows.get                                One flow: its summary, its file as text and as JSON, and its triggers' state
+call  flows.list                               The flows of the project and the user, with their state and last run
+call  flows.nodes                              Everything a step can run here: installed tools and CEP methods with their input and outpu
+call  flows.rerun_from                         Starts a new run that reuses the outputs before one step of an earlier run and runs from t
+call  flows.run                                Starts a run of a flow (a task): by hand, as a test with sample data, or without side effe
+call  flows.run_get                            One run with its trigger data and every step's record: input, output, attempts, tokens
+call  flows.runs                               Runs of one flow or of all flows, newest first, page by page
+call  flows.schema                             The JSON Schema of the flow file, for editors, applications and models
+call  flows.validate                           Checks a flow without saving it: problems with their place, the permissions it needs, the 
+call  fs.copy                                  Copies a file or directory between authorized paths
+call  fs.delete                                Deletes a file or directory; a link is removed itself, never its target
+call  fs.list                                  Lists directory entries, optionally recursively
+call  fs.mkdir                                 Creates a directory and missing parents
+call  fs.read                                  Reads a UTF-8 file, or returns base64 for binary data
+call  fs.rename                                Moves a file or directory between authorized paths; a link is moved itself
+call  fs.write                                 Writes exactly one of text or data_base64 to a file
+call  kv.clear                                 Forgets every chat's saved KV
+call  kv.delete                                Forgets one chat's saved KV
+call  kv.status                                Where saved KV caches are kept, the disk they use, and the saved chats (most recently used
+call  memory.delete                            Deletes a chat's event log, ledger, saved KV, context reports and Chat Map
+call  memory.events                            A chat's event log, oldest first
+call  memory.export                            A chat's events and cards, for an app's own store
+call  memory.grants                            Tools the user allowed for this chat, with minutes left
+call  memory.import                            Gives back a chat an app keeps itself (storage external), held in RAM only
+call  memory.index                             A chat's cards (one per visible message, no text), episodes, tasks and graph
+call  memory.item                              The exact message behind a reference (m:<position>)
+call  memory.revoke_grants                     Asks again for this chat's tools (or one tool)
+call  memory.search                            Messages of a chat that fit a query, or text from the other chats
+call  models.discard                           Deletes what a stopped models.download left (its `.part` and finished files), so the next 
+call  models.download                          Downloads and registers a model (catalog id, or Hugging Face owner/name[:QUANT]) as `cluai
+call  models.embedding_room                    Where each embedding model would run beside the chat model (GPU, CPU or no room) on today'
+call  models.inspect                           Raw GGUF metadata and tensor table of an installed model
+call  models.list                              Installed registry entries, optionally filtered by category
+call  models.load                              Loads an installed GGUF model using the existing Engine host
+call  models.remove                            Unloads the selected model if active and removes its installed package
+call  notes.confirm                            A proposed note becomes confirmed. A proposed change does its work: it replaces the note i
+call  notes.create                             A note written by the user, confirmed at once. It replaces only the note named in `replace
+call  notes.invalidate                         Forgets a note: it leaves the notes (kept out of sight for `notes_history_days`, when set)
+call  notes.list                               Notes, newest last
+call  notes.move                               A confirmed workspace note, saved before notes of a project became its `.agents/memory/` f
+call  notes.pin                                Pins or unpins a note; pinned notes go into the system prompt of new chats
+call  prompts.get                              One prompt and the text in use
+call  prompts.history                          The texts a prompt had before, newest first (the last 20)
+call  prompts.list                             Every prompt the Engine sends to a model: id, description, variables, the text in use, and
+call  prompts.reset                            Goes back to the default text; the user's text is kept in the history
+call  prompts.set                              Replaces a prompt's text for every later request; the text it replaces is kept in its hist
+call  rpc.discover                             The OpenRPC description of the methods you may call
+call  storage.clean                            Removes cached temporary media
+call  storage.status                           Temporary media storage usage
+call  system.info                              Engine name and version, CEP version, hardware, and the LAN address
+call  system.live                              Current process, memory, CPU and GPU telemetry
+call  system.plan                              Plans an installed model without loading its weights or changing saved settings
+call  system.ps                                Loaded model execution plan and hardware snapshot
+call  system.update_check                      Whether a newer Cluaiz release is published: this Engine's version and the newest release 
+call  tasks.cancel                             Cancels a running task
+call  tasks.get                                A task's status, progress and new events
+call  tasks.list                               Your tasks that have not expired, newest first
+call  tasks.result                             A task's final result or error; waits up to wait_ms
+call  tools.cache                              Actual cache entries and byte counts for installed tools
+call  tools.call                               Execute an installed tool using the existing ToolsEngine
+call  tools.clear_cache                        Remove cached files without uninstalling tools
+call  tools.discover                           Dry-run the existing installed-tool matcher
+call  tools.files                              Files inside a tool package, with cache counts
+call  tools.get_settings                       Read installed tool settings, and the values (such as API keys) it asks the user for, with
+call  tools.install                            Install a registry tool and the tools it depends on; what the user's mode leaves open is a
+call  tools.list                               Installed tools with settings and known function schemas
+call  tools.read_file                          Read a UTF-8 file inside an installed tool package
+call  tools.remove                             Remove an installed tool and update its registry
+call  tools.set_settings                       Validate and save a tool settings patch
+call  tools.write_file                         Write SKILL.md or package.json in an installed tool package
+call  workspace.forget                         Deletes a fact of the project's memory (`.agents/memory/<name>.md`) the user wants gone
+call  workspace.get                            Returns the current workspace directory
+call  workspace.index                          A project's agent files: AGENTS.md instructions, rules with their trigger, workflows, skil
+call  workspace.item                           The text of one rule, workflow, skill, memory fact or instruction file of a project, witho
+call  workspace.memory                         A project's memory facts (`.agents/memory/`), live and replaced, with their text
+call  workspace.remember                       Saves a fact the user confirmed in the project's memory (`.agents/memory/<name>.md`). With
+call  workspace.set                            Changes the workspace to an existing directory

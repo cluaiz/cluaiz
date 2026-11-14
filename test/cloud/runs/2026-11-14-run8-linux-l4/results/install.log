@@ -1,0 +1,102 @@
+== install
+
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣠⣶⣾⣾⣿⣿⣿⣿⣿⣿⣿⣿⣶⣦⣦⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣺⣿⣿⣿⡿⠛⠋⠈⠀⠀⠀⠀⠈⠉⠋⠀⠀⠀⠀⠀⠈⠋⠻⣿⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⣿⣿⡟⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣰⣿⣿⡏⠀⠀⠀⠀⠀⣠⣠⡀⠀⠀⠀⠀⠀⠀⠀⣀⣠⣀⠀⠀⠀⠀⠀⠸⣿⣿⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠠⣾⣿⣿⡂⠀⠀⠀⠀⣺⣿⣿⣷⡂⠀⠀⠀⠀⠀⠀⣾⣿⣿⡆⠀⠀⠀⠀⠀⣻⣿⣿⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⣿⣿⡏⠀⠀⠀⠀⠀⢺⣿⣿⣿⡂⠀⠀⠀⠀⠀⠈⣿⣿⣿⡏⠀⠀⠀⠀⠀⣺⣿⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣾⣿⣿⡯⠀⠀⠀⠀⠀⠈⠻⠻⠋⢠⣶⣶⣦⣶⣶⡆⠘⠻⠛⠂⠀⠀⠀⠀⠀⣺⣿⣿⣿⡂⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣺⣿⣿⣿⣿⡂⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⡿⣿⡿⠛⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣿⣿⣿⣿⣧⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣰⣿⣿⣿⣿⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣦⣢⣠⣀⣀⡀⡀⡀⡀⡀⣀⣀⣀⣠⣠⣦⣶⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡂⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠛⠻⡿⠿⡿⠛⠋⢻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠛⠻⡿⠿⡿⠿⠋⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠋⠀⠀⠈⠙⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⢿⣿⣿⣿⣿⣿⣿⡿⠂⠀⠀⠀⠀⠀⠈⠻⣿⣿⣿⣿⣿⣿⣿⡋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠛⠻⠻⠛⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠛⠻⠻⠛⠋⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+
+           ██████╗██╗     ██╗   ██╗ █████╗ ██╗███████╗
+          ██╔════╝██║     ██║   ██║██╔══██╗██║╚══███╔╝
+          ██║     ██║     ██║   ██║███████║██║  ███╔╝ 
+          ██║     ██║     ██║   ██║██╔══██║██║ ███╔╝  
+          ╚██████╗███████╗╚██████╔╝██║  ██║██║███████╗
+           ╚═════╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝╚══════╝
+
+  Installing cluaiz...
+
+
+  [1/7] Checking this system
+  [DONE] Platform linux-x64, requested GPU: cuda
+
+  [2/7] Finding the release
+  [DONE] Release v0.1.0 (linux-x64, GPU: cuda)
+
+  [3/7] Reading the package manifest
+  SHA256SUMS.txt
+  ⠋ [--------------------] --% | 0.0 B / unknown
+  Left unknown | 0.0 B/s | File ETA --
+    [####################] 100% | 1.8 KiB / 1.8 KiB
+  Left 0.0 B | 0.0 B/s | File ETA ~--
+
+  [4/7] Downloading packages (0/4 verified)
+  Package 1/4: cluaiz-0.1.0-linux-x64.tar.gz
+  cluaiz-0.1.0-linux-x64.tar.gz
+  ⠋ [--------------------] --% | 0.0 B / unknown
+  Left unknown | 0.0 B/s | File ETA --
+    [####################] 100% | 48.2 MiB / 48.2 MiB
+  Left 0.0 B | 48.2 MiB/s | File ETA ~0s
+  Checking SHA-256: cluaiz-0.1.0-linux-x64.tar.gz
+  [DONE] cluaiz-0.1.0-linux-x64.tar.gz (checksum OK; 1/4 verified)
+  Package 2/4: cluaiz-0.1.0-linux-x64-llama-cuda13.tar.gz
+  cluaiz-0.1.0-linux-x64-llama-cuda13.tar.gz
+  ⠋ [--------------------] --% | 0.0 B / unknown
+  Left unknown | 0.0 B/s | File ETA --
+    [####################] 100% | 128.0 MiB / 128.0 MiB
+  Left 0.0 B | 64.0 MiB/s | File ETA ~0s
+  Checking SHA-256: cluaiz-0.1.0-linux-x64-llama-cuda13.tar.gz
+  [DONE] cluaiz-0.1.0-linux-x64-llama-cuda13.tar.gz (checksum OK; 2/4 verified)
+  Package 3/4: cluaiz-0.1.0-linux-x64-cudart13.tar.gz
+  cluaiz-0.1.0-linux-x64-cudart13.tar.gz
+  ⠋ [--------------------] --% | 0.0 B / unknown
+  Left unknown | 0.0 B/s | File ETA --
+  ⠧ [#########-----------]  49% | 207.6 MiB / 419.8 MiB
+  Left 212.2 MiB | 41.5 MiB/s | File ETA ~6s
+  ⠧ [################----]  80% | 338.6 MiB / 419.8 MiB
+  Left 81.2 MiB | 33.9 MiB/s | File ETA ~3s
+  ⠧ [##################--]  94% | 397.4 MiB / 419.8 MiB
+  Left 22.5 MiB | 26.5 MiB/s | File ETA ~1s
+    [####################] 100% | 419.8 MiB / 419.8 MiB
+  Left 0.0 B | 26.2 MiB/s | File ETA ~0s
+  Checking SHA-256: cluaiz-0.1.0-linux-x64-cudart13.tar.gz
+  [DONE] cluaiz-0.1.0-linux-x64-cudart13.tar.gz (checksum OK; 3/4 verified)
+  Package 4/4: cluaiz-0.1.0-linux-x64-onnx-cuda13.tar.gz
+  cluaiz-0.1.0-linux-x64-onnx-cuda13.tar.gz
+  ⠋ [--------------------] --% | 0.0 B / unknown
+  Left unknown | 0.0 B/s | File ETA --
+    [####################] 100% | 220.5 MiB / 220.5 MiB
+  Left 0.0 B | 55.1 MiB/s | File ETA ~0s
+  Checking SHA-256: cluaiz-0.1.0-linux-x64-onnx-cuda13.tar.gz
+  [DONE] cluaiz-0.1.0-linux-x64-onnx-cuda13.tar.gz (checksum OK; 4/4 verified)
+
+  [5/7] Installing into /home/Aryan/.cluaiz/bin
+  Extracting 1/4: cluaiz-0.1.0-linux-x64.tar.gz
+  Extracting 2/4: cluaiz-0.1.0-linux-x64-llama-cuda13.tar.gz
+  Extracting 3/4: cluaiz-0.1.0-linux-x64-cudart13.tar.gz
+  Extracting 4/4: cluaiz-0.1.0-linux-x64-onnx-cuda13.tar.gz
+  [DONE] Installed into /home/Aryan/.cluaiz/bin
+
+  [6/7] Preparing runtime and PATH
+  Open a new terminal (or run: export PATH="/home/Aryan/.cluaiz/bin:$PATH") to use 'cluaiz'
+  [DONE] Runtime and PATH ready
+
+  [7/7] Verifying the installed Engine
+cluaiz 0.1.0 (pre-release)
+
+  [DONE] Cluaiz is installed (7/7 stages complete).
+  Next: cluaiz pull <model>   then   cluaiz run <model>
+
+install took 43s

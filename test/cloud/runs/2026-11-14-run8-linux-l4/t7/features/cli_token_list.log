@@ -1,0 +1,6 @@
+== cli_token_list
+$ /home/Aryan/.cluaiz/bin/cluaiz token list
+
+  🔐 Configured API Tokens (0/5):
+    No API tokens configured. Run 'cluaiz token create' to add one.
+

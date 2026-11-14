@@ -1,0 +1,15 @@
+== flow_save2
+$ /home/Aryan/.cluaiz/bin/cluaiz flow save /home/Aryan/t7/features/hello.flow.yaml
+This flow needs these permissions:
+  {
+  "methods": [
+    "system.info"
+  ],
+  "models": [
+    "*"
+  ],
+  "scopes": [
+    "read"
+  ]
+}
+Allow them? [y/N] error: flow: not saved: the permissions were not allowed
