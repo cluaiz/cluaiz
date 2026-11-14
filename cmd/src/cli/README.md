@@ -82,7 +82,9 @@ flowchart LR
 - `list.rs`, `show.rs`, `rm.rs`, `models.rs`: installed models from the registry; `show` reads
   the GGUF and prints the plan the model would get now (nothing is loaded; `-v` adds every key
   and the planner banner); `rm` deletes the folder and the registry entry; `models.rs` maps a
-  name to a weight file (path or installed id, the API's lookup).
+  name to a weight file (path or installed id, the API's lookup); `bench`, `show` and the chat
+  commands also take the repository name `pull` takes (`owner/repo`, `owner/repo:QUANT`), read
+  from the registry.
 - `status.rs`: the hardware the planner sees, with live free memory.
 - `bench.rs`: llama-bench's test on the Engine: `pp N` and `tg N`, repeated, mean ± standard
   deviation; speeds are kept per placement (`cluaiz_plan::speed`), and `--placements` tests every

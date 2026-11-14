@@ -29,9 +29,47 @@ pub fn lookup(name: &str) -> Lookup {
     }
 }
 
-/// Like `lookup`, but only installed models count; the error says what to do instead.
+/// An installed model by the repository name `pull` and `run` take: `owner/repo`, or
+/// `owner/repo:QUANT` for one variant. Read from the registry only, with no network.
+fn lookup_repository(name: &str) -> Lookup {
+    let (repo, quant) = match name.trim().rsplit_once(':') {
+        Some((repo, quant)) if repo.contains('/') => (repo, Some(quant)),
+        _ => (name.trim(), None),
+    };
+    if !repo.contains('/') {
+        return Lookup::NotInstalled;
+    }
+    let norm = |s: &str| s.to_lowercase().replace(['-', '_', '.', ' '], "");
+    let registry = InstalledStateRegistry::load();
+    let mut found: Vec<_> = registry
+        .installed_models
+        .values()
+        .filter(|entry| entry.huggingface_repo.eq_ignore_ascii_case(repo))
+        .filter(|entry| quant.is_none_or(|quant| norm(&entry.id).ends_with(&norm(quant))))
+        .filter_map(|entry| entry.primary_path().map(|path| (path, entry.id.clone())))
+        .collect();
+    match found.len() {
+        0 => Lookup::NotInstalled,
+        1 => {
+            let (path, id) = found.remove(0);
+            Lookup::Found(path, id)
+        }
+        _ => {
+            let mut ids: Vec<String> = found.into_iter().map(|(_, id)| id).collect();
+            ids.sort();
+            Lookup::Ambiguous(ids)
+        }
+    }
+}
+
+/// Like `lookup`, but only installed models count, also by repository name; the error says what to
+/// do instead.
 pub fn resolve_installed(name: &str) -> color_eyre::Result<(PathBuf, String)> {
-    match lookup(name) {
+    let found = match lookup(name) {
+        Lookup::NotInstalled => lookup_repository(name),
+        other => other,
+    };
+    match found {
         Lookup::Found(path, id) => Ok((path, id)),
         Lookup::Ambiguous(ids) => Err(color_eyre::eyre::eyre!(
             "'{}' matches several installed models: {}. Use the full id.", name, ids.join(", ")
