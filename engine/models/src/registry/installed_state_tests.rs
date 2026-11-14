@@ -171,3 +171,20 @@ fn test_selected_lookup_reads_new_registry_without_refreshing_unrelated_packages
     std::fs::remove_file(primary).unwrap();
     assert!(InstalledStateRegistry::find_in(&changed, "changed-id").is_none());
 }
+
+#[test]
+fn a_registry_that_cannot_be_read_is_kept_aside_not_overwritten() {
+    let dir = tempfile::tempdir().unwrap();
+    let json_path = dir.path().join("model_registry.json");
+    std::fs::write(&json_path, b"{ \"installed_models\": { broken").unwrap();
+    let snapshot = InstalledStateRegistry::read_snapshot_at(&json_path);
+    assert!(snapshot.installed_models.is_empty());
+    assert!(!json_path.exists(), "the broken file is moved away");
+    let kept: Vec<_> = std::fs::read_dir(dir.path())
+        .unwrap()
+        .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+        .filter(|name| name.starts_with("model_registry.json.broken-"))
+        .collect();
+    assert_eq!(kept.len(), 1);
+    assert_eq!(std::fs::read(dir.path().join(&kept[0])).unwrap(), b"{ \"installed_models\": { broken");
+}

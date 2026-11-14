@@ -19,6 +19,24 @@ struct Snapshot {
 }
 
 static SNAPSHOT: LazyLock<Mutex<Option<Snapshot>>> = LazyLock::new(|| Mutex::new(None));
+/// The broken registry file set aside in this process (see `ToolsRegistry::recovered_from`)
+static RECOVERED: LazyLock<Mutex<Option<PathBuf>>> = LazyLock::new(|| Mutex::new(None));
+
+/// Moves a file that could not be read to `<name>.broken-<unix seconds>` beside it
+fn set_aside_broken(path: &Path) -> Option<PathBuf> {
+    let seconds = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+    let name = path.file_name()?.to_string_lossy().into_owned();
+    let kept = path.with_file_name(format!("{name}.broken-{seconds}"));
+    std::fs::rename(path, &kept).ok().map(|_| kept)
+}
+
+/// Writes a file whole: a temporary file beside it, then a rename, so a crash never leaves half
+/// of it
+fn write_whole(path: &Path, text: &str) -> std::io::Result<()> {
+    let temporary = path.with_extension("json.tmp");
+    std::fs::write(&temporary, text)?;
+    std::fs::rename(&temporary, path)
+}
 /// Increases whenever the snapshot is replaced, so caches built from it know to rebuild
 static GENERATION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 /// How often the disk is checked for manual edits (installs and setting changes through the
@@ -119,9 +137,29 @@ impl ToolsRegistry {
         let env = EnvironmentManager::current();
 
         if json_path.exists() {
-            if let Ok(content) = std::fs::read_to_string(&json_path) {
-                if let Ok(mut reg) = serde_json::from_str::<ToolsRegistry>(&content) {
+            let parsed = std::fs::read_to_string(&json_path)
+                .map_err(|error| error.to_string())
+                .and_then(|content| serde_json::from_str::<ToolsRegistry>(&content).map_err(|error| error.to_string()));
+            match parsed {
+                Ok(mut reg) => {
                     let _ = reg.sync_with_filesystem();
+                    return Ok(reg);
+                }
+                // A registry that cannot be read is kept aside, never overwritten, and the
+                // registry is built again from the tool folders: each tool's own settings
+                // (security and execution mode, trust, turns) start from their defaults, and
+                // the legacy YAML is not read, since it would allow every plugin without asking
+                Err(error) => {
+                    let kept = set_aside_broken(&json_path);
+                    tracing::warn!(
+                        "⚠️ [ToolsRegistry] {} could not be read ({error}); kept as {} and built again from the tool folders. Tools' own settings are back to their defaults",
+                        json_path.display(),
+                        kept.as_ref().map(|p| p.display().to_string()).unwrap_or_else(|| "nothing (it could not be moved)".into())
+                    );
+                    *RECOVERED.lock().unwrap_or_else(|e| e.into_inner()) = kept.or(Some(json_path.clone()));
+                    let mut reg = ToolsRegistry::default();
+                    let _ = reg.sync_with_filesystem();
+                    let _ = reg.save();
                     return Ok(reg);
                 }
             }
@@ -296,9 +334,15 @@ impl ToolsRegistry {
         updated.last_updated = chrono::Utc::now().to_rfc3339();
 
         let json_str = serde_json::to_string_pretty(&updated)?;
-        std::fs::write(&json_path, json_str)?;
+        write_whole(&json_path, &json_str)?;
         store_snapshot(&updated);
         Ok(())
+    }
+
+    /// Where the registry file that could not be read was kept, when that happened in this
+    /// process: the tools' own settings were reset to their defaults
+    pub fn recovered_from() -> Option<PathBuf> {
+        RECOVERED.lock().unwrap_or_else(|e| e.into_inner()).clone()
     }
 
     /// Returns a specific tool entry by ID
@@ -364,5 +408,28 @@ impl ToolsRegistry {
         } else {
             anyhow::bail!("Tool '{}' not found in registry", id)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_broken_file_is_kept_aside_and_a_save_is_whole() {
+        let dir = std::env::temp_dir().join(format!("cluaiz-registry-broken-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("tools_registry.json");
+        std::fs::write(&path, "{ not json").unwrap();
+        let kept = set_aside_broken(&path).expect("moved");
+        assert!(!path.exists());
+        assert!(kept.file_name().unwrap().to_string_lossy().starts_with("tools_registry.json.broken-"));
+        assert_eq!(std::fs::read_to_string(&kept).unwrap(), "{ not json");
+        write_whole(&path, "{}").unwrap();
+        write_whole(&path, "{\"a\": 1}").unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "{\"a\": 1}");
+        assert!(!dir.join("tools_registry.json.tmp").exists(), "no temporary file is left");
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }
