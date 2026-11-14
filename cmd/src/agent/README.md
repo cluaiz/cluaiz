@@ -50,6 +50,12 @@ brings the message history, the file and command tools, approvals and the termin
 | `commands.rs` | One command name/description list for help and slash suggestions. |
 | `completion.rs` | Bounded passive filename suggestions inside the canonical workspace. No file-content reads. |
 | `validation.rs` | Rejects incomplete/invalid calls before canonical history or execution. |
+| `rules.rs` | `--allowed-tools` / `--disallowed-tools` and the agent settings files (`allow`, `deny`, `mode`): a rule is a tool name with an optional pattern, `run_command(git *)`, `edit_file(src/*)`. A denied call is refused before anything asks; an allowed one runs without asking. |
+| `skills.rs` | The user's and the project's skills (Agent Skills format, a folder with `SKILL.md`), found by `cluaiz_agents::workspace` nearest first. Only each skill's name and description go into the prompt; the model reads the one it needs with `read_item`. |
+| `flows.rs` | Saved flows with a `tool` trigger as tools of the agent (`flow.<name>`). Offered only while a server answers, since Automation runs there; a call runs `flows.run` as the owner, after the agent's own question when the flow asks for one, and waits for its outputs. |
+| `sessions.rs` | Saved agent conversations: one JSON file per session under `~/.cluaiz/sessions/<folder>-<hash>/<id>.json`, rewritten after every request, for `--continue` / `--resume`. Only text is kept; an attachment is saved as a short note. |
+| `checkpoints.rs` | What each request changed: the first content of every file a request writes or edits is kept (as bytes), so the request's end shows the changed files (`+3 −1`, `new`), `/undo` puts back the last request's files and `/rewind` goes back to before an earlier request. Saved next to the conversation (`<session>.checkpoints/<n>/`), so it survives closing the agent. Files changed by commands are not tracked. |
+| `line_diff.rs` | The line diff shown for a file change: `- ` removed, `+ ` added, two unchanged lines around each change, the rest folded into one row. |
 
 Presentation primitives belong to `terminal/`; model loading stays in `chat/` and the Engine.
 No HTTP request is needed for the local CLI path. There is one EngineHost for this process.

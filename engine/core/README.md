@@ -35,6 +35,10 @@ graph TD
 | [`media_limits.rs`](src/media_limits.rs) | Single definition of media byte ceilings, errors and default resource guards. |
 | [`processing.rs`](src/processing.rs) | Optional request-scoped backend/transport-neutral stage observations, real work counts, cancellation and source-to-prepared attachment identity. Retains a terminal snapshot for bounded transports; does not infer percentages. |
 | [`prompts.rs`](src/prompts.rs) | Managed prompts: every instruction the Engine itself sends to a model has an id and a default file in [`prompts/`](prompts/) (embedded at build time). `<CLUAIZ_HOME>/prompts/<id>.md` replaces one; replaced texts are kept in `prompts/history/<id>/` (last 20). `{{variable}}` is filled for the variables a prompt declares. CEP: `prompts.*`. |
+| [`providers.rs`](src/providers.rs) | `config/providers.json`: `Providers`, `Provider`, `ProviderModel`, `Compat`, `Target` (`<provider>/<model>`), `DEFAULT_CONTEXT` (32,768). A key comes from the environment variable in `api_key_env` (also read from `config/.env`), or `api_key` in the file; `redact` takes a key out of any message. The calls themselves are in `api/src/providers/`. |
+| [`tool_calls.rs`](src/tool_calls.rs) | The one form of a tool call the Engine keeps in conversations and ledgers: a `<tool_call>` block with `{"name", "arguments"}` JSON (`OPEN`, `CLOSE`, `Call`). Builds the inline tool block for models without native tools (`tools_block`, `inline_tools`), converts calls to and from OpenAI messages for models whose template renders tools, and carries what a provider sent with a call (`PROVIDER_DATA`, such as Gemini's thought signature). |
+| [`live.rs`](src/live.rs) | What the running generation is doing, for a terminal that shows progress while nothing is printed: tokens so far (`start`, `token`, `tokens`) and the tool call being written (`set_call`, `call`). |
+| [`model_assets.rs`](src/model_assets.rs) (+ `model_assets/`) | Required files of explicitly supported export manifests (`AssetContract`, `PackageAssets`) and `safe_asset_path`, the shared lexical path check. Metadata evidence, not proof that a graph runs. |
 | [`settings_tests.rs`](src/settings_tests.rs) | Existing settings tests, relocated without changing their visibility or production behavior. |
 
 ## Decoded media contract
@@ -54,3 +58,7 @@ graph TD
 - **Conversion:** `ChatEnvelope::try_map_messages` awaits one message transformation and retains samplers, thinking settings, budget message, template kwargs, grammar, response format and optional tool schemas. `tools: None` is omitted from legacy prompt JSON. Typed-to-text model preparation retains provided schemas too. Any preparation error is returned; no empty/default success envelope is substituted.
 - **Accounting:** `PreparedPart::retained_bytes` counts text allocation capacity or decoded RGB/PCM bytes; `modality` reuses `contracts::Modality`. This is content accounting, not a media token estimate or total-process memory limit.
 - **Execution boundary:** `cluaiz_media::request::prepare_chat` consumes these contracts. Chat API image/audio parts now reach the paired native runtime through this typed form. CLI legacy text remains supported; typed ONNX/document/video delivery and broader acceptance remain separate phases.
+
+## Build step and version
+
+[`build.rs`](build.rs): the Engine's version has one home, the root `Cargo.toml` (`[workspace.package] version` and `[workspace.metadata.cluaiz] channel`, `pre-release` or `stable`). The build step reads it (or `CLUAIZ_RELEASE_VERSION` in a release build) into `cluaiz_core::VERSION` and `cluaiz_core::CHANNEL`, which `cluaiz --version`, `system.info`, `/health`, the update check and user agents read.

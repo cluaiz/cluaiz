@@ -58,3 +58,7 @@ STT input preparation directly imports shared source/audio/resample functions. O
 - **Supported output:** one pooled rank-two vector, or text rank-three sequence with package-declared CLS or attention-mask mean pooling. Ambiguous outputs, unsupported inputs/dtypes and invalid vector norms return errors. No empty synthetic image/text tensors satisfy another graph branch.
 - **Integration:** the runtime invokes computation on its blocking worker; API `/v1/embeddings` translates text/image requests and reuses existing file authorization. This produces retrieval embeddings, not image Q&A/OCR prose.
 - **Scope:** all-family, all-language, quality-ranking, GPU/Linux/macOS, peak allocation and simultaneous chat/audio planning are not certified by these contracts. Installed packages missing processor/tokenizer/pooling assets need those genuine assets before their route can succeed.
+
+## Build step
+
+[`build.rs`](build.rs) embeds every per-language JSON file of the TTS data folders (letter-to-sound rules in `src/audio/tts/data/g2p_rules/`, romanized-writing rules in `transliteration/`, number words in `numbers/`) as generated constants (`RULE_FILES`, `TRANSLITERATION_FILES`, `NUMBER_FILES`). Adding a language is adding a file; no code lists them.

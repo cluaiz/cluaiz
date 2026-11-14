@@ -142,3 +142,7 @@ Every file per OS and GPU is listed in [`docs/deployments/install-layout.md`](..
 | **OS Error 32 / Permission Denied** | A running engine daemon holds a file lock on `~/.cluaiz/bin/cluaiz.exe`. | The sync pipeline automatically executes the atomic rename protocol (`copy_with_rename` creates a temporary `.old` file, copies the new binary, and unlinks the old file). |
 | **CUDA Driver Not Found** | System lacks NVIDIA GPU or CUDA Toolkit during compilation. | The builder gracefully falls back to CPU SIMD and DirectML targets without breaking the core build. |
 | **Missing Artifact during Sync** | Build step was skipped or failed prior to executing `dev-sync`. | Run `cargo run -p cluaiz-builder -- all --profile release` to compile missing targets before syncing. |
+
+## `media_assets`
+
+[`src/media_assets.rs`](src/media_assets.rs): packages existing native media assets, checking them with the runtime's own manifest verifier, so a package the builder makes is one the Engine accepts.

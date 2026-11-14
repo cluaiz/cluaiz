@@ -162,3 +162,7 @@ do not constitute a full Engine/CLI native build or API regression pass.
   when reading older output the logical source line is retained, not an exact byte/pixel position.
 - Native clipboard access belongs to the CMD client. Selection/export UI, persistent theme/history,
   daemon attach, installed MCP/plugin/skill integration and background task views remain later milestones.
+
+## Mascot
+
+[`src/mascot.rs`](src/mascot.rs): the Cluaiz mascot's text art (`ART`, `ART_BLINK`), the wordmark, their colours, and the short animated banner every interactive command prints at start; the agent's intro draws the same art in its screen.

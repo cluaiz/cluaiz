@@ -368,3 +368,15 @@ flowchart LR
     D["Successful current retained task"] --> B
     B --> E["Declared and validated available inputs separately"]
 ```
+
+## Source files
+
+| File | What it does |
+|---|---|
+| [`src/boot.rs`](src/boot.rs) | One start for every way the Engine runs: the HTTP / native-pipe daemon (`boot`) and the in-process C library (`boot_in_process`, for `cep_call`) |
+| [`src/state.rs`](src/state.rs) | `AppState`: the `EngineHost`, the open workspace folder, the session token for local clients, `permission.json` in RAM, and the CEP engine |
+| [`src/routes.rs`](src/routes.rs) | The HTTP routes: the OpenAI / Ollama compatible routes, `/health`, `/v1/ingest`, and CEP (`/v1/cep`, `/mcp`); request body limits (`inline_body_bytes`) |
+| [`src/update.rs`](src/update.rs) | Is a newer release out: one request to the GitHub releases list of `cluaiz/cluaiz` (pre-releases included), the same source the installers read; used by `cluaiz self update` and `system.update_check` |
+| [`src/url_resolver.rs`](src/url_resolver.rs) | A URL (http, `data:` base64, or file) as a local temporary file for attachments |
+| [`src/utils/slots.rs`](src/utils/slots.rs) | The model path of a slot (the active chat or vector model in `permission.json`) or of a model id, and capability notes in the log before a request |
+| [`src/handlers/`](src/handlers/README.md), [`src/cep/`](src/cep/README.md), [`src/providers/`](src/providers/README.md), [`src/native/`](src/native/README.md) | Each has its own README |

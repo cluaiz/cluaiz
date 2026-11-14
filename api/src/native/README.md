@@ -36,3 +36,5 @@ endpoint contracts; transport support does not add raw-audio routes or models.
 `api/tests/native_contract.rs` exercises OS streams without loading models.
 Windows tests execute on Windows; Unix permission/cleanup cases require a Unix
 run. No platform is declared tested solely from the other platform's results.
+
+- [`connection.rs`](connection.rs): serves one HTTP/1 connection on the native pipe or socket with the same router as TCP (`hyper` `http1`), so a client on the pipe gets the same routes; request headers must arrive within 10 s, and a closing server gives an open request 2 s to finish.

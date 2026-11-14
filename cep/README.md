@@ -54,3 +54,7 @@ Rules for every method:
 - The params struct has `#[serde(deny_unknown_fields)]`.
 - The method has one scope and a real example.
 - If it is not built yet, it returns `CepError::not_implemented`, never a fake success.
+
+## Engine events
+
+[`src/events.rs`](src/events.rs): short notices that something happened (a task ended, an approval was asked or answered, a model was downloaded, a tool was installed). `publish(name, data)` sends one; `subscribe()` gives a receiver. Layers outside the Engine subscribe (Automation starts flows on them). Events carry ids and names, never content (no chat text, no file data); with nobody listening a notice is dropped.

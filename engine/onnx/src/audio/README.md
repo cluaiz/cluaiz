@@ -120,8 +120,25 @@ Decimal/grouping/time separators between digits, configured abbreviations, inter
   - **Logic:** Native WAV encoder constructing standard PCM RIFF headers from float32 audio buffers.
 - [`neural_vocoder.rs`](./tts/neural_vocoder.rs):
   - **Logic:** Executes HiFi-GAN / Vocos neural vocoder ONNX graphs converting mel-spectrogram matrices into PCM audio waveforms.
+- [`capabilities.rs`](./tts/capabilities.rs):
+  - **Logic:** `discover(dir)` reports what a TTS model folder offers without opening an inference session: its languages, `language_control` (`explicit`: the caller picks a language; `auto`: taken from the text) and how voices come (`preset`, `embedded`, `generated`, `reference_source`, `reference_profile`). `validate_language_control` refuses a language request a model cannot honour. Read through `cluaiz_runtime` (`onnx_host.rs` `tts_capabilities`, `speech_host.rs`), which `audio.voices` / `audio.languages` call.
+- [`languages.rs`](./tts/languages.rs):
+  - **Logic:** The text's language from its script (`script_language`), a voice's language from its file name (`data/languages.json`), the voices in a model folder (`list_voices`) and the voice to use for a language (`voice_for_language`).
+- [`romanized.rs`](./tts/romanized.rs):
+  - **Logic:** A language written in English letters (Hindi as Hinglish) is rewritten into its own script before G2P, so its own rules and voice say it. One file per language in `data/transliteration/`: the standard letter chart plus `spellings` for words people write differently (hamara → हमारा). Syllable languages use a `syllables` table (Pinyin → Zhuyin, Romaji → kana).
+  - **Flow:** Decided per sentence: known words count fully, non-English words partly; when that evidence outweighs the sentence's English words, its native words are rewritten and real English words stay English ("Large Language Model"). Otherwise the sentence is left as it is.
+  - **Why:** English rules on Hinglish sound wrong; rewriting everything would break English terms. The decision is data and counts, with no word list in Rust.
+- [`numbers.rs`](./tts/numbers.rs) + [`rbnf.rs`](./tts/rbnf.rs):
+  - **Logic:** Numbers said as words before G2P ("₹300" → "तीन सौ रुपये", "2026" → "two thousand twenty-six"). One file per language in `data/numbers/` (embedded at build time); a language without one uses English. `rbnf.rs` runs CLDR rule-based number format rules (the data ICU and Android use): `←←` / `→→` quotient and remainder, other rule sets, optional `[…]` parts and plural forms.
+- [`ipa_dictionary.rs`](./tts/ipa_dictionary.rs):
+  - **Logic:** Word → IPA pronunciation dictionaries for phoneme models. Never shipped: the first time a language is needed, its file is downloaded from the source at the commit pinned in `data/lexicon_sources.json`, checked against size and SHA-256, and compiled to `<cluaiz home>/data/lexicons/<file>-<sha>.bin`; later loads need no network. A language whose license does not allow use is `enabled: false` and never fetched.
+- [`phoneme_sets.rs`](./tts/phoneme_sets.rs):
+  - **Logic:** Dictionary IPA → the symbols a model was trained on (Kokoro speaks misaki symbols, Piper espeak-ng IPA with stress on the vowel). `data/phoneme_sets.json` describes each set and how to recognise a model that uses it; `converter_for(model_dir, lang)` picks one.
+- [`flow_matching.rs`](./tts/flow_matching.rs):
+  - **Logic:** `FlowMatchingSampler`: the ODE sampler that runs a flow-matching estimator graph step by step to produce mel features (used by the Matcha family).
 
 ### C. 8 Model Family Handlers (`src/audio/tts/families/`)
+- [`logger.rs`](./tts/families/logger.rs): step logs of the multi-stage families, through the engine logger at debug level; only counts and shapes, never the text being spoken.
 - [`kokoro.rs`](./tts/families/kokoro.rs):
   - **Logic:** Family 2 (Kokoro-82M). Loads voice style vector `.bin` matrices (`[1, 256]`) and passes phoneme IDs through `model_uint8.onnx`.
 - [`vits_piper.rs`](./tts/families/vits_piper.rs):
@@ -133,6 +150,7 @@ Decimal/grouping/time separators between digits, configured abbreviations, inter
 - [`cosyvoice.rs`](./tts/families/cosyvoice.rs):
   - **Logic:** Family 6 (CosyVoice2). Extracts speaker embeddings via `campplus.onnx` and dynamically maps all 6 required flow estimator input tensors (`prompt_token`, `prompt_speech`, `embedding`, `len`, `token_ids`) before feeding `hift.onnx` vocoder.
 - [`audio8.rs`](./tts/families/audio8.rs):
+  - **Files in `audio8/`:** `package.rs` reads the dimensions and assets of the upstream valid-prefix FP16 export (never guessed KV tensors); `cache.rs` owns the KV cache (size check, feeds, update of only the evaluated positions, reset); `steps.rs` runs the Slow AR and Fast AR steps; `sampling.rs` applies the upstream nucleus/rank filter before temperature, then exponential-race sampling; `output.rs` decodes codec windows into audio parts; `tests.rs` tests them. Adapted from Edge0-AI/Audio8_TTS@07e40f5 (Apache-2.0).
   - **Runtime:** The typed package owner loads the declared Slow AR, Fast AR and codec sessions once, requesting `ORT_ENABLE_ALL` optimization like the reference runtime (ORT Level3 alone is not equivalent). `audio8/` validates the FP16 valid-prefix manifest, uses the actual tokenizer and processor prompt protocol, samples logits and updates only the evaluated cache positions. Codebooks are generated by the model, never fabricated. No-reference synthesis and package-local `meta.json`/uint16 or int64 `codes.npy` references have separate prompt paths. Guarded rolling codec windows feed the shared tempo processor and WAV parts, followed by their whole utterance. Missing assets, incompatible layouts, invalid references, failed/cancelled output and exhausted context error. Broader listening quality and other exported topologies remain unverified; see the speech API's package requirements.
 - [`matcha.rs`](./tts/families/matcha.rs):
   - **Logic:** Family 5 (Matcha/LuxTTS). Executes 2-stage flow matching pipeline (`text_encoder_int8` -> `fm_decoder_int8` ODE loop -> `vocos.bin` / neural vocoder). Uses rank-1 unit slice tensor mapping for ORT scalar inputs.

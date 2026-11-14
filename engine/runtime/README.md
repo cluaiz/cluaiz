@@ -129,3 +129,10 @@ graph LR
 - **Evidence:** the resident records successful native task, standalone input, package identity and captured provider settings. `readiness` returns only matching evidence and never accepts a client's readiness claim.
 - **Resolver:** `media_support::resolve_onnx_support` combines it with graph declarations, known helper presence and common decoder formats. Auxiliary text is not a standalone image-graph text route; unknown/unimplemented task routes stay unavailable.
 - **Invalidation:** failure/replacement/expiry/zero retention removes the resident; changed helpers/settings invalidate old readiness. Inspection never loads a session to manufacture readiness. First valid tasks may lazily initialize the owner.
+
+## More files
+
+- [`chat_memory.rs`](src/chat_memory.rs): a chat's KV cache on disk (llama-server's `--slot-save-path`, managed per chat). After an answer the KV goes to `kv_cache/chats/<chat>.kv` with its media layout and a JSON record (`ChatMemoryRecord`); when the chat continues after another chat, a model reload or a restart, the KV is read back instead of processing the whole history again. A record carries the exact model, load key and KV type it was made with (`memory_key`), so another model or context never restores it. `usage()` reports the disk it takes (CEP `kv.status`).
+- [`embedding_host.rs`](src/embedding_host.rs): a GGUF embedding model kept loaded on its own, apart from the chat model, with the planner's load parameters (`capture_settings`). `try_acquire` takes it for one request; `unload_idle` frees it when nothing uses it; `resident_model` says which one is loaded.
+- [`media_room.rs`](src/media_room.rs): `MediaRoom`, the list of idle models of other kinds (ONNX, GGUF speech, GGUF embedding) that a model may free when memory is short for its load or request. A model in use is never freed (each owner frees only when its lock is free), and the chat model is never on the list.
+- [`vram_use.rs`](src/vram_use.rs): what models really took on this machine's GPU (`cluaiz_plan::margin`), kept in `engine/vram_margins.json` (`load`, `save`, `forget_model`, `free_gb`) so a restart plans with it on the first load.
