@@ -229,7 +229,7 @@ What release v0.1.0 ships (core + GPU packs, chosen by the installer) and where 
 | Hardware | Backend | Release package | Tested on |
 | :--- | :--- | :--- | :--- |
 | **NVIDIA GPU**, Windows | CUDA 12 / CUDA 13 | `win-x64` core + `llama-cuda12` / `llama-cuda13` | ✅ RTX 3050 Laptop 4 GB, Windows 11 (CUDA 13) |
-| **NVIDIA GPU**, Linux | CUDA 12 / CUDA 13 | `linux-x64` core + `llama-cuda12` / `llama-cuda13` | ✅ Tesla T4 16 GB, Ubuntu 24.04 (CUDA 12 pack, driver 580) |
+| **NVIDIA GPU**, Linux | CUDA 12 / CUDA 13 | `linux-x64` core + `llama-cuda12` / `llama-cuda13` | ✅ Tesla T4 16 GB, Ubuntu 24.04 (CUDA 12 pack, driver 580); NVIDIA L4 23 GB, Debian 13 (CUDA 13 pack, driver 620) ([run](test/cloud/runs/2026-11-14-run8-linux-l4/SUMMARY.md)) |
 | **AMD Radeon RX / Pro, Intel Arc A / B**, Windows and Linux | Vulkan | core + `llama-vulkan` | 🧪 Built, not yet run on this hardware |
 | **Apple Silicon** (M1 or newer), macOS 14 or newer | Metal (inside the core) | `mac-arm64` core | ✅ MacBook Air M5 16 GB: installs and chats at llama.cpp's speed ([run](test/mac/runs/2026-10-28-m5-air-16gb/SUMMARY.md)); macOS 15 (GitHub runner, virtual M1): install, and auto placement on the Metal GPU ([run](test/cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md)) |
 | **x86-64 CPU** (SSE4.2 to AVX-512) | CPU, best build picked at start | any core | ✅ Ryzen 7 7435HS (Windows 11), Xeon 2.3 GHz (Ubuntu), Xeon Platinum 8488C with AVX-512 / AMX (Ubuntu 24.04, Windows Server 2025, Debian 13, Fedora 42) ([run](test/cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md)) |
@@ -348,6 +348,33 @@ Gemma 4 31B 4 vs 4 t/s.
 >
 > **Full Report**: methodology, every setting, the exact llama-bench commands and all logs are in
 > [`test/cloud/runs/2026-10-28-run5-linux-t4-regression/RESULTS.md`](test/cloud/runs/2026-10-28-run5-linux-t4-regression/RESULTS.md).
+
+### Cloud: NVIDIA L4 23 GB, Debian 13 (2026-11-14)
+
+*Same test on **Google Cloud `g2-standard-8`: Intel Xeon 2.2 GHz (4C/8T), 31 GB RAM, NVIDIA L4 (22.5 GB VRAM),
+Debian 13, driver 620**. Cluaiz is release v0.1.0 (`14ae569f`) installed with `install.sh` (CUDA 13 packs);
+llama.cpp is `llama-bench` built on the same machine from the same llama.cpp commit (`8f9842cd1`) and given the
+placement Cluaiz chose. Prompt about 544 tokens.*
+
+| Model (Quantization) | Mode | Placement | Cluaiz prompt / gen | llama.cpp prompt / gen | Generation |
+| :--- | :--- | :--- | :---: | :---: | :---: |
+| **Qwen3 4B (Q4_K_M)** | auto / gpu | Full GPU | 4735 / **82.6 t/s** | 4518 / 82.9 t/s | same |
+| | split | half the blocks on GPU | **832** / 14.7 t/s | 625 / 15.3 t/s | -4% |
+| **Gemma 3 12B (Q4_K_M)** | auto / gpu | Full GPU | 1497 / **30.4 t/s** | 1666 / 30.4 t/s | same |
+| | split | half the blocks on GPU | **294** / 6.3 t/s | 240 / 6.3 t/s | same |
+| **Mistral Small 3.2 24B (Q4_K_M)** | auto / gpu | Full GPU | 916 / **17.1 t/s** | 968 / 17.1 t/s | same |
+| | split | half the blocks on GPU | 153 / 3.4 t/s | **204** / 3.4 t/s | same |
+| **Gemma 4 31B (Q4_K_M, 17.1 GB)** | auto | 57 of 60 blocks on GPU (planner) | 443 / **8.8 t/s** | 450 / 8.8 t/s | same |
+| | gpu | Full GPU (forced) | 586 / **12.4 t/s** | 648 / 12.4 t/s | same |
+| **Gemma 4 31B (Q8_0, 30.4 GB)** | auto | GPU + RAM (planner) | 87 / **2.0 t/s** | 88 / 2.0 t/s | same |
+
+> [!NOTE]
+> **Reading the L4 numbers**: generation equals llama.cpp in every test. Fully on the GPU llama.cpp's prompt is up
+> to 11% faster; split across GPU and RAM, Cluaiz's prompt is up to 1.3x faster, except Mistral (llama.cpp 1.3x).
+> **Known issue**: for Gemma 4 31B Q4 the planner keeps 3 blocks in RAM although the whole model fits the L4;
+> forced fully on the GPU it is 1.4x faster (12.4 vs 8.8 t/s).
+>
+> **Full Report**: [`test/cloud/runs/2026-11-14-run9-linux-l4-regression/SUMMARY.md`](test/cloud/runs/2026-11-14-run9-linux-l4-regression/SUMMARY.md).
 
 </details>
 
