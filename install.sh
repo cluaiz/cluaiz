@@ -13,6 +13,7 @@
 #   CLUAIZ_INSTALL_DIR  where the files go (default: ~/.cluaiz/bin)
 #   CLUAIZ_GPU          auto | cuda | vulkan | cpu (default: auto)
 #   CLUAIZ_CUDA         12 | 13 (default: the newest pack the NVIDIA driver and GPU can run, see below)
+#   CLUAIZ_REINSTALL    1: download every pack again, also those already installed unchanged
 set -eu
 
 REPO="cluaiz/cluaiz"
@@ -284,14 +285,61 @@ case "$GPU" in
 esac
 [ "$GPU" = vulkan ] && files="$files cluaiz-$version-$platform-llama-vulkan.tar.gz"
 
+# ── Installed packs ───────────────────────────────────────────────────────────────────────────
+# Each pack installed here has a record, $INSTALL_DIR/packs/<pack>.txt: its name (core, llama-cuda13,
+# cudart13, onnx-cuda13, ...), its SHA-256, the release it came from and the files it put in place.
+# An update keeps a pack whose SHA-256 is the same as the release's and whose files are all still
+# there; a release that reuses its drivers ships them byte for byte, so only the core is downloaded.
+# CLUAIZ_REINSTALL=1 downloads every pack again.
+packs_dir="$INSTALL_DIR/packs"
+pack_name() {
+  pn=${1#"cluaiz-$version-$platform"}; pn=${pn%.tar.gz}; pn=${pn#-}
+  [ -n "$pn" ] || pn=core
+  printf '%s' "$pn"
+}
+record_field() { sed -n "s/^$2: //p" "$1" | head -n 1; }
+record_files() { sed '1,/^files:$/d' "$1"; }
+# True when the pack recorded here has this SHA-256 and every file it put in place is still there
+pack_unchanged() {
+  [ "${CLUAIZ_REINSTALL:-0}" = 1 ] && return 1
+  rec="$packs_dir/$(pack_name "$1").txt"
+  [ -f "$rec" ] && [ "$(record_field "$rec" sha256)" = "$2" ] || return 1
+  [ -n "$(record_files "$rec")" ] || return 1
+  record_files "$rec" | while IFS= read -r f; do
+    [ -z "$f" ] || [ -e "$INSTALL_DIR/$f" ] || exit 1
+  done
+}
+# write_record <archive> <sha256> <files list file>: `since` stays the release that first brought
+# this exact pack
+write_record() {
+  rec="$packs_dir/$(pack_name "$1").txt"
+  since=$version
+  if [ -f "$rec" ] && [ "$(record_field "$rec" sha256)" = "$2" ]; then
+    since=$(record_field "$rec" since); [ -n "$since" ] || since=$version
+  fi
+  mkdir -p "$packs_dir"
+  {
+    printf 'pack: %s\nsha256: %s\narchive: %s\nrelease: %s\nsince: %s\nfiles:\n' \
+      "$(pack_name "$1")" "$2" "$1" "$version" "$since"
+    cat "$3"
+  } >"$rec.tmp" && mv "$rec.tmp" "$rec"
+}
+
 # ── Download, check, unpack ───────────────────────────────────────────────────────────────────
-available=''; package_count=0
+available=''; package_count=0; kept=''
 for file in $files; do
   if ! grep -q " \*\{0,1\}$file\$" "$tmp/SHA256SUMS.txt"; then
     case "$file" in
       "cluaiz-$version-$platform.tar.gz") fail "release $tag has no build for $platform" ;;
       *) printf "  ${GRAY}- %s is not in this release; models run on the CPU instead${NC}\n" "$file"; continue ;;
     esac
+  fi
+  expected=$(grep " \*\{0,1\}$file\$" "$tmp/SHA256SUMS.txt" | cut -d' ' -f1)
+  if pack_unchanged "$file" "$expected"; then
+    since=$(record_field "$packs_dir/$(pack_name "$file").txt" since)
+    printf "  ${GRAY}- %s: same as installed (since %s), kept${NC}\n" "$(pack_name "$file")" "${since:-?}"
+    kept="$kept $file"
+    continue
   fi
   available="$available $file"; package_count=$((package_count + 1))
 done
@@ -314,7 +362,14 @@ unpacked=0
 for file in $available; do
   printf '  Extracting %s/%s: %s\n' "$((unpacked + 1))" "$package_count" "$file"
   tar -xzf "$tmp/$file" -C "$INSTALL_DIR"
+  tar -tzf "$tmp/$file" | sed -e 's#^\./##' -e '/^$/d' >"$tmp/$file.files"
+  write_record "$file" "$(grep " \*\{0,1\}$file\$" "$tmp/SHA256SUMS.txt" | cut -d' ' -f1)" "$tmp/$file.files"
   unpacked=$((unpacked + 1))
+done
+# A kept pack's record names this release, so the next update compares against it
+for file in $kept; do
+  rec="$packs_dir/$(pack_name "$file").txt"
+  sed -e "s/^archive: .*/archive: $file/" -e "s/^release: .*/release: $version/" "$rec" >"$rec.tmp" && mv "$rec.tmp" "$rec"
 done
 chmod +x "$INSTALL_DIR/cluaiz"
 done_step "Installed into $INSTALL_DIR"

@@ -51,6 +51,8 @@ cluaiz self uninstall             # remove Cluaiz, its models and its PATH entry
 cluaiz self uninstall --keep-models
 ```
 
+An update downloads only the packs that changed. Each pack in `~/.cluaiz/bin/packs/<pack>.txt` (for example `core.txt`, `llama-cuda13.txt`) records its SHA-256, the release it came from (`since`) and the files it put in place; a pack whose SHA-256 matches the new release's `SHA256SUMS.txt` and whose files are all still there is kept. A release that reuses its GPU drivers ships them unchanged, so usually only the core (about 50 MB) is downloaded. Set `CLUAIZ_REINSTALL=1` to download every pack again.
+
 On Windows the update installer opens in its own window once the command exits (a running `cluaiz.exe` is locked). Close the Cluaiz App or stop `cluaiz serve` first. Apps can ask whether an update is out with the CEP method [`system.update_check`](../api/cep/system/system/system.update_check.md).
 
 ---

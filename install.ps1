@@ -11,6 +11,7 @@
 #   CLUAIZ_INSTALL_DIR  where the files go (default: ~\.cluaiz\bin)
 #   CLUAIZ_GPU          auto | cuda | vulkan | cpu (default: auto)
 #   CLUAIZ_CUDA         12 | 13 (default: the newest pack the NVIDIA driver and GPU can run, see below)
+#   CLUAIZ_REINSTALL    1: download every pack again, also those already installed unchanged
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'Continue'
@@ -243,12 +244,59 @@ try {
     }
     if ($Gpu -eq 'vulkan') { $Files += "cluaiz-$Version-$Platform-llama-vulkan.zip" }
 
+    # --- Installed packs ---
+    # Each pack installed here has a record, $InstallDir\packs\<pack>.txt: its name (core, llama-cuda13,
+    # cudart13, onnx-cuda13, ...), its SHA-256, the release it came from and the files it put in place.
+    # An update keeps a pack whose SHA-256 is the same as the release's and whose files are all still
+    # there; a release that reuses its drivers ships them byte for byte, so only the core is downloaded.
+    # CLUAIZ_REINSTALL=1 downloads every pack again. Same format as install.sh.
+    $PacksDir = Join-Path $InstallDir 'packs'
+    Add-Type -AssemblyName System.IO.Compression.FileSystem
+    function Get-PackName ([string]$file) {
+        $n = $file.Substring("cluaiz-$Version-$Platform".Length) -replace '\.zip$', ''
+        $n = $n.TrimStart('-')
+        if ($n) { $n } else { 'core' }
+    }
+    function Read-PackRecord ([string]$file) {
+        $path = Join-Path $PacksDir ((Get-PackName $file) + '.txt')
+        if (-not (Test-Path -LiteralPath $path)) { return $null }
+        $record = @{ path = $path; files = @() }
+        $inFiles = $false
+        foreach ($line in Get-Content -LiteralPath $path) {
+            if ($inFiles) { if ($line) { $record.files += $line } }
+            elseif ($line -eq 'files:') { $inFiles = $true }
+            elseif ($line -match '^([a-z0-9]+): (.*)$') { $record[$Matches[1]] = $Matches[2] }
+        }
+        $record
+    }
+    function Test-PackUnchanged ([string]$file) {
+        if ($env:CLUAIZ_REINSTALL -eq '1') { return $false }
+        $record = Read-PackRecord $file
+        if (-not $record -or $record.sha256 -ne $Sums[$file] -or $record.files.Count -eq 0) { return $false }
+        foreach ($f in $record.files) { if (-not (Test-Path -LiteralPath (Join-Path $InstallDir $f))) { return $false } }
+        $true
+    }
+    function Write-PackRecord ([string]$file, [string[]]$entries) {
+        $record = Read-PackRecord $file
+        $since = if ($record -and $record.sha256 -eq $Sums[$file] -and $record.since) { $record.since } else { $Version }
+        New-Item -ItemType Directory -Force $PacksDir | Out-Null
+        $path = Join-Path $PacksDir ((Get-PackName $file) + '.txt')
+        $lines = @("pack: $(Get-PackName $file)", "sha256: $($Sums[$file])", "archive: $file", "release: $Version", "since: $since", 'files:') + $entries
+        [IO.File]::WriteAllLines("$path.tmp", $lines)
+        Move-Item -LiteralPath "$path.tmp" -Destination $path -Force
+    }
+
     # --- Download, check, unpack ---
-    $Available = @()
+    $Available = @(); $Kept = @()
     foreach ($file in $Files) {
         if (-not $Sums.ContainsKey($file)) {
             if ($file -eq $Core) { throw "Release $Tag has no build for $Platform" }
             Write-Host "  $GRAY- $file is not in this release; models run on the CPU instead$NC"
+            continue
+        }
+        if (Test-PackUnchanged $file) {
+            Write-Host "  $GRAY- $(Get-PackName $file): same as installed (since $((Read-PackRecord $file).since)), kept$NC"
+            $Kept += $file
             continue
         }
         $Available += $file
@@ -276,7 +324,15 @@ try {
     foreach ($file in $Got) {
         Write-Host "  Extracting $($unpacked + 1)/$($Got.Count): $file"
         Expand-Archive "$Tmp\$file" -DestinationPath $InstallDir -Force
+        $zip = [IO.Compression.ZipFile]::OpenRead("$Tmp\$file")
+        try { $entries = @($zip.Entries | ForEach-Object { $_.FullName -replace '^\./', '' } | Where-Object { $_ }) } finally { $zip.Dispose() }
+        Write-PackRecord $file $entries
         $unpacked++
+    }
+    # A kept pack's record names this release, so the next update compares against it
+    foreach ($file in $Kept) {
+        $record = Read-PackRecord $file
+        Write-PackRecord $file $record.files
     }
     Complete-Step "Installed into $InstallDir"
 

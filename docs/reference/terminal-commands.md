@@ -194,6 +194,9 @@ hand. See the [Automation guide](../automation/guide.md) and the
 * It downloads that release's own installer (`install.ps1` / `install.sh` from the release tag)
   and runs it into the folder this `cluaiz` runs from, so the GPU pack is chosen and every file is
   checked against `SHA256SUMS.txt` as on a first install. Models and settings stay.
+* Only changed packs are downloaded: `packs/<pack>.txt` in the install folder records each pack's
+  SHA-256, its release (`since`) and its files; a pack with the same SHA-256 whose files are all
+  there is kept. `CLUAIZ_REINSTALL=1` downloads every pack again.
 * On Windows the installer opens in its own window after the command exits, because a running
   `cluaiz.exe` and its DLLs are locked.
 * It stops when a Cluaiz server (the App or `cluaiz serve`) is running, and it refuses a
