@@ -44,7 +44,9 @@ response: |
           "info": "Sends searches to search services and reads the pages that are chosen",
           "kind": "network",
           "on": true,
-          "options": { "access": "full" },
+          "options": {
+            "access": "full"
+          },
           "sensitive": false,
           "title": "Internet"
         }
@@ -53,7 +55,7 @@ response: |
       "user_settings": [
         {
           "in_system": false,
-          "info": "...",
+          "info": "Brave Search API key",
           "name": "BRAVE_API_KEY",
           "required": false,
           "secret": true,
@@ -61,14 +63,17 @@ response: |
         },
         {
           "in_system": false,
-          "info": "...",
+          "info": "Address of your own SearXNG server",
           "name": "SEARXNG_URL",
           "required": false,
           "secret": true,
           "set": false
         },
         {
+          "in_system": false,
+          "info": "Tavily API key",
           "name": "TAVILY_API_KEY",
+          "required": false,
           "secret": true,
           "set": true
         }

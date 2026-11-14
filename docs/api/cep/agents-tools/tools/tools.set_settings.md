@@ -85,7 +85,9 @@ response: |
           "info": "Sends searches to search services and reads the pages that are chosen",
           "kind": "network",
           "on": false,
-          "options": { "access": "full" },
+          "options": {
+            "access": "full"
+          },
           "sensitive": false,
           "title": "Internet"
         }
