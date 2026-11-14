@@ -55,7 +55,7 @@ async fn install_component(component_type: &str, component_name: &str, yes: bool
     println!("┣━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┫");
     println!("┃ 🏷️  Target Package:  {}", component_name.bold().green());
     println!("┃ 🧩 Category:        {}", component_type.to_uppercase().cyan());
-    println!("┃ 🌐 Tools Registry:  https://raw.githubusercontent.com/cluaiz/cluaiz-tools");
+    println!("┃ 🌐 Tools Registry:  {}", ToolsInstaller::registry_url());
     println!("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛");
     println!();
 

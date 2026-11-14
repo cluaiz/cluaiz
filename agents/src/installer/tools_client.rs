@@ -4,6 +4,8 @@ use anyhow::Result;
 use cluaiz_core::EnvironmentManager;
 use crate::tools::registry::ToolsRegistry;
 
+/// The official Cluaiz Tools registry
+const OFFICIAL_REGISTRY: &str = "https://raw.githubusercontent.com/cluaiz/cluaiz-tools/main/registry.json";
 /// How long to wait for a registry or download server to accept the connection.
 const CONNECT_TIMEOUT: Duration = Duration::from_secs(30);
 /// Longest gap between received bytes before a stalled download is abandoned.
@@ -692,14 +694,18 @@ impl ToolsInstaller {
         Ok(report)
     }
 
+    /// The Cluaiz Tools registry installs come from: `manifest_url` under `web.tools` (or
+    /// `tools`; `hub` is the old name) in the Cluaiz config folder's `package.json`, else the
+    /// official registry. Only the config folder counts: a `package.json` in the folder a command
+    /// runs in (a cloned project, say) never chooses where tools are downloaded from.
+    pub fn registry_url() -> String {
+        Self::get_registry_url().unwrap_or_else(|| OFFICIAL_REGISTRY.to_string())
+    }
+
     fn get_registry_url() -> Option<String> {
         let env = EnvironmentManager::current();
 
-        let candidates: [PathBuf; 3] = [
-            env.config_dir().join("package.json"),
-            PathBuf::from("package.json"),
-            PathBuf::from(".cluaiz/config/package.json"),
-        ];
+        let candidates: [PathBuf; 1] = [env.config_dir().join("package.json")];
         for p in &candidates {
             if p.exists() {
                 if let Ok(content) = std::fs::read_to_string(&p) {
@@ -716,7 +722,7 @@ impl ToolsInstaller {
             }
         }
 
-        Some("https://raw.githubusercontent.com/cluaiz/cluaiz-tools/main/registry.json".to_string())
+        Some(OFFICIAL_REGISTRY.to_string())
     }
 }
 
