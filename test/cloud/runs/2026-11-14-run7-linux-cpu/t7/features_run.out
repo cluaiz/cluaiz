@@ -1,0 +1,93 @@
+fatal: destination path '/home/Aryan/cluaiz' already exists and is not an empty directory.
+fatal: not a git repository (or any of the parent directories): .git
+== cli_status
+cli_status	0	1
+== cli_list
+cli_list	0	1
+== cli_config_list
+cli_config_list	0	0
+== cli_config_path
+cli_config_path	0	1
+== cli_token_list
+cli_token_list	0	1
+== cli_permission
+cli_permission	0	0
+== cli_skill_list
+cli_skill_list	0	1
+== cli_plugin_list
+cli_plugin_list	0	1
+== cli_mcp_list
+cli_mcp_list	0	0
+== cli_provider_list
+cli_provider_list	0	1
+== cli_show_gemma-3-12b-it-gguf-Q4_K_M
+cli_show_gemma-3-12b-it-gguf-Q4_K_M	0	1
+== cli_show_mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M
+cli_show_mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M	0	1
+== cli_show_qwen3-4b-gguf-Q4_K_M
+cli_show_qwen3-4b-gguf-Q4_K_M	0	1
+== cli_show_qwen3-tts-12hz-1.7b-base-gguf-Q4_K_M
+cli_show_qwen3-tts-12hz-1.7b-base-gguf-Q4_K_M	0	1
+== cli_show_bge-m3-q8_0-gguf
+cli_show_bge-m3-q8_0-gguf	0	1
+== cli_show_whisper-large-v3-turbo-INT8
+cli_show_whisper-large-v3-turbo-INT8	0	0
+== cli_show_kokoro-82m-v1.0-onnx-INT8
+cli_show_kokoro-82m-v1.0-onnx-INT8	0	1
+== cli_show_kokoro-82m-v1.0-onnx-UINT8
+cli_show_kokoro-82m-v1.0-onnx-UINT8	0	1
+== cli_show_repo_name
+cli_show_repo_name	0	1
+== cli_show_repo_quant
+cli_show_repo_quant	0	1
+== cli_show_not_installed
+cli_show_not_installed	1	0
+== cli_run_qwen3_4b
+cli_run_qwen3_4b	0	55
+== cli_run_think_off
+cli_run_think_off	0	15
+== cli_bench_qwen3_4b
+cli_bench_qwen3_4b	0	40
+== cli_bench_repo_name
+cli_bench_repo_name	0	22
+== cli_bench_gemma_12b
+cli_bench_gemma_12b	0	98
+== cli_ps
+cli_ps	0	0
+== cli_storage_status
+cli_storage_status	0	1
+== cli_ingest_md
+cli_ingest_md	0	1
+== flow_nodes
+flow_nodes	0	0
+== flow_validate
+flow_validate	0	1
+== flow_save
+flow_save	2	0
+== flow_list
+flow_list	0	1
+== flow_run
+flow_run	1	0
+== flow_logs
+flow_logs	1	1
+== flow_explain
+flow_explain	1	1
+== flow_draft
+flow_draft	1	8
+== flow_remove
+flow_remove	2	0
+== agent_task
+agent_task	1	1
+== cep_journeys
+cep_journeys	0	1
+== cep_mcp_journey
+cep_mcp_journey	0	2
+== cep_system_journey
+cep_system_journey	1	0
+== cep_fs_journey
+cep_fs_journey	1	0
+== cep_models_journey
+cep_models_journey	1	0
+== cep_tools_journey
+cep_tools_journey	1	0
+== features done

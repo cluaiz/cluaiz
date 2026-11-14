@@ -1,0 +1,8 @@
+== bench_qwen3-4b-gguf-Q4_K_M
+$ /home/Aryan/.cluaiz/bin/cluaiz bench qwen3-4b-gguf-Q4_K_M -r 2
+running pp512 on Full GPU (2 runs)...
+running tg128 on Full GPU (2 runs)...
+| model | size | params | placement | ngl | n_ctx | test | t/s |
+| ----- | ---: | -----: | --------- | --: | ----: | ---: | --: |
+| qwen3 4B Q4_K - Medium | 2.32 GiB | 4.02 B | Full GPU | -1 | 16384 | pp512 | 5128.36 ± 642.22 |
+| qwen3 4B Q4_K - Medium | 2.32 GiB | 4.02 B | Full GPU | -1 | 16384 | tg128 | 85.09 ± 0.11 |

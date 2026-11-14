@@ -1,0 +1,139 @@
+== install
+
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣠⣶⣾⣾⣿⣿⣿⣿⣿⣿⣿⣿⣶⣦⣦⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣺⣿⣿⣿⡿⠛⠋⠈⠀⠀⠀⠀⠈⠉⠋⠀⠀⠀⠀⠀⠈⠋⠻⣿⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⣿⣿⡟⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⣿⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣰⣿⣿⡏⠀⠀⠀⠀⠀⣠⣠⡀⠀⠀⠀⠀⠀⠀⠀⣀⣠⣀⠀⠀⠀⠀⠀⠸⣿⣿⡆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠠⣾⣿⣿⡂⠀⠀⠀⠀⣺⣿⣿⣷⡂⠀⠀⠀⠀⠀⠀⣾⣿⣿⡆⠀⠀⠀⠀⠀⣻⣿⣿⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣸⣿⣿⡏⠀⠀⠀⠀⠀⢺⣿⣿⣿⡂⠀⠀⠀⠀⠀⠈⣿⣿⣿⡏⠀⠀⠀⠀⠀⣺⣿⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣾⣿⣿⡯⠀⠀⠀⠀⠀⠈⠻⠻⠋⢠⣶⣶⣦⣶⣶⡆⠘⠻⠛⠂⠀⠀⠀⠀⠀⣺⣿⣿⣿⡂⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣺⣿⣿⣿⣿⡂⠀⠀⠀⠀⠀⠀⠀⠀⠈⠻⡿⣿⡿⠛⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣿⣿⣿⣿⣧⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣰⣿⣿⣿⣿⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⣦⣢⣠⣀⣀⡀⡀⡀⡀⡀⣀⣀⣀⣠⣠⣦⣶⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣶⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠸⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡂⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠛⠻⡿⠿⡿⠛⠋⢻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠛⠻⡿⠿⡿⠿⠋⠃⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⣿⣿⣿⣿⣿⣿⣿⣿⣿⡿⠋⠀⠀⠈⠙⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡃⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⢿⣿⣿⣿⣿⣿⣿⡿⠂⠀⠀⠀⠀⠀⠈⠻⣿⣿⣿⣿⣿⣿⣿⡋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+  ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠛⠻⠻⠛⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠈⠛⠻⠻⠛⠋⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+
+           ██████╗██╗     ██╗   ██╗ █████╗ ██╗███████╗
+          ██╔════╝██║     ██║   ██║██╔══██╗██║╚══███╔╝
+          ██║     ██║     ██║   ██║███████║██║  ███╔╝ 
+          ██║     ██║     ██║   ██║██╔══██║██║ ███╔╝  
+          ╚██████╗███████╗╚██████╔╝██║  ██║██║███████╗
+           ╚═════╝╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚═╝╚══════╝
+
+  Installing cluaiz...
+
+
+  [1/7] Checking this system
+  [DONE] Platform linux-x64, requested GPU: cuda
+
+  [2/7] Finding the release
+  [DONE] Release v0.1.0 (linux-x64, GPU: cuda)
+
+  [3/7] Reading the package manifest
+  SHA256SUMS.txt
+  ⠋ [--------------------] --% | 0.0 B / unknown
+  Left unknown | 0.0 B/s | File ETA --
+    [####################] 100% | 1.8 KiB / 1.8 KiB
+  Left 0.0 B | 0.0 B/s | File ETA ~--
+
+  [4/7] Downloading packages (0/4 verified)
+  Package 1/4: cluaiz-0.1.0-linux-x64.tar.gz
+  cluaiz-0.1.0-linux-x64.tar.gz
+  ⠋ [--------------------] --% | 0.0 B / unknown
+  Left unknown | 0.0 B/s | File ETA --
+    [####################] 100% | 48.2 MiB / 48.2 MiB
+  Left 0.0 B | 48.2 MiB/s | File ETA ~0s
+  Checking SHA-256: cluaiz-0.1.0-linux-x64.tar.gz
+  [DONE] cluaiz-0.1.0-linux-x64.tar.gz (checksum OK; 1/4 verified)
+  Package 2/4: cluaiz-0.1.0-linux-x64-llama-cuda13.tar.gz
+  cluaiz-0.1.0-linux-x64-llama-cuda13.tar.gz
+  ⠋ [--------------------] --% | 0.0 B / unknown
+  Left unknown | 0.0 B/s | File ETA --
+    [####################] 100% | 128.0 MiB / 128.0 MiB
+  Left 0.0 B | 64.0 MiB/s | File ETA ~0s
+  Checking SHA-256: cluaiz-0.1.0-linux-x64-llama-cuda13.tar.gz
+  [DONE] cluaiz-0.1.0-linux-x64-llama-cuda13.tar.gz (checksum OK; 2/4 verified)
+  Package 3/4: cluaiz-0.1.0-linux-x64-cudart13.tar.gz
+  cluaiz-0.1.0-linux-x64-cudart13.tar.gz
+  ⠋ [--------------------] --% | 0.0 B / unknown
+  Left unknown | 0.0 B/s | File ETA --
+  ⠧ [#########-----------]  49% | 207.6 MiB / 419.8 MiB
+  Left 212.2 MiB | 41.5 MiB/s | File ETA ~6s
+  ⠧ [################----]  80% | 338.6 MiB / 419.8 MiB
+  Left 81.2 MiB | 33.9 MiB/s | File ETA ~3s
+  ⠧ [##################--]  94% | 397.4 MiB / 419.8 MiB
+  Left 22.5 MiB | 26.5 MiB/s | File ETA ~1s
+    [####################] 100% | 419.8 MiB / 419.8 MiB
+  Left 0.0 B | 26.2 MiB/s | File ETA ~0s
+  Checking SHA-256: cluaiz-0.1.0-linux-x64-cudart13.tar.gz
+  [DONE] cluaiz-0.1.0-linux-x64-cudart13.tar.gz (checksum OK; 3/4 verified)
+  Package 4/4: cluaiz-0.1.0-linux-x64-onnx-cuda13.tar.gz
+  cluaiz-0.1.0-linux-x64-onnx-cuda13.tar.gz
+  ⠋ [--------------------] --% | 0.0 B / unknown
+  Left unknown | 0.0 B/s | File ETA --
+    [####################] 100% | 220.5 MiB / 220.5 MiB
+  Left 0.0 B | 55.1 MiB/s | File ETA ~0s
+  Checking SHA-256: cluaiz-0.1.0-linux-x64-onnx-cuda13.tar.gz
+  [DONE] cluaiz-0.1.0-linux-x64-onnx-cuda13.tar.gz (checksum OK; 4/4 verified)
+
+  [5/7] Installing into /home/Aryan/.cluaiz/bin
+  Extracting 1/4: cluaiz-0.1.0-linux-x64.tar.gz
+  Extracting 2/4: cluaiz-0.1.0-linux-x64-llama-cuda13.tar.gz
+  Extracting 3/4: cluaiz-0.1.0-linux-x64-cudart13.tar.gz
+  Extracting 4/4: cluaiz-0.1.0-linux-x64-onnx-cuda13.tar.gz
+  [DONE] Installed into /home/Aryan/.cluaiz/bin
+
+  [6/7] Preparing runtime and PATH
+  Open a new terminal (or run: export PATH="/home/Aryan/.cluaiz/bin:$PATH") to use 'cluaiz'
+  [DONE] Runtime and PATH ready
+
+  [7/7] Verifying the installed Engine
+cluaiz 0.1.0 (pre-release)
+
+  [DONE] Cluaiz is installed (7/7 stages complete).
+  Next: cluaiz pull <model>   then   cluaiz run <model>
+
+install took 43s
+== pulls
+chat unsloth/Qwen3-4B-GGUF:Q4_K_M exit 0 19s
+chat unsloth/gemma-3-12b-it-GGUF:Q4_K_M exit 0 75s
+chat unsloth/Mistral-Small-3.2-24B-Instruct-2506-GGUF:Q4_K_M exit 0 136s
+embed ggml-org/bge-m3-Q8_0-GGUF exit 0 6s
+tts onnx-community/Kokoro-82M-v1.0-ONNX:uint8 exit 0 17s
+stt onnx-community/whisper-large-v3-turbo:int8 exit 0 15s
+tts ggml-org/Qwen3-TTS-12Hz-1.7B-Base-GGUF:Q4_K_M exit 0 15s
+models: {"qwen3-4b": "qwen3-4b-gguf-Q4_K_M", "gemma-3-12b": "gemma-3-12b-it-gguf-Q4_K_M", "mistral-small": "mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M", "bge-m3": "bge-m3-q8_0-gguf", "kokoro": "kokoro-82m-v1.0-onnx-UINT8", "whisper": "whisper-large-v3-turbo-INT8", "qwen3-tts": "qwen3-tts-12hz-1.7b-base-gguf-Q4_K_M"}
+{"name": "chat-short", "model": "qwen3-4b-gguf-Q4_K_M", "ok": true, "secs": 3.0, "gpu_mib_used_free": "5244, 17371", "placement": "GpuOnly", "n_gpu_layers": -1, "n_ctx": 16384, "prompt_tps": 933.3195063776832, "gen_tps": 83.52937424348964, "reply": "Rivers are natural water bodies that flow from their sources, such as mountains or springs, to oceans or lakes. They pla"}
+{"name": "chat-long", "model": "qwen3-4b-gguf-Q4_K_M", "ok": true, "secs": 1.12, "gpu_mib_used_free": "5244, 17371", "placement": "GpuOnly", "n_gpu_layers": -1, "n_ctx": 16384, "prompt_tps": 4981.3200498132, "gen_tps": 75.69675878431006, "reply": "Rivers carry water from mountains to the sea, shaping valleys and feeding farms. This process is a fundamental part of n"}
+{"name": "chat-short", "model": "gemma-3-12b-it-gguf-Q4_K_M", "ok": true, "secs": 5.81, "gpu_mib_used_free": "13918, 8697", "placement": "GpuOnly", "n_gpu_layers": -1, "n_ctx": 16384, "prompt_tps": 127.07449106666328, "gen_tps": 31.247569171813097, "reply": "Rivers are vital sources of freshwater for humans and ecosystems alike. They carve pathways through landscapes, shaping "}
+{"name": "chat-long", "model": "gemma-3-12b-it-gguf-Q4_K_M", "ok": true, "secs": 2.29, "gpu_mib_used_free": "13918, 8697", "placement": "GpuOnly", "n_gpu_layers": -1, "n_ctx": 16384, "prompt_tps": 1784.2650599563676, "gen_tps": 28.15830599631126, "reply": "The text repeatedly emphasizes that rivers flow from mountains to the sea. This journey shapes valleys and provides esse"}
+{"name": "chat-short", "model": "mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M", "ok": true, "secs": 10.37, "gpu_mib_used_free": "16424, 6191", "placement": "GpuOnly", "n_gpu_layers": -1, "n_ctx": 16384, "prompt_tps": 988.2879973037116, "gen_tps": 17.237860236928142, "reply": "Rivers are natural watercourses that flow towards larger bodies of water, such as oceans, lakes, or other rivers. They p"}
+{"name": "chat-long", "model": "mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M", "ok": true, "secs": 4.85, "gpu_mib_used_free": "16424, 6191", "placement": "GpuOnly", "n_gpu_layers": -1, "n_ctx": 16384, "prompt_tps": 1007.277484438946, "gen_tps": 16.789052642261105, "reply": "The text repeatedly emphasizes that rivers transport water from mountains to the sea, playing a crucial role in shaping "}
+{"name": "tts-onnx", "model": "kokoro-82m-v1.0-onnx-UINT8", "ok": true, "secs": 3.55, "gpu_mib_used_free": "16424, 6191"}
+{"name": "stt-onnx", "model": "whisper-large-v3-turbo-INT8", "ok": true, "secs": 11.09, "gpu_mib_used_free": "16424, 6191", "transcript": "Rivers carry water to the sea."}
+{"name": "embed-gguf", "model": "bge-m3-q8_0-gguf", "ok": true, "secs": 1.81, "gpu_mib_used_free": "16752, 5863"}
+{"name": "tts-gguf", "model": "qwen3-tts-12hz-1.7b-base-gguf-Q4_K_M", "ok": true, "secs": 3.64, "gpu_mib_used_free": "20224, 2391"}
+{"name": "mix0-chat", "model": "qwen3-4b-gguf-Q4_K_M", "ok": true, "secs": 13.26, "gpu_mib_used_free": "9052, 13563", "placement": "GpuOnly", "n_gpu_layers": -1, "n_ctx": 16384, "prompt_tps": 944.0889541592364, "gen_tps": 85.03155793857833, "reply": "Rivers are natural waterways that flow from\u6e90\u5934 to mouths, shaping the landscapes they pass through. They provide essentia"}
+{"name": "mix0-tts-onnx", "model": "kokoro-82m-v1.0-onnx-UINT8", "ok": true, "secs": 2.21, "gpu_mib_used_free": "5614, 17001"}
+{"name": "mix0-embed-gguf", "model": "bge-m3-q8_0-gguf", "ok": true, "secs": 0.01, "gpu_mib_used_free": "5614, 17001"}
+{"name": "mix0-stt-onnx", "model": "whisper-large-v3-turbo-INT8", "ok": true, "secs": 3.62, "gpu_mib_used_free": "5614, 17001"}
+{"name": "mix0-tts-gguf", "model": "qwen3-tts-12hz-1.7b-base-gguf-Q4_K_M", "ok": true, "secs": 3.47, "gpu_mib_used_free": "9052, 13563"}
+{"name": "mix1-chat", "model": "qwen3-4b-gguf-Q4_K_M", "ok": true, "secs": 0.81, "gpu_mib_used_free": "9052, 13563", "placement": "GpuOnly", "n_gpu_layers": -1, "n_ctx": 16384, "prompt_tps": 0.0, "gen_tps": 82.44634803901361, "reply": "Rivers are natural water bodies that flow from higher elevations to lower ones, shaped by gravity and the landscape. The"}
+{"name": "mix1-tts-onnx", "model": "kokoro-82m-v1.0-onnx-UINT8", "ok": true, "secs": 2.49, "gpu_mib_used_free": "5614, 17001"}
+{"name": "mix1-embed-gguf", "model": "bge-m3-q8_0-gguf", "ok": true, "secs": 0.01, "gpu_mib_used_free": "5614, 17001"}
+{"name": "mix1-stt-onnx", "model": "whisper-large-v3-turbo-INT8", "ok": true, "secs": 3.61, "gpu_mib_used_free": "5614, 17001"}
+{"name": "mix1-tts-gguf", "model": "qwen3-tts-12hz-1.7b-base-gguf-Q4_K_M", "ok": true, "secs": 2.54, "gpu_mib_used_free": "9052, 13563"}
+{"name": "mix2-chat", "model": "qwen3-4b-gguf-Q4_K_M", "ok": true, "secs": 0.81, "gpu_mib_used_free": "9052, 13563", "placement": "GpuOnly", "n_gpu_layers": -1, "n_ctx": 16384, "prompt_tps": 0.0, "gen_tps": 85.86809339806466, "reply": "Rivers are natural streams of water that flow from a source, such as a mountain or lake, to a larger body of water, like"}
+{"name": "mix2-tts-onnx", "model": "kokoro-82m-v1.0-onnx-UINT8", "ok": true, "secs": 2.22, "gpu_mib_used_free": "5614, 17001"}
+{"name": "mix2-embed-gguf", "model": "bge-m3-q8_0-gguf", "ok": true, "secs": 0.01, "gpu_mib_used_free": "5614, 17001"}
+{"name": "mix2-stt-onnx", "model": "whisper-large-v3-turbo-INT8", "ok": true, "secs": 3.61, "gpu_mib_used_free": "5614, 17001"}
+{"name": "mix2-tts-gguf", "model": "qwen3-tts-12hz-1.7b-base-gguf-Q4_K_M", "ok": true, "secs": 2.59, "gpu_mib_used_free": "9058, 13557"}
+
+failed 0 of 25
+== done

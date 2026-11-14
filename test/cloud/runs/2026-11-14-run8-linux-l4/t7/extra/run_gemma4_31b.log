@@ -1,0 +1,7 @@
+== run_gemma4_31b
+$ /home/Aryan/.cluaiz/bin/cluaiz run unsloth/gemma-4-31B-it-GGUF:Q4_K_M 'Name three rivers in India, one line.' --local -n 64
+
+  ⚙️ [cluaiz] Initializing Kernel for 'unsloth/gemma-4-31B-it-GGUF:Q4_K_M'...
+  🔍 Scanning HuggingFace Hub for 'unsloth/gemma-4-31B-it-GGUF'...
+  ⚡ Direct Quantization Tag Matched: ':Q4_K_M' -> gemma-4-31B-it-Q4_K_M.gguf (18.66 GB)
+Ganges, Yamuna, and Brahmaputra.

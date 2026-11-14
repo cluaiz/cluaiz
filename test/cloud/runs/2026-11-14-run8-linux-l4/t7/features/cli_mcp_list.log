@@ -1,0 +1,6 @@
+== cli_mcp_list
+$ /home/Aryan/.cluaiz/bin/cluaiz mcp list
+
+  📦 [Cluaiz Tools] Installed MCP:
+    No mcp installed yet. Use `cluaiz mcp install <name>`.
+

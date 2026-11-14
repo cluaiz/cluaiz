@@ -1,0 +1,4 @@
+== flow_draft
+$ /home/Aryan/.cluaiz/bin/cluaiz flow draft every morning at 8 read system info and write a one line summary to a note
+writing the flow…
+error: flow: tasks.result at http://localhost:8012 failed: error sending request for url (http://localhost:8012/v1/cep)

@@ -1,0 +1,3 @@
+== stt_qwen3_en
+$ curl -s -m 600 http://127.0.0.1:8012/v1/audio/transcriptions -H 'authorization: Bearer <redacted>' -H 'content-type: application/json' -d '{"model":"whisper-large-v3-turbo-INT8","file":"/home/Aryan/t7/extra/qwen3tts_en.wav"}'
+{"status":"success","task":"speech_to_text","model":"whisper-large-v3-turbo-INT8","info":null,"output":{"text":"CluAise runs language, speech and vision models on your own machine.","audio_data":null,"segments":null}}

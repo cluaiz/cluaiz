@@ -1,0 +1,6 @@
+== cli_skill_list
+$ /home/Aryan/.cluaiz/bin/cluaiz skill list
+
+  📦 [Cluaiz Tools] Installed SKILL:
+    No skill installed yet. Use `cluaiz skill install <name>`.
+

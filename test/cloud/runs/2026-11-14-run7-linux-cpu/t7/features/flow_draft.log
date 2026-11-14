@@ -1,0 +1,4 @@
+== flow_draft
+$ /home/Aryan/.cluaiz/bin/cluaiz flow draft every morning at 8 read system info and write a one line summary to a note
+writing the flow…
+error: flow: flows.draft: the model did not answer: request (4806 tokens) exceeds the available context size (4096 tokens), try increasing it

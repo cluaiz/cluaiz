@@ -1,0 +1,18 @@
+== cli_show_bge-m3-q8_0-gguf
+$ /home/Aryan/.cluaiz/bin/cluaiz show bge-m3-q8_0-gguf
+  Model
+    id                bge-m3-q8_0-gguf
+    file              /home/Aryan/ch/models/embedding/bge-m3-q8_0-gguf/bge-m3-q8_0.gguf (0.59 GiB)
+    architecture      bert
+    parameters        567M
+    context length    8192
+    layers            24
+    embedding         1024
+    attention heads   16 (KV 16)
+  Capabilities
+    chat template     no
+  Plan on this machine now
+    placement  Full GPU | 24 of 24 blocks on GPU, 0 in RAM | n_gpu_layers -1
+    context    8192 tokens | KV Kv16 next to its layers
+    memory     VRAM 1.81 GB | RAM 0.25 GB
+    reason     Full GPU: weights 0.58 + KV 0.75 + buffers 0.48 = 1.81 GB vs usable VRAM 21.87 GB

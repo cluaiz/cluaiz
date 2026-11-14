@@ -1,0 +1,3 @@
+== agent_task
+$ /home/Aryan/.cluaiz/bin/cluaiz agent List the files in this folder and say how many there are.
+error: agent: no default chat model: pass -m <model>, or set one with `cluaiz model set-chat <id>` (installed: gemma-3-12b-it-gguf-Q4_K_M, mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M, qwen3-4b-gguf-Q4_K_M, qwen3-tts-12hz-1.7b-base-gguf-Q4_K_M)

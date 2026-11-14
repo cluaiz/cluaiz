@@ -1,0 +1,7 @@
+== cli_status
+$ /home/Aryan/.cluaiz/bin/cluaiz status
+os        Debian GNU/Linux 13 (x86_64)
+cpu       Intel(R) Xeon(R) CPU @ 2.20GHz | 4 cores, 8 threads
+ram       30.03 GB free of 31.35 GB
+gpu 0     NVIDIA L4 | 22.08 GB free of 22.49 GB VRAM
+backend   CUDA0: NVIDIA L4

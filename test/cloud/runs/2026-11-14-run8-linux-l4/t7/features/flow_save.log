@@ -1,0 +1,9 @@
+== flow_save
+$ /home/Aryan/.cluaiz/bin/cluaiz flow save /home/Aryan/t7/features/hello.flow.yaml --yes
+error: unexpected argument '--yes' found
+
+  tip: to pass '--yes' as a value, use '-- --yes'
+
+Usage: cluaiz flow save <FILE>
+
+For more information, try '--help'.

@@ -1,0 +1,50 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'onnx-community/whisper-large-v3-turbo:int8'...
+  🔍 Scanning HuggingFace Hub for 'onnx-community/whisper-large-v3-turbo'...
+  ⚡ Direct Quantization Tag Matched: ':int8' -> encoder_model_int8.onnx (1.41 GB)
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: whisper-large-v3-turbo-INT8
+    ├─ 📦 Format: ONNX
+    ├─ 🏷️  Precision / Quant Tag: INT8
+    ├─ 🧠 Architecture: whisper
+    ├─ 📁 Category: stt
+    ├─ 💾 Total Download Size: 1.41 GB
+    └─ 📁 Files to Download (14 files):
+       ├─ ⚖️  onnx/encoder_model_int8.onnx
+       ├─ ⚖️  onnx/decoder_model_int8.onnx
+       ├─ ⚖️  onnx/decoder_with_past_model_int8.onnx
+       ├─ 📄 added_tokens.json
+       ├─ 📄 config.json
+       ├─ 📄 generation_config.json
+       ├─ 📄 merges.txt
+       ├─ 📄 normalizer.json
+       ├─ 📄 preprocessor_config.json
+       ├─ 📄 quantize_config.json
+       ├─ 📄 special_tokens_map.json
+       ├─ 📄 tokenizer.json
+       ├─ 📄 tokenizer_config.json
+       └─ 📄 vocab.json
+   ├─ [1/14] Already on disk: encoder_model_int8.onnx
+   ├─ [2/14] Already on disk: decoder_model_int8.onnx
+   ├─ [3/14] Already on disk: decoder_with_past_model_int8.onnx
+   ├─ [4/14] Already on disk: added_tokens.json
+   ├─ [5/14] Already on disk: config.json
+   ├─ [6/14] Already on disk: generation_config.json
+   ├─ [7/14] Already on disk: merges.txt
+   ├─ [8/14] Already on disk: normalizer.json
+   ├─ [9/14] Already on disk: preprocessor_config.json
+   ├─ [10/14] Already on disk: quantize_config.json
+   ├─ [11/14] Already on disk: special_tokens_map.json
+   ├─ [12/14] Already on disk: tokenizer.json
+   ├─ [13/14] Already on disk: tokenizer_config.json
+   ├─ [14/14] Already on disk: vocab.json
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  whisper-large-v3-turbo-INT8
+  │ 📁 Vault Path:     /home/Aryan/ch/models/stt/whisper-large-v3-turbo-INT8
+  │ 🚀 Run Command:   cluaiz run whisper-large-v3-turbo-INT8
+  └─────────────────────────────────────────────────────────────┘
+

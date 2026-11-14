@@ -1,0 +1,20 @@
+== cep_mcp_journey
+$ python3 /home/Aryan/cluaiz/test/cep/mcp_journey.py --exe /home/Aryan/.cluaiz/bin/cluaiz --home /home/Aryan/ch --port 8014
+-- HTTP /mcp
+PASS initialize negotiates              {'name': 'cluaiz-engine', 'title': 'Cluaiz Engine', 'version': '0.1.0'}
+PASS initialized notification           no reply
+PASS tools/list is read-only            52 tools, e.g. ['audio.languages', 'audio.run', 'audio.voices', 'chat.telemetry', 'chat.tools']
+PASS tools/call system.info             0.1.0
+PASS write method refused               {"error":{"code":-32002,"data":{"needs":"write","type":"forbidden"},"message":"Not allowed
+PASS unknown tool                       {'code': -32602, 'data': {'errors': [], 'example': None, 'type': 'invalid_params'}, 'message': 'Unknown tool: system.infoo'}
+PASS invalid arguments back to model    {"error":{"code":-32602,"data":{"errors":[{"message":"unknown field `chat`, expected one o
+-- stdio: cluaiz mcp-server
+PASS initialize negotiates              {'name': 'cluaiz-engine', 'title': 'Cluaiz Engine', 'version': '0.1.0'}
+PASS initialized notification           no reply
+PASS tools/list is read-only            52 tools, e.g. ['audio.languages', 'audio.run', 'audio.voices', 'chat.telemetry', 'chat.tools']
+PASS tools/call system.info             0.1.0
+PASS write method refused               {"error":{"code":-32002,"data":{"needs":"write","type":"forbidden"},"message":"Not allowed
+PASS unknown tool                       {'code': -32602, 'data': {'errors': [], 'example': None, 'type': 'invalid_params'}, 'message': 'Unknown tool: system.infoo'}
+PASS invalid arguments back to model    {"error":{"code":-32602,"data":{"errors":[{"message":"unknown field `chat`, expected one o
+
+14 of 14 passed

@@ -1,0 +1,14 @@
+This flow needs these permissions:
+  {
+  "methods": [
+    "system.info"
+  ],
+  "models": [
+    "*"
+  ],
+  "scopes": [
+    "read"
+  ]
+}
+Allow them? [y/N] saved vm-hello (user) at ~/ch/flows/vm-hello.flow.yaml
+  warning unused_output /steps/0: nothing reads steps.info and the step changes nothing

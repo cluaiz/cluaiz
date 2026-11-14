@@ -1,0 +1,8 @@
+== cli_permission
+$ /home/Aryan/.cluaiz/bin/cluaiz permission
+telemetry           false
+lazy-load           true
+port                8000
+chat model          none
+vector model        none
+Change one with `cluaiz permission <name> <value>`.

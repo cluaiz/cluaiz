@@ -1,0 +1,8 @@
+== cli_bench_repo_name
+$ /home/Aryan/.cluaiz/bin/cluaiz bench unsloth/Qwen3-4B-GGUF -r 1
+running pp512 on CPU only (1 runs)...
+running tg128 on CPU only (1 runs)...
+| model | size | params | placement | ngl | n_ctx | test | t/s |
+| ----- | ---: | -----: | --------- | --: | ----: | ---: | --: |
+| qwen3 4B Q4_K - Medium | 2.32 GiB | 4.02 B | CPU only | 0 | 4096 | pp512 | 60.13 ± 0.00 |
+| qwen3 4B Q4_K - Medium | 2.32 GiB | 4.02 B | CPU only | 0 | 4096 | tg128 | 14.27 ± 0.00 |

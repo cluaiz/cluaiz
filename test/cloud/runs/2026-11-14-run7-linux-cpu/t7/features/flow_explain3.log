@@ -1,0 +1,7 @@
+By hand → call system.info (Engine name and version, CEP version, hardware, and the LAN address) → A model answers “In one short sentence, say hello to the test VM.”.
+  on By hand
+  info Call system.info (Engine name and version, CEP version, hardware, and the LAN address)
+  answer A model answers “In one short sentence, say hello to the test VM.”
+  uses Reads with: system.info
+  uses Models: the default chat model
+  warning /steps/0: nothing reads steps.info and the step changes nothing

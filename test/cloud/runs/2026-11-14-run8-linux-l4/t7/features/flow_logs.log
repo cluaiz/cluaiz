@@ -1,0 +1,3 @@
+== flow_logs
+$ /home/Aryan/.cluaiz/bin/cluaiz flow logs vm-hello
+error: flow: flows.runs: there is no flow named vm-hello (code -32004)

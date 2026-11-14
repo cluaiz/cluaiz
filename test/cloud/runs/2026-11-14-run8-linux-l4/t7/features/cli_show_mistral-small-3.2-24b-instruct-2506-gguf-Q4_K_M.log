@@ -1,0 +1,20 @@
+== cli_show_mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M
+$ /home/Aryan/.cluaiz/bin/cluaiz show mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M
+  Model
+    id                mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M
+    file              /home/Aryan/ch/models/chat/mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf (13.35 GiB)
+    architecture      llama
+    name              Mistral-Small-3.2-24B-Instruct-2506
+    parameters        24B
+    context length    131072
+    layers            40
+    embedding         5120
+    attention heads   32 (KV 8)
+  Capabilities
+    chat template     yes
+    thinking          no
+  Plan on this machine now
+    placement  Full GPU | 40 of 40 blocks on GPU, 0 in RAM | n_gpu_layers -1
+    context    16384 tokens | KV Kv16 next to its layers
+    memory     VRAM 15.78 GB | RAM 0.35 GB
+    reason     Full GPU: weights 12.99 + KV 2.50 + buffers 0.29 = 15.78 GB vs usable VRAM 21.05 GB

@@ -1,0 +1,21 @@
+== cli_show_gemma-3-12b-it-gguf-Q4_K_M
+$ /home/Aryan/.cluaiz/bin/cluaiz show gemma-3-12b-it-gguf-Q4_K_M
+  Model
+    id                gemma-3-12b-it-gguf-Q4_K_M
+    file              /home/Aryan/ch/models/chat/gemma-3-12b-it-gguf-Q4_K_M/gemma-3-12b-it-Q4_K_M.gguf (6.80 GiB)
+    architecture      gemma3
+    name              Gemma-3-12B-It
+    parameters        12B
+    context length    131072
+    layers            48
+    embedding         3840
+    attention heads   16 (KV 8)
+    sliding window    1024
+  Capabilities
+    chat template     yes
+    thinking          no
+  Plan on this machine now
+    placement  CPU only | 0 of 48 blocks on GPU, 48 in RAM | n_gpu_layers 0
+    context    4096 tokens | KV Kv16 in RAM
+    memory     VRAM 0.00 GB | RAM 8.79 GB
+    reason     CPU only: weights 6.79 + KV 1.50 + logits 0.50 = 8.79 GB in RAM

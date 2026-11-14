@@ -1,0 +1,232 @@
+[
+ {
+  "name": "chat-short",
+  "model": "qwen3-4b-gguf-Q4_K_M",
+  "ok": true,
+  "secs": 3.0,
+  "gpu_mib_used_free": "5244, 17371",
+  "placement": "GpuOnly",
+  "n_gpu_layers": -1,
+  "n_ctx": 16384,
+  "prompt_tps": 933.3195063776832,
+  "gen_tps": 83.52937424348964,
+  "reply": "Rivers are natural water bodies that flow from their sources, such as mountains or springs, to oceans or lakes. They pla"
+ },
+ {
+  "name": "chat-long",
+  "model": "qwen3-4b-gguf-Q4_K_M",
+  "ok": true,
+  "secs": 1.12,
+  "gpu_mib_used_free": "5244, 17371",
+  "placement": "GpuOnly",
+  "n_gpu_layers": -1,
+  "n_ctx": 16384,
+  "prompt_tps": 4981.3200498132,
+  "gen_tps": 75.69675878431006,
+  "reply": "Rivers carry water from mountains to the sea, shaping valleys and feeding farms. This process is a fundamental part of n"
+ },
+ {
+  "name": "chat-short",
+  "model": "gemma-3-12b-it-gguf-Q4_K_M",
+  "ok": true,
+  "secs": 5.81,
+  "gpu_mib_used_free": "13918, 8697",
+  "placement": "GpuOnly",
+  "n_gpu_layers": -1,
+  "n_ctx": 16384,
+  "prompt_tps": 127.07449106666328,
+  "gen_tps": 31.247569171813097,
+  "reply": "Rivers are vital sources of freshwater for humans and ecosystems alike. They carve pathways through landscapes, shaping "
+ },
+ {
+  "name": "chat-long",
+  "model": "gemma-3-12b-it-gguf-Q4_K_M",
+  "ok": true,
+  "secs": 2.29,
+  "gpu_mib_used_free": "13918, 8697",
+  "placement": "GpuOnly",
+  "n_gpu_layers": -1,
+  "n_ctx": 16384,
+  "prompt_tps": 1784.2650599563676,
+  "gen_tps": 28.15830599631126,
+  "reply": "The text repeatedly emphasizes that rivers flow from mountains to the sea. This journey shapes valleys and provides esse"
+ },
+ {
+  "name": "chat-short",
+  "model": "mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M",
+  "ok": true,
+  "secs": 10.37,
+  "gpu_mib_used_free": "16424, 6191",
+  "placement": "GpuOnly",
+  "n_gpu_layers": -1,
+  "n_ctx": 16384,
+  "prompt_tps": 988.2879973037116,
+  "gen_tps": 17.237860236928142,
+  "reply": "Rivers are natural watercourses that flow towards larger bodies of water, such as oceans, lakes, or other rivers. They p"
+ },
+ {
+  "name": "chat-long",
+  "model": "mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M",
+  "ok": true,
+  "secs": 4.85,
+  "gpu_mib_used_free": "16424, 6191",
+  "placement": "GpuOnly",
+  "n_gpu_layers": -1,
+  "n_ctx": 16384,
+  "prompt_tps": 1007.277484438946,
+  "gen_tps": 16.789052642261105,
+  "reply": "The text repeatedly emphasizes that rivers transport water from mountains to the sea, playing a crucial role in shaping "
+ },
+ {
+  "name": "tts-onnx",
+  "model": "kokoro-82m-v1.0-onnx-UINT8",
+  "ok": true,
+  "secs": 3.55,
+  "gpu_mib_used_free": "16424, 6191"
+ },
+ {
+  "name": "stt-onnx",
+  "model": "whisper-large-v3-turbo-INT8",
+  "ok": true,
+  "secs": 11.09,
+  "gpu_mib_used_free": "16424, 6191",
+  "transcript": "Rivers carry water to the sea."
+ },
+ {
+  "name": "embed-gguf",
+  "model": "bge-m3-q8_0-gguf",
+  "ok": true,
+  "secs": 1.81,
+  "gpu_mib_used_free": "16752, 5863"
+ },
+ {
+  "name": "tts-gguf",
+  "model": "qwen3-tts-12hz-1.7b-base-gguf-Q4_K_M",
+  "ok": true,
+  "secs": 3.64,
+  "gpu_mib_used_free": "20224, 2391"
+ },
+ {
+  "name": "mix0-chat",
+  "model": "qwen3-4b-gguf-Q4_K_M",
+  "ok": true,
+  "secs": 13.26,
+  "gpu_mib_used_free": "9052, 13563",
+  "placement": "GpuOnly",
+  "n_gpu_layers": -1,
+  "n_ctx": 16384,
+  "prompt_tps": 944.0889541592364,
+  "gen_tps": 85.03155793857833,
+  "reply": "Rivers are natural waterways that flow from\u6e90\u5934 to mouths, shaping the landscapes they pass through. They provide essentia"
+ },
+ {
+  "name": "mix0-tts-onnx",
+  "model": "kokoro-82m-v1.0-onnx-UINT8",
+  "ok": true,
+  "secs": 2.21,
+  "gpu_mib_used_free": "5614, 17001"
+ },
+ {
+  "name": "mix0-embed-gguf",
+  "model": "bge-m3-q8_0-gguf",
+  "ok": true,
+  "secs": 0.01,
+  "gpu_mib_used_free": "5614, 17001"
+ },
+ {
+  "name": "mix0-stt-onnx",
+  "model": "whisper-large-v3-turbo-INT8",
+  "ok": true,
+  "secs": 3.62,
+  "gpu_mib_used_free": "5614, 17001"
+ },
+ {
+  "name": "mix0-tts-gguf",
+  "model": "qwen3-tts-12hz-1.7b-base-gguf-Q4_K_M",
+  "ok": true,
+  "secs": 3.47,
+  "gpu_mib_used_free": "9052, 13563"
+ },
+ {
+  "name": "mix1-chat",
+  "model": "qwen3-4b-gguf-Q4_K_M",
+  "ok": true,
+  "secs": 0.81,
+  "gpu_mib_used_free": "9052, 13563",
+  "placement": "GpuOnly",
+  "n_gpu_layers": -1,
+  "n_ctx": 16384,
+  "prompt_tps": 0.0,
+  "gen_tps": 82.44634803901361,
+  "reply": "Rivers are natural water bodies that flow from higher elevations to lower ones, shaped by gravity and the landscape. The"
+ },
+ {
+  "name": "mix1-tts-onnx",
+  "model": "kokoro-82m-v1.0-onnx-UINT8",
+  "ok": true,
+  "secs": 2.49,
+  "gpu_mib_used_free": "5614, 17001"
+ },
+ {
+  "name": "mix1-embed-gguf",
+  "model": "bge-m3-q8_0-gguf",
+  "ok": true,
+  "secs": 0.01,
+  "gpu_mib_used_free": "5614, 17001"
+ },
+ {
+  "name": "mix1-stt-onnx",
+  "model": "whisper-large-v3-turbo-INT8",
+  "ok": true,
+  "secs": 3.61,
+  "gpu_mib_used_free": "5614, 17001"
+ },
+ {
+  "name": "mix1-tts-gguf",
+  "model": "qwen3-tts-12hz-1.7b-base-gguf-Q4_K_M",
+  "ok": true,
+  "secs": 2.54,
+  "gpu_mib_used_free": "9052, 13563"
+ },
+ {
+  "name": "mix2-chat",
+  "model": "qwen3-4b-gguf-Q4_K_M",
+  "ok": true,
+  "secs": 0.81,
+  "gpu_mib_used_free": "9052, 13563",
+  "placement": "GpuOnly",
+  "n_gpu_layers": -1,
+  "n_ctx": 16384,
+  "prompt_tps": 0.0,
+  "gen_tps": 85.86809339806466,
+  "reply": "Rivers are natural streams of water that flow from a source, such as a mountain or lake, to a larger body of water, like"
+ },
+ {
+  "name": "mix2-tts-onnx",
+  "model": "kokoro-82m-v1.0-onnx-UINT8",
+  "ok": true,
+  "secs": 2.22,
+  "gpu_mib_used_free": "5614, 17001"
+ },
+ {
+  "name": "mix2-embed-gguf",
+  "model": "bge-m3-q8_0-gguf",
+  "ok": true,
+  "secs": 0.01,
+  "gpu_mib_used_free": "5614, 17001"
+ },
+ {
+  "name": "mix2-stt-onnx",
+  "model": "whisper-large-v3-turbo-INT8",
+  "ok": true,
+  "secs": 3.61,
+  "gpu_mib_used_free": "5614, 17001"
+ },
+ {
+  "name": "mix2-tts-gguf",
+  "model": "qwen3-tts-12hz-1.7b-base-gguf-Q4_K_M",
+  "ok": true,
+  "secs": 2.59,
+  "gpu_mib_used_free": "9058, 13557"
+ }
+]

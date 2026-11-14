@@ -1,0 +1,3 @@
+== model_set_chat
+$ /home/Aryan/.cluaiz/bin/cluaiz model set-chat qwen3-4b-gguf-Q4_K_M
+Active chat model: qwen3-4b-gguf-Q4_K_M

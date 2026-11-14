@@ -1,0 +1,8 @@
+== bench_qwen3-4b-gguf-Q4_K_M
+$ /home/Aryan/.cluaiz/bin/cluaiz bench qwen3-4b-gguf-Q4_K_M -r 2
+running pp512 on CPU only (2 runs)...
+running tg128 on CPU only (2 runs)...
+| model | size | params | placement | ngl | n_ctx | test | t/s |
+| ----- | ---: | -----: | --------- | --: | ----: | ---: | --: |
+| qwen3 4B Q4_K - Medium | 2.32 GiB | 4.02 B | CPU only | 0 | 4096 | pp512 | 60.13 ± 0.06 |
+| qwen3 4B Q4_K - Medium | 2.32 GiB | 4.02 B | CPU only | 0 | 4096 | tg128 | 13.95 ± 0.02 |

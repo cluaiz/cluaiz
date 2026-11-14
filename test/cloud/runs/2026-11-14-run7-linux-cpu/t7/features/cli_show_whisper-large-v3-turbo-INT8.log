@@ -1,0 +1,7 @@
+== cli_show_whisper-large-v3-turbo-INT8
+$ /home/Aryan/.cluaiz/bin/cluaiz show whisper-large-v3-turbo-INT8
+  Model
+    id                whisper-large-v3-turbo-INT8
+    file              /home/Aryan/ch/models/stt/whisper-large-v3-turbo-INT8/encoder_model_int8.onnx
+
+  Details and plans are shown for GGUF models only.

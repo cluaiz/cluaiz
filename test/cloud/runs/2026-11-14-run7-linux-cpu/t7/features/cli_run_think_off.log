@@ -1,0 +1,3 @@
+== cli_run_think_off
+$ /home/Aryan/.cluaiz/bin/cluaiz run qwen3-4b-gguf-Q4_K_M What is 17 times 3? Answer with the number. --local -n 32 --think off
+51

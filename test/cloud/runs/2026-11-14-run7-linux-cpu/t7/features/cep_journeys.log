@@ -1,0 +1,12 @@
+== cep_journeys
+$ python3 /home/Aryan/cluaiz/test/cep/journeys.py --exe /home/Aryan/.cluaiz/bin/cluaiz --home /home/Aryan/ch --port 8013
+PASS E0 Engine answers /health                1.0 s
+PASS E1 rpc.discover                          114 methods, each with scope and example
+PASS E1 rpc.discover group                    6 notes methods
+PASS E1 batch                                 ids [1, 2], did_you_mean ['notes.list', 'notes.pin']
+PASS E1 notification only                     HTTP 202
+PASS E3 task round trip                       t_724d3c29… → completed
+PASS S17 audit                                5 lines, fs.write audited, content not in it, reads not audited
+PASS P1 loopback HTTP tasks.list              p50 0.17 ms, p95 0.23 ms (target p95 ≤ 3 ms)
+
+8 of 8 passed
