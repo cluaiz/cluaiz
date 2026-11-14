@@ -26,6 +26,7 @@ graph TD
 | [`vision.rs`](src/vision.rs) | CLIP and ViT visual embedding extraction. |
 | [`engine.rs`](src/engine.rs) | ONNX Runtime session pooling and execution. |
 | [`media.rs`](src/media.rs) | Typed audio tasks/results, session probing, captured provider policy and processor/signature validation. |
+| [`ort_env.rs`](src/ort_env.rs) | The one ONNX Runtime environment of the process, made on first use; every session is built on it. |
 
 Image byte decoding now calls `cluaiz_media::image::decode_image` directly with core media limits. ONNX retains its current CLIP resize/normalization step; processor-config-driven normalization and runtime/API vision dispatch are separate pending phases.
 

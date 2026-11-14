@@ -12,7 +12,7 @@ crate-type = ["rlib"]
 cluaiz-core = { path = "../core" }
 cluaiz-media = { path = "../media" }
 cluaiz-hw = { path = "../hardware" }
-ort = { version = "2.0.0-rc.13", features = ["copy-dylibs", "download-binaries", "cuda", "half"] }
+ort = { version = "2.0.0-rc.15", features = ["copy-dylibs", "download-binaries", "cuda", "half"] }
 half = "2.4"
 rand = "0.8"
 anyhow = "1.0"
@@ -35,10 +35,10 @@ zip = { version = "9.0.5", default-features = false, features = ["deflate"] }
 # TensorRT / NV-RTX, and macOS has no CUDA build at all (only CoreML), so the exact "cuda" set
 # has no download there: take the closest build
 [target.'cfg(windows)'.dependencies]
-ort = { version = "2.0.0-rc.13", features = ["directml"] }
+ort = { version = "2.0.0-rc.15", features = ["directml"] }
 
 [target.'cfg(not(windows))'.dependencies]
-ort = { version = "2.0.0-rc.13", features = ["lax-feature-matching"] }
+ort = { version = "2.0.0-rc.15", features = ["lax-feature-matching"] }
 
 # dlopen of the CUDA runtime libraries by path (`cudnn_driver::load_runtime_libraries`)
 [target.'cfg(target_os = "linux")'.dependencies]

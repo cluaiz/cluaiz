@@ -292,7 +292,7 @@ mod tests {
     #[test]
     fn encode_moonshine_waveform_executes_real_onnx_graph_and_normalizes() {
         let onnx_bytes = build_raw_waveform_identity_onnx();
-        let mut session = Session::builder()
+        let mut session = Session::builder(crate::ort_env::environment().expect("ONNX Runtime"))
             .unwrap()
             .with_execution_providers([ort::ep::CPU::default().build().error_on_failure()])
             .unwrap()

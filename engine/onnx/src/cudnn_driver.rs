@@ -1178,8 +1178,7 @@ mod tests {
             b't', b'y', 18, 1, b'g', 90, 15, 10, 1, b'x', 18, 10, 10, 8, 8, 1, 18, 4, 10, 2, 8, 1, 98,
             15, 10, 1, b'y', 18, 10, 10, 8, 8, 1, 18, 4, 10, 2, 8, 1, 66, 2, 16, 13,
         ];
-        ort::init().with_name("cluaiz_live_cuda_verify").commit();
-        let mut session = ort::session::Session::builder()
+        let mut session = ort::session::Session::builder(crate::ort_env::environment().expect("ONNX Runtime"))
             .expect("Session::builder")
             .with_execution_providers([ort::ep::CUDA::default().build().error_on_failure()])
             .expect("Strict CUDA EP registration must succeed with provisioned DLLs")
@@ -1197,7 +1196,7 @@ mod tests {
             if path_str.contains("kokoro") || path_str.contains("tts") || path_str.contains("bge_m3") {
                 eprintln!("=== [LIVE GPU VERIFICATION] Committing strict CUDA EP session for {:?} ===", onnx_path);
                 let t0 = std::time::Instant::now();
-                let mut model_sess = ort::session::Session::builder()
+                let mut model_sess = ort::session::Session::builder(crate::ort_env::environment().expect("ONNX Runtime"))
                     .expect("Session::builder")
                     .with_execution_providers([ort::ep::CUDA::default().build().error_on_failure()])
                     .expect("Strict CUDA EP registration")

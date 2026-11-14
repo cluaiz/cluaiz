@@ -112,10 +112,7 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install ccache autoconf automake libtool
 
-      # Pinned: Rust 1.100 moved build-script folders (target/<profile>/build/<crate>/<hash>/out), and
-      # ort-sys and engine/llama/build.rs find target/<profile> as OUT_DIR's third parent. Move the
-      # pin up only after both handle the new layout.
-      - uses: dtolnay/rust-toolchain@1.99.1
+      - uses: dtolnay/rust-toolchain@stable
 
       - name: Test Windows runtime isolation
         if: runner.os == 'Windows'
@@ -139,6 +136,12 @@ jobs:
         run: |
           if [ "$RUNNER_OS" != "Windows" ]; then
             export CMAKE_C_COMPILER_LAUNCHER=ccache CMAKE_CXX_COMPILER_LAUNCHER=ccache
+          else
+            # Cargo 1.100's build folder layout passes one search path per dependency; on Windows the
+            # rustc call of the larger crates then fails ("can't find crate"). Keep the earlier
+            # layout there until Cargo fixes it (the switch is temporary: when Cargo drops it, a
+            # Windows build fails here again and this needs a new look)
+            export __CARGO_TEMPORARY_BUILD_DIR_NEW_LAYOUT_OPT_OUT=1
           fi
           features=()
           [ -n "${{ matrix.features }}" ] && features=(--features "${{ matrix.features }}")

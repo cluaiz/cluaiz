@@ -307,7 +307,13 @@ fn generate_mtmd_bindings(source: &Path, output: &Path) -> Result<(), Box<dyn st
 /// Puts the llama / ggml libraries and backend modules beside the binaries of this profile
 /// (`target/<profile>` and its `deps` for tests), where the loader and ggml look for them.
 fn copy_runtime_libraries(dst: &Path, out_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
-    let profile = out_dir.ancestors().nth(3).ok_or("OUT_DIR is not inside a target profile")?;
+    // OUT_DIR is target/<profile>/build/<crate>-<hash>/out, or target/<profile>/build/<crate>/<hash>/out
+    // since Rust 1.100: the profile is the parent of the nearest `build` folder
+    let profile = out_dir
+        .ancestors()
+        .find(|dir| dir.file_name().is_some_and(|name| name == "build"))
+        .and_then(Path::parent)
+        .ok_or("OUT_DIR is not inside a target profile")?;
     for dir in [dst.join("bin"), dst.join("lib")] {
         let Ok(entries) = std::fs::read_dir(&dir) else { continue };
         for entry in entries.filter_map(Result::ok) {
@@ -316,7 +322,8 @@ fn copy_runtime_libraries(dst: &Path, out_dir: &Path) -> Result<(), Box<dyn std:
             if !(text.ends_with(".dll") || text.ends_with(".so") || text.contains(".so.")) {
                 continue;
             }
-            for to in [profile.to_path_buf(), profile.join("deps")] {
+            // `deps` holds the test binaries in the old layout only; Rust 1.100 has no such folder
+            for to in [profile.to_path_buf(), profile.join("deps")].into_iter().filter(|to| to.is_dir()) {
                 let target = to.join(&name);
                 if entry.file_type()?.is_symlink() {
                     // libllama.so -> libllama.so.0: keep the link, not a second copy

@@ -111,8 +111,8 @@ impl OnnxEngine {
             }
         }
 
-        // Initialize ONNX Runtime environment implicitly.
-        ort::init().with_name("cluaiz_onnx_env").commit();
+        // Start ONNX Runtime now; a failure is reported again by the first session that needs it
+        let _ = crate::ort_env::environment();
 
         Ok(Self {
             audio8_runtime: None,
@@ -237,7 +237,7 @@ impl OnnxEngine {
         }
 
         for i in 0..pool_size {
-            let mut builder = Session::builder()
+            let mut builder = Session::builder(crate::ort_env::environment()?)
                 .map_err(|e| anyhow::anyhow!("Session builder error: {:?}", e))?
                 .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)
                 .map_err(|e| anyhow::anyhow!("Opt level error: {:?}", e))?
@@ -307,7 +307,7 @@ impl OnnxEngine {
             if session_opt.is_none() {
                 tracing::warn!("⚠️ [Sovereign-Cascade] CPU RAM Pressure high. Falling back to Tier 4 (SSD Memory Arena / Low-RAM Swap).");
                 let fallback_cpu_ep = ort::ep::CPU::default().with_arena_allocator(false).build();
-                let mut ssd_builder = Session::builder()
+                let mut ssd_builder = Session::builder(crate::ort_env::environment()?)
                     .map_err(|e| anyhow::anyhow!("Session builder error: {:?}", e))?
                     .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level1)
                     .map_err(|e| anyhow::anyhow!("Opt error: {:?}", e))?
@@ -474,7 +474,7 @@ impl OnnxEngine {
         }
 
         // All CPU cores unless the user set a thread count (0 = ONNX Runtime's default: all)
-        let encoder_builder = Session::builder()
+        let encoder_builder = Session::builder(crate::ort_env::environment()?)
             .map_err(|e| anyhow::anyhow!("Encoder session builder error: {:?}", e))?
             .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level3)
             .map_err(|e| anyhow::anyhow!("Encoder opt level error: {:?}", e))?
@@ -540,7 +540,7 @@ impl OnnxEngine {
                 "⚠️ [Sovereign-Cascade] CPU RAM Pressure high for Encoder. Tier 4 fallback."
             );
             let fallback_cpu_ep = ort::ep::CPU::default().with_arena_allocator(false).build();
-            let mut ssd_builder = Session::builder()
+            let mut ssd_builder = Session::builder(crate::ort_env::environment()?)
                 .map_err(|e| anyhow::anyhow!("Session builder error: {:?}", e))?
                 .with_optimization_level(ort::session::builder::GraphOptimizationLevel::Level1)
                 .map_err(|e| anyhow::anyhow!("Opt error: {:?}", e))?
@@ -617,7 +617,7 @@ mod provider_tests {
 
     #[test]
     fn test_cpu_provider_executes_real_graph() -> ort::Result<()> {
-        let session = Session::builder()?
+        let session = Session::builder(crate::ort_env::environment().expect("ONNX Runtime"))?
             .with_execution_providers([ort::ep::CPU::default().build().error_on_failure()])?
             .commit_from_memory(IDENTITY_GRAPH)?;
         run_identity(session)
@@ -625,7 +625,7 @@ mod provider_tests {
 
     #[test]
     fn test_failed_cuda_registration_preserves_cpu_retry_builder() -> ort::Result<()> {
-        let builder = Session::builder()?;
+        let builder = Session::builder(crate::ort_env::environment().expect("ONNX Runtime"))?;
         // Fault injection: an invalid device must fail whether CUDA is absent
         // or installed. A strict failure must not turn into apparent GPU success.
         let cuda_attempt = builder
@@ -643,7 +643,7 @@ mod provider_tests {
 
     #[test]
     fn test_failed_directml_attempt_preserves_cpu_retry_builder() -> ort::Result<()> {
-        let builder = Session::builder()?;
+        let builder = Session::builder(crate::ort_env::environment().expect("ONNX Runtime"))?;
         let cpu = ort::ep::CPU::default().build().error_on_failure();
         // Empty path cannot be an ONNX file, regardless of provider availability.
         assert!(try_directml_session(&builder, std::path::Path::new(""), &cpu).is_none());

@@ -8,5 +8,6 @@ pub mod vision;
 pub mod chat;
 pub mod engine;
 pub mod media;
+pub mod ort_env;
 
 pub use engine::OnnxEngine;
