@@ -2,8 +2,8 @@
 
 This is a pre-release for developers who read the code, try it and report bugs. It is not ready for everyday use yet.
 
-- Tested: Windows with NVIDIA GPUs (CUDA), and Linux in WSL.
-- Not tested yet: macOS (Apple Silicon and Intel), Intel GPUs, AMD GPUs, and machines with little RAM. If you have one, please try it and tell us with a hardware report issue.
+- Tested: Windows 11 with an NVIDIA GPU (CUDA); Linux x64 (Ubuntu 24.04, Debian 13, Fedora 42) on the CPU and with NVIDIA Tesla T4 and L4 GPUs; Linux ARM64 (AWS Graviton); macOS on Apple Silicon (M5, and GitHub's macOS 15 runner); a 1 GB RAM machine, which refuses a model that does not fit with a clear message.
+- Not tested yet: AMD and Intel GPUs (Vulkan), and Intel Macs (not supported). If you have one, please try it and tell us with a hardware report issue.
 - Found a bug? Open an issue with the output of `cluaiz --version` and `cluaiz status`. Bugs in a tool (plugins, skills and MCP servers) go to [cluaiz-tools](https://github.com/cluaiz/cluaiz-tools/issues).
 
 ## Install
