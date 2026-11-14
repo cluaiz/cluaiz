@@ -161,6 +161,40 @@ pub const UNUSED_FIELDS: [&str; 6] = [
     "vector_models.audio",
 ];
 
+/// One value of `agent_security_mode` and what the Engine does in it. CEP `config.get` sends
+/// these, so a settings screen shows the Engine's own rules. The runtime rules are in
+/// `ToolEntry::requires_approval` (agents); the install rules in the installer's plan.
+#[derive(Debug, Clone, Copy, Serialize)]
+pub struct SecurityModeInfo {
+    pub id: &'static str,
+    pub title: &'static str,
+    /// What runs without asking and what is asked, in the user's words
+    pub summary: &'static str,
+    /// The mode a new install starts in
+    pub default: bool,
+}
+
+pub const SECURITY_MODES: [SecurityModeInfo; 3] = [
+    SecurityModeInfo {
+        id: "full_access",
+        title: "Full Access",
+        summary: "Tools run without asking. Still asked: a tool you set to always ask, and each call of a script or MCP tool while one of its permissions is off. At install, a sensitive permission is still asked.",
+        default: false,
+    },
+    SecurityModeInfo {
+        id: "sandboxed",
+        title: "Sandboxed",
+        summary: "Asks before MCP tools, tools that declare no permissions, tools set to confirm, and tools that use the internet, write files or run programs. Tools that only read run without asking, as do tools you set to always allow and the read-only functions of an MCP server whose annotations you trust. At install, a sensitive permission, or a dependency that wants one, is asked.",
+        default: true,
+    },
+    SecurityModeInfo {
+        id: "strict",
+        title: "Strict",
+        summary: "Asks before every tool call, except a tool you set to always allow. At install, every permission is asked.",
+        default: false,
+    },
+];
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PermissionSchema {
     #[serde(default)]
@@ -336,7 +370,8 @@ impl PermissionSchema {
                 Some(value) => value.as_bool().map(Some).ok_or_else(|| format!("{name} must be true or false")),
             }
         };
-        let mode = text("agent_security_mode", &["full_access", "sandboxed", "strict"])?;
+        let modes: Vec<&str> = SECURITY_MODES.iter().map(|m| m.id).collect();
+        let mode = text("agent_security_mode", &modes)?;
         let firewall = text("wasm_firewall", &["auto", "strict", "off"])?;
         let flags = [
             ("vectorize_user_input", flag("vectorize_user_input")?),
@@ -412,5 +447,16 @@ mod merge_tests {
 
         schema.merge_patch(&serde_json::json!({"api_port": 9999, "api_host": "0.0.0.0"})).unwrap();
         assert_eq!(schema.api_port, default_api_port(), "the address is not changed here");
+    }
+
+    #[test]
+    fn the_listed_modes_are_the_saved_values_and_one_is_the_default() {
+        let defaults: Vec<&str> = SECURITY_MODES.iter().filter(|m| m.default).map(|m| m.id).collect();
+        assert_eq!(defaults, [default_agent_security_mode()]);
+        for mode in SECURITY_MODES {
+            let mut schema = PermissionSchema::default();
+            schema.merge_patch(&serde_json::json!({ "agent_security_mode": mode.id })).unwrap();
+            assert_eq!(schema.agent_security_mode, mode.id);
+        }
     }
 }

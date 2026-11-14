@@ -152,6 +152,8 @@ async fn section_value(ctx: &CallCtx, section: Section) -> Value {
             let mut engine = json!(clear_missing_slots(ctx).await);
             // What a settings screen should not offer as working switches
             engine["unused_fields"] = json!(cluaiz_security::UNUSED_FIELDS);
+            // The values of agent_security_mode and what each does, so a settings screen shows these rules
+            engine["security_modes"] = json!(cluaiz_security::SECURITY_MODES);
             engine
         }
     }
