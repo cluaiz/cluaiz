@@ -83,7 +83,7 @@ impl OnnxEngine {
         optimization: ort::session::builder::GraphOptimizationLevel,
     ) -> Result<Session> {
         let settings = &self.settings;
-        let builder = Session::builder()?
+        let builder = Session::builder(crate::ort_env::environment()?)?
             .with_optimization_level(optimization)
             .map_err(|e| anyhow::anyhow!(e.to_string()))?
             .with_intra_threads(settings.intra_op_num_threads)

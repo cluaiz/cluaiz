@@ -163,7 +163,7 @@ pub fn execute(engine: &crate::engine::OnnxEngine, text: &str) -> Result<Vec<f32
                     flow_inputs.insert("x".to_string(), x_val_array.into());
                 }
 
-                match flow_sess.run(flow_inputs.clone()) {
+                match flow_sess.run(flow_inputs.iter().map(|(name, value)| (name.as_str(), value)).collect::<Vec<_>>()) {
                     Ok(flow_outputs) => {
                         if let Some(out_val) = flow_outputs.values().next() {
                             if let Ok((_shape, est_tensor)) = out_val.try_extract_tensor::<f32>() {

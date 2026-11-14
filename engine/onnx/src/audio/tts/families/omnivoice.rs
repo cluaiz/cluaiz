@@ -53,7 +53,7 @@ pub fn execute(
     }
 
     let inputs_embeds_f32: Vec<f32> = {
-        let mut aee_sess = Session::builder()?.commit_from_file(&aee_path)?;
+        let mut aee_sess = Session::builder(crate::ort_env::environment()?)?.commit_from_file(&aee_path)?;
 
         let mut input_ids_8: Vec<i64> = Vec::with_capacity(8 * seq_len);
         for _book in 0..8 {
@@ -88,7 +88,7 @@ pub fn execute(
     }
 
     let hidden_states_f32: Vec<f32> = {
-        let mut llm_sess = Session::builder()?.commit_from_file(&llm_path)?;
+        let mut llm_sess = Session::builder(crate::ort_env::environment()?)?.commit_from_file(&llm_path)?;
 
         let mut llm_inputs: HashMap<String, Value> = HashMap::new();
         if let Ok(v) = Value::from_array(([1usize, seq_len, 1024usize], inputs_embeds_f32.clone())) {
@@ -127,7 +127,7 @@ pub fn execute(
     }
 
     let codec_tokens: Vec<Vec<usize>> = {
-        let mut heads_sess = Session::builder()?.commit_from_file(&heads_path)?;
+        let mut heads_sess = Session::builder(crate::ort_env::environment()?)?.commit_from_file(&heads_path)?;
         let hs_len = hidden_states_f32.len();
         let hs_seq = hs_len / 1024;
 
