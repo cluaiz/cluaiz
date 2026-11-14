@@ -113,8 +113,8 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             .example(
                 json!({"kind":"plugin","name":"web-search"}),
                 json!({"schema":{},"values":{"enabled":true,"execution_mode":"manual","security_mode":"inherit","trust_annotations":false},
-                    "user_settings":[{"name":"BRAVE_API_KEY","secret":true,"set":false},{"name":"SEARXNG_URL","secret":false,"set":false},{"name":"TAVILY_API_KEY","secret":true,"set":true}],
-                    "permissions":[{"kind":"network","title":"Internet","why":"Searches the web and reads pages","sensitive":false,"default":true,"on":true,"chosen":false}]}),
+                    "user_settings":[{"name":"BRAVE_API_KEY","info":"Brave Search API key","required":false,"secret":true,"set":false,"in_system":false},{"name":"SEARXNG_URL","info":"Address of your own SearXNG server","required":false,"secret":true,"set":false,"in_system":false},{"name":"TAVILY_API_KEY","info":"Tavily API key","required":false,"secret":true,"set":true,"in_system":false}],
+                    "permissions":[{"kind":"network","title":"Internet","info":"Sends searches to search services and reads the pages that are chosen","sensitive":false,"default":true,"on":true,"chosen":false,"options":{"access":"full"}}]}),
             ),
         catalog::get,
     );
@@ -132,13 +132,13 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             .example(
                 json!({"kind":"plugin","name":"web-search","patch":{"user_settings":{"TAVILY_API_KEY":"tvly-..."}}}),
                 json!({"schema":{},"values":{"enabled":true,"execution_mode":"manual","security_mode":"inherit","trust_annotations":false},
-                    "user_settings":[{"name":"TAVILY_API_KEY","secret":true,"set":true}]}),
+                    "user_settings":[{"name":"TAVILY_API_KEY","info":"Tavily API key","required":false,"secret":true,"set":true,"in_system":false}]}),
             )
             .example(
                 json!({"kind":"plugin","name":"web-search","patch":{"permissions":{"network":false}}}),
                 json!({"schema":{},"values":{"enabled":true,"execution_mode":"manual","security_mode":"inherit","trust_annotations":false},
                     "user_settings":[],
-                    "permissions":[{"kind":"network","title":"Internet","why":"Searches the web and reads pages","sensitive":false,"default":true,"on":false,"chosen":true}]}),
+                    "permissions":[{"kind":"network","title":"Internet","info":"Sends searches to search services and reads the pages that are chosen","sensitive":false,"default":true,"on":false,"chosen":true,"options":{"access":"full"}}]}),
             ),
         catalog::set,
     );
