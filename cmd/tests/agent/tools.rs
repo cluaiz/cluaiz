@@ -73,7 +73,11 @@ async fn always_allow_saves_the_rule_for_the_folder_and_stops_asking() {
 }
 
 fn tools() -> (Tools, PathBuf) {
-    let dir = std::env::temp_dir().join(format!("cluaiz-agent-tools-{}", std::process::id()));
+    // A folder of its own for each call: tests run at the same time, and one must not delete
+    // another's files
+    static NEXT: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+    let n = NEXT.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+    let dir = std::env::temp_dir().join(format!("cluaiz-agent-tools-{}-{n}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("src")).unwrap();
     std::fs::write(
