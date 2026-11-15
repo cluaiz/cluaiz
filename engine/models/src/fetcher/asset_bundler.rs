@@ -75,12 +75,22 @@ impl AssetBundler {
         false
     }
 
-    /// Returns true if the GGUF is ANY kind of helper file (MTP, mmproj, projector, adapter).
+    /// Returns true if the GGUF is ANY kind of helper file (MTP, mmproj, projector, adapter,
+    /// speculative draft, importance matrix).
     pub fn is_helper_gguf(filename: &str) -> bool {
         Self::is_mtp_gguf(filename)
             || Self::is_mmproj_gguf(filename)
             || Self::is_projector_gguf(filename)
             || Self::is_adapter_gguf(filename)
+            || Self::is_draft_gguf(filename)
+    }
+
+    /// A speculative-decoding draft or an importance matrix published beside the model
+    /// (`eagle3-gpt-oss-20b-Q8_0.gguf`): the file names llama.cpp's `-hf` download does not take
+    /// as the model (`common/download.cpp`, `sidecars` and `gguf_filename_is_model`).
+    pub fn is_draft_gguf(filename: &str) -> bool {
+        let b = Self::basename_of(filename);
+        ["dflash-", "eagle3-", "dspark-", "imatrix"].iter().any(|keyword| b.contains(keyword))
     }
 
     pub fn is_mtp_gguf(filename: &str) -> bool {
@@ -297,5 +307,15 @@ mod tests {
             assert!(AssetBundler::local_asset_path(file, "onnx/model.onnx").is_err());
         }
         Ok(())
+    }
+
+    #[test]
+    fn a_draft_beside_the_model_is_not_a_variant() {
+        // ggml-org/gpt-oss-20b-GGUF: without Q4_K_M the smallest file was picked, the 0.9 GB draft
+        assert!(AssetBundler::is_helper_gguf("eagle3-gpt-oss-20b-Q8_0.gguf"));
+        assert!(AssetBundler::is_helper_gguf("sub/dflash-model-Q4_0.gguf"));
+        assert!(AssetBundler::is_helper_gguf("model.imatrix.gguf"));
+        assert!(!AssetBundler::is_helper_gguf("gpt-oss-20b-mxfp4.gguf"));
+        assert!(!AssetBundler::is_helper_gguf("Qwen3.5-9B-Q4_K_M.gguf"));
     }
 }
