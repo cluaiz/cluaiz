@@ -50,9 +50,11 @@ jobs:
         with:
           submodules: true
 
+      # Pinned: the action follows upstream's release toolkits (13.4 was replaced by 13.5 in
+      # 2026-11); the packs and install.ps1's checks are built for the versions in the matrix
       - name: Install CUDA toolkit
         if: matrix.cuda != ''
-        uses: ./engine/llama/llama.cpp/.github/actions/windows-setup-cuda
+        uses: cluaiz/llama.cpp/.github/actions/windows-setup-cuda@8f9842cd1faebd06413805eb495bdf1c7e80660f
         with:
           cuda_version: ${{ matrix.cuda }}
           cuda_arch: x64
