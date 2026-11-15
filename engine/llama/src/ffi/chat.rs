@@ -9,7 +9,7 @@ unsafe extern "C" {
     fn cluaiz_chat_templates_init(model: *const c_void, custom_tmpl: *const c_char) -> *mut c_void;
     fn cluaiz_chat_templates_free(tmpls: *mut c_void);
     fn cluaiz_chat_apply(tmpls: *const c_void, request: *const c_char) -> *mut c_char;
-    fn cluaiz_chat_parser_init(apply: *const c_char) -> *mut c_void;
+    fn cluaiz_chat_parser_init(tmpls: *const c_void, apply: *const c_char) -> *mut c_void;
     fn cluaiz_chat_parser_free(parser: *mut c_void);
     fn cluaiz_chat_parse(parser: *const c_void, text: *const c_char, partial: bool) -> *mut c_char;
     fn cluaiz_chat_string_free(text: *mut c_char);
@@ -68,11 +68,11 @@ impl Drop for ChatTools {
 pub struct ChatParser(*mut c_void);
 
 impl ChatParser {
-    /// `apply`: what `ChatTools::apply` returned
-    pub fn new(apply: &Value) -> Result<Self> {
+    /// `apply`: what `tools.apply` returned (the parser is that render's, kept by `tools`)
+    pub fn new(tools: &ChatTools, apply: &Value) -> Result<Self> {
         let apply = CString::new(apply.to_string())?;
-        // SAFETY: the string lives for the call
-        let parser = unsafe { cluaiz_chat_parser_init(apply.as_ptr()) };
+        // SAFETY: live templates handle; the string lives for the call
+        let parser = unsafe { cluaiz_chat_parser_init(tools.0, apply.as_ptr()) };
         if parser.is_null() {
             bail!("native chat parser could not be built");
         }

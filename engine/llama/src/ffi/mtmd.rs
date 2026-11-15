@@ -34,6 +34,8 @@ pub struct mtmd_gen_audio_info {
     pub type_: i32,
     pub sample_rate: i32,
     pub model_variant: *const std::ffi::c_char,
+    /// Predefined voices (mtmd_gen_audio_voice_name)
+    pub n_voices: i32,
 }
 
 /// `struct mtmd_helper_gen_audio` (opaque)
@@ -46,19 +48,29 @@ pub struct mtmd_helper_gen_audio {
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
 pub struct mtmd_helper_gen_audio_inp {
+    /// true: `mtmd_helper_gen_audio_get_output` after each step (false: once at the end)
+    pub stream: bool,
     pub seq_id: i32,
     pub prompt: *const std::ffi::c_char,
     pub prompt_len: usize,
+    /// > 0: continue a sequence of n_past positions with raw text (LFM3-Audio only); 0 = new
+    pub n_past: i32,
+    /// `enum mtmd_helper_gen_audio_out_mode`, used only when n_past > 0 (0 = auto)
+    pub out_mode: i32,
     pub speaker_ref: *mut mtmd_bitmap,
     pub lang: *const std::ffi::c_char,
     pub top_k: i32,
     pub top_p: f32,
+    /// Audio frame temperature if the model supports it: < 0 = model default, 0 = greedy
+    pub temp: f32,
     pub seed: u32,
     pub out_type: i32,
 }
 
 extern "C" {
     pub fn mtmd_gen_audio_get_info(ctx: *const mtmd_context) -> mtmd_gen_audio_info;
+    /// llama.cpp's defaults for every field (top_k 50, top_p 1, model temperature, random seed, WAV)
+    pub fn mtmd_helper_gen_audio_inp_default() -> mtmd_helper_gen_audio_inp;
     pub fn mtmd_helper_gen_audio_init(
         lctx: *mut std::ffi::c_void,
         mctx: *mut mtmd_context,

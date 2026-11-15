@@ -111,11 +111,14 @@ pub struct LlamaContextParams {
     pub yarn_beta_fast: f32,
     pub yarn_beta_slow: f32,
     pub yarn_orig_ctx: u32,
-    pub defrag_thold: f32,
     pub cb_eval: *mut std::ffi::c_void, // ggml_backend_sched_eval_callback
     pub cb_eval_user_data: *mut std::ffi::c_void,
     pub type_k: i32,
     pub type_v: i32,
+    /// Device cache in bytes for the MoE experts kept in host memory, 0 = off [EXPERIMENTAL]
+    pub moe_cache_size: usize,
+    /// Share of MoE cache misses computed on the CPU instead of uploaded [EXPERIMENTAL]
+    pub moe_cache_cpu_share: f32,
     pub abort_callback: *mut std::ffi::c_void,
     pub abort_callback_data: *mut std::ffi::c_void,
 
@@ -145,6 +148,9 @@ pub struct LlamaPerfContextData {
     pub n_p_eval: i32,
     pub n_eval: i32,
     pub n_reused: i32,
+    /// Graph reallocations during inference with an unchanged / a changed graph size
+    pub n_reallocs_same: i32,
+    pub n_reallocs_diff: i32,
 }
 
 #[repr(C)]

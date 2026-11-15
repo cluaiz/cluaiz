@@ -247,6 +247,9 @@ impl SpeechModel {
             top_p: TOP_P,
             seed: options.seed.unwrap_or(u32::MAX),
             out_type: mtmd::MTMD_HELPER_GEN_AUDIO_OUTTYPE_PCM,
+            // The rest as llama.cpp's defaults: one output at the end, a new sequence, the model's
+            // own audio temperature
+            ..unsafe { mtmd::mtmd_helper_gen_audio_inp_default() }
         };
         // SAFETY: the input's strings outlive the generation (they live until this call returns).
         if unsafe { mtmd::mtmd_helper_gen_audio_set_input(generator.0.as_ptr(), &input) } != 0 {

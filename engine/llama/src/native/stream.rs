@@ -732,7 +732,8 @@ pub(crate) fn stream_tokens_with_media(
         // thinks) and its parser, which turns the output back into text and calls
         let native_apply = native_apply.borrow().clone();
         let native_parser = native_apply.as_ref().filter(|_| parse_tools).and_then(|apply| {
-            crate::ffi::chat::ChatParser::new(apply)
+            let tools = llama.chat_tools(dna.chat_template.as_deref())?;
+            crate::ffi::chat::ChatParser::new(tools, apply)
                 .map_err(|e| tracing::warn!("⚠️ [NativeTools] {}; calls are read as <tool_call> blocks only", e))
                 .ok()
         });

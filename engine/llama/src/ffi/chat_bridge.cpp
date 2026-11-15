@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <vector>
 
@@ -39,10 +40,45 @@ const char * trigger_type_name(common_grammar_trigger_type type) {
     return "word";
 }
 
+// The request JSON as llama.cpp's template inputs (see cluaiz_chat_apply)
+common_chat_templates_inputs inputs_from(const common_json & body) {
+    common_chat_templates_inputs inputs;
+    inputs.messages = common_chat_msgs_parse_oaicompat(body.at("messages"));
+    if (body.contains("tools")) {
+        inputs.tools = common_chat_tools_parse_oaicompat(body.at("tools"));
+    }
+    inputs.tool_choice         = COMMON_CHAT_TOOL_CHOICE_AUTO;
+    // The Engine runs one call per step and renders the conversation again after it
+    inputs.parallel_tool_calls = false;
+    inputs.reasoning_format    = COMMON_REASONING_FORMAT_DEEPSEEK;
+    inputs.enable_thinking     = body.value("enable_thinking", true);
+    inputs.add_generation_prompt = true;
+    if (body.contains("chat_template_kwargs") && body.at("chat_template_kwargs").is_object()) {
+        for (const auto & [key, value] : body.at("chat_template_kwargs").items()) {
+            inputs.chat_template_kwargs[key] = value.dump();
+        }
+    }
+    return inputs;
+}
+
+// How llama.cpp reads the output of one render back (format, generation prompt, PEG parser)
+common_chat_parser_params parser_params_from(common_chat_params & params) {
+    common_chat_parser_params out;
+    out.format            = params.format;
+    out.generation_prompt = common_chat_input(params.generation_prompt);
+    out.parser            = std::move(params.parser);
+    return out;
+}
+
 }  // namespace
 
+// llama.cpp's parser is an object, not text (chat API refactor #30210): the latest render keeps
+// its parser here, labelled with a serial that cluaiz_chat_apply returns, for the parser to take
 struct cluaiz_chat_templates {
     common_chat_templates_ptr tmpls;
+    mutable std::mutex m;
+    mutable uint64_t serial = 0;
+    mutable std::unique_ptr<common_chat_parser_params> last;
 };
 
 struct cluaiz_chat_parser {
@@ -52,7 +88,12 @@ struct cluaiz_chat_parser {
 extern "C" cluaiz_chat_templates * cluaiz_chat_templates_init(const llama_model * model, const char * custom_tmpl) noexcept {
     try {
         auto tmpls = common_chat_templates_init(model, custom_tmpl ? custom_tmpl : "");
-        return tmpls ? new cluaiz_chat_templates{ std::move(tmpls) } : nullptr;
+        if (!tmpls) {
+            return nullptr;
+        }
+        auto out = new cluaiz_chat_templates;
+        out->tmpls = std::move(tmpls);
+        return out;
     } catch (...) {
         return nullptr;
     }
@@ -65,43 +106,28 @@ extern "C" void cluaiz_chat_templates_free(cluaiz_chat_templates * tmpls) noexce
 // request: {"messages": [OpenAI messages], "tools": [OpenAI tools], "enable_thinking": bool,
 //           "chat_template_kwargs": {..}}
 // returns: {"prompt", "format", "grammar", "grammar_lazy", "triggers": [{"type", "value", "token"}],
-//           "preserved_tokens", "additional_stops", "generation_prompt", "parser"} or {"error"}
+//           "preserved_tokens", "additional_stops", "generation_prompt", "parser_serial", "request"}
+//           or {"error"}
 extern "C" char * cluaiz_chat_apply(const cluaiz_chat_templates * tmpls, const char * request) noexcept {
     if (!tmpls || !tmpls->tmpls || !request) {
         return error_json("no chat templates");
     }
     try {
         const auto body = common_json::parse(request);
-        common_chat_templates_inputs inputs;
-        inputs.messages = common_chat_msgs_parse_oaicompat(body.at("messages"));
-        if (body.contains("tools")) {
-            inputs.tools = common_chat_tools_parse_oaicompat(body.at("tools"));
-        }
-        inputs.tool_choice         = COMMON_CHAT_TOOL_CHOICE_AUTO;
-        // The Engine runs one call per step and renders the conversation again after it
-        inputs.parallel_tool_calls = false;
-        inputs.reasoning_format    = COMMON_REASONING_FORMAT_DEEPSEEK;
-        inputs.enable_thinking     = body.value("enable_thinking", true);
-        inputs.add_generation_prompt = true;
-        if (body.contains("chat_template_kwargs") && body.at("chat_template_kwargs").is_object()) {
-            for (const auto & [key, value] : body.at("chat_template_kwargs").items()) {
-                inputs.chat_template_kwargs[key] = value.dump();
-            }
-        }
-        const auto params = common_chat_templates_apply(tmpls->tmpls.get(), inputs);
+        auto params = common_chat_templates_apply(tmpls->tmpls.get(), inputs_from(body));
 
         auto out = common_json::object();
-        out["prompt"]            = params.prompt;
+        out["prompt"]            = params.prompt.str();
         // A template that never renders tools gets them inline instead
         const auto caps          = common_chat_templates_get_caps(tmpls->tmpls.get());
-        const auto tools_cap     = caps.find("supports_tools");
-        out["supports_tools"]    = tools_cap != caps.end() && tools_cap->second;
+        out["supports_tools"]    = caps.contains("supports_tools") && caps.value("supports_tools", false);
         out["format"]            = std::string(common_chat_format_name(params.format));
         out["format_id"]         = static_cast<int>(params.format);
         out["grammar"]           = params.grammar;
         out["grammar_lazy"]      = params.grammar_lazy;
         out["generation_prompt"] = params.generation_prompt;
-        out["parser"]            = params.parser;
+        // The request, so a parser can render it again when this render's parser was replaced
+        out["request"]           = body;
         auto triggers = common_json::array();
         for (const auto & trigger : params.grammar_triggers) {
             auto item = common_json::object();
@@ -121,6 +147,11 @@ extern "C" char * cluaiz_chat_apply(const cluaiz_chat_templates * tmpls, const c
             stops.push_back(stop);
         }
         out["additional_stops"] = stops;
+        {
+            std::lock_guard<std::mutex> lock(tmpls->m);
+            tmpls->last = std::make_unique<common_chat_parser_params>(parser_params_from(params));
+            out["parser_serial"] = ++tmpls->serial;
+        }
         return dup_string(out.dump_safe());
     } catch (const std::exception & e) {
         return error_json(e.what());
@@ -129,19 +160,24 @@ extern "C" char * cluaiz_chat_apply(const cluaiz_chat_templates * tmpls, const c
     }
 }
 
-// apply: the JSON cluaiz_chat_apply returned (format_id, generation_prompt, parser)
-extern "C" cluaiz_chat_parser * cluaiz_chat_parser_init(const char * apply) noexcept {
+// apply: the JSON cluaiz_chat_apply returned with these templates. Takes that render's parser,
+// or renders its request again when a later render replaced it (same templates, same parser).
+extern "C" cluaiz_chat_parser * cluaiz_chat_parser_init(const cluaiz_chat_templates * tmpls, const char * apply) noexcept {
+    if (!tmpls || !tmpls->tmpls || !apply) {
+        return nullptr;
+    }
     try {
         const auto body = common_json::parse(apply);
         auto parser = std::make_unique<cluaiz_chat_parser>();
-        parser->params.format            = static_cast<common_chat_format>(body.value("format_id", 0));
-        parser->params.reasoning_format  = COMMON_REASONING_FORMAT_DEEPSEEK;
-        parser->params.generation_prompt = body.value("generation_prompt", std::string());
-        parser->params.parse_tool_calls  = true;
-        const std::string definition = body.value("parser", std::string());
-        if (!definition.empty()) {
-            parser->params.parser.load(definition);
+        {
+            std::lock_guard<std::mutex> lock(tmpls->m);
+            if (tmpls->last && body.value("parser_serial", uint64_t{0}) == tmpls->serial) {
+                parser->params = *tmpls->last;
+                return parser.release();
+            }
         }
+        auto params = common_chat_templates_apply(tmpls->tmpls.get(), inputs_from(body.at("request")));
+        parser->params = parser_params_from(params);
         return parser.release();
     } catch (...) {
         return nullptr;
@@ -159,7 +195,7 @@ extern "C" char * cluaiz_chat_parse(const cluaiz_chat_parser * parser, const cha
         return error_json("no parser");
     }
     try {
-        const auto msg = common_chat_parse(text, partial, parser->params);
+        const auto msg = common_chat_parse(common_chat_input(std::string(text)), partial, parser->params);
         auto out = common_json::object();
         out["content"]           = msg.content;
         out["reasoning_content"] = msg.reasoning_content;
