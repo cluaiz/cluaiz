@@ -11,6 +11,8 @@ Each run has its folder in `runs/` with a `SUMMARY.md` and the raw logs. Models 
 | [8](runs/2026-11-14-run8-linux-l4/SUMMARY.md) | 2026-11-14 | Debian 13, driver 620.70 | Xeon 2.2 GHz, 8 vCPU / 31 GiB | L4 23 GB | release v0.1.0 (`14ae569f`) by `install.sh`, CUDA 13 packs | — | 25 / 25 | ✅ features and journeys pass; `bench` of Gemma 4 31B fails, see summary |
 | [9](runs/2026-11-14-run9-linux-l4-regression/SUMMARY.md) | 2026-11-14 | same VM as run 8, CUDA toolkit 13.2 for llama-bench | same | L4 23 GB | release v0.1.0 (`14ae569f`) vs llama-bench (fork `8f9842cd1`) | — | 14 / 15 `run.py` tests | ✅ generation equal to llama.cpp in all; Gemma 4 31B Q4 auto picks GPU + RAM though full GPU fits (1.4x slower) |
 | [10](runs/2026-11-15-run10-ollama/SUMMARY.md) | 2026-11-15 | run 8 L4 VM and run 7 CPU VM | same | L4 23 GB / none | release v0.1.0 vs Ollama 0.40.16, same GGUF files | — | 48 / 48 requests | ✅ generation equal where placement is equal; Ollama keeps Gemma 4 31B fully on the GPU (12.8 vs 8.9 t/s), uses 4.7 GB less VRAM on Gemma 3 12B, loads faster on the CPU |
+| [11](runs/2026-11-15-run11-l4/SUMMARY.md) | 2026-11-15 | run 8 L4 VM | same | L4 23 GB | release v0.1.0 (`51d03856`, llama.cpp `17d1465f0`) vs llama-bench, Ollama 0.40.16, LM Studio | — | 12 / 16 placements, 22 / 24 features | ⚠️ three bugs (gpt-oss markup, client tool calls dropped, untagged pull took a draft); Cluaiz fastest generation of the three tools; Gemma 4 31B now full GPU (12.8 t/s) |
+| [12](runs/2026-11-15-run12-l4/SUMMARY.md) | 2026-11-15 | same | same | L4 23 GB | release v0.1.0 (`c3b1b123`) | — | 6 / 6 placements, 24 / 24 features | ✅ the three bugs fixed; speed unchanged |
 | [4a](runs/2026-10-28-run4a-linux-t4-release-cuda13/) | 2026-10-28 | Ubuntu 24.04, driver 580 (CUDA 13.0) | Xeon 2.3 GHz, 8 vCPU / 29 GiB | T4 16 GB | release v0.1.0 by `install.sh`, CUDA 13 pack | — | 0 / 29 | ❌ CUDA 13.4 code cannot run on a CUDA 13.0 driver for T4; installer fixed |
 | [4b](runs/2026-10-28-run4b-linux-t4-release-cuda12/SUMMARY.md) | 2026-10-28 | same VM | same | T4 16 GB | release v0.1.0 by `install.sh`, CUDA 12 pack | — | 11 / 35 | ❌ server aborted on Kokoro CUDA (system cuDNN for CUDA 13); engine fix pending |
 | [5](runs/2026-10-28-run5-linux-t4-regression/RESULTS.md) | 2026-10-28 | Ubuntu 24.04, driver 580 | Xeon 2.3 GHz, 8 vCPU / 29 GiB, then 4 vCPU / 15 GiB | T4 16 GB | release v0.1.0 (CUDA 12 pack), then `main` with two prompt fixes | — | 18 / 18 `run.py` tests | ✅ Cluaiz vs llama.cpp: generation equal; prompt equal after the fixes, up to 1.6x faster split |
@@ -23,8 +25,13 @@ Each run has its folder in `runs/` with a `SUMMARY.md` and the raw logs. Models 
 | Qwen3-4B | 10.5 (CPU, 4096); 13.4–14.0 run 7 | 64.6–68.0 (full GPU, 40960) | 75.7–85.1 (full GPU, 16384) | | 32–42 (full GPU, 2048–2560) |
 | Gemma-3 12B | 3.6 (CPU, 4096); 4.4–4.9 run 7 | 14.4–24.6 (full GPU, 16896–17408) | 28.2–31.4 (full GPU, 16384) | | |
 | Mistral-Small-3.2 24B | 1.9 (CPU, 4096); 2.6–2.8 run 7 | 8.0–11.2 (full GPU, 3072–4096) | 16.8–17.3 (full GPU, 16384) | | |
-| Gemma 4 31B (17.1 GB) | | 3.0–3.2 (planner: 41 / 60 blocks on GPU, 4096) | `run` answers; `bench` fails (run 8) | | |
+| Gemma 4 31B (17.1 GB) | | 3.0–3.2 (planner: 41 / 60 blocks on GPU, 4096) | `run` answers; `bench` fails (run 8); 12.6–12.8 (full GPU, 4096, run 11) | | |
 | Gemma 4 31B Q8_0 (30.4 GB) | | 1.3–1.4 (planner: 23 / 60 blocks on GPU, 4096) | | | |
+| Phi-4-mini (run 11) | | | 88.6 (full GPU, 16384); CPU only 6.6 | | |
+| Qwen3.5-9B (run 11) | | | 43.8 (full GPU); CPU only 4.9 | | |
+| Qwen3-30B-A3B-2507 (run 11) | | | 98.3–99.1 (full GPU, 16384); CPU only 7.9 | | |
+| gpt-oss-20b MXFP4 (run 12) | | | 81.1–81.8 (full GPU, 16384); CPU only 8.8 | | |
+| gpt-oss-120b MXFP4 (59 GiB, run 11) | | | 8.2 warm (all layers on GPU, experts of 25 in RAM, from SSD) | | |
 
 ## Voice and embeddings (seconds per call, after the first load)
 | | Linux CPU | Linux T4 | Linux L4 | Windows T4 | Owner's PC |

@@ -1,0 +1,38 @@
+== machine
+               total        used        free      shared  buff/cache   available
+Mem:              31           1           3           0          27          30
+Swap:              0           0           0
+name, memory.total [MiB], memory.used [MiB]
+NVIDIA L4, 23034 MiB, 0 MiB
+total 61901728
+drwxrwxr-x 2 Aryan Aryan        4096 Nov 15 08:56 .
+drwxrwxr-x 9 Aryan Aryan        4096 Nov 15 08:56 ..
+-rw-rw-r-- 1 Aryan Aryan 63387346208 Nov 15 08:56 gpt-oss-120b-MXFP4.gguf
+-rw-rw-r-- 1 Aryan Aryan         885 Nov 15 08:56 model_manifest.json
+== cluaiz request 1: prompt 588 tok 4.41 t/s | gen 77 tok 3.851 t/s
+   load: {"placement": "MoeSplit", "n_gpu_layers": -1, "n_cpu_moe": 25, "cache_type": "Kv16", "n_ctx": 16384, "settings": {"flash_attn": "Auto", "n_batch": 512, "n_threads": 4, "n_threads_batch": 4, "n_ubatch": 512, "use_mmap": true}}
+   answer: <|start|>assistant<|channel|>final<|message|>
+   wall 531 s, disk read 0.00 GB
+== cluaiz request 2: prompt 522 tok 25.28 t/s | gen 52 tok 8.171 t/s
+   load: {"placement": "MoeSplit", "n_gpu_layers": -1, "n_cpu_moe": 25, "cache_type": "Kv16", "n_ctx": 16384, "settings": {"flash_attn": "Auto", "n_batch": 512, "n_threads": 4, "n_threads_batch": 4, "n_ubatch": 512, "use_mmap": true}}
+   answer: <|start|>assistant<|channel|>final<|message|>
+   wall 27 s, disk read 0.00 GB
+== llama-bench -ngl -1 -ncmoe 25 -ctk f16 -ctv f16 -p 535 -n 0
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 22614 MiB):
+  Device 0: NVIDIA L4, compute capability 8.9, VMM: yes, VRAM: 22614 MiB
+| model                          |       size |     params | backend    | ngl |  n_cpu_moe | n_batch |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | ---------: | ------: | --------------: | -------------------: |
+| gpt-oss 120B MXFP4 MoE         |  59.02 GiB |   116.83 B | CUDA       |  -1 |         25 |     512 |           pp535 |         33.55 ± 0.00 |
+
+build: 17d1465f0 (12418)
+   wall 486 s, disk read 0.00 GB
+== llama-bench -ngl -1 -ncmoe 25 -ctk f16 -ctv f16 -p 0 -n 8 -d 535
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 22614 MiB):
+  Device 0: NVIDIA L4, compute capability 8.9, VMM: yes, VRAM: 22614 MiB
+| model                          |       size |     params | backend    | ngl |  n_cpu_moe | n_batch |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | ---------: | ------: | --------------: | -------------------: |
+| gpt-oss 120B MXFP4 MoE         |  59.02 GiB |   116.83 B | CUDA       |  -1 |         25 |     512 |      tg8 @ d535 |         10.48 ± 0.00 |
+
+build: 17d1465f0 (12418)
+   wall 379 s, disk read 0.00 GB
+== done gpt-oss-120b

@@ -1,0 +1,41 @@
+== 08:35:13 1 install
+cluaiz 0.1.0 (pre-release)
+unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF:Q4_K_M exit 0 104s
+ggml-org/gpt-oss-20b-GGUF exit 0 7s
+unsloth/Qwen3.5-9B-GGUF:Q4_K_M exit 0 37s
+unsloth/Phi-4-mini-instruct-GGUF:Q4_K_M exit 0 23s
+ggml-org/embeddinggemma-300M-GGUF exit 0 2s
+onnx-community/moonshine-tiny-ONNX:int8 exit 0 3s
+onnx-community/Kokoro-82M-v1.0-ONNX:uint8 exit 0 14s
+ggml-org/Qwen3-TTS-12Hz-1.7B-Base-GGUF:Q4_K_M exit 0 15s
+ggml-org/gpt-oss-120b-GGUF exit 0 7s
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p1  148G   52G   90G  37% /
+== 08:40:00 2 placements
+== 08:47:39 1 install
+cluaiz 0.1.0 (pre-release)
+ggml-org/gpt-oss-20b-GGUF:MXFP4 exit 0 0s
+ggml-org/gpt-oss-120b-GGUF:MXFP4 exit 0 557s
+unsloth/gemma-4-31B-it-GGUF:Q4_K_M exit 0 133s
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p1  148G  140G  1.9G  99% /
+== 08:59:09 2 placements
+== 08:59:09 3 features
+== 09:06:24 1 install
+cluaiz 0.1.0 (pre-release)
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p1  148G  140G  1.9G  99% /
+== 09:06:24 2 placements
+== 09:06:24 3 features
+== 09:10:51 1 install
+cluaiz 0.1.0 (pre-release)
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p1  148G  140G  1.9G  99% /
+== 09:10:52 2 placements
+== 10:01:46 3 features
+== 10:04:46 4 SSD streaming
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p1  148G   81G   61G  57% /
+== 10:28:41 5 compare
+== 10:42:57 6 reserve on Gemma 4 31B
+== 10:44:55 all done

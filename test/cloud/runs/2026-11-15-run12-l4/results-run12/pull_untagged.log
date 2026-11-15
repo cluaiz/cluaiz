@@ -1,0 +1,24 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'ggml-org/gpt-oss-20b-GGUF'...
+  🔍 Scanning HuggingFace Hub for 'ggml-org/gpt-oss-20b-GGUF'...
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: gpt-oss-20b-gguf-FP4
+    ├─ 📦 Format: GGUF
+    ├─ 🏷️  Precision / Quant Tag: FP4
+    ├─ 🧠 Architecture: gpt-oss
+    ├─ 📁 Category: chat
+    ├─ 🧩 Parameters: 20B
+    ├─ 💾 Total Download Size: 11.28 GB
+    └─ 📁 Files to Download (1 files):
+       └─ ⚖️  gpt-oss-20b-MXFP4.gguf
+   ├─ [1/1] Downloading gpt-oss-20b-MXFP4.gguf
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  gpt-oss-20b-gguf-FP4
+  │ 📁 Vault Path:     /home/Aryan/ch-pull/models/chat/gpt-oss-20b-gguf-FP4
+  │ 🚀 Run Command:   cluaiz run gpt-oss-20b-gguf-FP4
+  └─────────────────────────────────────────────────────────────┘
+

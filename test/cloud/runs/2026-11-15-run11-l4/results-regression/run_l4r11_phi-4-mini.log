@@ -1,0 +1,9 @@
+
+model                            mode   result   engine pp/tg      llama.cpp pp/tg   notes
+phi-4-mini-instruct-gguf-Q4_K_M  auto   PASS     5801 / 88.5       5588 / 88.9       
+phi-4-mini-instruct-gguf-Q4_K_M  gpu    PASS     5881 / 88.6       5541 / 89.0       
+phi-4-mini-instruct-gguf-Q4_K_M  split  PASS     869 / 14.8        717 / 15.1        
+phi-4-mini-instruct-gguf-Q4_K_M  cpu    PASS     42 / 6.6          42 / 7.9          engine generation 0.84x llama.cpp
+
+4 passed, 0 failed, 0 skipped / not fitting
+report written: /home/Aryan/results-regression/RESULTS_l4r11_phi-4-mini.md

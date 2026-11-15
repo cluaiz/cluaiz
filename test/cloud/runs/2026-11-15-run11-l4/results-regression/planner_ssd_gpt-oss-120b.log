@@ -1,0 +1,32 @@
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+║ [MODEL]
+║   • Model ID        : gpt-oss-120b-gguf-FP4
+║   • Architecture    : gpt-oss | 36 layers | heads 64 | KV heads 8 | head size K 64 / V 64 | 128 experts, 4 active | experts 56.88 GB
+║   • Weights         : file 59.03 GB | input embeddings 0.57 GB (always CPU) | output head 0.57 GB | vocab 201088
+║ [CONTEXT]
+║   • Native limit    : 131072 tokens
+║   • Active context  : 16384 tokens, KV Kv16 (Auto: 16384 tokens, KV Kv16, buffer 1.00 GB)
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 21.90 of 22.49 GB | buffer kept free 1.00 GB (1024 MiB rule, model not measured on this machine yet; estimate corrected by llama.cpp's dry run +0.03 GB)
+║   • RAM             : free 29.99 of 31.35 GB | Cluaiz may use 28.61 GB
+║ [PLACEMENT]
+║   • Mode            : MoE split (attention on GPU, experts in RAM)
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 25 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 36 on GPU, 0 in RAM (of 36)
+║   • VRAM            : 20.49 GB (weights + KV 1.12 + logits)
+║   • RAM             : 40.07 GB (incl. KV 0.00)
+║   • Disk (mmap)     : 11.47 GB of experts read from disk when used
+║   • Reason          : MoE split: attention/shared 1.57 + KV 1.12 + buffers 0.41 on GPU, experts of 25 / 36 layers in RAM (39.50 GB); 11.47 GB over the RAM limit is read from disk when used (mmap)
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+║ [CANDIDATES]
+║   • Full GPU         [NO]       VRAM 59.99 GB | RAM  0.57 GB | does not fit in VRAM: weights 58.45 + KV 1.12 + buffers 0.41 = 59.99 GB vs usable VRAM 21.08 GB
+║   • MoE split        [FITS]     VRAM 20.49 GB | RAM 40.07 GB | attention/shared 1.57 + KV 1.12 + buffers 0.41 on GPU, experts of 25 / 36 layers in RAM (39.50 GB); 11.47 GB over the RAM limit is read from disk when used (mmap)
+║   • GPU + RAM split  [FITS]     VRAM 20.65 GB | RAM 39.91 GB | 12 / 36 blocks + output head on GPU (20.65 GB), 24 blocks in RAM; 11.30 GB over the RAM limit is read from disk when used (mmap)
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM 60.53 GB | weights 59.02 + KV 1.12 + logits 0.38 = 60.53 GB in RAM; 31.92 GB over the RAM limit is read from disk when used (mmap)
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+2026-11-15T10:04:52.621147Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch-reg/models/chat/gpt-oss-120b-gguf-FP4/gpt-oss-120b-MXFP4.gguf | ctx: 16384 tokens
+2026-11-15T10:11:08.672023Z  INFO 🔍 [EngineHost] VRAM planned 20.49 GB, taken 20.74 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 25
+2026-11-15T10:13:42.222972Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 588 tokens in 133352 ms (4.41 t/s) | generation 77 tokens in 19996 ms (3.85 t/s)
+2026-11-15T10:13:42.537218Z  INFO 📏 [EngineHost] The loaded model now takes +0.26 GB over its estimate; learned for its next load
+2026-11-15T10:14:09.641149Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 522 tokens in 20648 ms (25.28 t/s) | generation 52 tokens in 6364 ms (8.17 t/s)

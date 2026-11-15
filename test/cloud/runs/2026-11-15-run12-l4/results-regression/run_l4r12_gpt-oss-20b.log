@@ -1,0 +1,9 @@
+
+model                 mode   result   engine pp/tg      llama.cpp pp/tg   notes
+gpt-oss-20b-gguf-FP4  auto   PASS     2604 / 81.8       2923 / 81.9       
+gpt-oss-20b-gguf-FP4  gpu    PASS     2790 / 81.8       2923 / 81.6       
+gpt-oss-20b-gguf-FP4  split  PASS     262 / 16.0        305 / 16.4        
+gpt-oss-20b-gguf-FP4  cpu    PASS     21 / 8.8          24 / 9.3          
+
+4 passed, 0 failed, 0 skipped / not fitting
+report written: /home/Aryan/results-regression/RESULTS_l4r12_gpt-oss-20b.md

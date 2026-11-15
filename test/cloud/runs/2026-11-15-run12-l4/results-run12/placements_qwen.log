@@ -1,0 +1,14 @@
+== pulls (l4r12q_qwen3.5-9b)
+unsloth/Phi-4-mini-instruct-GGUF:Q4_K_M exit 0 0s
+unsloth/Qwen3.5-9B-GGUF:Q4_K_M exit 0 0s
+ggml-org/gpt-oss-20b-GGUF:MXFP4 exit 0 1s
+unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF:Q4_K_M exit 0 0s
+
+model                   mode   result   engine pp/tg      llama.cpp pp/tg   notes
+qwen3.5-9b-gguf-Q4_K_M  auto   PASS     2323 / 43.8       2486 / 43.8       
+qwen3.5-9b-gguf-Q4_K_M  gpu    PASS     2319 / 43.8       2462 / 43.8       
+
+2 passed, 0 failed, 0 skipped / not fitting
+report written: /home/Aryan/results-regression/RESULTS_l4r12q_qwen3.5-9b.md
+== done l4r12q_qwen3.5-9b
+== all done l4r12q

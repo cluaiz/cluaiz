@@ -1,0 +1,16 @@
+== pulls (l4r12_gpt-oss-20b)
+unsloth/Phi-4-mini-instruct-GGUF:Q4_K_M exit 0 0s
+unsloth/Qwen3.5-9B-GGUF:Q4_K_M exit 0 0s
+ggml-org/gpt-oss-20b-GGUF:MXFP4 exit 0 0s
+unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF:Q4_K_M exit 0 0s
+
+model                 mode   result   engine pp/tg      llama.cpp pp/tg   notes
+gpt-oss-20b-gguf-FP4  auto   PASS     2604 / 81.8       2923 / 81.9       
+gpt-oss-20b-gguf-FP4  gpu    PASS     2790 / 81.8       2923 / 81.6       
+gpt-oss-20b-gguf-FP4  split  PASS     262 / 16.0        305 / 16.4        
+gpt-oss-20b-gguf-FP4  cpu    PASS     21 / 8.8          24 / 9.3          
+
+4 passed, 0 failed, 0 skipped / not fitting
+report written: /home/Aryan/results-regression/RESULTS_l4r12_gpt-oss-20b.md
+== done l4r12_gpt-oss-20b
+== all done l4r12

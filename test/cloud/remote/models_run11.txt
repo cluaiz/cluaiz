@@ -1,0 +1,5 @@
+# Run 11 (NVIDIA L4 22.5 GB, 31 GB RAM): models the earlier cloud runs did not use
+unsloth/Phi-4-mini-instruct-GGUF:Q4_K_M
+unsloth/Qwen3.5-9B-GGUF:Q4_K_M
+ggml-org/gpt-oss-20b-GGUF:MXFP4
+unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF:Q4_K_M
