@@ -25,6 +25,9 @@ pub const AUTO_CONTEXT_TARGET: u32 = 16384;
 pub const AUTO_SPLIT_CONTEXT: u32 = 8192;
 /// BUFFER rule: Cluaiz may use up to this share of total RAM, other apps included (>= 5% always free).
 pub const RAM_CEILING_FRACTION: f64 = 0.95;
+/// The RAM that share keeps free stops growing here (5% of 256 GB would be 12.8 GB): the OS and the
+/// apps it is kept for do not grow with the machine
+pub const RAM_RESERVE_MAX_GB: f64 = 4.0;
 /// llama.cpp pads the context to 256 cells, so planned sizes stay on that grid.
 const CONTEXT_ALIGN: u32 = cluaiz_models::KV_CELL_PAD;
 
@@ -76,14 +79,14 @@ fn usable_bytes(free: u64, buffer_gb: f64) -> u64 {
     }
 }
 
-/// RAM Cluaiz may use: 95% of total RAM minus what other apps use now, or free RAM minus the
-/// user's GB buffer when set (BUFFER rules: "GB values set by the user replace both").
+/// RAM Cluaiz may use: free RAM minus 5% of total RAM (at most [`RAM_RESERVE_MAX_GB`]), or free RAM
+/// minus the user's GB buffer when set (BUFFER rules: "GB values set by the user replace both").
 pub fn ram_budget_bytes(hardware: &SystemInfo, settings: &ActiveUserSettings) -> u64 {
     let total = hardware.memory.total_gb;
     let free = hardware.memory.available_gb;
     let budget_gb = match settings.optimization.custom_ram_buffer_gb {
         Some(buffer) => free - buffer,
-        None => free - total * (1.0 - RAM_CEILING_FRACTION),
+        None => free - (total * (1.0 - RAM_CEILING_FRACTION)).min(RAM_RESERVE_MAX_GB),
     };
     gib_to_bytes(budget_gb.max(0.0))
 }
@@ -1030,6 +1033,26 @@ mod tests {
         assert!((gpu(8.0) - 0.40).abs() < 1e-9);
         assert_eq!(gpu(24.0), 1.0);
         assert_eq!(gpu(128.0), 1.0);
+        // A GPU measured as used by nothing else keeps the minimum; unknown or shared keeps the share
+        let mut h = hw(1.0, 8.0);
+        h.gpus[0].vram_total_gb = 24.0;
+        h.gpus[0].used_only_by_cluaiz = Some(true);
+        assert_eq!(crate::margin::reserve_gb(&h), 0.15);
+        h.gpus[0].used_only_by_cluaiz = Some(false);
+        assert_eq!(crate::margin::reserve_gb(&h), 1.0);
+    }
+
+    #[test]
+    fn the_ram_kept_free_is_5_percent_up_to_4_gb() {
+        let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
+        let budget = |total: f64, free: f64| {
+            let mut h = hw(1.0, free);
+            h.memory.total_gb = total;
+            ram_budget_bytes(&h, &s) as f64 / GIB as f64
+        };
+        assert!((budget(16.0, 10.0) - 9.2).abs() < 1e-6);
+        assert!((budget(64.0, 60.0) - 56.8).abs() < 1e-6);
+        assert!((budget(256.0, 250.0) - 246.0).abs() < 1e-6);
     }
 
     #[test]

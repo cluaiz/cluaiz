@@ -144,9 +144,14 @@ pub fn restore(mut measured: HashMap<String, f64>) {
     }
 }
 
-/// GB kept free for the desktop on this GPU once the model's real size is known
+/// GB kept free for the desktop on this GPU once the model's real size is known. A GPU measured as
+/// used by nothing else (no display, no other process: a server GPU) keeps only the minimum, as no
+/// other app takes its memory after the load; when that is not known the desktop share stays.
 pub fn reserve_gb(hardware: &SystemInfo) -> f64 {
     hardware.gpus.first().map_or(0.0, |g| {
+        if g.used_only_by_cluaiz == Some(true) {
+            return DEVICE_RESERVE_MIN_GB;
+        }
         (g.vram_total_gb * DEVICE_RESERVE_SHARE).clamp(DEVICE_RESERVE_MIN_GB, DEVICE_RESERVE_MAX_GB)
     })
 }
@@ -160,7 +165,11 @@ pub fn describe(geometry: &ModelGeometry, settings: &ActiveUserSettings, hardwar
         .map(|c| format!("; estimate corrected by llama.cpp's dry run {:+.2} GB", c))
         .unwrap_or_default();
     match learned(geometry, settings) {
-        Some(gap) => format!("measured: GPU pool {:+.2} GB + {:.2} GB reserve{}", gap, reserve_gb(hardware), corrected),
+        Some(gap) => {
+            let alone = hardware.gpus.first().is_some_and(|g| g.used_only_by_cluaiz == Some(true));
+            let whose = if alone { " (GPU used by nothing else)" } else { "" };
+            format!("measured: GPU pool {:+.2} GB + {:.2} GB reserve{}{}", gap, reserve_gb(hardware), whose, corrected)
+        }
         None => format!("{:.0} MiB rule, model not measured on this machine yet{}", buffer_gb * 1024.0, corrected),
     }
 }

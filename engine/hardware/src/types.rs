@@ -70,6 +70,11 @@ pub struct GpuSubsystem {
     /// An integrated GPU (AMD APU, Intel iGPU): its memory is the system RAM
     #[serde(default)]
     pub integrated: bool,
+    /// Measured at each live probe: true when nothing but this process uses the GPU (NVML: no display
+    /// active, not a Windows display (WDDM) device, no other compute or graphics process). None when
+    /// it cannot be read (not NVIDIA, or the query is unsupported). Not saved: it changes all the time.
+    #[serde(skip)]
+    pub used_only_by_cluaiz: Option<bool>,
 }
 
 impl GpuSubsystem {

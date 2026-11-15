@@ -147,7 +147,11 @@ impl HardwareProber {
     }
 
     fn apply_live_memory(info: &mut SystemInfo) {
-        Self::apply_memory_snapshot(info, Self::live_memory_snapshot());
+        let (ram_free, vram_free, only_cluaiz) = Self::live_snapshot();
+        Self::apply_memory_snapshot(info, (ram_free, vram_free));
+        if let Some(gpu) = info.gpus.first_mut() {
+            gpu.used_only_by_cluaiz = only_cluaiz;
+        }
     }
 
     fn apply_memory_snapshot(info: &mut SystemInfo, snapshot: (Option<u64>, Option<u64>)) {
@@ -170,11 +174,18 @@ impl HardwareProber {
     }
 
     fn live_memory_snapshot() -> (Option<u64>, Option<u64>) {
+        let (ram_free, vram_free, _) = Self::live_snapshot();
+        (ram_free, vram_free)
+    }
+
+    /// Free RAM, free VRAM of the first GPU and whether only this process uses that GPU, in one NVML session
+    fn live_snapshot() -> (Option<u64>, Option<u64>, Option<bool>) {
         let mut sys = System::new();
         sys.refresh_memory();
         let ram_free = (sys.total_memory() > 0).then(|| Self::available_ram(&sys));
 
         let mut vram_free = None;
+        let mut only_cluaiz = None;
         #[cfg(not(target_os = "macos"))]
         {
             if let Ok(nvml) = nvml_wrapper::Nvml::init() {
@@ -182,10 +193,29 @@ impl HardwareProber {
                     if let Ok(mem) = device.memory_info() {
                         vram_free = Some(mem.free);
                     }
+                    only_cluaiz = Self::used_only_by_this_process(&device);
                 }
             }
         }
-        (ram_free, vram_free)
+        (ram_free, vram_free, only_cluaiz)
+    }
+
+    /// True when the GPU drives no display and runs no other process, so nothing else can take its
+    /// memory after a model loads; None when any of these cannot be read (the caller keeps its margin)
+    #[cfg(not(target_os = "macos"))]
+    fn used_only_by_this_process(device: &nvml_wrapper::Device) -> Option<bool> {
+        if device.is_display_active().ok()? {
+            return Some(false);
+        }
+        // Windows: a WDDM GPU belongs to the desktop's graphics stack even with no display on it
+        #[cfg(target_os = "windows")]
+        if device.driver_model().ok()?.current == nvml_wrapper::enum_wrappers::device::DriverModel::WDDM {
+            return Some(false);
+        }
+        let own = std::process::id();
+        let compute = device.running_compute_processes().ok()?;
+        let graphics = device.running_graphics_processes().ok()?;
+        Some(compute.iter().chain(&graphics).all(|process| process.pid == own))
     }
 
     /// RAM that can be given to a model now. sysinfo's figure, except on macOS (`macos_available_ram`).
@@ -604,6 +634,7 @@ impl HardwareProber {
                                 pcie_width,
                                 pcie_bandwidth_gbps,
                                 integrated: false,
+                                used_only_by_cluaiz: None,
                             });
                         }
                     }

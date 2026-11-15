@@ -53,8 +53,13 @@ llama.cpp allocates it.
 | Model | Kept free |
 |---|---|
 | Not measured on this machine yet | 1024 MiB, else 512 MiB (llama.cpp's `--fit-target` rule) |
-| Measured | its GPU pool growth after a full-batch warmup (largest seen) + a desktop reserve of 5% of the GPU, at least 0.15 GB and at most 1.0 GB |
+| Measured | its GPU pool growth after a full-batch warmup (largest seen) + a desktop reserve of 5% of the GPU, at least 0.15 GB and at most 1.0 GB; 0.15 GB when NVML shows the GPU is used by nothing else (no display, not a Windows WDDM device, no other process) |
 | User setting | the user's value |
+
+## RAM buffer
+
+Auto keeps 5% of total RAM free, at most 4 GB (`RAM_RESERVE_MAX_GB`), counting what other apps use now.
+A GB buffer set by the user (`custom_ram_buffer_gb`) replaces it.
 
 ## Media preflight contract
 

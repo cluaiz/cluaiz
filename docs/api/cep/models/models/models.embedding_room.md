@@ -99,7 +99,7 @@ installed (policy `notes_match`); without one, by words.
 ## How it works
 
 1. The chat model: `chat_model`, else the chat model loaded now. When it is not loaded yet, the planner plans it on today's free memory and its VRAM and RAM are counted as taken.
-2. Room left: free VRAM of the first GPU minus the chat model's plan and the VRAM that plan keeps free (at least the desktop reserve: 5% of the GPU, 0.15 to 1 GB); RAM the Engine may use minus the chat model's RAM. A loaded chat model is already in the free memory; its own plan is reported.
+2. Room left: free VRAM of the first GPU minus the chat model's plan and the VRAM that plan keeps free (at least the desktop reserve: 5% of the GPU, 0.15 to 1 GB; 0.15 GB on a GPU used by nothing else); RAM the Engine may use minus the chat model's RAM. A loaded chat model is already in the free memory; its own plan is reported.
 3. Each candidate needs its file size plus 0.15 GB of buffers (a note is a sentence or two). `runs_on`: `gpu` when that fits in the VRAM left, else `cpu` when it fits in the RAM left, else `none`. A split chat model leaves no VRAM, so the embedding model runs on the CPU: a note embeds in milliseconds there.
 4. `recommended`: the first candidate (in the caller's order) that runs on the GPU, else the first that runs on the CPU.
 
