@@ -274,6 +274,10 @@ pub(crate) fn stream_tokens_with_media(
         if native_tools.is_some() && llama.chat_tools_for(dna.chat_template.as_deref()).is_none() {
             tracing::warn!("⚠️ [NativeTools] llama.cpp could not parse the template for tool use; tools go inline");
         }
+        // Without tools the answer is read by llama.cpp's parser too, as llama-server reads every
+        // answer: a format with more than thinking tags (gpt-oss channels) leaves only the text
+        let parse_answer = native_tools.is_none() && !is_media && !is_pivot
+            && llama.chat_tools_for(dna.chat_template.as_deref()).is_some();
         // What llama.cpp returned for the last native render (grammar, triggers, parser)
         let native_apply = std::cell::RefCell::new(None::<serde_json::Value>);
         let render = |llama: &NativeLlama, messages: &[(String, String)]| {
@@ -318,7 +322,25 @@ pub(crate) fn stream_tokens_with_media(
                 }
                 return render_inline(llama, dna, &with_tools, enable_thinking, is_pivot, &think_end_tag);
             }
-            render_inline(llama, dna, messages, enable_thinking, is_pivot, &think_end_tag)
+            let prompt = render_inline(llama, dna, messages, enable_thinking, is_pivot, &think_end_tag)?;
+            *native_apply.borrow_mut() = parse_answer
+                .then(|| llama.chat_tools(dna.chat_template.as_deref()))
+                .flatten()
+                .and_then(|chat_tools| {
+                    let request = serde_json::json!({
+                        "messages": cluaiz_core::tool_calls::openai_messages(messages),
+                        "enable_thinking": enable_thinking,
+                    });
+                    chat_tools.apply(&request).map_err(|e| tracing::debug!("📝 [NativeTemplate] No answer parser: {}", e)).ok()
+                })
+                // Content-only: the answer is the text; a render unlike the prompt: its parser
+                // would read another conversation
+                .filter(|apply| {
+                    let same = apply["prompt"].as_str() == Some(prompt.as_str());
+                    tracing::debug!("📝 [NativeTemplate] Answer parser: format {} | same prompt {}", apply["format"], same);
+                    apply["format_id"].as_i64().is_some_and(|id| id != 0) && same
+                });
+            Ok(prompt)
         };
         let mut formatted_prompt = render(llama, &structured_messages)?;
         // A message the template did not show (it has no place for that role or field)
@@ -731,7 +753,7 @@ pub(crate) fn stream_tokens_with_media(
         // Native tool calls: llama.cpp's lazy grammar for the model's call format (asleep while it
         // thinks) and its parser, which turns the output back into text and calls
         let native_apply = native_apply.borrow().clone();
-        let native_parser = native_apply.as_ref().filter(|_| parse_tools).and_then(|apply| {
+        let native_parser = native_apply.as_ref().filter(|_| parse_tools || parse_answer).and_then(|apply| {
             let tools = llama.chat_tools(dna.chat_template.as_deref())?;
             crate::ffi::chat::ChatParser::new(tools, apply)
                 .map_err(|e| tracing::warn!("⚠️ [NativeTools] {}; calls are read as <tool_call> blocks only", e))
@@ -985,7 +1007,7 @@ pub(crate) fn stream_tokens_with_media(
                         if let Some(call) = parsed.as_ref().and_then(|p| p["tool_calls"].as_array()).and_then(|calls| calls.last()) {
                             cluaiz_core::live::set_call(call["name"].as_str().unwrap_or_default(), call["arguments"].as_str().unwrap_or_default());
                         }
-                        if let Some(delta) = parsed.as_ref().and_then(|p| p["content"].as_str()).and_then(|c| content_stream.delta(cluaiz_core::tool_calls::before_bare_call(c))) {
+                        if let Some(delta) = parsed.as_ref().and_then(|p| p["content"].as_str()).and_then(|c| content_stream.delta(if native_tools.is_some() { cluaiz_core::tool_calls::before_bare_call(c) } else { c })) {
                             if !callback(delta) {
                                 report.stop = "cancel";
                                 break;
@@ -1098,7 +1120,7 @@ pub(crate) fn stream_tokens_with_media(
                     Ok(parsed) => {
                         let content = parsed["content"].as_str().unwrap_or_default();
                         let calls = parsed["tool_calls"].as_array().cloned().unwrap_or_default();
-                        let bare = calls.is_empty().then(|| cluaiz_core::tool_calls::call_without_open(content)).flatten();
+                        let bare = (calls.is_empty() && native_tools.is_some()).then(|| cluaiz_core::tool_calls::call_without_open(content)).flatten();
                         let text = bare.as_ref().map_or(content, |(before, _, _)| before.as_str());
                         if let Some(delta) = content_stream.delta(text) {
                             let _ = callback(delta);

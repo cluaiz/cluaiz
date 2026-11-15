@@ -106,6 +106,7 @@ pub fn render_history(
             continue;
         }
         let mut message = original.clone();
+        append_client_calls(&mut message);
         let mut steps = Vec::new();
         if message.role.eq_ignore_ascii_case("user") {
             let text = message.content.text_content();
@@ -184,6 +185,39 @@ pub fn inject(messages: &mut Vec<ExternalMessage>, origin: &mut Vec<Option<usize
 }
 
 /// Puts `block` in front of a message's text
+/// The OpenAI `tool_calls` a client sends back with an assistant message, in the Engine's form
+/// (`<tool_call>` blocks after the text), so the template renders the call its result answers
+fn append_client_calls(message: &mut ExternalMessage) {
+    if !message.role.eq_ignore_ascii_case("assistant") {
+        return;
+    }
+    let Some(calls) = message.tool_calls.as_ref().and_then(|calls| calls.as_array()) else { return };
+    let blocks: Vec<String> = calls
+        .iter()
+        .filter_map(|call| {
+            let function = &call["function"];
+            let arguments = match &function["arguments"] {
+                serde_json::Value::String(text) => text.clone(),
+                serde_json::Value::Null => "{}".to_string(),
+                value => value.to_string(),
+            };
+            Some(cluaiz_core::tool_calls::canonical_call(function["name"].as_str()?, &arguments))
+        })
+        .collect();
+    let text = message.content.text_content();
+    if blocks.is_empty() || text.contains(cluaiz_core::tool_calls::OPEN) {
+        return;
+    }
+    let blocks = blocks.join("
+");
+    match &mut message.content {
+        MessageContent::Text(text) if text.trim().is_empty() => *text = blocks,
+        MessageContent::Text(text) => *text = format!("{text}
+{blocks}"),
+        MessageContent::Array(parts) => parts.push(super::types::ContentPart::Text { text: blocks }),
+    }
+}
+
 pub fn prepend_text(content: &mut MessageContent, block: &str) {
     match content {
         MessageContent::Text(text) => *text = format!("{block}\n\n{text}"),
@@ -412,5 +446,27 @@ pub fn recall(chat: &str, request_id: Option<&str>) -> Option<serde_json::Value>
     match request_id {
         Some(id) => kept.iter().find(|(kept_id, _)| kept_id == id).map(|(_, report)| report.clone()),
         None => Some(json!(kept.iter().map(|(id, _)| id).collect::<Vec<_>>())),
+    }
+}
+
+#[cfg(test)]
+mod client_call_tests {
+    use super::*;
+
+    #[test]
+    fn a_call_the_client_sends_back_reaches_the_prompt() {
+        let mut message = ExternalMessage {
+            role: "assistant".into(),
+            tool_calls: Some(json!([{ "id": "c1", "type": "function", "function": { "name": "get_weather", "arguments": "{\"city\":\"Paris\"}" } }])),
+            ..Default::default()
+        };
+        append_client_calls(&mut message);
+        let text = message.content.text_content();
+        let converted = cluaiz_core::tool_calls::openai_messages(&[("assistant".into(), text.clone()), ("tool".into(), "18".into())]);
+        assert_eq!(converted[0]["tool_calls"][0]["function"]["name"], "get_weather");
+        assert_eq!(converted[1]["name"], "get_weather");
+        // sent twice (the text already holds the call): once
+        append_client_calls(&mut message);
+        assert_eq!(message.content.text_content(), text);
     }
 }
