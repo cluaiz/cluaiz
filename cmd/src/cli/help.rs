@@ -1,4 +1,4 @@
-//! `cluaiz`, `cluaiz -h` and `cluaiz help`: the mascot banner, then the commands in groups (the
+//! `cluaiz`, `cluaiz -h` and `cluaiz help`: the wordmark banner, then the commands in groups (the
 //! descriptions are clap's own, so they never drift from `cluaiz <command> --help`).
 //! `cluaiz help all` (or `cluaiz help <command> all`): every command and subcommand, to the full depth.
 

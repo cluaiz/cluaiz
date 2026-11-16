@@ -346,7 +346,7 @@ async fn main() -> Result<()> {
         print!("{}", <Cli as clap::CommandFactory>::command().render_version());
         return Ok(());
     }
-    // The grouped help with the mascot (a command's own help stays clap's)
+    // The grouped help with the wordmark (a command's own help stays clap's)
     if raw.len() == 2 && matches!(raw[1].as_str(), "-h" | "--help" | "help") {
         cli::help::print::<Cli>();
         ghost_note();

@@ -35,10 +35,10 @@ pub async fn run(mut agent: Agent, first: Option<String>, keep_open: bool) -> Re
         title: format!("Cluaiz · {}", agent.session.model_id),
         workspace: cluaiz_api::cep::roots::display(agent.tools.root()),
         status: agent.status(),
-        // The mascot whenever it fits, else the wordmark
-        brand: cluaiz_terminal::mascot::BRAND,
+        // The wordmark only; no blink
+        brand: cluaiz_terminal::mascot::WORDMARK,
         compact_brand: cluaiz_terminal::mascot::WORDMARK,
-        brand_blink: cluaiz_terminal::mascot::BRAND_BLINK,
+        brand_blink: "",
     };
     let root = agent.tools.root().to_owned();
     let media = agent.session.options.settings()?.media;
