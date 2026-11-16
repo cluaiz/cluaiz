@@ -16,7 +16,7 @@ code around llama.cpp. Speeds are in tokens per second (t/s): higher is better.
 |---|---|
 | Generation speed (writing the answer) | **Same** in all 18 tests (within ±5%, the normal run-to-run noise) |
 | Prompt speed, model fully on GPU | **Same or Cluaiz slightly faster** |
-| Prompt speed, model split GPU + RAM | **Cluaiz 1.4x to 2.2x faster** |
+| Prompt speed, model split GPU + RAM | **Cluaiz 1.4x to 2.2x faster** for this ~530-token prompt, which Cluaiz cuts into two even chunks; with `cluaiz bench` (prompt 512) both are equal ([run 17](../cloud/runs/2026-11-16-run17-laptop-same-settings/SUMMARY.md)) |
 | Gemma 4 26B MoE (bigger than the GPU) | **Cluaiz runs it** (7.4 to 18 t/s, no out-of-memory); llama.cpp: not measured in this test |
 | Tests passed | 18 of 18 |
 
