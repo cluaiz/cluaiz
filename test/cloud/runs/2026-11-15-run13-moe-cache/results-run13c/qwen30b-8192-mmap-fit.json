@@ -1,0 +1,30 @@
+{
+ "name": "qwen30b-8192-mmap-fit",
+ "args": "-lm mmap -fitt 14423",
+ "runs": [
+  {
+   "run": 0,
+   "gen_n": 512,
+   "gen_tps": 26.68
+  },
+  {
+   "run": 1,
+   "gen_n": 512,
+   "gen_tps": 26.69
+  },
+  {
+   "run": 2,
+   "gen_n": 512,
+   "gen_tps": 26.66
+  },
+  {
+   "run": 3,
+   "gen_n": 512,
+   "gen_tps": 26.67
+  }
+ ],
+ "gpu_mib": "8212",
+ "gen_tps": 26.67,
+ "gen_min": 26.66,
+ "gen_max": 26.69
+}

@@ -1,0 +1,30 @@
+{
+ "name": "qwen30b-8192-mlock-fit",
+ "args": "-lm mlock -fitt 14423",
+ "runs": [
+  {
+   "run": 0,
+   "gen_n": 512,
+   "gen_tps": 26.74
+  },
+  {
+   "run": 1,
+   "gen_n": 512,
+   "gen_tps": 26.63
+  },
+  {
+   "run": 2,
+   "gen_n": 512,
+   "gen_tps": 26.68
+  },
+  {
+   "run": 3,
+   "gen_n": 512,
+   "gen_tps": 26.76
+  }
+ ],
+ "gpu_mib": "8232",
+ "gen_tps": 26.69,
+ "gen_min": 26.63,
+ "gen_max": 26.76
+}

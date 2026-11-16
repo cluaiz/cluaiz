@@ -1,0 +1,30 @@
+{
+ "name": "qwen30b-4096-mlock-fit+cache",
+ "args": "-lm mlock -fitt 18519 --moe-cache-mib 1664 --moe-cache-cpu-share 0.9",
+ "runs": [
+  {
+   "run": 0,
+   "gen_n": 512,
+   "gen_tps": 33.5
+  },
+  {
+   "run": 1,
+   "gen_n": 512,
+   "gen_tps": 32.98
+  },
+  {
+   "run": 2,
+   "gen_n": 512,
+   "gen_tps": 33.63
+  },
+  {
+   "run": 3,
+   "gen_n": 512,
+   "gen_tps": 34.2
+  }
+ ],
+ "gpu_mib": "4116",
+ "gen_tps": 33.6,
+ "gen_min": 32.98,
+ "gen_max": 34.2
+}

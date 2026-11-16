@@ -1,0 +1,30 @@
+{
+ "name": "gptoss20-4096-mlock-fit+cache",
+ "args": "-lm mlock -fitt 18519 --moe-cache-mib 960 --moe-cache-cpu-share 0.9",
+ "runs": [
+  {
+   "run": 0,
+   "gen_n": 512,
+   "gen_tps": 21.31
+  },
+  {
+   "run": 1,
+   "gen_n": 512,
+   "gen_tps": 17.03
+  },
+  {
+   "run": 2,
+   "gen_n": 512,
+   "gen_tps": 19.4
+  },
+  {
+   "run": 3,
+   "gen_n": 512,
+   "gen_tps": 17.45
+  }
+ ],
+ "gpu_mib": "4110",
+ "gen_tps": 17.96,
+ "gen_min": 17.03,
+ "gen_max": 19.4
+}

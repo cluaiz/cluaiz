@@ -1,0 +1,30 @@
+{
+ "name": "qwen30b-8192-mmap-fit+cache",
+ "args": "-lm mmap -fitt 14423 --moe-cache-mib 1664 --moe-cache-cpu-share 0.95",
+ "runs": [
+  {
+   "run": 0,
+   "gen_n": 512,
+   "gen_tps": 42.43
+  },
+  {
+   "run": 1,
+   "gen_n": 512,
+   "gen_tps": 44.31
+  },
+  {
+   "run": 2,
+   "gen_n": 512,
+   "gen_tps": 42.85
+  },
+  {
+   "run": 3,
+   "gen_n": 512,
+   "gen_tps": 39.21
+  }
+ ],
+ "gpu_mib": "8202",
+ "gen_tps": 42.12,
+ "gen_min": 39.21,
+ "gen_max": 44.31
+}

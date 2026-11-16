@@ -1,0 +1,30 @@
+{
+ "name": "gptoss20-8192-mmap-fit",
+ "args": "-lm mmap -fitt 14423",
+ "runs": [
+  {
+   "run": 0,
+   "gen_n": 512,
+   "gen_tps": 27.85
+  },
+  {
+   "run": 1,
+   "gen_n": 512,
+   "gen_tps": 27.93
+  },
+  {
+   "run": 2,
+   "gen_n": 512,
+   "gen_tps": 27.95
+  },
+  {
+   "run": 3,
+   "gen_n": 512,
+   "gen_tps": 27.9
+  }
+ ],
+ "gpu_mib": "8102",
+ "gen_tps": 27.93,
+ "gen_min": 27.9,
+ "gen_max": 27.95
+}

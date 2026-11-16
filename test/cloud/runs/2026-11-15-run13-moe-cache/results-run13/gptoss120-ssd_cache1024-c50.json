@@ -1,0 +1,38 @@
+{
+ "case": "gptoss120-ssd",
+ "setting": "cache1024-c50",
+ "args": "-ngl 99 -ncmoe 25 --moe-cache-mib 1024 --moe-cache-cpu-share 0.5",
+ "runs": [
+  {
+   "run": 0,
+   "prompt_n": 491,
+   "prompt_tps": 4.2,
+   "gen_n": 128,
+   "gen_tps": 4.38
+  },
+  {
+   "run": 1,
+   "prompt_n": 491,
+   "prompt_tps": 63.3,
+   "gen_n": 128,
+   "gen_tps": 3.78
+  },
+  {
+   "run": 2,
+   "prompt_n": 491,
+   "prompt_tps": 11.2,
+   "gen_n": 128,
+   "gen_tps": 4.97
+  },
+  {
+   "run": 3,
+   "prompt_n": 491,
+   "prompt_tps": 41.5,
+   "gen_n": 128,
+   "gen_tps": 5.52
+  }
+ ],
+ "gen_tps": 4.76,
+ "prompt_tps": 38.67,
+ "gpu_mib": "21612"
+}

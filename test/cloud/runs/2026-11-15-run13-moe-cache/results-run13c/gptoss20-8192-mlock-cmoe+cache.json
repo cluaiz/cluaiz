@@ -1,0 +1,30 @@
+{
+ "name": "gptoss20-8192-mlock-cmoe+cache",
+ "args": "-lm mlock -fitt 14423 -ngl 99 -cmoe --moe-cache-mib 5696 --moe-cache-cpu-share 0.0",
+ "runs": [
+  {
+   "run": 0,
+   "gen_n": 512,
+   "gen_tps": 54.84
+  },
+  {
+   "run": 1,
+   "gen_n": 512,
+   "gen_tps": 46.97
+  },
+  {
+   "run": 2,
+   "gen_n": 512,
+   "gen_tps": 55.91
+  },
+  {
+   "run": 3,
+   "gen_n": 512,
+   "gen_tps": 55.79
+  }
+ ],
+ "gpu_mib": "7646",
+ "gen_tps": 52.89,
+ "gen_min": 46.97,
+ "gen_max": 55.91
+}

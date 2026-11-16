@@ -1,0 +1,8 @@
+official llama.cpp b54752d 2026-11-15 ggml-cpu: add x86 VNNI Q2_0 dot product (#26348)
+== 18:50:58 qwen30b-cmoe-mmap
+== 19:11:34 qwen30b-cmoe-pinned
+== 19:31:14 gptoss20-cmoe-mmap
+== 19:54:33 gptoss20-cmoe-pinned
+== 20:07:48 gptoss120-cmoe-nocache
+== 20:24:04 gptoss120-cmoe-mmap
+== 21:51:44 all done

@@ -1,0 +1,58 @@
+== 15:28:43 build official llama.cpp
+official llama.cpp b54752d 2026-11-15 ggml-cpu: add x86 VNNI Q2_0 dot product (#26348)
+== 15:44:09 qwen30b-cmoe
+{"case": "qwen30b-cmoe", "setting": "base", "run": 0, "prompt_n": 497, "prompt_tps": 167.7, "gen_n": 128, "gen_tps": 18.65}
+{"case": "qwen30b-cmoe", "setting": "base", "run": 1, "prompt_n": 496, "prompt_tps": 179.0, "gen_n": 128, "gen_tps": 18.64}
+{"case": "qwen30b-cmoe", "setting": "base", "run": 2, "prompt_n": 496, "prompt_tps": 176.4, "gen_n": 128, "gen_tps": 18.67}
+{"case": "qwen30b-cmoe", "setting": "base", "run": 3, "prompt_n": 497, "prompt_tps": 178.2, "gen_n": 128, "gen_tps": 18.66}
+{"case": "qwen30b-cmoe", "setting": "minbatch1", "run": 0, "prompt_n": 497, "prompt_tps": 171.7, "gen_n": 128, "gen_tps": 3.84}
+{"case": "qwen30b-cmoe", "setting": "minbatch1", "run": 1, "prompt_n": 497, "prompt_tps": 176.3, "gen_n": 128, "gen_tps": 3.84}
+{"case": "qwen30b-cmoe", "setting": "minbatch1", "run": 2, "prompt_n": 497, "prompt_tps": 178.3, "gen_n": 128, "gen_tps": 3.84}
+{"case": "qwen30b-cmoe", "setting": "minbatch1", "run": 3, "prompt_n": 497, "prompt_tps": 177.9, "gen_n": 128, "gen_tps": 3.83}
+{"case": "qwen30b-cmoe", "setting": "cache2048", "run": 0, "prompt_n": 497, "prompt_tps": 196.2, "gen_n": 128, "gen_tps": 9.32}
+{"case": "qwen30b-cmoe", "setting": "cache2048", "run": 1, "prompt_n": 497, "prompt_tps": 206.0, "gen_n": 128, "gen_tps": 7.86}
+{"case": "qwen30b-cmoe", "setting": "cache2048", "run": 2, "prompt_n": 497, "prompt_tps": 206.8, "gen_n": 128, "gen_tps": 10.86}
+{"case": "qwen30b-cmoe", "setting": "cache2048", "run": 3, "prompt_n": 497, "prompt_tps": 205.2, "gen_n": 128, "gen_tps": 8.68}
+{"case": "qwen30b-cmoe", "setting": "cache2048-c50", "run": 0, "prompt_n": 497, "prompt_tps": 194.9, "gen_n": 128, "gen_tps": 14.41}
+{"case": "qwen30b-cmoe", "setting": "cache2048-c50", "run": 1, "prompt_n": 497, "prompt_tps": 203.2, "gen_n": 128, "gen_tps": 16.25}
+{"case": "qwen30b-cmoe", "setting": "cache2048-c50", "run": 2, "prompt_n": 497, "prompt_tps": 208.9, "gen_n": 128, "gen_tps": 16.96}
+{"case": "qwen30b-cmoe", "setting": "cache2048-c50", "run": 3, "prompt_n": 497, "prompt_tps": 209.4, "gen_n": 128, "gen_tps": 13.55}
+{"case": "qwen30b-cmoe", "setting": "cache8192", "run": 0, "prompt_n": 497, "prompt_tps": 196.8, "gen_n": 128, "gen_tps": 38.8}
+{"case": "qwen30b-cmoe", "setting": "cache8192", "run": 1, "prompt_n": 497, "prompt_tps": 391.2, "gen_n": 128, "gen_tps": 69.99}
+{"case": "qwen30b-cmoe", "setting": "cache8192", "run": 2, "prompt_n": 497, "prompt_tps": 396.6, "gen_n": 128, "gen_tps": 60.73}
+{"case": "qwen30b-cmoe", "setting": "cache8192", "run": 3, "prompt_n": 497, "prompt_tps": 403.6, "gen_n": 128, "gen_tps": 71.11}
+== 15:51:09 gptoss20-cmoe
+{"case": "gptoss20-cmoe", "setting": "base", "run": 0, "prompt_n": 491, "prompt_tps": 169.0, "gen_n": 128, "gen_tps": 12.98}
+{"case": "gptoss20-cmoe", "setting": "base", "run": 1, "prompt_n": 491, "prompt_tps": 226.9, "gen_n": 128, "gen_tps": 13.05}
+{"case": "gptoss20-cmoe", "setting": "base", "run": 2, "prompt_n": 491, "prompt_tps": 230.7, "gen_n": 128, "gen_tps": 13.04}
+{"case": "gptoss20-cmoe", "setting": "base", "run": 3, "prompt_n": 491, "prompt_tps": 227.1, "gen_n": 128, "gen_tps": 13.06}
+{"case": "gptoss20-cmoe", "setting": "minbatch1", "run": 0, "prompt_n": 491, "prompt_tps": 185.5, "gen_n": 128, "gen_tps": 3.34}
+{"case": "gptoss20-cmoe", "setting": "minbatch1", "run": 1, "prompt_n": 491, "prompt_tps": 195.8, "gen_n": 128, "gen_tps": 3.35}
+{"case": "gptoss20-cmoe", "setting": "minbatch1", "run": 2, "prompt_n": 491, "prompt_tps": 193.2, "gen_n": 128, "gen_tps": 3.35}
+{"case": "gptoss20-cmoe", "setting": "minbatch1", "run": 3, "prompt_n": 491, "prompt_tps": 190.1, "gen_n": 128, "gen_tps": 3.35}
+{"case": "gptoss20-cmoe", "setting": "cache2048", "run": 0, "prompt_n": 491, "prompt_tps": 216.2, "gen_n": 128, "gen_tps": 10.16}
+{"case": "gptoss20-cmoe", "setting": "cache2048", "run": 1, "prompt_n": 491, "prompt_tps": 249.9, "gen_n": 128, "gen_tps": 11.07}
+{"case": "gptoss20-cmoe", "setting": "cache2048", "run": 2, "prompt_n": 491, "prompt_tps": 255.2, "gen_n": 128, "gen_tps": 10.96}
+{"case": "gptoss20-cmoe", "setting": "cache2048", "run": 3, "prompt_n": 491, "prompt_tps": 251.0, "gen_n": 128, "gen_tps": 10.29}
+{"case": "gptoss20-cmoe", "setting": "cache2048-c50", "run": 0, "prompt_n": 491, "prompt_tps": 244.4, "gen_n": 128, "gen_tps": 14.83}
+{"case": "gptoss20-cmoe", "setting": "cache2048-c50", "run": 1, "prompt_n": 491, "prompt_tps": 265.9, "gen_n": 128, "gen_tps": 15.18}
+{"case": "gptoss20-cmoe", "setting": "cache2048-c50", "run": 2, "prompt_n": 491, "prompt_tps": 275.4, "gen_n": 128, "gen_tps": 11.61}
+{"case": "gptoss20-cmoe", "setting": "cache2048-c50", "run": 3, "prompt_n": 491, "prompt_tps": 278.4, "gen_n": 128, "gen_tps": 15.08}
+{"case": "gptoss20-cmoe", "setting": "cache8192", "run": 0, "prompt_n": 491, "prompt_tps": 249.5, "gen_n": 128, "gen_tps": 46.95}
+{"case": "gptoss20-cmoe", "setting": "cache8192", "run": 1, "prompt_n": 490, "prompt_tps": 1068.8, "gen_n": 128, "gen_tps": 60.24}
+{"case": "gptoss20-cmoe", "setting": "cache8192", "run": 2, "prompt_n": 491, "prompt_tps": 1088.4, "gen_n": 128, "gen_tps": 58.28}
+{"case": "gptoss20-cmoe", "setting": "cache8192", "run": 3, "prompt_n": 491, "prompt_tps": 1296.0, "gen_n": 128, "gen_tps": 61.0}
+== 15:57:54 gptoss120-ssd
+| Case | Setting | Prompt t/s | Generation t/s | GPU MiB |
+|---|---|---|---|---|
+| gptoss20-cmoe | base | 228.23 | 13.05 | 1926 |
+| gptoss20-cmoe | cache2048-c50 | 273.23 | 13.96 | 3994 |
+| gptoss20-cmoe | cache2048 | 252.03 | 10.77 | 3984 |
+| gptoss20-cmoe | cache8192 | 1151.07 | 59.84 | 10132 |
+| gptoss20-cmoe | minbatch1 | 193.03 | 3.35 | 1922 |
+| qwen30b-cmoe | base | 177.87 | 18.66 | 2052 |
+| qwen30b-cmoe | cache2048-c50 | 207.17 | 15.59 | 4122 |
+| qwen30b-cmoe | cache2048 | 206.0 | 9.13 | 4100 |
+| qwen30b-cmoe | cache8192 | 397.13 | 67.28 | 10260 |
+| qwen30b-cmoe | minbatch1 | 177.5 | 3.84 | 2040 |
+== 16:04:46 all done

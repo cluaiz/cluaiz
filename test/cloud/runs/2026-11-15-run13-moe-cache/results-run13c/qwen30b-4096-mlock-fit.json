@@ -1,0 +1,30 @@
+{
+ "name": "qwen30b-4096-mlock-fit",
+ "args": "-lm mlock -fitt 18519",
+ "runs": [
+  {
+   "run": 0,
+   "gen_n": 512,
+   "gen_tps": 20.97
+  },
+  {
+   "run": 1,
+   "gen_n": 512,
+   "gen_tps": 20.9
+  },
+  {
+   "run": 2,
+   "gen_n": 512,
+   "gen_tps": 21.01
+  },
+  {
+   "run": 3,
+   "gen_n": 512,
+   "gen_tps": 20.99
+  }
+ ],
+ "gpu_mib": "4154",
+ "gen_tps": 20.97,
+ "gen_min": 20.9,
+ "gen_max": 21.01
+}

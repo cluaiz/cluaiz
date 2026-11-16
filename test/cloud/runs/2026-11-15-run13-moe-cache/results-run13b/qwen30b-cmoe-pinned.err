@@ -1,0 +1,8 @@
+1/6 1664 MiB, share 0: 21.2 t/s
+2/6 1664 MiB, share 0.5: 32.2 t/s
+3/6 1664 MiB, share 0.95: 34.0 t/s
+4/6 4992 MiB, share 0: 65.7 t/s
+5/6 4992 MiB, share 0.5: 62.0 t/s
+6/6 4992 MiB, share 0.95: 52.4 t/s
+the runs do not fit the time model, was the machine busy? delete /home/Aryan/results-run13b/runs-qwen30b-cmoe-pinned and run again
+exit 1

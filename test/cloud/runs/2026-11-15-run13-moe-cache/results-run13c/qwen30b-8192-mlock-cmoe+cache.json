@@ -1,0 +1,30 @@
+{
+ "name": "qwen30b-8192-mlock-cmoe+cache",
+ "args": "-lm mlock -fitt 14423 -ngl 99 -cmoe --moe-cache-mib 5568 --moe-cache-cpu-share 0.5",
+ "runs": [
+  {
+   "run": 0,
+   "gen_n": 512,
+   "gen_tps": 61.18
+  },
+  {
+   "run": 1,
+   "gen_n": 512,
+   "gen_tps": 66.14
+  },
+  {
+   "run": 2,
+   "gen_n": 512,
+   "gen_tps": 64.07
+  },
+  {
+   "run": 3,
+   "gen_n": 512,
+   "gen_tps": 66.15
+  }
+ ],
+ "gpu_mib": "7644",
+ "gen_tps": 65.45,
+ "gen_min": 64.07,
+ "gen_max": 66.15
+}

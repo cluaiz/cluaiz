@@ -1,0 +1,27 @@
+official llama.cpp b54752d 2026-11-15 ggml-cpu: add x86 VNNI Q2_0 dot product (#26348)
+memlock limit: unlimited
+== 01:16:11 qwen30b-8192-mmap-fit
+== 01:19:15 qwen30b-8192-mmap-fit+cache
+== 01:20:12 qwen30b-8192-mmap-cmoe+cache
+== 01:20:55 qwen30b-8192-mlock-fit
+== 01:22:29 qwen30b-8192-mlock-fit+cache
+== 01:23:31 qwen30b-8192-mlock-cmoe+cache
+== 01:24:45 gptoss20-8192-mmap-fit
+== 01:27:12 gptoss20-8192-mmap-fit+cache
+== 01:28:25 gptoss20-8192-mmap-cmoe+cache
+== 01:29:30 gptoss20-8192-mlock-fit
+== 01:30:56 gptoss20-8192-mlock-fit+cache
+== 01:32:06 gptoss20-8192-mlock-cmoe+cache
+== 01:32:58 qwen30b-4096-mmap-fit
+== 01:35:37 qwen30b-4096-mmap-fit+cache
+== 01:36:51 qwen30b-4096-mmap-cmoe+cache
+== 01:38:15 qwen30b-4096-mlock-fit
+== 01:40:57 qwen30b-4096-mlock-fit+cache
+== 01:43:03 qwen30b-4096-mlock-cmoe+cache
+== 01:45:04 gptoss20-4096-mmap-fit
+== 01:48:32 gptoss20-4096-mmap-fit+cache
+== 01:50:41 gptoss20-4096-mmap-cmoe+cache
+== 01:52:47 gptoss20-4096-mlock-fit
+== 01:55:16 gptoss20-4096-mlock-fit+cache
+== 01:57:24 gptoss20-4096-mlock-cmoe+cache
+== 01:59:15 all done

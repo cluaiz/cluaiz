@@ -1,0 +1,38 @@
+{
+ "case": "gptoss120-ssd",
+ "setting": "base",
+ "args": "-ngl 99 -ncmoe 25",
+ "runs": [
+  {
+   "run": 0,
+   "prompt_n": 491,
+   "prompt_tps": 4.2,
+   "gen_n": 128,
+   "gen_tps": 4.86
+  },
+  {
+   "run": 1,
+   "prompt_n": 491,
+   "prompt_tps": 45.4,
+   "gen_n": 128,
+   "gen_tps": 9.77
+  },
+  {
+   "run": 2,
+   "prompt_n": 491,
+   "prompt_tps": 53.6,
+   "gen_n": 128,
+   "gen_tps": 10.04
+  },
+  {
+   "run": 3,
+   "prompt_n": 491,
+   "prompt_tps": 50.0,
+   "gen_n": 128,
+   "gen_tps": 10.65
+  }
+ ],
+ "gen_tps": 10.15,
+ "prompt_tps": 49.67,
+ "gpu_mib": "20586"
+}

@@ -1,0 +1,38 @@
+{
+ "case": "gptoss20-cmoe",
+ "setting": "cache2048-c50",
+ "args": "-ngl 99 -cmoe --moe-cache-mib 2048 --moe-cache-cpu-share 0.5",
+ "runs": [
+  {
+   "run": 0,
+   "prompt_n": 491,
+   "prompt_tps": 244.4,
+   "gen_n": 128,
+   "gen_tps": 14.83
+  },
+  {
+   "run": 1,
+   "prompt_n": 491,
+   "prompt_tps": 265.9,
+   "gen_n": 128,
+   "gen_tps": 15.18
+  },
+  {
+   "run": 2,
+   "prompt_n": 491,
+   "prompt_tps": 275.4,
+   "gen_n": 128,
+   "gen_tps": 11.61
+  },
+  {
+   "run": 3,
+   "prompt_n": 491,
+   "prompt_tps": 278.4,
+   "gen_n": 128,
+   "gen_tps": 15.08
+  }
+ ],
+ "gen_tps": 13.96,
+ "prompt_tps": 273.23,
+ "gpu_mib": "3994"
+}

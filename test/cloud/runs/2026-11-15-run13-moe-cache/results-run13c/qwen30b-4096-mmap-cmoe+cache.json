@@ -1,0 +1,30 @@
+{
+ "name": "qwen30b-4096-mmap-cmoe+cache",
+ "args": "-lm mmap -fitt 18519 -ngl 99 -cmoe --moe-cache-mib 1472 --moe-cache-cpu-share 0.95",
+ "runs": [
+  {
+   "run": 0,
+   "gen_n": 512,
+   "gen_tps": 24.73
+  },
+  {
+   "run": 1,
+   "gen_n": 512,
+   "gen_tps": 26.19
+  },
+  {
+   "run": 2,
+   "gen_n": 512,
+   "gen_tps": 26.77
+  },
+  {
+   "run": 3,
+   "gen_n": 512,
+   "gen_tps": 27.34
+  }
+ ],
+ "gpu_mib": "3520",
+ "gen_tps": 26.77,
+ "gen_min": 26.19,
+ "gen_max": 27.34
+}

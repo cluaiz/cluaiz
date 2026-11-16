@@ -1,0 +1,12 @@
+== 15:28:43 build official llama.cpp
+official llama.cpp b54752d 2026-11-15 ggml-cpu: add x86 VNNI Q2_0 dot product (#26348)
+== 15:44:09 qwen30b-cmoe
+== 15:51:09 gptoss20-cmoe
+== 15:57:54 gptoss120-ssd
+== 16:04:46 all done
+== 16:05:56 build official llama.cpp
+official llama.cpp b54752d 2026-11-15 ggml-cpu: add x86 VNNI Q2_0 dot product (#26348)
+== 16:05:56 qwen30b-cmoe
+== 16:05:56 gptoss20-cmoe
+== 16:05:56 gptoss120-ssd
+== 16:45:40 all done

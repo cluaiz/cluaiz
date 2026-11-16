@@ -1,0 +1,30 @@
+{
+ "name": "gptoss20-4096-mmap-cmoe+cache",
+ "args": "-lm mmap -fitt 18519 -ngl 99 -cmoe --moe-cache-mib 1600 --moe-cache-cpu-share 0.9",
+ "runs": [
+  {
+   "run": 0,
+   "gen_n": 512,
+   "gen_tps": 19.62
+  },
+  {
+   "run": 1,
+   "gen_n": 512,
+   "gen_tps": 16.67
+  },
+  {
+   "run": 2,
+   "gen_n": 512,
+   "gen_tps": 18.74
+  },
+  {
+   "run": 3,
+   "gen_n": 512,
+   "gen_tps": 14.89
+  }
+ ],
+ "gpu_mib": "3514",
+ "gen_tps": 16.77,
+ "gen_min": 14.89,
+ "gen_max": 18.74
+}

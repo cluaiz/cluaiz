@@ -1,0 +1,38 @@
+{
+ "case": "qwen30b-cmoe",
+ "setting": "cache2048",
+ "args": "-ngl 99 -cmoe --moe-cache-mib 2048",
+ "runs": [
+  {
+   "run": 0,
+   "prompt_n": 497,
+   "prompt_tps": 196.2,
+   "gen_n": 128,
+   "gen_tps": 9.32
+  },
+  {
+   "run": 1,
+   "prompt_n": 497,
+   "prompt_tps": 206.0,
+   "gen_n": 128,
+   "gen_tps": 7.86
+  },
+  {
+   "run": 2,
+   "prompt_n": 497,
+   "prompt_tps": 206.8,
+   "gen_n": 128,
+   "gen_tps": 10.86
+  },
+  {
+   "run": 3,
+   "prompt_n": 497,
+   "prompt_tps": 205.2,
+   "gen_n": 128,
+   "gen_tps": 8.68
+  }
+ ],
+ "gen_tps": 9.13,
+ "prompt_tps": 206.0,
+ "gpu_mib": "4100"
+}

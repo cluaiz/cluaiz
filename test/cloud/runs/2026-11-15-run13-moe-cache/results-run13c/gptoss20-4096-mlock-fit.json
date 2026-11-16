@@ -1,0 +1,30 @@
+{
+ "name": "gptoss20-4096-mlock-fit",
+ "args": "-lm mlock -fitt 18519",
+ "runs": [
+  {
+   "run": 0,
+   "gen_n": 512,
+   "gen_tps": 15.54
+  },
+  {
+   "run": 1,
+   "gen_n": 512,
+   "gen_tps": 15.53
+  },
+  {
+   "run": 2,
+   "gen_n": 512,
+   "gen_tps": 15.55
+  },
+  {
+   "run": 3,
+   "gen_n": 512,
+   "gen_tps": 15.52
+  }
+ ],
+ "gpu_mib": "4074",
+ "gen_tps": 15.53,
+ "gen_min": 15.52,
+ "gen_max": 15.55
+}

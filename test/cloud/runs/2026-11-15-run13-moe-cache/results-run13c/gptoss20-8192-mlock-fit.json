@@ -1,0 +1,30 @@
+{
+ "name": "gptoss20-8192-mlock-fit",
+ "args": "-lm mlock -fitt 14423",
+ "runs": [
+  {
+   "run": 0,
+   "gen_n": 512,
+   "gen_tps": 28.14
+  },
+  {
+   "run": 1,
+   "gen_n": 512,
+   "gen_tps": 27.99
+  },
+  {
+   "run": 2,
+   "gen_n": 512,
+   "gen_tps": 27.95
+  },
+  {
+   "run": 3,
+   "gen_n": 512,
+   "gen_tps": 27.9
+  }
+ ],
+ "gpu_mib": "8110",
+ "gen_tps": 27.95,
+ "gen_min": 27.9,
+ "gen_max": 27.99
+}

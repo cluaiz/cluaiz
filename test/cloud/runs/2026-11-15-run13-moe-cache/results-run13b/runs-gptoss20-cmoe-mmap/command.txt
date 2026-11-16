@@ -1,0 +1,1 @@
+/home/Aryan/llama.cpp-official/build/bin/llama-server -m /home/Aryan/ch-reg/models/chat/gpt-oss-20b-gguf-FP4/gpt-oss-20b-MXFP4.gguf -c 8192 -t 4 -np 1 -ngl 99 -cmoe

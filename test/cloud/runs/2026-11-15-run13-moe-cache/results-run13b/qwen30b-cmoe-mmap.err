@@ -1,0 +1,7 @@
+1/6 1664 MiB, share 0: 9.5 t/s
+2/6 1664 MiB, share 0.5: 15.2 t/s
+3/6 1664 MiB, share 0.95: 29.2 t/s
+4/6 4992 MiB, share 0: 45.7 t/s
+5/6 4992 MiB, share 0.5: 48.4 t/s
+6/6 4992 MiB, share 0.95: 47.3 t/s
+exit 0

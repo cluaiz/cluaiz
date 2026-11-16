@@ -1,0 +1,38 @@
+== 16:05:56 build official llama.cpp
+official llama.cpp b54752d 2026-11-15 ggml-cpu: add x86 VNNI Q2_0 dot product (#26348)
+== 16:05:56 qwen30b-cmoe
+== 16:05:56 gptoss20-cmoe
+== 16:05:56 gptoss120-ssd
+{"case": "gptoss120-ssd", "setting": "base", "run": 0, "prompt_n": 491, "prompt_tps": 4.2, "gen_n": 128, "gen_tps": 4.86}
+{"case": "gptoss120-ssd", "setting": "base", "run": 1, "prompt_n": 491, "prompt_tps": 45.4, "gen_n": 128, "gen_tps": 9.77}
+{"case": "gptoss120-ssd", "setting": "base", "run": 2, "prompt_n": 491, "prompt_tps": 53.6, "gen_n": 128, "gen_tps": 10.04}
+{"case": "gptoss120-ssd", "setting": "base", "run": 3, "prompt_n": 491, "prompt_tps": 50.0, "gen_n": 128, "gen_tps": 10.65}
+{"case": "gptoss120-ssd", "setting": "minbatch1", "run": 0, "prompt_n": 491, "prompt_tps": 4.2, "gen_n": 128, "gen_tps": 2.3}
+{"case": "gptoss120-ssd", "setting": "minbatch1", "run": 1, "prompt_n": 491, "prompt_tps": 42.2, "gen_n": 128, "gen_tps": 2.63}
+{"case": "gptoss120-ssd", "setting": "minbatch1", "run": 2, "prompt_n": 491, "prompt_tps": 23.7, "gen_n": 128, "gen_tps": 2.79}
+{"case": "gptoss120-ssd", "setting": "minbatch1", "run": 3, "prompt_n": 491, "prompt_tps": 53.2, "gen_n": 128, "gen_tps": 2.73}
+{"case": "gptoss120-ssd", "setting": "cache1024", "run": 0, "prompt_n": 491, "prompt_tps": 4.1, "gen_n": 128, "gen_tps": 3.41}
+{"case": "gptoss120-ssd", "setting": "cache1024", "run": 1, "prompt_n": 491, "prompt_tps": 57.9, "gen_n": 128, "gen_tps": 3.86}
+{"case": "gptoss120-ssd", "setting": "cache1024", "run": 2, "prompt_n": 491, "prompt_tps": 59.2, "gen_n": 128, "gen_tps": 4.07}
+{"case": "gptoss120-ssd", "setting": "cache1024", "run": 3, "prompt_n": 491, "prompt_tps": 49.9, "gen_n": 128, "gen_tps": 4.12}
+{"case": "gptoss120-ssd", "setting": "cache1024-c50", "run": 0, "prompt_n": 491, "prompt_tps": 4.2, "gen_n": 128, "gen_tps": 4.38}
+{"case": "gptoss120-ssd", "setting": "cache1024-c50", "run": 1, "prompt_n": 491, "prompt_tps": 63.3, "gen_n": 128, "gen_tps": 3.78}
+{"case": "gptoss120-ssd", "setting": "cache1024-c50", "run": 2, "prompt_n": 491, "prompt_tps": 11.2, "gen_n": 128, "gen_tps": 4.97}
+{"case": "gptoss120-ssd", "setting": "cache1024-c50", "run": 3, "prompt_n": 491, "prompt_tps": 41.5, "gen_n": 128, "gen_tps": 5.52}
+| Case | Setting | Prompt t/s | Generation t/s | GPU MiB |
+|---|---|---|---|---|
+| gptoss120-ssd | base | 49.67 | 10.15 | 20586 |
+| gptoss120-ssd | cache1024-c50 | 38.67 | 4.76 | 21612 |
+| gptoss120-ssd | cache1024 | 55.67 | 4.02 | 21612 |
+| gptoss120-ssd | minbatch1 | 39.7 | 2.72 | 20596 |
+| gptoss20-cmoe | base | 228.23 | 13.05 | 1926 |
+| gptoss20-cmoe | cache2048-c50 | 273.23 | 13.96 | 3994 |
+| gptoss20-cmoe | cache2048 | 252.03 | 10.77 | 3984 |
+| gptoss20-cmoe | cache8192 | 1151.07 | 59.84 | 10132 |
+| gptoss20-cmoe | minbatch1 | 193.03 | 3.35 | 1922 |
+| qwen30b-cmoe | base | 177.87 | 18.66 | 2052 |
+| qwen30b-cmoe | cache2048-c50 | 207.17 | 15.59 | 4122 |
+| qwen30b-cmoe | cache2048 | 206.0 | 9.13 | 4100 |
+| qwen30b-cmoe | cache8192 | 397.13 | 67.28 | 10260 |
+| qwen30b-cmoe | minbatch1 | 177.5 | 3.84 | 2040 |
+== 16:45:40 all done

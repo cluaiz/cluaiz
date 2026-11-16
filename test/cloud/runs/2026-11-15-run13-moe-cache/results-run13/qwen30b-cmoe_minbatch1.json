@@ -1,0 +1,38 @@
+{
+ "case": "qwen30b-cmoe",
+ "setting": "minbatch1",
+ "args": "-ngl 99 -cmoe",
+ "runs": [
+  {
+   "run": 0,
+   "prompt_n": 497,
+   "prompt_tps": 171.7,
+   "gen_n": 128,
+   "gen_tps": 3.84
+  },
+  {
+   "run": 1,
+   "prompt_n": 497,
+   "prompt_tps": 176.3,
+   "gen_n": 128,
+   "gen_tps": 3.84
+  },
+  {
+   "run": 2,
+   "prompt_n": 497,
+   "prompt_tps": 178.3,
+   "gen_n": 128,
+   "gen_tps": 3.84
+  },
+  {
+   "run": 3,
+   "prompt_n": 497,
+   "prompt_tps": 177.9,
+   "gen_n": 128,
+   "gen_tps": 3.83
+  }
+ ],
+ "gen_tps": 3.84,
+ "prompt_tps": 177.5,
+ "gpu_mib": "2040"
+}

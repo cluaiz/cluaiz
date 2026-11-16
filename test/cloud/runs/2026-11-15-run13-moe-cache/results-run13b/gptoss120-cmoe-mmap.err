@@ -1,0 +1,8 @@
+1/6 5824 MiB, share 0: 6.1 t/s
+2/6 5824 MiB, share 0.5: 3.6 t/s
+3/6 5824 MiB, share 0.95: 3.1 t/s
+4/6 17408 MiB, share 0: 4.7 t/s
+5/6 17408 MiB, share 0.5: 6.5 t/s
+6/6 17408 MiB, share 0.95: 7.4 t/s
+the runs do not fit the time model, was the machine busy? delete /home/Aryan/results-run13b/runs-gptoss120-cmoe-mmap and run again
+exit 1
