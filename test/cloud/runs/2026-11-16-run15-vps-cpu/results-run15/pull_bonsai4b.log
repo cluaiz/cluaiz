@@ -1,0 +1,29 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'prism-ml/Bonsai-4B-gguf:Q1_0'...
+  🔍 Scanning HuggingFace Hub for 'prism-ml/Bonsai-4B-gguf'...
+  ⚡ Direct Quantization Tag Matched: ':Q1_0' -> Bonsai-4B-Q1_0.gguf (0.53 GB)
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: bonsai-4b-gguf
+    ├─ 📦 Format: GGUF
+    ├─ 🏷️  Precision / Quant Tag: GGUF
+    ├─ 🧠 Architecture: qwen3
+    ├─ 📁 Category: chat
+    ├─ 🧩 Parameters: 4B
+    ├─ 💾 Total Download Size: 0.53 GB
+    └─ 📁 Files to Download (3 files):
+       ├─ ⚖️  Bonsai-4B-Q1_0.gguf
+       ├─ 📄 .eval_results/gsm8k.yaml
+       └─ 📄 NOTICE.txt
+   ├─ [1/3] Downloading Bonsai-4B-Q1_0.gguf
+   ├─ [2/3] Downloading .eval_results/gsm8k.yaml
+   ├─ [3/3] Downloading NOTICE.txt
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  bonsai-4b-gguf
+  │ 📁 Vault Path:     /root/.cluaiz/models/chat/bonsai-4b-gguf
+  │ 🚀 Run Command:   cluaiz run bonsai-4b-gguf
+  └─────────────────────────────────────────────────────────────┘
+

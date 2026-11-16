@@ -1,0 +1,47 @@
+2026-11-16T05:18:08.867600Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-16T05:18:08.875606Z  INFO 🚀 [cluaiz] Unified Core Binary verified: "/root/.cluaiz/bin/cluaiz"
+2026-11-16T05:18:08.918004Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload not available, models run on the CPU
+2026-11-16T05:18:08.919351Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-16T05:18:08.931025Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : ternary-bonsai-2-4b-gguf
+║   • Architecture    : qwen35 | 32 layers | heads 16 | KV heads 4 | head size K 256 / V 256 | dense | hybrid: 8 attention layers with a KV cache, 24 linear-attention layers with a 2.2 MB state
+║   • Weights         : file 1.07 GB | input embeddings 0.16 GB (always CPU) | output head 0.16 GB | vocab 248320
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 4096 tokens, KV Kv16 (Custom 4096 tokens, KV Kv16, buffer 0.00 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : none | free 0.00 of 0.00 GB | buffer kept free 0.00 GB (0 MiB rule, model not measured on this machine yet)
+║   • RAM             : free 3.09 of 3.82 GB | Cluaiz may use 2.90 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : CPU only
+║   • llama.cpp       : n_gpu_layers = 0 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 0 on GPU, 32 in RAM (of 32)
+║   • VRAM            : 0.00 GB (weights + KV 0.00 + logits)
+║   • RAM             : 1.71 GB (incl. KV 0.17)
+║   • Reason          : User setting: planner bypassed: n_gpu_layers 0 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 0.00 of usable 0.00 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM  0.00 GB | RAM  1.71 GB | planner bypassed: n_gpu_layers 0 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 0.00 of usable 0.00 GB
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  1.71 GB | weights 1.06 + KV 0.17 + logits 0.47 = 1.71 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 1 / batch 1 | flash attention Auto | KV setting Kv16 -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-16T05:18:08.931053Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-16T05:18:08.931179Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = 0, load_mode = 1, n_threads = 1, n_threads_batch = 1
+2026-11-16T05:18:08.931185Z  INFO 🧬 [Native-Llama] Loading model: /root/.cluaiz/models/chat/ternary-bonsai-2-4b-gguf/Ternary-Bonsai-2-4B-PQ2_0.gguf | ctx: 4096 tokens
+2026-11-16T05:18:09.017681Z ERROR [llama.cpp] gguf_init_from_reader: failed to read tensor info
+2026-11-16T05:18:09.024801Z ERROR [llama.cpp] llama_model_load_from_file_impl: failed to load model
+2026-11-16T05:18:09.024997Z  WARN ⚠️ [Native-Llama] Model Load Failed with mmap. Falling back to RAM allocation (use_mmap = false)...
+2026-11-16T05:18:09.086792Z ERROR [llama.cpp] gguf_init_from_reader: failed to read tensor info
+2026-11-16T05:18:09.090453Z ERROR [llama.cpp] llama_model_load_from_file_impl: failed to load model
+error: bench: Model Load Failure: /root/.cluaiz/models/chat/ternary-bonsai-2-4b-gguf/Ternary-Bonsai-2-4B-PQ2_0.gguf

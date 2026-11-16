@@ -1,0 +1,4 @@
+ID                                   CATEGORY    FORMAT        SIZE
+bonsai-4b-gguf                       chat        gguf      0.53 GiB
+llama-3.2-3b-instruct-gguf-Q4_K_M    chat        gguf      1.88 GiB
+ternary-bonsai-2-4b-gguf             chat        gguf      2.88 GiB

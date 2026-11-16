@@ -1,0 +1,23 @@
+== 04:44:22 install Cluaiz (fresh)
+cluaiz 0.1.0 (pre-release)
+== 04:44:22 official llama.cpp b12428
+load_backend: loaded RPC backend from /root/llama-official/llama-b12428/libggml-rpc.so
+load_backend: loaded CPU backend from /root/llama-official/llama-b12428/libggml-cpu-zen4.so
+== 04:44:22 models
+ID                                   CATEGORY    FORMAT        SIZE
+bonsai-4b-gguf                       chat        gguf      0.53 GiB
+llama-3.2-3b-instruct-gguf-Q4_K_M    chat        gguf      1.88 GiB
+ternary-bonsai-2-4b-gguf             chat        gguf      2.88 GiB
+== 04:46:49 bonsai-4b-gguf cpu: llama.cpp
+== 04:52:12 bonsai-4b-gguf cpu: Cluaiz
+== 04:56:34 bonsai-4b-gguf auto: Cluaiz
+== 05:01:35 bonsai-4b-gguf auto: llama.cpp with KV q8_0
+== 05:07:46 llama-3.2-3b-instruct-gguf-Q4_K_M cpu: llama.cpp
+== 05:10:35 llama-3.2-3b-instruct-gguf-Q4_K_M cpu: Cluaiz
+== 05:12:42 llama-3.2-3b-instruct-gguf-Q4_K_M auto: Cluaiz
+== 05:15:09 llama-3.2-3b-instruct-gguf-Q4_K_M auto: llama.cpp with KV q8_0
+== 05:18:08 ternary-bonsai-2-4b-gguf cpu: llama.cpp
+== 05:18:08 ternary-bonsai-2-4b-gguf cpu: Cluaiz
+== 05:18:09 ternary-bonsai-2-4b-gguf auto: Cluaiz
+== 05:18:09 ternary-bonsai-2-4b-gguf auto: llama.cpp with KV f16
+== 05:18:09 all done

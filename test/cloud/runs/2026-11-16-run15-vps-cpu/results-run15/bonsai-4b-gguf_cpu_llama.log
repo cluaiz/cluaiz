@@ -1,0 +1,2 @@
+load_backend: loaded RPC backend from /root/llama-official/llama-b12428/libggml-rpc.so
+load_backend: loaded CPU backend from /root/llama-official/llama-b12428/libggml-cpu-zen4.so

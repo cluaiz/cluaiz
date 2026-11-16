@@ -1,0 +1,31 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'prism-ml/Ternary-Bonsai-2-4B-gguf:Q2_0'...
+  🔍 Scanning HuggingFace Hub for 'prism-ml/Ternary-Bonsai-2-4B-gguf'...
+  ⚡ Direct Quantization Tag Matched: ':Q2_0' -> Ternary-Bonsai-2-4B-PQ2_0.gguf (2.88 GB)
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: ternary-bonsai-2-4b-gguf
+    ├─ 📦 Format: GGUF
+    ├─ 🏷️  Precision / Quant Tag: GGUF
+    ├─ 🧠 Architecture: dflash
+    ├─ 📁 Category: chat
+    ├─ 🧩 Parameters: 4B
+    ├─ 💾 Total Download Size: 2.88 GB
+    └─ 📁 Files to Download (4 files):
+       ├─ ⚖️  Ternary-Bonsai-2-4B-PQ2_0.gguf
+       ├─ ⚖️  Ternary-Bonsai-2-4B-mmproj-BF16.gguf
+       ├─ ⚖️  Ternary-Bonsai-2-4B-PQ2_0-MTP-Q8_0.gguf
+       └─ 📄 NOTICE.txt
+   ├─ [1/4] Downloading Ternary-Bonsai-2-4B-PQ2_0.gguf
+   ├─ [2/4] Downloading Ternary-Bonsai-2-4B-mmproj-BF16.gguf
+   ├─ [3/4] Downloading Ternary-Bonsai-2-4B-PQ2_0-MTP-Q8_0.gguf
+   ├─ [4/4] Downloading NOTICE.txt
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  ternary-bonsai-2-4b-gguf
+  │ 📁 Vault Path:     /root/.cluaiz/models/chat/ternary-bonsai-2-4b-gguf
+  │ 🚀 Run Command:   cluaiz run ternary-bonsai-2-4b-gguf
+  └─────────────────────────────────────────────────────────────┘
+
