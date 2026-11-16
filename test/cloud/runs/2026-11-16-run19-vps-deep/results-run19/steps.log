@@ -1,0 +1,69 @@
+== 07:27:33 A baseline, no Cluaiz
+cluaiz 0.1.0 (pre-release)
+150M	/root/.cluaiz/bin
+== 07:28:03 B pull chat models
+pull unsloth/Qwen3-0.6B-GGUF:Q4_K_M exit 0 0s
+pull bartowski/Llama-3.2-1B-Instruct-GGUF:Q4_K_M exit 0 0s
+pull unsloth/gemma-3-1b-it-GGUF:Q4_K_M exit 0 1s
+pull unsloth/Qwen3-1.7B-GGUF:Q4_K_M exit 0 0s
+pull unsloth/Qwen3-4B-GGUF:Q4_K_M exit 0 0s
+pull unsloth/Phi-4-mini-instruct-GGUF:Q4_K_M exit 0 0s
+pull unsloth/Qwen3-8B-GGUF:Q4_K_M exit 0 1s
+pull onnx-community/moonshine-base-ONNX:int8 exit 0 1s
+pull onnx-community/whisper-base:int8 exit 0 1s
+pull onnx-community/Kokoro-82M-v1.0-ONNX:uint8 exit 0 1s
+pull onnx-community/moonshine-tiny-ONNX:int8 exit 0 0s
+pull ggml-org/embeddinggemma-300M-GGUF exit 0 1s
+/dev/sda1        48G   34G   15G  71% /
+== 07:28:09 B bench bonsai-4b-gguf
+bench bonsai-4b-gguf exit 0:  pp512   6.41 ± 0.17 ;  tg128   5.75 ± 0.22 ; 
+== 07:31:40 B bench gemma-3-1b-it-gguf-Q4_K_M
+bench gemma-3-1b-it-gguf-Q4_K_M exit 0:  pp512   60.68 ± 0.96 ;  tg128   14.48 ± 1.18 ; 
+== 07:32:17 B bench llama-3.2-1b-instruct-gguf-Q4_K_M
+bench llama-3.2-1b-instruct-gguf-Q4_K_M exit 0:  pp512   61.62 ± 1.66 ;  tg128   21.52 ± 1.05 ; 
+== 07:32:49 B bench llama-3.2-3b-instruct-gguf-Q4_K_M
+bench llama-3.2-3b-instruct-gguf-Q4_K_M exit 0:  pp512   18.78 ± 0.83 ;  tg128   8.80 ± 0.23 ; 
+== 07:34:22 B bench phi-4-mini-instruct-gguf-Q4_K_M
+bench phi-4-mini-instruct-gguf-Q4_K_M exit 0:  pp512   17.07 ± 0.84 ;  tg128   6.37 ± 0.19 ; 
+== 07:36:13 B bench qwen3-0.6b-gguf-Q4_K_M
+bench qwen3-0.6b-gguf-Q4_K_M exit 0:  pp512   115.98 ± 2.29 ;  tg128   36.28 ± 1.30 ; 
+== 07:36:31 B bench qwen3-1.7b-gguf-Q4_K_M
+bench qwen3-1.7b-gguf-Q4_K_M exit 0:  pp512   32.94 ± 1.70 ;  tg128   14.45 ± 0.12 ; 
+== 07:37:25 B bench qwen3-4b-gguf-Q4_K_M
+bench qwen3-4b-gguf-Q4_K_M exit 0:  pp512   12.91 ± 0.16 ;  tg128   6.16 ± 0.04 ; 
+== 07:39:38 B bench ternary-bonsai-2-4b-gguf
+bench ternary-bonsai-2-4b-gguf exit 0:  pp512   5.58 ± 0.26 ;  tg128   4.34 ± 0.03 ; 
+== 07:43:49 A server idle
+server pid 138430
+== 07:44:51 C chat bonsai-4b-gguf
+== 07:45:23 C chat gemma-3-1b-it-gguf-Q4_K_M
+== 07:45:35 C chat llama-3.2-1b-instruct-gguf-Q4_K_M
+== 07:45:48 C chat llama-3.2-3b-instruct-gguf-Q4_K_M
+== 07:46:14 C chat phi-4-mini-instruct-gguf-Q4_K_M
+== 07:46:47 C chat qwen3-0.6b-gguf-Q4_K_M
+== 07:46:51 C chat qwen3-1.7b-gguf-Q4_K_M
+== 07:47:01 C chat qwen3-4b-gguf-Q4_K_M
+== 07:47:38 C chat ternary-bonsai-2-4b-gguf
+== 07:48:20 D speech
+== 07:48:48 E embeddings
+== 07:49:00 E ingest
+ingest doc_rivers.md 141 bytes exit 0 33 ms
+ingest doc_gpl3.txt 35149 bytes exit 0 31 ms
+== 07:49:00 F provider
+provider model: groq/openai/gpt-oss-20b
+server pid 138661
+== 07:49:03 G flow
+flow validate exit 0
+flow save exit 141
+flow run exit 1 10s
+== 07:49:13 H agent provider
+agent provider (groq/openai/gpt-oss-20b) exit 0 4s; files: __pycache__ calc.py test_calc.py ; our unittest run: OK
+== 07:49:17 H agent local
+agent local (llama-3.2-3b-instruct-gguf-Q4_K_M) exit 1 1s; files: ; our unittest run: NO TESTS RAN
+== 07:49:18 I concurrency qwen3-0.6b-gguf-Q4_K_M
+== 07:49:32 I concurrency llama-3.2-3b-instruct-gguf-Q4_K_M
+== 07:50:14 I mixed load
+== 07:53:19 J larger than RAM: qwen3-8b-gguf-Q4_K_M
+8b chat exit 0
+== 07:53:20 end
+== 07:53:41 all done

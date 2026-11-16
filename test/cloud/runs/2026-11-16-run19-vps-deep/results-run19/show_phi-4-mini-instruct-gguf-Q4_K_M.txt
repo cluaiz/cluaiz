@@ -1,0 +1,19 @@
+  Model
+    id                phi-4-mini-instruct-gguf-Q4_K_M
+    file              /root/.cluaiz/models/chat/phi-4-mini-instruct-gguf-Q4_K_M/Phi-4-mini-instruct-Q4_K_M.gguf (2.32 GiB)
+    architecture      phi3
+    name              Phi 4 Mini Instruct
+    parameters        mini
+    context length    131072
+    layers            32
+    embedding         3072
+    attention heads   24 (KV 8)
+    sliding window    262144
+  Capabilities
+    chat template     yes
+    thinking          no
+  Plan on this machine now
+    placement  CPU only | 0 of 32 blocks on GPU, 32 in RAM | n_gpu_layers 0
+    context    4096 tokens | KV Kv8 in RAM
+    memory     VRAM 0.00 GB | RAM 2.96 GB
+    reason     CPU only: weights 2.31 + KV 0.27 + logits 0.38 = 2.96 GB in RAM

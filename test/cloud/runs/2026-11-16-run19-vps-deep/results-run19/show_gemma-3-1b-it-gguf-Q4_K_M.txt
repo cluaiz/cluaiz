@@ -1,0 +1,19 @@
+  Model
+    id                gemma-3-1b-it-gguf-Q4_K_M
+    file              /root/.cluaiz/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf (0.75 GiB)
+    architecture      gemma3
+    name              Gemma-3-1B-It
+    parameters        1B
+    context length    32768
+    layers            26
+    embedding         1152
+    attention heads   4 (KV 1)
+    sliding window    512
+  Capabilities
+    chat template     yes
+    thinking          no
+  Plan on this machine now
+    placement  CPU only | 0 of 26 blocks on GPU, 26 in RAM | n_gpu_layers 0
+    context    4096 tokens | KV Kv16 in RAM
+    memory     VRAM 0.00 GB | RAM 1.35 GB
+    reason     CPU only: weights 0.74 + KV 0.10 + logits 0.50 = 1.35 GB in RAM

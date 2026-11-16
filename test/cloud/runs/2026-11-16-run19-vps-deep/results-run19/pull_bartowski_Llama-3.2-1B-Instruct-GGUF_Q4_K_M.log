@@ -1,0 +1,8 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'bartowski/Llama-3.2-1B-Instruct-GGUF:Q4_K_M'...
+  🔍 Scanning HuggingFace Hub for 'bartowski/Llama-3.2-1B-Instruct-GGUF'...
+  ⚡ Direct Quantization Tag Matched: ':Q4_K_M' -> Llama-3.2-1B-Instruct-Q4_K_M.gguf (0.75 GB)
+
+  ⚠️ Warning: This exact variant is already downloaded locally under ID: 'llama-3.2-1b-instruct-gguf-Q4_K_M'
+     If you wish to re-download, please delete the old one first using: cluaiz rm llama-3.2-1b-instruct-gguf-Q4_K_M
+

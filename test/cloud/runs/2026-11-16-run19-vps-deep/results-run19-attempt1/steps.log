@@ -1,0 +1,67 @@
+== 07:09:33 A baseline, no Cluaiz
+cluaiz 0.1.0 (pre-release)
+150M	/root/.cluaiz/bin
+== 07:10:03 B pull chat models
+pull unsloth/Qwen3-0.6B-GGUF:Q4_K_M exit 0 8s
+pull bartowski/Llama-3.2-1B-Instruct-GGUF:Q4_K_M exit 0 14s
+pull unsloth/gemma-3-1b-it-GGUF:Q4_K_M exit 0 12s
+pull unsloth/Qwen3-1.7B-GGUF:Q4_K_M exit 0 18s
+pull unsloth/Qwen3-4B-GGUF:Q4_K_M exit 0 45s
+pull unsloth/Phi-4-mini-instruct-GGUF:Q4_K_M exit 0 37s
+pull unsloth/Qwen3-8B-GGUF:Q4_K_M exit 0 64s
+pull onnx-community/moonshine-base-ONNX:int8 exit 0 9s
+pull onnx-community/whisper-base:int8 exit 0 11s
+pull onnx-community/Kokoro-82M-v1.0-ONNX:uint8 exit 0 0s
+pull onnx-community/moonshine-tiny-ONNX:int8 exit 0 1s
+pull ggml-org/embeddinggemma-300M-GGUF exit 0 1s
+/dev/sda1        48G   34G   15G  71% /
+== 07:13:43 B bench bonsai-4b-gguf
+bench bonsai-4b-gguf exit 1: 
+== 07:13:43 B bench gemma-3-1b-it-gguf-Q4_K_M
+bench gemma-3-1b-it-gguf-Q4_K_M exit 1: 
+== 07:13:43 B bench llama-3.2-1b-instruct-gguf-Q4_K_M
+bench llama-3.2-1b-instruct-gguf-Q4_K_M exit 1: 
+== 07:13:43 B bench llama-3.2-3b-instruct-gguf-Q4_K_M
+bench llama-3.2-3b-instruct-gguf-Q4_K_M exit 1: 
+== 07:13:43 B bench phi-4-mini-instruct-gguf-Q4_K_M
+bench phi-4-mini-instruct-gguf-Q4_K_M exit 1: 
+== 07:13:43 B bench qwen3-0.6b-gguf-Q4_K_M
+bench qwen3-0.6b-gguf-Q4_K_M exit 0:  pp512   69.90 ± 0.16 ;  tg128   34.27 ± 2.52 ; 
+== 07:14:08 B bench qwen3-1.7b-gguf-Q4_K_M
+bench qwen3-1.7b-gguf-Q4_K_M exit 1: 
+== 07:14:08 B bench qwen3-4b-gguf-Q4_K_M
+bench qwen3-4b-gguf-Q4_K_M exit 1: 
+== 07:14:08 B bench ternary-bonsai-2-4b-gguf
+bench ternary-bonsai-2-4b-gguf exit 1: 
+== 07:14:08 A server idle
+== 07:15:09 C chat bonsai-4b-gguf
+== 07:15:43 C chat gemma-3-1b-it-gguf-Q4_K_M
+== 07:15:54 C chat llama-3.2-1b-instruct-gguf-Q4_K_M
+== 07:16:08 C chat llama-3.2-3b-instruct-gguf-Q4_K_M
+== 07:16:35 C chat phi-4-mini-instruct-gguf-Q4_K_M
+== 07:16:35 C chat qwen3-0.6b-gguf-Q4_K_M
+== 07:16:39 C chat qwen3-1.7b-gguf-Q4_K_M
+== 07:16:49 C chat qwen3-4b-gguf-Q4_K_M
+== 07:16:49 C chat ternary-bonsai-2-4b-gguf
+== 07:17:31 D speech
+== 07:17:56 E embeddings
+== 07:18:08 E ingest
+ingest doc_rivers.md 141 bytes exit 0 31 ms
+ingest doc_gpl3.txt 35149 bytes exit 0 27 ms
+== 07:18:09 F provider
+provider model: groq/openai/gpt-oss-20b
+== 07:18:09 G flow
+flow validate exit 0
+flow save exit 141
+flow run exit 0 0s
+== 07:18:09 H agent provider
+agent provider (groq/openai/gpt-oss-20b) exit 0 10s; files: __pycache__ calc.py test_calc.py ; our unittest run: OK
+== 07:18:19 H agent local
+agent local (llama-3.2-3b-instruct-gguf-Q4_K_M) exit 1 0s; files: ; our unittest run: NO TESTS RAN
+== 07:18:19 I concurrency qwen3-0.6b-gguf-Q4_K_M
+== 07:18:31 I concurrency llama-3.2-3b-instruct-gguf-Q4_K_M
+== 07:18:31 I mixed load
+== 07:21:36 J larger than RAM: qwen3-8b-gguf-Q4_K_M
+8b chat exit 0
+== 07:21:36 end
+== 07:21:57 all done

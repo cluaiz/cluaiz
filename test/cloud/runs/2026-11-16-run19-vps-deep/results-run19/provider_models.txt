@@ -1,0 +1,12 @@
+groq/allam-2-7b  context 4096
+groq/canopylabs/orpheus-arabic-saudi  context 4000
+groq/canopylabs/orpheus-v1-english  context 4000
+groq/meta-llama/llama-prompt-guard-2-22m  context 512
+groq/meta-llama/llama-prompt-guard-2-86m  context 512
+groq/openai/gpt-oss-120b  context 131072
+groq/openai/gpt-oss-20b  context 131072
+groq/openai/gpt-oss-safeguard-20b  context 131072
+groq/qwen/qwen3.8-27b  context 131072
+groq/whisper-large-v3  context 448
+groq/whisper-large-v3-turbo  context 448
+11 of 11 models

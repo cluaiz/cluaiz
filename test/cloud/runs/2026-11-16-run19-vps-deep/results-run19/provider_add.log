@@ -1,0 +1,3 @@
+Saved groq (https://api.groq.com/openai/v1), key: env GROQ_API_KEY
+Use its models as groq/<model>; see them with `cluaiz provider models groq`.
+Note: API authentication is off: anyone who can reach this server can use your provider keys. That is fine on your own computer; on a shared network or a server, turn it on with `cluaiz token create`.

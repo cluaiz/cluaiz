@@ -1,0 +1,18 @@
+  Model
+    id                qwen3-1.7b-gguf-Q4_K_M
+    file              /root/.cluaiz/models/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf (1.03 GiB)
+    architecture      qwen3
+    name              Qwen3-1.7B
+    parameters        1.7B
+    context length    40960
+    layers            28
+    embedding         2048
+    attention heads   16 (KV 8)
+  Capabilities
+    chat template     yes
+    thinking          yes (<think> ... </think>)
+  Plan on this machine now
+    placement  CPU only | 0 of 28 blocks on GPU, 28 in RAM | n_gpu_layers 0
+    context    4096 tokens | KV Kv8 in RAM
+    memory     VRAM 0.00 GB | RAM 1.55 GB
+    reason     CPU only: weights 1.03 + KV 0.23 + logits 0.29 = 1.55 GB in RAM

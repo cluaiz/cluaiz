@@ -1,0 +1,18 @@
+  Model
+    id                llama-3.2-1b-instruct-gguf-Q4_K_M
+    file              /root/.cluaiz/models/chat/llama-3.2-1b-instruct-gguf-Q4_K_M/Llama-3.2-1B-Instruct-Q4_K_M.gguf (0.75 GiB)
+    architecture      llama
+    name              Llama 3.2 1B Instruct
+    parameters        1B
+    context length    131072
+    layers            16
+    embedding         2048
+    attention heads   32 (KV 8)
+  Capabilities
+    chat template     yes
+    thinking          no
+  Plan on this machine now
+    placement  CPU only | 0 of 16 blocks on GPU, 16 in RAM | n_gpu_layers 0
+    context    4096 tokens | KV Kv16 in RAM
+    memory     VRAM 0.00 GB | RAM 1.11 GB
+    reason     CPU only: weights 0.74 + KV 0.12 + logits 0.24 = 1.11 GB in RAM

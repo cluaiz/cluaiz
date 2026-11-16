@@ -1,0 +1,15 @@
+546M	/root/.cluaiz/models/chat/bonsai-4b-gguf
+769M	/root/.cluaiz/models/chat/gemma-3-1b-it-gguf-Q4_K_M
+771M	/root/.cluaiz/models/chat/llama-3.2-1b-instruct-gguf-Q4_K_M
+1.9G	/root/.cluaiz/models/chat/llama-3.2-3b-instruct-gguf-Q4_K_M
+2.4G	/root/.cluaiz/models/chat/phi-4-mini-instruct-gguf-Q4_K_M
+379M	/root/.cluaiz/models/chat/qwen3-0.6b-gguf-Q4_K_M
+1.1G	/root/.cluaiz/models/chat/qwen3-1.7b-gguf-Q4_K_M
+2.4G	/root/.cluaiz/models/chat/qwen3-4b-gguf-Q4_K_M
+4.7G	/root/.cluaiz/models/chat/qwen3-8b-gguf-Q4_K_M
+1.8G	/root/.cluaiz/models/chat/ternary-bonsai-2-4b-gguf
+319M	/root/.cluaiz/models/embedding/embeddinggemma-300m-gguf-Q8_0
+101M	/root/.cluaiz/models/stt/moonshine-base-onnx-INT8
+49M	/root/.cluaiz/models/stt/moonshine-tiny-onnx-INT8
+125M	/root/.cluaiz/models/stt/whisper-base-INT8
+197M	/root/.cluaiz/models/tts/kokoro-82m-v1.0-onnx-UINT8

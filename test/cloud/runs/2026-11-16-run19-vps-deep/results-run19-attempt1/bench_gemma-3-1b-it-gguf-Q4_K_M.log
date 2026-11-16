@@ -1,0 +1,38 @@
+2026-11-16T07:13:43.291841Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-16T07:13:43.293335Z  INFO 🚀 [cluaiz] Unified Core Binary verified: "/root/.cluaiz/bin/cluaiz"
+2026-11-16T07:13:43.302906Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload not available, models run on the CPU
+2026-11-16T07:13:43.303022Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-16T07:13:43.311551Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : gemma-3-1b-it-gguf-Q4_K_M
+║   • Architecture    : gemma3 | 26 layers | heads 4 | KV heads 1 | head size K 256 / V 256 | dense
+║   • Weights         : file 0.75 GB | input embeddings 0.30 GB (always CPU) | output head 0.30 GB | vocab 262144
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 32768 tokens
+║   • Active context  : 4096 tokens, KV Kv8 (Auto on the CPU: 4096 tokens, KV Kv8 (the floor; RAM is not filled with context))
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : none | free 0.00 of 0.00 GB | buffer kept free 0.00 GB (0 MiB rule, model not measured on this machine yet)
+║   • RAM             : free 1.07 of 3.82 GB | Cluaiz may use 0.88 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Rejected
+║   • llama.cpp       : n_gpu_layers = 0 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv8 | offload_kqv = 0 | op_offload = 1
+║   • Blocks          : 0 on GPU, 26 in RAM (of 26)
+║   • VRAM            : 0.00 GB (weights + KV 0.00 + logits)
+║   • RAM             : 0.00 GB (incl. KV 0.00)
+║   • Reason         : Does not fit: closest placement (CPU only) is 0.42 GB short (weights 0.74 + KV 0.05 + logits 0.50 = 1.30 GB in RAM; needs 0.42 GB more RAM than allowed). Free memory, lower the context, or use a smaller quantization.
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • CPU only         [NO]       VRAM  0.00 GB | RAM  1.30 GB | weights 0.74 + KV 0.05 + logits 0.50 = 1.30 GB in RAM; needs 0.42 GB more RAM than allowed
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 1 / batch 1 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+error: bench: Does not fit: closest placement (CPU only) is 0.42 GB short (weights 0.74 + KV 0.05 + logits 0.50 = 1.30 GB in RAM; needs 0.42 GB more RAM than allowed). Free memory, lower the context, or use a smaller quantization.

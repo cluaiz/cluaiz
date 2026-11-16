@@ -1,0 +1,8 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'unsloth/Qwen3-1.7B-GGUF:Q4_K_M'...
+  🔍 Scanning HuggingFace Hub for 'unsloth/Qwen3-1.7B-GGUF'...
+  ⚡ Direct Quantization Tag Matched: ':Q4_K_M' -> Qwen3-1.7B-Q4_K_M.gguf (1.03 GB)
+
+  ⚠️ Warning: This exact variant is already downloaded locally under ID: 'qwen3-1.7b-gguf-Q4_K_M'
+     If you wish to re-download, please delete the old one first using: cluaiz rm qwen3-1.7b-gguf-Q4_K_M
+

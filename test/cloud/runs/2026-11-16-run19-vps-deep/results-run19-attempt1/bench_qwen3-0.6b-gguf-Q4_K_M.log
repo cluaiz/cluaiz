@@ -1,0 +1,53 @@
+2026-11-16T07:13:43.727631Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-16T07:13:43.730159Z  INFO 🚀 [cluaiz] Unified Core Binary verified: "/root/.cluaiz/bin/cluaiz"
+2026-11-16T07:13:43.740879Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload not available, models run on the CPU
+2026-11-16T07:13:43.740995Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-16T07:13:43.746766Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3-0.6b-gguf-Q4_K_M
+║   • Architecture    : qwen3 | 28 layers | heads 16 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 0.37 GB | input embeddings 0.12 GB (always CPU) | output head 0.12 GB | vocab 151936
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 40960 tokens
+║   • Active context  : 4096 tokens, KV Kv4 (Auto: 4096 tokens with KV Kv4 + buffer 0.00 GB, to stay on the GPU (16384 tokens with KV Kv16 did not fit))
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : none | free 0.00 of 0.00 GB | buffer kept free 0.00 GB (0 MiB rule, model not measured on this machine yet)
+║   • RAM             : free 1.07 of 3.82 GB | Cluaiz may use 0.88 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : CPU only
+║   • llama.cpp       : n_gpu_layers = 0 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv4 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 0 on GPU, 28 in RAM (of 28)
+║   • VRAM            : 0.00 GB (weights + KV 0.00 + logits)
+║   • RAM             : 0.78 GB (incl. KV 0.12)
+║   • Reason         : CPU only: weights 0.36 + KV 0.12 + logits 0.29 = 0.78 GB in RAM
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  0.78 GB | weights 0.36 + KV 0.12 + logits 0.29 = 0.78 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 1 / batch 1 | flash attention Auto | KV setting Auto -> used Kv4 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-16T07:13:43.746795Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-16T07:13:43.746918Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = 0, load_mode = 1, n_threads = 1, n_threads_batch = 1
+2026-11-16T07:13:43.746923Z  INFO 🧬 [Native-Llama] Loading model: /root/.cluaiz/models/chat/qwen3-0.6b-gguf-Q4_K_M/Qwen3-0.6B-Q4_K_M.gguf | ctx: 4096 tokens
+2026-11-16T07:13:45.041951Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/root/.cluaiz/models/chat/qwen3-0.6b-gguf-Q4_K_M"
+2026-11-16T07:13:45.078760Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-11-16T07:13:45.078773Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-11-16T07:13:45.078779Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 4096 tokens
+2026-11-16T07:13:45.078791Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-16T07:13:45.078798Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 1/1
+2026-11-16T07:13:45.546321Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /root/.cluaiz/models/chat/qwen3-0.6b-gguf-Q4_K_M/Qwen3-0.6B-Q4_K_M.gguf
+  placement  CPU only | 0 of 28 blocks on GPU, 28 in RAM | n_gpu_layers 0
+  context    4096 tokens | KV Kv4 in RAM
+  memory     VRAM 0.00 GB | RAM 0.78 GB
+  reason     CPU only: weights 0.36 + KV 0.12 + logits 0.29 = 0.78 GB in RAM
+running pp512 on CPU only (2 runs)...
+running tg128 on CPU only (2 runs)...

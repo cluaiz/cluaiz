@@ -1,0 +1,50 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'onnx-community/whisper-base:int8'...
+  🔍 Scanning HuggingFace Hub for 'onnx-community/whisper-base'...
+  ⚡ Direct Quantization Tag Matched: ':int8' -> encoder_model_int8.onnx (0.12 GB)
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: whisper-base-INT8
+    ├─ 📦 Format: ONNX
+    ├─ 🏷️  Precision / Quant Tag: INT8
+    ├─ 🧠 Architecture: whisper
+    ├─ 📁 Category: stt
+    ├─ 💾 Total Download Size: 0.12 GB
+    └─ 📁 Files to Download (14 files):
+       ├─ ⚖️  onnx/encoder_model_int8.onnx
+       ├─ ⚖️  onnx/decoder_model_int8.onnx
+       ├─ ⚖️  onnx/decoder_with_past_model_int8.onnx
+       ├─ 📄 added_tokens.json
+       ├─ 📄 config.json
+       ├─ 📄 generation_config.json
+       ├─ 📄 merges.txt
+       ├─ 📄 normalizer.json
+       ├─ 📄 preprocessor_config.json
+       ├─ 📄 quantize_config.json
+       ├─ 📄 special_tokens_map.json
+       ├─ 📄 tokenizer.json
+       ├─ 📄 tokenizer_config.json
+       └─ 📄 vocab.json
+   ├─ [1/14] Downloading onnx/encoder_model_int8.onnx
+   ├─ [2/14] Downloading onnx/decoder_model_int8.onnx
+   ├─ [3/14] Downloading onnx/decoder_with_past_model_int8.onnx
+   ├─ [4/14] Downloading added_tokens.json
+   ├─ [5/14] Downloading config.json
+   ├─ [6/14] Downloading generation_config.json
+   ├─ [7/14] Downloading merges.txt
+   ├─ [8/14] Downloading normalizer.json
+   ├─ [9/14] Downloading preprocessor_config.json
+   ├─ [10/14] Downloading quantize_config.json
+   ├─ [11/14] Downloading special_tokens_map.json
+   ├─ [12/14] Downloading tokenizer.json
+   ├─ [13/14] Downloading tokenizer_config.json
+   ├─ [14/14] Downloading vocab.json
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  whisper-base-INT8
+  │ 📁 Vault Path:     /root/.cluaiz/models/stt/whisper-base-INT8
+  │ 🚀 Run Command:   cluaiz run whisper-base-INT8
+  └─────────────────────────────────────────────────────────────┘
+

@@ -1,0 +1,3 @@
+run run_c064d19842c4 started
+failed in 138 ms, 1 steps
+error model at summary: Model could not be loaded: Does not fit: closest placement (CPU only) is 0.76 GB short (weights 1.87 + KV 0.23 + logits 0.24 = 2.35 GB in RAM; needs 0.76 GB more RAM than allowed). Free memory, lower the context, or use a smaller quantization.

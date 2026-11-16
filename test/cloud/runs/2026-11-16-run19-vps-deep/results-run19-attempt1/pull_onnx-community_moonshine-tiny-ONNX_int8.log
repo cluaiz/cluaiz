@@ -1,0 +1,40 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'onnx-community/moonshine-tiny-ONNX:int8'...
+  🔍 Scanning HuggingFace Hub for 'onnx-community/moonshine-tiny-ONNX'...
+  ⚡ Direct Quantization Tag Matched: ':int8' -> encoder_model_int8.onnx (0.05 GB)
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: moonshine-tiny-onnx-INT8
+    ├─ 📦 Format: ONNX
+    ├─ 🏷️  Precision / Quant Tag: INT8
+    ├─ 🧠 Architecture: moonshine
+    ├─ 📁 Category: stt
+    ├─ 💾 Total Download Size: 0.05 GB
+    └─ 📁 Files to Download (9 files):
+       ├─ ⚖️  onnx/encoder_model_int8.onnx
+       ├─ ⚖️  onnx/decoder_model_int8.onnx
+       ├─ ⚖️  onnx/decoder_with_past_model_int8.onnx
+       ├─ 📄 config.json
+       ├─ 📄 generation_config.json
+       ├─ 📄 preprocessor_config.json
+       ├─ 📄 special_tokens_map.json
+       ├─ 📄 tokenizer.json
+       └─ 📄 tokenizer_config.json
+   ├─ [1/9] Already on disk: encoder_model_int8.onnx
+   ├─ [2/9] Already on disk: decoder_model_int8.onnx
+   ├─ [3/9] Already on disk: decoder_with_past_model_int8.onnx
+   ├─ [4/9] Already on disk: config.json
+   ├─ [5/9] Already on disk: generation_config.json
+   ├─ [6/9] Already on disk: preprocessor_config.json
+   ├─ [7/9] Already on disk: special_tokens_map.json
+   ├─ [8/9] Already on disk: tokenizer.json
+   ├─ [9/9] Already on disk: tokenizer_config.json
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  moonshine-tiny-onnx-INT8
+  │ 📁 Vault Path:     /root/.cluaiz/models/stt/moonshine-tiny-onnx-INT8
+  │ 🚀 Run Command:   cluaiz run moonshine-tiny-onnx-INT8
+  └─────────────────────────────────────────────────────────────┘
+

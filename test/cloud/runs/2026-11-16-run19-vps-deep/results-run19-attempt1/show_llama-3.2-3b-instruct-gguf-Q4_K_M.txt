@@ -1,0 +1,18 @@
+  Model
+    id                llama-3.2-3b-instruct-gguf-Q4_K_M
+    file              /root/.cluaiz/models/chat/llama-3.2-3b-instruct-gguf-Q4_K_M/Llama-3.2-3B-Instruct-Q4_K_M.gguf (1.88 GiB)
+    architecture      llama
+    name              Llama 3.2 3B Instruct
+    parameters        3B
+    context length    131072
+    layers            28
+    embedding         3072
+    attention heads   24 (KV 8)
+  Capabilities
+    chat template     yes
+    thinking          no
+  Plan on this machine now
+    placement  Rejected | 0 of 28 blocks on GPU, 28 in RAM | n_gpu_layers 0
+    context    4096 tokens | KV Kv8 in RAM
+    memory     VRAM 0.00 GB | RAM 0.00 GB
+    reason     Does not fit: closest placement (CPU only) is 1.47 GB short (weights 1.87 + KV 0.23 + logits 0.24 = 2.35 GB in RAM; needs 1.47 GB more RAM than allowed). Free memory, lower the context, or use a smaller quantization.

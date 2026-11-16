@@ -1,0 +1,7 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'ggml-org/embeddinggemma-300M-GGUF'...
+  🔍 Scanning HuggingFace Hub for 'ggml-org/embeddinggemma-300M-GGUF'...
+
+  ⚠️ Warning: This exact variant is already downloaded locally under ID: 'embeddinggemma-300m-gguf-Q8_0'
+     If you wish to re-download, please delete the old one first using: cluaiz rm embeddinggemma-300m-gguf-Q8_0
+

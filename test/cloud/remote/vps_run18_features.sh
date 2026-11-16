@@ -87,6 +87,7 @@ printf 'def add(a, b):\n    return a - b\n\n\nif __name__ == "__main__":\n    pr
     -p "add.py has a bug: add(2, 3) must return 5. Fix the function in add.py. Do not run commands." ) > "$OUT/agent.log" 2>&1
 echo "agent exit $?; add.py now prints: $(python3 "$W/add.py" 2>&1)" | tee -a "$OUT/steps.log"
 
-kill "$SERVER" 2> /dev/null; wait "$SERVER" 2> /dev/null
+# systemd-run --scope does not always exec, so stop the PID that listens on the port
+SPID=$(ss -ltnpH "sport = :8011" | grep -oE 'pid=[0-9]+' | head -1 | cut -d= -f2); [ -n "$SPID" ] && kill "$SPID"
 free -m | head -2 | tee -a "$OUT/steps.log"
 step "all done"

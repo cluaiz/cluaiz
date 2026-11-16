@@ -1,0 +1,53 @@
+2026-11-16T07:39:38.140821Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-16T07:39:38.142427Z  INFO 🚀 [cluaiz] Unified Core Binary verified: "/root/.cluaiz/bin/cluaiz"
+2026-11-16T07:39:38.152826Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload not available, models run on the CPU
+2026-11-16T07:39:38.152959Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-16T07:39:38.163425Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : ternary-bonsai-2-4b-gguf
+║   • Architecture    : qwen35 | 32 layers | heads 16 | KV heads 4 | head size K 256 / V 256 | dense | hybrid: 8 attention layers with a KV cache, 24 linear-attention layers with a 2.2 MB state
+║   • Weights         : file 1.13 GB | input embeddings 0.17 GB (always CPU) | output head 0.17 GB | vocab 248320
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 4096 tokens, KV Kv16 (Auto on the CPU: 4096 tokens, KV Kv16 (the floor; RAM is not filled with context))
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : none | free 0.00 of 0.00 GB | buffer kept free 0.00 GB (0 MiB rule, model not measured on this machine yet)
+║   • RAM             : free 3.20 of 3.82 GB | Cluaiz may use 3.01 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : CPU only
+║   • llama.cpp       : n_gpu_layers = 0 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 0 on GPU, 32 in RAM (of 32)
+║   • VRAM            : 0.00 GB (weights + KV 0.00 + logits)
+║   • RAM             : 1.77 GB (incl. KV 0.17)
+║   • Reason         : CPU only: weights 1.12 + KV 0.17 + logits 0.47 = 1.77 GB in RAM
+║   • Speed           : 4.2 tokens/s generation, 5.4 tokens/s prompt, measured by cluaiz bench
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  1.77 GB | weights 1.12 + KV 0.17 + logits 0.47 = 1.77 GB in RAM | 4.2 t/s measured (prompt 5.4 t/s)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 1 / batch 1 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-16T07:39:38.163454Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-16T07:39:38.163610Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = 0, load_mode = 1, n_threads = 1, n_threads_batch = 1
+2026-11-16T07:39:38.163619Z  INFO 🧬 [Native-Llama] Loading model: /root/.cluaiz/models/chat/ternary-bonsai-2-4b-gguf/Ternary-Bonsai-2-4B-Q2_0.gguf | ctx: 4096 tokens
+2026-11-16T07:39:40.139824Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/root/.cluaiz/models/chat/ternary-bonsai-2-4b-gguf"
+2026-11-16T07:39:40.142944Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-11-16T07:39:40.142957Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-11-16T07:39:40.142980Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 4096 tokens
+2026-11-16T07:39:40.142990Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-16T07:39:40.142996Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 1/1
+2026-11-16T07:39:40.719078Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /root/.cluaiz/models/chat/ternary-bonsai-2-4b-gguf/Ternary-Bonsai-2-4B-Q2_0.gguf
+  placement  CPU only | 0 of 32 blocks on GPU, 32 in RAM | n_gpu_layers 0
+  context    4096 tokens | KV Kv16 in RAM
+  memory     VRAM 0.00 GB | RAM 1.77 GB
+  reason     CPU only: weights 1.12 + KV 0.17 + logits 0.47 = 1.77 GB in RAM
+running pp512 on CPU only (2 runs)...
+running tg128 on CPU only (2 runs)...

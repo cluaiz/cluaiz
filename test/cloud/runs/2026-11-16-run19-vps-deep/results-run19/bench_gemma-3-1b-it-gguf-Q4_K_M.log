@@ -1,0 +1,51 @@
+2026-11-16T07:31:40.192080Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-16T07:31:40.194103Z  INFO 🚀 [cluaiz] Unified Core Binary verified: "/root/.cluaiz/bin/cluaiz"
+2026-11-16T07:31:40.206715Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload not available, models run on the CPU
+2026-11-16T07:31:40.206900Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-16T07:31:40.217539Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : gemma-3-1b-it-gguf-Q4_K_M
+║   • Architecture    : gemma3 | 26 layers | heads 4 | KV heads 1 | head size K 256 / V 256 | dense
+║   • Weights         : file 0.75 GB | input embeddings 0.30 GB (always CPU) | output head 0.30 GB | vocab 262144
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 32768 tokens
+║   • Active context  : 4096 tokens, KV Kv16 (Auto on the CPU: 4096 tokens, KV Kv16 (the floor; RAM is not filled with context))
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : none | free 0.00 of 0.00 GB | buffer kept free 0.00 GB (0 MiB rule, model not measured on this machine yet)
+║   • RAM             : free 3.20 of 3.82 GB | Cluaiz may use 3.01 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : CPU only
+║   • llama.cpp       : n_gpu_layers = 0 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 0 on GPU, 26 in RAM (of 26)
+║   • VRAM            : 0.00 GB (weights + KV 0.00 + logits)
+║   • RAM             : 1.35 GB (incl. KV 0.10)
+║   • Reason         : CPU only: weights 0.74 + KV 0.10 + logits 0.50 = 1.35 GB in RAM
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  1.35 GB | weights 0.74 + KV 0.10 + logits 0.50 = 1.35 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 1 / batch 1 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-16T07:31:40.217573Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-16T07:31:40.217741Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = 0, load_mode = 1, n_threads = 1, n_threads_batch = 1
+2026-11-16T07:31:40.217748Z  INFO 🧬 [Native-Llama] Loading model: /root/.cluaiz/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf | ctx: 4096 tokens
+2026-11-16T07:31:41.871446Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/root/.cluaiz/models/chat/gemma-3-1b-it-gguf-Q4_K_M"
+2026-11-16T07:31:41.874698Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 4096 tokens
+2026-11-16T07:31:41.874713Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-16T07:31:41.874720Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 1/1
+2026-11-16T07:31:42.098796Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /root/.cluaiz/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf
+  placement  CPU only | 0 of 26 blocks on GPU, 26 in RAM | n_gpu_layers 0
+  context    4096 tokens | KV Kv16 in RAM
+  memory     VRAM 0.00 GB | RAM 1.35 GB
+  reason     CPU only: weights 0.74 + KV 0.10 + logits 0.50 = 1.35 GB in RAM
+running pp512 on CPU only (2 runs)...
+running tg128 on CPU only (2 runs)...

@@ -1,0 +1,1 @@
+error: agent: Does not fit: closest placement (CPU only) is 0.71 GB short (weights 1.87 + KV 0.23 + logits 0.24 = 2.35 GB in RAM; needs 0.71 GB more RAM than allowed). Free memory, lower the context, or use a smaller quantization.

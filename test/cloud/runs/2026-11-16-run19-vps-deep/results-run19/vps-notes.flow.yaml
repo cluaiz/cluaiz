@@ -1,0 +1,16 @@
+flow: cluaiz.flow/1
+name: vps-notes
+steps:
+  - id: summary
+    ask: "Summarise this text in one sentence."
+    model: llama-3.2-3b-instruct-gguf-Q4_K_M
+    think: "off"
+    max_tokens: 60
+    with: { text: "Rivers carry water from the mountains to the sea. The Ganga is 2,525 km long and flows into the Bay of Bengal." }
+  - id: facts
+    ask: "Give the river's name and its length in km."
+    model: groq/openai/gpt-oss-20b
+    output_schema: { type: object, properties: { river: { type: string }, km: { type: number } }, required: [river, km] }
+    with: { text: "The Ganga is 2,525 km long." }
+  - call: fs.write
+    with: { path: "/root/results-run19/flow-out.md", text: "${{ steps.summary.output }}" }

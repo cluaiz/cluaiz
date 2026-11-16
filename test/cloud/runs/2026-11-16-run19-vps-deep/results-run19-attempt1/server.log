@@ -1,0 +1,13 @@
+2026-11-16T07:14:08.638225Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-16T07:14:08.641022Z  INFO 🚀 [cluaiz] Unified Core Binary verified: "/root/.cluaiz/bin/cluaiz"
+Starting the Cluaiz API server on http://localhost:8011 ...
+2026-11-16T07:14:08.643729Z  INFO 🔒 [Auth] Initialized local session secret at /root/.cluaiz/session.token
+2026-11-16T07:14:08.662057Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload not available, models run on the CPU
+error: serve: port 8011 is already in use by another program. Stop that program, or choose another port: `cluaiz permission port <number>` (or set CLUAIZ_PORT for one run)
+2026-11-16T07:18:09.367194Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-16T07:18:09.371003Z  INFO 🚀 [cluaiz] Unified Core Binary verified: "/root/.cluaiz/bin/cluaiz"
+Starting the Cluaiz API server on http://localhost:8011 ...
+Note: API authentication is off: anyone who can reach this server can use your provider keys. That is fine on your own computer; on a shared network or a server, turn it on with `cluaiz token create`.
+2026-11-16T07:18:09.372486Z  INFO 🔒 [Auth] Initialized local session secret at /root/.cluaiz/session.token
+2026-11-16T07:18:09.392584Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload not available, models run on the CPU
+error: serve: port 8011 is already in use by another program. Stop that program, or choose another port: `cluaiz permission port <number>` (or set CLUAIZ_PORT for one run)

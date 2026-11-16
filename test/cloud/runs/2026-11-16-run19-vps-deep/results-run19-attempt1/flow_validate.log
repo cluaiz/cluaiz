@@ -1,0 +1,3 @@
+valid /root/results-run19/vps-notes.flow.yaml
+  warning unused_output /steps/1: nothing reads steps.facts and the step changes nothing
+  permissions it needs: {"folders":["/root/results-run19/flow-out.md"],"methods":["fs.write"],"models":["llama-3.2-3b-instruct-gguf-Q4_K_M","groq/openai/gpt-oss-20b"],"scopes":["write"]}
