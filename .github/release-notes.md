@@ -4,6 +4,7 @@ This is a pre-release for developers who read the code, try it and report bugs. 
 
 - Tested: Windows 11 with an NVIDIA GPU (CUDA); Linux x64 (Ubuntu 24.04, Debian 13, Fedora 42) on the CPU and with NVIDIA Tesla T4 and L4 GPUs; Linux ARM64 (AWS Graviton); macOS on Apple Silicon (M5, and GitHub's macOS 15 runner); a 1 GB RAM machine, which refuses a model that does not fit with a clear message.
 - Not tested yet: AMD and Intel GPUs (Vulkan), and Intel Macs (not supported). If you have one, please try it and tell us with a hardware report issue.
+- Under development, planned for 0.1.1 or 0.2.0: SSD prefetch and direct I/O for MoE experts read from the disk, and speculative decoding (MTP first, then draft models such as DFlash). Models that ship an MTP file download it, but the Engine does not use it yet.
 - Found a bug? Open an issue with the output of `cluaiz --version` and `cluaiz status`. Bugs in a tool (plugins, skills and MCP servers) go to [cluaiz-tools](https://github.com/cluaiz/cluaiz-tools/issues).
 
 ## Install
