@@ -1,0 +1,27 @@
+== 07:00:33 1 CLI
+cluaiz 0.1.0 (pre-release)
+    placement  CPU only | 0 of 36 blocks on GPU, 36 in RAM | n_gpu_layers 0
+    placement  CPU only | 0 of 28 blocks on GPU, 28 in RAM | n_gpu_layers 0
+    placement  CPU only | 0 of 32 blocks on GPU, 32 in RAM | n_gpu_layers 0
+== 07:00:33 2 pull speech and embedding models
+onnx-community/Kokoro-82M-v1.0-ONNX:uint8 exit 0 24s
+onnx-community/moonshine-tiny-ONNX:int8 exit 0 7s
+ggml-org/embeddinggemma-300M-GGUF exit 0 7s
+/dev/sda1        48G   21G   27G  44% /
+== 07:01:11 3 server
+models: ['ternary-bonsai-2-4b-gguf', 'bonsai-4b-gguf', 'moonshine-tiny-onnx-INT8', 'llama-3.2-3b-instruct-gguf-Q4_K_M', 'kokoro-82m-v1.0-onnx-UINT8', 'embeddinggemma-300m-gguf-Q8_0']
+{"check": "streamed chat, cold (model load)", "first_token_s": 10.42, "total_s": 13.77, "text": "Rivers play a vital role in shaping the environment, supporting aquatic life, and providing a source of fresh water for "}
+{"check": "streamed chat, warm", "first_token_s": 0.12, "total_s": 3.4, "text": "Rivers play a vital role in shaping the environment, supporting aquatic life, and providing a source of fresh water for "}
+== 07:01:29 4 features (features11.py)
+== features done: 16 of 17 passed
+== 07:06:35 5a ingest
+ingest exit 0
+== 07:06:35 5b MCP server (stdio)
+mcp exit 0
+mcp id 1 server  
+mcp id 2  52 
+== 07:06:35 5c coding agent
+agent exit 0; add.py now prints: -1
+               total        used        free      shared  buff/cache   available
+Mem:            3915        2812         117           4        1213        1102
+== 07:09:14 all done

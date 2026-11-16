@@ -128,12 +128,16 @@ def vision_check(model):
 
 ids = models()
 print(json.dumps({"models": ids}), flush=True)
-for needle in ("qwen3-30b-a3b", "gpt-oss-20b", "qwen3.5-9b", "phi-4-mini"):
+# FEATURE_CHAT / FEATURE_VISION (comma lists of model id parts) pick other models; the defaults are run 11's
+import os
+CHAT = os.environ.get("FEATURE_CHAT", "qwen3-30b-a3b,gpt-oss-20b,qwen3.5-9b,phi-4-mini").split(",")
+VISION = os.environ.get("FEATURE_VISION", "qwen3.5-9b").split(",")
+for needle in CHAT:
     model = find(needle)
     if not model:
         record("model present", needle, False, 0); continue
     chat_checks(model)
-    if needle == "qwen3.5-9b":
+    if needle in VISION:
         vision_check(model)
 
 # embeddings
@@ -151,7 +155,8 @@ if emb:
 
 # speech: Kokoro (ONNX) and Qwen3-TTS (llama.cpp gen-audio), then STT of each, plain and streaming
 stt = find("moonshine") or find("whisper")
-for needle, voice in (("kokoro", "af_heart"), ("qwen3-tts", None)):
+TTS = os.environ.get("FEATURE_TTS", "kokoro,qwen3-tts").split(",")
+for needle, voice in [(n, "af_heart" if n == "kokoro" else None) for n in TTS]:
     tts = find(needle)
     if not tts:
         record("tts present", needle, False, 0); continue

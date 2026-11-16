@@ -1,0 +1,5 @@
+os        Ubuntu 24.04 (x86_64)
+cpu       AMD EPYC 9354P 32-Core Processor | 1 cores, 1 threads
+ram       3.23 GB free of 3.82 GB
+gpu       none (CPU only)
+backend   none, models run on the CPU

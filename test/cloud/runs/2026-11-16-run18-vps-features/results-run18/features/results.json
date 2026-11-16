@@ -1,0 +1,139 @@
+[
+ {
+  "check": "tool call",
+  "model": "llama-3.2-3b-instruct-gguf-Q4_K_M",
+  "ok": true,
+  "secs": 10.24,
+  "calls": "[{\"function\": {\"arguments\": \"{\\\"city\\\":\\\"Paris\\\"}\", \"name\": \"get_weather\"}, \"id\": \"call_1794812500091\", \"type\": \"function\"}]",
+  "error": null
+ },
+ {
+  "check": "answer after tool result",
+  "model": "llama-3.2-3b-instruct-gguf-Q4_K_M",
+  "ok": false,
+  "secs": 3.81,
+  "content": "<|python_tag|>\n"
+ },
+ {
+  "check": "thinking",
+  "model": "llama-3.2-3b-instruct-gguf-Q4_K_M",
+  "ok": true,
+  "secs": 2.4,
+  "reasoning_chars": 0,
+  "content": "No."
+ },
+ {
+  "check": "second turn",
+  "model": "llama-3.2-3b-instruct-gguf-Q4_K_M",
+  "ok": true,
+  "secs": 11.59,
+  "cache_n": 211,
+  "cause": "append",
+  "processed": 15
+ },
+ {
+  "check": "tool call",
+  "model": "bonsai-4b-gguf",
+  "ok": true,
+  "secs": 26.9,
+  "calls": "[{\"function\": {\"arguments\": \"{\\\"city\\\":\\\"Paris\\\"}\", \"name\": \"get_weather\"}, \"id\": \"call_1794812544795\", \"type\": \"function\"}]",
+  "error": null
+ },
+ {
+  "check": "answer after tool result",
+  "model": "bonsai-4b-gguf",
+  "ok": true,
+  "secs": 13.61,
+  "content": "The current weather in Paris is 18°C with cloudy skies.\n\n\n"
+ },
+ {
+  "check": "thinking",
+  "model": "bonsai-4b-gguf",
+  "ok": true,
+  "secs": 10.18,
+  "reasoning_chars": 0,
+  "content": "No, 91 is not a prime number.\n\nExplanation:  \n91 can be factored as 7 × 13. Since it has factors other than 1 and itself"
+ },
+ {
+  "check": "second turn",
+  "model": "bonsai-4b-gguf",
+  "ok": true,
+  "secs": 29.28,
+  "cache_n": 184,
+  "cause": "edit",
+  "processed": 20
+ },
+ {
+  "check": "tool call",
+  "model": "ternary-bonsai-2-4b-gguf",
+  "ok": true,
+  "secs": 56.81,
+  "calls": "[{\"function\": {\"arguments\": \"{\\\"city\\\":\\\"Paris\\\"}\", \"name\": \"get_weather\"}, \"id\": \"call_1794812654674\", \"type\": \"function\"}]",
+  "error": null
+ },
+ {
+  "check": "answer after tool result",
+  "model": "ternary-bonsai-2-4b-gguf",
+  "ok": true,
+  "secs": 9.39,
+  "content": "The current weather in Paris is cloudy with a temperature of 18°C."
+ },
+ {
+  "check": "thinking",
+  "model": "ternary-bonsai-2-4b-gguf",
+  "ok": true,
+  "secs": 67.09,
+  "reasoning_chars": 848,
+  "content": "No"
+ },
+ {
+  "check": "second turn",
+  "model": "ternary-bonsai-2-4b-gguf",
+  "ok": true,
+  "secs": 38.81,
+  "cache_n": 183,
+  "cause": "edit",
+  "processed": 25
+ },
+ {
+  "check": "vision",
+  "model": "ternary-bonsai-2-4b-gguf",
+  "ok": true,
+  "secs": 16.49,
+  "content": "based on the image provided, which appears to be a flag with a vertical division:\n\n- the **left half** is **blue**.\n- the **right half** is **yellow**.",
+  "error": null
+ },
+ {
+  "check": "embeddings",
+  "model": "embeddinggemma-300m-gguf-Q8_0",
+  "ok": true,
+  "secs": 0.51,
+  "dims": 768,
+  "similar": 0.929,
+  "different": 0.36
+ },
+ {
+  "check": "tts",
+  "model": "kokoro-82m-v1.0-onnx-UINT8",
+  "ok": true,
+  "secs": 7.39,
+  "wav_bytes": 170444,
+  "error": null
+ },
+ {
+  "check": "stt",
+  "model": "moonshine-tiny-onnx-INT8 <- kokoro",
+  "ok": true,
+  "secs": 0.79,
+  "text": "Rivers carry water from the mountains to the sea."
+ },
+ {
+  "check": "stt streaming",
+  "model": "moonshine-tiny-onnx-INT8 <- kokoro",
+  "ok": true,
+  "secs": 0.15,
+  "chunks": 11,
+  "first_event_s": 0.08,
+  "final": "{\"result\": {\"info\": null, \"model\": \"moonshine-tiny-onnx-INT8\", \"output\": {\"audio_data\": null, \"segments\": null, \"text\": \"Rivers carry water from the mountains to the sea.\"}, \"status\": \"success\", \"task"
+ }
+]

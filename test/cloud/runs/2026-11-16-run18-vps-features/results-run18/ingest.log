@@ -1,0 +1,14 @@
+/root/results-run18/doc.md: 4 extracted chunks
+Chunk 1:
+# Rivers
+Chunk 2:
+Rivers carry water from the mountains to the sea. The Ganga is 2,525 km long.
+Chunk 3:
+## Lakes
+Chunk 4:
+Lakes hold still water. Lake Baikal is the deepest lake on Earth.
+Text extracted. Choose an embedding model with `cluaiz model set-vector <id>` to also generate vectors.
+
+real	0m0.018s
+user	0m0.007s
+sys	0m0.010s
