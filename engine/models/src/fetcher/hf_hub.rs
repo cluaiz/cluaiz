@@ -49,9 +49,13 @@ pub struct HfRepositoryMetadata {
 }
 
 impl HfRepositoryMetadata {
+    /// The architecture Hugging Face read from one GGUF of the repository. When that GGUF is a
+    /// speculative draft (`dflash`, `eagle3`, `dspark`: prism-ml/Ternary-Bonsai-2-9B-gguf shows
+    /// `dflash`), it is not the model's, so the config's is used, else none.
     pub fn architecture(&self) -> Option<&str> {
         self.gguf.get("architecture").and_then(|value| value.as_str())
             .filter(|value| !value.trim().is_empty())
+            .filter(|value| !AssetBundler::is_draft_gguf(&format!("{value}.gguf")))
             .or_else(|| crate::prober::fallback::FallbackProber::architecture_from_config(&self.config))
     }
 }
@@ -345,7 +349,7 @@ impl HuggingFaceHub {
                 files.push(best_mm.to_string());
             }
 
-            if let Some(best_mtp) = AssetBundler::select_best_mtp(&mtp_files, &quant_tag) {
+            if let Some(best_mtp) = AssetBundler::select_best_mtp(&mtp_files, &fname, &quant_tag) {
                 files.push(best_mtp.to_string());
             }
 
@@ -386,7 +390,7 @@ impl HuggingFaceHub {
                 if let Some(best_mm) = AssetBundler::select_best_mmproj(&mmproj_files) {
                     files.push(best_mm.to_string());
                 }
-                if let Some(best_mtp) = AssetBundler::select_best_mtp(&mtp_files, &quant_tag) {
+                if let Some(best_mtp) = AssetBundler::select_best_mtp(&mtp_files, &fname, &quant_tag) {
                     files.push(best_mtp.to_string());
                 }
 

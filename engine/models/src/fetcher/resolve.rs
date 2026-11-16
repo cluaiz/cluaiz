@@ -197,15 +197,19 @@ pub async fn resolve(model_id: &str, all: bool, ui: &dyn ResolveUi) -> Result<Re
             let matched_from_tag = explicit_tag.as_ref().and_then(|tag| {
                 let tag_upper = tag.to_uppercase();
                 let clean_tag = tag_upper.replace(['-', '_'], "");
+                // The tag as a whole name part first, as llama.cpp's -hf does (`(^|[-./])TAG[.-]`): ":Q2_0"
+                // must not take `Model-PQ2_0.gguf` when `Model-Q2_0.gguf` exists
+                let whole_part = |name: &str| tag_is_name_part(name, &tag_upper);
                 variants
                     .iter()
-                    .find(|v| {
+                    .find(|v| whole_part(&v.filename))
+                    .or_else(|| variants.iter().find(|v| {
                         v.quant_tag.to_uppercase() == tag_upper
                             || v.variant_id.to_uppercase().contains(&tag_upper)
                             || v.filename.to_uppercase().contains(&tag_upper)
                             || v.quant_tag.to_uppercase().replace(['-', '_'], "") == clean_tag
                             || v.filename.to_uppercase().replace(['-', '_'], "").contains(&clean_tag)
-                    })
+                    }))
                     .cloned()
             });
             match (matched_from_tag, &explicit_tag) {
@@ -338,5 +342,30 @@ mod default_variant_tests {
         assert_eq!(default_variant(&[variant("F16", 14.0), variant("Q8_0", 8.0), variant("UINT8", 0.2)]), 2);
         assert_eq!(default_variant(&[variant("only", 3.0)]), 0);
         assert_eq!(default_variant(&[]), 0);
+    }
+}
+
+/// True when `tag` (upper case) is a whole part of the file name: after its start or `-` `.` `/` `_`, and
+/// before `.` or `-` (llama.cpp's `-hf` pattern `(^|[-./])TAG[.-]`)
+fn tag_is_name_part(name: &str, tag: &str) -> bool {
+    let name = name.to_uppercase();
+    name.match_indices(tag).any(|(i, _)| {
+        let before = name[..i].chars().last();
+        let after = name[i + tag.len()..].chars().next();
+        before.is_none_or(|c| matches!(c, '-' | '.' | '/' | '_')) && matches!(after, Some('.') | Some('-'))
+    })
+}
+
+#[cfg(test)]
+mod tag_tests {
+    use super::tag_is_name_part;
+
+    #[test]
+    fn a_tag_matches_only_a_whole_name_part() {
+        assert!(tag_is_name_part("Ternary-Bonsai-2-4B-Q2_0.gguf", "Q2_0"));
+        assert!(!tag_is_name_part("Ternary-Bonsai-2-4B-PQ2_0.gguf", "Q2_0"));
+        assert!(!tag_is_name_part("Model-BF16.gguf", "F16"));
+        assert!(tag_is_name_part("Q4_K_M/Model-Q4_K_M-00001-of-00002.gguf", "Q4_K_M"));
+        assert!(tag_is_name_part("gpt-oss-20b-MXFP4.gguf", "MXFP4"));
     }
 }

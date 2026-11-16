@@ -86,11 +86,18 @@ impl AssetBundler {
     }
 
     /// A speculative-decoding draft or an importance matrix published beside the model
-    /// (`eagle3-gpt-oss-20b-Q8_0.gguf`): the file names llama.cpp's `-hf` download does not take
-    /// as the model (`common/download.cpp`, `sidecars` and `gguf_filename_is_model`).
+    /// (`eagle3-gpt-oss-20b-Q8_0.gguf`, `Ternary-Bonsai-2-9B-DFlash2-Q8_0.gguf`): the kinds llama.cpp's
+    /// `-hf` download does not take as the model (`common/download.cpp`, `sidecars` and
+    /// `gguf_filename_is_model`). A name part is the kind, in any case, with a version number or
+    /// none (`dflash`, `DFlash2`), so a draft is never offered as a variant.
     pub fn is_draft_gguf(filename: &str) -> bool {
         let b = Self::basename_of(filename);
-        ["dflash-", "eagle3-", "dspark-", "imatrix"].iter().any(|keyword| b.contains(keyword))
+        b.contains("imatrix")
+            || b.split(['-', '_', '.']).any(|part| {
+                ["dflash", "eagle3", "dspark"].iter().any(|kind| {
+                    part.strip_prefix(kind).is_some_and(|rest| rest.chars().all(|c| c.is_ascii_digit()))
+                })
+            })
     }
 
     pub fn is_mtp_gguf(filename: &str) -> bool {
@@ -142,14 +149,21 @@ impl AssetBundler {
         Some(mmproj_paths[0])
     }
 
-    /// From a list of MTP file paths and a main model quant tag, selects the single best MTP to download.
-    pub fn select_best_mtp<'a>(mtp_paths: &[&'a str], main_quant: &str) -> Option<&'a str> {
-        if mtp_paths.is_empty() {
-            return None;
-        }
+    /// From a list of MTP file paths, the main model file and its quant tag, selects the single best
+    /// MTP to download. An MTP built into one variant (`Model-PQ2_0-MTP-Q8_0.gguf` is `Model-PQ2_0`
+    /// with its MTP head) only goes with that variant; one named after the model alone
+    /// (`mtp-Model-Q8_0.gguf`, `Model-MTP-Q8_0.gguf`) goes with every variant.
+    pub fn select_best_mtp<'a>(mtp_paths: &[&'a str], main_file: &str, main_quant: &str) -> Option<&'a str> {
+        let main_stem = Self::basename_of(main_file);
+        let main_stem = main_stem.strip_suffix(".gguf").unwrap_or(&main_stem);
         let main_tier = UniversalQuantization::quant_tier_of(main_quant) as i32;
         mtp_paths
             .iter()
+            .filter(|&&path| {
+                let b = Self::basename_of(path);
+                let base = ["-mtp-", "_mtp-"].iter().find_map(|m| b.find(m).map(|i| &b[..i])).unwrap_or("");
+                base.is_empty() || main_stem.starts_with(base)
+            })
             .min_by_key(|&&path| {
                 let mtp_quant = Self::basename_of(path);
                 let mtp_tier = UniversalQuantization::quant_tier_of(&mtp_quant) as i32;
@@ -307,6 +321,28 @@ mod tests {
             assert!(AssetBundler::local_asset_path(file, "onnx/model.onnx").is_err());
         }
         Ok(())
+    }
+
+    #[test]
+    fn a_versioned_or_capitalised_draft_is_not_a_variant() {
+        // prism-ml/Ternary-Bonsai-2-9B-gguf: arch `dflash`, a block drafter for the PQ2_0 file
+        assert!(AssetBundler::is_draft_gguf("Ternary-Bonsai-2-9B-DFlash2-Q8_0.gguf"));
+        assert!(AssetBundler::is_helper_gguf("Ternary-Bonsai-2-9B-DFlash2-Q8_0.gguf"));
+        assert!(AssetBundler::is_draft_gguf("Model-EAGLE3-Q8_0.gguf"));
+        assert!(!AssetBundler::is_draft_gguf("Ternary-Bonsai-2-9B-Q2_0.gguf"));
+        assert!(!AssetBundler::is_draft_gguf("dflashy-model-Q4_0.gguf"));
+    }
+
+    #[test]
+    fn an_mtp_built_into_one_variant_goes_only_with_it() {
+        let mtp = ["Ternary-Bonsai-2-9B-PQ2_0-MTP-Q8_0.gguf"];
+        assert_eq!(AssetBundler::select_best_mtp(&mtp, "Ternary-Bonsai-2-9B-PQ2_0.gguf", "PQ2_0"), Some(mtp[0]));
+        assert_eq!(AssetBundler::select_best_mtp(&mtp, "Ternary-Bonsai-2-9B-Q2_0.gguf", "Q2_0"), None);
+        // Named after the model alone: every variant
+        let generic = ["MTP/mtp-gemma-4-31B-it-Q8_0.gguf"];
+        assert_eq!(AssetBundler::select_best_mtp(&generic, "gemma-4-31B-it-Q4_K_M.gguf", "Q4_K_M"), Some(generic[0]));
+        let named = ["Qwen3-8B-MTP-Q8_0.gguf"];
+        assert_eq!(AssetBundler::select_best_mtp(&named, "Qwen3-8B-Q4_K_M.gguf", "Q4_K_M"), Some(named[0]));
     }
 
     #[test]
