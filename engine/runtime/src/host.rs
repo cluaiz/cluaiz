@@ -1031,6 +1031,8 @@ fn learn_correction(model_path: &str, geometry: &ModelGeometry, hw: &SystemInfo,
         kv,
         kv_offload: true,
         op_offload: true,
+        moe_cache_bytes: 0,
+        moe_cache_cpu_share: 0.0,
     };
     let started = std::time::Instant::now();
     match native_load::project(model_path, &placement, settings, hw) {

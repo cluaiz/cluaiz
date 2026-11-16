@@ -163,6 +163,7 @@ pub async fn execute(args: BenchArgs, verbose: bool) -> Result<()> {
                     n_gpu_layers: plan.n_gpu_layers,
                     n_cpu_moe: plan.n_cpu_moe,
                     kv_offload: plan.kv_offload,
+                    moe_cache: plan.moe_cache_bytes > 0,
                 };
                 speed::record(test_kind, &geometry, &settings, plan.context_window, plan.kv_cache_type, &signature, row.mean_sd().0);
             }

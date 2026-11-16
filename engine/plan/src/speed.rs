@@ -44,6 +44,8 @@ pub struct Signature {
     pub n_gpu_layers: i32,
     pub n_cpu_moe: u32,
     pub kv_offload: bool,
+    /// The placement had llama.cpp's MoE cache on (`crate::moe_cache`)
+    pub moe_cache: bool,
 }
 
 impl Signature {
@@ -53,20 +55,23 @@ impl Signature {
             n_gpu_layers: candidate.n_gpu_layers,
             n_cpu_moe: candidate.n_cpu_moe,
             kv_offload: candidate.kv_offload,
+            moe_cache: candidate.moe_cache_bytes > 0,
         }
     }
 }
 
-/// Everything but the GPU block counts: model, load settings, context, KV type, kind of placement
+/// Everything but the GPU block counts: model, load settings, context, KV type, kind of placement.
+/// A placement with the MoE cache gets its own family (`mc:`); keys without it are unchanged.
 fn family(test: Test, geometry: &ModelGeometry, settings: &ActiveUserSettings, n_ctx: u32, kv: KvCacheQuantization, s: &Signature) -> String {
     format!(
-        "{PREFIX}{}:{}:ctx{}:{:?}:{:?}:kvo{}:",
+        "{PREFIX}{}:{}:ctx{}:{:?}:{:?}:kvo{}:{}",
         test.tag(),
         crate::margin::key(geometry, settings),
         n_ctx,
         kv,
         s.tier,
-        s.kv_offload as u8
+        s.kv_offload as u8,
+        if s.moe_cache { "mc:" } else { "" }
     )
 }
 

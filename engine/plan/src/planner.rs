@@ -245,7 +245,8 @@ impl Planner {
             || next.context_window != failed.context_window
             || next.n_cpu_moe != failed.n_cpu_moe
             || next.kv_cache_type != failed.kv_cache_type
-            || next.kv_offload != failed.kv_offload;
+            || next.kv_offload != failed.kv_offload
+            || next.moe_cache_bytes != failed.moe_cache_bytes;
         (next.is_feasible() && changed).then_some(next)
     }
 
@@ -412,13 +413,28 @@ impl Planner {
         // while they fit; experts of the first n_cpu_moe layers stay in RAM (or on disk)
         if gpu_allowed && is_moe {
             let n_cpu_moe = (0..=n_layers).find(|&n| over_vram(&place(-1, n, true)) == 0).unwrap_or(n_layers);
-            let p = place(-1, n_cpu_moe, true);
-            candidates.push(Self::candidate(
+            let mut p = place(-1, n_cpu_moe, true);
+            // llama.cpp's MoE cache (crate::moe_cache) when experts stay in RAM and the model fits in RAM;
+            // a model read from disk keeps this placement without a cache (run 13: the cache was slower there)
+            let (n_cpu_moe, cache) = match moe_cache_split(n_cpu_moe, n_layers, experts, unified, &place, vram_usable, ram_budget) {
+                Some((n, cache, with_cache)) => {
+                    p = with_cache;
+                    (n, Some(cache))
+                }
+                None => (n_cpu_moe, None),
+            };
+            let cache_note = cache.map(|c| format!(", MoE cache {:.2} GB in VRAM (CPU share {})", gib(c.bytes), c.cpu_share)).unwrap_or_default();
+            let mut c = Self::candidate(
                 "MoE split", PlacementTier::MoeSplit, -1, n_cpu_moe as u32, true, ctx, &p, ram_budget, over_vram(&p), true,
-                format!("attention/shared {:.2} + KV {:.2} + buffers {:.2} on GPU, experts of {} / {} layers in RAM ({:.2} GB)",
+                format!("attention/shared {:.2} + KV {:.2} + buffers {:.2} on GPU, experts of {} / {} layers in RAM ({:.2} GB){}",
                     gib(w.full_gpu() - experts), gib(kv_total), gib(gpu_logits), n_cpu_moe, n_layers,
-                    gib(w.layer_experts[..n_cpu_moe].iter().sum())),
-            ));
+                    gib(w.layer_experts[..n_cpu_moe].iter().sum()), cache_note),
+            );
+            if let Some(cache) = cache {
+                c.moe_cache_bytes = cache.bytes;
+                c.moe_cache_cpu_share = cache.cpu_share;
+            }
+            candidates.push(c);
         }
 
         // STEP 2 - Split: output head + logits on GPU, then whole blocks (with their KV) from the last one back.
@@ -522,6 +538,8 @@ impl Planner {
             kv_offload: selected.kv_offload,
             // llama.cpp default unless the user set it
             op_offload: opt.op_offload.unwrap_or(true),
+            moe_cache_bytes: selected.moe_cache_bytes,
+            moe_cache_cpu_share: selected.moe_cache_cpu_share,
             kv_cache_type: kv,
             vram_buffer_gb,
             ram_budget_limit_gb: bytes_to_gib(ram_budget),
@@ -561,6 +579,8 @@ impl Planner {
             kv_ram_gb: gib(p.kv_ram),
             disk_stream_gb: if feasible { gib(over_ram) } else { 0.0 },
             kv_offload,
+            moe_cache_bytes: 0,
+            moe_cache_cpu_share: 0.0,
             missing_gb: if feasible { 0.0 } else { gib(vram_over) + if may_stream_from_disk { 0.0 } else { gib(over_ram) } },
             feasible,
             reason,
@@ -574,15 +594,51 @@ fn gib(bytes: u64) -> f64 {
     bytes_to_gib(bytes)
 }
 
+/// The MoE split with llama.cpp's MoE cache (`crate::moe_cache`): (n_cpu_moe, cache, placement with
+/// the cache counted in VRAM), or None to keep `n_cpu_moe` without a cache. Only when some experts
+/// stay in RAM, the GPU has its own memory, and the placement fits in RAM (no expert read from disk).
+/// - The VRAM left with every expert in RAM holds >= `ALL_EXPERTS_IN_RAM_FROM` of the experts: every
+///   expert in RAM and that VRAM as cache.
+/// - Otherwise: a cache of `BESIDE_LAYERS` of the experts (or that VRAM, when it is less), and the
+///   expert layers that still fit in VRAM.
+fn moe_cache_split(
+    n_cpu_moe: usize,
+    n_layers: usize,
+    experts: u64,
+    unified: bool,
+    place: &impl Fn(i32, usize, bool) -> Placement,
+    vram_usable: u64,
+    ram_budget: u64,
+) -> Option<(usize, crate::moe_cache::MoeCache, Placement)> {
+    use crate::moe_cache::{MoeCache, ALL_EXPERTS_IN_RAM_FROM, BESIDE_LAYERS};
+    if n_cpu_moe == 0 || unified || !crate::moe_cache::enabled() {
+        return None;
+    }
+    let with_cache = |n: usize, cache: MoeCache| {
+        let mut p = place(-1, n, true);
+        p.vram += cache.bytes;
+        (p.vram <= vram_usable && p.ram <= ram_budget).then_some((n, cache, p))
+    };
+    let all_in_ram = place(-1, n_layers, true);
+    let room = vram_usable.saturating_sub(all_in_ram.vram);
+    if room as f64 >= ALL_EXPERTS_IN_RAM_FROM * experts as f64 {
+        if let Some(split) = MoeCache::sized(room, experts).and_then(|cache| with_cache(n_layers, cache)) {
+            return Some(split);
+        }
+    }
+    let cache = MoeCache::sized(((BESIDE_LAYERS * experts as f64) as u64).min(room), experts)?;
+    (n_cpu_moe..=n_layers).find_map(|n| with_cache(n, cache))
+}
+
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use cluaiz_models::WeightBytes;
 
     const GIB: u64 = 1024 * 1024 * 1024;
 
     /// qwen3 geometry: 36 layers, 8 KV heads, head size 128, vocab 151936, tied output head.
-    fn qwen3_like(file_gb: f64) -> ModelGeometry {
+    pub(crate) fn qwen3_like(file_gb: f64) -> ModelGeometry {
         let total = (file_gb * GIB as f64) as u64;
         let embd = 300 * 1024 * 1024;
         let per_layer = (total - embd) / 36;
@@ -612,7 +668,7 @@ mod tests {
         }
     }
 
-    fn moe_like() -> ModelGeometry {
+    pub(crate) fn moe_like() -> ModelGeometry {
         let mut g = qwen3_like(1.0);
         g.block_count = 30;
         g.head_count_kv_per_layer = vec![8; 30];
@@ -622,14 +678,14 @@ mod tests {
         g
     }
 
-    fn settings(ctx: ContextSetting, kv: KvCacheQuantization) -> ActiveUserSettings {
+    pub(crate) fn settings(ctx: ContextSetting, kv: KvCacheQuantization) -> ActiveUserSettings {
         let mut s = ActiveUserSettings::default();
         s.optimization.set_context_setting(ctx);
         s.optimization.kv_cache_quantization = kv;
         s
     }
 
-    fn hw(vram_free: f64, ram_free: f64) -> SystemInfo {
+    pub(crate) fn hw(vram_free: f64, ram_free: f64) -> SystemInfo {
         let mut h = SystemInfo::default();
         h.memory.total_gb = 23.69;
         h.memory.available_gb = ram_free;
@@ -971,7 +1027,7 @@ mod tests {
         let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
         // Sizes no other test uses: the measurements are process-wide
         let (gone, kept) = (qwen3_like(1.7771), qwen3_like(1.7772));
-        let sig = Signature { tier: PlacementTier::CpuOnly, n_gpu_layers: 0, n_cpu_moe: 0, kv_offload: true };
+        let sig = Signature { tier: PlacementTier::CpuOnly, n_gpu_layers: 0, n_cpu_moe: 0, kv_offload: true, moe_cache: false };
         for g in [&gone, &kept] {
             crate::margin::record(g, &s, 0.1);
             crate::margin::record_correction(g, &s, -0.05);

@@ -77,6 +77,9 @@ pub(crate) struct Placement {
     pub kv: cluaiz_core::KvCacheQuantization,
     pub kv_offload: bool,
     pub op_offload: bool,
+    /// llama.cpp MoE cache bytes (0 = off) and the CPU share of its misses
+    pub moe_cache_bytes: u64,
+    pub moe_cache_cpu_share: f32,
 }
 
 impl Placement {
@@ -90,6 +93,8 @@ impl Placement {
             kv: plan.kv_cache_type,
             kv_offload: plan.kv_offload,
             op_offload: plan.op_offload,
+            moe_cache_bytes: plan.moe_cache_bytes,
+            moe_cache_cpu_share: plan.moe_cache_cpu_share,
         }
     }
 }
@@ -149,6 +154,11 @@ fn native_params(
     } else {
         0
     };
+    // llama.cpp's MoE cache for the experts in RAM (cluaiz_plan::moe_cache), off unless the plan set it
+    if n_gpu_layers != 0 {
+        ctx_params.moe_cache_size = placement.moe_cache_bytes as usize;
+        ctx_params.moe_cache_cpu_share = placement.moe_cache_cpu_share;
+    }
     // Same default as llama.cpp's CLI (physical cores); llama_context_default_params alone gives 4
     let (n_threads, n_threads_batch) = settings
         .optimization

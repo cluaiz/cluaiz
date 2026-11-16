@@ -25,6 +25,7 @@ graph TD
 | [`planner.rs`](src/planner.rs) | Pure mathematical calculation of memory budgets and candidate selection. |
 | [`margin.rs`](src/margin.rs) | VRAM a model really took on this machine, kept in `config/vram_margins.json`. |
 | [`speed.rs`](src/speed.rs) | STEP 4: speeds measured by `cluaiz bench`; a placement measured faster replaces the rule-order pick. |
+| [`moe_cache.rs`](src/moe_cache.rs) | Size and CPU share of llama.cpp's MoE GPU cache for a MoE split (see below). |
 | [`media_budget.rs`](src/media_budget.rs) | Additive media preflight after model load. Reuses safety policies without changing text placement math. |
 
 ## Auto context and KV cache
@@ -47,6 +48,71 @@ or VRAM buffer set by the user is used as given. Max gives the model's native li
 Hybrid models (Qwen3.5, Qwen3-Next) keep a KV cache only in their attention layers; their
 linear-attention layers hold a fixed state (`ModelGeometry::recurrent_layers`), counted the way
 llama.cpp allocates it.
+
+## MoE GPU cache
+
+When a MoE model does not fit on the GPU, the MoE split keeps attention and KV on the GPU and
+the experts of the first `n_cpu_moe` layers in RAM. llama.cpp's MoE cache can then keep the most
+used experts in VRAM for generation:
+
+- `moe_cache_size` is the cache size, `--moe-cache-mib` in llama-server.
+- `moe_cache_cpu_share` is the share of the misses the CPU computes instead of uploading them,
+  `--moe-cache-cpu-share`.
+- Sources: llama.cpp #29887, #30966 and `docs/moe-cache.md`.
+
+Prompt batches of more than 32 tokens do not use the cache. The planner sets it
+([`moe_cache.rs`](src/moe_cache.rs), `moe_cache_split` in [`planner.rs`](src/planner.rs)), and
+[`native_load.rs`](../runtime/src/native_load.rs) passes it to llama.cpp's context params.
+
+| When | What the planner does |
+|---|---|
+| The model fits on the GPU, CPU only, Apple Silicon (unified memory), user `n_gpu_layers` / `n_cpu_moe` | no cache; placement unchanged |
+| MoE split that needs experts read from disk (model bigger than the RAM limit) | no cache; placement unchanged |
+| MoE split in RAM, the VRAM left with every expert in RAM is at least 20% of the experts | every expert in RAM (`n_cpu_moe` = all layers), all that VRAM as the cache |
+| MoE split in RAM, less VRAM left | a cache of 10% of the experts (or the VRAM left, if less), plus the expert layers that still fit in VRAM |
+| A cache under 256 MiB | no cache |
+
+The CPU share comes from the cache's share of the experts:
+
+| Cache / experts | CPU share |
+|---|---|
+| up to 12% | 0.95 |
+| up to 25% | 0.9 |
+| up to 45% | 0.8 |
+| more | 0 |
+
+The cache is counted in the plan's VRAM, so the learned pool gap and the load retry
+(`after_failed_load`) include it. A placement with the cache keeps its own speed measurements
+(`speed.rs`, keys with `mc:`). The keys of placements without the cache are unchanged.
+
+### Where the numbers come from
+
+[Run 13](../../test/cloud/runs/2026-11-15-run13-moe-cache/SUMMARY.md) used official llama.cpp
+`b54752d` on an L4 GPU. Generation, tokens/s:
+
+| Model | GPU | `--fit`, no cache | With the cache |
+|---|---|---|---|
+| Qwen3-30B-A3B Q4_K_M | 8 GB | 26.7 | 57.4 (every expert in RAM, 5.4 GB cache) |
+| Qwen3-30B-A3B Q4_K_M | 4 GB | 20.8 | 31.8 (10% cache) / 26.8 (every expert in RAM) |
+| gpt-oss-20b MXFP4 | 8 GB | 27.9 | 37.2 (every expert in RAM, 5.6 GB cache) |
+| gpt-oss-20b MXFP4 | 4 GB | 15.5 | 17.4 (10% cache) / 16.8 (every expert in RAM) |
+| gpt-oss-120b MXFP4, 59 GiB > 31 GB RAM | 22 GB | 10.15 (experts of 11 layers in VRAM) | 7.4 at best (every expert in RAM, 17 GB cache) |
+
+The share rule is the lowest share within 5% of the fastest, from llama.cpp's own tuner
+(`scripts/moe-cache-tune.py`), with the experts mmap'd. With a share of 0, a small cache was slower
+than no cache. A model read from disk is limited by the disk, so it keeps the placement without a
+cache.
+
+### Debugging a speed change
+
+- **Planner log line:** the plan banner shows `MoE cache : X GB … CPU share …`, and the MoE split
+  reason ends with `MoE cache X GB in VRAM`.
+- **llama.cpp log lines:** `MoE cache size = … MiB for … MiB of host experts, N% of the misses on the CPU`
+  at load. llama.cpp prints the hit rate per ubatch only at its debug level (`llama-server -lv 4`).
+- **Turning it off:** set `CLUAIZ_MOE_CACHE=off` in the environment of `cluaiz serve` / `cluaiz run`.
+  The plan is then exactly the plan without the cache, so a speed difference shows up directly.
+- **Not tested yet:** Windows laptops, Vulkan and ROCm builds, and pinned experts (`-lm mlock`, which
+  run 13 found faster but Cluaiz does not set). The measured rows above are CUDA on Linux.
 
 ## VRAM buffer
 

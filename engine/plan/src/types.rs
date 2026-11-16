@@ -34,6 +34,13 @@ pub struct ExecutionCandidate {
     pub disk_stream_gb: f64,
     /// false = KV cache in RAM while weights are on GPU (CTX rule 5B, llama.cpp offload_kqv = 0)
     pub kv_offload: bool,
+    /// VRAM bytes of llama.cpp's MoE cache for the experts in RAM (`--moe-cache-mib`), 0 = off;
+    /// counted in `vram_required_gb`
+    #[serde(default)]
+    pub moe_cache_bytes: u64,
+    /// Share of the cache misses computed on the CPU (`--moe-cache-cpu-share`)
+    #[serde(default)]
+    pub moe_cache_cpu_share: f32,
     /// GB that do not fit (VRAM over + RAM over); 0 when the candidate fits
     pub missing_gb: f64,
     pub feasible: bool,
@@ -53,6 +60,7 @@ impl ExecutionCandidate {
             && self.n_gpu_layers == plan.n_gpu_layers
             && self.n_cpu_moe == plan.n_cpu_moe
             && self.kv_offload == plan.kv_offload
+            && self.moe_cache_bytes == plan.moe_cache_bytes
     }
 
     pub fn infeasible(ctx: u32) -> Self {
@@ -68,6 +76,8 @@ impl ExecutionCandidate {
             kv_ram_gb: 0.0,
             disk_stream_gb: 0.0,
             kv_offload: false,
+            moe_cache_bytes: 0,
+            moe_cache_cpu_share: 0.0,
             missing_gb: 0.0,
             feasible: false,
             reason: String::new(),
@@ -99,6 +109,12 @@ pub struct ExecutionPlan {
     pub kv_offload: bool,
     /// llama.cpp op_offload: large batches of CPU-held weights are computed on the GPU
     pub op_offload: bool,
+    /// llama.cpp MoE cache in VRAM for the experts in RAM, bytes (0 = off; `crate::moe_cache`)
+    #[serde(default)]
+    pub moe_cache_bytes: u64,
+    /// Share of the MoE cache misses computed on the CPU
+    #[serde(default)]
+    pub moe_cache_cpu_share: f32,
     /// KV cache type chosen by the CTX rules (Auto tries F16, then Q8_0); the engine uses exactly this.
     pub kv_cache_type: cluaiz_core::KvCacheQuantization,
     /// VRAM kept free by the BUFFER rules for this plan
@@ -159,6 +175,9 @@ impl ExecutionPlan {
         out.push_str(&format!("memory     VRAM {:.2} GB | RAM {:.2} GB", self.vram_budget_gb, self.ram_budget_gb));
         if self.disk_stream_gb > 0.0 {
             out.push_str(&format!(" | {:.2} GB of experts read from disk", self.disk_stream_gb));
+        }
+        if self.moe_cache_bytes > 0 {
+            out.push_str(&format!(" | MoE cache {:.2} GB, CPU share {}", cluaiz_core::bytes_to_gib(self.moe_cache_bytes), self.moe_cache_cpu_share));
         }
         out.push_str(&format!("\nreason     {}", self.explanation));
         out
@@ -225,7 +244,11 @@ impl ExecutionPlan {
         if self.disk_stream_gb > 0.0 {
             out.push_str(&format!("║   • Disk (mmap)     : {:.2} GB of experts read from disk when used\n", self.disk_stream_gb));
         }
-        out.push_str(&format!("║   • Reason          : {}\n", self.explanation));
+        if self.moe_cache_bytes > 0 {
+            out.push_str(&format!("║   • MoE cache       : {:.2} GB in VRAM for the experts in RAM | CPU share of the misses {} (moe_cache_size / moe_cache_cpu_share)\n",
+                gib(self.moe_cache_bytes), self.moe_cache_cpu_share));
+        }
+        out.push_str(&format!("║   • Reason         : {}\n", self.explanation));
         let selected = self.candidates.iter().find(|c| c.is_placement_of(self));
         let speed = match selected.and_then(|c| c.measured_tokens_per_s) {
             Some(tps) => format!("{:.1} tokens/s generation{}, measured by cluaiz bench", tps,
@@ -275,6 +298,8 @@ mod tests {
             disk_stream_gb: 0.0,
             kv_offload: true,
             op_offload: true,
+            moe_cache_bytes: 0,
+            moe_cache_cpu_share: 0.0,
             kv_cache_type: cluaiz_core::KvCacheQuantization::Kv16,
             vram_buffer_gb: 1.0,
             ram_budget_limit_gb: 10.0,

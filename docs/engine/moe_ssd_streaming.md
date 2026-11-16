@@ -14,9 +14,32 @@ llama.cpp does with `--n-cpu-moe`:
 
 Code: `engine/llama/src/moe_override.rs`, `engine/plan/`.
 
+## MoE GPU cache
+
+When the experts stay in RAM and the model fits in RAM, the planner also turns on llama.cpp's MoE GPU
+cache (`moe_cache_size`, `moe_cache_cpu_share`; llama.cpp #29887 and #30966). The cache keeps the most
+used experts in VRAM for generation, and the CPU computes a share of the misses. On an L4 limited to
+8 GB this made generation 1.3-2.2x faster than llama.cpp's `--fit` placement without a cache, and
+1.1-1.5x faster at 4 GB (experts mmap'd, as the Engine loads them). A model larger than RAM gets no cache: there the disk limits generation, and
+the cache was slower than the placement without it. `CLUAIZ_MOE_CACHE=off` turns the cache off.
+
+Rules and numbers: [engine/plan/README.md](../../engine/plan/README.md#moe-gpu-cache), test record:
+[run 13](../../test/cloud/runs/2026-11-15-run13-moe-cache/SUMMARY.md).
+
 ## Not built
 
-There is no separate SSD streaming engine, expert prefetcher or expert heat tracking. An earlier
-version of this page described one; none of it is in the code.
+There is no separate SSD streaming engine, expert prefetcher or expert heat tracking in the current
+code. An earlier version (August 2026, in the `interface-engines` and `inference-engine` crates) had
+one; it was not ported when those crates were replaced on 2026-10-11 (commits `696db9f1`, `b2350380`).
+Official llama.cpp has no SSD expert streaming either: experts that do not fit in RAM are read
+through the memory-mapped file.
+
+## Under development
+
+Planned for a later release (0.1.1 or 0.2.0), not in v0.1.0:
+
+- **SSD prefetch / direct I/O for MoE experts** read from the disk, inside llama.cpp.
+- **Speculative decoding:** MTP heads first (`mtp-*.gguf` files and models with built-in MTP layers),
+  then draft models such as DFlash as an option. The Engine does not use either today.
 
 See also: [llm_optimization.md](llm_optimization.md).
