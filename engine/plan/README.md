@@ -98,6 +98,19 @@ The cache is counted in the plan's VRAM, so the learned pool gap and the load re
 | gpt-oss-20b MXFP4 | 4 GB | 15.5 | 17.4 (10% cache) / 16.8 (every expert in RAM) |
 | gpt-oss-120b MXFP4, 59 GiB > 31 GB RAM | 22 GB | 10.15 (experts of 11 layers in VRAM) | 7.4 at best (every expert in RAM, 17 GB cache) |
 
+Cluaiz itself on a Windows 11 laptop (2026-11-16): RTX 3050 4 GB with 2.5 GB free, CUDA, OLMoE-1B-7B Q4_K_M
+(3.9 GB), `cluaiz bench -r 3`, generation t/s (tg128):
+
+| Placement | t/s |
+|---|---|
+| Planner with the cache: every expert in RAM, 1.40 GB cache, CPU share 0.8 | **68.3 ± 3.9** |
+| Planner with `CLUAIZ_MOE_CACHE=off`: experts of 11 / 16 layers in RAM | 53.5 ± 3.6 |
+| Every expert in RAM without a cache (`--n-cpu-moe 16`) | 39.6 ± 3.2 |
+
+Prompt speed (pp512) stayed within the run-to-run spread: 929 ± 254 with the cache, 1004 ± 292 without.
+With less free RAM (3.57 GB allowed, 3.69 GB needed for every expert in RAM) the same planner kept the
+placement without a cache, as the rule says.
+
 The share rule is the lowest share within 5% of the fastest, from llama.cpp's own tuner
 (`scripts/moe-cache-tune.py`), with the experts mmap'd. With a share of 0, a small cache was slower
 than no cache. A model read from disk is limited by the disk, so it keeps the placement without a

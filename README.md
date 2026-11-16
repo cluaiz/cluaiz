@@ -36,18 +36,20 @@ Cluaiz is one engine process that runs local models and serves them to apps, scr
 - **A placement planner** that measures the free GPU memory and RAM on every load and chooses where the model
   runs, how large the context is and which KV cache type fits. You can override any of it.
 - **MoE models larger than the GPU, and larger than free RAM:** attention stays on the GPU, the experts sit in
-  RAM, and whatever does not fit RAM is read from the SSD when it is used.
+  RAM with llama.cpp's MoE GPU cache sized by the planner, and experts that do not fit RAM are read from the
+  memory-mapped model file on the disk when used (at the disk's speed; a dedicated SSD prefetch is planned).
 - **APIs** that existing clients already speak (OpenAI-compatible and Ollama-style routes), plus CEP, one
   JSON-RPC 2.0 protocol for everything engine-specific, over HTTP, MCP or a C library.
 - **Tools for agents:** skills, plugins and MCP servers, with permission levels, approvals and an audit log.
 
-On the same model file, placement and settings, Cluaiz generates as fast as llama.cpp's own `llama-bench`, and
-reads prompts up to 2x faster when a model is split across GPU and RAM (see [Benchmarks](#benchmarks)).
+On the same model file, placement and settings, Cluaiz generates as fast as llama.cpp's own `llama-bench` on the
+GPU (CPU only: 0.80-0.96x on the L4). Prompts of a model split across GPU and RAM were up to 2x faster on the
+laptop test and 0.82-1.21x on the L4 (see [Benchmarks](#benchmarks)).
 
 > [!TIP]
 > **A 26B model on a 4 GB laptop GPU.** Gemma 4 26B A4B (MoE, 13.3 GB file) on an RTX 3050 Laptop with 4 GB
 > VRAM: **16–18 tokens/s** with about 8 GB of free RAM, and still **7.4 tokens/s** with only about 3 GB free,
-> when more of the experts are read from the SSD. The planner picks this placement by itself (`n_cpu_moe`); no flags
+> when more of the experts are read from the model file on the disk (measured 2026-10-12). The planner picks this placement by itself (`n_cpu_moe`); no flags
 > needed. Dense models that do not fit RAM + VRAM are refused with the reason instead of crawling from the disk.
 > [Details](test/engine_regression/RESULTS.md#gemma-4-26b-a4b-moe-1327-gb-file-4-gb-gpu).
 
@@ -157,8 +159,8 @@ Not included yet: the OCR pack and a persistent vector index. Details:
 
 ### Placement and memory
 
-- Candidates on every load: **full GPU**, **GPU + RAM split**, **MoE experts in RAM** (or read from the SSD when
-  they do not fit RAM), **CPU only**. The plan picks the context size and the KV cache type (F16, then Q8_0) and
+- Candidates on every load: **full GPU**, **GPU + RAM split**, **MoE experts in RAM** with llama.cpp's MoE GPU cache
+  (read from the memory-mapped file on the disk when they do not fit RAM), **CPU only**. The plan picks the context size and the KV cache type (F16, then Q8_0) and
   keeps a VRAM buffer free.
 - The plan is checked against llama.cpp's own dry run, and the VRAM a load really takes is remembered per model,
   so the next plan is closer.
@@ -271,7 +273,7 @@ llama.cpp commit. Higher is better.
 | | split | 18 of 36 blocks on GPU | **15.9 t/s** | 14.9 t/s | +7% |
 | **Gemma 4 E4B (Q4_K_M)** | gpu | Full GPU | **32.3 t/s** | 32.0 t/s | +1% |
 | | split | 21 of 42 blocks on GPU | **14.5 t/s** | 14.6 t/s | same |
-| **Gemma 4 26B MoE (13.3 GB)** | auto (split) | Attention GPU + RAM/SSD Experts | **16.0 - 18.0 t/s** | ~4.4 t/s or OOM (user-reported) | Runs on 4 GB VRAM |
+| **Gemma 4 26B MoE (13.3 GB)** | auto (split) | Attention GPU, experts in RAM (disk via mmap) | **16.0 - 18.0 t/s** | not measured | Runs on 4 GB VRAM |
 
 #### Prompt processing speed (~530 tokens prompt)
 
@@ -285,9 +287,9 @@ llama.cpp commit. Higher is better.
 | **Bonsai 27B** | 47 vs 30 t/s (shared mem) | **230 vs 110 t/s** | **2.1x faster** |
 
 > [!NOTE]
-> **Why Split Prompt is 1.4x–2.2x Faster**: Upstream llama.cpp chunks prompts into fixed 512-token batches (leaving trailing tokens under 32 to run on CPU). Cluaiz balances chunk sizes evenly (e.g. 265 + 265), keeping all prompt chunks on the accelerated path.
+> **Why Split Prompt was 1.4x–2.1x Faster on this laptop (2026-10-12; on the L4 in run 11 it was 0.82x–1.21x)**: Upstream llama.cpp chunks prompts into fixed 512-token batches (leaving trailing tokens under 32 to run on CPU). Cluaiz balances chunk sizes evenly (e.g. 265 + 265), keeping all prompt chunks on the accelerated path.
 > 
-> **Time To First Token (TTFT)**: **0.09s - 0.10s** (warm prompt with persistent template caching, down from 0.31s).
+> **Time To First Token (TTFT)**, measured 2026-10-12: **0.09s - 0.10s** (warm prompt with persistent template caching, down from 0.31s).
 > 
 > **Complete Reproducible Benchmark**: Full test tables, methodology, and reproduction scripts (`python test/engine_regression/run.py`) are documented in [`test/engine_regression/RESULTS.md`](test/engine_regression/RESULTS.md).
 >
@@ -344,7 +346,8 @@ Gemma 4 31B 4 vs 4 t/s.
 > **Reading the T4 numbers**: generation equals llama.cpp in every test (-3% to +8%; the T4's clock moves a few
 > percent between runs). Prompt processing equals llama.cpp on full GPU after the two fixes and stays up to 1.6x
 > faster when a model is split across GPU and RAM. A dense model larger than RAM + VRAM is refused by the planner
-> instead of thrashing the disk; streaming from the SSD is used for MoE experts (Gemma 4 26B above).
+> instead of thrashing the disk; only MoE experts are read from the memory-mapped file on the disk when RAM is
+> short (Gemma 4 26B above).
 >
 > **Full Report**: methodology, every setting, the exact llama-bench commands and all logs are in
 > [`test/cloud/runs/2026-10-28-run5-linux-t4-regression/RESULTS.md`](test/cloud/runs/2026-10-28-run5-linux-t4-regression/RESULTS.md).
@@ -427,7 +430,7 @@ flowchart TB
     end
 
     subgraph PLANNING["Placement planning"]
-        PLAN["engine/plan<br/>candidates: full GPU · GPU + RAM split ·<br/>MoE experts in RAM / SSD · CPU only<br/>context size, KV type, VRAM buffer"]
+        PLAN["engine/plan<br/>candidates: full GPU · GPU + RAM split ·<br/>MoE experts in RAM + MoE GPU cache · CPU only<br/>context size, KV type, VRAM buffer"]
         HW["engine/hardware<br/>CPU, RAM, GPU (NVML), disk<br/>free memory measured live"]
         MODELS["engine/models<br/>GGUF reader, model registry,<br/>Hugging Face fetcher, capabilities"]
         CORE["engine/core<br/>settings snapshot, paths, units, contracts"]

@@ -17,7 +17,7 @@ code around llama.cpp. Speeds are in tokens per second (t/s): higher is better.
 | Generation speed (writing the answer) | **Same** in all 18 tests (within ±5%, the normal run-to-run noise) |
 | Prompt speed, model fully on GPU | **Same or Cluaiz slightly faster** |
 | Prompt speed, model split GPU + RAM | **Cluaiz 1.4x to 2.2x faster** |
-| Gemma 4 26B MoE (bigger than the GPU) | **Cluaiz runs it** (7.4 to 18 t/s, no out-of-memory); llama.cpp: ~4-4.4 t/s or out of memory (user-reported) |
+| Gemma 4 26B MoE (bigger than the GPU) | **Cluaiz runs it** (7.4 to 18 t/s, no out-of-memory); llama.cpp: not measured in this test |
 | Tests passed | 18 of 18 |
 
 ## Machine
@@ -95,7 +95,7 @@ experts in RAM and lets Windows read the rest from the SSD when needed.
 | **Cluaiz** | first message right after loading (experts still on SSD) | ~34 t/s | ~15 t/s |
 | **Cluaiz** | inside the app with only ~3 GB free RAM | 8.9 t/s | 7.4 t/s |
 | **Cluaiz** | forced `n_gpu_layers -1` (all 13 GB on a 4 GB GPU) | does not load (correct: it cannot fit) | - |
-| **llama.cpp** | user-reported, not measured in this test | - | ~4-4.4 t/s or out of memory |
+| **llama.cpp** | not measured in this test | - | - |
 
 - Cluaiz placement chosen by the planner: attention + KV (F16, n_ctx 4096) on GPU, experts of all 30 layers in
   RAM (`n_gpu_layers -1`, `n_cpu_moe 30`), op_offload on.
@@ -161,7 +161,7 @@ with thinking off, so exactly 64 tokens are generated.
 
 - Only this laptop: no other GPU (AMD, Intel, bigger NVIDIA), no Mac or Linux.
 - CPU-only mode and long chats (8k+ tokens).
-- Gemma 4 26B is not in the 18-test tables; its llama.cpp number is user-reported.
+- Gemma 4 26B is not in the 18-test tables; llama.cpp was not measured on it.
 - Thinking tokens are not limited by `max_tokens` (only by `reasoning_effort`).
 - Laptop GPU speed changes a few percent between runs (clock, temperature).
 
