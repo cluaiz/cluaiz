@@ -1,0 +1,22 @@
+== 11:08:35 ternary-bonsai-2-4b-gguf auto Cluaiz
+== 11:08:47 ternary-bonsai-2-4b-gguf auto llama.cpp: -ngl 99 -ncmoe 0 kv f16
+== 11:08:57 ternary-bonsai-2-4b-gguf_gpu llama.cpp: -ngl 99 -ctk f16 -ctv f16
+== 11:09:07 ternary-bonsai-2-4b-gguf_gpu Cluaiz: --n-gpu-layers all --cache-type-k f16 --cache-type-v f16 -c 4096
+== 11:09:17 ternary-bonsai-2-4b-gguf_split llama.cpp: -ngl 17 -ctk f16 -ctv f16
+== 11:09:47 ternary-bonsai-2-4b-gguf_split Cluaiz: --n-gpu-layers 17 --cache-type-k f16 --cache-type-v f16 -c 4096
+== 11:10:15 ternary-bonsai-2-4b-gguf_cpu llama.cpp: -ngl 0 -ctk f16 -ctv f16
+== 11:10:58 ternary-bonsai-2-4b-gguf_cpu Cluaiz: --n-gpu-layers 0 --cache-type-k f16 --cache-type-v f16 -c 4096
+== 11:12:37 qwen3.5-4b-gguf-Q4_K_M auto Cluaiz
+== 11:13:23 qwen3.5-4b-gguf-Q4_K_M auto llama.cpp: -ngl 15 -ncmoe 0 kv q8_0
+== 11:14:08 qwen3.5-4b-gguf-Q4_K_M_split llama.cpp: -ngl 17 -ctk f16 -ctv f16
+== 11:14:47 qwen3.5-4b-gguf-Q4_K_M_split Cluaiz: --n-gpu-layers 17 --cache-type-k f16 --cache-type-v f16 -c 4096
+== 11:15:25 qwen3.5-4b-gguf-Q4_K_M_cpu llama.cpp: -ngl 0 -ctk f16 -ctv f16
+== 11:16:16 qwen3.5-4b-gguf-Q4_K_M_cpu Cluaiz: --n-gpu-layers 0 --cache-type-k f16 --cache-type-v f16 -c 4096
+== 11:17:28 olmoe-1b-7b-0125-instruct-gguf-Q4_K_M auto Cluaiz
+== 11:17:43 olmoe-1b-7b-0125-instruct-gguf-Q4_K_M auto llama.cpp: -ngl 99 -ncmoe 16 kv f16
+== 11:17:57 olmoe-1b-7b-0125-instruct-gguf-Q4_K_M auto Cluaiz, MoE cache off
+== 11:18:11 olmoe-1b-7b-0125-instruct-gguf-Q4_K_M_split llama.cpp: -ngl 9 -ctk f16 -ctv f16
+== 11:18:23 olmoe-1b-7b-0125-instruct-gguf-Q4_K_M_split Cluaiz: --n-gpu-layers 9 --cache-type-k f16 --cache-type-v f16 -c 4096
+== 11:18:36 olmoe-1b-7b-0125-instruct-gguf-Q4_K_M_cpu llama.cpp: -ngl 0 -ctk f16 -ctv f16
+== 11:18:51 olmoe-1b-7b-0125-instruct-gguf-Q4_K_M_cpu Cluaiz: --n-gpu-layers 0 --cache-type-k f16 --cache-type-v f16 -c 4096
+== 11:19:31 all done

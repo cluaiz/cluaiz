@@ -1,0 +1,61 @@
+2026-11-16T05:39:07.241234Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-16T05:39:07.845610Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-16T05:39:07.851107Z  INFO ⚡ NVIDIA CUDA + cuDNN 9 runtime libraries verified.
+2026-11-16T05:39:08.041598Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-16T05:39:08.042042Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-16T05:39:08.088003Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : ternary-bonsai-2-4b-gguf
+║   • Architecture    : qwen35 | 32 layers | heads 16 | KV heads 4 | head size K 256 / V 256 | dense | hybrid: 8 attention layers with a KV cache, 24 linear-attention layers with a 2.2 MB state
+║   • Weights         : file 1.13 GB | input embeddings 0.17 GB (always CPU) | output head 0.17 GB | vocab 248320
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 4096 tokens, KV Kv16 (Custom 4096 tokens, KV Kv16, buffer 0.30 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA GeForce RTX 3050 A Laptop GPU | free 2.55 of 4.00 GB | buffer kept free 0.30 GB (measured: GPU pool +0.10 GB + 0.20 GB reserve; estimate corrected by llama.cpp's dry run +0.03 GB)
+║   • RAM             : free 6.50 of 23.69 GB | Cluaiz may use 5.32 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 32 on GPU, 0 in RAM (of 32)
+║   • VRAM            : 1.79 GB (weights + KV 0.17 + logits)
+║   • RAM             : 0.17 GB (incl. KV 0.00)
+║   • Reason         : User setting: planner bypassed: n_gpu_layers -1 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 1.79 of usable 2.25 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM  1.79 GB | RAM  0.17 GB | planner bypassed: n_gpu_layers -1 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 1.79 of usable 2.25 GB
+║   • Full GPU         [FITS]     VRAM  1.79 GB | RAM  0.17 GB | weights 1.12 + KV 0.17 + buffers 0.50 = 1.79 GB vs usable VRAM 2.25 GB
+║   • GPU + RAM split  [FITS]     VRAM  1.76 GB | RAM  0.20 GB | 31 / 32 blocks + output head on GPU (1.76 GB), 1 blocks in RAM
+║   • Weights GPU, KV RAM [FITS]     VRAM  1.62 GB | RAM  0.34 GB | weights 1.12 + buffers 0.50 on GPU, KV 0.17 GB in RAM (attention on CPU, slower as the chat grows)
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  1.77 GB | weights 1.12 + KV 0.17 + logits 0.47 = 1.77 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 8 / batch 8 | flash attention Auto | KV setting Kv16 -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-16T05:39:08.088332Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-16T05:39:08.090034Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 8, n_threads_batch = 8
+2026-11-16T05:39:08.090057Z  INFO 🧬 [Native-Llama] Loading model: C:/Users/Aryan/AppData/Local/cluaiz-test/installhome\models\chat\ternary-bonsai-2-4b-gguf\Ternary-Bonsai-2-4B-Q2_0.gguf | ctx: 4096 tokens
+2026-11-16T05:39:09.778806Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "C:/Users/Aryan/AppData/Local/cluaiz-test/installhome\\models\\chat\\ternary-bonsai-2-4b-gguf"
+2026-11-16T05:39:09.787916Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-11-16T05:39:09.787971Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-11-16T05:39:09.788004Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 4096 tokens
+2026-11-16T05:39:09.788036Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-16T05:39:09.788063Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-16T05:39:09.788094Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-16T05:39:09.788120Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 8/8
+2026-11-16T05:39:10.311724Z  INFO 🔍 [EngineHost] VRAM planned 1.79 GB, taken 1.87 GB | n_ctx planned 4096 created 4096 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-16T05:39:10.313533Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: C:/Users/Aryan/AppData/Local/cluaiz-test/installhome\models\chat\ternary-bonsai-2-4b-gguf\Ternary-Bonsai-2-4B-Q2_0.gguf
+  placement  Full GPU | 32 of 32 blocks on GPU, 0 in RAM | n_gpu_layers -1
+  context    4096 tokens | KV Kv16 next to its layers
+  memory     VRAM 1.79 GB | RAM 0.17 GB
+  reason     User setting: planner bypassed: n_gpu_layers -1 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 1.79 of usable 2.25 GB
+running pp512 on Full GPU (3 runs)...
+running tg128 on Full GPU (3 runs)...

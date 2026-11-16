@@ -1,0 +1,4 @@
+FROM /root/.cluaiz/models/chat/ternary-bonsai-2-4b-gguf/Ternary-Bonsai-2-4B-Q2_0.gguf
+PARAMETER num_thread 1
+PARAMETER num_gpu 0
+PARAMETER num_ctx 4096

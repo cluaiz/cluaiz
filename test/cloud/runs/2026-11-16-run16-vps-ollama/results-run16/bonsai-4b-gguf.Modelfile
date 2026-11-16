@@ -1,0 +1,4 @@
+FROM /root/.cluaiz/models/chat/bonsai-4b-gguf/Bonsai-4B-Q1_0.gguf
+PARAMETER num_thread 1
+PARAMETER num_gpu 0
+PARAMETER num_ctx 4096

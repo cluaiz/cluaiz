@@ -1,0 +1,61 @@
+2026-11-16T05:47:28.384195Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-16T05:47:28.937602Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-16T05:47:28.941614Z  INFO ⚡ NVIDIA CUDA + cuDNN 9 runtime libraries verified.
+2026-11-16T05:47:29.126115Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-16T05:47:29.126411Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-16T05:47:29.182568Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : olmoe-1b-7b-0125-instruct-gguf-Q4_K_M
+║   • Architecture    : olmoe | 16 layers | heads 16 | KV heads 16 | head size K 128 / V 128 | 64 experts, 8 active | experts 3.63 GB
+║   • Weights         : file 3.92 GB | input embeddings 0.05 GB (always CPU) | output head 0.08 GB | vocab 50304
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 4096 tokens
+║   • Active context  : 4096 tokens, KV Kv16 (Auto: 4096 tokens, KV Kv16, buffer 0.33 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA GeForce RTX 3050 A Laptop GPU | free 2.69 of 4.00 GB | buffer kept free 0.33 GB (measured: GPU pool +0.13 GB + 0.20 GB reserve; estimate corrected by llama.cpp's dry run +0.02 GB)
+║   • RAM             : free 7.52 of 23.69 GB | Cluaiz may use 6.34 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : MoE split (attention on GPU, experts in RAM)
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 16 | n_ctx = 4096 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 16 on GPU, 0 in RAM (of 16)
+║   • VRAM            : 2.36 GB (weights + KV 0.50 + logits)
+║   • RAM             : 3.69 GB (incl. KV 0.00)
+║   • MoE cache       : 1.51 GB in VRAM for the experts in RAM | CPU share of the misses 0.8 (moe_cache_size / moe_cache_cpu_share)
+║   • Reason         : MoE split: attention/shared 0.24 + KV 0.50 + buffers 0.12 on GPU, experts of 16 / 16 layers in RAM (3.63 GB), MoE cache 1.51 GB in VRAM (CPU share 0.8)
+║   • Speed           : 64.0 tokens/s generation, 721.4 tokens/s prompt, measured by cluaiz bench
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [NO]       VRAM  4.49 GB | RAM  0.05 GB | does not fit in VRAM: weights 3.87 + KV 0.50 + buffers 0.12 = 4.49 GB vs usable VRAM 2.36 GB
+║   • MoE split        [FITS]     VRAM  2.36 GB | RAM  3.69 GB | attention/shared 0.24 + KV 0.50 + buffers 0.12 on GPU, experts of 16 / 16 layers in RAM (3.63 GB), MoE cache 1.51 GB in VRAM (CPU share 0.8) | 64.0 t/s measured (prompt 721.4 t/s)
+║   • GPU + RAM split  [FITS]     VRAM  2.34 GB | RAM  2.20 GB | 8 / 16 blocks + output head on GPU (2.34 GB), 8 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  4.52 GB | weights 3.92 + KV 0.50 + logits 0.10 = 4.52 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 8 / batch 8 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-16T05:47:29.183493Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-16T05:47:29.185576Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 8, n_threads_batch = 8
+2026-11-16T05:47:29.185598Z  INFO 🧬 [Native-Llama] Loading model: C:/Users/Aryan/AppData/Local/cluaiz-test/installhome\models\chat\olmoe-1b-7b-0125-instruct-gguf-Q4_K_M\OLMoE-1B-7B-0125-Instruct-Q4_K_M.gguf | ctx: 4096 tokens
+2026-11-16T05:47:29.359415Z  WARN [llama.cpp] load: special_eos_id is not in special_eog_ids - the tokenizer config may be incorrect
+2026-11-16T05:47:29.371470Z  WARN [llama.cpp] llama_model_loader: tensor overrides to CPU are used with mmap enabled - consider using --load-mode none for better performance
+2026-11-16T05:47:33.208488Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "C:/Users/Aryan/AppData/Local/cluaiz-test/installhome\\models\\chat\\olmoe-1b-7b-0125-instruct-gguf-Q4_K_M"
+2026-11-16T05:47:33.212110Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 4096 tokens
+2026-11-16T05:47:33.212147Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-16T05:47:33.212168Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-16T05:47:33.212189Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-16T05:47:33.212205Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 8/8
+2026-11-16T05:47:34.251061Z  INFO 🔍 [EngineHost] VRAM planned 2.36 GB, taken 2.38 GB | n_ctx planned 4096 created 4096 | n_gpu_layers -1 n_cpu_moe 16
+2026-11-16T05:47:34.252388Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: C:/Users/Aryan/AppData/Local/cluaiz-test/installhome\models\chat\olmoe-1b-7b-0125-instruct-gguf-Q4_K_M\OLMoE-1B-7B-0125-Instruct-Q4_K_M.gguf
+  placement  MoE split (attention on GPU, experts in RAM) | 16 of 16 blocks on GPU, 0 in RAM | n_gpu_layers -1 | n_cpu_moe 16
+  context    4096 tokens | KV Kv16 next to its layers
+  memory     VRAM 2.36 GB | RAM 3.69 GB | MoE cache 1.51 GB, CPU share 0.8
+  reason     MoE split: attention/shared 0.24 + KV 0.50 + buffers 0.12 on GPU, experts of 16 / 16 layers in RAM (3.63 GB), MoE cache 1.51 GB in VRAM (CPU share 0.8)
+running pp512 on MoE split (attention on GPU, experts in RAM) (3 runs)...
+running tg128 on MoE split (attention on GPU, experts in RAM) (3 runs)...

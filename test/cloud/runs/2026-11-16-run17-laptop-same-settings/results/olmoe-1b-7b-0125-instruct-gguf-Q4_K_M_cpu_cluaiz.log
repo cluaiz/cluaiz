@@ -1,0 +1,54 @@
+2026-11-16T05:48:51.169804Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-16T05:48:51.728758Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-16T05:48:51.732879Z  INFO ⚡ NVIDIA CUDA + cuDNN 9 runtime libraries verified.
+2026-11-16T05:48:51.922621Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-16T05:48:51.922934Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-16T05:48:51.969201Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : olmoe-1b-7b-0125-instruct-gguf-Q4_K_M
+║   • Architecture    : olmoe | 16 layers | heads 16 | KV heads 16 | head size K 128 / V 128 | 64 experts, 8 active | experts 3.63 GB
+║   • Weights         : file 3.92 GB | input embeddings 0.05 GB (always CPU) | output head 0.08 GB | vocab 50304
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 4096 tokens
+║   • Active context  : 4096 tokens, KV Kv16 (Custom 4096 tokens, KV Kv16, buffer 0.00 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA GeForce RTX 3050 A Laptop GPU | free 2.91 of 4.00 GB | buffer kept free 0.00 GB (measured: GPU pool +0.14 GB + 0.20 GB reserve; estimate corrected by llama.cpp's dry run +0.02 GB)
+║   • RAM             : free 7.41 of 23.69 GB | Cluaiz may use 6.22 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : CPU only
+║   • llama.cpp       : n_gpu_layers = 0 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 0 on GPU, 16 in RAM (of 16)
+║   • VRAM            : 0.00 GB (weights + KV 0.00 + logits)
+║   • RAM             : 4.52 GB (incl. KV 0.50)
+║   • Reason         : User setting: planner bypassed: n_gpu_layers 0 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 0.00 of usable 2.91 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM  0.00 GB | RAM  4.52 GB | planner bypassed: n_gpu_layers 0 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 0.00 of usable 2.91 GB
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  4.52 GB | weights 3.92 + KV 0.50 + logits 0.10 = 4.52 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 8 / batch 8 | flash attention Auto | KV setting Kv16 -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-16T05:48:51.969670Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-16T05:48:51.971215Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = 0, load_mode = 1, n_threads = 8, n_threads_batch = 8
+2026-11-16T05:48:51.971235Z  INFO 🧬 [Native-Llama] Loading model: C:/Users/Aryan/AppData/Local/cluaiz-test/installhome\models\chat\olmoe-1b-7b-0125-instruct-gguf-Q4_K_M\OLMoE-1B-7B-0125-Instruct-Q4_K_M.gguf | ctx: 4096 tokens
+2026-11-16T05:48:52.040662Z  WARN [llama.cpp] load: special_eos_id is not in special_eog_ids - the tokenizer config may be incorrect
+2026-11-16T05:49:00.010761Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "C:/Users/Aryan/AppData/Local/cluaiz-test/installhome\\models\\chat\\olmoe-1b-7b-0125-instruct-gguf-Q4_K_M"
+2026-11-16T05:49:00.016190Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 4096 tokens
+2026-11-16T05:49:00.016259Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-16T05:49:00.016287Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 8/8
+2026-11-16T05:49:00.393832Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: C:/Users/Aryan/AppData/Local/cluaiz-test/installhome\models\chat\olmoe-1b-7b-0125-instruct-gguf-Q4_K_M\OLMoE-1B-7B-0125-Instruct-Q4_K_M.gguf
+  placement  CPU only | 0 of 16 blocks on GPU, 16 in RAM | n_gpu_layers 0
+  context    4096 tokens | KV Kv16 in RAM
+  memory     VRAM 0.00 GB | RAM 4.52 GB
+  reason     User setting: planner bypassed: n_gpu_layers 0 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 0.00 of usable 2.91 GB
+running pp512 on CPU only (3 runs)...
+running tg128 on CPU only (3 runs)...

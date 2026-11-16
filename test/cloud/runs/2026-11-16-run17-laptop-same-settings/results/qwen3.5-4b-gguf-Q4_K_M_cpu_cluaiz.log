@@ -1,0 +1,55 @@
+2026-11-16T05:46:16.731691Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-16T05:46:17.332475Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-16T05:46:17.337036Z  INFO ⚡ NVIDIA CUDA + cuDNN 9 runtime libraries verified.
+2026-11-16T05:46:17.512648Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-16T05:46:17.513023Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-16T05:46:17.574321Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3.5-4b-gguf-Q4_K_M
+║   • Architecture    : qwen35 | 32 layers | heads 16 | KV heads 4 | head size K 256 / V 256 | dense | hybrid: 8 attention layers with a KV cache, 24 linear-attention layers with a 2.2 MB state
+║   • Weights         : file 2.55 GB | input embeddings 0.49 GB (always CPU) | output head 0.49 GB | vocab 248320
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 4096 tokens, KV Kv16 (Custom 4096 tokens, KV Kv16, buffer 0.00 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA GeForce RTX 3050 A Laptop GPU | free 2.68 of 4.00 GB | buffer kept free 0.00 GB (measured: GPU pool +0.37 GB + 0.20 GB reserve; estimate corrected by llama.cpp's dry run +0.02 GB)
+║   • RAM             : free 7.42 of 23.69 GB | Cluaiz may use 6.23 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : CPU only
+║   • llama.cpp       : n_gpu_layers = 0 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 0 on GPU, 32 in RAM (of 32)
+║   • VRAM            : 0.00 GB (weights + KV 0.00 + logits)
+║   • RAM             : 3.19 GB (incl. KV 0.17)
+║   • Reason         : User setting: planner bypassed: n_gpu_layers 0 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 0.00 of usable 2.68 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM  0.00 GB | RAM  3.19 GB | planner bypassed: n_gpu_layers 0 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 0.00 of usable 2.68 GB
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  3.19 GB | weights 2.54 + KV 0.17 + logits 0.47 = 3.19 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 8 / batch 8 | flash attention Auto | KV setting Kv16 -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-16T05:46:17.574947Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-16T05:46:17.576552Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = 0, load_mode = 1, n_threads = 8, n_threads_batch = 8
+2026-11-16T05:46:17.576574Z  INFO 🧬 [Native-Llama] Loading model: C:/Users/Aryan/AppData/Local/cluaiz-test/installhome\models\chat\qwen3.5-4b-gguf-Q4_K_M\Qwen3.5-4B-Q4_K_M.gguf | ctx: 4096 tokens
+2026-11-16T05:46:21.793043Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "C:/Users/Aryan/AppData/Local/cluaiz-test/installhome\\models\\chat\\qwen3.5-4b-gguf-Q4_K_M"
+2026-11-16T05:46:21.799666Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-11-16T05:46:21.799703Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-11-16T05:46:21.799726Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 4096 tokens
+2026-11-16T05:46:21.799888Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-16T05:46:21.799915Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 8/8
+2026-11-16T05:46:22.390064Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: C:/Users/Aryan/AppData/Local/cluaiz-test/installhome\models\chat\qwen3.5-4b-gguf-Q4_K_M\Qwen3.5-4B-Q4_K_M.gguf
+  placement  CPU only | 0 of 32 blocks on GPU, 32 in RAM | n_gpu_layers 0
+  context    4096 tokens | KV Kv16 in RAM
+  memory     VRAM 0.00 GB | RAM 3.19 GB
+  reason     User setting: planner bypassed: n_gpu_layers 0 n_cpu_moe 0 offload_kqv 1 -> estimate VRAM 0.00 of usable 2.68 GB
+running pp512 on CPU only (3 runs)...
+running tg128 on CPU only (3 runs)...

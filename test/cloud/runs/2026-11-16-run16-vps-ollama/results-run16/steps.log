@@ -1,0 +1,52 @@
+== 05:45:31 Cluaiz: new release
+cluaiz 0.1.0 (pre-release)
+bf85de0ed37df67e85fbad3db4176a6e4c3e8704fe5d93e5787a3d4a22e44cd0  /root/.cluaiz/bin/cluaiz
+== 05:45:57 re-pull Ternary-Bonsai-2-4B :Q2_0
+/root/.cluaiz/models/chat/bonsai-4b-gguf/:
+total 558884
+drwxr-xr-x 3 root root      4096 Nov 16 04:44 .
+drwxr-xr-x 5 root root      4096 Nov 16 05:45 ..
+drwxr-xr-x 2 root root      4096 Nov 16 04:44 .eval_results
+-rw-r--r-- 1 root root 572270624 Nov 16 04:44 Bonsai-4B-Q1_0.gguf
+-rw-r--r-- 1 root root       412 Nov 16 04:44 NOTICE.txt
+-rw-r--r-- 1 root root       853 Nov 16 04:44 model_manifest.json
+
+/root/.cluaiz/models/chat/llama-3.2-3b-instruct-gguf-Q4_K_M/:
+total 1972068
+drwxr-xr-x 2 root root       4096 Nov 16 04:46 .
+drwxr-xr-x 5 root root       4096 Nov 16 05:45 ..
+-rw-r--r-- 1 root root 2019377696 Nov 16 04:46 Llama-3.2-3B-Instruct-Q4_K_M.gguf
+-rw-r--r-- 1 root root        964 Nov 16 04:46 model_manifest.json
+
+/root/.cluaiz/models/chat/ternary-bonsai-2-4b-gguf/:
+total 1843452
+drwxr-xr-x 2 root root       4096 Nov 16 05:46 .
+drwxr-xr-x 5 root root       4096 Nov 16 05:45 ..
+-rw-r--r-- 1 root root        599 Nov 16 05:46 NOTICE.txt
+-rw-r--r-- 1 root root 1212103520 Nov 16 05:46 Ternary-Bonsai-2-4B-Q2_0.gguf
+-rw-r--r-- 1 root root  675569184 Nov 16 05:46 Ternary-Bonsai-2-4B-mmproj-BF16.gguf
+-rw-r--r-- 1 root root        934 Nov 16 05:46 model_manifest.json
+== 05:46:37 ternary-bonsai-2-4b-gguf cpu: llama.cpp
+== 05:53:10 ternary-bonsai-2-4b-gguf cpu: Cluaiz
+== 05:59:26 ternary-bonsai-2-4b-gguf auto: Cluaiz
+== 06:05:50 ternary-bonsai-2-4b-gguf auto: llama.cpp with KV f16
+== 06:12:11 Ollama: official release, standalone
+Warning: client version is 0.40.16
+== 06:21:20 bonsai-4b-gguf cpu: Ollama KV f16
+prompt tokens [514, 514, 514] generated [128, 128, 128]
+pp 7.27 ± 0.20 | tg 4.99 ± 0.29
+== 06:28:01 llama-3.2-3b-instruct-gguf-Q4_K_M cpu: Ollama KV f16
+error: HTTP Error 500: Internal Server Error
+== 06:28:52 ternary-bonsai-2-4b-gguf cpu: Ollama KV f16
+prompt tokens [514, 514, 514] generated [128, 128, 128]
+pp 5.77 ± 0.09 | tg 4.32 ± 0.16
+== 06:36:55 bonsai-4b-gguf auto: Ollama KV q8_0
+prompt tokens [514, 514, 514] generated [128, 128, 128]
+pp 6.64 ± 0.02 | tg 4.50 ± 0.17
+== 06:44:07 llama-3.2-3b-instruct-gguf-Q4_K_M auto: Ollama KV q8_0
+prompt tokens [515, 515, 515] generated [128, 128, 128]
+pp 18.84 ± 0.38 | tg 6.74 ± 0.08
+== 06:51:51 ternary-bonsai-2-4b-gguf auto: Ollama KV q8_0
+prompt tokens [514, 514, 514] generated [128, 128, 128]
+pp 5.82 ± 0.06 | tg 4.11 ± 0.30
+== 07:00:32 all done

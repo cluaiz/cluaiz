@@ -1,0 +1,4 @@
+FROM /root/.cluaiz/models/chat/llama-3.2-3b-instruct-gguf-Q4_K_M/Llama-3.2-3B-Instruct-Q4_K_M.gguf
+PARAMETER num_thread 1
+PARAMETER num_gpu 0
+PARAMETER num_ctx 4096
