@@ -42,7 +42,7 @@ impl ResolveUi for Terminal {
                 "⚡".green().bold(),
                 tag.yellow().bold(),
                 variant.variant_id.cyan().bold(),
-                variant.size_gb
+                cluaiz_core::gib_to_gb(variant.size_gb)
             ),
             ResolveStep::TagNotFound { tag, repo } => println!(
                 "  {} Quantization tag ':{}' not found in '{}'. Available variants listed below:",
@@ -59,7 +59,7 @@ impl ResolveUi for Terminal {
         if non_interactive() {
             return Ok(cluaiz_models::fetcher::default_variant(variants));
         }
-        let options: Vec<String> = variants.iter().map(|v| format!("{} ({:.2} GB)", v.variant_id, v.size_gb)).collect();
+        let options: Vec<String> = variants.iter().map(|v| format!("{} ({:.2} GB)", v.variant_id, cluaiz_core::gib_to_gb(v.size_gb))).collect();
         inquire::Select::new("Select model variant bundle to download:", options)
             .with_page_size(12)
             .raw_prompt()
@@ -102,7 +102,7 @@ pub fn confirm(plan: &DownloadPlan) -> Result<()> {
     if !manifest.parameters.is_empty() && manifest.parameters != "Unknown" {
         println!("    ├─ 🧩 Parameters: {}", manifest.parameters.green());
     }
-    println!("    ├─ 💾 Total Download Size: {:.2} GB", manifest.download_size_gb);
+    println!("    ├─ 💾 Total Download Size: {:.2} GB", cluaiz_core::gib_to_gb(manifest.download_size_gb));
     let total = plan.files.len();
     println!("    └─ 📁 Files to Download ({} files):", total.to_string().cyan().bold());
     for (idx, f) in plan.files.iter().enumerate() {

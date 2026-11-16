@@ -53,7 +53,7 @@ impl std::fmt::Display for ResolveStep<'_> {
             Self::CatalogFailed => write!(f, "catalog request failed"),
             Self::Scanning(repo) => write!(f, "scanning {repo}"),
             Self::FetchingTree(repo) => write!(f, "listing the files of {repo}"),
-            Self::TagMatched { tag, variant } => write!(f, "tag :{tag} matched {} ({:.2} GB)", variant.variant_id, variant.size_gb),
+            Self::TagMatched { tag, variant } => write!(f, "tag :{tag} matched {} ({:.2} GB)", variant.variant_id, cluaiz_core::gib_to_gb(variant.size_gb)),
             Self::TagNotFound { tag, repo } => write!(f, "tag :{tag} not found in {repo}"),
             Self::Repairing => write!(f, "existing package is incomplete; keeping valid files and repairing"),
             Self::FetchingMetadata => write!(f, "pulling manifest"),
@@ -221,7 +221,7 @@ pub async fn resolve(model_id: &str, all: bool, ui: &dyn ResolveUi) -> Result<Re
                     if let Some(tag) = tag {
                         // Nobody to ask: another size must not start in place of the one named
                         if !ui.can_ask() {
-                            let have: Vec<String> = variants.iter().map(|v| format!("{} ({:.2} GB)", v.quant_tag, v.size_gb)).collect();
+                            let have: Vec<String> = variants.iter().map(|v| format!("{} ({:.2} GB)", v.quant_tag, cluaiz_core::gib_to_gb(v.size_gb))).collect();
                             return Err(format!("'{repo_id}' has no variant '{tag}'. It has: {}", have.join(", ")));
                         }
                         ui.step(ResolveStep::TagNotFound { tag, repo: &repo_id });

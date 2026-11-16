@@ -19,6 +19,12 @@ pub fn bytes_to_mib(bytes: u64) -> f64 {
     bytes as f64 / MIB_F64
 }
 
+/// GiB as the gigabytes Hugging Face shows (10^9 bytes), for sizes a person compares with the model page
+#[inline]
+pub fn gib_to_gb(gib: f64) -> f64 {
+    gib * GIB_F64 / 1e9
+}
+
 #[inline]
 pub fn gib_to_bytes(gib: f64) -> u64 {
     (gib * GIB_F64).round() as u64

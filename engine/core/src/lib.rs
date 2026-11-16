@@ -21,7 +21,7 @@ pub use settings::{
     ContextSetting, SamplerDefaults, LlamaLoadParams, ThinkingBudget, ThinkingLimit, ThinkingPresets, ThinkingShare, OnnxSettings, set_active_context, active_context_tokens, active_model_path,
     DEFAULT_SAFE_VRAM_BUFFER_GB, MIN_SAFE_VRAM_BUFFER_GB, DEFAULT_SAFE_RAM_BUFFER_GB, MIN_SAFE_RAM_BUFFER_GB,
 };
-pub use units::{BYTE, KIB, MIB, GIB, GIB_F64, MIB_F64, bytes_to_gib, bytes_to_mib, gib_to_bytes, mib_to_bytes};
+pub use units::{BYTE, KIB, MIB, GIB, GIB_F64, MIB_F64, bytes_to_gib, bytes_to_mib, gib_to_bytes, gib_to_gb, mib_to_bytes};
 pub use chat::{
     ChatEnvelope, ChatMessage, OutputConstraint, EARLIER_RESULT_NOTE, STEP_RESULT_NOTE, answer_reserve, oldest_earlier_result, SAME_RESULT_NOTE, shorten_a_step_result, oldest_steps_to_drop, oldest_turns_to_drop, room_to_keep, shift_discard, tokens_to_free,
 };

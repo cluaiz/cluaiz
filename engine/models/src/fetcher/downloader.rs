@@ -178,7 +178,7 @@ impl FileDownloader {
             let p = indicatif::ProgressBar::new(total_size);
             p.set_style(
                 indicatif::ProgressStyle::default_bar()
-                    .template("   [{elapsed_precise}] [{bar:40.cyan/blue}] {bytes}/{total_bytes} ({bytes_per_sec}, ETA: {eta})")
+                    .template("   [{elapsed_precise}] [{bar:40.cyan/blue}] {decimal_bytes}/{decimal_total_bytes} ({decimal_bytes_per_sec}, ETA: {eta})")
                     .unwrap_or_else(|_| indicatif::ProgressStyle::default_bar())
                     .progress_chars("━╾─"),
             );
