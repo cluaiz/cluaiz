@@ -71,6 +71,28 @@ fn bundle_total_includes_shards_companions_metadata_once() {
     assert_eq!(manifest.architecture, "Unknown");
 }
 
+#[test]
+fn a_split_set_is_one_variant_with_every_shard() {
+    // unsloth/Qwen3.8-Flash-Next-GGUF: one folder per quant, 8 BF16 and 6 Q8_0 shards, MTP heads beside them
+    let mut paths = vec!["mmproj-F16.gguf".to_string(), "MTP/mtp-Qwen3.8-Flash-Next-BF16.gguf".into(), "MTP/mtp-Qwen3.8-Flash-Next-Q8_0.gguf".into()];
+    paths.extend((1..=8).map(|i| format!("BF16/Qwen3.8-Flash-Next-BF16-{i:05}-of-00008.gguf")));
+    paths.extend((1..=6).map(|i| format!("Q8_0/Qwen3.8-Flash-Next-Q8_0-{i:05}-of-00006.gguf")));
+    let items: Vec<HfTreeItem> = paths
+        .iter()
+        .map(|path| HfTreeItem { path: path.clone(), size: Some(1 << 30), r#type: Some("file".into()) })
+        .collect();
+    let variants = HuggingFaceHub::variants_from_tree(&items);
+    assert_eq!(variants.len(), 2, "{:?}", variants.iter().map(|v| &v.variant_id).collect::<Vec<_>>());
+    let bf16 = variants.iter().find(|v| v.quant_tag == "BF16").unwrap();
+    assert_eq!(bf16.primary_file, "BF16/Qwen3.8-Flash-Next-BF16-00001-of-00008.gguf");
+    assert_eq!(bf16.all_files.iter().filter(|f| f.starts_with("BF16/")).count(), 8);
+    assert!(bf16.all_files.contains(&"MTP/mtp-Qwen3.8-Flash-Next-BF16.gguf".to_string()));
+    // 8 shards + mmproj + MTP, 1 GiB each
+    assert!((bf16.size_gb - 10.0).abs() < 0.01, "{}", bf16.size_gb);
+    let q8 = variants.iter().find(|v| v.quant_tag == "Q8_0").unwrap();
+    assert_eq!(q8.all_files.iter().filter(|f| f.starts_with("Q8_0/")).count(), 6);
+}
+
 #[tokio::test]
 #[ignore = "read-only HF API/tree check; requires CLUAIZ_PREVIEW_REPO"]
 async fn live_download_preview_metadata() {

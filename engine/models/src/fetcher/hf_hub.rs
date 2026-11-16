@@ -305,8 +305,23 @@ impl HuggingFaceHub {
     /// List all supported model variants (GGUF, ONNX) grouped into cohesive bundles with multi-shard support
     pub async fn list_variants(repo_id: &str) -> Result<Vec<HfVariant>, String> {
         let items = Self::list_raw_tree(repo_id).await?;
+        let mut variants = Self::variants_from_tree(&items);
+        super::package_bundler::complete_variants(repo_id, &items, &mut variants).await?;
 
-        let metadata_files = Self::companion_files(&items);
+        if variants.is_empty() {
+            return Err(format!(
+                "No supported model files (.gguf, .onnx) found in repository '{}'.",
+                repo_id
+            ));
+        }
+
+        Ok(variants)
+    }
+
+    /// The variants of a repository's file tree, before the repository's own companions are completed:
+    /// one per GGUF file or GGUF split set (all its shards, as llama.cpp's `-hf` takes them) and per ONNX model
+    pub fn variants_from_tree(items: &[HfTreeItem]) -> Vec<HfVariant> {
+        let metadata_files = Self::companion_files(items);
 
         let mut variants = Vec::new();
 
@@ -316,7 +331,7 @@ impl HuggingFaceHub {
         let mut mmproj_files: Vec<&str> = Vec::new();
         let mut mtp_files: Vec<&str> = Vec::new();
 
-        for item in &items {
+        for item in items {
             let lower = item.path.to_lowercase();
             if lower.ends_with(".gguf") {
                 if AssetBundler::is_mmproj_gguf(&lower) {
@@ -415,22 +430,13 @@ impl HuggingFaceHub {
         }
 
         // 2. Process ONNX models (Bundling .onnx.data companion binary shards & STT sub-graphs via SSOT)
-        variants.extend(Self::bundle_onnx_variants(&items, &metadata_files));
+        variants.extend(Self::bundle_onnx_variants(items, &metadata_files));
         // Companions and metadata were added after primary/shard sizing above.
         // Price the final selected file set before exposing any variant preview.
         for variant in &mut variants {
-            variant.size_gb = AssetBundler::bundle_size_gb(&items, &variant.all_files);
+            variant.size_gb = AssetBundler::bundle_size_gb(items, &variant.all_files);
         }
-        super::package_bundler::complete_variants(repo_id, &items, &mut variants).await?;
-
-        if variants.is_empty() {
-            return Err(format!(
-                "No supported model files (.gguf, .onnx) found in repository '{}'.",
-                repo_id
-            ));
-        }
-
-        Ok(variants)
+        variants
     }
 
     /// Bundles primary `.onnx` models with their matching STT sub-component graphs

@@ -70,8 +70,27 @@ impl UniversalQuantization {
         clean
     }
 
+    /// A `gguf-split` file name, `<prefix>-NNNNN-of-NNNNN.gguf`, as llama.cpp reads it
+    /// (`common/download.cpp`, `get_gguf_split_info`): the prefix with its folder, the index and the count.
+    /// Every shard of a set gives the same prefix and count, whatever its index.
+    pub fn gguf_split(path_str: &str) -> Option<(String, u32, u32)> {
+        let lower = path_str.to_lowercase();
+        let stem = lower.strip_suffix(".gguf")?;
+        let (rest, count) = stem.rsplit_once("-of-")?;
+        let (prefix, index) = rest.rsplit_once('-')?;
+        let digits = |s: &str| s.len() == 5 && s.bytes().all(|b| b.is_ascii_digit());
+        if prefix.is_empty() || !digits(index) || !digits(count) {
+            return None;
+        }
+        Some((prefix.to_string(), index.parse().ok()?, count.parse().ok()?))
+    }
+
     /// Checks if a file path is a multi-part shard and returns the common base name prefix.
+    /// A GGUF split set gives one base for all its shards (`prefix` and the shard count).
     pub fn extract_shard_base(path_str: &str) -> Option<String> {
+        if let Some((prefix, _, count)) = Self::gguf_split(path_str) {
+            return (count > 1).then(|| format!("{prefix}-of-{count:05}"));
+        }
         let lower = path_str.to_lowercase();
         for pat in Self::SHARD_PATTERNS {
             if let Some(pos) = lower.find(pat) {
@@ -178,7 +197,13 @@ impl UniversalQuantization {
             }
         }
 
-        // Strip multi-part sharding suffixes using SSOT patterns
+        // Strip multi-part sharding suffixes: any gguf-split index, then the SSOT patterns
+        if let Some((_, _, count)) = Self::gguf_split(file_name) {
+            let marker = format!("-of-{count:05}");
+            if let Some(end) = clean_name.to_lowercase().rfind(&marker) {
+                clean_name.truncate(end.saturating_sub(6));
+            }
+        }
         for pattern in Self::SHARD_PATTERNS {
             if let Some(idx) = clean_name.to_lowercase().find(pattern) {
                 clean_name = clean_name[..idx].to_string();
@@ -188,7 +213,15 @@ impl UniversalQuantization {
 
         let upper = clean_name.to_uppercase();
 
-        // 3. Priority candidates matching
+        // 3. A GGUF's tag is its last name part, as llama.cpp reads it (`[-.]([A-Z0-9_]+)$`), when that part
+        // is a quantization: `UD-Q4_K_XL`, `Q2_K_L`, `TQ2_0`, `PQ2_0`, `Q1_0` keep their full names
+        if path_str.to_lowercase().ends_with(".gguf") {
+            if let Some(tag) = Self::gguf_name_tag(&upper) {
+                return tag;
+            }
+        }
+
+        // 4. Priority candidates matching
         for &cand in Self::QUANT_CANDIDATES {
             if upper.contains(cand) {
                 return cand.to_string();
@@ -201,6 +234,24 @@ impl UniversalQuantization {
         } else {
             "GGUF".to_string()
         }
+    }
+
+    /// The quantization a GGUF name ends with (upper case, extension and split suffix removed), or None
+    /// when the last name part is not one: a known type prefix and its bit count, then `_` parts only
+    /// (`Q4_K_XL`, `IQ2_XXS`, `TQ1_0`, `BF16`, `MXFP4`), with `UD-` kept when the name has it.
+    fn gguf_name_tag(upper: &str) -> Option<String> {
+        let last = upper.rsplit(['-', '.']).next()?;
+        let kind = ["MXFP", "NVFP", "PTQ", "IQ", "TQ", "PQ", "BF", "FP", "Q", "F"]
+            .iter()
+            .find(|kind| last.starts_with(*kind))?;
+        let rest = &last[kind.len()..];
+        if !rest.starts_with(|c: char| c.is_ascii_digit())
+            || !rest.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+        {
+            return None;
+        }
+        let ud = upper.len() > last.len() + 3 && upper[..upper.len() - last.len()].ends_with("-UD-");
+        Some(if ud { format!("UD-{last}") } else { last.to_string() })
     }
 
     /// Authoritatively estimates numeric bit-depth (e.g. 1.0, 1.58, 4.0, 8.0, 16.0) from a quantization tag.
@@ -265,7 +316,7 @@ impl UniversalQuantization {
             3
         } else if q.contains("q3") || q.contains("iq3") {
             2
-        } else if q.contains("q2") || q.contains("iq2") || q.contains("iq1") || q.contains("1.58") || q.contains("1bit") {
+        } else if q.contains("q2") || q.contains("iq2") || q.contains("iq1") || q.contains("q1_") || q.contains("1.58") || q.contains("1bit") {
             1
         } else {
             0
@@ -291,6 +342,46 @@ impl UniversalQuantization {
 #[cfg(test)]
 mod tests {
     use super::UniversalQuantization;
+
+    #[test]
+    fn every_shard_of_a_split_set_has_the_same_base() {
+        let q = UniversalQuantization::extract_shard_base;
+        let first = q("BF16/Qwen3.8-Flash-Next-BF16-00001-of-00008.gguf");
+        assert!(first.is_some());
+        assert_eq!(q("BF16/Qwen3.8-Flash-Next-BF16-00002-of-00008.gguf"), first);
+        assert_eq!(q("BF16/Qwen3.8-Flash-Next-BF16-00008-of-00008.gguf"), first);
+        assert_ne!(q("Q8_0/Qwen3.8-Flash-Next-Q8_0-00002-of-00006.gguf"), first);
+        assert_eq!(q("Qwen3-8B-Q4_K_M.gguf"), None);
+        assert_eq!(q("Model-Q4_K_M-00001-of-00001.gguf"), None);
+        assert_eq!(UniversalQuantization::gguf_split("a/Model-Q8_0-00003-of-00006.gguf"), Some(("a/model-q8_0".into(), 3, 6)));
+    }
+
+    #[test]
+    fn a_gguf_tag_is_its_last_name_part() {
+        let t = UniversalQuantization::extract_quant_tag;
+        assert_eq!(t("Qwen3.8-Flash-Next-UD-Q4_K_XL-00001-of-00004.gguf"), "UD-Q4_K_XL");
+        assert_eq!(t("Kimi-K3-UD-TQ2_0-00001-of-00013.gguf"), "UD-TQ2_0");
+        assert_eq!(t("Kimi-K3-UD-Q1_0-00001-of-00011.gguf"), "UD-Q1_0");
+        assert_eq!(t("DeepSeek-R1-Distill-Qwen-32B-Q2_K_L.gguf"), "Q2_K_L");
+        assert_eq!(t("Ternary-Bonsai-2-4B-PQ2_0.gguf"), "PQ2_0");
+        assert_eq!(t("Ternary-Bonsai-2-4B-Q2_0.gguf"), "Q2_0");
+        assert_eq!(t("Qwen3.5-4B-IQ4_NL.gguf"), "IQ4_NL");
+        assert_eq!(t("Llama-3.2-3B-Instruct-Q4_K_M.gguf"), "Q4_K_M");
+        assert_eq!(t("gpt-oss-120b-MXFP4.gguf"), "MXFP4");
+        assert_eq!(t("Qwen3.5-4B-BF16.gguf"), "BF16");
+        assert_eq!(t("Qwen3-8B-UD-Q4_K_M.gguf"), "UD-Q4_K_M");
+        // No quantization at the end: the known names inside, as before
+        assert_eq!(t("model-q4f16.onnx"), "Q4F16");
+        assert_eq!(t("Bonsai-8B.gguf"), "GGUF");
+        assert_eq!(UniversalQuantization::quant_tier_of("UD-Q1_0"), 1);
+    }
+
+    #[test]
+    fn a_shard_keeps_its_quant_tag() {
+        let t = UniversalQuantization::extract_quant_tag;
+        assert_eq!(t("Q8_0/Qwen3.8-Flash-Next-Q8_0-00003-of-00006.gguf"), t("Qwen3.8-Flash-Next-Q8_0-00001-of-00006.gguf"));
+        assert_eq!(t("Qwen3.8-Flash-Next-BF16-00005-of-00008.gguf"), "BF16");
+    }
 
     #[test]
     fn parameters_keep_the_decimal_point() {
