@@ -191,7 +191,8 @@ jobs:
   # ── One release with every file that built, and their checksums ────────────────────────────────
   release:
     name: release v${{ inputs.version }}
-    if: always() && needs.core.result == 'success'
+    # A cancelled run publishes nothing: half a release with a partial SHA256SUMS breaks the installer
+    if: always() && needs.core.result == 'success' && !contains(needs.*.result, 'cancelled')
     needs: [core, gguf-drivers, onnx-drivers]
     runs-on: ubuntu-24.04
     permissions:
