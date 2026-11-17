@@ -216,6 +216,7 @@ Reference: [`docs/api/README.md`](docs/api/README.md) and [`docs/api/cep/README.
   ([details](docs/api/inference/chat_completions.md)).
 - **Execution policy:** `full_access` or `sandboxed` (default) per engine and per tool; actions outside the
   workspace ask for approval; destructive commands (disk wipes, `rm -rf /`) and credential paths are blocked.
+  This is an approval policy, not OS isolation: an allowed command runs with your user's access.
 - **API tokens** for every route (`cluaiz token`), and an **audit log** of every write, exec and admin call
   (parameters kept only as a hash).
 
@@ -434,9 +435,9 @@ flowchart TB
     CEP["cep/: Cluaiz Engine Protocol<br/>JSON-RPC 2.0 envelope, method registry,<br/>principals, approvals, tasks, discovery"]
 
     subgraph SERVICES["Request services"]
-        SEC["security/<br/>permissions, filesystem jail, audit"]
+        SEC["security/<br/>permissions, audit"]
         CTX["context/<br/>pure context planning: fit, compaction,<br/>memory cards, episodes, recall"]
-        AGT["agents/<br/>tools, skills, plugins, MCP client,<br/>tool search, sandboxed execution"]
+        AGT["agents/<br/>tools, skills, plugins, MCP client,<br/>tool search, policy-checked execution<br/>(no OS sandbox)"]
         MEDIA["engine/media<br/>bounded sources, image / audio / video<br/>decoding, resampling"]
     end
 
@@ -564,8 +565,8 @@ sequenceDiagram
 | `cluaiz-cep` | [`cep/`](cep/) | Cluaiz Engine Protocol: JSON-RPC 2.0 envelope, method registry, approvals, tasks, discovery. |
 | `cluaiz-ffi` | [`ffi/`](ffi/) | The engine as a C library: `cep_call` / `cep_free`, the same messages as `POST /v1/cep`. |
 | `cluaiz-context` | [`context/`](context/) | Pure context planning (no I/O): fitting, compaction policy, memory cards, episodes, recall. |
-| `cluaiz-agents` | [`agents/`](agents/) | Tools, skills, plugins, MCP client, tool search, sandboxed execution. |
-| `cluaiz-security` | [`security/`](security/) | Permission schema, filesystem jail, audit log. |
+| `cluaiz-agents` | [`agents/`](agents/) | Tools, skills, plugins, MCP client, tool search, policy-checked command execution (no OS sandbox). |
+| `cluaiz-security` | [`security/`](security/) | Permission schema, audit log. |
 | `cluaiz-runtime` | [`engine/runtime/`](engine/runtime/) | The single model host: load / unload, chat sessions, speech and embedding hosts, VRAM use. |
 | `cluaiz-plan` | [`engine/plan/`](engine/plan/) | Placement planner: GPU / split / MoE / CPU candidates, context size, KV type, buffers, learned margins. |
 | `cluaiz-hw` | [`engine/hardware/`](engine/hardware/) | Hardware discovery: CPU, RAM, GPU (NVML), disks; free memory measured live. |
