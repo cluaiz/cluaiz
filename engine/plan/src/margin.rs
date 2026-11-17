@@ -144,6 +144,18 @@ pub fn restore(mut measured: HashMap<String, f64>) {
     }
 }
 
+/// True when a load's VRAM measurement cannot be trusted: the plan needed more than was free, or
+/// the GPU was left nearly full. On Windows the driver then spills into shared system memory, the
+/// free VRAM drops by less than the model took, and the learned gap comes out falsely negative.
+pub fn looks_spilled(planned_gb: f64, free_before_gb: f64, free_after_gb: f64) -> bool {
+    planned_gb > free_before_gb || free_after_gb < DEVICE_RESERVE_MIN_GB
+}
+
+/// A learned gap no load can produce: the estimate cannot be too high by more than the whole GPU
+pub fn plausible_gap(gap_gb: f64, hardware: &SystemInfo) -> bool {
+    hardware.gpus.first().is_none_or(|g| gap_gb >= -g.vram_total_gb)
+}
+
 /// GB kept free for the desktop on this GPU once the model's real size is known. A GPU measured as
 /// used by nothing else (no display, no other process: a server GPU) keeps only the minimum, as no
 /// other app takes its memory after the load; when that is not known the desktop share stays.
@@ -165,6 +177,10 @@ pub fn describe(geometry: &ModelGeometry, settings: &ActiveUserSettings, hardwar
         .map(|c| format!("; estimate corrected by llama.cpp's dry run {:+.2} GB", c))
         .unwrap_or_default();
     match learned(geometry, settings) {
+        Some(gap) if !plausible_gap(gap, hardware) => format!(
+            "{:.0} MiB rule; a measured GPU pool of {:+.2} GB is ignored (larger than the GPU, from a load that spilled into shared memory){}",
+            buffer_gb * 1024.0, gap, corrected
+        ),
         Some(gap) => {
             let alone = hardware.gpus.first().is_some_and(|g| g.used_only_by_cluaiz == Some(true));
             let whose = if alone { " (GPU used by nothing else)" } else { "" };

@@ -485,8 +485,9 @@ impl EngineHost {
         if fell_back {
             // The planned placement did not fit: it needed at least all the VRAM that was free, so
             // the next plan for this model and settings leaves room for that and does not fail again
+            // A plan larger than the free VRAM (user settings) says nothing: its gap would be negative
             let free = hw.gpus.first().map_or(0.0, |g| g.vram_available_gb);
-            if cluaiz_plan::margin::record(&geometry, settings, free - plan.vram_budget_gb) {
+            if plan.vram_budget_gb <= free && cluaiz_plan::margin::record(&geometry, settings, free - plan.vram_budget_gb) {
                 crate::vram_use::save();
             }
             tracing::warn!(
@@ -530,6 +531,12 @@ impl EngineHost {
             );
             if vram_delta < 0.05 {
                 tracing::warn!("⚠️ [EngineHost] GPU layers requested but VRAM did not change: is the CUDA backend compiled in?");
+            } else if cluaiz_plan::margin::looks_spilled(plan.vram_budget_gb, pre_free_vram, post_free_vram) {
+                // The free VRAM did not drop by what the model took (shared memory): not learned
+                tracing::warn!(
+                    "⚠️ [EngineHost] The GPU is full after the load ({:.2} GB free, plan {:.2} GB, {:.2} GB was free): it may be using shared system memory; this load's VRAM is not learned",
+                    post_free_vram, plan.vram_budget_gb, pre_free_vram
+                );
             } else {
                 // What the model took beyond the estimate (llama.cpp buffers, the GPU pool after the
                 // full-batch warmup): the planner adds it next time instead of a fixed margin
@@ -585,6 +592,9 @@ impl EngineHost {
             return;
         }
         let free_now = cluaiz_hw::HardwareProber::with_live_memory().gpus.first().map_or(0.0, |g| g.vram_available_gb);
+        if cluaiz_plan::margin::looks_spilled(gpu.planned_gb, gpu.free_before_gb, free_now) {
+            return;
+        }
         let gap = (gpu.free_before_gb - free_now) - gpu.planned_gb;
         if cluaiz_plan::margin::record_key(&gpu.key, gap) {
             tracing::info!("📏 [EngineHost] The loaded model now takes {:+.2} GB over its estimate; learned for its next load", gap);

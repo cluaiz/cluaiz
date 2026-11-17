@@ -61,22 +61,21 @@ pub fn vram_buffer_options(settings: &ActiveUserSettings) -> Vec<f64> {
 /// VRAM buffer candidates for a model: the user's value; else, once the model was measured on
 /// this machine, what it really took over the estimate plus the desktop reserve
 /// ([`crate::margin`]); else the BUFFER rules. A measured buffer is negative when the estimate was
-/// higher than what the model took.
+/// higher than what the model took. A measurement no load can produce (below minus the whole GPU,
+/// from a load that spilled into shared memory) is ignored.
 pub fn model_buffer_options(geometry: &ModelGeometry, hardware: &SystemInfo, settings: &ActiveUserSettings) -> Vec<f64> {
-    match (settings.optimization.custom_vram_buffer_gb, crate::margin::learned(geometry, settings)) {
+    let learned = crate::margin::learned(geometry, settings).filter(|gap| crate::margin::plausible_gap(*gap, hardware));
+    match (settings.optimization.custom_vram_buffer_gb, learned) {
         (None, Some(gap)) => vec![gap + crate::margin::reserve_gb(hardware)],
         _ => vram_buffer_options(settings),
     }
 }
 
-/// Bytes a placement may use of `free` with `buffer_gb` kept back (a negative buffer corrects an
-/// estimate that was measured too high)
+/// Bytes a placement may use of `free` with `buffer_gb` kept back. Never more than `free`: a
+/// negative buffer (an estimate measured too high) only removes the margin, it does not add VRAM
+/// the GPU does not have.
 fn usable_bytes(free: u64, buffer_gb: f64) -> u64 {
-    if buffer_gb >= 0.0 {
-        free.saturating_sub(gib_to_bytes(buffer_gb))
-    } else {
-        free.saturating_add(gib_to_bytes(-buffer_gb))
-    }
+    free.saturating_sub(gib_to_bytes(buffer_gb.max(0.0)))
 }
 
 /// RAM Cluaiz may use: free RAM minus 5% of total RAM (at most [`RAM_RESERVE_MAX_GB`]), or free RAM
@@ -964,6 +963,27 @@ pub(crate) mod tests {
         crate::margin::record(&g2, &s, -0.40);
         let buffer = model_buffer_options(&g2, &hardware, &s)[0];
         assert!((buffer - (-0.40 + 0.20)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_gap_from_a_spilled_load_never_plans_more_vram_than_the_gpu_has() {
+        let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
+        // A size no other test uses: the measurements are process-wide
+        let g = qwen3_like(2.3321);
+        let hardware = hw(2.0, 8.0);
+        // A negative buffer only removes the margin: usable VRAM stays within the free VRAM
+        assert_eq!(usable_bytes(gib_to_bytes(2.0), -0.30), gib_to_bytes(2.0));
+        assert_eq!(usable_bytes(gib_to_bytes(2.0), 0.50), gib_to_bytes(1.5));
+        // A gap larger than the 4 GB GPU (a load that spilled into shared memory) is ignored
+        crate::margin::record(&g, &s, -4.96);
+        assert_eq!(model_buffer_options(&g, &hardware, &s), vram_buffer_options(&s));
+        let plan = Planner::create_plan("m", &g, &hardware, &s);
+        assert!(plan.vram_budget_gb <= 2.0, "{}", plan.explanation);
+        assert!(crate::margin::describe(&g, &s, &hardware, 1.0).contains("ignored"));
+        // A load that left the GPU full, or planned more than was free, is not learned from
+        assert!(crate::margin::looks_spilled(3.0, 2.0, 0.5));
+        assert!(crate::margin::looks_spilled(1.5, 2.0, 0.05));
+        assert!(!crate::margin::looks_spilled(1.5, 2.0, 0.4));
     }
 
     #[test]
