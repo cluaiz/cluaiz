@@ -20,6 +20,11 @@ pub const DEVICE_RESERVE_SHARE: f64 = 0.05;
 pub const DEVICE_RESERVE_MIN_GB: f64 = 0.15;
 pub const DEVICE_RESERVE_MAX_GB: f64 = 1.0;
 
+/// What the GPU pool may still grow after the load of a model not measured yet, once llama.cpp's dry
+/// run has corrected the estimate (model + context + compute buffers). Measured pool gaps on the
+/// 4 GB laptop: 0.02-0.23 GB (run 20)
+pub const UNMEASURED_POOL_GB: f64 = 0.30;
+
 /// Key prefix of a dry-run correction. It is relative to the estimate, so a change to the estimate
 /// (v2: hybrid models count KV only for attention layers) needs new ones: older ones are dropped
 const CORRECTION: &str = "proj2:";
@@ -168,6 +173,13 @@ pub fn reserve_gb(hardware: &SystemInfo) -> f64 {
     })
 }
 
+/// Gap for a model not measured on this GPU yet whose estimate llama.cpp's dry run corrected: the
+/// desktop reserve plus [`UNMEASURED_POOL_GB`], at most llama.cpp's own 1024 MiB rule. 0.50 GB on a
+/// 4 GB GPU, 1.0 GB from 12 GB up
+pub fn card_gap_gb(hardware: &SystemInfo) -> f64 {
+    (reserve_gb(hardware) + UNMEASURED_POOL_GB).min(DEVICE_RESERVE_MAX_GB)
+}
+
 /// Where the VRAM buffer of a plan comes from, for the plan report
 pub fn describe(geometry: &ModelGeometry, settings: &ActiveUserSettings, hardware: &SystemInfo, buffer_gb: f64) -> String {
     if settings.optimization.custom_vram_buffer_gb.is_some() {
@@ -178,14 +190,18 @@ pub fn describe(geometry: &ModelGeometry, settings: &ActiveUserSettings, hardwar
         .unwrap_or_default();
     match learned(geometry, settings) {
         Some(gap) if !plausible_gap(gap, hardware) => format!(
-            "{:.0} MiB rule; a measured GPU pool of {:+.2} GB is ignored (larger than the GPU, from a load that spilled into shared memory){}",
-            buffer_gb * 1024.0, gap, corrected
+            "{:.2} GB as for a model not measured yet; a measured GPU pool of {:+.2} GB is ignored (larger than the GPU, from a load that spilled into shared memory){}",
+            buffer_gb, gap, corrected
         ),
         Some(gap) => {
             let alone = hardware.gpus.first().is_some_and(|g| g.used_only_by_cluaiz == Some(true));
             let whose = if alone { " (GPU used by nothing else)" } else { "" };
             format!("measured: GPU pool {:+.2} GB + {:.2} GB reserve{}{}", gap, reserve_gb(hardware), whose, corrected)
         }
+        None if correction(geometry, settings).is_some() && !hardware.gpus.is_empty() => format!(
+            "card-sized gap: {:.2} GB reserve + {:.2} GB for the GPU pool, model not measured on this machine yet{}",
+            reserve_gb(hardware), UNMEASURED_POOL_GB, corrected
+        ),
         None => format!("{:.0} MiB rule, model not measured on this machine yet{}", buffer_gb * 1024.0, corrected),
     }
 }

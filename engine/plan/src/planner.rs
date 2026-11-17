@@ -62,11 +62,14 @@ pub fn vram_buffer_options(settings: &ActiveUserSettings) -> Vec<f64> {
 /// this machine, what it really took over the estimate plus the desktop reserve
 /// ([`crate::margin`]); else the BUFFER rules. A measured buffer is negative when the estimate was
 /// higher than what the model took. A measurement no load can produce (below minus the whole GPU,
-/// from a load that spilled into shared memory) is ignored.
+/// from a load that spilled into shared memory) is ignored. A model not measured yet whose estimate
+/// llama.cpp's dry run corrected gets a gap sized by the card ([`crate::margin::card_gap_gb`]).
 pub fn model_buffer_options(geometry: &ModelGeometry, hardware: &SystemInfo, settings: &ActiveUserSettings) -> Vec<f64> {
     let learned = crate::margin::learned(geometry, settings).filter(|gap| crate::margin::plausible_gap(*gap, hardware));
+    let corrected = crate::margin::correction(geometry, settings).is_some() && !hardware.gpus.is_empty();
     match (settings.optimization.custom_vram_buffer_gb, learned) {
         (None, Some(gap)) => vec![gap + crate::margin::reserve_gb(hardware)],
+        (None, None) if corrected => vec![crate::margin::card_gap_gb(hardware)],
         _ => vram_buffer_options(settings),
     }
 }
@@ -436,6 +439,35 @@ impl Planner {
             candidates.push(c);
         }
 
+        // STEP 2b (MoE) - when the attention of every layer does not fit: every expert in RAM, output head +
+        // attention/shared weights and KV of as many blocks as fit on the GPU, from the last one back
+        // (llama.cpp -ngl N -ncmoe all). Listed only when the full MoE split does not fit and a block does.
+        if gpu_allowed && is_moe && n_layers > 1 && over_vram(&place(-1, n_layers, true)) > 0 {
+            let fitting = (2..=n_layers as i32).rev().find(|&ngl| over_vram(&place(ngl, n_layers, true)) == 0);
+            if let Some(ngl) = fitting {
+                let p = place(ngl, n_layers, true);
+                let blocks = ngl as usize - 1;
+                candidates.push(Self::candidate(
+                    "MoE partial split", PlacementTier::MoeSplit, ngl, n_layers as u32, true, ctx, &p, ram_budget, 0, true,
+                    format!("output head + attention/shared and KV of {} / {} blocks on GPU ({:.2} GB), every expert in RAM ({:.2} GB)",
+                        blocks, n_layers, gib(p.vram), gib(experts)),
+                ));
+            }
+        }
+
+        // CTX rule 5B / owner rule 3 - all weights on GPU, whole KV in RAM (llama.cpp offload_kqv = 0;
+        // attention runs on CPU), before any block leaves the GPU. Auto lists it only when the weights fit
+        // and the KV is what does not (Auto first tried a smaller KV and context on the GPU).
+        let kv_ram = place(-1, 0, false);
+        let kv_is_the_miss = over_vram(&kv_ram) == 0 && over_vram(&place(-1, 0, true)) > 0;
+        if gpu_allowed && (opt.context_setting() != ContextSetting::Auto || kv_is_the_miss) {
+            candidates.push(Self::candidate(
+                "Weights GPU, KV RAM", PlacementTier::Hybrid, -1, 0, false, ctx, &kv_ram, ram_budget, over_vram(&kv_ram), false,
+                format!("weights {:.2} + buffers {:.2} on GPU, KV {:.2} GB in RAM (attention on CPU, slower as the chat grows)",
+                    gib(w.full_gpu()), gib(gpu_logits), gib(kv_total)),
+            ));
+        }
+
         // STEP 2 - Split: output head + logits on GPU, then whole blocks (with their KV) from the last one back.
         // At most n_layers - 1 blocks (all blocks is Full GPU). llama.cpp n_gpu_layers = blocks + 1 (output head).
         if gpu_allowed && n_layers > 1 {
@@ -446,17 +478,6 @@ impl Planner {
                 over_vram(&p), is_moe,
                 format!("{} / {} blocks + output head on GPU ({:.2} GB), {} blocks in RAM",
                     blocks, n_layers, gib(p.vram), n_layers - blocks),
-            ));
-        }
-
-        // CTX rule 5B - all weights on GPU, whole KV in RAM (llama.cpp offload_kqv = 0; attention runs on CPU).
-        // Only for Custom/Max: Auto already sized the context to the GPU.
-        if gpu_allowed && opt.context_setting() != ContextSetting::Auto {
-            let p = place(-1, 0, false);
-            candidates.push(Self::candidate(
-                "Weights GPU, KV RAM", PlacementTier::Hybrid, -1, 0, false, ctx, &p, ram_budget, over_vram(&p), false,
-                format!("weights {:.2} + buffers {:.2} on GPU, KV {:.2} GB in RAM (attention on CPU, slower as the chat grows)",
-                    gib(w.full_gpu()), gib(gpu_logits), gib(kv_total)),
             ));
         }
 
@@ -963,6 +984,51 @@ pub(crate) mod tests {
         crate::margin::record(&g2, &s, -0.40);
         let buffer = model_buffer_options(&g2, &hardware, &s)[0];
         assert!((buffer - (-0.40 + 0.20)).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_moe_model_not_measured_stays_on_the_gpu_of_a_small_card() {
+        let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
+        // Sizes no other test uses: the measurements are process-wide
+        let mut corrected = moe_like();
+        corrected.file_size_bytes = 7_000_001;
+        let mut plain = moe_like();
+        plain.file_size_bytes = 7_000_002;
+        let hardware = hw(1.3, 8.0);
+        // Not measured, no dry run: llama.cpp's 1024 / 512 MiB rule as before
+        assert_eq!(model_buffer_options(&plain, &hardware, &s), vram_buffer_options(&s));
+        // Dry run done: a gap sized by the 4 GB card (0.20 reserve + 0.30 pool)
+        crate::margin::record_correction(&corrected, &s, 0.0);
+        let gap = model_buffer_options(&corrected, &hardware, &s);
+        assert_eq!(gap.len(), 1);
+        assert!((gap[0] - 0.50).abs() < 1e-9, "{:?}", gap);
+        // Attention of every layer does not fit: part of it goes on the GPU, never CPU only
+        let plan = Planner::create_plan("m", &corrected, &hardware, &s);
+        assert_ne!(plan.selected_tier, PlacementTier::CpuOnly, "{}", plan.explanation);
+        assert!(plan.explanation.starts_with("MoE partial split"), "{}", plan.explanation);
+        assert!(plan.n_gpu_layers > 1 && plan.n_cpu_moe == 30, "{}", plan.explanation);
+        assert!(plan.vram_budget_gb <= 1.3 - 0.50 + 1e-9, "{}", plan.explanation);
+        // A 24 GB card keeps llama.cpp's 1024 MiB
+        let mut big = hw(20.0, 64.0);
+        big.gpus[0].vram_total_gb = 24.0;
+        assert_eq!(crate::margin::card_gap_gb(&big), 1.0);
+    }
+
+    #[test]
+    fn auto_puts_the_kv_in_ram_only_when_the_weights_fit_and_the_kv_does_not() {
+        let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
+        // A size no other test uses: the measurements are process-wide. Dry run done: 0.50 GB card gap
+        let g = qwen3_like(2.3323);
+        crate::margin::record_correction(&g, &s, 0.0);
+        let fixed = g.weights.full_gpu() + g.logits_buffer_bytes(512);
+        // The weights fit, not even the smallest Auto KV does
+        let plan = Planner::create_plan("m", &g, &hw(bytes_to_gib(fixed) + 0.50 + 0.001, 8.0), &s);
+        assert!(!plan.kv_offload, "{}", plan.explanation);
+        assert_eq!(plan.n_gpu_layers, -1, "{}", plan.explanation);
+        // Plenty of VRAM: Full GPU, no KV-in-RAM candidate
+        let full = Planner::create_plan("m", &g, &hw(3.9, 8.0), &s);
+        assert_eq!(full.selected_tier, PlacementTier::GpuOnly, "{}", full.explanation);
+        assert!(full.candidates.iter().all(|c| c.name != "Weights GPU, KV RAM"));
     }
 
     #[test]
