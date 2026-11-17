@@ -239,7 +239,7 @@ pub async fn execute_streaming_loop(
             0.0
         };
 
-        if ctx.send_telemetry {
+        if ctx.send_telemetry || ctx.include_usage {
             let prompt_tok_est = match &context_report {
                 Some(report) => report.prompt_tokens,
                 None if ctx.user_prompt_chars + ctx.history_chars + ctx.system_prompt_chars > 0 => {
@@ -260,7 +260,8 @@ pub async fn execute_streaming_loop(
                 "tokens_per_second": format!("{:.2}", tps).parse::<f64>().unwrap_or(0.0)
             });
 
-            // 🌐 Real-Time Context & Memory Telemetry Breakdown
+            // Context and memory breakdown: only with the owner's stream telemetry setting
+            if ctx.send_telemetry {
             let mut active_ids = req_session_id.as_deref()
                 .map(cluaiz_agents::ToolsEngine::get_active_tool_ids_for_session)
                 .unwrap_or_default();
@@ -289,6 +290,7 @@ pub async fn execute_streaming_loop(
                 usage_json["model_header_info"] = json!({
                     "active_models": loaded_models
                 });
+            }
             }
 
             let telemetry_chunk = json!({

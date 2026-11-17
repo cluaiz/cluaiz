@@ -23,6 +23,12 @@ params:
     default: "false"
     allowed: "`true`, `false`"
     desc: "Whether to stream tokens incrementally via Server-Sent Events (SSE)."
+  - name: "stream_options"
+    type: "Object"
+    req: false
+    default: "null"
+    allowed: "`{\"include_usage\": true}`"
+    desc: "With `stream: true`, `include_usage: true` adds a last chunk with empty `choices` and the `usage` object, as OpenAI does."
   - name: "return_progress"
     type: "Boolean"
     req: false
@@ -356,6 +362,7 @@ flowchart LR
 | **`messages`** | Array | **Yes** | - | Array of message objects | Full dialogue history. Content supports plain text or arrays (`text`, `image_url`, `audio_url`, `input_audio`, `file_url`, `video_url`). `file_url` uses native document text or rendered PDF pages for a selected image-capable package with projector. `video_url` uses packaged decoding to timestamped image frames; optional `video_url.include_audio` defaults to false and requires selected-model audio support. See the [media route reference](../README.md). |
 | **`model`** | String | No | `"auto"` | Model ID or `"auto"` | Model to use. `"auto"` uses the active model loaded in the chat or vision slot. |
 | **`stream`** | Boolean | No | `false` | `true`, `false` | Whether to stream tokens incrementally via Server-Sent Events (SSE). |
+| **`stream_options`** | Object | No | - | `{"include_usage": true}` | With `stream: true`, `include_usage: true` adds a last chunk with empty `choices` and the `usage` object (as OpenAI does). The owner's stream telemetry setting also turns this chunk on and adds the context breakdown to it. |
 | **`return_progress`** | Boolean | No | `false` | `true`, `false` | With `stream:true`, adds separate `event: cluaiz.progress` observations starting before model/source preparation. Completion chunks remain unchanged. Ignored for non-streaming responses. |
 | **`temperature`** | Float | No | `0.7` | `0.0 - 2.0` | Sampling temperature. Lower values (0.0) force factual logic; higher values increase variety. |
 | **`max_tokens`** | Integer | No | until the model ends or the context is full (`2048` with attachments) | $\ge 1$ | Maximum number of completion tokens to generate. Also the room kept free for the answer when the history is fitted; see [Context window](#-context-window--context-shifting). |
@@ -440,7 +447,7 @@ After projector loading, the incremental request-RAM check returns an error cont
 | **Custom Integer** (e.g. `256`, `768`, `2048`) | Exact Count | Clamped to `n_ctx` and `max_tokens.saturating_sub(32)` to guarantee answer tokens. |
 
 ### Token Usage Telemetry
-Responses include explicit reasoning token counts inside `completion_tokens_details`:
+The usage object (streamed: in the last chunk when `stream_options.include_usage` is `true` or stream telemetry is on) includes reasoning token counts inside `completion_tokens_details`:
 ```json
 {
 "usage": {

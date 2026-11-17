@@ -36,6 +36,9 @@ pub struct ExternalChatRequest {
     pub messages: Vec<ExternalMessage>,
     #[serde(default)]
     pub stream: bool,
+    /// OpenAI `stream_options`; `include_usage: true` asks for the final usage chunk
+    #[serde(default)]
+    pub stream_options: Option<serde_json::Value>,
     /// Opt-in named SSE events alongside the unchanged completion chunks.
     #[serde(default)]
     pub return_progress: bool,

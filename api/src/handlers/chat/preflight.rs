@@ -89,6 +89,8 @@ pub struct PreparedChatContext {
     pub skip_reasoning: Arc<std::sync::atomic::AtomicBool>,
     pub initial_user_query: String,
     pub send_telemetry: bool,
+    /// The client sent `stream_options.include_usage: true`: send the usage chunk at the end
+    pub include_usage: bool,
     /// When the model was ready (after any load): TTFT and total time count from here
     pub start_time: std::time::Instant,
     /// Time spent loading the model for this request (0 when it was already loaded)
@@ -164,6 +166,7 @@ impl PreparedChatContext {
         super::background::ensure_started(state);
         let schema = cluaiz_security::PermissionSchema::load();
         let send_telemetry = schema.stream_telemetry;
+        let include_usage = wants_usage(request.stream_options.as_ref());
 
         // The selected chat model owns its multimodal inputs; an image does not substitute a slot model.
         let target_slot = "chat_slot";
@@ -1359,6 +1362,7 @@ impl PreparedChatContext {
             )),
             initial_user_query,
             send_telemetry,
+            include_usage,
             start_time,
             model_load_ms,
         })
@@ -1500,6 +1504,14 @@ pub fn media_continuation(
 }
 
 /// Puts `block` in front of a message's text (as a first text part for multi-part content)
+/// `stream_options.include_usage` as OpenAI defines it: only `true` asks for the usage chunk
+fn wants_usage(stream_options: Option<&serde_json::Value>) -> bool {
+    stream_options
+        .and_then(|options| options.get("include_usage"))
+        .and_then(serde_json::Value::as_bool)
+        == Some(true)
+}
+
 /// The `context_report` of a request: the tools chosen at the start and the tool meta-tool
 /// calls made while answering
 pub fn context_report(ctx: &PreparedChatContext, tool_events: &[serde_json::Value]) -> serde_json::Value {
@@ -1583,4 +1595,19 @@ pub fn record_turn(
     // Every event the app has not had: this request's and answer's, and those added since the
     // last answer (an idle-time card, a note)
     external.then(|| json!(cluaiz_agents::memory::external::mem_store().undelivered(chat)))
+}
+
+#[cfg(test)]
+mod usage_option_tests {
+    use super::wants_usage;
+    use serde_json::json;
+
+    #[test]
+    fn only_include_usage_true_asks_for_the_usage_chunk() {
+        assert!(wants_usage(Some(&json!({ "include_usage": true }))));
+        assert!(!wants_usage(Some(&json!({ "include_usage": false }))));
+        assert!(!wants_usage(Some(&json!({ "include_usage": "true" }))));
+        assert!(!wants_usage(Some(&json!({}))));
+        assert!(!wants_usage(None));
+    }
 }
