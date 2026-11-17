@@ -47,7 +47,7 @@ On battery power or thermal limits, laptop CPU and GPU power states are capped, 
 
 ## 3. Out of Memory (OOM) Crashes
 
-If a model execution requests more memory than physical memory (RAM + swap / VRAM), the Operating System will kill the engine daemon (`cluaizdb` or `cluaiz serve`).
+If a model execution requests more memory than physical memory (RAM + swap / VRAM), the Operating System will kill the Engine process (`cluaiz serve`, `cluaiz run` or `cluaiz agent`).
 
 * **Mitigation:**
   * Configure `vram_limit_gb` in your hardware profile to reserve at least 1.5GB for host OS display operations.

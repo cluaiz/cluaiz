@@ -81,12 +81,15 @@ in our tests they matched worse than word matching.
 
 ## 6. Not built
 
-- No WASM or OS sandbox for plugins: a plugin runs as a normal child process
-  (`agents/src/plugins/executor.rs`).
+- No sandbox for plugins that are not WebAssembly: a `.dll`, `.exe`, `.so`, `.py` or `.js` plugin runs
+  as a normal child process (`agents/src/plugins/executor.rs`). WebAssembly plugins run inside the
+  Engine with an instruction limit, a memory limit and network only to declared hosts
+  (`agents/src/plugins/wasm.rs`).
+- No OS sandbox for the terminal agent's commands: they are checked against the permission policy and
+  run with a cleared environment and a timeout (`agents/src/execution/terminal_runner.rs`).
 - Some `permission.json` settings do nothing (`wasm_firewall`, `vectorize_user_input`,
   `vectorize_ai_response`, `enable_kvcache`, `vector_models.vision`, `vector_models.audio`). They are
   kept for existing files and the App, and CEP `config.get` lists them as `engine.unused_fields`.
-- The API chat and the terminal agent have separate tool loops.
 
 ## More
 

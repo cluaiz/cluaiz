@@ -55,7 +55,7 @@ file.
 ## Export format (for apps and their databases)
 
 [`memory.export`](memory.export.md) and `memory_events` use the same event shape, so an app can
-keep a chat in any store (files, SQLite, cluaizdb, …) on its side; the Engine itself never links
+keep a chat in any store (files, SQLite, another database, …) on its side; the Engine itself never links
 a database.
 
 ```json
