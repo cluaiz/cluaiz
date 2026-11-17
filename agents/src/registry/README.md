@@ -8,7 +8,7 @@
   tool needs the user's approval. Tool search, the prompt compiler, the agent, the API chat, the
   installer and the CEP `tools.*` methods all read it.
 - **Platform Support:** Windows, Linux, macOS (JSON file and folder scan).
-- **Reusability Level:** Single source of truth for installed tools inside `cluaiz-agents`.
+- **Reusability Level:** The one record of installed tools inside `cluaiz-agents`.
 
 ## Architectural Flow
 

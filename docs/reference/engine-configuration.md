@@ -8,7 +8,7 @@ The Engine keeps its settings in JSON files in the config folder: `~/.cluaiz/con
 | `settings.json` | Load and speed settings, samplers, ONNX, media limits, chat memory, context runtime | `cluaiz config get/set/reset`, CEP `config.get` / `config.set` | below |
 | `permission.json` | Port, host, API auth and tokens, security mode, default models | `cluaiz permission`, `cluaiz token`, `cluaiz model set-chat/set-vector` | [permission.json](../engine/permission.md) |
 | `hardware_profile.json` | The saved hardware probe (written by the Engine) | `cluaiz calibrate` | [hardware profile](../engine/system_control.md) |
-| `vram_margins.json` | What models really took on this GPU (written by the Engine) | — | [two runtimes](../engine/dual_engine_architecture.md) |
+| `vram_margins.json` | What models really took on this GPU (written by the Engine) | - | [two runtimes](../engine/dual_engine_architecture.md) |
 | `model_registry.json` | Installed models | `cluaiz pull`, `cluaiz rm` | [model downloading](../get-started/model-downloading.md) |
 | `tools_registry.json` | Installed skills, plugins and MCP servers | `cluaiz skill/plugin/mcp …` | [commands](../cmd/commands_reference.md) |
 

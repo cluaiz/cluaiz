@@ -8,7 +8,7 @@ params:
   - name: "source"
     type: "String or String[]"
     req: true
-    default: "—"
+    default: "-"
     allowed: "Non-empty authorized path, allowed HTTP(S) URL, data URI, or ordered non-empty array"
     desc: "Paths are on the Engine computer. Browser uploads must contain real file bytes."
   - name: "model"
@@ -79,7 +79,7 @@ errors:
 
 # Document Ingest API
 
-`POST /v1/ingest` — direct JSON request and final JSON response. No CEP envelope or task polling.
+`POST /v1/ingest`, direct JSON request and final JSON response. No CEP envelope or task polling.
 
 Reads documents/images and returns text chunks, selected-model output, or vectors. **Model selection is optional.** Without a model the engine uses native document/OCR providers. With a model it runs that installed package through the existing inference owner.
 
@@ -134,8 +134,8 @@ A client can expose two controls: **Model** (including Native extraction) and **
 | `vision_settings.use_vision` | boolean | `true` for selected vision model | Images/PDF pages go to the selected vision encoder. False uses native extraction first, then the selected model reads that text. |
 | `vision_settings.system_instruction` | string | Packaged extraction instruction | Overrides the selected generative model's extraction instruction; for example request dates/amounts present in the document. Not an embedding control. |
 | `vision_settings.max_tokens` | positive integer | `2048` (shared chat generation default) | Output-token cap for each image/page/model text generation. A cap can leave partial text. |
-| `vision_settings.detail_level` | — | — | Not implemented; rejected rather than ignored. |
-| `namespace` | — | — | Unknown field; rejected. This route does not save a persistent vector index. |
+| `vision_settings.detail_level` | - | - | Not implemented; rejected rather than ignored. |
+| `namespace` | - | - | Unknown field; rejected. This route does not save a persistent vector index. |
 
 Unknown fields are rejected. There is no per-request `keep_alive` or `device` field on ingest. Model owners use the engine's existing settings, admission and cached residency; a model may stay resident until replaced/unloaded/shutdown. This route does not execute chat tools or create a persistent chat session.
 

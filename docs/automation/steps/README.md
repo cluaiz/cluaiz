@@ -31,7 +31,7 @@ A step is a JSON object (a YAML mapping) with **exactly one kind key** and any o
 | `approve` | [approve](approve.md) | A person's yes or no | `{ approved, by, note }` |
 | `set` | [set](set.md) | Values into `vars` | The values set |
 | `run` | [run](run.md) | Another flow | Its outputs |
-| `emit`, `return`, `fail` | [emit, return, fail](emit-return-fail.md) | Send an event; end with outputs; end with an error | — |
+| `emit`, `return`, `fail` | [emit, return, fail](emit-return-fail.md) | Send an event; end with outputs; end with an error | - |
 
 ## How one step runs
 
@@ -61,16 +61,16 @@ flowchart TD
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `id` | string | Generated | 1–64 characters: letters, digits, `_`; starts with a letter. Unique in the whole flow, branches included. Needed when another step reads the step's output or waits for it |
-| `name` | string | — | Text for people: run records, `flows.explain`, applications |
-| `when` | expression | — | Checked just before the step would start. False: the step's status is `skipped`, its output `null`, and the steps after it go on |
+| `name` | string | - | Text for people: run records, `flows.explain`, applications |
+| `when` | expression | - | Checked just before the step would start. False: the step's status is `skipped`, its output `null`, and the steps after it go on |
 | `needs` | list of ids | The step above | Steps this one waits for. See [Order](#order-and-needs) |
-| `with` | any | — | The step's input, with [references](../references.md) resolved just before it starts |
+| `with` | any | - | The step's input, with [references](../references.md) resolved just before it starts |
 | `output` | any | The whole result | What is kept as `steps.<id>.output`: a reference into the result (`"${{ result.items }}"`) or a new shape (`{ count: "${{ result.total }}" }`). `result` is the step's raw result, only inside `output` |
 | `retry` | object | No retries | See [Errors and retries](../errors.md#retry) |
 | `timeout` | duration | The kind's default | The step fails with kind `timeout` after this long. Waiting steps use their own `timeout` |
 | `on_error` | `stop`, `continue`, list of steps | `stop` | See [Errors and retries](../errors.md#on_error) |
-| `approve_before` | string | — | A question; the step waits for a person's yes before it starts. See [approve](approve.md) |
-| `idempotency_key` | string with references | — | A step with this key that already succeeded (in any run of this flow, kept for `dedupe_for` of the flow's longest trigger, at least 24 hours) is not run again; its earlier output is used |
+| `approve_before` | string | - | A question; the step waits for a person's yes before it starts. See [approve](approve.md) |
+| `idempotency_key` | string with references | - | A step with this key that already succeeded (in any run of this flow, kept for `dedupe_for` of the flow's longest trigger, at least 24 hours) is not run again; its earlier output is used |
 | `secret_output` | boolean | `false` | The output is masked in records and never shown in `flows.run_get` |
 
 ## Order and `needs`

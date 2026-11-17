@@ -2,7 +2,7 @@
 method: "workspace.forget"
 transport: "POST /v1/cep"
 category: "filesystem"
-category_title: "Filesystem & Security Jail"
+category_title: "Filesystem & Workspace"
 group: "workspace"
 summary: "Deletes a fact of the project's memory (`.agents/memory/<name>.md`) the user wants gone"
 scope: "write"

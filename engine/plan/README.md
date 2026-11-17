@@ -1,8 +1,8 @@
-# 🎯 Cluaiz Execution Planner (`engine/plan`)
+# Cluaiz Execution Planner (`engine/plan`)
 
 Pure mathematical negotiation and placement engine for Cluaiz.
 
-## 📐 Architecture
+## Architecture
 
 ```mermaid
 graph TD
@@ -17,7 +17,7 @@ graph TD
     Media --> Cost["CPU/GPU projector estimate or resource error"]
 ```
 
-## 📦 Components
+## Components
 
 | Module | Responsibility |
 |---|---|

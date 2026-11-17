@@ -1,12 +1,13 @@
 # Welcome to cluaiz Documentation
 
-`cluaiz` is a local AI engine: it runs language, speech and embedding models on your own
-computer, with a terminal coding agent, an OpenAI-compatible HTTP API and its own JSON-RPC
-protocol (CEP).
+Cluaiz is the AI engine where models, voice, vision, memory, tools, agents and workflows work as one.
+It runs language, speech, vision and embedding models on your own computer or server, can use cloud
+providers through the same API, and comes with a terminal coding agent, an OpenAI-compatible HTTP API
+and its own JSON-RPC protocol (CEP).
 
 ---
 
-## 🚀 Install
+## Install
 
 No containers and no Python environment are needed.
 
@@ -34,7 +35,7 @@ cluaiz serve               # HTTP API on port 8000
 
 ---
 
-## 🏛️ How a request runs
+## How a request runs
 
 ```mermaid
 sequenceDiagram
@@ -56,22 +57,22 @@ The CLI and the agent load models in their own process; they do not need the ser
 
 ---
 
-## 🗺️ Documentation map
+## Documentation map
 
-### 📖 1. Start
-*   **[Introduction to cluaiz](/docs/get-started/introduction)** — What the Engine is made of and where your data lives.
-*   **[Quickstart Guide](/docs/get-started/quickstart)** — Install, first model, building from source.
+### 1. Start
+*   **[Introduction to cluaiz](/docs/get-started/introduction)**: What the Engine is made of and where your data lives.
+*   **[Quickstart Guide](/docs/get-started/quickstart)**: Install, first model, building from source.
 
-### 🛠️ 2. How-to
-*   **[System Architecture Overview](/docs/get-started/architecture)** — The layers of the program.
-*   **[Hardware Troubleshooting](/docs/architecture/hardware-troubleshooting)** — GPU driver, VRAM and build problems.
+### 2. How-to
+*   **[System Architecture Overview](/docs/get-started/architecture)**: The layers of the program.
+*   **[Hardware Troubleshooting](/docs/architecture/hardware-troubleshooting)**: GPU driver, VRAM and build problems.
 
-### ⚙️ 3. Reference
-*   **[Engine Configuration](/docs/reference/engine-configuration)** — The settings files: `settings.json`, `permission.json`, `hardware_profile.json`.
-*   **[Terminal Commands](/docs/reference/terminal-commands)** — What each `cluaiz` command does.
-*   **[HTTP API Interface](/docs/reference/api)** — The routes, CEP and where each is documented.
+### 3. Reference
+*   **[Engine Configuration](/docs/reference/engine-configuration)**: The settings files: `settings.json`, `permission.json`, `hardware_profile.json`.
+*   **[Terminal Commands](/docs/reference/terminal-commands)**: What each `cluaiz` command does.
+*   **[HTTP API Interface](/docs/reference/api)**: The routes, CEP and where each is documented.
 
-### 🧠 4. Explanation
-*   **[C Library (FFI)](/docs/architecture/unified-brain-ffi)** — The C-ABI library and how GPU backends are loaded.
-*   **[KV Cache Reuse](/docs/engine/prefix_caching_architecture)** — How a chat's next turn reuses the KV cache in memory and from disk.
-*   **[CEP (Cluaiz Engine Protocol)](/docs/api/cep/README)** — One JSON-RPC 2.0 protocol for every engine operation, over HTTP, MCP and the in-process C library.
+### 4. Explanation
+*   **[C Library (FFI)](/docs/architecture/unified-brain-ffi)**: The C-ABI library and how GPU backends are loaded.
+*   **[KV Cache Reuse](/docs/engine/prefix_caching_architecture)**: How a chat's next turn reuses the KV cache in memory and from disk.
+*   **[CEP (Cluaiz Engine Protocol)](/docs/api/cep/README)**: One JSON-RPC 2.0 protocol for every engine operation, over HTTP, MCP and the in-process C library.

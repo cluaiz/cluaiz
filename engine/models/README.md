@@ -1,8 +1,8 @@
-# 📦 Cluaiz Models Subsystem (`engine/models`)
+# Cluaiz Models Subsystem (`engine/models`)
 
 Unified Model Subsystem for Cluaiz: HuggingFace model downloading, registry/vault tracking, multi-modal taxonomy, and single GGUF reader.
 
-## 📐 Architecture
+## Architecture
 
 ```mermaid
 graph TD
@@ -17,7 +17,7 @@ graph TD
     J --> M["Runtime request availability gate"]
 ```
 
-## 📦 Components
+## Components
 
 | Module | Responsibility |
 |---|---|

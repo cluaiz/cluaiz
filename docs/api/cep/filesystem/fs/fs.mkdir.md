@@ -2,7 +2,7 @@
 method: "fs.mkdir"
 transport: "POST /v1/cep"
 category: "filesystem"
-category_title: "Filesystem & Security Jail"
+category_title: "Filesystem & Workspace"
 group: "fs"
 summary: "Creates a directory and missing parents"
 scope: "write"

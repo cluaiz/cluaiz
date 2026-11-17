@@ -33,12 +33,12 @@ sequenceDiagram
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `approve` | string | — (required) | The question, in plain words |
-| `with` | any | — | What the person should see to decide (shown with the question) |
+| `approve` | string |, (required) | The question, in plain words |
+| `with` | any | - | What the person should see to decide (shown with the question) |
 | `timeout` | duration | The run's `limits.max_wait` | How long to wait |
 | `on_timeout` | `reject`, `approve`, `fail` | `reject` | What a timeout counts as |
 | `on_reject` | `fail`, `continue` | `fail` | `fail`: kind `approval_rejected`. `continue`: the run goes on, the output says no |
-| `notify` | tool name | — | A tool called when the question is asked, to reach the person (such as `mcp:telegram/send`); it gets `{ question, with, flow, run_id }` |
+| `notify` | tool name | - | A tool called when the question is asked, to reach the person (such as `mcp:telegram/send`); it gets `{ question, with, flow, run_id }` |
 | Common fields | | | |
 
 ## How it is answered

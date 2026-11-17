@@ -24,14 +24,14 @@ Checks the core engine status, active memory allocations, and continuous uptime 
 
 ---
 
-## 📌 Endpoint Information
+## Endpoint Information
 
 * **HTTP Method:** `GET`
 * **Path:** `/health`
 
 ---
 
-## 💻 Code Examples
+## Code Examples
 
 ### 1. cURL
 ```bash
@@ -61,7 +61,7 @@ println!("{:#?}", res.json::<serde_json::Value>().await?);
 
 ---
 
-## 📤 Response Format
+## Response Format
 
 ```json
 {

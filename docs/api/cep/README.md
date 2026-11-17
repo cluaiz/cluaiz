@@ -48,7 +48,7 @@ Every method has its own page, grouped like the App's API sidebar:
 |---|---|---|
 | AI & Inference Core | `chat`, `audio`, `memory`, `notes`, `prompts`, `context`, `kv`; direct Ingest is separate | [ai-inference/](ai-inference/README.md) |
 | Agents, MCP & Tools | `tools`, `approvals` | [agents-tools/](agents-tools/README.md) |
-| Filesystem & Security Jail | `fs`, `workspace` | [filesystem/](filesystem/README.md) |
+| Filesystem & Workspace | `fs`, `workspace` | [filesystem/](filesystem/README.md) |
 | Models & Engine Vault | `models`, `providers` | [models/](models/README.md) |
 | System & Infrastructure | `system`, `config`, `storage`, `tokens`, `tasks`, `rpc` | [system/](system/README.md) |
 
@@ -113,11 +113,11 @@ Every method can answer the protocol's errors below; each method page lists its 
 
 | Code | `data.type` | When |
 |---|---|---|
-| -32700 | — | The body is not JSON (or not UTF-8) |
+| -32700 | - | The body is not JSON (or not UTF-8) |
 | -32600 | `invalid_request` | Not a request; empty batch; batch over 32; nesting over 64 |
-| -32601 | — | Method not found: `data.did_you_mean` lists close names, `data.group_methods` the group's methods |
+| -32601 | - | Method not found: `data.did_you_mean` lists close names, `data.group_methods` the group's methods |
 | -32602 | `invalid_params` (or a more exact type) | `data.errors[]` has `path` and `message`; `data.example` has the method's example params |
-| -32603 | — | Internal error: `data.trace_id` points into the Engine log |
+| -32603 | - | Internal error: `data.trace_id` points into the Engine log |
 | -32001 | `unauthenticated` | No valid token while authentication is required |
 | -32002 | `forbidden` | `data.needs`: the missing scope, `roots`, `owner` or `cross_chat` |
 | -32003 | `approval_required` | `data.approval_id`, `action`, `target`, `expires_at`: see [Approvals](#approvals) |

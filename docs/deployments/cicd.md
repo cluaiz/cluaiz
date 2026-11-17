@@ -30,7 +30,7 @@ Only when started by hand. Pushes and pull requests never start a build.
 | `llama cuda12` / `cuda13` (linux-x64) | `nvidia/cuda:12.8.1` / `13.4.1-devel-ubuntu24.04` | CMake target `ggml-cuda` only | `…-linux-x64-llama-cuda12.tar.gz` + `…-cudart12.tar.gz`, same for 13 |
 | `llama vulkan` (linux-x64) | `ubuntu-24.04` | CMake target `ggml-vulkan` only | `…-linux-x64-llama-vulkan.tar.gz` |
 | `onnx cuda12` / `cuda13` (win-x64, linux-x64) | `ubuntu-24.04` | nothing compiled: Microsoft's ONNX Runtime GPU release of the version in `Cargo.lock`, checked against GitHub's SHA-256 | `…-onnx-cuda12.*`, `…-onnx-cuda13.*` |
-| `release` | `ubuntu-24.04` | — | the GitHub release with every file that built and `SHA256SUMS.txt` |
+| `release` | `ubuntu-24.04` | - | the GitHub release with every file that built and `SHA256SUMS.txt` |
 
 GGUF drivers are built from the same pinned `engine/llama/llama.cpp` fork commit as the core, so they match the core's `ggml-base` library. ONNX drivers are the same ONNX Runtime version the core links (read from `ort-sys` in `Cargo.lock`); NVIDIA cuDNN and the CUDA runtime they need are downloaded by the engine on first GPU use. A driver job that fails leaves its file out of the release; the core still ships.
 

@@ -2,7 +2,7 @@
 method: "fs.rename"
 transport: "POST /v1/cep"
 category: "filesystem"
-category_title: "Filesystem & Security Jail"
+category_title: "Filesystem & Workspace"
 group: "fs"
 summary: "Moves a file or directory between authorized paths; a link is moved itself"
 scope: "write"

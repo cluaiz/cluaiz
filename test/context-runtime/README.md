@@ -53,7 +53,7 @@ your life": `move` is a filesystem function).
 
 | | hit | card | chit-chat clean | trap cards | wrong cards | noise |
 | --- | --- | --- | --- | --- | --- | --- |
-| Before (all rows) | 89.0% | 67.0% | 100% | 3 | 7 | — |
+| Before (all rows) | 89.0% | 67.0% | 100% | 3 | 7 | - |
 | After, fit half | 96.6% | 74.1% | 100% | 0 | 0 | 8 |
 | After, held-out half | 100% | 76.0% | 100% | 0 | 1 | 12 |
 
@@ -388,7 +388,7 @@ native tool-call grammar is not changed.
 | --- | --- | --- |
 | Gemma 4 E4B card (84 tokens) | 27.2 s, 7.5 tokens/s | 7.0 s, 14.6 tokens/s |
 | Qwen3-4B card (56 tokens) | 9.8 s, 11.6 tokens/s | 4.1 s, 16.2 tokens/s |
-| `response_format` JSON schema | — | Gemma and Qwen: valid JSON with every required key |
+| `response_format` JSON schema | - | Gemma and Qwen: valid JSON with every required key |
 
 ENR1 passes with both models; `tool_calls.py` native on Gemma 14/14 after the change.
 

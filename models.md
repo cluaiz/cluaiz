@@ -4,7 +4,7 @@ Updated: **November 9, 2026**
 
 Cluaiz runs GGUF models through its bundled **llama.cpp/libmtmd** backend and ONNX models through **ONNX Runtime with task-specific adapters**. This catalogue covers chat, vision, speech, embeddings and document ingest.
 
-The tables distinguish model families, complete model packages and individual components. Newer and older architectures are included according to the bundled source—not a changing list of every Hugging Face upload.
+The tables distinguish model families, complete model packages and individual components. Newer and older architectures are included according to the bundled source, not a changing list of every Hugging Face upload.
 
 ## Reading the catalogue
 

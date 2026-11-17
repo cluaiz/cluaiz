@@ -21,7 +21,7 @@ graph TD
     U["Prepared PCM / typed text from API"] --> V["media::execute_prepared_audio"]
     V -->|"Prepared PCM"| STT
     V -->|"Typed text"| T["tts_router::route_tts_text"]
-    T --> R1["reading::prepare — spoken symbols, bracket content, phrase breaks"]
+    T --> R1["reading::prepare: spoken symbols, bracket content, phrase breaks"]
     B --> R1
     R1 --> C["family_adapter::FamilyAdapter::detect_family"]
     C --> D{"TtsFamily Variant"}
@@ -35,7 +35,7 @@ graph TD
     D -->|"Matcha"| K["families::matcha::execute"]
     D -->|"OmniVoice"| L["families::omnivoice::execute"]
     
-    E --> PJ["reading::append_audio — guarded boundary pauses"]
+    E --> PJ["reading::append_audio: guarded boundary pauses"]
     F --> PJ
     PJ --> M["sanitize_audio_pcm"]
     G --> M

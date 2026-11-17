@@ -22,17 +22,20 @@ All incoming requests are evaluated through our standard HTTP Bearer token middl
 * **Constant-time comparison:** tokens are compared with `constant_time_compare()`, so the time a check takes does not reveal how much of a token was right.
 * **One rule for every route:** only `/health` is open; every other route, CEP (`/v1/cep`, `/mcp`) included, follows the owner's `api_auth.required` setting. What a caller may then do is CEP's scope and path check, and `system.exec` asks the owner on every call.
 
-### 2. Workspace Canonical Jail & Ancestor Walking
-Filesystem interactions are strictly bound to the active workspace directory:
+### 2. Canonical paths and roots
+Every path is canonicalized and checked against the caller's roots before it is used (the owner's own HTTP and C library calls have no roots; see the principal table in the architecture document):
 * **Canonical paths:** every path is resolved with `std::fs::canonicalize` before it is checked, so symlinks, `../` sequences and Windows extended-length prefixes (`\\?\`) are resolved first.
 * **Closest existing parent:** before a new file is created, the closest folder that already exists is checked, so a new path outside the workspace is refused.
 * `fs.delete` and `fs.rename` act on a link itself, never on its target. See [Security & Auth Architecture](docs/architecture/security-and-auth-architecture.md) and the [CEP reference](docs/api/cep/README.md).
 
 ### 3. Capability-Based Human-in-the-Loop (HITL) Gate
-Tools declare granular capabilities (`exec`, `fs_write`, `network`). Under `sandboxed` and `strict` modes:
+Tools declare capabilities (`exec`, `fs_write`, `network`). Under `sandboxed` and `strict` modes:
 * Any tool invocation declaring sensitive capabilities or undeclared MCP operations automatically pauses the token generation stream.
 * A transparent `permission_request` SSE chunk is delivered to the client with the exact, unmutated parameters.
 * Execution resumes only when the owner answers with CEP `approvals.approve` (or `approvals.reject`).
+
+### 4. What is not covered
+* No OS sandbox: a command or a non-WebAssembly plugin that is allowed runs as a normal process with the user's access. WebAssembly plugins run inside the Engine with no file or program access and with instruction and memory limits. MCP servers run as child processes.
 
 ---
 

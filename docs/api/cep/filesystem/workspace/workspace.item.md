@@ -2,7 +2,7 @@
 method: "workspace.item"
 transport: "POST /v1/cep"
 category: "filesystem"
-category_title: "Filesystem & Security Jail"
+category_title: "Filesystem & Workspace"
 group: "workspace"
 summary: "The text of one rule, workflow, skill, memory fact or instruction file of a project, without its front matter"
 scope: "read"

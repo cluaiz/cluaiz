@@ -1,4 +1,4 @@
-# 🏛️ Cluaiz Engine Runtime & Host (`engine/runtime`)
+# Cluaiz Engine Runtime & Host (`engine/runtime`)
 
 Model execution supervisor with separate chat, ONNX-task and GGUF-speech owners.
 
@@ -34,7 +34,7 @@ graph LR
 
 `speech_host.rs` serializes generation and native destruction behind one mutex. Each request replaces the resident's lease identity, including requests for the same model, so an old timer cannot unload a newer request or replacement. Timers weakly reference the owner and do not extend the host lifetime. Positive minutes start after successful generation; failures and keep_alive0release the resident. The native handles stay on the blocking side. Reference source authorization/decoding happens in the shared API media path before dispatch. New native PCM deltas, after shared tempo, become bounded `AudioEvent::Chunk` WAV data URIs through the existing backpressured channel, followed by the complete encoded utterance. Nonstreaming consumers ignore parts and await completion. A closed receiver cancels queued work before load and active work at prompt/frame boundaries; native load and an individual native step remain non-preemptible. Earlier valid chunks can precede a later error; no successful final event is fabricated.
 
-## 📐 Architecture
+## Architecture
 
 ```mermaid
 graph TD
@@ -55,7 +55,7 @@ graph TD
     F --> H["Available inputs with reasons and attachment formats"]
 ```
 
-## 📦 Components
+## Components
 
 | Module | Responsibility |
 |---|---|

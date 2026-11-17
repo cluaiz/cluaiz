@@ -8,7 +8,7 @@ params:
   - name: "messages"
     type: "Array"
     req: true
-    default: "—"
+    default: "-"
     allowed: "Array of message objects"
     desc: "Full dialogue history. Content supports plain text or arrays (`text`, `image_url`, `audio_url`, `input_audio`, `file_url`, `video_url`). `file_url` uses native document text or rendered PDF pages for a selected image-capable package with projector. `video_url` uses packaged decoding to timestamped image frames; optional `video_url.include_audio` defaults to false and requires selected-model audio support. See the media route reference."
   - name: "model"
@@ -340,7 +340,7 @@ flowchart LR
     T --> S["stream true: SSE deltas and completion"]
 ```
 
-## 📌 Endpoint Information
+## Endpoint Information
 
 * **HTTP Method:** `POST`
 * **Path:** `/v1/chat/completions`
@@ -349,11 +349,11 @@ flowchart LR
 * **Streaming Protocol:** Server-Sent Events (SSE) via `text/event-stream` (when `stream: true`)
 
 
-## 📥 Request Parameters
+## Request Parameters
 
 | Parameter | Type | Required | Default | Allowed Values / Range | Description |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **`messages`** | Array | **Yes** | — | Array of message objects | Full dialogue history. Content supports plain text or arrays (`text`, `image_url`, `audio_url`, `input_audio`, `file_url`, `video_url`). `file_url` uses native document text or rendered PDF pages for a selected image-capable package with projector. `video_url` uses packaged decoding to timestamped image frames; optional `video_url.include_audio` defaults to false and requires selected-model audio support. See the [media route reference](../README.md). |
+| **`messages`** | Array | **Yes** | - | Array of message objects | Full dialogue history. Content supports plain text or arrays (`text`, `image_url`, `audio_url`, `input_audio`, `file_url`, `video_url`). `file_url` uses native document text or rendered PDF pages for a selected image-capable package with projector. `video_url` uses packaged decoding to timestamped image frames; optional `video_url.include_audio` defaults to false and requires selected-model audio support. See the [media route reference](../README.md). |
 | **`model`** | String | No | `"auto"` | Model ID or `"auto"` | Model to use. `"auto"` uses the active model loaded in the chat or vision slot. |
 | **`stream`** | Boolean | No | `false` | `true`, `false` | Whether to stream tokens incrementally via Server-Sent Events (SSE). |
 | **`return_progress`** | Boolean | No | `false` | `true`, `false` | With `stream:true`, adds separate `event: cluaiz.progress` observations starting before model/source preparation. Completion chunks remain unchanged. Ignored for non-streaming responses. |
@@ -380,7 +380,7 @@ flowchart LR
 | **`max_steps`** | Integer | No | `100` | `0` or more | Most model generations in one turn, counting each round of tool calls. `0` means no limit. Repeating the same tool call with the same arguments is caught either way: the third time the model is told to move on, the fourth time the turn ends. Any other value is ignored. |
 | **`history`** | String | No | `"client"` | `"client"`, `"engine"` | `client`: the request carries the whole conversation. `engine`: send only the new messages; the Engine puts the chat's logged transcript in front of them (needs `session_id`). See [Chat event log](#-chat-event-log). |
 | **`storage`** | String | No | `"engine"` | `"engine"`, `"external"`, `"none"` | Where the chat is kept: on disk (`engine`), by the app with the Engine holding it in RAM only and sending `memory_events` with each answer (`external`), or not at all (`none`). See [Chat History → storage](../cep/ai-inference/memory/README.md#where-a-chat-is-kept-storage). |
-| **`user`** | String | No | — | at most 128 characters | The app's end user (OpenAI's `user`). Notes the model keeps in this chat belong to that user, and only that user's notes reach the model; one Engine can serve many users of an app without their memories mixing. Without it: the Engine's own user. |
+| **`user`** | String | No | - | at most 128 characters | The app's end user (OpenAI's `user`). Notes the model keeps in this chat belong to that user, and only that user's notes reach the model; one Engine can serve many users of an app without their memories mixing. Without it: the Engine's own user. |
 | **`history_mode`** | String | No | `"recent"` | `"recent"`, `"adaptive"`, `"none"` | `recent`: the whole history; when it does not fit, the Engine first compacts the chat, then drops the oldest turns. `adaptive`: the newest `recent_turns_min` turns in full; older messages come back through [recall](#-recall) when they fit the message. `none`: only the system prompt and the current message (plus recall). |
 | **`context_policy`** | Object | No | settings | see [context runtime → Policy](../cep/ai-inference/context/README.md#policy) | Planner fields for this request only, e.g. `{"recent_turns_min": 3}`. Unknown fields and invalid values are ignored. |
 | **`kv_reuse`** | String | No | auto | `"prefix"`, `"chunk"` | How the KV cache is matched to the new prompt. `prefix`: only the common prefix is kept. `chunk`: shared chunks after it are moved too (llama-server `--cache-reuse`), which keeps the context they were computed with. Auto: `chunk` only when the Engine dropped old turns to fit, otherwise `prefix`, so an edit such as unloading a tool is computed again from the change. |
@@ -422,13 +422,13 @@ Early `usage.context_telemetry` remains a text estimate. For attachment requests
 After projector loading, the incremental request-RAM check returns an error containing `required_bytes`, `workspace_bytes`, `additional_buffer_bytes`, `free_bytes`, `reserve_bytes` and `usable_bytes`. Cold projector admission separately reports its estimated host cost and usable RAM budget. These checks use the existing safety reserve and prepared geometry/copy estimates. Configured byte ceilings are limits, not automatic per-request allocation charges. Workspace is still a conservative configured estimate rather than a measured encoder peak. Under RAM pressure an idle projector can be dropped before a fresh admission attempt; Chat model placement, context, KV settings and SSD policy are unchanged.
 
 
-## 🔒 Security Notice: Local File Paths
+## Security Notice: Local File Paths
 
 > [!WARNING]
 > Local paths refer to the engine host. A standard route runs as the authenticated owner; the path is canonicalized before it is read. Allowed remote sources and inline bytes use shared source/decoded limits. Always use the actual configured engine address and authentication settings.
 
 
-## 🧠 Reasoning Budget Levels (`think_mode` & `reasoning_effort`)
+## Reasoning Budget Levels (`think_mode` & `reasoning_effort`)
 
 | Mode / Effort | Budget Limit | Behavior Description |
 |:---|:---:|:---|
@@ -439,7 +439,7 @@ After projector loading, the incremental request-RAM check returns an error cont
 | **`"high"`** | `Bounded by n_ctx` | Full reasoning bounded only by `max_tokens` and model context window (`n_ctx`). |
 | **Custom Integer** (e.g. `256`, `768`, `2048`) | Exact Count | Clamped to `n_ctx` and `max_tokens.saturating_sub(32)` to guarantee answer tokens. |
 
-### 📊 Token Usage Telemetry
+### Token Usage Telemetry
 Responses include explicit reasoning token counts inside `completion_tokens_details`:
 ```json
 {
@@ -455,20 +455,20 @@ Responses include explicit reasoning token counts inside `completion_tokens_deta
 ```
 
 
-## 📏 Context Window & Context Shifting
+## Context Window & Context Shifting
 
 The engine fits every request into the loaded model's context (`n_ctx`), counting with the model's own tokenizer. The `context_shifting` setting (`settings.json` → `optimization`) decides what happens when a conversation outgrows it:
 
 | Setting | Before the request (history too long) | While answering (context full) |
 | :--- | :--- | :--- |
-| **`Off`** | Error `exceed_context_size_error` (HTTP 400): *request (N tokens) exceeds the available context size (M tokens)* — llama-server's default. | Stops; `finish_reason: "length"`. |
+| **`Off`** | Error `exceed_context_size_error` (HTTP 400): *request (N tokens) exceeds the available context size (M tokens)*, llama-server's default. | Stops; `finish_reason: "length"`. |
 | **`Auto`** (default) | Replaces the long tool results of earlier turns by a short note, then drops the oldest whole turns, until the prompt plus the answer's room fit. Only the overflow when the model's KV cache can shift, else a quarter of the context so the next turns reuse the cache. A model that thinks gets twice the room when the system message, the tools and the current request leave it; earlier turns are not given up for room that dropping them cannot make. | Stops with `"length"`, unless the request asked for more `max_tokens` than the room left: then llama.cpp's context shift (half of the old tokens after BOS) and the answer continues. |
 | **`Minimal` / `Standard` / `Aggressive` / `Extreme`** | Same, freeing at least 5 / 10 / 25 / 50% of the context each time. | Same; each shift frees that share. |
 
 Rules that hold in every mode:
 - The system message and the newest message are never dropped. A user turn goes with its answer, and a tool result with its call.
 - The answer's room is `max_tokens` (at most a quarter of the context, 256–2048 tokens), doubled for a model that thinks first.
-- The KV cache is reused: the common prefix, then — as llama-server's `--cache-reuse 256` — shared chunks of at least 256 tokens after it, such as the history left once old turns were dropped. Models whose memory cannot shift (sliding-window or recurrent caches, multimodal prompts) skip the chunk reuse and context shift, as llama-server does; a sliding-window cache that no longer holds the positions a prefix needs is processed again.
+- The KV cache is reused: the common prefix, then, as llama-server's `--cache-reuse 256`, shared chunks of at least 256 tokens after it, such as the history left once old turns were dropped. Models whose memory cannot shift (sliding-window or recurrent caches, multimodal prompts) skip the chunk reuse and context shift, as llama-server does; a sliding-window cache that no longer holds the positions a prefix needs is processed again.
 - If the newest message alone does not fit, the request fails with `exceed_context_size_error` in every mode.
 
 What happened is reported in the closing `engine.context` object (and `usage.prompt_tokens` uses its count):
@@ -497,7 +497,7 @@ What happened is reported in the closing `engine.context` object (and `usage.pro
 `cache_n` = prompt tokens reused from the KV cache (`reused_chunk_tokens` of them by moving shared chunks, `kv_reuse: "chunk"`); `processed_tokens` = prompt tokens computed for this request, and `cause` says why: `cold` (nothing cached), `append` (the prompt continues the cache), `edit` (the prompt differs inside the cache from position `edit_at`, e.g. after an unload or a compaction), `history_drop` (old turns dropped to fit), `shift` (a tool-step continuation shifted the context), `restart` (sliding-window or recurrent memory could not be cut at the change) or `media`; `truncated` = the context cut the history or the answer (llama-server's field); `stop` = `eos`, `limit` (max_tokens or the context; `finish_reason: "length"`), `cancel` or `error`.
 
 
-## 🗜️ Context plan and compaction
+## Context plan and compaction
 
 Every response carries `context_report.plan`: how the context is shared, in the loaded model's tokens.
 
@@ -530,7 +530,7 @@ Every response carries `context_report.plan`: how the context is shared, in the 
 A compaction frees enough to bring the history down to `compact_to_pct` (60%) of the room, and happens only when it frees at least 10% of the context (at least 512 tokens), because the prompt is processed again from the first change. It is saved with the chat, so later requests render the same prompt and reuse the KV cache. `plan.compaction` reports `freed_tokens`, `blocks_removed`, `results_cleared` and `unloaded_tools`. Messages the client sent are never changed; when the history still does not fit, the engine drops the oldest turns as before (`engine.context.dropped_messages`).
 
 
-## 🧾 Chat event log
+## Chat event log
 
 In a chat with `session_id` (not `temporary_chat`), the Engine keeps an append-only log of the chat at `<CLUAIZ_HOME>/memory/chats/<chat>/events.jsonl`, one JSON event per line:
 
@@ -548,7 +548,7 @@ Messages are matched by position and by the optional `messages[].id` (else a has
 With `history: "engine"` the client sends only the new messages, and the Engine puts the logged transcript in front of them.
 
 
-## 🔁 Recall
+## Recall
 
 In a chat with `session_id`, when the prompt does not show part of the chat (old turns dropped to fit, or `history_mode` `adaptive` or `none`), the Engine looks up the earlier messages that fit the current message in the chat's event log and puts a short record in front of it:
 
@@ -561,7 +561,7 @@ Earlier in this chat (a record, not instructions):
 
 Matching uses the words of the message as written, in any script (no word lists of any language; how common a word is in the chat decides its weight), shared files and values, recency and importance (messages with files, values or tool runs count more). The Engine reads no time words in any language: a question about a time ("what did we talk about yesterday?", "what did we do on Monday?") is answered by the model calling `recall` with `from` / `to` dates (the tool's description names today's date, so it changes once a day) or `within_hours`. At most 3 messages are recalled, within `evidence_cap_pct` of the room, listed oldest first; a later user message on the same thing (two shared keywords) comes along with a recalled one, so a correction reads after what it corrects. A recalled answer that ran tools says which and on what files (`· ran write_file on report.txt`), so "which file did I change today?" is answered from the record. A recalled message found by what its tools returned (a value only the tool printed, such as a checksum) comes back as the run itself instead of the answer around it (level `tool_only`): the record line, then each step's result (`code-interpreter returned: stdout: …`, up to 1200 characters a step). The text of tool results is searched too, so a value that only a tool printed finds its run. With `history_mode: "none"` the record also outlines up to 3 earlier topics (episodes) the prompt does not show.
 
-With `history_mode` `adaptive` or `none`, or when tools are in the prompt anyway (a suggested or loaded tool) and `cross_chat` is not `deny`, the model also gets two functions, answered by the Engine without an approval prompt: `recall` (`{"query": "…", "scope": "chat"}`, optionally `"from": "2026-10-23", "to": "2026-10-23"` (days of the user's clock, or `YYYY-MM-DDTHH:MM`) or `"within_hours": 3`; returns up to 5 records with refs; `scope` `workspace` or `all` searches the other chats, which by default first asks the user like a tool call — policy `cross_chat`) and `open_memory` (`{"ref": "m:12"}`, returns that message in full). A chat whose whole history is in the prompt pays nothing. `context_report.plan.recall` lists what was recalled (`ref`, `score`, `why`, `level`: `summary` or `tool_only`) and how many messages were hidden. The record is kept with the turn, so later requests render it the same way.
+With `history_mode` `adaptive` or `none`, or when tools are in the prompt anyway (a suggested or loaded tool) and `cross_chat` is not `deny`, the model also gets two functions, answered by the Engine without an approval prompt: `recall` (`{"query": "…", "scope": "chat"}`, optionally `"from": "2026-10-23", "to": "2026-10-23"` (days of the user's clock, or `YYYY-MM-DDTHH:MM`) or `"within_hours": 3`; returns up to 5 records with refs; `scope` `workspace` or `all` searches the other chats, which by default first asks the user like a tool call, policy `cross_chat`) and `open_memory` (`{"ref": "m:12"}`, returns that message in full). A chat whose whole history is in the prompt pays nothing. `context_report.plan.recall` lists what was recalled (`ref`, `score`, `why`, `level`: `summary` or `tool_only`) and how many messages were hidden. The record is kept with the turn, so later requests render it the same way.
 
 Measured with `test/context-runtime/memory_suite.py` (Qwen3-4B, `n_ctx` 4096, facts planted at 5%, 50% and 90% depth, a corrected fact and an absent one):
 
@@ -574,13 +574,13 @@ Measured with `test/context-runtime/memory_suite.py` (Qwen3-4B, `n_ctx` 4096, fa
 The question about a fact never given (a passport number) was answered with an invented number in every mode.
 
 
-## 📝 Notes
+## Notes
 
 Pinned durable notes go into the system prompt of new chats; other notes that fit the message travel with it (by meaning when an embedding model is installed: "what is my name?" finds "User ka naam Aryan hai"; else by shared words; policy `notes_match`, at most `notes_max`); and the model can propose notes with `remember` (offered with the memory functions above when `notes` is not `off`; the model decides when the user asked to remember something). Nothing is replaced by guessing. A new note is saved at once (a note the user asked for is never lost); when it may repeat notes that are there, the result shows them (`[n:4 · 2026-11-03] …`), and the model removes the one the new note corrects with `forget` (`{"id": "n:4"}`, offered when `notes_change` is not `off`), or does nothing when they are about other things. A model that already knows the note it corrects passes it as `replaces` (`{"text": "…", "replaces": "n:4"}`): the new note takes its place. Notes reach the model with their date, and the model is told that the newer of two notes that disagree holds. Whether such a change happens at once or waits for the user is the policy `notes_change`; a replaced or forgotten note leaves the notes file, or stays out of sight for `notes_history_days`. Pinned notes in the system prompt carry their ids, so the model can name them. `remember` (and `forget`) are offered in every chat the Engine keeps (`session_id`) while `notes` is not `off`: without it a model told "remember this" answered "noted" and kept nothing. Checked with Qwen3.8-4B: "Yaad rakhna: mera favourite editor Helix hai" was saved 3 times of 3, and stories and sums in the same setup were answered as before with no note made. `recall` and `open_memory` still come only when history is hidden or tools are in the prompt. See [`notes.*`](../cep/ai-inference/notes/notes.list.md).
 
 ---
 
-## 📁 The project's agent files
+## The project's agent files
 
 A chat gets the agent files of the Engine's workspace (`workspace.set`), the same files the
 terminal agent reads (see [the agent's project files](../../cmd/agent.md)): `~/.cluaiz/AGENTS.md`,
@@ -638,13 +638,13 @@ delivery prices.
 
 ---
 
-## 💾 Chat Memory (saved KV cache per chat)
+## Chat Memory (saved KV cache per chat)
 
 Send a `session_id` with every request of a chat. After each answer (once per answer, not after every tool step) the engine saves that chat's KV cache to disk and restores it when the chat continues after another chat, a model reload or a restart, so only the new tokens are processed (`engine.context.cache_n`). Private requests (`temporary_chat`) are never saved. Settings, endpoints and measurements: [Chat Memory API](../cep/ai-inference/kv/kv.status.md).
 
 ---
 
-## 🖼️ Multimodal Vision & Audio Guide
+## Multimodal Vision & Audio Guide
 
 ### 1. Vision Input (`image_url`)
 
@@ -672,7 +672,7 @@ Direct document question answering and summarization. The same `file_url` payloa
 > [!TIP]
 > **Native text fallback:** Text-only LLMs can read extracted PDF/Word text without a vision projector. Native OCR recognizes words, not the meaning of diagrams. To ask about PDF graphics, explicitly select a complete compatible vision package. Visual pages share the configured decoded-byte and model-context limits; oversized PDFs fail instead of silently dropping pages. Pictures inside Word, Excel and PowerPoint files keep their place: a model with a vision projector receives each picture as an image where it is in the document; a text-only model gets a label `[Picture N: …]` there, followed by the picture's text when native OCR is installed and finds some. A picture that is not read (no OCR installed, no text in it, a vector format such as EMF, a chart or a shape without a picture) is still labelled, and the label says its content is not in the text, so the document is not refused for it.
 
-#### 📋 Supported Document & Code Formats
+#### Supported Document & Code Formats
 | Category | Supported Extensions | Processing Mechanism |
 |:---|:---|:---|
 | **Documents** | `.pdf`, `.docx`, `.doc`, `.txt`, `.md`, `.csv`, `.json`, `.toml`, `.yaml`, `.yml` | Native extraction into text; PDFium/OCR for PDFs, OOXML for DOCX and the supported compound Word parser for DOC. Unsupported content is reported as omissions/errors. |
@@ -756,7 +756,7 @@ Decodes sampled RGB frames at native timestamps relative to the first decoded fr
 
 ---
 
-## ⚠️ Request Size Limit & Payload Ceiling
+## Request Size Limit & Payload Ceiling
 
 * **Axum Request Ceiling:** The default Axum server request ceiling is **2 MiB**.
 * Inline Base64 Data URIs (`data:...;base64,...`) expand binary sizes by ~33%. Ensure the total JSON request body remains below 2 MiB, or pass authorized local file paths (e.g. on Desktop/Tauri) to bypass inline byte limits.
@@ -764,7 +764,7 @@ Decodes sampled RGB frames at native timestamps relative to the first decoded fr
 
 ---
 
-## 🛠️ Tool & Function Calling Example
+## Tool & Function Calling Example
 
 ```json
 {
@@ -808,7 +808,7 @@ stays loaded in `cluaiz serve`.
 
 ---
 
-## 🔎 Tools on demand
+## Tools on demand
 
 Tools switched off in the App's Tools page are never offered and cannot run. Every other installed skill, plugin and MCP server can be used without binding it to the chat first, and none of them is put into the prompt in full unless the model asks for it:
 
@@ -833,7 +833,7 @@ In a chat with `session_id`, a tool loaded with `load_tool` stays in the convers
 
 ---
 
-## 💻 Code Examples
+## Code Examples
 
 ### 1. Python (Official OpenAI SDK)
 
@@ -874,7 +874,7 @@ console.log(JSON.parse(raw).choices[0].message.content);
 
 Use `stream:false` when parsing one JSON object. With `stream:true`, parse SSE frames and `choices[].delta` instead. Media fragments below are content parts, not standalone top-level requests. An installed model ID selects the package; it does not enable modalities missing from that package.
 
-## 📤 Response Formats
+## Response Formats
 
 ### Streaming SSE Chunks with `reasoning_content`
 

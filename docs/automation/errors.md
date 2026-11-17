@@ -65,7 +65,7 @@ retry: { max: 3, delay: 10s, backoff: exponential, max_delay: 5m, on: [network, 
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `max` | integer | — (required) | Attempts after the first, 1–20 |
+| `max` | integer |, (required) | Attempts after the first, 1–20 |
 | `delay` | duration | `5s` | Wait before the first retry |
 | `backoff` | `fixed`, `exponential` | `exponential` | `exponential` doubles the wait each time |
 | `max_delay` | duration | `5m` | The longest wait |

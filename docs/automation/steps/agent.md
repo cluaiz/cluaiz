@@ -38,10 +38,10 @@ All fields of [`ask`](ask.md) (with `agent` in place of `ask` as the instruction
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `tools` | list | — (required) | Tools the agent may call |
+| `tools` | list |, (required) | Tools the agent may call |
 | `max_turns` | integer | `10` (*proposed*) | Most rounds of tool calls. At the limit the agent is asked for its final answer |
 | `tool_search` | boolean | `false` | Let the agent find and load other installed tools that `permissions.tools` allows, as the coding agent does |
-| `stop_when` | expression | — | Checked after each round with `round` (`{ index, calls, results }`); true stops the agent and asks for its answer |
+| `stop_when` | expression | - | Checked after each round with `round` (`{ index, calls, results }`); true stops the agent and asks for its answer |
 
 ## How it runs
 

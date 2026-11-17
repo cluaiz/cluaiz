@@ -9,7 +9,7 @@
   templates, used to resolve short ids), discovery of model folders copied in by hand, and a
   RAM/VRAM health check for recommendations.
 - **Platform Support:** Windows, Linux, macOS (JSON files and folder scans).
-- **Reusability Level:** Single source of truth for installed models: the CLI (`list`, `show`,
+- **Reusability Level:** The one record of installed models: the CLI (`list`, `show`,
   `rm`, `run`), the API (`/v1/models`, a request's `model`), CEP `models.*` and the planner read it.
 
 ## Architectural Flow

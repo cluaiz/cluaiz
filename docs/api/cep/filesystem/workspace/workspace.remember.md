@@ -2,7 +2,7 @@
 method: "workspace.remember"
 transport: "POST /v1/cep"
 category: "filesystem"
-category_title: "Filesystem & Security Jail"
+category_title: "Filesystem & Workspace"
 group: "workspace"
 summary: "Saves a fact the user confirmed in the project's memory (`.agents/memory/<name>.md`). With `replaces`, that fact's file gets the new text; without, nothing is replaced and `similar` lists facts that may be about the same thing"
 scope: "write"

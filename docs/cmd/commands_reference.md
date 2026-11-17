@@ -1,4 +1,4 @@
-# cluaiz CLI — Command Reference
+# cluaiz CLI, Command Reference
 
 > Binary: `cluaiz`. Built from `cmd/`. `cluaiz <command> --help` lists every flag.
 > What each command does in more detail: [terminal commands](../reference/terminal-commands.md).

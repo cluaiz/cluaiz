@@ -1,8 +1,8 @@
-# ⚙️ Cluaiz Compute Subsystem (`engine/`)
+# Cluaiz Compute Subsystem (`engine/`)
 
-The direct, hardware-agnostic neural inference subsystem for Cluaiz. Contains the single source of truth for hardware metrics, planning, models, and execution backends.
+The part of Cluaiz that runs models: hardware detection, the placement planner, model files and the two backends, llama.cpp (GGUF) and ONNX Runtime. Everything above it (API, agent, tools, automation) reaches models only through `engine/runtime`.
 
-## 📐 Architecture & Data Flow
+## Architecture & Data Flow
 
 ```mermaid
 graph TD
@@ -13,10 +13,10 @@ graph TD
     Plan --> Models[engine/models: GGUF Reader & Vault Registry]
     Plan --> Core[engine/core: Settings Snapshot & Paths]
     Runtime --> Llama[engine/llama: Custom Llama Fork rlib]
-    Runtime --> ONNX[engine/onnx: Whisper STT & Kokoro TTS]
+    Runtime --> ONNX[engine/onnx: speech, embeddings, vision]
 ```
 
-## 🗂️ Sub-crates & Directories
+## Sub-crates & Directories
 
 | Subsystem | Crate Name | Description |
 |---|---|---|
@@ -26,5 +26,5 @@ graph TD
 | [`models/`](models/) | `cluaiz-models` | HuggingFace downloader, model vault registry, and single GGUF reader with SWA math. |
 | [`plan/`](plan/) | `cluaiz-plan` | Pure mathematical placement planner (Candidates A-F, budgets, and context window). |
 | [`llama/`](llama/) | `llama-engine` | Safe Rust wrapper linking the custom llama.cpp fork directly as an `rlib`. |
-| [`onnx/`](onnx/) | `onnx-engine` | Multi-modal audio (Whisper STT, Kokoro TTS) and Vision processing. |
-| [`runtime/`](runtime/) | `cluaiz-runtime` | Single unified engine host replacing legacy dispatcher and routers. |
+| [`onnx/`](onnx/) | `onnx-engine` | ONNX Runtime models: speech to text (Whisper, Moonshine), text to speech (Kokoro, Piper/VITS), embeddings and vision. |
+| [`runtime/`](runtime/) | `cluaiz-runtime` | The engine host: loads, shares and unloads models for every backend. |

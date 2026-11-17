@@ -6,11 +6,11 @@ Cluaiz is one native program: it needs no Docker and no Python.
 
 ---
 
-## ⚡ 1. Single-Command Native Installation
+## 1. Single-Command Native Installation
 
 The recommended method to deploy the node is using the official single-line automated installation scripts. These scripts analyze your host operating system, configure local workspaces, fetch target architecture libraries, and register path variables automatically.
 
-### 💻 Windows Installation
+### Windows Installation
 
 Execute this command inside a standard or Administrator **PowerShell** prompt:
 
@@ -25,7 +25,7 @@ powershell -c "irm https://cluaiz.com/install.ps1 | iex"
 
 ---
 
-### 🐧 Linux & macOS Installation
+### Linux & macOS Installation
 
 Execute this command inside any **Bash**-compliant terminal:
 
@@ -57,7 +57,7 @@ On Windows the update installer opens in its own window once the command exits (
 
 ---
 
-## 🛠️ 2. Manual From-Source Compilation
+## 2. Manual From-Source Compilation
 
 For developers and contributors who want to configure custom target compilation flags, cluaiz can be built manually from source:
 
@@ -87,7 +87,7 @@ Ensure your local machine has the following tools installed and registered in yo
 
 ---
 
-## 🕯️ 3. First Steps
+## 3. First Steps
 
 Open a new terminal (so the updated PATH is read) and check the install:
 

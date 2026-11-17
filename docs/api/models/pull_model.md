@@ -59,11 +59,11 @@ Downloads and registers a model with the same code as `cluaiz pull`. A catalog i
 
 ---
 
-## 📌 `POST /api/pull`
+## `POST /api/pull`
 
 | Parameter | Type | Required | Default | Description |
 |:---|:---|:---|:---|:---|
-| **`model`** | String | **Yes** | — | Catalog id or Hugging Face repo, e.g. `"QuantFactory/SmolLM-135M-GGUF:Q2_K"` |
+| **`model`** | String | **Yes** | - | Catalog id or Hugging Face repo, e.g. `"QuantFactory/SmolLM-135M-GGUF:Q2_K"` |
 | `stream` | Boolean | No | `true` | One JSON line per step (`application/x-ndjson`); `false` answers once at the end |
 | `insecure` | Boolean | No | `false` | Accepted for Ollama clients; no effect (downloads use HTTPS) |
 
@@ -89,7 +89,7 @@ curl -X POST http://localhost:8000/api/pull \
 
 ---
 
-## 📌 CEP `models.download`
+## CEP `models.download`
 
 The same download as a task: `{"model": "…"}` answers at once with `{"task": {"task_id", …}}`. The steps are task events, the bytes are the task's `progress` (`unit: "bytes"`), and `tasks.result` gives the final object above. `tasks.cancel` stops it (`-32008`). A second download of a model that is still downloading fails with `-32005` (`data.type: "pull_running"`); a failed download is `-32010` (`download_failed`).
 

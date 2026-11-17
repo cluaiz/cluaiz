@@ -8,13 +8,13 @@ params:
   - name: "input_source"
     type: "Object"
     req: false
-    default: "—"
+    default: "-"
     allowed: "`{\"type\": \"file\" | \"audio\" | \"base64\" | \"url\", \"data\": \"...\"}`"
     desc: "Audio input descriptor. For browser/client uploads, provide standard Base64 Data URI (`data:audio/wav;base64,...`). Desktop clients can supply an authorized local filesystem path. (*Required if `file` is omitted)."
   - name: "file"
     type: "String"
     req: false
-    default: "—"
+    default: "-"
     allowed: "Local file path or URI"
     desc: "Direct file path shortcut (OpenAI-compatible alternative to `input_source`)."
   - name: "model"
@@ -132,22 +132,22 @@ An explicit ID selects that installed package. Omission/`auto` uses the active e
 
 ---
 
-## 📌 Endpoint Information
+## Endpoint Information
 
 * **HTTP Method:** `POST`
 * **Path:** `/v1/audio/transcriptions` (or `audio.run`)
-* **Content-Type:** `application/json` (Pure JSON contract — `multipart/form-data` is **not** supported)
+* **Content-Type:** `application/json` (Pure JSON contract: `multipart/form-data` is **not** supported)
 * **Authentication:** `Authorization: Bearer <session-token>` when API authentication is on
 * **Streaming Protocol:** Server-Sent Events (SSE) via `text/event-stream` when `stream: true`
 
 ---
 
-## 📥 Request Parameters
+## Request Parameters
 
 | Parameter | Type | Required | Default | Allowed Values / Formats | Description |
 |:---|:---|:---:|:---|:---|:---|
-| **`input_source`** | Object | No* | — | `{"type": "file" \| "audio" \| "base64" \| "url", "data": "..."}` | Audio input descriptor. For browser/client uploads, provide standard Base64 Data URI (`data:audio/wav;base64,...`). Desktop clients can supply an authorized local filesystem path. (*Required if `file` is omitted). |
-| **`file`** | String | No* | — | Local file path or URI | Direct file path shortcut (OpenAI-compatible alternative to `input_source`). |
+| **`input_source`** | Object | No* | - | `{"type": "file" \| "audio" \| "base64" \| "url", "data": "..."}` | Audio input descriptor. For browser/client uploads, provide standard Base64 Data URI (`data:audio/wav;base64,...`). Desktop clients can supply an authorized local filesystem path. (*Required if `file` is omitted). |
+| **`file`** | String | No* | - | Local file path or URI | Direct file path shortcut (OpenAI-compatible alternative to `input_source`). |
 | **`model`** | String | No | Active/eligible installed STT package | Installed STT model ID | Exact registry ID. Do not send a Hugging Face repository name or invent a quantization suffix. |
 | **`language`** | String | No | `"auto"` | ISO-639-1 code (e.g. `"en"`, `"hi"`, `"es"`, `"fr"`, `"auto"`) | Target spoken language. Setting `"auto"` runs Whisper language identification. |
 | **`languages`** | String[] | No | `[]` | Up to 10 language codes (e.g. `["hi", "en"]`) | Candidate languages for automatic identification; prefer omitting `language` when using this list. Unknown candidates are skipped; if none match, available model languages are considered. Monolingual packages ignore this list. Identification and mixed-language accuracy are not guaranteed. |
@@ -188,7 +188,7 @@ Whisper model.
 
 ---
 
-## 🎵 Supported Audio Formats
+## Supported Audio Formats
 
 * **WAV (`audio/wav`)**: A practical recording format (for example PCM 16-bit 16kHz mono); shared decoding/resampling still applies.
 * **MP3 (`audio/mp3`, `audio/mpeg`)**: Supported via built-in audio decoders.
@@ -202,7 +202,7 @@ Whisper model.
 
 ---
 
-## 💻 Code Examples
+## Code Examples
 
 ### 1. cURL (Actual WAV Data URI - Non-streaming)
 
@@ -338,7 +338,7 @@ Use an allowed URL serving real audio. Set `language: "en"` instead of the candi
 
 ---
 
-## 📤 Response Schema & Fields
+## Response Schema & Fields
 
 ### Complete JSON Response (`stream: false`)
 

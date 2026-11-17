@@ -18,7 +18,7 @@ void  cep_free(char *reply);
 | Function | In | Out |
 |---|---|---|
 | `cep_call` | A NUL-terminated UTF-8 JSON-RPC 2.0 request or batch, the same as the body of `POST /v1/cep` | A NUL-terminated UTF-8 JSON reply, or `NULL` when the request held only notifications |
-| `cep_free` | A pointer returned by `cep_call` (or `NULL`) | — |
+| `cep_free` | A pointer returned by `cep_call` (or `NULL`) | - |
 
 ## 2. Memory rules
 

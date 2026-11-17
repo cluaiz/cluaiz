@@ -2,7 +2,7 @@
 method: "fs.pick_folder"
 transport: "POST /v1/cep"
 category: "filesystem"
-category_title: "Filesystem & Security Jail"
+category_title: "Filesystem & Workspace"
 group: "fs"
 summary: "Opens the host folder picker and selects the workspace"
 scope: "read"

@@ -2,7 +2,7 @@
 method: "workspace.memory"
 transport: "POST /v1/cep"
 category: "filesystem"
-category_title: "Filesystem & Security Jail"
+category_title: "Filesystem & Workspace"
 group: "workspace"
 summary: "A project's memory facts (`.agents/memory/`), live and replaced, with their text"
 scope: "read"

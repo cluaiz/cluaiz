@@ -2,7 +2,7 @@
 method: "workspace.index"
 transport: "POST /v1/cep"
 category: "filesystem"
-category_title: "Filesystem & Security Jail"
+category_title: "Filesystem & Workspace"
 group: "workspace"
 summary: "A project's agent files: AGENTS.md instructions, rules with their trigger, workflows, skills and memory facts, with name and description"
 scope: "read"

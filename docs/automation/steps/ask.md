@@ -38,18 +38,18 @@ flowchart TD
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `ask` | string | — (required) | The instruction. References are allowed |
-| `with` | any | — | The data the model works on |
+| `ask` | string |, (required) | The instruction. References are allowed |
+| `with` | any | - | The data the model works on |
 | `model` | string | The default chat model | An installed model id, or `<provider>/<model>` |
-| `system` | string | — | Extra system text, before the instruction |
-| `output_schema` | JSON Schema | — | The answer must be JSON of this shape. See [JSON answers](#json-answers) |
+| `system` | string | - | Extra system text, before the instruction |
+| `output_schema` | JSON Schema | - | The answer must be JSON of this shape. See [JSON answers](#json-answers) |
 | `tools` | list of tool names | `[]` | Tools the model may call while answering (same names as [`tool`](tool.md)); for several rounds, use [`agent`](agent.md) |
 | `attachments` | list | `[]` | Files, images or sounds for the model: paths, data URIs or [file references](../references.md#file-references) |
 | `think` | `on`, `off`, `auto` | `auto` | Thinking, as in chat. The thinking is kept in the record, not in the output |
-| `effort` | `low`, `medium`, `high` | — | Thinking effort, where the model supports it |
+| `effort` | `low`, `medium`, `high` | - | Thinking effort, where the model supports it |
 | `max_tokens` | integer | The model's | Most tokens in the answer |
 | `temperature`, `top_p`, `seed` | number | settings.json | As in chat |
-| `session` | string | — | A chat id: the model gets that chat's memory and notes, and the exchange is added to it. Without it, every `ask` starts fresh |
+| `session` | string | - | A chat id: the model gets that chat's memory and notes, and the exchange is added to it. Without it, every `ask` starts fresh |
 | `schema_retries` | integer | `1` | Times to ask again when the answer does not match `output_schema` |
 | Common fields | | | See [Steps](README.md#fields-every-step-may-have) |
 

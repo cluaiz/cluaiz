@@ -21,10 +21,10 @@ Triggers are active only while the flow is enabled (`flows.enable`, `flows.disab
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `id` | string | The kind and its position (`schedule_0`) | Names the trigger in records (`trigger.id`) |
-| `filter` | expression | — | Checked with `trigger` filled in; false means no run and nothing recorded except a counter |
-| `dedupe` | string with references | — | Two events whose `dedupe` value is the same start one run |
+| `filter` | expression | - | Checked with `trigger` filled in; false means no run and nothing recorded except a counter |
+| `dedupe` | string with references | - | Two events whose `dedupe` value is the same start one run |
 | `dedupe_for` | duration | `24h` (*proposed*) | How long a `dedupe` value is remembered |
-| `inputs` | object | — | The run's inputs; values may refer to `trigger` (`"${{ trigger.body.repo }}"`) |
+| `inputs` | object | - | The run's inputs; values may refer to `trigger` (`"${{ trigger.body.repo }}"`) |
 | `enabled` | boolean | `true` | Turns this one trigger off without removing it |
 
 Order of checks when an event arrives: `enabled` → the kind's own rules (secret, glob…) → `filter` →
@@ -96,7 +96,7 @@ flowchart LR
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `schedule` | string | — | Five fields: minute, hour, day of month, month, day of week. `*`, lists (`1,15`), ranges (`1-5`), steps (`*/10`); day names `mon`–`sun` and month names `jan`–`dec` |
+| `schedule` | string | - | Five fields: minute, hour, day of month, month, day of week. `*`, lists (`1,15`), ranges (`1-5`), steps (`*/10`); day names `mon`–`sun` and month names `jan`–`dec` |
 | `timezone` | string | The flow's `timezone` | IANA name |
 | `catch_up` | `skip`, `once`, `all` | `skip` | Times missed while Automation was off or the flow disabled: none, one run for all of them, or one run each (at most 100, *proposed*) |
 | `jitter` | duration | `0s` | A random delay up to this long, so many flows at 09:00 do not start together |
@@ -113,7 +113,7 @@ daylight-saving change, a time that does not exist is skipped and a time that ha
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `every` | duration | — | At least `1m` (*proposed*) |
+| `every` | duration | - | At least `1m` (*proposed*) |
 | `starting` | time | When the flow is enabled | The first time |
 | `catch_up` | `skip`, `once`, `all` | `skip` | As for `schedule` |
 
@@ -148,7 +148,7 @@ sequenceDiagram
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `secret` | `env:NAME` | — (required) | The secret callers must prove they have |
+| `secret` | `env:NAME` |, (required) | The secret callers must prove they have |
 | `signature` | `header`, `hmac-sha256` | `header` | `header`: the request carries the secret in `X-Cluaiz-Hook-Secret`. `hmac-sha256`: the request carries `X-Cluaiz-Signature: sha256=<hex>`, the HMAC of the raw body with the secret (as GitHub and many shops send) |
 | `signature_header` | string | `X-Cluaiz-Signature` | Another header name for the signature, such as `X-Hub-Signature-256` |
 | `methods` | list | `["POST"]` | Allowed HTTP methods |
@@ -187,9 +187,9 @@ flowchart LR
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `tool` or `call` | node | — | What to run each time (as in a [`tool`](steps/tool.md) or [`call`](steps/call.md) step) |
+| `tool` or `call` | node | - | What to run each time (as in a [`tool`](steps/tool.md) or [`call`](steps/call.md) step) |
 | `with` | object | `{}` | Its input |
-| `every` | duration | — | At least `1m` (*proposed*) |
+| `every` | duration | - | At least `1m` (*proposed*) |
 | `new_when` | `changed`, `new_items`, expression | `changed` | `changed`: the output differs from the last one. `new_items`: the output is a list (or has one at `items`) and some items were not seen before. An expression: checked with `trigger.output` and `trigger.previous` |
 | `items` | path in the output | The output itself | Where the list is, for `new_items` |
 | `key` | path in an item | The whole item | What makes an item the same item, for `new_items` |
@@ -220,7 +220,7 @@ flowchart LR
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `path` | folder | — | Inside the flow's `permissions.folders` |
+| `path` | folder | - | Inside the flow's `permissions.folders` |
 | `glob` | string | `*` | Matched against the file name (`*.pdf`), or the path below `path` with `recursive` (`**/*.md`) |
 | `events` | list of `created`, `changed`, `removed` | `[created]` | |
 | `recursive` | boolean | `false` | Include sub-folders |

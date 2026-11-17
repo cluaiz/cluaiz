@@ -2,7 +2,7 @@
 method: "fs.read"
 transport: "POST /v1/cep"
 category: "filesystem"
-category_title: "Filesystem & Security Jail"
+category_title: "Filesystem & Workspace"
 group: "fs"
 summary: "Reads a UTF-8 file, or returns base64 for binary data"
 scope: "read"

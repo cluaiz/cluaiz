@@ -1,10 +1,10 @@
-# 🏛️ cluaiz: CI/CD & RELEASE ARCHITECTURE
+# cluaiz: CI/CD & RELEASE ARCHITECTURE
 
 This document is the entry point for the CI/CD pipeline. The full job list, file names and smoke test are in [docs/deployments/cicd.md](../../docs/deployments/cicd.md); hardware and OS coverage is in [docs/deployments/platforms.md](../../docs/deployments/platforms.md).
 
 ---
 
-## 🧬 1. CORE + GPU DRIVERS
+## 1. CORE + GPU DRIVERS
 
 A release is one **core** per platform plus optional **GPU drivers**, the layout llama.cpp itself ships:
 
@@ -18,7 +18,7 @@ The display driver of the GPU itself is never shipped: it comes from NVIDIA, AMD
 
 ---
 
-## 🚀 2. ONE RELEASE PAGE: `release.yml`
+## 2. ONE RELEASE PAGE: `release.yml`
 
 - **Only by hand**: pushes and pull requests never start a build.
 - **Run workflow** (manual, a version that equals `[workspace.package] version` in `Cargo.toml`; a first job checks it) builds the core for every platform, runs the smoke test (no GPU, fresh home, pull + answer), calls `cluaize-llama-driver.yml` and `cluaize-onnx-driver.yml` and publishes everything on one GitHub release `v<version>` with `SHA256SUMS.txt`. Each driver workflow can also be run alone to build its drivers without a release.
@@ -32,13 +32,13 @@ The older split workflows (`cluaize-cmd`, `-engine`, `-kernel-*`, `publish-regis
 
 ---
 
-## 📝 3. RELEASE NOTES
+## 3. RELEASE NOTES
 
 The release page text comes from `.github/release-notes.md` (install commands and which file each machine needs). Release Drafter was removed: it ran on every push but builds its changelog only from pull requests, which this repository does not use.
 
 ---
 
-## 🏛️ 4. THE FOUNDER'S MANDATE
+## 4. THE FOUNDER'S MANDATE
 
 1. **Never Drift**: Do not change naming conventions or matrix structures once established. The installers rely on the file names (e.g., `cluaiz-0.1.0-linux-x64-llama-cuda12.tar.gz`).
 2. **Standard over Ad-hoc**: Every fix must be architectural. Do not create inline quick-fixes.

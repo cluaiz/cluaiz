@@ -10,7 +10,7 @@ One program, `cluaiz`, holds the CLI, the terminal agent, the HTTP server and th
 flowchart TD
     CLI["cluaiz CLI and terminal agent (cmd/)"]
     API["HTTP server: cluaiz serve (api/)<br/>/v1/chat/completions, /v1/cep, /mcp, …"]
-    FFI["C library cluaiz_cep.dll (ffi/)"]
+    FFI["C library cluaiz_cep.dll (ffi/)<br/>source only, not in release packages"]
     HOST["EngineHost (engine/runtime)<br/>model load, KV cache, memory sharing"]
     PLAN["Planner (engine/plan)<br/>GPU / RAM placement"]
     LLAMA["llama.cpp (engine/llama)<br/>GGUF"]

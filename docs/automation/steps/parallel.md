@@ -28,7 +28,7 @@ flowchart LR
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `parallel` | object: branch name → list of steps | — (required) | Branch names: letters, digits, `_` |
+| `parallel` | object: branch name → list of steps |, (required) | Branch names: letters, digits, `_` |
 | `wait` | `all`, `any` | `all` | `all`: the step ends when every branch has. `any`: it ends when the first branch succeeds; the others are cancelled |
 | `stop_on_error` | boolean | `true` | `true`: a failed branch cancels the others and fails the step. `false`: the others go on, and the failed branch's entry is `null` |
 | Common fields | | | |

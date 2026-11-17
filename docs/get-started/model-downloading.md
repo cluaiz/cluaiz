@@ -1,4 +1,4 @@
-# 📥 HuggingFace Model Downloading & Management
+# HuggingFace Model Downloading & Management
 
 To run models locally, the Cluaiz Engine includes a high-performance, edge-optimized downloader designed to pull weight tensors, tokenizers, and configurations directly from the HuggingFace Hub. 
 
@@ -10,7 +10,7 @@ This guide details how model retrieval works, how files are organized on disk, a
 
 ---
 
-## 🚀 How Model Downloading Works
+## How Model Downloading Works
 
 When you run `cluaiz run <repo-id>` or `cluaiz pull <repo-id>` (or trigger `models.download` via the API / Web UI), the engine executes the following steps:
 
@@ -21,7 +21,7 @@ When you run `cluaiz run <repo-id>` or `cluaiz pull <repo-id>` (or trigger `mode
 
 ---
 
-## 💻 Terminal / CLI Downloading Interface
+## Terminal / CLI Downloading Interface
 
 When pulling models via the CLI (`cluaiz run <repo-id>`), you can pass any HuggingFace repository ID directly. For example, to download and run the optimized Whisper Large V3 Turbo model:
 
@@ -42,19 +42,13 @@ CLUAIZ_NONINTERACTIVE=1 cluaiz pull bartowski/SmolLM2-135M-Instruct-GGUF
 
 ---
 
-## 🌐 Web Dashboard Downloading Interface
+## Model catalogue on the website
 
-In addition to the terminal, you can manage and download model variants directly from the **Developer Hub Web Dashboard**. 
-
-If a model is missing from your local library, you can search for any arbitrary HuggingFace repository ID. The dashboard queries the hub, retrieves the available GGUF/ONNX variants, and displays their sizes, architectures, and quantizations for simple one-click downloading:
-
-![Web Dashboard Downloader](../../assets/website-download-model.png)
-
-*Simply input any repository ID (e.g., `unsloth/GLM-5.2-GGUF` or `onnx-community/whisper-large-v3-turbo`) to pull it directly into your local vault.*
+The model pages on [cluaiz.com](https://cluaiz.com) list each model's variants, download size and the command to run it. The download itself is done by the Engine (`cluaiz pull` or `cluaiz run`). The App's Models screen is in development.
 
 ---
 
-## 📂 Secure Model Vault Structure (`~/.cluaiz/models/`)
+## Secure Model Vault Structure (`~/.cluaiz/models/`)
 
 The Secure Model Vault isolates models into distinct sub-folders on disk based on their detected capabilities. This ensures that the dispatch broker knows exactly which models are loaded for specific task modalities (Text, Audio, Vision, or Vector Embeddings).
 
@@ -74,7 +68,7 @@ The Secure Model Vault isolates models into distinct sub-folders on disk based o
 
 ---
 
-## ⚙️ Key System Optimizations
+## Key System Optimizations
 
 ### 1. Prefix-Compatible Scoped Metadata Harvesting
 To prevent duplicate files and configuration conflicts:

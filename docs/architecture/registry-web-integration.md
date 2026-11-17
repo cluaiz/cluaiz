@@ -1,4 +1,4 @@
-# 🏛️ Independent Neural Registry: Web Integration & System Design
+# Independent Neural Registry: Web Integration & System Design
 **Software Architecture & Dynamic Routing Blueprint for cluaiz.com**
 
 This document establishes the system design, data architecture, and software blueprints for dynamically linking the local/remote **Independent Neural Registry** (`cluaiz/models/library`) with the front-end **cluaiz Portal** (`cluaiz.com`). 
@@ -8,7 +8,7 @@ This document establishes the system design, data architecture, and software blu
 ## 1. The Core Architecture Problem
 Currently, the website's models page (`/models`) and its subroutes (`/[family]/[version]/[variant]`) rely on a static, hardcoded TypeScript catalog `cluaiz.com/src/data/models.ts` (`SOVEREIGN_MODELS`).
 
-### ⚠️ Gaps & Issues:
+### Gaps & Issues:
 1. **Catalog Desync**: If a developer adds a new version or model variant to the core CLI registry (`cluaiz/models/library`), the website does not reflect it until the frontend is manually updated.
 2. **Quantization Mismatch**: The frontend calculates sizes and quant labels using rough client-side approximations rather than querying the verified precision schemas in the versioned JSONs.
 3. **Empty Documentation**: The dynamic detail page attempts to fetch a `README.md` from the registry, but because legacy registries lack version-level Markdown files and static assets, pages load with empty layouts.

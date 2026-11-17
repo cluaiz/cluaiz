@@ -8,7 +8,7 @@ params:
   - name: "input"
     type: "String"
     req: true
-    default: "—"
+    default: "-"
     allowed: "Any UTF-8 text string"
     desc: "The text content to synthesize into speech."
   - name: "model"
@@ -98,7 +98,7 @@ Synthesizes speech with an installed ONNX TTS package or a GGUF speech backbone 
 
 ---
 
-## 📌 Endpoint Information
+## Endpoint Information
 
 * **HTTP Method:** `POST`
 * **Path:** `/v1/audio/speech` (CEP task: `audio.run`)
@@ -108,11 +108,11 @@ Synthesizes speech with an installed ONNX TTS package or a GGUF speech backbone 
 
 ---
 
-## 📥 Request Parameters
+## Request Parameters
 
 | Parameter | Type | Required | Default | Allowed Values | Description |
 |:---|:---|:---:|:---|:---|:---|
-| **`input`** | String | **Yes** | — | Any UTF-8 text string | The text content to synthesize into speech. |
+| **`input`** | String | **Yes** | - | Any UTF-8 text string | The text content to synthesize into speech. |
 | **`model`** | String | No | active TTS slot, else first eligible installed package | Installed TTS package ID | ONNX TTS or GGUF speech model with an audio-generation projector. |
 | **`voice`** | String | No | `"default"` | Model voice ID, or GGUF reference audio source | ONNX: `"default"`/`"auto"` selects by language; Kokoro accepts its voice IDs and uses its default voice for a name it does not have (such as OpenAI's `alloy`), Piper has one voice. GGUF: default uses the native model's unconditioned voice; any other value is an audio data URI, authorized local file, or allowed remote URL for speaker conditioning. It is not a Kokoro voice ID. |
 | **`language`** | String | No | ONNX: inferred; GGUF: native default | Language code such as `"cs"`, `"hi"`, `"en-US"` | Phoneme runtimes: spelling/number rules from script/voice/model. GGUF: native selector; unsupported vocabulary languages return HTTP400 before model load. Audio8 determines language from text and rejects forcing; omit language or use `"auto"`. |
@@ -234,7 +234,7 @@ Omit `voice` for the official processor's no-reference prompt. A named voice sel
 
 ---
 
-## 💻 Code Examples
+## Code Examples
 
 ### 1. cURL
 
@@ -315,7 +315,7 @@ async function playSpeech(text, token) {
 
 ---
 
-## 📡 Streaming (`"stream": true`)
+## Streaming (`"stream": true`)
 
 The response is `text/event-stream`. Kokoro and Piper send one event per finished sentence, then the whole audio:
 
@@ -327,7 +327,7 @@ data: {"status":"done","result":{"status":"success","task":"text_to_speech","mod
 
 Play the `audio` parts in `index` order, back to back (each is a complete WAV). ONNX sentence parts are clamped, not loudness-normalised; the final `audio_data` is the whole text normalised. GGUF parts and final audio use the same PCM16 encoding/tempo stream without per-part normalization. A failed/cancelled native generation can deliver earlier valid parts followed by an error; it does not deliver a successful final result. Remaining families' progressive output depends on their runtime.
 
-## 📤 Response Schema & Fields
+## Response Schema & Fields
 
 ### Success Response (`HTTP 200`)
 

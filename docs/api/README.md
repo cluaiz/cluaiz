@@ -4,7 +4,7 @@ Reference for the Engine's direct inference routes and CEP controls at `/v1/cep`
 
 ---
 
-## 🌐 Base URL & Endpoints
+## Base URL & Endpoints
 
 | Protocol | Default Local Endpoint | Description |
 |:---|:---|:---|
@@ -14,7 +14,7 @@ Reference for the Engine's direct inference routes and CEP controls at `/v1/cep`
 
 ---
 
-## 🔒 Authentication & Token Security
+## Authentication & Token Security
 
 Cluaiz utilizes an industry-standard (OpenAI / vLLM compatible) **Bearer Token Authentication Architecture**:
 
@@ -23,7 +23,7 @@ Authorization: Bearer <TOKEN>
 ```
 
 ### Supported Tokens
-1. **Configured API Key (`sk-cluaiz-...`):** Managed in Developer Hub under Settings -> API Keys (saved in `permission.json`).
+1. **Configured API Key (`sk-cluaiz-...`):** Created with `cluaiz token` or in the App's Settings (in development); saved in `permission.json`.
 2. **Local Session Token:** Automatically generated on boot and stored in `~/.cluaiz/session.token` with restricted (`0600`) POSIX permissions.
 
 ### Route Enforcement Matrix
@@ -84,14 +84,14 @@ Invoke-RestMethod "$base/v1/embeddings" -Method Post -Headers $headers `
 
 ---
 
-## 📦 Dedicated API Documentation Modules
+## Dedicated API Documentation Modules
 
 ### 1. CEP (Cluaiz Engine Protocol)
 * [**`POST /v1/cep`**](./cep/README.md): the envelope, errors, tasks, approvals, MCP (`/mcp`, `cluaiz mcp-server`), and the C library (`cep_call` / `cep_free`).
 * One page per method, in five categories (the App's API sidebar):
   * [AI & Inference Core](./cep/ai-inference/README.md): `chat.*`, `audio.*`, `memory.*` ([overview](./cep/ai-inference/memory/README.md)), `notes.*`, `context.*` ([overview](./cep/ai-inference/context/README.md)), `kv.*`
   * [Agents, MCP & Tools](./cep/agents-tools/README.md): `tools.*`, `approvals.*`
-  * [Filesystem & Security Jail](./cep/filesystem/README.md): `fs.*`, `workspace.*`
+  * [Filesystem & Workspace](./cep/filesystem/README.md): `fs.*`, `workspace.*`
   * [Models & Engine Vault](./cep/models/README.md): `models.*`
   * [System & Infrastructure](./cep/system/README.md): `system.*`, `config.*`, `storage.*`, `tokens.*`, `tasks.*`, `rpc.discover`
 * [openrpc.json](./cep/openrpc.json): every method, machine-readable.
@@ -113,7 +113,7 @@ Invoke-RestMethod "$base/v1/embeddings" -Method Post -Headers $headers `
 
 ---
 
-## ⚡ OpenAI Client Quickstart (Python)
+## OpenAI Client Quickstart (Python)
 
 The following example uses the chat completion interface. Other domains have the exact JSON and response contracts described in their own references:
 
@@ -143,7 +143,7 @@ print(response.choices[0].message.content)
 
 ---
 
-## 🚨 Standard Error Format
+## Standard Error Format
 
 A missing or wrong token (with authentication on) is HTTP 401:
 

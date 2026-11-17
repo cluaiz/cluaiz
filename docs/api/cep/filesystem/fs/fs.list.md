@@ -2,7 +2,7 @@
 method: "fs.list"
 transport: "POST /v1/cep"
 category: "filesystem"
-category_title: "Filesystem & Security Jail"
+category_title: "Filesystem & Workspace"
 group: "fs"
 summary: "Lists directory entries, optionally recursively"
 scope: "read"

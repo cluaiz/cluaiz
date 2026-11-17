@@ -8,11 +8,11 @@
 
 ## 1. Executive Summary & Threat Model
 
-Cluaiz provides a high-performance local AI inference engine and agentic runtime. Because the engine executes tools, reads/writes files, and can run in both local desktop environments and cloud/server deployments, it enforces a defense-in-depth security model:
+Cluaiz is an AI engine that runs models and an agent runtime. Because the engine executes tools, reads/writes files, and can run in both local desktop environments and cloud/server deployments, it enforces a defense-in-depth security model:
 
 1. **Local Threat Model:** Protect developer laptops against browser drive-by attacks, malicious web scripts attempting cross-origin requests, and untrusted agent file escapes.
-2. **Server/Cloud Threat Model:** Protect multi-tenant, remote, or LAN deployments with industry-standard Bearer Token authentication (`Authorization: Bearer sk-cluaiz-...`) without brittle hardcoded URL or origin restrictions.
-3. **Reality Commitment:** The architecture is explicitly documented as **Workspace-Gated + Human-in-the-Loop (HITL) Approval**, eliminating hype terms like "OS Sandbox" in favor of concrete, verifiable controls.
+2. **Server/Cloud Threat Model:** Protect multi-tenant, remote, or LAN deployments with Bearer token authentication (`Authorization: Bearer sk-cluaiz-...`) instead of hardcoded URL or origin lists.
+3. **No OS sandbox:** the controls are workspace checks and human approval (Workspace-Gated + Human-in-the-Loop). A command that is allowed runs as a normal process with the user's access; the operating system does not confine it. WebAssembly plugins are the exception: they run inside the Engine with no file or program access and with instruction and memory limits.
 
 ```mermaid
 flowchart TD
@@ -42,12 +42,12 @@ The engine accepts two types of cryptographic Bearer tokens via the standard `Au
 
 1. **User / Server API Keys (`sk-cluaiz-...`):**
    * Configured in `permission.json` under `api_auth.tokens`.
-   * Generated and managed via the Developer Hub UI (Settings -> API Keys).
+   * Created with `cluaiz token`, or in the App's Settings (the App is in development).
    * Used by external scripts, remote web apps, SDKs, and cURL clients.
 2. **Local Session Token (`session.token`):**
    * Generated dynamically on engine boot (`auth::initialize_session_token`).
    * Stored in `~/.cluaiz/session.token` with restricted POSIX permissions (`0600`).
-   * Injected automatically by local desktop wrappers (Tauri / Electron) for zero-configuration local security.
+   * Sent automatically by the Cluaiz App, so a local client needs no setup.
 
 ### 2.2 Constant-Time Comparison
 
@@ -126,7 +126,7 @@ Tools declare capabilities explicitly in their metadata:
 
 **Default-Deny Rule:** Any tool with undeclared capabilities (`capabilities.is_empty()`) requires explicit user approval by default under `sandboxed` and `strict` modes. All MCP (Model Context Protocol) external tools require approval under `sandboxed` and `strict` modes.
 
-### 4.2 Transparent Payloads & Zero Post-Approval Mutation
+### 4.2 What is approved is what runs
 
 1. Before tool execution, the engine yields an SSE chunk `permission_request` containing:
    * `request_id`: Unique UUID.
@@ -149,7 +149,7 @@ Configuration files (`settings.json`, `permission.json`, `hardware_profile.json`
 
 ---
 
-## 6. Master Security Matrix & Execution Boundary (Anthropic Parity)
+## 6. Security matrix and execution boundary
 
 Located in [`agents/src/execution/policy.rs`](../../agents/src/execution/policy.rs) and [`agents/src/registry/types.rs`](../../agents/src/registry/types.rs).
 
@@ -159,22 +159,22 @@ Cluaiz enforces a two-tier security governance model combining **Global Agent Mo
 
 ```mermaid
 flowchart TD
-    Req["Tool / Terminal Request"] --> CheckSuicide{"Destructive Prohibited?\n(format c:, rm -rf /, dd if=)"}
-    CheckSuicide -->|Yes| HardDeny["⛔ HARD-DENIED Across All Modes\n(OS / Hardware Destruction Prohibited)"]
+    Req["Tool / Terminal Request"] --> CheckDestructive{"On the hard-deny list?\n(format c:, rm -rf /, dd if=)"}
+    CheckDestructive -->|Yes| HardDeny["Denied in every mode"]
     
-    CheckSuicide -->|No| CheckMaster{"Master Security Mode\n(permission.json)"}
+    CheckDestructive -->|No| CheckMaster{"Master Security Mode\n(permission.json)"}
     
     CheckMaster -->|full_access| ToolFullCheck{"Tool Mode == require_approval?"}
-    ToolFullCheck -->|Yes| PromptUser["🟡 Prompt User (HITL Confirmation Card)"]
-    ToolFullCheck -->|No| AutoRun["✅ Direct Auto-Run (Zero Friction Automation)"]
+    ToolFullCheck -->|Yes| PromptUser["Ask the user (approval card)"]
+    ToolFullCheck -->|No| AutoRun["Runs without asking"]
     
     CheckMaster -->|strict| ToolStrictCheck{"Tool Mode == always_allow?"}
     ToolStrictCheck -->|Yes| AutoRun
     ToolStrictCheck -->|No| PromptUser
     
-    CheckMaster -->|sandboxed| CheckJail{"Target Path in Workspace Jail?"}
+    CheckMaster -->|sandboxed| CheckJail{"Target path inside the workspace?"}
     CheckJail -->|Outside Workspace| OutsideCheck{"Tool Mode == always_allow?"}
-    OutsideCheck -->|Yes| PromptOutside["🟡 Prompt User (Outside Boundary Alert)"]
+    OutsideCheck -->|Yes| PromptOutside["Ask the user (outside the workspace)"]
     OutsideCheck -->|No| PromptOutside
     
     CheckJail -->|Inside Workspace| ToolSandboxCheck{"Tool Policy"}
@@ -185,25 +185,27 @@ flowchart TD
     CapCheck -->|Mutative / Exec / Shell / MCP| PromptUser
 ```
 
-### 6.2 The Complete 3 × 3 = 9 Master Security Matrix
+### 6.2 The nine combinations
+
+The inside-the-workspace column is tested combination by combination in `agents/src/registry/types.rs` (`requires_approval`).
 
 | # | Global Mode (`permission.json`) | Tool Mode (`tools_registry.json`) | Inside the Workspace (Read / Edit / Build) | Outside the Workspace (Host / System Path) | Harmful / Destructive Action (`rm -rf`, `format`, delete) |
 | :---: | :--- | :--- | :--- | :--- | :--- |
-| **1** | **`full_access`** | **`always_allow`** | ✅ **Direct Auto-Run** (Zero Prompt, Maximum Speed) | ✅ **Allowed Directly** (Read/Write Allowed for automation) | ⛔ **HARD-BLOCKED** (Suicide/OS wipe strictly denied; safe delete prompts) |
-| **2** | **`full_access`** | **`inherit`** | ✅ **Direct Auto-Run** (Follows Global Full Access) | ✅ **Allowed Directly** (Automation loop smooth) | ⛔ **HARD-BLOCKED** (Hardware/OS destruction prohibited) |
-| **3** | **`full_access`** | **`require_approval`** | 🟡 **Prompt User** (The user asked for approval at the tool level) | 🟡 **Prompt User** (Confirmation required) | ⛔ **HARD-BLOCKED** (Destructive patterns denied; normal delete prompts) |
-| **4** | **`sandboxed`** *(Default)* | **`always_allow`** | ✅ **Direct Auto-Run** (The tool is fully trusted inside the sandbox) | 🟡 **Prompt User** (Leaving the workspace, confirmation required) | 🟡 **Prompt User / Block** (Harmful actions prompt; self-destructive commands are blocked) |
-| **5** | **`sandboxed`** *(Default)* | **`inherit`** | ✅ **Read-only Auto-Run**<br>🟡 **Mutating/Exec prompts if undeclared** | 🟡 **Prompt User** (Outside boundary requires explicit sign-off) | ⛔ **HARD-BLOCKED** for suicide; 🟡 **Prompt User** for recursive delete |
-| **6** | **`sandboxed`** *(Default)* | **`require_approval`** | 🟡 **Prompt User** (An approval card on every execution) | 🟡 **Prompt User** (Approval required to go outside) | ⛔ **HARD-BLOCKED** for suicide; 🟡 **Prompt User** for delete |
-| **7** | **`strict`** | **`always_allow`** | ✅ **Direct Auto-Run** (Tool trusted by user for workspace tasks) | 🟡 **Prompt User** (Workspace ke bahar 1% bhi sensitive hone par permission) | ⛔ **HARD-BLOCKED** for suicide; 🟡 **Prompt User** for delete |
-| **8** | **`strict`** | **`inherit`** | 🟡 **Prompt User** (Strict mode forces confirmation on all exec/write) | 🚫 **Access Denied / Prompt** (Strict outside boundary lock) | ⛔ **HARD-BLOCKED** (Zero-tolerance destructive block) |
-| **9** | **`strict`** | **`require_approval`** | 🟡 **Prompt User** (Double-lock: Global bhi Strict, Tool bhi Strict) | 🚫 **Access Denied / Prompt** (Outside workspace strictly gated) | ⛔ **HARD-BLOCKED** (Destructive commands completely rejected) |
+| **1** | **`full_access`** | **`always_allow`** | Runs without asking | Allowed | Hard-deny list refused; other deletes ask |
+| **2** | **`full_access`** | **`inherit`** | Runs without asking (follows the global mode) | Allowed | Hard-deny list refused |
+| **3** | **`full_access`** | **`require_approval`** | Asks (the tool is set to ask) | Asks | Hard-deny list refused; other deletes ask |
+| **4** | **`sandboxed`** *(Default)* | **`always_allow`** | Runs without asking (the tool is trusted in the workspace) | Asks | Hard-deny list refused; other harmful actions ask |
+| **5** | **`sandboxed`** *(Default)* | **`inherit`** | Reads run; changes and commands ask unless the tool declares them | Asks | Hard-deny list refused; recursive delete asks |
+| **6** | **`sandboxed`** *(Default)* | **`require_approval`** | Asks every time | Asks | Hard-deny list refused; delete asks |
+| **7** | **`strict`** | **`always_allow`** | Runs without asking (the user trusted this tool) | Asks | Hard-deny list refused; delete asks |
+| **8** | **`strict`** | **`inherit`** | Asks for every command and write | Refused or asks | Hard-deny list refused |
+| **9** | **`strict`** | **`require_approval`** | Asks (both the global mode and the tool ask) | Refused or asks | Hard-deny list refused |
 
 ### 6.3 Core Security Doctrines
 
 1. **The Workspace Privilege Boundary:** The workspace root is the default trust zone. Crossing out of the workspace requires human verification in `sandboxed` and `strict` modes.
-2. **Anthropic Safety Net (Non-Bypassable Hard-Deny):** Even when running under `--dangerously-skip-permissions` or `full_access`, catastrophic commands that wipe disks or destroy operating system files (`format c:`, `rm -rf /`, `diskutil eraseDisk`, fork bombs) are unconditionally rejected at the engine level across Windows, Linux, and macOS.
-3. **Sensitive Credential Protection:** Sensitive identity paths (`~/.ssh`, `~/.aws/credentials`, `~/.kube/config`, `/etc/shadow`, `system32/config`, macOS Keychains) are actively protected from unapproved reading or modification.
+2. **Hard-deny list:** even in `full_access`, commands that match the list (`format c:`, `rm -rf /`, `diskutil eraseDisk`, fork bombs and the catalog below) are refused on Windows, Linux and macOS. The check matches the command text (`agents/src/execution/policy.rs`, `policy_rules.rs`), so it stops the listed patterns, not every harmful command.
+3. **Sensitive paths:** a command that names a sensitive path (`~/.ssh`, `~/.aws/credentials`, `~/.kube/config`, `/etc/shadow`, `system32/config`, macOS Keychains) is refused for tools in `inherit` mode. A tool set to `always_allow` skips this check.
 
 ### 6.4 Cross-Platform Hard-Deny Catalog
 

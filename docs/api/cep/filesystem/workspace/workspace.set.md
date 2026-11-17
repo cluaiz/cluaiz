@@ -2,7 +2,7 @@
 method: "workspace.set"
 transport: "POST /v1/cep"
 category: "filesystem"
-category_title: "Filesystem & Security Jail"
+category_title: "Filesystem & Workspace"
 group: "workspace"
 summary: "Changes the workspace to an existing directory"
 scope: "write"

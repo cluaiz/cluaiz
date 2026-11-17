@@ -1,4 +1,4 @@
-# 🌐 Cluaiz API Gateway (`api/`)
+# Cluaiz API Gateway (`api/`)
 
 Direct Axum HTTP and Server-Sent Events (SSE) server for Cluaiz.
 
@@ -144,7 +144,7 @@ Handle JSON/SSE `error` even on a streaming HTTP200, HTTP401, HTTP403 with appro
 
 ONNX requests with missing known processor/tokenizer/pooling/external-data files return HTTP400 `invalid_model` with the required filenames before fetching/decoding attachment sources or loading a native session. Planner declarations remain separate from readiness and report the same missing-file inventory. A rejected incomplete package does not replace the current valid ONNX resident. Runtime does not guess another model's processor or automatically fetch helpers; explicit installation/completion uses the caller's selected repository.
 
-## Executed main-executable acceptance — 2026-10-15
+## Executed main-executable acceptance, 2026-10-15
 
 The opt-in `artifact_acceptance` target starts an actual newly linked CLI executable in a fresh home on an ephemeral loopback port, stages the complete package through the existing builder, and sends authenticated HTTP/SSE requests. It does not substitute an in-process test router. Fixture setup and the reproducible environment contract are in [`test/media_regression/README.md`](../test/media_regression/README.md).
 
@@ -174,7 +174,7 @@ This Windows x86_64 CPU run selected Gemma4 E4B/projector, Piper, Whisper, the p
 
 The harness terminates only its own daemon; this is not a graceful-shutdown proof. App integration/history/rendering, GPU inference, other-target model execution, a clean-machine installer and hosted release workflow remain separate acceptance. The release package workflow is locally checked but has not been dispatched by this test.
 
-## Executed sampled-video acceptance — 2026-10-15
+## Executed sampled-video acceptance, 2026-10-15
 
 `cargo test -p cluaiz-api --test video_contract real_video_api_json_sse_and_planner_reach_selected_vision_model --release --no-default-features --offline -- --ignored --nocapture`, with an isolated home, actual staged decoder and external read-only Gemma 4 E4B Q4_K_M/projector, returned:
 
@@ -199,7 +199,7 @@ Text/code attachment extensions are not repeated in each Chat planner response. 
 
 Installers/embedded launchers must place the verified native package at `EnvironmentManager::media_dir()` (`bin/media`) under the selected Cluaiz home. See [provider ownership, package and shutdown contract](../engine/media/src/documents/README.md). Runtime performs no native asset/model download. A source-only build without that package retains text extraction and explicit OCR-unavailable results.
 
-## Executed document acceptance — 2026-10-14
+## Executed document acceptance, 2026-10-14
 
 `cargo test -p cluaiz-media --release --offline` returned 21 passing unit tests and 3 passing document tests. Fixtures contain actual PDF objects and OOXML ZIP/XML, including content/order, Unicode/table/entity parsing, corrupt inputs, expansion limits, mixed-page omissions and request-source cleanup.
 
@@ -214,9 +214,9 @@ test real_router_pdf_attachment_reaches_text_only_llama ... ok
 
 The regular document HTTP fixture passed with token/permission rejection, real PDF/DOCX content, generic UTF-8 code files, partial-page results and invalid options. The actual ONNX embedding fixture also executed document ingestion -> extracted PDF/DOCX chunks -> `/v1/embeddings`, returning 384 finite normalized dimensions with the selected MiniLM graph; its existing image checks returned 512 dimensions. These tests use authenticated loopback HTTP on Windows CPU. They do not establish App UI acceptance, all-model compatibility, scanned OCR, video, other platforms, large-document context fitting or a parser/process memory bound.
 
-## 📐 Architecture
+## Architecture
 
-### Executed native OCR acceptance — 2026-10-15
+### Executed native OCR acceptance, 2026-10-15
 
 The Windows x86_64 CPU fixture package contains verified PDFium, Tesseract 5.2.0/Leptonica, English/Hindi traineddata and upstream license notices. It was staged with `cargo run -p cluaiz-builder --bin cluaiz-builder --release --offline -- media-assets --source <package> --output <new-directory>`; output: `Native media package staged: 28 verified files`.
 
@@ -268,7 +268,7 @@ graph TD
     P --> Q["Runtime availability and attachment gate"]
 ```
 
-## 📦 Components
+## Components
 
 | Module | Responsibility |
 |---|---|

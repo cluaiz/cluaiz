@@ -36,7 +36,7 @@ graph TD
 
 ---
 
-## 🛠️ Build Commands Matrix
+## Build Commands Matrix
 
 The builder gives 1:1 granular control so you compile only what changed:
 
@@ -73,7 +73,7 @@ cargo run -p cluaiz-builder -- all --profile <debug|release>
 
 ---
 
-## 🔄 Deployment & Synchronization (`dev-sync`)
+## Deployment & Synchronization (`dev-sync`)
 
 Native OCR/PDF package staging uses `media-assets`:
 
@@ -106,7 +106,7 @@ cargo run -p cmd -- dev-sync driver llama --profile <debug|release>
 
 ---
 
-## 📂 Target System Directory Layout (`~/.cluaiz`)
+## Target System Directory Layout (`~/.cluaiz`)
 
 Every file per OS and GPU is listed in [`docs/deployments/install-layout.md`](../../docs/deployments/install-layout.md).
 

@@ -1,7 +1,8 @@
 # Introduction to Cluaiz
 
-Cluaiz is a local AI engine. It runs language, speech and embedding models on your own computer,
-with the files and memory staying on your disk.
+Cluaiz is the AI engine where models, voice, vision, memory, tools, agents and workflows work as one.
+It runs language, speech, vision and embedding models on your own computer or server, with the files
+and memory staying on your disk, and can also use cloud providers through the same API.
 
 This documentation covers installing the Engine, running models, the terminal agent, the HTTP API
 and CEP (the Engine's JSON-RPC protocol).
@@ -16,7 +17,7 @@ and CEP (the Engine's JSON-RPC protocol).
   embeddings). See [the two runtimes](../engine/dual_engine_architecture.md).
 * **GPU packs:** the CPU build works everywhere; CUDA 12, CUDA 13 and Vulkan packs add GPU support
   (Metal is built into the macOS build).
-* **Ways in:** the CLI, the HTTP API (`cluaiz serve`), a C library (`cluaiz_cep.dll`) and MCP.
+* **Ways in:** the CLI, the HTTP API (`cluaiz serve`), MCP and a C library (`cluaiz_cep.dll`, in the source; not in the release packages yet).
 
 The full map is in [ARCHITECTURE.md](../../ARCHITECTURE.md).
 

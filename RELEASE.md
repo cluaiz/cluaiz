@@ -1,4 +1,4 @@
-# Cluaiz Engine — Model Support
+# Cluaiz Engine, Model Support
 
 Updated: November 10, 2026
 
@@ -31,7 +31,7 @@ Cluaiz runs local models through **llama.cpp for GGUF** and **ONNX Runtime for O
 
 **Supported** means an execution path is available for compatible packages. **Experimental** means a path is available for evaluation but still has integration, quality or performance limitations. **Adapter available** means family-specific code exists and complete-package acceptance is pending.
 
-Support depends on the architecture, export and complete package—not just its file extension. The family tables identify where selected models have been tested.
+Support depends on the architecture, export and complete package, not just its file extension. The family tables identify where selected models have been tested.
 
 ## GGUF model families
 
@@ -129,7 +129,7 @@ For example, with the OCR pack a scanned invoice can be read with native OCR, em
 
 Native extraction does not require an AI model. OCR reads characters; vision models can interpret visual content. Neither promises complete layout reconstruction or perfect recognition. Responses include warnings and omissions where applicable.
 
-Digital PDF text uses `pdf-extract`; PDFium renders pages and Tesseract performs native OCR. DOCX tables are extracted as text, not a full spreadsheet schema. Text/code files are read as content—they are not executed.
+Digital PDF text uses `pdf-extract`; PDFium renders pages and Tesseract performs native OCR. DOCX tables are extracted as text, not a full spreadsheet schema. Text/code files are read as content: they are not executed.
 
 Audio/video use the speech or chat APIs. General XLSX/PPTX parsing, DOCX embedded-image reasoning and persistent vector-index storage are not included.
 

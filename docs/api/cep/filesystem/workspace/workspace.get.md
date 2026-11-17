@@ -2,7 +2,7 @@
 method: "workspace.get"
 transport: "POST /v1/cep"
 category: "filesystem"
-category_title: "Filesystem & Security Jail"
+category_title: "Filesystem & Workspace"
 group: "workspace"
 summary: "Returns the current workspace directory"
 scope: "read"

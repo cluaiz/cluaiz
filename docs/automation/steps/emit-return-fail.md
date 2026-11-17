@@ -64,6 +64,6 @@ Ends the run with an error, as a failed step would. The flow's `on_error` steps 
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `fail` | string | — | The message |
+| `fail` | string | - | The message |
 | `kind` | string | `failed` | The error kind recorded (letters, digits, `_`), for `on_error` and for `retry.on` in a parent flow |
-| `details` | any | — | Kept in `error.details` |
+| `details` | any | - | Kept in `error.details` |

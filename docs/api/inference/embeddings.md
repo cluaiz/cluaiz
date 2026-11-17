@@ -8,7 +8,7 @@ params:
   - name: "input"
     type: "String, Array of Strings, or Array of Objects"
     req: true
-    default: "—"
+    default: "-"
     allowed: "Non-empty string, string array, or image object array"
     desc: "The data to vectorize. For text, pass a string or array of strings. For images, pass `[{\"type\": \"image\", \"source\": \"<uri-or-path>\"}]`."
   - name: "model"
@@ -32,7 +32,7 @@ params:
   - name: "user"
     type: "String"
     req: false
-    default: "—"
+    default: "-"
     allowed: "Caller identifier"
     desc: "Accepted for compatibility; does not create a namespace or user-specific vector store."
 request_payload: |
@@ -137,7 +137,7 @@ The pinned native backend now supports `gemma-embedding2`. The locally exercised
 
 ---
 
-## 📌 Endpoint Information
+## Endpoint Information
 
 * **HTTP Method:** `POST`
 * **Path:** `/v1/embeddings`
@@ -148,21 +148,21 @@ The pinned native backend now supports `gemma-embedding2`. The locally exercised
 
 ---
 
-## 📥 Request Parameters
+## Request Parameters
 
 | Parameter | Type | Required | Default | Allowed Values / Formats | Description |
 |:---|:---|:---:|:---|:---|:---|
-| **`input`** | String, Array of Strings, or Array of Objects | **Yes** | — | Non-empty string, string array, or image object array | The data to vectorize. For text, pass a string or array of strings. For images, pass `[{"type": "image", "source": "<uri-or-path>"}]`. |
+| **`input`** | String, Array of Strings, or Array of Objects | **Yes** | - | Non-empty string, string array, or image object array | The data to vectorize. For text, pass a string or array of strings. For images, pass `[{"type": "image", "source": "<uri-or-path>"}]`. |
 | **`model`** | String | No | Active slot model | Installed compatible embedding model ID | Exact selected ONNX or GGUF model; GGUF accepts text only. |
 | **`encoding_format`** | String | No | `"float"` | `"float"` | Numerical encoding format for vectors. Non-float encodings are rejected. |
 | **`keep_alive`** | Integer | No | `null` | Minutes (e.g. `5`, `0` to unload, `-1` forever) | Session memory retention policy in minutes. |
-| **`user`** | String | No | — | Caller identifier | Accepted for compatibility; does not create a namespace or user-specific vector store. |
+| **`user`** | String | No | - | Caller identifier | Accepted for compatibility; does not create a namespace or user-specific vector store. |
 
 Unknown top-level fields are rejected. There is no `dimensions` override, base64 output encoding, token-ID input, document-source input, or streaming response on this route. Keep vectors from different models/dimensions in separate indexes; equal vector lengths alone do not make their spaces compatible.
 
 ---
 
-## 🧠 Supported Input Modalities & Models
+## Supported Input Modalities & Models
 
 ### 1. Text Embeddings (`bge_m3-unknown-onnx-fp32`)
 * **Output Dimensions:** 1024 normalized dimensions.
@@ -224,7 +224,7 @@ Use this mixed-input example only for a graph that actually accepts both `pixel_
 
 ---
 
-## 💻 Code Examples
+## Code Examples
 
 ### 1. cURL (Text Embeddings)
 
@@ -331,7 +331,7 @@ The Explorer's Body Payload menu also provides separate single-text, batch, extr
 
 ---
 
-## 📤 Response Schema & Fields
+## Response Schema & Fields
 
 ### JavaScript / Node.js: text batch and actual image bytes
 

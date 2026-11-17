@@ -12,7 +12,7 @@
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `run` | string | — (required) | The other flow's name |
+| `run` | string |, (required) | The other flow's name |
 | `scope` | `project`, `user` | The project's, then the user's | Which flow of that name |
 | `with` | object | `{}` | Its inputs, checked against its `inputs` |
 | `wait` | boolean | `true` | `true`: wait for it and use its outputs. `false`: start it and go on; the output is `{ run_id }` |

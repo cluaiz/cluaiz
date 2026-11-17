@@ -60,23 +60,23 @@ flowchart TD
 
 | Field | Type | Required | Default | Meaning |
 | --- | --- | --- | --- | --- |
-| `flow` | string | Yes | — | The format version. `cluaiz.flow/1` for this reference |
-| `name` | string | Yes | — | 1–64 characters: lowercase letters, digits, `-`, `_`; starts with a letter or digit |
-| `description` | string | No | — | What the flow does. Shown in lists, to the agent when the flow is a tool, and used by `flows.explain` |
-| `version` | string | No | — | The author's own version text. Automation also records each file's hash per run |
+| `flow` | string | Yes | - | The format version. `cluaiz.flow/1` for this reference |
+| `name` | string | Yes | - | 1–64 characters: lowercase letters, digits, `-`, `_`; starts with a letter or digit |
+| `description` | string | No | - | What the flow does. Shown in lists, to the agent when the flow is a tool, and used by `flows.explain` |
+| `version` | string | No | - | The author's own version text. Automation also records each file's hash per run |
 | `timezone` | string | No | The computer's | IANA name (`Asia/Kolkata`). Used by `schedule`, `weekday`, `time_between`, `format_time` |
 | `inputs` | object | No | `{}` | Input name → JSON Schema. See [Inputs](#inputs) |
-| `outputs` | object | No | — | Output name → value (references allowed). What the run returns if it ends without `return` |
+| `outputs` | object | No | - | Output name → value (references allowed). What the run returns if it ends without `return` |
 | `on` | list | No | `[]` | [Triggers](triggers.md). With none, the flow runs only when started (`manual` is always possible) |
 | `permissions` | object | No | Computed at save | [Permissions](permissions.md) |
 | `secrets` | list of strings | No | `[]` | Names of the secrets the flow reads (`env:NAME` in fields that take secrets) |
 | `limits` | object | No | See [Limits](limits.md) | `timeout`, `max_steps`, `max_parallel`, `result_in_memory` |
 | `concurrency` | string | No | `queue` | `queue`, `skip`, `replace`, `parallel`. See [Limits](limits.md#concurrency) |
 | `retention` | object | No | Settings | `{ days, runs }`: how long this flow's runs are kept |
-| `steps` | list | Yes | — | At least one step. See [Steps](steps/README.md) |
+| `steps` | list | Yes | - | At least one step. See [Steps](steps/README.md) |
 | `on_error` | list | No | `[]` | Steps run when the run fails. `error` holds the failure |
-| `ui` | any | No | — | The application's own data. Kept exactly as given; never read or changed by Automation |
-| `meta` | object | No | — | Tags, author, links, anything else. Not read by Automation; `flows.list` can filter by `meta.tags` |
+| `ui` | any | No | - | The application's own data. Kept exactly as given; never read or changed by Automation |
+| `meta` | object | No | - | Tags, author, links, anything else. Not read by Automation; `flows.list` can filter by `meta.tags` |
 
 ## Inputs
 

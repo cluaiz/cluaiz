@@ -1,4 +1,4 @@
-# Filesystem & Security Jail
+# Filesystem & Workspace
 
 <!-- Generated from the CEP registry by api/tests/cep_docs.rs; do not edit. -->
 

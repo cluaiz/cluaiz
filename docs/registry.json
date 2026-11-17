@@ -141,7 +141,7 @@
         ]
       },
       {
-        "group": "Filesystem & Security Jail",
+        "group": "Filesystem & Workspace",
         "pages": [
           { "slug": "cep-filesystem", "title": "Index", "file_path": "docs/api/cep/filesystem/README.md" },
           { "slug": "cep-fs-copy", "title": "fs.copy", "file_path": "docs/api/cep/filesystem/fs/fs.copy.md" },

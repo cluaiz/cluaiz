@@ -9,7 +9,7 @@
   belongs to. Used by the fetcher (variants, file grouping), the registry (slot of an installed
   model) and the ONNX runtime (family).
 - **Platform Support:** Any (pure functions over strings).
-- **Reusability Level:** Single source of truth for model kinds and file grouping in
+- **Reusability Level:** The one definition of model kinds and file grouping in
   `cluaiz-models`.
 
 ## Architectural Flow

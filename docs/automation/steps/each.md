@@ -34,13 +34,13 @@ flowchart LR
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `each` | reference to a list | — (required) | The items. An object is turned into a list of `{ key, value }` |
+| `each` | reference to a list |, (required) | The items. An object is turned into a list of `{ key, value }` |
 | `as` | string | `item` | The name of the current item in references |
-| `do` | list of steps | — (required) | The steps for each item |
+| `do` | list of steps |, (required) | The steps for each item |
 | `parallel` | integer | `1` | Items at the same time (also bounded by `limits.max_parallel`) |
-| `batch` | integer | — | Groups of this many items: the steps run once per group, with `items` (the group) instead of the item |
+| `batch` | integer | - | Groups of this many items: the steps run once per group, with `items` (the group) instead of the item |
 | `stop_on_error` | boolean | `true` | `true`: the first failed item stops the rest and fails the step. `false`: every item runs; the step succeeds, and failed items are listed |
-| `delay` | duration | — | Wait this long between starting items (for rate-limited services) |
+| `delay` | duration | - | Wait this long between starting items (for rate-limited services) |
 | Common fields | | | |
 
 ## Inside the loop

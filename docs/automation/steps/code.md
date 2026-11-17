@@ -34,7 +34,7 @@ sequenceDiagram
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `code` | string | — (required) | A `.wasm` file, relative to the flow file's folder; or `plugin:<name>` for an installed plugin's module |
+| `code` | string |, (required) | A `.wasm` file, relative to the flow file's folder; or `plugin:<name>` for an installed plugin's module |
 | `fn` | string | `main` | The exported function |
 | `with` | any | `null` | The input, as JSON |
 | `memory` | size | `256MB` (the most) | Memory the module may use |

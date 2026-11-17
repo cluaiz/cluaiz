@@ -2,7 +2,7 @@
 method: "fs.delete"
 transport: "POST /v1/cep"
 category: "filesystem"
-category_title: "Filesystem & Security Jail"
+category_title: "Filesystem & Workspace"
 group: "fs"
 summary: "Deletes a file or directory; a link is removed itself, never its target"
 scope: "write"

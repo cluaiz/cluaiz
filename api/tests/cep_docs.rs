@@ -16,7 +16,7 @@ use std::path::{Path, PathBuf};
 const CATEGORIES: [(&str, &str, &[&str]); 5] = [
     ("ai-inference", "AI & Inference Core", &["chat", "audio", "memory", "notes", "prompts", "context", "kv"]),
     ("agents-tools", "Agents, MCP & Tools", &["tools", "approvals"]),
-    ("filesystem", "Filesystem & Security Jail", &["fs", "workspace"]),
+    ("filesystem", "Filesystem & Workspace", &["fs", "workspace"]),
     ("models", "Models & Engine Vault", &["models", "providers"]),
     ("system", "System & Infrastructure", &["system", "config", "storage", "tokens", "tasks", "rpc"]),
 ];

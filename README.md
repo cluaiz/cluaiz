@@ -347,8 +347,8 @@ tested first on this T4 did not, and showed llama.cpp 7–22% ahead in the cases
 | **Qwen3 4B** | 1935 vs 1978 t/s (v0.1.0: 1758 vs 1882) | **593 vs 393 t/s** | **1.5x faster** |
 | **Gemma 3 12B** | 690 vs 725 t/s (v0.1.0: 572 vs 649) | **228 vs 141 t/s** | **1.6x faster** |
 | **Mistral Small 3.2 24B** | 372 vs 385 t/s (v0.1.0: 315 vs 340) | 154 vs 153 t/s (1085 tokens) | same |
-| **Gemma 4 31B Q4** (planner split, 41/60) | — | **116 vs 117 t/s** (v0.1.0: 96 vs 117) | same |
-| **Gemma 4 31B Q8** (planner split, 23/60) | — | **50 vs 51 t/s** (v0.1.0: 45 vs 51) | same |
+| **Gemma 4 31B Q4** (planner split, 41/60) | - | **116 vs 117 t/s** (v0.1.0: 96 vs 117) | same |
+| **Gemma 4 31B Q8** (planner split, 23/60) | - | **50 vs 51 t/s** (v0.1.0: 45 vs 51) | same |
 
 CPU only, llama.cpp also without a GPU (`-dev none`): Qwen3 4B 27 vs 29, Gemma 3 12B 10 vs 10, Mistral 24B 5 vs 5,
 Gemma 4 31B 4 vs 4 t/s.
@@ -358,7 +358,7 @@ Gemma 4 31B 4 vs 4 t/s.
 | Model | What happened | Cluaiz | llama.cpp |
 | :--- | :--- | :---: | :---: |
 | **Gemma 4 31B Q4** (17.1 GB) | Planner: 41 of 60 blocks on GPU | **2.3 t/s** gen, 112 t/s prompt | 2.3 t/s gen, 112 t/s prompt |
-| **Gemma 4 31B Q8** (30.4 GB, dense) | Planner refuses: the closest split is 8 GB short of RAM, with a clear message | not loaded (by design) | — |
+| **Gemma 4 31B Q8** (30.4 GB, dense) | Planner refuses: the closest split is 8 GB short of RAM, with a clear message | not loaded (by design) | - |
 | | Forced by the user setting `n_gpu_layers 20`: weights read from the disk on every token | 0.008–0.014 t/s gen, 1.5–3.0 t/s prompt | not measured (test ended) |
 
 > [!NOTE]

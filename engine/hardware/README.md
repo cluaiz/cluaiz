@@ -1,8 +1,8 @@
-# 🖥️ Cluaiz Hardware (`engine/hardware`)
+# Cluaiz Hardware (`engine/hardware`)
 
-Single Source of Truth (SSOT) hardware prober and metric evaluator for Cluaiz.
+The one place where Cluaiz detects the hardware (CPU, RAM, GPUs) and reads its live metrics.
 
-## 📐 Architecture
+## Architecture
 
 ```mermaid
 graph TD
@@ -11,7 +11,7 @@ graph TD
     A -->|Cache Layer| D[HardwareSnapshot in RAM]
 ```
 
-## 📦 Components
+## Components
 
 | Module | Responsibility |
 |---|---|

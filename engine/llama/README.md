@@ -1,4 +1,4 @@
-# 🦙 Cluaiz Llama Engine (`engine/llama`)
+# Cluaiz Llama Engine (`engine/llama`)
 
 Direct Rust API wrapping custom `llama.cpp` C/C++ memory. Compiled as an `rlib` to eliminate dual-static memory copies between Exe and DLL.
 
@@ -6,7 +6,7 @@ Direct Rust API wrapping custom `llama.cpp` C/C++ memory. Compiled as an `rlib` 
 
 The native fork backports [upstream EmbeddingGemma-2 support](https://github.com/ggml-org/llama.cpp/pull/30054). The existing text embedding owner queries its projected output width (768 for the installed Q8_0 test package); it does not substitute the 512-wide hidden state. This does not expose GGUF image/audio embeddings through the API. `llama-revision.txt` pins generated fallback clones to the reviewed fork revision; a dirty fallback clone is preserved and refused rather than overwritten. An explicit local native checkout remains the development source.
 
-## 📐 Architecture
+## Architecture
 
 ```mermaid
 graph TD
@@ -30,7 +30,7 @@ graph TD
     Prefill --> Loop["Existing sampler / reasoning / stream loop"]
 ```
 
-## 📦 Components
+## Components
 
 | Module | Responsibility |
 |---|---|

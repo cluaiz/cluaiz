@@ -116,10 +116,10 @@ Providers that call themselves OpenAI-compatible still differ: how thinking is t
 | `together.ai`, `together.xyz` | `reasoning.enabled` | No `reasoning_effort` |
 | `openrouter.ai` | `reasoning.effort` (`"none"` for off) | |
 | `dashscope…aliyuncs.com` (Qwen) | `enable_thinking` | |
-| `api.mistral.ai` | — | Tool call ids of nine letters and digits |
+| `api.mistral.ai` | - | Tool call ids of nine letters and digits |
 | `api.openai.com`, `openai.azure.com` | `reasoning_effort` | `max_completion_tokens` |
 | `integrate.api.nvidia.com` (NVIDIA) | `chat_template_kwargs.enable_thinking` on or off, with `reasoning_effort` for the level (some models think only when it is sent) | |
-| `api.x.ai`, `moonshot` | — | No `reasoning_effort` |
+| `api.x.ai`, `moonshot` | - | No `reasoning_effort` |
 | `aiplatform.googleapis.com/…/endpoints/openapi` (Gemini on Vertex AI) | As Gemini; off sends nothing (this URL refuses `reasoning_effort`) | The thinking arrives in pieces marked `thought`, without tags |
 | Anthropic Messages (`api.anthropic.com`, `bedrock-mantle…/anthropic`, Vertex AI Claude) | `thinking: {type: "adaptive", display: "summarized"}` with `output_config.effort`; off leaves `thinking` out and asks for `low` effort (newer Claude models cannot turn thinking off) | `max_tokens` is required (32000 when the request sets none, 8192 for a model that takes less); `temperature` and `top_p` are not sent (API version 2026-10-21 refuses them); each answer's thinking block goes back unchanged, with its signature, before that answer's calls |
 | Anything else (Groq, Ollama, a server on this computer) | `reasoning_effort` | The plain OpenAI format |

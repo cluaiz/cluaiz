@@ -27,10 +27,10 @@ flowchart TD
 
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `repeat` | list of steps | — (required) | The steps of one round |
-| `until` | expression | — (required) | Checked after each round; true ends the step |
-| `max` | integer | — (required) | Most rounds, 1–10,000. There is no repeat without a limit |
-| `delay` | duration | — | Wait between rounds (the run is `waiting` meanwhile, holding no worker) |
+| `repeat` | list of steps |, (required) | The steps of one round |
+| `until` | expression |, (required) | Checked after each round; true ends the step |
+| `max` | integer |, (required) | Most rounds, 1–10,000. There is no repeat without a limit |
+| `delay` | duration | - | Wait between rounds (the run is `waiting` meanwhile, holding no worker) |
 | `on_max` | `fail`, `continue` | `fail` | When `max` rounds ran and `until` never held: fail with kind `limit`, or go on |
 | Common fields | | | |
 
