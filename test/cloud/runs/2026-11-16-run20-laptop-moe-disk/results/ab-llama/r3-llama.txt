@@ -1,0 +1,18 @@
+llama-bench.exe : ggml_cuda_init: found 1 CUDA devices (Total VRAM: 4093 MiB):
+At C:\Users\<user>\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\.agent\bench-ab\ab.ps1:36 char:5
++     & $exe @argv *> $log
++     ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (ggml_cuda_init:...RAM: 4093 MiB)::String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  Device 0: NVIDIA GeForce RTX 3050 A Laptop GPU, compute capability 8.9, VMM: yes, VRAM: 4093 MiB
+load_backend: loaded CUDA backend from C:\Users\<user>\AppData\Local\cluaiz-test\llama-official-b12428\ggml-cuda.dll
+load_backend: loaded RPC backend from C:\Users\<user>\AppData\Local\cluaiz-test\llama-official-b12428\ggml-rpc.dll
+load_backend: loaded CPU backend from 
+C:\Users\<user>\AppData\Local\cluaiz-test\llama-official-b12428\ggml-cpu-haswell.dll
+| model                          |       size |     params | backend    | ngl |  n_cpu_moe |  fa |            test |                  t/s |
+| ------------------------------ | ---------: | ---------: | ---------- | --: | ---------: | --: | --------------: | -------------------: |
+| gemma4 26B.A4B IQ4_XS - 4.25 bpw |  13.21 GiB |    25.23 B | CUDA       |  99 |         30 |   1 |           pp512 |       154.88 ± 38.32 |
+| gemma4 26B.A4B IQ4_XS - 4.25 bpw |  13.21 GiB |    25.23 B | CUDA       |  99 |         30 |   1 |           tg128 |         16.25 ± 0.42 |
+
+build: b4c0e00a4 (12428)

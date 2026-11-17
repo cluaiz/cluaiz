@@ -1,0 +1,10 @@
+cluaiz.exe : running tg400 on MoE split (attention on GPU, experts in RAM) (2 runs)...
+At C:\Users\<user>\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\.agent\bench-ab\ab2.ps1:12 char:5
++     & $Cluaiz bench $Model -p 0 -n 400 -r 2 @load *> "$Out\r$r-bench. ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (running tg400 o...AM) (2 runs)...:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+| model | size | params | placement | ngl | n_ctx | test | t/s |
+| ----- | ---: | -----: | --------- | --: | ----: | ---: | --: |
+| gemma4 26B.A4B IQ4_XS - 4.25 bpw | 13.21 GiB | 25.23 B | MoE split (attention on GPU, experts in RAM) | -1 | 16384 | tg400 | 12.05 ± 2.90 |

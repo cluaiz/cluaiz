@@ -1,0 +1,57 @@
+  Model
+    id                google_gemma-4-26b-a4b-it-gguf-IQ4_XS
+    file              C:\SERS\<USER>\.cluaiz\models\chat\google_gemma-4-26b-a4b-it-gguf-IQ4_XS\google_gemma-4-26B-A4B-it-IQ4_XS.gguf (13.23 GiB)
+    architecture      gemma4
+    name              Gemma 4 26B A4B It
+    parameters        26B-A4B
+    context length    262144
+    layers            30
+    embedding         2816
+    attention heads   16 (KV 8)
+    experts           128 (8 active)
+    sliding window    1024
+  Capabilities
+    chat template     yes
+    thinking          yes (<|channel>thought ... <channel|>)
+  Plan on this machine now
+    placement  MoE split (attention on GPU, experts in RAM) | 30 of 30 blocks on GPU, 0 in RAM | n_gpu_layers -1 | n_cpu_moe 30
+    context    16384 tokens | KV Kv8 next to its layers
+    memory     VRAM 2.82 GB | RAM 12.08 GB | 3.25 GB of experts read from disk
+    reason     MoE split: attention/shared 1.69 + KV 0.32 + buffers 0.80 on GPU, experts of 30 / 30 layers in RAM (11.52 GB); 3.25 GB over the RAM limit is read from disk when used (mmap)
+
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : google_gemma-4-26b-a4b-it-gguf-IQ4_XS
+║   • Architecture    : gemma4 | 30 layers | heads 16 | KV heads 8 | head size K 512 / V 512, sliding window 1024 on 25 layers | 128 experts, 8 active | experts 11.52 GB
+║   • Weights         : file 13.23 GB | input embeddings 0.56 GB (always CPU) | output head 0.56 GB | vocab 262144
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 16384 tokens, KV Kv8 (Auto: 16384 tokens with KV Kv8 + buffer -0.09 GB, to stay on the GPU (16384 tokens with KV Kv16 did not fit))
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA GeForce RTX 3050 A Laptop GPU | free 2.91 of 4.00 GB | buffer kept free -0.09 GB (measured: GPU pool -0.29 GB + 0.20 GB reserve; estimate corrected by llama.cpp's dry run +0.30 GB)
+║   • RAM             : free 10.02 of 23.69 GB | Cluaiz may use 8.83 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : MoE split (attention on GPU, experts in RAM)
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 30 | n_ctx = 16384 | KV Kv8 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 30 on GPU, 0 in RAM (of 30)
+║   • VRAM            : 2.82 GB (weights + KV 0.32 + logits)
+║   • RAM             : 12.08 GB (incl. KV 0.00)
+║   • Disk (mmap)     : 3.25 GB of experts read from disk when used
+║   • Reason         : MoE split: attention/shared 1.69 + KV 0.32 + buffers 0.80 on GPU, experts of 30 / 30 layers in RAM (11.52 GB); 3.25 GB over the RAM limit is read from disk when used (mmap)
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [NO]       VRAM 14.34 GB | RAM  0.56 GB | does not fit in VRAM: weights 13.21 + KV 0.32 + buffers 0.80 = 14.34 GB vs usable VRAM 3.00 GB
+║   • MoE split        [FITS]     VRAM  2.82 GB | RAM 12.08 GB | attention/shared 1.69 + KV 0.32 + buffers 0.80 on GPU, experts of 30 / 30 layers in RAM (11.52 GB); 3.25 GB over the RAM limit is read from disk when used (mmap)
+║   • GPU + RAM split  [FITS]     VRAM  2.68 GB | RAM 12.22 GB | 3 / 30 blocks + output head on GPU (2.68 GB), 27 blocks in RAM; 3.39 GB over the RAM limit is read from disk when used (mmap)
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM 14.04 GB | weights 13.21 + KV 0.32 + logits 0.50 = 14.04 GB in RAM; 5.21 GB over the RAM limit is read from disk when used (mmap)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 8 / batch 8 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
