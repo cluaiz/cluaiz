@@ -98,16 +98,7 @@ pub async fn execute_streaming_loop(
         }
 
         // 📊 YIELD LIVE CONTEXT & HARDWARE TELEMETRY EARLY
-        let mut active_tools_list = if let Some(ref sid) = req_session_id {
-            cluaiz_agents::ToolsEngine::get_active_tool_ids_for_session(sid)
-        } else {
-            Vec::new()
-        };
-        for tid in &ctx.active_tool_ids {
-            if !active_tools_list.contains(tid) {
-                active_tools_list.push(tid.clone());
-            }
-        }
+        let active_tools_list = super::turn_end::active_tool_ids(&ctx, req_session_id.as_deref());
 
         let context_snap = cluaiz_agents::ToolsEngine::compute_telemetry(
             &ctx.resolved_model_name,
@@ -228,87 +219,24 @@ pub async fn execute_streaming_loop(
             "choices": [{"index": 0, "delta": {}, "finish_reason": finish_reason}]
         }).to_string()));
 
-        // Generate Telemetry and Final Updates
-        let total_time_ms = ctx.start_time.elapsed().as_millis();
-        let decode_time_ms = total_time_ms.saturating_sub(first_ttft_ms);
-        let tps = if decode_time_ms > 30 {
-            (overall_token_count as f64) / (decode_time_ms as f64 / 1000.0)
-        } else if total_time_ms > 0 {
-            (overall_token_count as f64) / (total_time_ms as f64 / 1000.0)
-        } else {
-            0.0
-        };
-
         if ctx.send_telemetry || ctx.include_usage {
-            let prompt_tok_est = match &context_report {
-                Some(report) => report.prompt_tokens,
-                None if ctx.user_prompt_chars + ctx.history_chars + ctx.system_prompt_chars > 0 => {
-                    ((ctx.user_prompt_chars + ctx.history_chars + ctx.system_prompt_chars) / 4).max(1)
-                }
-                None => 0,
+            let counts = super::turn_end::TurnCounts {
+                completion_tokens: overall_token_count,
+                reasoning_tokens: reasoning_tokens_count,
+                first_token_ms: first_ttft_ms,
             };
-            let mut usage_json = json!({
-                "prompt_tokens": prompt_tok_est,
-                "completion_tokens": overall_token_count,
-                "total_tokens": overall_token_count + prompt_tok_est,
-                "completion_tokens_details": {
-                    "reasoning_tokens": reasoning_tokens_count
-                },
-                "time_to_first_token_ms": first_ttft_ms,
-                "total_time_ms": total_time_ms,
-                "model_load_ms": ctx.model_load_ms,
-                "tokens_per_second": format!("{:.2}", tps).parse::<f64>().unwrap_or(0.0)
-            });
-
-            // Context and memory breakdown: only with the owner's stream telemetry setting
-            if ctx.send_telemetry {
-            let mut active_ids = req_session_id.as_deref()
-                .map(cluaiz_agents::ToolsEngine::get_active_tool_ids_for_session)
-                .unwrap_or_default();
-            for tid in &ctx.active_tool_ids {
-                if !active_ids.contains(tid) {
-                    active_ids.push(tid.clone());
-                }
-            }
-            let mut ctx_telemetry = cluaiz_agents::ToolsEngine::compute_telemetry(
-                &ctx.resolved_model_name,
-                req_session_id.as_deref().unwrap_or("ephemeral"),
-                &active_ids,
-                ctx.user_prompt_chars,
-                ctx.history_chars,
-                ctx.system_prompt_chars,
-                overall_token_count,
-            );
-            // Totals from the engine's own count of what the context holds now
-            if let Some(report) = &context_report {
-                ctx_telemetry.context_breakdown.apply_measured(report.n_ctx, report.n_tokens);
-            }
-            usage_json["context_telemetry"] = serde_json::to_value(ctx_telemetry).unwrap_or_default();
-
-            if permission.model_header_info {
-                let loaded_models = super::types::generate_model_header_info();
-                usage_json["model_header_info"] = json!({
-                    "active_models": loaded_models
-                });
-            }
-            }
-
-            let telemetry_chunk = json!({
+            let usage = super::turn_end::usage(&ctx, req_session_id.as_deref(), context_report.as_ref(), &counts);
+            yield Ok::<_, Infallible>(Event::default().data(json!({
                 "id": req_id_stream.clone(),
                 "object": "chat.completion.chunk",
                 "created": Utc::now().timestamp(),
                 "model": ctx.resolved_model_name.clone(),
                 "choices": [],
-                "usage": usage_json
-            });
-            yield Ok::<_, Infallible>(Event::default().data(telemetry_chunk.to_string()));
+                "usage": usage
+            }).to_string()));
         }
 
-        // ⏳ Decrement session tool turns & purge expired ephemeral tools
-        if let Some(ref sid) = req_session_id {
-            cluaiz_agents::ToolsEngine::decrement_session_turns(sid);
-        }
-        super::tool_turns::end_turn_tools(&ctx, req_session_id.as_deref(), &tool_turns);
+        super::turn_end::end_tools(&ctx, req_session_id.as_deref(), &tool_turns);
         // What the Engine added to this turn, so the next request renders it the same way (before
         // the closing chunk, which carries the new events for apps that keep the chat themselves)
         let memory_events = super::preflight::record_turn(&state_clone, &ctx, tool_turns.steps(), &visible_answer, &tool_events);
@@ -340,21 +268,7 @@ pub async fn execute_streaming_loop(
         if let Ok(mut lock) = ACTIVE_STREAMS.write() {
             lock.remove(&req_id_stream);
         }
-        if keep_alive_val == Some(0) {
-            tracing::info!("♻️ [Memory] Unloading model post-generation due to keep_alive: 0");
-            state_clone.host.unload_model().await;
-        } else if let Some(mins) = keep_alive_val {
-            if mins > 0 {
-                let secs = (mins as u64) * 60;
-                let state_timer = Arc::clone(&state_clone);
-                tracing::info!("⏳ [Memory] Scheduling model unload in {} minutes ({}s)", mins, secs);
-                tokio::spawn(async move {
-                    tokio::time::sleep(tokio::time::Duration::from_secs(secs)).await;
-                    tracing::info!("♻️ [Memory] Unloading model post keep_alive timeout ({}m)", mins);
-                    state_timer.host.unload_model().await;
-                });
-            }
-        }
+        super::turn_end::apply_keep_alive(&state_clone, keep_alive_val).await;
     };
 
     Sse::new(stream).into_response()

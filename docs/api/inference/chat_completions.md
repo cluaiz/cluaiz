@@ -447,7 +447,7 @@ After projector loading, the incremental request-RAM check returns an error cont
 | **Custom Integer** (e.g. `256`, `768`, `2048`) | Exact Count | Clamped to `n_ctx` and `max_tokens.saturating_sub(32)` to guarantee answer tokens. |
 
 ### Token Usage Telemetry
-The usage object (streamed: in the last chunk when `stream_options.include_usage` is `true` or stream telemetry is on) includes reasoning token counts inside `completion_tokens_details`:
+Every non-streaming answer has a `usage` object, as OpenAI's does. A streamed answer has it in the last chunk when `stream_options.include_usage` is `true` or stream telemetry is on. Both paths build it the same way: `prompt_tokens` is the engine's count of the last generation's prompt, `completion_tokens` counts every token the model generated in the turn (tool-call steps included), and `completion_tokens_details.reasoning_tokens` the ones inside thinking. It also carries `time_to_first_token_ms`, `total_time_ms`, `model_load_ms` and `tokens_per_second`; `context_telemetry` and `model_header_info` are added only with stream telemetry on:
 ```json
 {
 "usage": {

@@ -183,15 +183,15 @@ impl<'a> ApiTurn<'a> {
         if self.token_count == 1 {
             self.first_token_ms = self.ctx.start_time.elapsed().as_millis();
         }
-        if !self.streaming() {
-            return;
-        }
         let should_skip = self.skip_reasoning();
         let (content, reasoning) = self.think_filter.process_token(token);
-        let content = content.and_then(|c| self.call_text_guard.push(&c));
         if !should_skip && reasoning.is_some() {
             self.reasoning_tokens += 1;
         }
+        if !self.streaming() {
+            return;
+        }
+        let content = content.and_then(|c| self.call_text_guard.push(&c));
         if let Some(text) = &content {
             self.visible_answer.push_str(text);
         }
