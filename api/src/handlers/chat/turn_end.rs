@@ -58,7 +58,7 @@ fn base_usage(prompt: usize, counts: &TurnCounts, total_time_ms: u128, model_loa
 }
 
 /// OpenAI `usage` plus timings. The context breakdown and loaded models are added only with the
-/// owner's stream telemetry setting (`ctx.send_telemetry`).
+/// stream telemetry setting (`ctx.send_telemetry`).
 pub fn usage(ctx: &PreparedChatContext, session_id: Option<&str>, report: Option<&ContextReport>, counts: &TurnCounts) -> Value {
     let completion = counts.completion_tokens;
     let mut usage = base_usage(prompt_tokens(ctx, report), counts, ctx.start_time.elapsed().as_millis(), ctx.model_load_ms);
