@@ -19,6 +19,7 @@ mod media_generation;
 #[path = "native_load.rs"]
 pub(crate) mod native_load;
 use native_load::load_with_plan;
+use crate::load_history;
 
 enum GenerationRequest {
     Text {
@@ -101,6 +102,8 @@ pub struct EngineHost {
     /// Idle ONNX, speech and embedding models, freed for the chat or for each other
     room: crate::media_room::MediaRoom,
     pub active_model_path: Arc<Mutex<Option<String>>>,
+    /// Installed id of the loaded chat model, for the load history
+    active_model_id: Arc<Mutex<Option<String>>>,
     pub active_fingerprint: Arc<Mutex<Option<String>>>,
     pub dna: Arc<Mutex<StructuralDNA>>,
     pub last_prefilled_tokens: Arc<Mutex<Vec<i32>>>,
@@ -162,6 +165,7 @@ impl EngineHost {
             active_session: Arc::new(Mutex::new(None)),
             model_transition,
             active_model_path: Arc::new(Mutex::new(None)),
+            active_model_id: Arc::new(Mutex::new(None)),
             active_fingerprint: Arc::new(Mutex::new(None)),
             dna: Arc::new(Mutex::new(StructuralDNA::default())),
             last_prefilled_tokens: Arc::new(Mutex::new(Vec::new())),
@@ -313,10 +317,20 @@ impl EngineHost {
             // Still report why, so the user sees the numbers behind the refusal
             self.record_plan_report(plan.format_telemetry_banner(&geometry, &hw, settings))
                 .await;
+            load_history::append(load_history::Record {
+                action: Some(load_history::Action::Load),
+                outcome: Some(load_history::Outcome::Refused),
+                cause: Some(load_history::Cause::Requested),
+                model: model_id.to_string(),
+                file: path_str.clone(),
+                file_bytes: std::fs::metadata(model_path).ok().map(|m| m.len()),
+                error: Some(plan.explanation.clone()),
+                ..with_plan(load_history::Record::default(), &plan)
+            });
             return Err(PlacementRefused(plan.explanation.clone()).into());
         }
         let measured_before = cluaiz_plan::margin::learned(&geometry, settings).is_some();
-        let mut plan = self.load_model_inner(&path_str, &plan, settings).await?;
+        let mut plan = self.load_model_inner(model_id, &path_str, &plan, settings, load_history::Cause::Requested).await?;
         // First load of this model here: it was planned with llama.cpp's fixed margin and has just
         // been measured. When the measurement allows a better placement on the same free memory,
         // that one is loaded. If it then leaves less than the desktop reserve free, its own (larger)
@@ -329,7 +343,7 @@ impl EngineHost {
                     better.block_split().0, better.context_window, plan.block_split().0, plan.context_window
                 );
                 self.unload_model_inner().await;
-                plan = self.load_model_inner(&path_str, &better, settings).await?;
+                plan = self.load_model_inner(model_id, &path_str, &better, settings, load_history::Cause::Remeasured).await?;
             }
         }
         // A load that took more than planned steps down once to a smaller placement (`after_low_vram`)
@@ -350,7 +364,7 @@ impl EngineHost {
                         free, safe.block_split().0, safe.context_window, safe.vram_budget_gb, plan.vram_budget_gb
                     );
                     self.unload_model_inner().await;
-                    plan = self.load_model_inner(&path_str, &safe, settings).await?;
+                    plan = self.load_model_inner(model_id, &path_str, &safe, settings, load_history::Cause::StepDown).await?;
                 }
             }
         }
@@ -406,15 +420,66 @@ impl EngineHost {
         settings: &ActiveUserSettings,
     ) -> anyhow::Result<ExecutionPlan> {
         let _transition = self.model_transition.lock().await;
-        self.load_model_inner(model_path, plan, settings).await
+        let model_id = std::path::Path::new(model_path)
+            .parent()
+            .and_then(|dir| dir.file_name())
+            .map_or_else(|| model_path.to_string(), |name| name.to_string_lossy().into_owned());
+        self.load_model_inner(&model_id, model_path, plan, settings, load_history::Cause::Requested).await
     }
 
+    /// Loads, and writes the action to the load history (`load_history`) unless the model was
+    /// resident already
     async fn load_model_inner(
+        &self,
+        model_id: &str,
+        model_path: &str,
+        plan: &ExecutionPlan,
+        settings: &ActiveUserSettings,
+        cause: load_history::Cause,
+    ) -> anyhow::Result<ExecutionPlan> {
+        let started = std::time::Instant::now();
+        let result = self.load_model_attempts(model_path, plan, settings).await;
+        let record = load_history::Record {
+            action: Some(load_history::Action::Load),
+            cause: Some(cause),
+            model: model_id.to_string(),
+            file: model_path.to_string(),
+            file_bytes: std::fs::metadata(model_path).ok().map(|m| m.len()),
+            ms: started.elapsed().as_millis() as u64,
+            ..Default::default()
+        };
+        match &result {
+            Ok((_, facts)) if facts.attempts == 0 => {}
+            Ok((loaded, facts)) => {
+                *self.active_model_id.lock().await = Some(model_id.to_string());
+                load_history::append(load_history::Record {
+                outcome: Some(load_history::Outcome::Ok),
+                attempts: Some(facts.attempts),
+                error: facts.first_error.clone(),
+                vram_taken_gb: facts.vram_taken_gb.map(|gb| (gb * 100.0).round() / 100.0),
+                ..with_plan(record, loaded)
+                })
+            }
+            Err(error) => load_history::append(load_history::Record {
+                outcome: Some(if error.downcast_ref::<PlacementRefused>().is_some() {
+                    load_history::Outcome::Refused
+                } else {
+                    load_history::Outcome::Failed
+                }),
+                error: Some(format!("{error:#}")),
+                ..with_plan(record, plan)
+            }),
+        }
+        result.map(|(loaded, _)| loaded)
+    }
+
+    /// The load itself, with one retry one placement smaller when llama.cpp fails on the GPU
+    async fn load_model_attempts(
         &self,
         model_path: &str,
         plan: &ExecutionPlan,
         settings: &ActiveUserSettings,
-    ) -> anyhow::Result<ExecutionPlan> {
+    ) -> anyhow::Result<(ExecutionPlan, LoadFacts)> {
         let geometry = cluaiz_models::GgufProber::probe_geometry(std::path::Path::new(model_path))?;
         let hw = crate::host::native_load::gguf_hardware();
 
@@ -426,7 +491,7 @@ impl EngineHost {
             let llama_guard = self.active_session.lock().await;
             let fp_guard = self.active_fingerprint.lock().await;
             if llama_guard.is_some() && fp_guard.as_deref() == Some(&target_fp) {
-                return Ok(plan.clone());
+                return Ok((plan.clone(), LoadFacts::default()));
             }
         }
 
@@ -448,6 +513,7 @@ impl EngineHost {
         // A load that fails on the GPU (most often the KV cache or a compute buffer that did not fit)
         // is planned once more: the miss is recorded, so the planner keeps that much more free on
         // this GPU for this model and settings, and the next candidate is tried (plan §5.4)
+        let mut facts = LoadFacts { attempts: 1, ..Default::default() };
         let (llama, retried) = match first {
             Ok(llama) => (llama, None),
             Err(error) => match Planner::after_failed_load(
@@ -464,6 +530,8 @@ impl EngineHost {
                         plan.n_gpu_layers, plan.context_window, next.n_gpu_layers, next.context_window
                     );
                     self.record_plan_report(next.format_telemetry_banner(&geometry, &hw, settings)).await;
+                    facts.attempts = 2;
+                    facts.first_error = Some(format!("{error:#}"));
                     let mut dna_guard = self.dna.lock().await;
                     let llama = load_with_plan(model_path, &next, settings, &hw, &mut dna_guard)
                         .map_err(|second| anyhow::anyhow!("{error:#}; the retry with a smaller placement failed too: {second:#}"))?;
@@ -558,6 +626,7 @@ impl EngineHost {
                 // full-batch warmup): the planner adds it next time instead of a fixed margin
                 cluaiz_plan::margin::record(&geometry, settings, vram_delta - plan.vram_budget_gb);
                 crate::vram_use::save();
+                facts.vram_taken_gb = Some(vram_delta);
                 *self.gpu_use.lock().await = Some(GpuUse {
                     key: cluaiz_plan::margin::pool_key(&geometry, settings),
                     free_before_gb: pre_free_vram,
@@ -592,7 +661,7 @@ impl EngineHost {
             "✅ [EngineHost] Model successfully loaded into unified process space: {}",
             model_path
         );
-        Ok(loaded_plan)
+        Ok((loaded_plan, facts))
     }
 
     /// The GPU pool of a loaded model keeps growing with longer prompts after the load-time
@@ -630,23 +699,38 @@ impl EngineHost {
     }
 
     async fn unload_model_inner(&self) {
+        let started = std::time::Instant::now();
         let mut llama_guard = self.active_session.lock().await;
+        let was_loaded = llama_guard.is_some();
         // Counting stops before the model is freed (waits for a count already running)
         *self.vocab.write().unwrap_or_else(|e| e.into_inner()) = None;
         *llama_guard = None;
+        let model = self.active_model_id.lock().await.take();
         cluaiz_core::set_active_context(None);
         *self.current_plan.lock().await = None;
         *self.loaded_settings.lock().await = None;
         *self.thinking_tags_cache.lock().await = None;
         let mut path_guard = self.active_model_path.lock().await;
-        *path_guard = None;
+        let file = path_guard.take();
         let mut fp_guard = self.active_fingerprint.lock().await;
         *fp_guard = None;
         let mut tokens_guard = self.last_prefilled_tokens.lock().await;
         tokens_guard.clear();
         *self.memory_owner.lock().await = None;
         *self.gpu_use.lock().await = None;
-        tracing::info!("♻️ [EngineHost] Model unloaded from process memory");
+        if !was_loaded {
+            return;
+        }
+        let ms = started.elapsed().as_millis() as u64;
+        tracing::info!("♻️ [EngineHost] Model unloaded from process memory ({ms} ms)");
+        load_history::append(load_history::Record {
+            action: Some(load_history::Action::Unload),
+            outcome: Some(load_history::Outcome::Ok),
+            model: model.unwrap_or_default(),
+            file: file.unwrap_or_default(),
+            ms,
+            ..Default::default()
+        });
     }
 
     /// Dispatches prompt generation stream directly through static llama engine
@@ -1085,6 +1169,29 @@ struct GpuUse {
     key: String,
     free_before_gb: f64,
     planned_gb: f64,
+}
+
+/// What a load did besides the plan it returns, for the load history
+#[derive(Default)]
+struct LoadFacts {
+    /// llama.cpp loads made: 0 when the model was resident already
+    attempts: u8,
+    /// Why the first attempt failed, when a retry followed
+    first_error: Option<String>,
+    /// VRAM the load took, when it could be measured
+    vram_taken_gb: Option<f64>,
+}
+
+/// `record` with the placement of `plan`
+fn with_plan(record: load_history::Record, plan: &ExecutionPlan) -> load_history::Record {
+    load_history::Record {
+        placement: Some(format!("{:?}", plan.selected_tier)),
+        n_gpu_layers: Some(plan.n_gpu_layers),
+        n_cpu_moe: Some(plan.n_cpu_moe),
+        n_ctx: Some(plan.context_window),
+        vram_planned_gb: Some((plan.vram_budget_gb * 100.0).round() / 100.0),
+        ..record
+    }
 }
 
 /// Whether `candidate` runs more of the model on the GPU than `current`, or as much with a bigger

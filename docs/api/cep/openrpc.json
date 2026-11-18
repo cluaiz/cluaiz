@@ -3795,6 +3795,114 @@
       }
     },
     {
+      "errors": [],
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "from_seq",
+              "value": 1
+            },
+            {
+              "name": "limit",
+              "value": 20
+            },
+            {
+              "name": "model",
+              "value": "qwen3-30b-a3b-instruct-2507-gguf-Q4_K_M"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "next_from_seq": null,
+              "records": [
+                {
+                  "action": "load",
+                  "at": "2026-11-18T17:16:49.438Z",
+                  "attempts": 2,
+                  "cause": "requested",
+                  "error": "Context Init Failure",
+                  "file": "C:/Users/me/.cluaiz/models/chat/qwen3-30b-a3b-instruct-2507-gguf-Q4_K_M/Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf",
+                  "model": "qwen3-30b-a3b-instruct-2507-gguf-Q4_K_M",
+                  "ms": 106406,
+                  "n_cpu_moe": 48,
+                  "n_ctx": 16384,
+                  "n_gpu_layers": -1,
+                  "outcome": "ok",
+                  "placement": "MoeSplit",
+                  "seq": 1,
+                  "vram_planned_gb": 2.56
+                }
+              ],
+              "skipped_lines": 0,
+              "total": 1
+            }
+          }
+        }
+      ],
+      "name": "models.load_history",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "from_seq",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "First seq to return (default 1)",
+            "format": "uint64",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "limit",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "Most records to return (default 100, at most 500)",
+            "format": "uint",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "model",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "Only the records of this model id (also one removed since); all when absent",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "This machine's chat-model loads, refusals, failures and unloads, oldest first: placement, VRAM planned and taken, attempts, time (the newest 500 are kept)",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
+      }
+    },
+    {
       "errors": [
         {
           "code": -32004,

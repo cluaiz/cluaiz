@@ -171,6 +171,7 @@
           { "slug": "cep-models-inspect", "title": "models.inspect", "file_path": "docs/api/cep/models/models/models.inspect.md" },
           { "slug": "cep-models-list", "title": "models.list", "file_path": "docs/api/cep/models/models/models.list.md" },
           { "slug": "cep-models-load", "title": "models.load", "file_path": "docs/api/cep/models/models/models.load.md" },
+          { "slug": "cep-models-load-history", "title": "models.load_history", "file_path": "docs/api/cep/models/models/models.load_history.md" },
           { "slug": "cep-models-remove", "title": "models.remove", "file_path": "docs/api/cep/models/models/models.remove.md" },
           { "slug": "cep-providers-list", "title": "providers.list", "file_path": "docs/api/cep/models/providers/providers.list.md" },
           { "slug": "cep-providers-models", "title": "providers.models", "file_path": "docs/api/cep/models/providers/providers.models.md" },

@@ -10,6 +10,7 @@
 | [`models.inspect`](./models/models.inspect.md) | read | sync | Raw GGUF metadata and tensor table of an installed model |
 | [`models.list`](./models/models.list.md) | read | sync | Installed registry entries, optionally filtered by category |
 | [`models.load`](./models/models.load.md) | write | sync | Loads an installed GGUF model using the existing Engine host |
+| [`models.load_history`](./models/models.load_history.md) | read | sync | This machine's chat-model loads, refusals, failures and unloads, oldest first: placement, VRAM planned and taken, attempts, time (the newest 500 are kept) |
 | [`models.remove`](./models/models.remove.md) | write | sync | Unloads the selected model if active and removes its installed package |
 | [`providers.list`](./providers/providers.list.md) | admin | sync | The model providers and their listed models; keys are never returned |
 | [`providers.models`](./providers/providers.models.md) | admin | sync | The models a provider offers (its GET /models), with the context size it reports |

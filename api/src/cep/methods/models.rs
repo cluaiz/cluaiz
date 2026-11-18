@@ -152,6 +152,20 @@ struct ModelParams {
 
 #[derive(Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+struct LoadHistoryParams {
+    /// Only the records of this model id (also one removed since); all when absent
+    #[serde(default)]
+    model: Option<String>,
+    /// First seq to return (default 1)
+    #[serde(default)]
+    from_seq: Option<u64>,
+    /// Most records to return (default 100, at most 500)
+    #[serde(default)]
+    limit: Option<usize>,
+}
+
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 struct DownloadParams {
     /// A catalog id, or a Hugging Face repo `owner/name` (optionally `:QUANT`, an `hf://` or https URL)
     model: String,
@@ -255,6 +269,33 @@ pub fn register(registry: &mut Registry<CallCtx>) {
                 .await
                 .map_err(|error| CepError::unavailable("model_load_failed", error.to_string()))?;
             Ok(json!({"model":entry.id,"loaded_ms":started.elapsed().as_millis()}))
+        },
+    );
+    registry.add(
+        "models.load_history",
+        Meta::new(
+            Scope::Read,
+            "This machine's chat-model loads, refusals, failures and unloads, oldest first: placement, VRAM planned and taken, attempts, time (the newest 500 are kept)",
+        )
+        .example(
+            json!({"model":"qwen3-30b-a3b-instruct-2507-gguf-Q4_K_M","from_seq":1,"limit":20}),
+            json!({"records":[
+                {"seq":1,"at":"2026-11-18T17:16:49.438Z","action":"load","outcome":"ok","cause":"requested",
+                 "model":"qwen3-30b-a3b-instruct-2507-gguf-Q4_K_M","file":"C:/Users/me/.cluaiz/models/chat/qwen3-30b-a3b-instruct-2507-gguf-Q4_K_M/Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf",
+                 "attempts":2,"placement":"MoeSplit","n_gpu_layers":-1,"n_cpu_moe":48,"n_ctx":16384,
+                 "vram_planned_gb":2.56,"ms":106406,"error":"Context Init Failure"}],
+                   "total":1,"skipped_lines":0,"next_from_seq":null}),
+        ),
+        |_: CallCtx, _: Call, params: LoadHistoryParams| async move {
+            worker(move || {
+                let page = cluaiz_runtime::load_history::read(
+                    params.model.as_deref(),
+                    params.from_seq.unwrap_or(1),
+                    params.limit.unwrap_or(100).clamp(1, 500),
+                );
+                serde_json::to_value(page).map_err(|_| CepError::internal("models.load_history"))
+            })
+            .await
         },
     );
     registry.add(
