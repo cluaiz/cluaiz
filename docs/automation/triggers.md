@@ -295,7 +295,7 @@ required); its title and description are the trigger's, else the flow's.
 | Where | Name | When it is offered | Who is asked when `confirm` says so |
 | --- | --- | --- | --- |
 | MCP clients (`POST /mcp`, `cluaiz mcp-server`) | `flow.<name>` | Always, next to the Engine's methods | The owner, with an approval (`approvals.list`), open five minutes; no answer is a no |
-| Chats (the App, `/v1/chat/completions`) | `flow_<name>` (function names cannot hold a `.`) | When the message fits the flow's name, title or description, as installed tools are matched; at most five | The owner, on the chat's approval card |
+| Chats (the App, `/v1/chat/completions`) | `flow_<name>` (function names cannot hold a `.`) | When the message fits the flow's name, title or description, as installed tools are matched (at most five per message); once offered, it stays offered for the rest of the chat, so the tool list in the prompt does not change and the KV cache is reused | The owner, on the chat's approval card |
 | The coding agent (`cluaiz agent`) | `flow_<name>` | While a server answers (flows run there); with no server, none | The person at the terminal, as for other calls (`--allowed-tools "flow:<name>"` allows it). A run with nobody to ask is not offered such a flow |
 
 A call from an MCP client or a chat checks the arguments against `inputs` and starts a run

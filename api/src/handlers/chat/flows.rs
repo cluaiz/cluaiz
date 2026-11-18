@@ -18,6 +18,8 @@ pub struct OfferedTool {
     pub tool: String,
     /// The user is asked before it runs
     pub confirm: bool,
+    /// It fits this message (else it stays offered from an earlier message of the chat)
+    pub fits_message: bool,
 }
 
 /// At most this many are offered in one turn
@@ -43,6 +45,7 @@ pub async fn offer(
     state: &Arc<AppState>,
     message: &str,
     previous: Option<&str>,
+    earlier: &[String],
 ) -> (Vec<OfferedTool>, Vec<Value>) {
     let tools = extensions::tools(state).await;
     if tools.is_empty() {
@@ -67,18 +70,23 @@ pub async fn offer(
             ))
         })
         .collect();
-    let picked: Vec<String> = cluaiz_agents::ToolSearch::suggest(&catalog, message, previous)
+    // Flows offered earlier in this chat first, in their order (the tool list in the prompt stays
+    // the same), then the ones that fit this message
+    let fitting: Vec<String> = cluaiz_agents::ToolSearch::suggest(&catalog, message, previous)
         .into_iter()
         .take(MAX_OFFERED)
         .map(|c| c.id)
         .collect();
+    let mut picked: Vec<String> = earlier.to_vec();
+    for name in &fitting {
+        if !picked.contains(name) {
+            picked.push(name.clone());
+        }
+    }
     let mut offered = Vec::new();
     let mut schemas = Vec::new();
-    for tool in tools.iter().filter(|t| {
-        t["name"]
-            .as_str()
-            .is_some_and(|n| picked.iter().any(|p| p == n))
-    }) {
+    // A flow removed since it was offered is left out
+    for tool in picked.iter().filter_map(|name| tools.iter().find(|t| t["name"].as_str() == Some(name.as_str()))) {
         let name = tool["name"].as_str().unwrap_or_default().to_string();
         let function = function_name(&name);
         schemas.push(json!({ "type": "function", "function": {
@@ -88,6 +96,7 @@ pub async fn offer(
         }}));
         offered.push(OfferedTool {
             function,
+            fits_message: fitting.contains(&name),
             tool: name,
             confirm: tool["_meta"][CONFIRM_META].as_bool().unwrap_or(true),
         });
@@ -95,10 +104,10 @@ pub async fn offer(
     (offered, schemas)
 }
 
-/// The hint line naming the offered flows
-pub fn hint(offered: &[OfferedTool]) -> String {
-    let names: Vec<&str> = offered.iter().map(|o| o.function.as_str()).collect();
-    cluaiz_core::prompts::render("chat.flow_hint", &[("flows", names.join(", ").as_str())])
+/// The hint line naming the offered flows that fit this message (None when none does)
+pub fn hint(offered: &[OfferedTool]) -> Option<String> {
+    let names: Vec<&str> = offered.iter().filter(|o| o.fits_message).map(|o| o.function.as_str()).collect();
+    (!names.is_empty()).then(|| cluaiz_core::prompts::render("chat.flow_hint", &[("flows", names.join(", ").as_str())]))
 }
 
 /// Runs an offered tool for the chat, after the chat's own approval; the text the model reads

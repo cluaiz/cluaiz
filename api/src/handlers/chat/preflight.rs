@@ -800,13 +800,17 @@ impl PreparedChatContext {
             }
         }
 
-        // Saved flows that fit the message, offered as tools (none fit: nothing changes)
+        // Saved flows that fit the message, offered as tools, and the ones offered earlier in this
+        // chat (they stay, so the tool list in the prompt stays the same)
         let mut extension_tools = Vec::new();
         if tools_allowed {
-            let (offered, schemas) = super::flows::offer(state, &initial_user_query, previous_user_query.as_deref()).await;
+            let earlier = ledger.as_ref().map(|saved| saved.offered_flows.clone()).unwrap_or_default();
+            let (offered, schemas) = super::flows::offer(state, &initial_user_query, previous_user_query.as_deref(), &earlier).await;
             if !offered.is_empty() {
                 tracing::info!("🧩 [Flows] offered for this message: {:?}", offered.iter().map(|o| o.tool.as_str()).collect::<Vec<_>>());
-                hint_lines.push_str(&format!("{}\n", super::flows::hint(&offered)));
+                if let Some(line) = super::flows::hint(&offered) {
+                    hint_lines.push_str(&format!("{}\n", line));
+                }
                 meta_schemas.extend(schemas);
                 offer_meta_tools = true;
                 extension_tools = offered;
@@ -1553,6 +1557,11 @@ pub fn tool_event(name: &str, payload: &str, result: &str) -> serde_json::Value 
 fn add_turn(ledger: &mut cluaiz_agents::ChatLedger, ctx: &PreparedChatContext, key: &str, steps: Vec<cluaiz_agents::RecordedStep>) {
     ledger.set_turn(cluaiz_agents::TurnRecord { key: key.to_string(), block: ctx.tool_hint.clone(), steps });
     ledger.notes = Some(ctx.z0_note_ids.clone());
+    for flow in &ctx.extension_tools {
+        if !ledger.offered_flows.contains(&flow.tool) {
+            ledger.offered_flows.push(flow.tool.clone());
+        }
+    }
     for item in &ctx.project_sent {
         if !ledger.project_sent.contains(item) {
             ledger.project_sent.push(item.clone());

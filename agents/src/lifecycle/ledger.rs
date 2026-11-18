@@ -66,6 +66,11 @@ pub struct ChatLedger {
     /// with `read_item` (cleared when a compaction may have removed them)
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub project_sent: Vec<String>,
+    /// Saved flows offered in this chat (`flow.name`), in the order they were first offered. They
+    /// stay offered: a model's template writes its functions into the system prompt, and a list
+    /// that changed with each message would make every turn process the whole prompt again
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub offered_flows: Vec<String>,
 }
 
 static LEDGERS: LazyLock<Mutex<HashMap<String, ChatLedger>>> = LazyLock::new(|| Mutex::new(HashMap::new()));
