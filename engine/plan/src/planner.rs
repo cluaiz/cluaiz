@@ -258,6 +258,61 @@ impl Planner {
         hardware: &SystemInfo,
         settings: &ActiveUserSettings,
     ) -> ExecutionPlan {
+        let plan = Self::plan_with_gap(model_id, geometry, hardware, settings);
+        Self::tight_gap(plan, model_id, geometry, hardware, settings)
+    }
+
+    /// A gap down to [`crate::margin::DEVICE_RESERVE_MIN_GB`] (plus the measured GPU pool, when the
+    /// model was measured) when the usual gap leaves less of the model on the GPU: Full GPU instead
+    /// of a split, the attention of every block instead of some of it, more blocks, or a GPU
+    /// placement instead of CPU only; never one that reads more from disk. A Full GPU plan keeps the
+    /// usual gap. A load that fails at the tight gap records the miss and steps down one placement
+    /// (`after_failed_load`).
+    fn tight_gap(
+        plan: ExecutionPlan,
+        model_id: &str,
+        geometry: &ModelGeometry,
+        hardware: &SystemInfo,
+        settings: &ActiveUserSettings,
+    ) -> ExecutionPlan {
+        let opt = &settings.optimization;
+        if hardware.gpus.is_empty()
+            || opt.n_gpu_layers == Some(0)
+            || opt.custom_vram_buffer_gb.is_some()
+            || opt.is_manual_placement()
+            || plan.selected_tier == PlacementTier::GpuOnly
+        {
+            return plan;
+        }
+        let pool = crate::margin::learned(geometry, settings)
+            .filter(|gap| crate::margin::plausible_gap(*gap, hardware))
+            .unwrap_or(0.0)
+            .max(0.0);
+        let gap = pool + crate::margin::DEVICE_RESERVE_MIN_GB;
+        let usual = model_buffer_options(geometry, hardware, settings).into_iter().fold(f64::MAX, f64::min);
+        if gap + 1e-9 >= usual {
+            return plan;
+        }
+        let mut tight = settings.clone();
+        tight.optimization.custom_vram_buffer_gb = Some(gap);
+        let mut other = Self::plan_with_gap(model_id, geometry, hardware, &tight);
+        let more_on_gpu = (rank(&other), other.block_split().0) > (rank(&plan), plan.block_split().0);
+        if other.is_feasible() && more_on_gpu && other.disk_stream_gb <= plan.disk_stream_gb + 0.01 {
+            other.explanation = format!(
+                "{}; {:.2} GB of VRAM kept free instead of {:.2} GB: with the usual gap it would be {}",
+                other.explanation, gap, usual, plan.placement_label()
+            );
+            return other;
+        }
+        plan
+    }
+
+    pub(crate) fn plan_with_gap(
+        model_id: &str,
+        geometry: &ModelGeometry,
+        hardware: &SystemInfo,
+        settings: &ActiveUserSettings,
+    ) -> ExecutionPlan {
         // A split model gets AUTO_SPLIT_CONTEXT; when RAM is too short for it, the floor
         let plan = Self::plan(model_id, geometry, hardware, settings, false);
         let floor_ctx = geometry.context_length.max(1).min(AUTO_CONTEXT_FLOOR);
@@ -319,13 +374,17 @@ impl Planner {
         let n_layers = geometry.block_count as usize;
         let logits = geometry.logits_buffer_bytes(ubatch);
         // llama.cpp's dry run of this model minus the estimate (crate::margin), counted with the
-        // logits buffer: both are bytes the GPU takes besides the blocks and their KV
+        // logits buffer: both are bytes the GPU takes besides the blocks and their KV. The dry run
+        // has every weight on the GPU, so a placement gets the share of the correction that its GPU
+        // weights are of all weights (a MoE split with 1.7 of 13.2 GB on the GPU gets 13% of it).
         let correction = crate::margin::correction(geometry, settings).unwrap_or(0.0);
-        let gpu_logits = if correction >= 0.0 {
-            logits + gib_to_bytes(correction)
-        } else {
-            logits.saturating_sub(gib_to_bytes(-correction))
+        let full_weights = w.full_gpu().max(1);
+        let gpu_logits_for = |gpu_weights: u64| -> u64 {
+            let share = gpu_weights.min(full_weights) as f64 / full_weights as f64;
+            let extra = correction * share;
+            if extra >= 0.0 { logits + gib_to_bytes(extra) } else { logits.saturating_sub(gib_to_bytes(-extra)) }
         };
+        let gpu_logits = gpu_logits_for(w.full_gpu());
         let experts = w.experts_total();
         let is_moe = experts > 0;
 
@@ -341,7 +400,11 @@ impl Planner {
         let budget = if gpu_allowed {
             let gpu_weights = if is_moe { w.full_gpu() - experts } else { w.full_gpu() };
             let free_bytes = if unified { vram_free.min(ram_budget.saturating_sub(w.input_cpu)) } else { vram_free };
-            DeviceBudget { free_bytes, fixed_bytes: gpu_weights + gpu_logits, buffers_gb: model_buffer_options(geometry, hardware, settings) }
+            DeviceBudget {
+                free_bytes,
+                fixed_bytes: gpu_weights + gpu_logits_for(gpu_weights),
+                buffers_gb: model_buffer_options(geometry, hardware, settings),
+            }
         } else {
             DeviceBudget { free_bytes: ram_budget, fixed_bytes: w.total + logits, buffers_gb: vec![0.0] }
         };
@@ -378,7 +441,7 @@ impl Planner {
             let first_gpu_block = n_layers - gpu_blocks;
             let mut p = Placement { vram: 0, ram: w.input_cpu, kv_gpu: 0, kv_ram: 0 };
             if n_gpu_layers != 0 {
-                p.vram += head_gpu + gpu_logits;
+                p.vram += head_gpu;
             } else {
                 p.ram += head_cpu + logits;
             }
@@ -388,6 +451,10 @@ impl Planner {
                 if on_gpu { p.vram += w.layer[l] } else { p.ram += w.layer[l] }
                 if on_gpu && l >= n_cpu_moe { p.vram += w.layer_experts[l] } else { p.ram += w.layer_experts[l] }
                 if on_gpu && kv_offload { p.kv_gpu += kv_l } else { p.kv_ram += kv_l }
+            }
+            // Weights only so far: logits buffer and the share of the correction they call for
+            if n_gpu_layers != 0 {
+                p.vram += gpu_logits_for(p.vram);
             }
             p.vram += p.kv_gpu;
             p.ram += p.kv_ram;
@@ -462,7 +529,7 @@ impl Planner {
             let mut c = Self::candidate(
                 "MoE split", PlacementTier::MoeSplit, -1, n_cpu_moe as u32, true, ctx, &p, ram_budget, over_vram(&p), true,
                 format!("attention/shared {:.2} + KV {:.2} + buffers {:.2} on GPU, experts of {} / {} layers in RAM ({:.2} GB){}",
-                    gib(w.full_gpu() - experts), gib(kv_total), gib(gpu_logits), n_cpu_moe, n_layers,
+                    gib(w.full_gpu() - experts), gib(kv_total), gib(gpu_logits_for(w.full_gpu() - experts)), n_cpu_moe, n_layers,
                     gib(w.layer_experts[..n_cpu_moe].iter().sum()), cache_note),
             );
             if let Some(cache) = cache {
@@ -645,6 +712,18 @@ impl Planner {
 
 fn gib(bytes: u64) -> f64 {
     bytes_to_gib(bytes)
+}
+
+/// How much of the model a placement runs on the GPU, for comparing placements: Full GPU, then the
+/// attention of every block (MoE split), then part of it, then whole blocks, then CPU only
+fn rank(plan: &ExecutionPlan) -> u8 {
+    match plan.selected_tier {
+        PlacementTier::GpuOnly => 4,
+        PlacementTier::MoeSplit if plan.n_gpu_layers < 0 => 3,
+        PlacementTier::MoeSplit => 2,
+        PlacementTier::Hybrid => 1,
+        _ => 0,
+    }
 }
 
 /// The MoE split with llama.cpp's MoE cache (`crate::moe_cache`): (n_cpu_moe, cache, placement with

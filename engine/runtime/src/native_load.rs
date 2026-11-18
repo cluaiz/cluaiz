@@ -133,6 +133,11 @@ fn native_params(
     model_params.tensor_buft_overrides = moe_overrides.as_ptr();
 
     ctx_params.n_ctx = placement.n_ctx;
+    // Sliding-window layers keep only their window (+ a batch) of cells, as llama-server and the
+    // planner's KV size (`ModelGeometry::kv_layer_bytes`) assume. llama.cpp's context default is
+    // the full context for them: on Gemma 4 26B at 4096 tokens, Q8 KV, that is 479 MiB of KV
+    // instead of 213. Prompts that rewrite older turns restart from a checkpoint (`checkpoints`).
+    ctx_params.swa_full = 0;
     ctx_params.n_batch = settings.optimization.resolved_batch_size();
     ctx_params.n_ubatch = settings.optimization.resolved_ubatch_size();
     ctx_params.type_k = type_k;

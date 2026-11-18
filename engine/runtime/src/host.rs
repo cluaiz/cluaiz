@@ -330,20 +330,31 @@ impl EngineHost {
                 );
                 self.unload_model_inner().await;
                 plan = self.load_model_inner(&path_str, &better, settings).await?;
-                let free = cluaiz_hw::HardwareProber::with_live_memory().gpus.first().map_or(0.0, |g| g.vram_available_gb);
-                let reserve = cluaiz_plan::margin::reserve_gb(&hw);
-                if free < reserve {
-                    let safe = Planner::create_plan(model_id, &geometry, &hw, settings);
-                    tracing::warn!(
-                        "⚠️ [EngineHost] Only {:.2} GB VRAM left after the reload (reserve {:.2}); loading {} blocks on the GPU and {} tokens",
-                        free, reserve, safe.block_split().0, safe.context_window
-                    );
-                    if safe.is_feasible() {
-                        self.unload_model_inner().await;
-                        plan = self.load_model_inner(&path_str, &safe, settings).await?;
-                    }
-                }
             }
+        }
+        // A load that left less than the minimum reserve free took more than planned (the load
+        // records it, `load_model_inner`): planned again on the same free memory, that gives a
+        // smaller placement, loaded once. The same plan is never loaded again.
+        for _ in 0..2 {
+            let free = cluaiz_hw::HardwareProber::with_live_memory().gpus.first().map_or(0.0, |g| g.vram_available_gb);
+            let reserve = cluaiz_plan::margin::DEVICE_RESERVE_MIN_GB;
+            if plan.n_gpu_layers == 0 || hw.gpus.is_empty() || free >= reserve {
+                break;
+            }
+            let safe = Planner::create_plan(model_id, &geometry, &hw, settings);
+            if !safe.is_feasible() || safe.vram_budget_gb + 0.01 >= plan.vram_budget_gb {
+                tracing::warn!(
+                    "⚠️ [EngineHost] Only {:.2} GB VRAM left after the load (reserve {:.2}) and no smaller placement to load",
+                    free, reserve
+                );
+                break;
+            }
+            tracing::warn!(
+                "⚠️ [EngineHost] Only {:.2} GB VRAM left after the load (reserve {:.2}); loading {} blocks on the GPU and {} tokens ({:.2} GB planned, was {:.2})",
+                free, reserve, safe.block_split().0, safe.context_window, safe.vram_budget_gb, plan.vram_budget_gb
+            );
+            self.unload_model_inner().await;
+            plan = self.load_model_inner(&path_str, &safe, settings).await?;
         }
         *self.current_plan.lock().await = Some(plan.clone());
         *self.loaded_settings.lock().await = Some(settings.clone());
@@ -532,9 +543,16 @@ impl EngineHost {
             if vram_delta < 0.05 {
                 tracing::warn!("⚠️ [EngineHost] GPU layers requested but VRAM did not change: is the CUDA backend compiled in?");
             } else if cluaiz_plan::margin::looks_spilled(plan.vram_budget_gb, pre_free_vram, post_free_vram) {
-                // The free VRAM did not drop by what the model took (shared memory): not learned
+                // The free VRAM did not drop by what the model took (shared memory), so its size is
+                // not known; it needed at least all that was free, which the planner keeps free for
+                // this model from now on (a plan larger than the free VRAM, from user settings, says nothing)
+                let needed = plan.vram_budget_gb <= pre_free_vram
+                    && cluaiz_plan::margin::record(&geometry, settings, pre_free_vram - plan.vram_budget_gb);
+                if needed {
+                    crate::vram_use::save();
+                }
                 tracing::warn!(
-                    "⚠️ [EngineHost] The GPU is full after the load ({:.2} GB free, plan {:.2} GB, {:.2} GB was free): it may be using shared system memory; this load's VRAM is not learned",
+                    "⚠️ [EngineHost] The GPU is full after the load ({:.2} GB free, plan {:.2} GB, {:.2} GB was free): it may be using shared system memory; kept as needing all that was free",
                     post_free_vram, plan.vram_budget_gb, pre_free_vram
                 );
             } else {

@@ -1,4 +1,5 @@
-//! Planner tests (moved from planner.rs; the placement-rule table is in `matrix.rs`)
+//! Planner tests (the placement-rule table is in `matrix.rs`). Tests of the rules under the usual
+//! VRAM gap call `plan_with_gap`; `create_plan` adds the tight gap on top (`tight_gap`).
 
 use super::*;
 use cluaiz_models::WeightBytes;
@@ -275,7 +276,7 @@ fn split_model_gets_the_split_context_and_never_grows_it_in_ram() {
     let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
     let g = qwen3_like(4.5);
     for ram in [5.0, 8.0, 12.0, 22.0] {
-        let plan = Planner::create_plan("m", &g, &hw(2.8, ram), &s);
+        let plan = Planner::plan_with_gap("m", &g, &hw(2.8, ram), &s);
         assert!(plan.is_feasible(), "{}", plan.explanation);
         // Too little RAM for the split context: the floor instead of no plan
         let want = if ram < 6.0 { AUTO_CONTEXT_FLOOR } else { AUTO_SPLIT_CONTEXT };
@@ -283,7 +284,7 @@ fn split_model_gets_the_split_context_and_never_grows_it_in_ram() {
     }
     // Custom stays exact
     let custom = settings(ContextSetting::Custom(6144), KvCacheQuantization::Auto);
-    assert_eq!(Planner::create_plan("m", &g, &hw(2.8, 12.0), &custom).context_window, 6144);
+    assert_eq!(Planner::plan_with_gap("m", &g, &hw(2.8, 12.0), &custom).context_window, 6144);
 }
 
 #[test]
@@ -315,18 +316,18 @@ fn a_measured_model_is_planned_with_its_measurement_not_the_fixed_buffer() {
     let kv = g.kv_cache_bytes(4096, KvCacheQuantization::Kv4, 512);
     let hardware = hw(bytes_to_gib(fixed + kv) + 0.40, 8.0);
     // Not measured: the 1024 / 512 MiB rule splits it
-    let before = Planner::create_plan("m", &g, &hardware, &s);
+    let before = Planner::plan_with_gap("m", &g, &hardware, &s);
     assert_ne!(before.selected_tier, PlacementTier::GpuOnly, "{}", before.explanation);
     // Measured: it took 0.18 GB more than the estimate; with the 0.20 GB reserve it runs fully
     // on the GPU
     crate::margin::record(&g, &s, 0.18);
-    let after = Planner::create_plan("m", &g, &hardware, &s);
+    let after = Planner::plan_with_gap("m", &g, &hardware, &s);
     assert_eq!(after.selected_tier, PlacementTier::GpuOnly, "{}", after.explanation);
     assert!((after.vram_buffer_gb - (0.18 + 0.20)).abs() < 1e-9);
     // The user's value still wins
     let mut custom = s.clone();
     custom.optimization.custom_vram_buffer_gb = Some(1.0);
-    assert_eq!(Planner::create_plan("m", &g, &hardware, &custom).vram_buffer_gb, 1.0);
+    assert_eq!(Planner::plan_with_gap("m", &g, &hardware, &custom).vram_buffer_gb, 1.0);
     // An estimate measured too high gives room back
     let g2 = qwen3_like(2.3318);
     crate::margin::record(&g2, &s, -0.40);
@@ -351,7 +352,7 @@ fn a_moe_model_not_measured_stays_on_the_gpu_of_a_small_card() {
     assert_eq!(gap.len(), 1);
     assert!((gap[0] - 0.50).abs() < 1e-9, "{:?}", gap);
     // Attention of every layer does not fit: part of it goes on the GPU, never CPU only
-    let plan = Planner::create_plan("m", &corrected, &hardware, &s);
+    let plan = Planner::plan_with_gap("m", &corrected, &hardware, &s);
     assert_ne!(plan.selected_tier, PlacementTier::CpuOnly, "{}", plan.explanation);
     assert!(plan.explanation.starts_with("MoE partial split"), "{}", plan.explanation);
     assert!(plan.n_gpu_layers > 1 && plan.n_cpu_moe == 30, "{}", plan.explanation);
@@ -370,11 +371,11 @@ fn auto_puts_the_kv_in_ram_only_when_the_weights_fit_and_the_kv_does_not() {
     crate::margin::record_correction(&g, &s, 0.0);
     let fixed = g.weights.full_gpu() + g.logits_buffer_bytes(512);
     // The weights fit, not even the smallest Auto KV does
-    let plan = Planner::create_plan("m", &g, &hw(bytes_to_gib(fixed) + 0.50 + 0.001, 8.0), &s);
+    let plan = Planner::plan_with_gap("m", &g, &hw(bytes_to_gib(fixed) + 0.50 + 0.001, 8.0), &s);
     assert!(!plan.kv_offload, "{}", plan.explanation);
     assert_eq!(plan.n_gpu_layers, -1, "{}", plan.explanation);
     // Plenty of VRAM: Full GPU, no KV-in-RAM candidate
-    let full = Planner::create_plan("m", &g, &hw(3.9, 8.0), &s);
+    let full = Planner::plan_with_gap("m", &g, &hw(3.9, 8.0), &s);
     assert_eq!(full.selected_tier, PlacementTier::GpuOnly, "{}", full.explanation);
     assert!(full.candidates.iter().all(|c| c.name != "Weights GPU, KV RAM"));
 }
@@ -410,7 +411,7 @@ fn a_placement_measured_faster_replaces_the_rule_order_pick() {
     // A size no other test uses: the measurements are process-wide
     let g = qwen3_like(4.5123);
     let live = hw(2.8, 12.0);
-    let by_rule = Planner::create_plan("m", &g, &live, &s);
+    let by_rule = Planner::plan_with_gap("m", &g, &live, &s);
     assert_eq!(by_rule.selected_tier, PlacementTier::Hybrid, "{}", by_rule.explanation);
     let split = by_rule.candidates.iter().find(|c| c.name == "GPU + RAM split").unwrap().clone();
     let cpu = by_rule.candidates.iter().find(|c| c.name == "CPU only").unwrap().clone();
@@ -418,28 +419,28 @@ fn a_placement_measured_faster_replaces_the_rule_order_pick() {
 
     // Only the other placement measured: the rule-order pick is not known to be slower
     record(&g, &s, ctx, kv, &Signature::of(&cpu), 9.0);
-    assert_eq!(Planner::create_plan("m", &g, &live, &s).selected_tier, PlacementTier::Hybrid);
+    assert_eq!(Planner::plan_with_gap("m", &g, &live, &s).selected_tier, PlacementTier::Hybrid);
 
     // Both measured, one block away from today's split (free VRAM moved a little): CPU only is
     // faster, so it is loaded
     let near = Signature { n_gpu_layers: split.n_gpu_layers + 1, ..Signature::of(&split) };
     record(&g, &s, ctx, kv, &near, 6.0);
-    let measured = Planner::create_plan("m", &g, &live, &s);
+    let measured = Planner::plan_with_gap("m", &g, &live, &s);
     assert_eq!(measured.selected_tier, PlacementTier::CpuOnly, "{}", measured.explanation);
     assert!(measured.explanation.contains("measured faster"), "{}", measured.explanation);
     assert!(measured.format_telemetry_banner(&g, &live, &s).contains("9.0 tokens/s"));
 
     // Within the 5% run-to-run spread: the rule order stays
     record(&g, &s, ctx, kv, &near, 8.8);
-    assert_eq!(Planner::create_plan("m", &g, &live, &s).selected_tier, PlacementTier::Hybrid);
+    assert_eq!(Planner::plan_with_gap("m", &g, &live, &s).selected_tier, PlacementTier::Hybrid);
 
     // Faster at generation but much slower at reading prompts: not worth it
     record(&g, &s, ctx, kv, &near, 6.0);
     crate::speed::record(Test::Prompt, &g, &s, ctx, kv, &near, 180.0);
     crate::speed::record(Test::Prompt, &g, &s, ctx, kv, &Signature::of(&cpu), 48.0);
-    assert_eq!(Planner::create_plan("m", &g, &live, &s).selected_tier, PlacementTier::Hybrid);
+    assert_eq!(Planner::plan_with_gap("m", &g, &live, &s).selected_tier, PlacementTier::Hybrid);
     crate::speed::record(Test::Prompt, &g, &s, ctx, kv, &Signature::of(&cpu), 175.0);
-    assert_eq!(Planner::create_plan("m", &g, &live, &s).selected_tier, PlacementTier::CpuOnly);
+    assert_eq!(Planner::plan_with_gap("m", &g, &live, &s).selected_tier, PlacementTier::CpuOnly);
 
     // The user's placement is never replaced
     record(&g, &s, ctx, kv, &near, 1.0);
@@ -447,11 +448,11 @@ fn a_placement_measured_faster_replaces_the_rule_order_pick() {
     manual.optimization.n_gpu_layers = Some(split.n_gpu_layers);
     manual.optimization.set_context_setting(ContextSetting::Custom(ctx));
     manual.optimization.kv_cache_quantization = kv;
-    assert_eq!(Planner::create_plan("m", &g, &live, &manual).n_gpu_layers, split.n_gpu_layers);
+    assert_eq!(Planner::plan_with_gap("m", &g, &live, &manual).n_gpu_layers, split.n_gpu_layers);
 
     // A different context is a different measurement
     let other = settings(ContextSetting::Custom(ctx * 2), KvCacheQuantization::Auto);
-    let plan = Planner::create_plan("m", &g, &live, &other);
+    let plan = Planner::plan_with_gap("m", &g, &live, &other);
     assert!(plan.candidates.iter().all(|c| c.measured_tokens_per_s.is_none()));
 }
 
@@ -565,4 +566,65 @@ fn a_hybrid_model_counts_kv_only_for_its_attention_layers() {
     // The state does not grow with the context
     let grows = |q| g.kv_cache_bytes(8192, q, 512) - g.kv_cache_bytes(4096, q, 512);
     assert_eq!(grows(KvCacheQuantization::Kv16), attention * per_token * 4096);
+}
+
+#[test]
+fn a_tight_gap_is_used_only_when_it_puts_more_of_the_model_on_the_gpu() {
+    let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
+    // A size no other test uses: the measurements are process-wide. Dry run done: 0.50 GB card gap
+    let mut g = moe_like();
+    g.file_size_bytes = 7_000_003;
+    crate::margin::record_correction(&g, &s, 0.0);
+    let mut tightened = 0;
+    let mut free = 1.0;
+    while free <= 3.5 {
+        let hardware = hw(free, 8.0);
+        let usual = Planner::plan_with_gap("m", &g, &hardware, &s);
+        let plan = Planner::create_plan("m", &g, &hardware, &s);
+        // Never less than the minimum reserve kept free, never less on the GPU than the usual gap
+        assert!(plan.vram_budget_gb + crate::margin::DEVICE_RESERVE_MIN_GB <= free + 1e-9, "{}", plan.explanation);
+        assert!(plan.block_split().0 >= usual.block_split().0, "{}", plan.explanation);
+        if plan.vram_buffer_gb < usual.vram_buffer_gb {
+            tightened += 1;
+            assert!(plan.explanation.contains("kept free instead of"), "{}", plan.explanation);
+            assert!(crate::margin::describe(&g, &s, &hardware, plan.vram_buffer_gb).starts_with("tight gap"));
+        }
+        // A plan that runs fully on the GPU keeps the usual gap
+        if usual.selected_tier == PlacementTier::GpuOnly {
+            assert_eq!(plan.vram_buffer_gb, usual.vram_buffer_gb);
+        }
+        free += 0.05;
+    }
+    assert!(tightened > 0, "the tight gap never changed a plan");
+    // The user's buffer is never replaced
+    let mut custom = s.clone();
+    custom.optimization.custom_vram_buffer_gb = Some(1.0);
+    assert_eq!(Planner::create_plan("m", &g, &hw(2.0, 8.0), &custom).vram_buffer_gb, 1.0);
+}
+
+#[test]
+fn a_moe_split_gets_the_share_of_the_correction_its_gpu_weights_are() {
+    let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
+    // Sizes no other test uses: the measurements are process-wide
+    let mut with = moe_like();
+    with.file_size_bytes = 7_000_004;
+    let mut without = moe_like();
+    without.file_size_bytes = 7_000_005;
+    crate::margin::record_correction(&with, &s, 0.30);
+    crate::margin::record_correction(&without, &s, 0.0);
+    // Too little VRAM for any expert or a MoE cache: both splits keep every expert in RAM
+    let hardware = hw(1.0, 16.0);
+    let split = |g: &ModelGeometry| {
+        Planner::plan_with_gap("m", g, &hardware, &s).candidates.into_iter().find(|c| c.name == "MoE split").unwrap()
+    };
+    let full = |g: &ModelGeometry| {
+        Planner::plan_with_gap("m", g, &hardware, &s).candidates.into_iter().find(|c| c.name == "Full GPU").unwrap()
+    };
+    // Full GPU gets the whole correction
+    assert!((full(&with).vram_required_gb - full(&without).vram_required_gb - 0.30).abs() < 0.01);
+    // The MoE split holds the attention (30 x 30 MiB) and the output head of 30 x 430 MiB + head: a few percent
+    let (a, b) = (split(&with), split(&without));
+    assert!(a.n_cpu_moe == 30 && b.n_cpu_moe == 30 && a.moe_cache_bytes == 0, "{} | {}", a.reason, b.reason);
+    let added = a.vram_required_gb - b.vram_required_gb;
+    assert!(added > 0.0 && added < 0.05, "{added}");
 }

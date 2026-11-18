@@ -42,6 +42,10 @@ reaches the floor (so less free memory never gives a bigger context).
 | 4 | 2048-4095 tokens fit | that, Q4 (CTX rule 3a: speed first) |
 | 5 | nothing fits on the GPU | split between GPU and RAM: 8192 (`AUTO_SPLIT_CONTEXT`), Q8; 4096 when RAM is too short |
 
+Sliding-window layers (Gemma, gpt-oss) keep their window plus one batch of cells, as llama-server
+does (`swa_full` off). With llama.cpp's context default (`swa_full` on) they keep the whole context: on
+Gemma 4 26B at 4096 tokens, Q8 KV, 479 MiB of KV instead of 213.
+
 On the CPU only, Auto keeps 4096 (RAM is not filled with context). A context, KV type, GPU layers
 or VRAM buffer set by the user is used as given. Max gives the model's native limit.
 
@@ -131,9 +135,21 @@ cache.
 
 | Model | Kept free |
 |---|---|
-| Not measured on this machine yet | 1024 MiB, else 512 MiB (llama.cpp's `--fit-target` rule) |
+| Not measured, no llama.cpp dry run | 1024 MiB, else 512 MiB (llama.cpp's `--fit-target` rule) |
+| Not measured, dry run done (every GPU load runs it first) | desktop reserve + 0.30 GB for the GPU pool, at most 1.0 GB (0.50 GB on a 4 GB GPU) |
 | Measured | its GPU pool growth after a full-batch warmup (largest seen) + a desktop reserve of 5% of the GPU, at least 0.15 GB and at most 1.0 GB; 0.15 GB when NVML shows the GPU is used by nothing else (no display, not a Windows WDDM device, no other process) |
+| Tight gap | when the gap above leaves less of the model on the GPU (a split instead of Full GPU, part of the attention instead of all of it, fewer blocks, CPU only): 0.15 GB + the measured pool. Never for a Full GPU plan, never when it reads more from disk |
 | User setting | the user's value |
+
+The dry run is llama.cpp's own size of the model fully on the GPU (no allocation). Its difference to
+the estimate is added to each placement in proportion to the weights that placement puts on the GPU.
+
+After a load:
+- a load that leaves the GPU nearly full (less than 0.15 GB free, or more planned than was free) may have
+  moved memory to Windows' shared GPU memory, so its size is not known; it is kept as needing all the
+  VRAM that was free, and the model is planned again on the same free memory and loaded once with the
+  smaller placement. The same plan is not loaded twice.
+- a load that llama.cpp cannot allocate records the miss and loads the next smaller placement.
 
 ## RAM buffer
 

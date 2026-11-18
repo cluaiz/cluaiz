@@ -185,6 +185,13 @@ pub fn describe(geometry: &ModelGeometry, settings: &ActiveUserSettings, hardwar
     if settings.optimization.custom_vram_buffer_gb.is_some() {
         return "user setting".to_string();
     }
+    let usual = crate::planner::model_buffer_options(geometry, hardware, settings).into_iter().fold(f64::MAX, f64::min);
+    if buffer_gb + 1e-9 < usual {
+        return format!(
+            "tight gap: {:.2} GB instead of {:.2} GB, because the usual gap would put less of the model on the GPU; a load that fails steps back one placement",
+            buffer_gb, usual
+        );
+    }
     let corrected = correction(geometry, settings)
         .map(|c| format!("; estimate corrected by llama.cpp's dry run {:+.2} GB", c))
         .unwrap_or_default();
