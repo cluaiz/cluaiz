@@ -289,9 +289,11 @@ impl NativeLlama {
                 Ok(())
             };
             let mem = llama_cpp::llama_get_memory(ctx);
-            // Warmup like llama-bench: a short prompt and one generated token
+            // Warmup as llama-bench does it: the whole prompt, then one generated token. A shorter
+            // warmup leaves the first measured prompt run cold (weights not yet paged in, kernels
+            // not yet compiled for the full batch)
             llama_cpp::llama_memory_clear(mem, false);
-            run(n_prompt.min(n_batch).min(32), n_gen.min(1))?;
+            run(n_prompt, n_gen.min(1))?;
             let mut samples = Vec::with_capacity(reps);
             for _ in 0..reps.max(1) {
                 llama_cpp::llama_memory_clear(mem, false);
