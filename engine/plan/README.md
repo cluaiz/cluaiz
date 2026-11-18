@@ -25,6 +25,7 @@ graph TD
 | [`planner.rs`](src/planner.rs) | Pure mathematical calculation of memory budgets and candidate selection. |
 | [`margin.rs`](src/margin.rs) | VRAM a model really took on this machine, kept in `config/vram_margins.json`. |
 | [`speed.rs`](src/speed.rs) | STEP 4: speeds measured by `cluaiz bench`; a placement measured faster replaces the rule-order pick. |
+| [`report.rs`](src/report.rs) | The plan as `cluaiz show` prints it (see Plan report below). |
 | [`moe_cache.rs`](src/moe_cache.rs) | Size and CPU share of llama.cpp's MoE GPU cache for a MoE split (see below). |
 | [`media_budget.rs`](src/media_budget.rs) | Additive media preflight after model load. Reuses safety policies without changing text placement math. |
 
@@ -155,6 +156,20 @@ After a load:
 
 Auto keeps 5% of total RAM free, at most 4 GB (`RAM_RESERVE_MAX_GB`), counting what other apps use now.
 A GB buffer set by the user (`custom_ram_buffer_gb`) replaces it.
+
+## Plan report
+
+`cluaiz show` prints, per device: free now, kept free (and why), what Cluaiz may use, what goes there
+(weights, KV, llama.cpp's working space, MoE cache) and whether the total fits; then what is read from
+the SSD, a one-line summary, the context and KV choice, the same placement as llama.cpp flags, the
+measured speed, and the other placements with what each needs. A rejected plan shows the placement
+closest to fitting, its shortfall per device and what would make it fit. Every number comes from the
+plan (`vram_weights_gb`, `ram_weights_gb`, `vram_free_gb`, `ram_free_gb` and the candidate fields);
+`system.plan` returns the same values as data.
+
+Memory is in GB of 1024³ bytes, as the OS reports RAM and VRAM. File sizes are in GB as Hugging Face
+counts them (10⁹ bytes), as `cluaiz pull` and `cluaiz list` show them. A negative measured gap is
+shown as 0 kept free: it only removes the margin, it never adds VRAM.
 
 ## Media preflight contract
 

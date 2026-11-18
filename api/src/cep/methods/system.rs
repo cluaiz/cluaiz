@@ -388,7 +388,9 @@ async fn plan_execution(ctx: CallCtx, call: Call, payload: PlanRequest) -> Resul
     let declared_inputs = package.supported_inputs();
     let vram_free_gb = hw.gpus.first().map(|g| g.vram_available_gb).unwrap_or(0.0);
     let vram_total_gb = hw.gpus.first().map(|g| g.vram_total_gb).unwrap_or(0.0);
-    let vram_buffer_gb = plan.vram_buffer_gb;
+    // A negative gap (the estimate measured above what the model takes) keeps nothing back and
+    // never adds VRAM the GPU does not have
+    let vram_buffer_gb = plan.vram_buffer_gb.max(0.0);
     let usable_vram_gb = (vram_free_gb - vram_buffer_gb).max(0.0);
     let usable_ram_gb = plan.ram_budget_limit_gb;
     let ram_buffer_gb = (hw.memory.available_gb - usable_ram_gb).max(0.0);
@@ -444,6 +446,8 @@ async fn plan_execution(ctx: CallCtx, call: Call, payload: PlanRequest) -> Resul
                 "ram_gb": round2(plan.ram_budget_gb),
                 "kv_cache_vram_gb": round2(plan.kv_gpu_gb),
                 "kv_cache_ram_gb": round2(plan.kv_ram_gb),
+                "weights_vram_gb": round2(plan.vram_weights_gb),
+                "weights_ram_gb": round2(plan.ram_weights_gb),
                 "logits_buffer_gb": round2(cluaiz_core::bytes_to_gib(geometry.logits_buffer_bytes(settings.optimization.resolved_ubatch_size()))),
                 "remaining_free_vram_gb": round2(remaining_vram),
                 "remaining_free_ram_gb": round2(remaining_ram)
@@ -484,6 +488,19 @@ async fn plan_execution(ctx: CallCtx, call: Call, payload: PlanRequest) -> Resul
     });
     if !attachment_processing.is_empty() {
         response["model_info"]["attachment_processing"] = json!(attachment_processing);
+    }
+    // A rejected plan has no placement: what the closest one needs, against what may be used
+    if !plan.is_feasible() {
+        if let Some(closest) = plan.closest_candidate() {
+            response["execution_plan"]["closest_placement"] = json!({
+                "name": closest.name,
+                "vram_gb": round2(closest.vram_required_gb),
+                "ram_gb": round2(closest.ram_required_gb),
+                "usable_vram_gb": round2(usable_vram_gb),
+                "usable_ram_gb": round2(usable_ram_gb),
+                "missing_gb": round2(closest.missing_gb)
+            });
+        }
     }
     let mut overrides = serde_json::Map::new();
     for (key, value) in [

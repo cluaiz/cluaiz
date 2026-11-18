@@ -219,6 +219,8 @@ The real model and machine still determine whether the requested plan can fit.
 
 model_info describes intrinsic declarations/context/geometry. execution_plan gives chosen context, split, batches, KV/placement/memory breakdown and reasons. hardware_info is the snapshot; active_user_settings preserves saved controls, and request_overrides identifies only explicitly supplied transient values. Fields are plan facts/estimates, not a measured generation result.
 
+Memory values are GB of 1024³ bytes, as the OS reports RAM and VRAM. `model_memory_breakdown.weights_vram_gb` and `weights_ram_gb` are the weights alone on each device (input embeddings count in RAM); the rest of `vram_gb` is KV, llama.cpp's working space and the MoE cache. Each entry of `candidates` carries the same split as `vram_weights_gb` / `ram_weights_gb`. `hardware_info.gpu.safety_buffer_gb` is never negative: a model measured to take less than its estimate keeps no gap, and `usable_vram_gb` never exceeds `free_vram_gb`. When no placement fits (`placement_mode` `Infeasible`), `execution_plan.closest_placement` gives the placement that misses the fewest GB: its `vram_gb` and `ram_gb` against `usable_vram_gb` and `usable_ram_gb`, and `missing_gb`.
+
 The following response is an illustrative shape. IDs, byte counts, timings and array contents depend on the actual request and machine; shortened nested objects are not a second schema or a measured result.
 
 ```json

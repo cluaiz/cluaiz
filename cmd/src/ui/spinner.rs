@@ -1,6 +1,7 @@
 //! Loading indicator for waits with no progress of their own (network lookups, model load, benchmark
 //! runs). Drawn on stderr and only on a terminal, so piped output never gets it.
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
 use std::time::Duration;
 
@@ -10,6 +11,14 @@ use indicatif::{ProgressBar, ProgressDrawTarget, ProgressStyle};
 pub struct Spinner(ProgressBar);
 
 pub const TICK_INTERVAL: Duration = Duration::from_millis(100);
+
+/// Log lines on stderr (`-v`) are the progress there: a spinner on the same stream would share
+/// their line, so it is not drawn
+static LOGS_ON_STDERR: AtomicBool = AtomicBool::new(false);
+
+pub fn logs_on_stderr(on: bool) {
+    LOGS_ON_STDERR.store(on, Ordering::Relaxed);
+}
 
 fn style() -> &'static ProgressStyle {
     static STYLE: OnceLock<ProgressStyle> = OnceLock::new();
@@ -27,7 +36,8 @@ pub fn frame(tick: u64) -> &'static str {
 
 impl Spinner {
     pub fn start(message: impl Into<String>) -> Self {
-        let pb = ProgressBar::with_draw_target(None, ProgressDrawTarget::stderr());
+        let target = if LOGS_ON_STDERR.load(Ordering::Relaxed) { ProgressDrawTarget::hidden() } else { ProgressDrawTarget::stderr() };
+        let pb = ProgressBar::with_draw_target(None, target);
         pb.set_style(style().clone());
         pb.set_message(message.into());
         pb.enable_steady_tick(TICK_INTERVAL);

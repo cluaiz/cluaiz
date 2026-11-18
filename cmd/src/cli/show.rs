@@ -43,7 +43,8 @@ pub async fn execute(args: ShowArgs, verbose: bool) -> Result<()> {
 
     section("Model");
     row("id", &id);
-    row("file", format!("{} ({:.2} GiB)", path.display(), geometry.file_size_bytes as f64 / cluaiz_core::GIB_F64));
+    row("file", path.display());
+    row("file size", format!("{:.2} GB (as Hugging Face counts it)", geometry.file_size_bytes as f64 / 1e9));
     row("architecture", &geometry.architecture);
     if let Some(name) = meta("general.name") {
         row("name", name);
@@ -56,7 +57,11 @@ pub async fn execute(args: ShowArgs, verbose: bool) -> Result<()> {
     row("embedding", geometry.embedding_length);
     row("attention heads", format!("{} (KV {})", geometry.head_count, geometry.head_count_kv));
     if geometry.is_moe() {
+        let w = &geometry.weights;
         row("experts", format!("{} ({} active)", geometry.expert_count.unwrap_or(0), geometry.expert_used_count.unwrap_or(0)));
+        row("parts", format!("attention and shared {:.2} GB | experts {:.2} GB ({:.2} GB per block)",
+            cluaiz_core::bytes_to_gib(w.full_gpu() - w.experts_total()), cluaiz_core::bytes_to_gib(w.experts_total()),
+            cluaiz_core::bytes_to_gib(w.experts_total()) / geometry.block_count.max(1) as f64));
     }
     if let Some(window) = geometry.sliding_window {
         row("sliding window", window);
@@ -83,8 +88,10 @@ pub async fn execute(args: ShowArgs, verbose: bool) -> Result<()> {
     let hw = cluaiz_hw::HardwareProber::with_live_memory();
     let plan = Planner::create_plan(&id, &geometry, &hw, &settings);
     section("Plan on this machine now");
-    for line in plan.summary().lines() {
-        println!("    {}", line);
+    println!("    {}", "Memory in GB of 1024^3 bytes, as the OS reports RAM and VRAM".dimmed());
+    println!();
+    for line in plan.report(&geometry, &hw, &settings).lines() {
+        if line.is_empty() { println!() } else { println!("  {}", line) }
     }
 
     if verbose {

@@ -280,6 +280,7 @@ fn init_logging(verbose: u8, serving: bool, screen: bool) {
         (0, true) | (1, _) => LevelFilter::INFO,
         _ => LevelFilter::DEBUG,
     } };
+    crate::ui::spinner::logs_on_stderr(console != LevelFilter::OFF);
     let file_level = if verbose >= 2 { LevelFilter::DEBUG } else { LevelFilter::INFO };
     // ONNX Runtime reports every memory-arena step at INFO; below -vv only its warnings are kept
     let ort_level = if verbose >= 2 { LevelFilter::DEBUG } else { LevelFilter::WARN };

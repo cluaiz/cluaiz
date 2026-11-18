@@ -30,6 +30,12 @@ pub struct ExecutionCandidate {
     pub ram_required_gb: f64,
     pub kv_gpu_gb: f64,
     pub kv_ram_gb: f64,
+    /// Weights on the GPU (without KV, buffers and the MoE cache)
+    #[serde(default)]
+    pub vram_weights_gb: f64,
+    /// Weights in RAM, input embeddings included (without KV and buffers)
+    #[serde(default)]
+    pub ram_weights_gb: f64,
     /// GB over the RAM limit that the OS reads from disk when used (MoE only)
     pub disk_stream_gb: f64,
     /// false = KV cache in RAM while weights are on GPU (CTX rule 5B, llama.cpp offload_kqv = 0)
@@ -74,6 +80,8 @@ impl ExecutionCandidate {
             ram_required_gb: 0.0,
             kv_gpu_gb: 0.0,
             kv_ram_gb: 0.0,
+            vram_weights_gb: 0.0,
+            ram_weights_gb: 0.0,
             disk_stream_gb: 0.0,
             kv_offload: false,
             moe_cache_bytes: 0,
@@ -103,6 +111,17 @@ pub struct ExecutionPlan {
     pub ram_budget_gb: f64,
     pub kv_gpu_gb: f64,
     pub kv_ram_gb: f64,
+    /// Weights on the GPU of the selected placement (without KV, buffers and the MoE cache)
+    #[serde(default)]
+    pub vram_weights_gb: f64,
+    /// Weights in RAM of the selected placement, input embeddings included
+    #[serde(default)]
+    pub ram_weights_gb: f64,
+    /// Free VRAM / RAM the plan was made with
+    #[serde(default)]
+    pub vram_free_gb: f64,
+    #[serde(default)]
+    pub ram_free_gb: f64,
     /// GB the OS reads from disk when used (MoE over the RAM limit), 0 otherwise
     pub disk_stream_gb: f64,
     /// llama.cpp offload_kqv: true = KV next to its GPU layers, false = whole KV in RAM (CTX rule 5B)
@@ -164,6 +183,9 @@ impl ExecutionPlan {
     /// Short plan report (plan values only): what a terminal shows after a load. The full banner,
     /// with hardware and every candidate, is `format_telemetry_banner`.
     pub fn summary(&self) -> String {
+        if !self.is_feasible() {
+            return self.rejected_summary();
+        }
         let (gpu_blocks, ram_blocks) = self.block_split();
         let kv_place = if self.kv_offload && self.n_gpu_layers != 0 { "next to its layers" } else { "in RAM" };
         let mut out = format!(
@@ -181,6 +203,26 @@ impl ExecutionPlan {
         }
         out.push_str(&format!("\nreason     {}", self.explanation));
         out
+    }
+
+    /// A rejected plan: what the closest placement needs against what may be used, per device
+    fn rejected_summary(&self) -> String {
+        let Some(c) = self.closest_candidate() else {
+            return format!("placement  Rejected\nreason     {}", self.explanation);
+        };
+        let verdict = |need: f64, may: f64| {
+            if need <= may + 0.005 { "fits".to_string() } else { format!("{:.2} GB short", need - may) }
+        };
+        let ram_verdict = if c.disk_stream_gb > 0.0 {
+            "the rest read from the SSD".to_string()
+        } else {
+            verdict(c.ram_required_gb, self.ram_budget_limit_gb)
+        };
+        format!(
+            "placement  Rejected | closest: {}\nmemory     VRAM needs {:.2} GB, may use {:.2} GB ({}) | RAM needs {:.2} GB, may use {:.2} GB ({})\nreason     {}",
+            c.name, c.vram_required_gb, self.usable_vram_gb(), verdict(c.vram_required_gb, self.usable_vram_gb()),
+            c.ram_required_gb, self.ram_budget_limit_gb, ram_verdict, self.explanation,
+        )
     }
 
     /// Formats the resource execution banner printed once per model load
@@ -224,14 +266,14 @@ impl ExecutionPlan {
         out.push_str(&format!("║   • Architecture    : {} | {} layers | heads {} | KV heads {} | head size K {} / V {}{} | {}\n",
             geometry.architecture, geometry.block_count, geometry.head_count, geometry.head_count_kv,
             geometry.key_length, geometry.value_length, swa, moe_line));
-        out.push_str(&format!("║   • Weights         : file {:.2} GB | input embeddings {:.2} GB (always CPU) | output head {:.2} GB | vocab {}\n",
-            gib(geometry.file_size_bytes), gib(w.input_cpu), gib(w.output_gpu()), geometry.vocab_size));
+        out.push_str(&format!("║   • Weights         : file {:.2} GB (as Hugging Face counts it) | input embeddings {:.2} GB (always CPU) | output head {:.2} GB | vocab {}\n",
+            geometry.file_size_bytes as f64 / 1e9, gib(w.input_cpu), gib(w.output_gpu()), geometry.vocab_size));
         out.push_str(&format!("╠{}╣\n║ [CONTEXT]\n", line));
         out.push_str(&format!("║   • Native limit    : {} tokens\n", geometry.context_length));
         out.push_str(&format!("║   • Active context  : {} tokens, KV {:?} ({})\n", self.context_window, self.kv_cache_type, self.context_reason));
         out.push_str(&format!("╠{}╣\n║ [HARDWARE]\n", line));
         out.push_str(&format!("║   • GPU             : {} | free {:.2} of {:.2} GB | buffer kept free {:.2} GB ({})\n",
-            gpu_name, free_vram, total_vram, self.vram_buffer_gb, buffer_tag));
+            gpu_name, free_vram, total_vram, self.vram_buffer_gb.max(0.0), buffer_tag));
         out.push_str(&format!("║   • RAM             : free {:.2} of {:.2} GB | Cluaiz may use {:.2} GB\n",
             hardware.memory.available_gb, hardware.memory.total_gb, self.ram_budget_limit_gb));
         out.push_str(&format!("╠{}╣\n║ [PLACEMENT]\n", line));
@@ -295,6 +337,10 @@ mod tests {
             ram_budget_gb: 0.0,
             kv_gpu_gb: 0.0,
             kv_ram_gb: 0.0,
+            vram_weights_gb: 0.0,
+            ram_weights_gb: 0.0,
+            vram_free_gb: 0.0,
+            ram_free_gb: 0.0,
             disk_stream_gb: 0.0,
             kv_offload: true,
             op_offload: true,

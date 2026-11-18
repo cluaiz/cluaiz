@@ -222,6 +222,9 @@ struct Placement {
     ram: u64,
     kv_gpu: u64,
     kv_ram: u64,
+    /// Weights alone, per device (the rest is KV and buffers)
+    vram_weights: u64,
+    ram_weights: u64,
 }
 
 impl Planner {
@@ -439,7 +442,7 @@ impl Planner {
                 n => (n as usize - 1).min(n_layers),
             };
             let first_gpu_block = n_layers - gpu_blocks;
-            let mut p = Placement { vram: 0, ram: w.input_cpu, kv_gpu: 0, kv_ram: 0 };
+            let mut p = Placement { vram: 0, ram: w.input_cpu, kv_gpu: 0, kv_ram: 0, vram_weights: 0, ram_weights: 0 };
             if n_gpu_layers != 0 {
                 p.vram += head_gpu;
             } else {
@@ -453,6 +456,8 @@ impl Planner {
                 if on_gpu && kv_offload { p.kv_gpu += kv_l } else { p.kv_ram += kv_l }
             }
             // Weights only so far: logits buffer and the share of the correction they call for
+            p.vram_weights = p.vram;
+            p.ram_weights = p.ram - if n_gpu_layers == 0 { logits } else { 0 };
             if n_gpu_layers != 0 {
                 p.vram += gpu_logits_for(p.vram);
             }
@@ -654,6 +659,10 @@ impl Planner {
             ram_budget_gb: selected.ram_required_gb,
             kv_gpu_gb: selected.kv_gpu_gb,
             kv_ram_gb: selected.kv_ram_gb,
+            vram_weights_gb: selected.vram_weights_gb,
+            ram_weights_gb: selected.ram_weights_gb,
+            vram_free_gb: bytes_to_gib(vram_free),
+            ram_free_gb: hardware.memory.available_gb,
             disk_stream_gb: selected.disk_stream_gb,
             kv_offload: selected.kv_offload,
             // llama.cpp default unless the user set it
@@ -697,6 +706,8 @@ impl Planner {
             ram_required_gb: gib(p.ram),
             kv_gpu_gb: gib(p.kv_gpu),
             kv_ram_gb: gib(p.kv_ram),
+            vram_weights_gb: gib(p.vram_weights),
+            ram_weights_gb: gib(p.ram_weights),
             disk_stream_gb: if feasible { gib(over_ram) } else { 0.0 },
             kv_offload,
             moe_cache_bytes: 0,

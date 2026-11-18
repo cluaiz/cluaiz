@@ -17,7 +17,8 @@ pub async fn execute() -> Result<()> {
     let header = format!("{:<id_width$}  {:<10}  {:<6}  {:>10}", "ID", "CATEGORY", "FORMAT", "SIZE", id_width = id_width);
     println!("{}", header.bold());
     for e in entries {
-        let size = format!("{:.2} GiB", e.size_bytes() as f64 / cluaiz_core::GIB_F64);
+        // GB as Hugging Face and `cluaiz pull` count it
+        let size = format!("{:.2} GB", e.size_bytes() as f64 / 1e9);
         let id = if active.as_deref() == Some(e.id.as_str()) { format!("{} *", e.id) } else { e.id.clone() };
         println!("{:<id_width$}  {:<10}  {:<6}  {:>10}", id, e.category, e.format_type, size, id_width = id_width);
     }
