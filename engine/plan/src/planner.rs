@@ -15,7 +15,7 @@ use crate::types::{ExecutionCandidate, ExecutionPlan, PlacementTier};
 /// the model runs fully on the GPU, and exactly this many when it has to be split.
 pub const AUTO_CONTEXT_FLOOR: u32 = 4096;
 /// CTX rule 3a: when the floor does not fit fully on the GPU, Auto takes this many tokens on the
-/// GPU before it splits the model (owner's rule: speed first, a smaller context before RAM).
+/// GPU before it splits the model (speed first: a smaller context before RAM).
 pub const AUTO_CONTEXT_MIN: u32 = 2048;
 /// Auto on the GPU stops here: enough for chats and agent work, and the rest of the VRAM stays
 /// free for other models (Max or a number gives more)
@@ -273,11 +273,9 @@ impl Planner {
         Self::fewer_disk_reads(plan, model_id, geometry, hardware, settings)
     }
 
-    /// A MoE model that reads experts from disk: the context is chosen before the experts are
-    /// placed, so a bigger KV cache can take the VRAM that would have held expert layers and send
-    /// them to the disk instead (more free VRAM then read more from disk). With the KV type on Auto,
-    /// KV Q8 (near lossless; Q4 is not used for this) is tried, and the plan reading less from disk
-    /// is kept (owner's rule: among placements that fit, the one that reads the least from the SSD).
+    /// Disk reads first: the context is chosen before the experts are placed, so an F16 KV cache
+    /// can take the VRAM of expert layers and send them to the disk. With the KV type on Auto, a
+    /// MoE plan that reads from disk is planned again with KV Q8, and the one reading less is kept.
     fn fewer_disk_reads(
         plan: ExecutionPlan,
         model_id: &str,
@@ -490,7 +488,7 @@ impl Planner {
             }
         }
 
-        // CTX rule 5B / owner rule 3 - all weights on GPU, whole KV in RAM (llama.cpp offload_kqv = 0;
+        // CTX rule 5B - all weights on GPU, whole KV in RAM (llama.cpp offload_kqv = 0;
         // attention runs on CPU), before any block leaves the GPU. Auto lists it only when the weights fit
         // and the KV is what does not (Auto first tried a smaller KV and context on the GPU).
         let kv_ram = place(-1, 0, false);
