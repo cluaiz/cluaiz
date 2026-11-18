@@ -1,0 +1,24 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'ibm-granite/granite-4.0-h-tiny-GGUF:Q4_K_M'...
+  🔍 Scanning HuggingFace Hub for 'ibm-granite/granite-4.0-h-tiny-GGUF'...
+  ⚡ Direct Quantization Tag Matched: ':Q4_K_M' -> granite-4.0-h-tiny-Q4_K_M.gguf (4.23 GB)
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: granite-4.0-h-tiny-gguf-Q4_K_M
+    ├─ 📦 Format: GGUF
+    ├─ 🏷️  Precision / Quant Tag: Q4_K_M
+    ├─ 🧠 Architecture: granitehybrid
+    ├─ 📁 Category: chat
+    ├─ 💾 Total Download Size: 4.23 GB
+    └─ 📁 Files to Download (1 files):
+       └─ ⚖️  granite-4.0-h-tiny-Q4_K_M.gguf
+   ├─ [1/1] Downloading granite-4.0-h-tiny-Q4_K_M.gguf
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  granite-4.0-h-tiny-gguf-Q4_K_M
+  │ 📁 Vault Path:     /home/Aryan/ch-run21/models/chat/granite-4.0-h-tiny-gguf-Q4_K_M
+  │ 🚀 Run Command:   cluaiz run granite-4.0-h-tiny-gguf-Q4_K_M
+  └─────────────────────────────────────────────────────────────┘
+

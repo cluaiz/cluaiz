@@ -1,0 +1,25 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'bartowski/moonshotai_Kimi-Linear-48B-A3B-Instruct-GGUF:Q4_K_M'...
+  🔍 Scanning HuggingFace Hub for 'bartowski/moonshotai_Kimi-Linear-48B-A3B-Instruct-GGUF'...
+  ⚡ Direct Quantization Tag Matched: ':Q4_K_M' -> moonshotai_Kimi-Linear-48B-A3B-Instruct-Q4_K_M.gguf (30.06 GB)
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: moonshotai_kimi-linear-48b-a3b-instruct-gguf-Q4_K_M
+    ├─ 📦 Format: GGUF
+    ├─ 🏷️  Precision / Quant Tag: Q4_K_M
+    ├─ 🧠 Architecture: kimi-linear
+    ├─ 📁 Category: chat
+    ├─ 🧩 Parameters: 48B
+    ├─ 💾 Total Download Size: 30.06 GB
+    └─ 📁 Files to Download (1 files):
+       └─ ⚖️  moonshotai_Kimi-Linear-48B-A3B-Instruct-Q4_K_M.gguf
+   ├─ [1/1] Downloading moonshotai_Kimi-Linear-48B-A3B-Instruct-Q4_K_M.gguf
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  moonshotai_kimi-linear-48b-a3b-instruct-gguf-Q4_K_M
+  │ 📁 Vault Path:     /home/Aryan/ch-run21/models/chat/moonshotai_kimi-linear-48b-a3b-instruct-gguf-Q4_K_M
+  │ 🚀 Run Command:   cluaiz run moonshotai_kimi-linear-48b-a3b-instruct-gguf-Q4_K_M
+  └─────────────────────────────────────────────────────────────┘
+

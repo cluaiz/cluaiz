@@ -1,0 +1,60 @@
+2026-11-18T16:48:17.877077Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-18T16:48:17.913934Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-18T16:48:18.182269Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+2026-11-18T16:48:18.376523Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-18T16:48:18.376666Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-18T16:48:18.795992Z  INFO 📐 [EngineHost] llama.cpp dry run, full GPU at 4096 tokens: model 1.59 + context 0.22 + compute 0.51 = 2.32 GB vs estimate 2.29 GB (+0.03) in 390 ms
+2026-11-18T16:48:18.814733Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : gemma-2-2b-it-gguf-Q4_K_M
+║   • Architecture    : gemma2 | 26 layers | heads 8 | KV heads 4 | head size K 256 / V 256, sliding window 4096 on 13 layers | dense
+║   • Weights         : file 1.71 GB (as Hugging Face counts it) | input embeddings 0.45 GB (always CPU) | output head 0.45 GB | vocab 256000
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 8192 tokens
+║   • Active context  : 8192 tokens, KV Kv16 (Auto: 8192 tokens, KV Kv16, buffer 0.45 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 21.90 of 22.49 GB | buffer kept free 0.45 GB (card-sized gap: 0.15 GB reserve + 0.30 GB for the GPU pool, model not measured on this machine yet; estimate corrected by llama.cpp's dry run +0.03 GB)
+║   • RAM             : free 29.79 of 31.35 GB | Cluaiz may use 28.36 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 8192 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 26 on GPU, 0 in RAM (of 26)
+║   • VRAM            : 2.74 GB (weights + KV 0.63 + logits)
+║   • RAM             : 0.45 GB (incl. KV 0.00)
+║   • Reason         : Full GPU: weights 1.59 + KV 0.63 + buffers 0.52 = 2.74 GB vs usable VRAM 21.63 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  2.74 GB | RAM  0.45 GB | weights 1.59 + KV 0.63 + buffers 0.52 = 2.74 GB vs usable VRAM 21.63 GB
+║   • GPU + RAM split  [FITS]     VRAM  2.68 GB | RAM  0.51 GB | 25 / 26 blocks + output head on GPU (2.68 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  2.71 GB | weights 1.59 + KV 0.63 + logits 0.49 = 2.71 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-18T16:48:18.814769Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-18T16:48:18.814921Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 4, n_threads_batch = 4
+2026-11-18T16:48:18.814926Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch-run21/models/chat/gemma-2-2b-it-gguf-Q4_K_M/gemma-2-2b-it-Q4_K_M.gguf | ctx: 8192 tokens
+2026-11-18T16:48:19.553801Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/home/Aryan/ch-run21/models/chat/gemma-2-2b-it-gguf-Q4_K_M"
+2026-11-18T16:48:19.556399Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 8192 tokens
+2026-11-18T16:48:19.556409Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-18T16:48:19.556414Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-18T16:48:19.556419Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-18T16:48:19.556424Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 4/4
+2026-11-18T16:48:19.707676Z  INFO 🔍 [EngineHost] VRAM planned 2.74 GB, taken 2.77 GB | n_ctx planned 8192 created 8192 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-18T16:48:19.707855Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /home/Aryan/ch-run21/models/chat/gemma-2-2b-it-gguf-Q4_K_M/gemma-2-2b-it-Q4_K_M.gguf
+  placement  Full GPU
+  GPU        2.74 GB: all 26 blocks, output head, KV
+  RAM        0.45 GB: input embeddings
+  context    8,192 tokens | KV F16 on the GPU
+  llama.cpp  -ngl -1 -c 8192 -ctk f16 -ctv f16
+  reason     Full GPU: weights 1.59 + KV 0.63 + buffers 0.52 = 2.74 GB vs usable VRAM 21.63 GB
+running pp128 on Full GPU (1 runs)...
+running tg32 on Full GPU (1 runs)...

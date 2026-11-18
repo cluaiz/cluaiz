@@ -1,0 +1,16 @@
+llama-3.2-3b: 2026-11-18T15:21:26.458959Z  INFO 🔍 [EngineHost] VRAM planned 3.90 GB, taken 3.94 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+llama-3.2-3b: 2026-11-18T15:21:30.086121Z  INFO 🔍 [EngineHost] VRAM planned 3.77 GB, taken 3.78 GB | n_ctx planned 16384 created 16384 | n_gpu_layers 28 n_cpu_moe 0
+mistral-24b: 2026-11-18T15:27:19.775315Z  INFO 🔍 [EngineHost] VRAM planned 15.79 GB, taken 15.84 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+mistral-24b: 2026-11-18T15:27:40.677788Z  INFO 🔍 [EngineHost] VRAM planned 15.39 GB, taken 15.43 GB | n_ctx planned 16384 created 16384 | n_gpu_layers 40 n_cpu_moe 0
+llama-3.2-3b: 2026-11-18T15:21:26.458959Z  INFO 🔍 [EngineHost] VRAM planned 3.90 GB, taken 3.94 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+llama-3.2-3b: 2026-11-18T15:21:30.086121Z  INFO 🔍 [EngineHost] VRAM planned 3.77 GB, taken 3.78 GB | n_ctx planned 16384 created 16384 | n_gpu_layers 28 n_cpu_moe 0
+gemma-3-12b: 2026-11-18T16:26:21.138544Z  INFO 🔍 [EngineHost] VRAM planned 8.39 GB, taken 9.03 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+gemma-3-12b: 2026-11-18T16:26:32.696686Z  INFO 🔍 [EngineHost] VRAM planned 8.26 GB, taken 8.66 GB | n_ctx planned 16384 created 16384 | n_gpu_layers 48 n_cpu_moe 0
+mistral-24b: 2026-11-18T15:27:19.775315Z  INFO 🔍 [EngineHost] VRAM planned 15.79 GB, taken 15.84 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+mistral-24b: 2026-11-18T15:27:40.677788Z  INFO 🔍 [EngineHost] VRAM planned 15.39 GB, taken 15.43 GB | n_ctx planned 16384 created 16384 | n_gpu_layers 40 n_cpu_moe 0
+qwen3-30b-a3b: 2026-11-18T16:31:10.356021Z  INFO 🔍 [EngineHost] VRAM planned 18.93 GB, taken 18.98 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+qwen3-30b-a3b: 2026-11-18T16:31:18.846599Z  INFO 🔍 [EngineHost] VRAM planned 18.52 GB, taken 18.58 GB | n_ctx planned 16384 created 16384 | n_gpu_layers 48 n_cpu_moe 0
+gpt-oss-20b: 2026-11-18T16:34:02.571471Z  INFO 🔍 [EngineHost] VRAM planned 11.50 GB, taken 11.55 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+gpt-oss-20b: 2026-11-18T16:34:09.973978Z  INFO 🔍 [EngineHost] VRAM planned 11.07 GB, taken 11.09 GB | n_ctx planned 16384 created 16384 | n_gpu_layers 24 n_cpu_moe 0
+gemma-4-31b: 2026-11-18T16:37:40.176818Z  INFO 🔍 [EngineHost] VRAM planned 20.04 GB, taken 20.06 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+gemma-4-31b: 2026-11-18T16:38:23.030034Z  INFO 🔍 [EngineHost] VRAM planned 19.73 GB, taken 19.72 GB | n_ctx planned 16384 created 16384 | n_gpu_layers 60 n_cpu_moe 0

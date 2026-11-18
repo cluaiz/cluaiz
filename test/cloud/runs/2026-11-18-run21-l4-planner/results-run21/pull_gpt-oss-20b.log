@@ -1,0 +1,8 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'ggml-org/gpt-oss-20b-GGUF:MXFP4'...
+  🔍 Scanning HuggingFace Hub for 'ggml-org/gpt-oss-20b-GGUF'...
+  ⚡ Direct Quantization Tag Matched: ':MXFP4' -> gpt-oss-20b-MXFP4.gguf (12.11 GB)
+
+  ⚠️ Warning: This exact variant is already downloaded locally under ID: 'gpt-oss-20b-gguf-FP4'
+     If you wish to re-download, please delete the old one first using: cluaiz rm gpt-oss-20b-gguf-FP4
+

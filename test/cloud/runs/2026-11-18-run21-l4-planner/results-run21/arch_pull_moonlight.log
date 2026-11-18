@@ -1,0 +1,25 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'gabriellarson/Moonlight-16B-A3B-Instruct-GGUF:Q4_K_M'...
+  🔍 Scanning HuggingFace Hub for 'gabriellarson/Moonlight-16B-A3B-Instruct-GGUF'...
+  ⚡ Direct Quantization Tag Matched: ':Q4_K_M' -> Moonlight-16B-A3B-Instruct-Q4_K_M.gguf (10.54 GB)
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: moonlight-16b-a3b-instruct-gguf-Q4_K_M
+    ├─ 📦 Format: GGUF
+    ├─ 🏷️  Precision / Quant Tag: Q4_K_M
+    ├─ 🧠 Architecture: deepseek2
+    ├─ 📁 Category: chat
+    ├─ 🧩 Parameters: 16B
+    ├─ 💾 Total Download Size: 10.54 GB
+    └─ 📁 Files to Download (1 files):
+       └─ ⚖️  Moonlight-16B-A3B-Instruct-Q4_K_M.gguf
+   ├─ [1/1] Downloading Moonlight-16B-A3B-Instruct-Q4_K_M.gguf
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  moonlight-16b-a3b-instruct-gguf-Q4_K_M
+  │ 📁 Vault Path:     /home/Aryan/ch-run21/models/chat/moonlight-16b-a3b-instruct-gguf-Q4_K_M
+  │ 🚀 Run Command:   cluaiz run moonlight-16b-a3b-instruct-gguf-Q4_K_M
+  └─────────────────────────────────────────────────────────────┘
+

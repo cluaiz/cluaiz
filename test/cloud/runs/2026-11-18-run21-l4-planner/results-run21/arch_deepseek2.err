@@ -1,0 +1,64 @@
+2026-11-18T16:53:33.834323Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-18T16:53:33.938185Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-18T16:53:34.210959Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+2026-11-18T16:53:34.420180Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-18T16:53:34.420366Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-18T16:53:35.069419Z  INFO 📐 [EngineHost] llama.cpp dry run, full GPU at 4096 tokens: model 9.54 + context 0.56 + compute 0.26 = 10.36 GB vs estimate 10.29 GB (+0.07) in 459 ms
+2026-11-18T16:53:35.091801Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : deepseek-coder-v2-lite-instruct-gguf-Q4_K_M
+║   • Architecture    : deepseek2 | 27 layers | heads 16 | KV heads 16 | head size K 192 / V 128 | 64 experts, 6 active | experts 8.87 GB
+║   • Weights         : file 10.36 GB (as Hugging Face counts it) | input embeddings 0.11 GB (always CPU) | output head 0.16 GB | vocab 102400
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 163840 tokens
+║   • Active context  : 16384 tokens, KV Kv16 (Auto: 16384 tokens, KV Kv16, buffer 0.45 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 21.90 of 22.49 GB | buffer kept free 0.45 GB (card-sized gap: 0.15 GB reserve + 0.30 GB for the GPU pool, model not measured on this machine yet; estimate corrected by llama.cpp's dry run +0.07 GB)
+║   • RAM             : free 29.89 of 31.35 GB | Cluaiz may use 28.45 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 27 on GPU, 0 in RAM (of 27)
+║   • VRAM            : 14.02 GB (weights + KV 4.22 + logits)
+║   • RAM             : 0.11 GB (incl. KV 0.00)
+║   • Reason         : Full GPU: weights 9.54 + KV 4.22 + buffers 0.26 = 14.02 GB vs usable VRAM 21.63 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM 14.02 GB | RAM  0.11 GB | weights 9.54 + KV 4.22 + buffers 0.26 = 14.02 GB vs usable VRAM 21.63 GB
+║   • MoE split        [FITS]     VRAM 14.02 GB | RAM  0.11 GB | attention/shared 0.67 + KV 4.22 + buffers 0.20 on GPU, experts of 0 / 27 layers in RAM (0.00 GB)
+║   • GPU + RAM split  [FITS]     VRAM 13.81 GB | RAM  0.32 GB | 26 / 27 blocks + output head on GPU (13.81 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM 14.06 GB | weights 9.65 + KV 4.22 + logits 0.20 = 14.06 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-18T16:53:35.091843Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-18T16:53:35.091992Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 4, n_threads_batch = 4
+2026-11-18T16:53:35.091998Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch-run21/models/chat/deepseek-coder-v2-lite-instruct-gguf-Q4_K_M/DeepSeek-Coder-V2-Lite-Instruct-Q4_K_M.gguf | ctx: 16384 tokens
+2026-11-18T16:53:38.605512Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/home/Aryan/ch-run21/models/chat/deepseek-coder-v2-lite-instruct-gguf-Q4_K_M"
+2026-11-18T16:53:38.608513Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16384 tokens
+2026-11-18T16:53:38.608538Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-18T16:53:38.608543Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-18T16:53:38.608548Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-18T16:53:38.608553Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 4/4
+2026-11-18T16:53:38.631114Z  WARN [llama.cpp] resolve_fused_ops: layer 0 is assigned to device CUDA0 but Flash Attention is assigned to device CPU (usually due to missing support)
+2026-11-18T16:53:38.631123Z  WARN [llama.cpp] resolve_fused_ops: Flash Attention not supported, set to disabled
+2026-11-18T16:53:39.095680Z  INFO 🔍 [EngineHost] VRAM planned 14.02 GB, taken 14.47 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-18T16:53:39.108369Z  WARN ⚠️ [EngineHost] Took 14.47 GB VRAM, more than plan + buffer (14.47 GB): Windows may move the rest to shared GPU memory
+2026-11-18T16:53:39.108382Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /home/Aryan/ch-run21/models/chat/deepseek-coder-v2-lite-instruct-gguf-Q4_K_M/DeepSeek-Coder-V2-Lite-Instruct-Q4_K_M.gguf
+  placement  Full GPU
+  GPU        14.02 GB: all 27 blocks, output head, KV
+  RAM        0.11 GB: input embeddings
+  context    16,384 tokens | KV F16 on the GPU
+  llama.cpp  -ngl -1 -c 16384 -ctk f16 -ctv f16
+  reason     Full GPU: weights 9.54 + KV 4.22 + buffers 0.26 = 14.02 GB vs usable VRAM 21.63 GB
+running pp128 on Full GPU (1 runs)...
+running tg32 on Full GPU (1 runs)...

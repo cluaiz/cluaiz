@@ -1,0 +1,24 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'unsloth/GLM-4.7-Flash-GGUF:Q4_K_M'...
+  🔍 Scanning HuggingFace Hub for 'unsloth/GLM-4.7-Flash-GGUF'...
+  ⚡ Direct Quantization Tag Matched: ':Q4_K_M' -> GLM-4.7-Flash-Q4_K_M.gguf (18.31 GB)
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: glm-4.7-flash-gguf-Q4_K_M
+    ├─ 📦 Format: GGUF
+    ├─ 🏷️  Precision / Quant Tag: Q4_K_M
+    ├─ 🧠 Architecture: deepseek2
+    ├─ 📁 Category: chat
+    ├─ 💾 Total Download Size: 18.31 GB
+    └─ 📁 Files to Download (1 files):
+       └─ ⚖️  GLM-4.7-Flash-Q4_K_M.gguf
+   ├─ [1/1] Downloading GLM-4.7-Flash-Q4_K_M.gguf
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  glm-4.7-flash-gguf-Q4_K_M
+  │ 📁 Vault Path:     /home/Aryan/ch-run21/models/chat/glm-4.7-flash-gguf-Q4_K_M
+  │ 🚀 Run Command:   cluaiz run glm-4.7-flash-gguf-Q4_K_M
+  └─────────────────────────────────────────────────────────────┘
+

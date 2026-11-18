@@ -1,0 +1,24 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'unsloth/gemma-3n-E2B-it-GGUF:Q4_K_M'...
+  🔍 Scanning HuggingFace Hub for 'unsloth/gemma-3n-E2B-it-GGUF'...
+  ⚡ Direct Quantization Tag Matched: ':Q4_K_M' -> gemma-3n-E2B-it-Q4_K_M.gguf (3.03 GB)
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: gemma-3n-e2b-it-gguf-Q4_K_M
+    ├─ 📦 Format: GGUF
+    ├─ 🏷️  Precision / Quant Tag: Q4_K_M
+    ├─ 🧠 Architecture: gemma3n
+    ├─ 📁 Category: chat
+    ├─ 💾 Total Download Size: 3.03 GB
+    └─ 📁 Files to Download (1 files):
+       └─ ⚖️  gemma-3n-E2B-it-Q4_K_M.gguf
+   ├─ [1/1] Downloading gemma-3n-E2B-it-Q4_K_M.gguf
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  gemma-3n-e2b-it-gguf-Q4_K_M
+  │ 📁 Vault Path:     /home/Aryan/ch-run21/models/chat/gemma-3n-e2b-it-gguf-Q4_K_M
+  │ 🚀 Run Command:   cluaiz run gemma-3n-e2b-it-gguf-Q4_K_M
+  └─────────────────────────────────────────────────────────────┘
+

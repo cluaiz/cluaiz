@@ -1,0 +1,16 @@
+arch llama exit 0 | PLAN: Full GPU | VRAM planned 1.51 GB, taken 1.55 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch gemma2 exit 0 | PLAN: Full GPU | VRAM planned 2.74 GB, taken 2.77 GB | n_ctx planned 8192 created 8192 | n_gpu_layers -1 n_cpu_moe 0
+arch gemma3 exit 0 | PLAN: Full GPU | VRAM planned 1.35 GB, taken 1.39 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch gemma3n exit 0 | PLAN: Full GPU | VRAM planned 2.09 GB, taken 2.12 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch qwen3 exit 0 | PLAN: Full GPU | VRAM planned 3.09 GB, taken 3.13 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch qwen35 exit 0 | PLAN: Full GPU | VRAM planned 1.88 GB, taken 1.93 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch phi3 exit 0 | PLAN: Full GPU | VRAM planned 4.72 GB, taken 4.77 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch mistral3 exit 0 | PLAN: Full GPU | VRAM planned 3.90 GB, taken 3.94 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch olmo2 exit 0 | PLAN: Full GPU | VRAM planned 1.47 GB, taken 1.51 GB | n_ctx planned 4096 created 4096 | n_gpu_layers -1 n_cpu_moe 0
+arch granitehybrid exit 0 | PLAN: Full GPU | VRAM planned 4.32 GB, taken 4.41 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch lfm2 exit 0 | PLAN: Full GPU | VRAM planned 1.07 GB, taken 1.12 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch deepseek2 exit 0 | PLAN: Full GPU | VRAM planned 14.02 GB, taken 14.47 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch kimi-vl exit 0 | PLAN: Full GPU | VRAM planned 10.81 GB, taken 10.53 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch moonlight exit 0 | PLAN: Full GPU | VRAM planned 10.36 GB, taken 10.26 GB | n_ctx planned 8192 created 8192 | n_gpu_layers -1 n_cpu_moe 0
+arch glm47flash exit 0 | PLAN: Full GPU | VRAM planned 18.66 GB, taken 18.08 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch kimi-linear exit 0 | PLAN: MoE split (attention on GPU, experts in RAM) | VRAM planned 21.08 GB, taken 21.82 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 27

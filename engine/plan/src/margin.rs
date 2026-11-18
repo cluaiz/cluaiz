@@ -26,8 +26,13 @@ pub const DEVICE_RESERVE_MAX_GB: f64 = 1.0;
 pub const UNMEASURED_POOL_GB: f64 = 0.30;
 
 /// Key prefix of a dry-run correction. It is relative to the estimate, so a change to the estimate
-/// (v2: hybrid models count KV only for attention layers) needs new ones: older ones are dropped
-const CORRECTION: &str = "proj2:";
+/// needs new ones: older ones are dropped. v2: hybrid models count KV only for attention layers;
+/// v3: sliding-window layers follow llama.cpp's default pattern when the file lists none
+const CORRECTION: &str = "proj3:";
+/// Key prefix of a pool gap: what a load took minus the corrected estimate, so it follows the
+/// estimate too (v2 with the correction's v3; a stale gap of -4 GB under-planned Gemma 3 12B by
+/// 0.64 GB in run 21)
+const POOL: &str = "pool2:";
 
 /// Measured gap per model + load settings, in GB (negative: the estimate was too high)
 static LEARNED: RwLock<Option<HashMap<String, f64>>> = RwLock::new(None);
@@ -52,7 +57,7 @@ pub fn key(geometry: &ModelGeometry, settings: &ActiveUserSettings) -> String {
 
 /// The measured pool gap for this model and settings, if it was ever loaded on the GPU here
 pub fn learned(geometry: &ModelGeometry, settings: &ActiveUserSettings) -> Option<f64> {
-    learned_key(&format!("pool:{}", key(geometry, settings)))
+    learned_key(&format!("{POOL}{}", key(geometry, settings)))
 }
 
 /// llama.cpp's dry run minus the planner's estimate for this model's GPU bytes, if it was run here
@@ -82,7 +87,7 @@ pub fn record(geometry: &ModelGeometry, settings: &ActiveUserSettings, gap_gb: f
 
 /// The key a pool gap is kept under
 pub fn pool_key(geometry: &ModelGeometry, settings: &ActiveUserSettings) -> String {
-    format!("pool:{}", key(geometry, settings))
+    format!("{POOL}{}", key(geometry, settings))
 }
 
 /// [`record`] by [`key`]; true when the kept value changed
@@ -122,7 +127,7 @@ pub fn forget_model(model_id: &str, geometries: &[ModelGeometry]) -> usize {
     let package = format!("onnx:{model_id}:");
     let speech = format!("speech:{model_id}");
     let of_model = |key: &str| {
-        let rest = ["pool:", CORRECTION, "speed:tg:", "speed:pp:"]
+        let rest = [POOL, CORRECTION, "speed:tg:", "speed:pp:"]
             .iter()
             .find_map(|prefix| key.strip_prefix(prefix));
         rest.is_some_and(|rest| files.iter().any(|file| rest.starts_with(file.as_str())))
@@ -143,7 +148,7 @@ pub fn snapshot() -> HashMap<String, f64> {
 
 /// Measurements read back from disk (replaces what is held); entries of an older format are dropped
 pub fn restore(mut measured: HashMap<String, f64>) {
-    measured.retain(|key, _| ["pool:", CORRECTION, "onnx:", "speech:", crate::speed::PREFIX].iter().any(|prefix| key.starts_with(prefix)));
+    measured.retain(|key, _| [POOL, CORRECTION, "onnx:", "speech:", crate::speed::PREFIX].iter().any(|prefix| key.starts_with(prefix)));
     if let Ok(mut guard) = LEARNED.write() {
         *guard = Some(measured);
     }

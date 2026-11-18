@@ -1,0 +1,189 @@
+== machine
+Linux cluaiz-32gb 6.12.117+deb13-cloud-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.117-1 (2026-11-12) x86_64 GNU/Linux
+Debian GNU/Linux 13 (trixie)
+8
+               total        used        free      shared  buff/cache   available
+Mem:              31           1           6           0          23          30
+Swap:              0           0           0
+Wed Nov 18 16:24:20 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 620.70.06              KMD Version: 620.70.06     CUDA UMD Version: 13.5     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA L4                      On  |   00000000:00:03.0 Off |                    0 |
+| N/A   44C    P8             16W /   72W |       0MiB /  23034MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+info: downloading installer
+warn: it looks like you have an existing rustup settings file at:
+warn: /home/Aryan/.rustup/settings.toml
+info: profile set to minimal
+info: default host tuple is x86_64-unknown-linux-gnu
+warn: Updating existing toolchain, profile choice will be ignored
+info: syncing channel updates for stable-x86_64-unknown-linux-gnu
+info: default toolchain set to stable-x86_64-unknown-linux-gnu
+
+  stable-x86_64-unknown-linux-gnu unchanged - rustc 1.100.0 (0ef1bc386 2026-11-09)
+
+
+Rust is installed now. Great!
+
+To get started you may need to restart your current shell.
+This would reload your PATH environment variable to include
+Cargo's bin directory ($HOME/.cargo/bin).
+
+To configure your current shell, you need to source the
+corresponding env file under $HOME/.cargo.
+
+Consider running the right command for your shell (note the leading DOT):
+. "$HOME/.cargo/env" # For sh/ash/dash/pdksh/bash
+cargo:rerun-if-env-changed=CC_x86_64-unknown-linux-gnu
+CC_x86_64-unknown-linux-gnu = None
+cargo:rerun-if-env-changed=CC_x86_64_unknown_linux_gnu
+CC_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=HOST_CC
+HOST_CC = None
+cargo:rerun-if-env-changed=CC
+CC = None
+cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+cargo:rerun-if-env-changed=CPATH
+cargo:rerun-if-env-changed=C_INCLUDE_PATH
+cargo:rerun-if-env-changed=CPLUS_INCLUDE_PATH
+cargo:rerun-if-env-changed=OBJC_INCLUDE_PATH
+cargo:rerun-if-env-changed=OBJCPLUS_INCLUDE_PATH
+cargo:rerun-if-env-changed=COMPILER_PATH
+cargo:rerun-if-env-changed=SOURCE_DATE_EPOCH
+cargo:rerun-if-env-changed=GCC_EXEC_PREFIX
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+cargo:rerun-if-env-changed=CFLAGS
+CFLAGS = None
+cargo:rerun-if-env-changed=HOST_CFLAGS
+HOST_CFLAGS = None
+cargo:rerun-if-env-changed=CFLAGS_x86_64_unknown_linux_gnu
+CFLAGS_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=CFLAGS_x86_64-unknown-linux-gnu
+CFLAGS_x86_64-unknown-linux-gnu = None
+rustc 1.100.0 (0ef1bc386 2026-11-09)
+Build cuda_13.2.r13.2/compiler.37953736_0
+   Compiling cluaiz-models v0.1.0 (/home/Aryan/cluaiz/engine/models)
+   Compiling ort-sys v2.0.0-rc.15
+warning: llama-engine@0.1.0: 🔩 Found local cached llama.cpp at "/home/Aryan/cluaiz/engine/llama/llama.cpp"
+warning: llama-engine@0.1.0: In file included from /home/Aryan/cluaiz/engine/llama/llama.cpp/common/jinja/parser.h:4,
+warning: llama-engine@0.1.0:                  from /home/Aryan/cluaiz/engine/llama/llama.cpp/common/chat.h:7,
+warning: llama-engine@0.1.0:                  from src/ffi/chat_bridge.cpp:4:
+warning: llama-engine@0.1.0: /home/Aryan/cluaiz/engine/llama/llama.cpp/common/jinja/runtime.h:770:20: warning: 'std::string jinja::render_string_parts(const value_string&)' defined but not used [-Wunused-function]
+warning: llama-engine@0.1.0:   770 | static std::string render_string_parts(const value_string & parts) {
+warning: llama-engine@0.1.0:       |                    ^~~~~~~~~~~~~~~~~~~
+warning: llama-engine@0.1.0: In file included from /home/Aryan/cluaiz/engine/llama/llama.cpp/common/jinja/parser.h:3:
+warning: llama-engine@0.1.0: /home/Aryan/cluaiz/engine/llama/llama.cpp/common/jinja/lexer.h:50:20: warning: 'std::string jinja::type_to_string(token::type)' defined but not used [-Wunused-function]
+warning: llama-engine@0.1.0:    50 | static std::string type_to_string(token::type t) {
+warning: llama-engine@0.1.0:       |                    ^~~~~~~~~~~~~~
+warning: llama-engine@0.1.0: 🧿 [Llama-Engine] Industrial CMake Build Complete.
+   Compiling ort v2.0.0-rc.15
+   Compiling onnx-engine v0.1.0 (/home/Aryan/cluaiz/engine/onnx)
+   Compiling cluaiz-plan v0.1.0 (/home/Aryan/cluaiz/engine/plan)
+   Compiling cluaiz-agents v0.1.0 (/home/Aryan/cluaiz/agents)
+   Compiling llama-engine v0.1.0 (/home/Aryan/cluaiz/engine/llama)
+   Compiling cluaiz-runtime v0.1.0 (/home/Aryan/cluaiz/engine/runtime)
+   Compiling cluaiz-api v0.1.0 (/home/Aryan/cluaiz/api)
+   Compiling cluaiz-automation-host v0.1.0 (/home/Aryan/cluaiz/automation/host)
+   Compiling cmd v0.1.0 (/home/Aryan/cluaiz/cmd)
+warning: variable does not need to be mutable
+   --> cmd/src/core/bootstrapper.rs:101:17
+    |
+101 |             let mut res = std::fs::copy(src, dest);
+    |                 ----^^^
+    |                 |
+    |                 help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `e`
+   --> cmd/src/core/bootstrapper.rs:102:24
+    |
+102 |             if let Err(ref e) = res {
+    |                        ^^^^^ help: if this is intentional, prefix it with an underscore: `_e`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `cmd` (bin "cluaiz") generated 2 warnings (run `cargo fix --bin "cluaiz" -p cmd` to apply 2 suggestions)
+warning: unused dependency `winres`
+  --> cmd/Cargo.toml:55:1
+   |
+55 | winres = "0.1"
+   | ^^^^^^^^^^^^^^
+   |
+   = note: `cargo::unused_dependencies` is set to `warn` by default
+help: consider removing the dependency on `winres`
+warning: `cmd` (manifest) generated 1 warning
+    Finished `release` profile [optimized] target(s) in 1m 54s
+== build exit 0 after 115 s
+-rwxrwxr-x 2 Aryan Aryan 120605840 Nov 18 16:26 target/release/cluaiz
+cluaiz 0.1.0 (pre-release)
+name, memory.total [MiB], memory.free [MiB]
+NVIDIA L4, 23034 MiB, 22615 MiB
+               total        used        free      shared  buff/cache   available
+Mem:              31           1           5           0          25          30
+Swap:              0           0           0
+== 16:26:17 1 pull
+== 16:26:17 2 show + bench --placements
+llama-3.2-3b: 2026-11-18T15:21:26.458959Z  INFO 🔍 [EngineHost] VRAM planned 3.90 GB, taken 3.94 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+llama-3.2-3b: 2026-11-18T15:21:30.086121Z  INFO 🔍 [EngineHost] VRAM planned 3.77 GB, taken 3.78 GB | n_ctx planned 16384 created 16384 | n_gpu_layers 28 n_cpu_moe 0
+bench gemma-3-12b exit 0
+gemma-3-12b: 2026-11-18T16:26:21.138544Z  INFO 🔍 [EngineHost] VRAM planned 8.39 GB, taken 9.03 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+gemma-3-12b: 2026-11-18T16:26:32.696686Z  INFO 🔍 [EngineHost] VRAM planned 8.26 GB, taken 8.66 GB | n_ctx planned 16384 created 16384 | n_gpu_layers 48 n_cpu_moe 0
+mistral-24b: 2026-11-18T15:27:19.775315Z  INFO 🔍 [EngineHost] VRAM planned 15.79 GB, taken 15.84 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+mistral-24b: 2026-11-18T15:27:40.677788Z  INFO 🔍 [EngineHost] VRAM planned 15.39 GB, taken 15.43 GB | n_ctx planned 16384 created 16384 | n_gpu_layers 40 n_cpu_moe 0
+bench qwen3-30b-a3b exit 0
+qwen3-30b-a3b: 2026-11-18T16:31:10.356021Z  INFO 🔍 [EngineHost] VRAM planned 18.93 GB, taken 18.98 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+qwen3-30b-a3b: 2026-11-18T16:31:18.846599Z  INFO 🔍 [EngineHost] VRAM planned 18.52 GB, taken 18.58 GB | n_ctx planned 16384 created 16384 | n_gpu_layers 48 n_cpu_moe 0
+bench gpt-oss-20b exit 0
+gpt-oss-20b: 2026-11-18T16:34:02.571471Z  INFO 🔍 [EngineHost] VRAM planned 11.50 GB, taken 11.55 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+gpt-oss-20b: 2026-11-18T16:34:09.973978Z  INFO 🔍 [EngineHost] VRAM planned 11.07 GB, taken 11.09 GB | n_ctx planned 16384 created 16384 | n_gpu_layers 24 n_cpu_moe 0
+bench gemma-4-31b exit 0
+gemma-4-31b: 2026-11-18T16:37:40.176818Z  INFO 🔍 [EngineHost] VRAM planned 20.04 GB, taken 20.06 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+gemma-4-31b: 2026-11-18T16:38:23.030034Z  INFO 🔍 [EngineHost] VRAM planned 19.73 GB, taken 19.72 GB | n_ctx planned 16384 created 16384 | n_gpu_layers 60 n_cpu_moe 0
+== 16:46:08 3 Gemma 4 31B context on the GPU
+  Context max   262,144 tokens | sliding window 1,024
+  Context          Auto
+  KV cache         Auto (F16 first, then Q8_0)
+PLAN: Full GPU
+      Chat memory (KV cache) for 16,384 tokens                    2.42 GB
+      Working space llama.cpp needs for its calculations          0.50 GB
+  Context     16,384 tokens (Auto: 16384 tokens, KV Kv16, buffer 1.00 GB)
+  KV cache    F16, on the GPU, 2.42 GB
+  llama.cpp   -ngl -1 -c 16384 -ctk f16 -ctv f16
+== 16:46:08 4 step-down under VRAM pressure
+step-down bench exit 0
+2026-11-18T16:47:52.092785Z  INFO 🔍 [EngineHost] VRAM planned 18.93 GB, taken 19.17 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+== 16:47:52 5 multi-turn cache without a session id
+== 16:47:52 6 architecture sweep: one load per architecture, VRAM planned against taken
+arch llama exit 0 | PLAN: Full GPU | VRAM planned 1.51 GB, taken 1.55 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch gemma2 exit 0 | PLAN: Full GPU | VRAM planned 2.74 GB, taken 2.77 GB | n_ctx planned 8192 created 8192 | n_gpu_layers -1 n_cpu_moe 0
+arch gemma3 exit 0 | PLAN: Full GPU | VRAM planned 1.35 GB, taken 1.39 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch gemma3n exit 0 | PLAN: Full GPU | VRAM planned 2.09 GB, taken 2.12 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch qwen3 exit 0 | PLAN: Full GPU | VRAM planned 3.09 GB, taken 3.13 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch qwen35 exit 0 | PLAN: Full GPU | VRAM planned 1.88 GB, taken 1.93 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch phi3 exit 0 | PLAN: Full GPU | VRAM planned 4.72 GB, taken 4.77 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch mistral3 exit 0 | PLAN: Full GPU | VRAM planned 3.90 GB, taken 3.94 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch olmo2 exit 0 | PLAN: Full GPU | VRAM planned 1.47 GB, taken 1.51 GB | n_ctx planned 4096 created 4096 | n_gpu_layers -1 n_cpu_moe 0
+arch granitehybrid exit 0 | PLAN: Full GPU | VRAM planned 4.32 GB, taken 4.41 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch lfm2 exit 0 | PLAN: Full GPU | VRAM planned 1.07 GB, taken 1.12 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch deepseek2 exit 0 | PLAN: Full GPU | VRAM planned 14.02 GB, taken 14.47 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch kimi-vl exit 0 | PLAN: Full GPU | VRAM planned 10.81 GB, taken 10.53 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch moonlight exit 0 | PLAN: Full GPU | VRAM planned 10.36 GB, taken 10.26 GB | n_ctx planned 8192 created 8192 | n_gpu_layers -1 n_cpu_moe 0
+arch glm47flash exit 0 | PLAN: Full GPU | VRAM planned 18.66 GB, taken 18.08 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+arch kimi-linear exit 0 | PLAN: MoE split (attention on GPU, experts in RAM) | VRAM planned 21.08 GB, taken 21.82 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 27
+== 17:07:25 all done

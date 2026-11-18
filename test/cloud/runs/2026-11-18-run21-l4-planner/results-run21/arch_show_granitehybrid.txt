@@ -1,0 +1,60 @@
+MODEL
+  ID            granite-4.0-h-tiny-gguf-Q4_K_M
+  Name          Granite 4.0 H Tiny
+  Parameters    64x994M
+  Type          MoE (granitehybrid): 64 experts, 6 active per token
+  Layers        40 blocks | embedding 1536 | heads 12 (KV 0)
+  Context max   1,048,576 tokens
+  File          4.23 GB (as Hugging Face counts it) | /home/Aryan/ch-run21/models/chat/granite-4.0-h-tiny-gguf-Q4_K_M/granite-4.0-h-tiny-Q4_K_M.gguf
+  Parts         attention and shared 0.53 GB | experts 3.41 GB (0.09 GB per block)
+  Supports      text yes | image no | audio no | tools yes | thinking no
+
+THIS MACHINE NOW
+  GPU   NVIDIA L4 | 22.49 GB, free 22.08 GB
+  RAM   31.35 GB, free 30.07 GB
+  CPU   Intel(R) Xeon(R) CPU @ 2.20GHz | 4 cores, 8 threads
+
+YOUR SETTINGS (the ones that change the plan)
+  Context          Auto
+  KV cache         Auto (F16 first, then Q8_0)
+  GPU layers       Auto
+
+PLAN: Full GPU
+
+  GPU: NVIDIA L4 (22.49 GB card)
+    Free right now                                               22.08 GB
+    Kept free for the desktop and other apps                  -   1.00 GB
+      1024 MiB rule, model not measured on this machine yet
+    Cluaiz may use                                               21.08 GB
+
+    What goes on the GPU
+      Weights: all 40 blocks, output head                         3.94 GB
+      Chat memory (KV cache) for 16,384 tokens                    0.12 GB
+      Working space llama.cpp needs for its calculations          0.19 GB
+      Total                                                       4.25 GB   fits (16.83 GB left)
+
+  RAM: 31.35 GB
+    Free right now                                               30.07 GB
+    Kept free for the OS and other apps                       -   1.57 GB
+    Cluaiz may use                                               28.50 GB
+
+    What goes in RAM
+      Weights: input embeddings                                   0.12 GB
+      Total                                                       0.12 GB   fits (28.38 GB left)
+
+  SSD: not used
+
+  In one line
+    GPU: all 40 blocks, output head + KV   RAM: input embeddings
+
+  Context     16,384 tokens (Auto: 16384 tokens, KV Kv16, buffer 1.00 GB)
+  KV cache    F16, on the GPU, 0.12 GB
+  llama.cpp   -ngl -1 -c 16384 -ctk f16 -ctv f16
+  Speed       not measured (chosen by rule order; `cluaiz bench --placements` measures it)
+
+OTHER WAYS IT COULD RUN
+  MoE split            yes  GPU 4.25 GB, RAM 0.12 GB | not measured
+  GPU + RAM split      yes  39/40 blocks on GPU | GPU 4.15 GB, RAM 0.22 GB | not measured
+  CPU only             yes  RAM 4.25 GB | not measured
+
+Memory in GB of 1024^3 bytes, as the OS reports RAM and VRAM; file size as Hugging Face counts it

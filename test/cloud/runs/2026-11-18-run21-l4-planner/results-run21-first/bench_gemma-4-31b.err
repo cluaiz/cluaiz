@@ -1,0 +1,98 @@
+2026-11-18T15:33:09.129146Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-18T15:33:09.161558Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-18T15:33:09.430005Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+2026-11-18T15:33:10.194268Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-18T15:33:10.195877Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-18T15:33:10.837953Z ERROR [llama.cpp] llama_init_from_model: failed to initialize the context: Gemma4Assistant requires ctx_other to be set (this warning is normal during memory fitting)
+2026-11-18T15:33:10.945384Z  WARN ⚠️ [EngineHost] llama.cpp dry run failed (llama.cpp could not project the memory of /home/Aryan/ch-run21/models/chat/gemma-4-31b-it-gguf-Q4_K_M/MTP/mtp-gemma-4-31B-it-Q8_0.gguf); the estimate is kept
+2026-11-18T15:33:10.963177Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : mtp-gemma-4-31B-it-Q8_0.gguf
+║   • Architecture    : gemma4-assistant | 4 layers | heads 32 | KV heads 16 | head size K 512 / V 512, sliding window 1024 on 3 layers | dense
+║   • Weights         : file 0.51 GB (as Hugging Face counts it) | input embeddings 0.27 GB (always CPU) | output head 0.28 GB | vocab 262144
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 16384 tokens, KV Kv16 (Auto: 16384 tokens, KV Kv16, buffer 1.00 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 21.90 of 22.49 GB | buffer kept free 1.00 GB (1024 MiB rule, model not measured on this machine yet)
+║   • RAM             : free 29.83 of 31.35 GB | Cluaiz may use 28.46 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 4 on GPU, 0 in RAM (of 4)
+║   • VRAM            : 0.96 GB (weights + KV 0.00 + logits)
+║   • RAM             : 0.27 GB (incl. KV 0.00)
+║   • Reason         : Full GPU: weights 0.46 + KV 0.00 + buffers 0.50 = 0.96 GB vs usable VRAM 21.08 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  0.96 GB | RAM  0.27 GB | weights 0.46 + KV 0.00 + buffers 0.50 = 0.96 GB vs usable VRAM 21.08 GB
+║   • GPU + RAM split  [FITS]     VRAM  0.92 GB | RAM  0.31 GB | 3 / 4 blocks + output head on GPU (0.92 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  0.96 GB | weights 0.46 + KV 0.00 + logits 0.50 = 0.96 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-18T15:33:10.963211Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-18T15:33:10.963358Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 4, n_threads_batch = 4
+2026-11-18T15:33:10.963364Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch-run21/models/chat/gemma-4-31b-it-gguf-Q4_K_M/MTP/mtp-gemma-4-31B-it-Q8_0.gguf | ctx: 16384 tokens
+2026-11-18T15:33:11.376631Z  WARN [llama.cpp] load: '</s>' is a normal token here, removing it from EOG list
+2026-11-18T15:33:14.035565Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/home/Aryan/ch-run21/models/chat/gemma-4-31b-it-gguf-Q4_K_M/MTP"
+2026-11-18T15:33:14.038051Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16384 tokens
+2026-11-18T15:33:14.038063Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-18T15:33:14.038067Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-18T15:33:14.038073Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-18T15:33:14.038077Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 4/4
+2026-11-18T15:33:14.038240Z ERROR [llama.cpp] llama_init_from_model: failed to initialize the context: Gemma4Assistant requires ctx_other to be set (this warning is normal during memory fitting)
+2026-11-18T15:33:14.163032Z  WARN ⚠️ [EngineHost] Load failed with -1 GPU layers, 16384 tokens (Context Init Failure); retrying with 0 GPU layers, 8192 tokens
+2026-11-18T15:33:14.163105Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : mtp-gemma-4-31B-it-Q8_0.gguf
+║   • Architecture    : gemma4-assistant | 4 layers | heads 32 | KV heads 16 | head size K 512 / V 512, sliding window 1024 on 3 layers | dense
+║   • Weights         : file 0.51 GB (as Hugging Face counts it) | input embeddings 0.27 GB (always CPU) | output head 0.28 GB | vocab 262144
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 8192 tokens, KV Kv8 (Auto: 8192 tokens, KV Kv8; the model does not fit on one device, so it is split)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 21.90 of 22.49 GB | buffer kept free 21.08 GB (measured: GPU pool +20.93 GB + 0.15 GB reserve (GPU used by nothing else))
+║   • RAM             : free 29.83 of 31.35 GB | Cluaiz may use 28.29 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : CPU only
+║   • llama.cpp       : n_gpu_layers = 0 | n_cpu_moe = 0 | n_ctx = 8192 | KV Kv8 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 0 on GPU, 4 in RAM (of 4)
+║   • VRAM            : 0.00 GB (weights + KV 0.00 + logits)
+║   • RAM             : 0.96 GB (incl. KV 0.00)
+║   • Reason         : CPU only: weights 0.46 + KV 0.00 + logits 0.50 = 0.96 GB in RAM
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [NO]       VRAM  0.96 GB | RAM  0.27 GB | does not fit in VRAM: weights 0.46 + KV 0.00 + buffers 0.50 = 0.96 GB vs usable VRAM 0.81 GB
+║   • GPU + RAM split  [NO]       VRAM  0.84 GB | RAM  0.39 GB | does not fit in VRAM: 1 / 4 blocks + output head on GPU (0.84 GB), 3 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  0.96 GB | weights 0.46 + KV 0.00 + logits 0.50 = 0.96 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-18T15:33:14.163275Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = 0, load_mode = 1, n_threads = 4, n_threads_batch = 4
+2026-11-18T15:33:14.163281Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch-run21/models/chat/gemma-4-31b-it-gguf-Q4_K_M/MTP/mtp-gemma-4-31B-it-Q8_0.gguf | ctx: 8192 tokens
+2026-11-18T15:33:14.577162Z  WARN [llama.cpp] load: '</s>' is a normal token here, removing it from EOG list
+2026-11-18T15:33:14.643948Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/home/Aryan/ch-run21/models/chat/gemma-4-31b-it-gguf-Q4_K_M/MTP"
+2026-11-18T15:33:14.645432Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 8192 tokens
+2026-11-18T15:33:14.645443Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-18T15:33:14.645457Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 4/4
+2026-11-18T15:33:14.645607Z ERROR [llama.cpp] llama_init_from_model: failed to initialize the context: Gemma4Assistant requires ctx_other to be set (this warning is normal during memory fitting)
+error: bench: Context Init Failure; the retry with a smaller placement failed too: Context Init Failure

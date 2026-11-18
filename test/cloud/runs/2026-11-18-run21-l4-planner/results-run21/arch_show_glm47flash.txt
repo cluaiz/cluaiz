@@ -1,0 +1,60 @@
+MODEL
+  ID            glm-4.7-flash-gguf-Q4_K_M
+  Name          Glm-4.7-Flash
+  Parameters    64x2.6B
+  Type          MoE (deepseek2): 64 experts, 4 active per token
+  Layers        47 blocks | embedding 2048 | heads 20 (KV 1)
+  Context max   202,752 tokens
+  File          18.31 GB (as Hugging Face counts it) | /home/Aryan/ch-run21/models/chat/glm-4.7-flash-gguf-Q4_K_M/GLM-4.7-Flash-Q4_K_M.gguf
+  Parts         attention and shared 1.26 GB | experts 15.62 GB (0.33 GB per block)
+  Supports      text yes | image no | audio no | tools yes | thinking yes (<think> ... </think>)
+
+THIS MACHINE NOW
+  GPU   NVIDIA L4 | 22.49 GB, free 22.08 GB
+  RAM   31.35 GB, free 30.05 GB
+  CPU   Intel(R) Xeon(R) CPU @ 2.20GHz | 4 cores, 8 threads
+
+YOUR SETTINGS (the ones that change the plan)
+  Context          Auto
+  KV cache         Auto (F16 first, then Q8_0)
+  GPU layers       Auto
+
+PLAN: Full GPU
+
+  GPU: NVIDIA L4 (22.49 GB card)
+    Free right now                                               22.08 GB
+    Kept free for the desktop and other apps                  -   1.00 GB
+      1024 MiB rule, model not measured on this machine yet
+    Cluaiz may use                                               21.08 GB
+
+    What goes on the GPU
+      Weights: all 47 blocks, output head                        16.88 GB
+      Chat memory (KV cache) for 16,384 tokens                    1.56 GB
+      Working space llama.cpp needs for its calculations          0.30 GB
+      Total                                                      18.74 GB   fits (2.35 GB left)
+
+  RAM: 31.35 GB
+    Free right now                                               30.05 GB
+    Kept free for the OS and other apps                       -   1.57 GB
+    Cluaiz may use                                               28.49 GB
+
+    What goes in RAM
+      Weights: input embeddings                                   0.17 GB
+      Total                                                       0.17 GB   fits (28.32 GB left)
+
+  SSD: not used
+
+  In one line
+    GPU: all 47 blocks, output head + KV   RAM: input embeddings
+
+  Context     16,384 tokens (Auto: 16384 tokens, KV Kv16, buffer 1.00 GB)
+  KV cache    F16, on the GPU, 1.56 GB
+  llama.cpp   -ngl -1 -c 16384 -ctk f16 -ctv f16
+  Speed       not measured (chosen by rule order; `cluaiz bench --placements` measures it)
+
+OTHER WAYS IT COULD RUN
+  MoE split            yes  GPU 18.74 GB, RAM 0.17 GB | not measured
+  GPU + RAM split      yes  46/47 blocks on GPU | GPU 18.65 GB, RAM 0.25 GB | not measured
+  CPU only             yes  RAM 18.90 GB | not measured
+
+Memory in GB of 1024^3 bytes, as the OS reports RAM and VRAM; file size as Hugging Face counts it

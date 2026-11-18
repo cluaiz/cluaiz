@@ -1,0 +1,69 @@
+2026-11-18T17:07:03.089582Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-18T17:07:03.127903Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-18T17:07:03.521571Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+2026-11-18T17:07:03.733774Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-18T17:07:03.733916Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-18T17:07:04.102424Z ERROR [llama.cpp] llama_init_from_model: V cache type q8_0 with block size 32 does not divide n_embd_head_v=72
+2026-11-18T17:07:04.147628Z  WARN ⚠️ [EngineHost] llama.cpp dry run failed (llama.cpp could not project the memory of /home/Aryan/ch-run21/models/chat/moonshotai_kimi-linear-48b-a3b-instruct-gguf-Q4_K_M/moonshotai_Kimi-Linear-48B-A3B-Instruct-Q4_K_M.gguf); the estimate is kept
+2026-11-18T17:07:04.167914Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : moonshotai_kimi-linear-48b-a3b-instruct-gguf-Q4_K_M
+║   • Architecture    : kimi-linear | 27 layers | heads 32 | KV heads 0 | head size K 576 / V 72 | 256 experts, 8 active | experts 26.56 GB
+║   • Weights         : file 30.06 GB (as Hugging Face counts it) | input embeddings 0.20 GB (always CPU) | output head 0.29 GB | vocab 163840
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 1048576 tokens
+║   • Active context  : 16384 tokens, KV Kv16 (Auto: 16384 tokens, KV Kv16, buffer 1.00 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 21.90 of 22.49 GB | buffer kept free 1.00 GB (1024 MiB rule, model not measured on this machine yet)
+║   • RAM             : free 29.72 of 31.35 GB | Cluaiz may use 28.29 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : MoE split (attention on GPU, experts in RAM)
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 27 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 27 on GPU, 0 in RAM (of 27)
+║   • VRAM            : 21.08 GB (weights + KV 0.14 + logits)
+║   • RAM             : 26.76 GB (incl. KV 0.00)
+║   • MoE cache       : 19.40 GB in VRAM for the experts in RAM | CPU share of the misses 0 (moe_cache_size / moe_cache_cpu_share)
+║   • Reason         : MoE split: attention/shared 1.23 + KV 0.14 + buffers 0.31 on GPU, experts of 27 / 27 layers in RAM (26.56 GB), MoE cache 19.40 GB in VRAM (CPU share 0)
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [NO]       VRAM 28.24 GB | RAM  0.20 GB | does not fit in VRAM: weights 27.79 + KV 0.14 + buffers 0.31 = 28.24 GB vs usable VRAM 21.08 GB
+║   • MoE split        [FITS]     VRAM 21.08 GB | RAM 26.76 GB | attention/shared 1.23 + KV 0.14 + buffers 0.31 on GPU, experts of 27 / 27 layers in RAM (26.56 GB), MoE cache 19.40 GB in VRAM (CPU share 0)
+║   • GPU + RAM split  [FITS]     VRAM 20.68 GB | RAM  7.76 GB | 19 / 27 blocks + output head on GPU (20.68 GB), 8 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM 28.44 GB | weights 27.99 + KV 0.14 + logits 0.31 = 28.44 GB in RAM; 0.15 GB over the RAM limit is read from disk when used (mmap)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-18T17:07:04.167950Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-18T17:07:04.168108Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 4, n_threads_batch = 4
+2026-11-18T17:07:04.168114Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch-run21/models/chat/moonshotai_kimi-linear-48b-a3b-instruct-gguf-Q4_K_M/moonshotai_Kimi-Linear-48B-A3B-Instruct-Q4_K_M.gguf | ctx: 16384 tokens
+2026-11-18T17:07:04.412575Z  WARN [llama.cpp] llama_model_loader: tensor overrides to CPU are used with mmap enabled - consider using --load-mode none for better performance
+2026-11-18T17:07:07.130355Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/home/Aryan/ch-run21/models/chat/moonshotai_kimi-linear-48b-a3b-instruct-gguf-Q4_K_M"
+2026-11-18T17:07:07.142643Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-11-18T17:07:07.142651Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-11-18T17:07:07.142665Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16384 tokens
+2026-11-18T17:07:07.142672Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-18T17:07:07.142676Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-18T17:07:07.142682Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-18T17:07:07.142687Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 4/4
+2026-11-18T17:07:08.832591Z  INFO 🔍 [EngineHost] VRAM planned 21.08 GB, taken 21.82 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 27
+2026-11-18T17:07:08.860340Z  WARN ⚠️ [EngineHost] The GPU is full after the load (0.08 GB free, plan 21.08 GB, 21.90 GB was free): it may be using shared system memory; kept as needing all that was free
+2026-11-18T17:07:08.860365Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /home/Aryan/ch-run21/models/chat/moonshotai_kimi-linear-48b-a3b-instruct-gguf-Q4_K_M/moonshotai_Kimi-Linear-48B-A3B-Instruct-Q4_K_M.gguf
+2026-11-18T17:07:08.885379Z  WARN ⚠️ [EngineHost] Only 0.08 GB VRAM left after the load and no smaller placement to load
+  placement  MoE split (attention on GPU, experts in RAM)
+  GPU        21.08 GB: attention of all 27 blocks, output head, KV
+  RAM        26.76 GB: experts of 27 blocks, input embeddings
+  MoE cache  19.40 GB in VRAM, CPU share 0
+  context    16,384 tokens | KV F16 on the GPU
+  llama.cpp  -ngl -1 -ncmoe 27 -c 16384 -ctk f16 -ctv f16
+  reason     MoE split: attention/shared 1.23 + KV 0.14 + buffers 0.31 on GPU, experts of 27 / 27 layers in RAM (26.56 GB), MoE cache 19.40 GB in VRAM (CPU share 0)
+running pp128 on MoE split (attention on GPU, experts in RAM) (1 runs)...
+running tg32 on MoE split (attention on GPU, experts in RAM) (1 runs)...

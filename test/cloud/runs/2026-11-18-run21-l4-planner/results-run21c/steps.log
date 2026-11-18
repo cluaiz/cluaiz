@@ -1,0 +1,24 @@
+bench gemma-3-12b exit 0
+2026-11-18T17:10:41.418378Z  INFO 📐 [EngineHost] llama.cpp dry run, full GPU at 4096 tokens: model 6.79 + context 0.39 + compute 0.53 = 7.72 GB vs estimate 7.68 GB (+0.05) in 413 ms
+║   • GPU             : NVIDIA L4 | free 21.90 of 22.49 GB | buffer kept free 0.45 GB (card-sized gap: 0.15 GB reserve + 0.30 GB for the GPU pool, model not measured on this machine yet; estimate corrected by llama.cpp's dry run +0.05 GB)
+2026-11-18T17:10:44.333775Z  INFO 🔍 [EngineHost] VRAM planned 8.81 GB, taken 8.85 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+║   • GPU             : NVIDIA L4 | free 21.86 of 22.49 GB | buffer kept free 0.19 GB (measured: GPU pool +0.04 GB + 0.15 GB reserve (GPU used by nothing else); estimate corrected by llama.cpp's dry run +0.05 GB)
+2026-11-18T17:10:51.750972Z  INFO 🔍 [EngineHost] VRAM planned 8.66 GB, taken 8.66 GB | n_ctx planned 16384 created 16384 | n_gpu_layers 48 n_cpu_moe 0
+║   • GPU             : NVIDIA L4 | free 21.85 of 22.49 GB | buffer kept free 0.00 GB (tight gap: 0.00 GB instead of 0.19 GB, because the usual gap would put less of the model on the GPU; a load that fails steps back one placement)
+bench gpt-oss-20b exit 0
+2026-11-18T17:12:37.889649Z  INFO 📐 [EngineHost] llama.cpp dry run, full GPU at 4096 tokens: model 10.69 + context 0.06 + compute 0.41 = 11.16 GB vs estimate 11.14 GB (+0.03) in 594 ms
+║   • GPU             : NVIDIA L4 | free 21.90 of 22.49 GB | buffer kept free 0.45 GB (card-sized gap: 0.15 GB reserve + 0.30 GB for the GPU pool, model not measured on this machine yet; estimate corrected by llama.cpp's dry run +0.03 GB)
+2026-11-18T17:13:44.508069Z  INFO 🔍 [EngineHost] VRAM planned 11.50 GB, taken 11.55 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+║   • GPU             : NVIDIA L4 | free 21.87 of 22.49 GB | buffer kept free 0.21 GB (measured: GPU pool +0.06 GB + 0.15 GB reserve (GPU used by nothing else); estimate corrected by llama.cpp's dry run +0.03 GB)
+2026-11-18T17:13:50.150157Z  INFO 🔍 [EngineHost] VRAM planned 11.07 GB, taken 11.09 GB | n_ctx planned 16384 created 16384 | n_gpu_layers 24 n_cpu_moe 0
+║   • GPU             : NVIDIA L4 | free 21.86 of 22.49 GB | buffer kept free 0.00 GB (tight gap: 0.00 GB instead of 0.21 GB, because the usual gap would put less of the model on the GPU; a load that fails steps back one placement)
+step-down bench exit 0
+17:16:41 free 4.60 GB, took 3.10 GB, rc 0
+17:19:41 released
+2026-11-18T17:16:46.389022Z  WARN ⚠️ [EngineHost] Load failed with -1 GPU layers, 16384 tokens (Context Init Failure); retrying with -1 GPU layers, 16384 tokens
+2026-11-18T17:16:49.438666Z  INFO 🔍 [EngineHost] VRAM planned 14.83 GB, taken 18.00 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 48
+  reason     MoE split: attention/shared 0.77 + KV 1.50 + buffers 0.29 on GPU, experts of 48 / 48 layers in RAM (16.35 GB), MoE cache 12.27 GB in VRAM (CPU share 0) | load retry: the planned placement (-1 GPU layers, 16384 tokens) failed to load; the miss was recorded
+| ----- | ---: | -----: | --------- | --: | ----: | ---: | --: |
+| qwen3moe 30B.A3B Q4_K - Medium | 17.28 GiB | 30.53 B | MoE split (attention on GPU, experts in RAM) | -1 | 16384 | pp64 | 33.02 ± 0.00 |
+| qwen3moe 30B.A3B Q4_K - Medium | 17.28 GiB | 30.53 B | MoE split (attention on GPU, experts in RAM) | -1 | 16384 | tg16 | 12.02 ± 0.00 |
+== all done

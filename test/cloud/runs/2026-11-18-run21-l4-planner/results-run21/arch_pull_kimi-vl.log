@@ -1,0 +1,26 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'ggml-org/Kimi-VL-A3B-Thinking-2506-GGUF:Q4_K_M'...
+  🔍 Scanning HuggingFace Hub for 'ggml-org/Kimi-VL-A3B-Thinking-2506-GGUF'...
+  ⚡ Direct Quantization Tag Matched: ':Q4_K_M' -> Kimi-VL-A3B-Thinking-2506-Q4_K_M.gguf (11.45 GB)
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: kimi-vl-a3b-thinking-2506-gguf-Q4_K_M
+    ├─ 📦 Format: GGUF
+    ├─ 🏷️  Precision / Quant Tag: Q4_K_M
+    ├─ 🧠 Architecture: deepseek2
+    ├─ 📁 Category: chat
+    ├─ 💾 Total Download Size: 11.45 GB
+    └─ 📁 Files to Download (2 files):
+       ├─ ⚖️  Kimi-VL-A3B-Thinking-2506-Q4_K_M.gguf
+       └─ ⚖️  mmproj-Kimi-VL-A3B-Thinking-2506-f16.gguf
+   ├─ [1/2] Downloading Kimi-VL-A3B-Thinking-2506-Q4_K_M.gguf
+   ├─ [2/2] Downloading mmproj-Kimi-VL-A3B-Thinking-2506-f16.gguf
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  kimi-vl-a3b-thinking-2506-gguf-Q4_K_M
+  │ 📁 Vault Path:     /home/Aryan/ch-run21/models/chat/kimi-vl-a3b-thinking-2506-gguf-Q4_K_M
+  │ 🚀 Run Command:   cluaiz run kimi-vl-a3b-thinking-2506-gguf-Q4_K_M
+  └─────────────────────────────────────────────────────────────┘
+

@@ -1,0 +1,33 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'LiquidAI/LFM2-1.2B-GGUF:Q4_K_M'...
+  🔍 Scanning HuggingFace Hub for 'LiquidAI/LFM2-1.2B-GGUF'...
+  ⚡ Direct Quantization Tag Matched: ':Q4_K_M' -> LFM2-1.2B-Q4_K_M-hip-optimized.gguf (0.80 GB)
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: lfm2-1.2b-gguf-Q4_K_M
+    ├─ 📦 Format: GGUF
+    ├─ 🏷️  Precision / Quant Tag: Q4_K_M
+    ├─ 🧠 Architecture: lfm2
+    ├─ 📁 Category: chat
+    ├─ 🧩 Parameters: 1.2B
+    ├─ 💾 Total Download Size: 0.80 GB
+    └─ 📁 Files to Download (5 files):
+       ├─ ⚖️  LFM2-1.2B-Q4_K_M-hip-optimized.gguf
+       ├─ 📄 leap/Q4_0.json
+       ├─ 📄 leap/Q4_K_M.json
+       ├─ 📄 leap/Q5_K_M.json
+       └─ 📄 leap/Q8_0.json
+   ├─ [1/5] Downloading LFM2-1.2B-Q4_K_M-hip-optimized.gguf
+   ├─ [2/5] Downloading leap/Q4_0.json
+   ├─ [3/5] Downloading leap/Q4_K_M.json
+   ├─ [4/5] Downloading leap/Q5_K_M.json
+   ├─ [5/5] Downloading leap/Q8_0.json
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  lfm2-1.2b-gguf-Q4_K_M
+  │ 📁 Vault Path:     /home/Aryan/ch-run21/models/chat/lfm2-1.2b-gguf-Q4_K_M
+  │ 🚀 Run Command:   cluaiz run lfm2-1.2b-gguf-Q4_K_M
+  └─────────────────────────────────────────────────────────────┘
+

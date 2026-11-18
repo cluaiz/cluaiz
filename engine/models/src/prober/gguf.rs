@@ -518,14 +518,22 @@ impl GgufProber {
         let key_length_swa = get_u32("attention.key_length_swa").unwrap_or(key_length);
         let value_length_swa = get_u32("attention.value_length_swa").unwrap_or(value_length);
 
-        // Sliding window layers are only marked when the file lists them; otherwise every layer is
-        // counted as full attention (an over-estimate of KV, never an under-estimate)
+        // Sliding window layers, marked the way llama.cpp marks them (load_swa_pattern): the listed
+        // array, else a period (the scalar key, else the architecture's default). An architecture
+        // with no known default counts every layer as full attention (an over-estimate of KV, never
+        // an under-estimate)
         let sliding_window = get_u32("attention.sliding_window").filter(|w| *w > 0);
-        let swa_layers: Vec<bool> = header
-            .int_arrays
-            .get(&key("attention.sliding_window_pattern"))
-            .map(|arr| arr.iter().map(|v| *v != 0).collect())
-            .unwrap_or_default();
+        let swa_trunk = block_count.saturating_sub(get_u32("nextn_predict_layers").unwrap_or(0));
+        let swa_layers: Vec<bool> = match header.int_arrays.get(&key("attention.sliding_window_pattern")) {
+            Some(arr) => arr.iter().map(|v| *v != 0).collect(),
+            None => sliding_window
+                .and_then(|_| {
+                    let (default_period, dense_first) = default_swa_pattern(&architecture)?;
+                    Some((get_u32("attention.sliding_window_pattern").unwrap_or(default_period), dense_first))
+                })
+                .map(|(period, dense_first)| swa_pattern(block_count, swa_trunk, period, dense_first))
+                .unwrap_or_default(),
+        };
         let shared_kv_layers = get_u32("attention.shared_kv_layers").unwrap_or(0);
 
         // Hybrid models (Qwen3.5, Qwen3-Next): linear-attention layers keep a fixed state, not a KV
@@ -639,9 +647,50 @@ impl GgufProber {
     }
 }
 
+/// The sliding-window period llama.cpp gives an architecture whose file sets a window but lists no
+/// layers (`load_swa_pattern(ml, n, dense_first)` in `src/models/<arch>.cpp`), and whether the
+/// full-attention layer comes first in each period. Only architectures that take the window from the
+/// file; the ones where llama.cpp sets the window itself are left out.
+fn default_swa_pattern(architecture: &str) -> Option<(u32, bool)> {
+    Some(match architecture {
+        "gemma2" | "gpt-oss" => (2, false),
+        "gemma3n" => (5, false),
+        "gemma3" | "gemma-embedding" => (6, false),
+        "cohere2" | "olmo2" | "mellum" | "afmoe" | "exaone-moe" | "limite" | "muse-glimmer" => (4, false),
+        "cohere2moe" | "laguna" => (4, true),
+        "plamo3" => (8, false),
+        _ => return None,
+    })
+}
+
+/// llama.cpp `llama_hparams::set_swa_pattern`: in each period of `n` trunk layers one layer is full
+/// attention (the last, or the first when `dense_first`); `n == 0` makes every trunk layer sliding.
+/// Layers after the trunk (next-token prediction) are full attention.
+fn swa_pattern(block_count: u32, trunk: u32, n: u32, dense_first: bool) -> Vec<bool> {
+    (0..block_count)
+        .map(|il| {
+            il < trunk && (n == 0 || if dense_first { il % n != 0 } else { il % n < n - 1 })
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sliding_window_layers_follow_llama_cpp_when_the_file_lists_none() {
+        // Gemma 3: five sliding layers, then one full (llama.cpp `load_swa_pattern(ml, 6)`)
+        let gemma3 = swa_pattern(12, 12, 6, false);
+        assert_eq!(gemma3, [true, true, true, true, true, false, true, true, true, true, true, false]);
+        // dense_first: the full layer opens each period
+        assert_eq!(swa_pattern(8, 8, 4, true), [false, true, true, true, false, true, true, true]);
+        // next-token-prediction layers after the trunk stay full; period 0 = every trunk layer sliding
+        assert_eq!(swa_pattern(4, 3, 0, false), [true, true, true, false]);
+        assert_eq!(default_swa_pattern("gemma3"), Some((6, false)));
+        assert_eq!(default_swa_pattern("gpt-oss"), Some((2, false)));
+        assert_eq!(default_swa_pattern("llama"), None);
+    }
 
     #[test]
     fn test_header_cache_is_immutable_and_refreshes_replaced_or_deleted_files() -> Result<()> {

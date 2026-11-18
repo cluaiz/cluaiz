@@ -1,0 +1,67 @@
+MODEL
+  ID            moonshotai_kimi-linear-48b-a3b-instruct-gguf-Q4_K_M
+  Name          Kimi Linear 48B A3B Instruct
+  Parameters    48B-A3B
+  Type          MoE (kimi-linear): 256 experts, 8 active per token
+  Layers        27 blocks | embedding 2304 | heads 32 (KV 0)
+  Context max   1,048,576 tokens
+  File          30.06 GB (as Hugging Face counts it) | /home/Aryan/ch-run21/models/chat/moonshotai_kimi-linear-48b-a3b-instruct-gguf-Q4_K_M/moonshotai_Kimi-Linear-48B-A3B-Instruct-Q4_K_M.gguf
+  Parts         attention and shared 1.23 GB | experts 26.56 GB (0.98 GB per block)
+  Supports      text yes | image no | audio no | tools yes | thinking yes (<think> ... </think>)
+
+THIS MACHINE NOW
+  GPU   NVIDIA L4 | 22.49 GB, free 22.08 GB
+  RAM   31.35 GB, free 29.89 GB
+  CPU   Intel(R) Xeon(R) CPU @ 2.20GHz | 4 cores, 8 threads
+
+YOUR SETTINGS (the ones that change the plan)
+  Context          Auto
+  KV cache         Auto (F16 first, then Q8_0)
+  GPU layers       Auto
+
+PLAN: MoE split (attention on GPU, experts in RAM)
+
+  How the blocks of this model are split
+    Each of the 27 blocks has two parts:
+      attention  small: works out which words matter            1.23 GB for all 27 blocks
+      experts    big: 256 small networks, 8 used per token      0.98 GB per block, 26.56 GB in all
+    This plan puts the attention of every block on the GPU, the experts of 27 blocks in RAM.
+
+  GPU: NVIDIA L4 (22.49 GB card)
+    Free right now                                               22.08 GB
+    Kept free for the desktop and other apps                  -   1.00 GB
+      1024 MiB rule, model not measured on this machine yet
+    Cluaiz may use                                               21.08 GB
+
+    What goes on the GPU
+      Weights: attention of all 27 blocks, output head            1.23 GB
+      Chat memory (KV cache) for 16,384 tokens                    0.14 GB
+      MoE cache for the experts in RAM                           19.40 GB
+      Working space llama.cpp needs for its calculations          0.31 GB
+      Total                                                      21.08 GB   fits (0.00 GB left)
+
+  RAM: 31.35 GB
+    Free right now                                               29.89 GB
+    Kept free for the OS and other apps                       -   1.57 GB
+    Cluaiz may use                                               28.33 GB
+
+    What goes in RAM
+      Weights: experts of 27 blocks, input embeddings            26.76 GB
+      Total                                                      26.76 GB   fits (1.56 GB left)
+
+  SSD: not used
+
+  In one line
+    GPU: attention of all 27 blocks, output head + KV   RAM: experts of 27 blocks, input embeddings
+
+  Context     16,384 tokens (Auto: 16384 tokens, KV Kv16, buffer 1.00 GB)
+  KV cache    F16, on the GPU, 0.14 GB
+  llama.cpp   -ngl -1 -ncmoe 27 -c 16384 -ctk f16 -ctv f16
+  Speed       not measured (chosen by rule order; `cluaiz bench --placements` measures it)
+
+OTHER WAYS IT COULD RUN
+  Full GPU             no   needs 28.24 GB VRAM, 21.08 GB may be used
+  GPU + RAM split      yes  19/27 blocks on GPU | GPU 20.68 GB, RAM 7.76 GB | not measured
+  CPU only             yes  RAM 28.44 GB | 0.12 GB from SSD | not measured
+
+Memory in GB of 1024^3 bytes, as the OS reports RAM and VRAM; file size as Hugging Face counts it

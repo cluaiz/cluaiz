@@ -1,0 +1,27 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'unsloth/Ministral-3-3B-Instruct-2512-GGUF:Q4_K_M'...
+  🔍 Scanning HuggingFace Hub for 'unsloth/Ministral-3-3B-Instruct-2512-GGUF'...
+  ⚡ Direct Quantization Tag Matched: ':Q4_K_M' -> Ministral-3-3B-Instruct-2512-Q4_K_M.gguf (2.99 GB)
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: ministral-3-3b-instruct-2512-gguf-Q4_K_M
+    ├─ 📦 Format: GGUF
+    ├─ 🏷️  Precision / Quant Tag: Q4_K_M
+    ├─ 🧠 Architecture: mistral3
+    ├─ 📁 Category: chat
+    ├─ 🧩 Parameters: 3B
+    ├─ 💾 Total Download Size: 2.99 GB
+    └─ 📁 Files to Download (2 files):
+       ├─ ⚖️  Ministral-3-3B-Instruct-2512-Q4_K_M.gguf
+       └─ ⚖️  mmproj-F16.gguf
+   ├─ [1/2] Downloading Ministral-3-3B-Instruct-2512-Q4_K_M.gguf
+   ├─ [2/2] Downloading mmproj-F16.gguf
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  ministral-3-3b-instruct-2512-gguf-Q4_K_M
+  │ 📁 Vault Path:     /home/Aryan/ch-run21/models/chat/ministral-3-3b-instruct-2512-gguf-Q4_K_M
+  │ 🚀 Run Command:   cluaiz run ministral-3-3b-instruct-2512-gguf-Q4_K_M
+  └─────────────────────────────────────────────────────────────┘
+

@@ -1,0 +1,24 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'bartowski/DeepSeek-Coder-V2-Lite-Instruct-GGUF:Q4_K_M'...
+  🔍 Scanning HuggingFace Hub for 'bartowski/DeepSeek-Coder-V2-Lite-Instruct-GGUF'...
+  ⚡ Direct Quantization Tag Matched: ':Q4_K_M' -> DeepSeek-Coder-V2-Lite-Instruct-Q4_K_M.gguf (10.36 GB)
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: deepseek-coder-v2-lite-instruct-gguf-Q4_K_M
+    ├─ 📦 Format: GGUF
+    ├─ 🏷️  Precision / Quant Tag: Q4_K_M
+    ├─ 🧠 Architecture: deepseek2
+    ├─ 📁 Category: chat
+    ├─ 💾 Total Download Size: 10.36 GB
+    └─ 📁 Files to Download (1 files):
+       └─ ⚖️  DeepSeek-Coder-V2-Lite-Instruct-Q4_K_M.gguf
+   ├─ [1/1] Downloading DeepSeek-Coder-V2-Lite-Instruct-Q4_K_M.gguf
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  deepseek-coder-v2-lite-instruct-gguf-Q4_K_M
+  │ 📁 Vault Path:     /home/Aryan/ch-run21/models/chat/deepseek-coder-v2-lite-instruct-gguf-Q4_K_M
+  │ 🚀 Run Command:   cluaiz run deepseek-coder-v2-lite-instruct-gguf-Q4_K_M
+  └─────────────────────────────────────────────────────────────┘
+

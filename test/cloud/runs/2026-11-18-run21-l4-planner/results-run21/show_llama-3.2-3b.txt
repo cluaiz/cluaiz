@@ -1,0 +1,58 @@
+MODEL
+  ID            llama-3.2-3b-instruct-gguf-Q4_K_M
+  Name          Llama 3.2 3B Instruct
+  Parameters    3B
+  Type          dense (llama): every token reads the whole model
+  Layers        28 blocks | embedding 3072 | heads 24 (KV 8)
+  Context max   131,072 tokens
+  File          2.02 GB (as Hugging Face counts it) | /home/Aryan/ch-run21/models/chat/llama-3.2-3b-instruct-gguf-Q4_K_M/Llama-3.2-3B-Instruct-Q4_K_M.gguf
+  Supports      text yes | image no | audio no | tools yes | thinking no
+
+THIS MACHINE NOW
+  GPU   NVIDIA L4 | 22.49 GB, free 22.08 GB
+  RAM   31.35 GB, free 30.04 GB
+  CPU   Intel(R) Xeon(R) CPU @ 2.20GHz | 4 cores, 8 threads
+
+YOUR SETTINGS (the ones that change the plan)
+  Context          Auto
+  KV cache         Auto (F16 first, then Q8_0)
+  GPU layers       Auto
+
+PLAN: Full GPU
+
+  GPU: NVIDIA L4 (22.49 GB card)
+    Free right now                                               22.08 GB
+    Kept free for the desktop and other apps                  -   1.00 GB
+      1024 MiB rule, model not measured on this machine yet
+    Cluaiz may use                                               21.08 GB
+
+    What goes on the GPU
+      Weights: all 28 blocks, output head                         1.87 GB
+      Chat memory (KV cache) for 16,384 tokens                    1.75 GB
+      Working space llama.cpp needs for its calculations          0.24 GB
+      Total                                                       3.87 GB   fits (17.21 GB left)
+
+  RAM: 31.35 GB
+    Free right now                                               30.04 GB
+    Kept free for the OS and other apps                       -   1.57 GB
+    Cluaiz may use                                               28.47 GB
+
+    What goes in RAM
+      Weights: input embeddings                                   0.30 GB
+      Total                                                       0.30 GB   fits (28.17 GB left)
+
+  SSD: not used
+
+  In one line
+    GPU: all 28 blocks, output head + KV   RAM: input embeddings
+
+  Context     16,384 tokens (Auto: 16384 tokens, KV Kv16, buffer 1.00 GB)
+  KV cache    F16, on the GPU, 1.75 GB
+  llama.cpp   -ngl -1 -c 16384 -ctk f16 -ctv f16
+  Speed       not measured (chosen by rule order; `cluaiz bench --placements` measures it)
+
+OTHER WAYS IT COULD RUN
+  GPU + RAM split      yes  27/28 blocks on GPU | GPU 3.75 GB, RAM 0.42 GB | not measured
+  CPU only             yes  RAM 3.87 GB | not measured
+
+Memory in GB of 1024^3 bytes, as the OS reports RAM and VRAM; file size as Hugging Face counts it

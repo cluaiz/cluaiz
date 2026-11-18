@@ -1,0 +1,4 @@
+[turn 1] 'OK' | prompt 1828 | cache_n 0 | processed 1827 | cause cold | edit_at None
+[turn 2] 'BLUE-42' | prompt 1854 | cache_n 1828 | processed 22 | cause append | edit_at None
+[turn 3] 'EULB' | prompt 1875 | cache_n 1854 | processed 18 | cause append | edit_at None
+RESULT: PASS

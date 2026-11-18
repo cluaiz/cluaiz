@@ -1,0 +1,27 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'unsloth/OLMo-2-0425-1B-Instruct-GGUF:Q4_K_M'...
+  🔍 Scanning HuggingFace Hub for 'unsloth/OLMo-2-0425-1B-Instruct-GGUF'...
+  ⚡ Direct Quantization Tag Matched: ':Q4_K_M' -> OLMo-2-0425-1B-Instruct-Q4_K_M.gguf (0.94 GB)
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: olmo-2-0425-1b-instruct-gguf-Q4_K_M
+    ├─ 📦 Format: GGUF
+    ├─ 🏷️  Precision / Quant Tag: Q4_K_M
+    ├─ 🧠 Architecture: olmo2
+    ├─ 📁 Category: chat
+    ├─ 🧩 Parameters: 1B
+    ├─ 💾 Total Download Size: 0.94 GB
+    └─ 📁 Files to Download (2 files):
+       ├─ ⚖️  OLMo-2-0425-1B-Instruct-Q4_K_M.gguf
+       └─ 📄 config.json
+   ├─ [1/2] Downloading OLMo-2-0425-1B-Instruct-Q4_K_M.gguf
+   ├─ [2/2] Downloading config.json
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  olmo-2-0425-1b-instruct-gguf-Q4_K_M
+  │ 📁 Vault Path:     /home/Aryan/ch-run21/models/chat/olmo-2-0425-1b-instruct-gguf-Q4_K_M
+  │ 🚀 Run Command:   cluaiz run olmo-2-0425-1b-instruct-gguf-Q4_K_M
+  └─────────────────────────────────────────────────────────────┘
+

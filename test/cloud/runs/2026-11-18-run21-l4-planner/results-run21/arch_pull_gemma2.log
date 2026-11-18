@@ -1,0 +1,25 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'bartowski/gemma-2-2b-it-GGUF:Q4_K_M'...
+  🔍 Scanning HuggingFace Hub for 'bartowski/gemma-2-2b-it-GGUF'...
+  ⚡ Direct Quantization Tag Matched: ':Q4_K_M' -> gemma-2-2b-it-Q4_K_M.gguf (1.71 GB)
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: gemma-2-2b-it-gguf-Q4_K_M
+    ├─ 📦 Format: GGUF
+    ├─ 🏷️  Precision / Quant Tag: Q4_K_M
+    ├─ 🧠 Architecture: gemma2
+    ├─ 📁 Category: chat
+    ├─ 🧩 Parameters: 2B
+    ├─ 💾 Total Download Size: 1.71 GB
+    └─ 📁 Files to Download (1 files):
+       └─ ⚖️  gemma-2-2b-it-Q4_K_M.gguf
+   ├─ [1/1] Downloading gemma-2-2b-it-Q4_K_M.gguf
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  gemma-2-2b-it-gguf-Q4_K_M
+  │ 📁 Vault Path:     /home/Aryan/ch-run21/models/chat/gemma-2-2b-it-gguf-Q4_K_M
+  │ 🚀 Run Command:   cluaiz run gemma-2-2b-it-gguf-Q4_K_M
+  └─────────────────────────────────────────────────────────────┘
+

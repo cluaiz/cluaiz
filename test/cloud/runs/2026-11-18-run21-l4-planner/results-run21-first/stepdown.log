@@ -1,0 +1,4 @@
+2026-11-18T15:33:14.922804Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-18T15:33:14.960368Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-18T15:33:15.233992Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+error: bench: model '' is not installed (see `cluaiz list`, or `cluaiz pull `)

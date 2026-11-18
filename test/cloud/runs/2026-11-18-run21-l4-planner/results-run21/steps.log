@@ -1,0 +1,65 @@
+cluaiz 0.1.0 (pre-release)
+name, memory.total [MiB], memory.free [MiB]
+NVIDIA L4, 23034 MiB, 22615 MiB
+               total        used        free      shared  buff/cache   available
+Mem:              31           1          23           0           7          30
+Swap:              0           0           0
+== 15:14:06 1 pull
+pull llama-3.2-3b exit 0 -> /home/Aryan/ch-run21/models/chat/llama-3.2-3b-instruct-gguf-Q4_K_M/Llama-3.2-3B-Instruct-Q4_K_M.gguf
+pull gemma-3-12b exit 0 -> /home/Aryan/ch-run21/models/chat/gemma-3-12b-it-gguf-Q4_K_M/gemma-3-12b-it-Q4_K_M.gguf
+pull mistral-24b exit 0 -> /home/Aryan/ch-run21/models/chat/mistral-small-3.2-24b-instruct-2506-gguf-Q4_K_M/Mistral-Small-3.2-24B-Instruct-2506-Q4_K_M.gguf
+pull qwen3-30b-a3b exit 0 -> 
+pull gpt-oss-20b exit 0 -> 
+pull gemma-4-31b exit 0 -> /home/Aryan/ch-run21/models/chat/gemma-4-31b-it-gguf-Q4_K_M/MTP/mtp-gemma-4-31B-it-Q8_0.gguf
+== 15:21:12 2 show + bench --placements
+bench llama-3.2-3b exit 0
+bench gemma-3-12b exit 0
+bench mistral-24b exit 0
+skip qwen3-30b-a3b: not pulled
+skip gpt-oss-20b: not pulled
+bench gemma-4-31b exit 1
+== 15:33:14 3 Gemma 4 31B context on the GPU
+  Context max   262,144 tokens | sliding window 1,024
+  Context          Auto
+  KV cache         Auto (F16 first, then Q8_0)
+PLAN: Full GPU
+      Working space llama.cpp needs for its calculations          0.50 GB
+  Context     16,384 tokens (Auto: 16384 tokens, KV Kv16, buffer 1.00 GB)
+  KV cache    F16, in RAM, 0.00 GB
+  llama.cpp   -ngl -1 -c 16384 -ctk f16 -ctv f16
+== 15:33:14 4 step-down under VRAM pressure
+step-down bench exit 1
+== 15:34:21 5 multi-turn cache without a session id
+[turn 1] 'OK' | prompt 1828 | cache_n 0 | processed 1827 | cause cold | edit_at None
+[turn 2] 'BLUE-42' | prompt 1854 | cache_n 1828 | processed 22 | cause append | edit_at None
+[turn 3] 'EULB' | prompt 1875 | cache_n 1854 | processed 18 | cause append | edit_at None
+RESULT: PASS
+== 15:34:58 all done
+cluaiz 0.1.0 (pre-release)
+name, memory.total [MiB], memory.free [MiB]
+NVIDIA L4, 23034 MiB, 22615 MiB
+               total        used        free      shared  buff/cache   available
+Mem:              31           1           5           0          25          30
+Swap:              0           0           0
+== 16:26:17 1 pull
+== 16:26:17 2 show + bench --placements
+bench gemma-3-12b exit 0
+bench qwen3-30b-a3b exit 0
+bench gpt-oss-20b exit 0
+bench gemma-4-31b exit 0
+== 16:46:08 3 Gemma 4 31B context on the GPU
+  Context max   262,144 tokens | sliding window 1,024
+  Context          Auto
+  KV cache         Auto (F16 first, then Q8_0)
+PLAN: Full GPU
+      Chat memory (KV cache) for 16,384 tokens                    2.42 GB
+      Working space llama.cpp needs for its calculations          0.50 GB
+  Context     16,384 tokens (Auto: 16384 tokens, KV Kv16, buffer 1.00 GB)
+  KV cache    F16, on the GPU, 2.42 GB
+  llama.cpp   -ngl -1 -c 16384 -ctk f16 -ctv f16
+== 16:46:08 4 step-down under VRAM pressure
+step-down bench exit 0
+2026-11-18T16:47:52.092785Z  INFO 🔍 [EngineHost] VRAM planned 18.93 GB, taken 19.17 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+== 16:47:52 5 multi-turn cache without a session id
+== 16:47:52 6 architecture sweep: one load per architecture, VRAM planned against taken
+== 17:07:25 all done

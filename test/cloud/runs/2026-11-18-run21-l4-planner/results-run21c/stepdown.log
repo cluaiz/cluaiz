@@ -1,0 +1,115 @@
+2026-11-18T17:15:01.103716Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-18T17:15:01.150743Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-18T17:15:02.042531Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+2026-11-18T17:15:02.601125Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-18T17:15:02.601302Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-18T17:15:03.012728Z  INFO 📐 [EngineHost] llama.cpp dry run, full GPU at 4096 tokens: model 17.11 + context 0.20 + compute 0.31 = 17.63 GB vs estimate 17.60 GB (+0.02) in 365 ms
+2026-11-18T17:15:03.032634Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf
+║   • Architecture    : qwen3moe | 48 layers | heads 32 | KV heads 4 | head size K 128 / V 128 | 128 experts, 8 active | experts 16.35 GB
+║   • Weights         : file 18.56 GB (as Hugging Face counts it) | input embeddings 0.16 GB (always CPU) | output head 0.24 GB | vocab 151936
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 16384 tokens, KV Kv16 (Auto: 16384 tokens, KV Kv16, buffer 1.00 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 21.71 of 22.49 GB | buffer kept free 1.00 GB (card-sized gap: 1.00 GB reserve + 0.30 GB for the GPU pool, model not measured on this machine yet; estimate corrected by llama.cpp's dry run +0.02 GB)
+║   • RAM             : free 29.86 of 31.35 GB | Cluaiz may use 28.43 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 48 on GPU, 0 in RAM (of 48)
+║   • VRAM            : 18.93 GB (weights + KV 1.50 + logits)
+║   • RAM             : 0.16 GB (incl. KV 0.00)
+║   • Reason         : Full GPU: weights 17.11 + KV 1.50 + buffers 0.31 = 18.93 GB vs usable VRAM 20.90 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM 18.93 GB | RAM  0.16 GB | weights 17.11 + KV 1.50 + buffers 0.31 = 18.93 GB vs usable VRAM 20.90 GB
+║   • MoE split        [FITS]     VRAM 18.93 GB | RAM  0.16 GB | attention/shared 0.77 + KV 1.50 + buffers 0.29 on GPU, experts of 0 / 48 layers in RAM (0.00 GB)
+║   • GPU + RAM split  [FITS]     VRAM 18.52 GB | RAM  0.57 GB | 47 / 48 blocks + output head on GPU (18.52 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM 19.07 GB | weights 17.28 + KV 1.50 + logits 0.29 = 19.07 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-18T17:15:03.032671Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-18T17:15:03.032821Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 4, n_threads_batch = 4
+2026-11-18T17:15:03.032830Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch-run21c/models/chat/qwen3-30b-a3b-instruct-2507-gguf-Q4_K_M/Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf | ctx: 16384 tokens
+2026-11-18T17:16:46.312166Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/home/Aryan/ch-run21c/models/chat/qwen3-30b-a3b-instruct-2507-gguf-Q4_K_M"
+2026-11-18T17:16:46.320471Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-11-18T17:16:46.320481Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-11-18T17:16:46.320487Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16384 tokens
+2026-11-18T17:16:46.320505Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-18T17:16:46.320511Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-18T17:16:46.320517Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-18T17:16:46.320524Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 4/4
+2026-11-18T17:16:46.322572Z ERROR [llama.cpp] ggml_backend_buft_alloc_buffer_n_default: failed to allocate CUDA0 buffer of size 1610612736
+2026-11-18T17:16:46.325794Z ERROR [llama.cpp] llama_init_from_model: failed to initialize the context: failed to allocate buffer for kv cache
+2026-11-18T17:16:46.389022Z  WARN ⚠️ [EngineHost] Load failed with -1 GPU layers, 16384 tokens (Context Init Failure); retrying with -1 GPU layers, 16384 tokens
+2026-11-18T17:16:46.389119Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf
+║   • Architecture    : qwen3moe | 48 layers | heads 32 | KV heads 4 | head size K 128 / V 128 | 128 experts, 8 active | experts 16.35 GB
+║   • Weights         : file 18.56 GB (as Hugging Face counts it) | input embeddings 0.16 GB (always CPU) | output head 0.24 GB | vocab 151936
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 16384 tokens, KV Kv16 (Auto: 16384 tokens, KV Kv16, buffer 3.79 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 21.71 of 22.49 GB | buffer kept free 3.79 GB (measured: GPU pool +2.79 GB + 1.00 GB reserve; estimate corrected by llama.cpp's dry run +0.02 GB)
+║   • RAM             : free 29.86 of 31.35 GB | Cluaiz may use 28.16 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : MoE split (attention on GPU, experts in RAM)
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 48 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 48 on GPU, 0 in RAM (of 48)
+║   • VRAM            : 14.83 GB (weights + KV 1.50 + logits)
+║   • RAM             : 16.51 GB (incl. KV 0.00)
+║   • MoE cache       : 12.27 GB in VRAM for the experts in RAM | CPU share of the misses 0 (moe_cache_size / moe_cache_cpu_share)
+║   • Reason         : MoE split: attention/shared 0.77 + KV 1.50 + buffers 0.29 on GPU, experts of 48 / 48 layers in RAM (16.35 GB), MoE cache 12.27 GB in VRAM (CPU share 0)
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [NO]       VRAM 18.93 GB | RAM  0.16 GB | does not fit in VRAM: weights 17.11 + KV 1.50 + buffers 0.31 = 18.93 GB vs usable VRAM 14.83 GB
+║   • MoE split        [FITS]     VRAM 14.83 GB | RAM 16.51 GB | attention/shared 0.77 + KV 1.50 + buffers 0.29 on GPU, experts of 48 / 48 layers in RAM (16.35 GB), MoE cache 12.27 GB in VRAM (CPU share 0)
+║   • GPU + RAM split  [FITS]     VRAM 14.64 GB | RAM  4.45 GB | 37 / 48 blocks + output head on GPU (14.64 GB), 11 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM 19.07 GB | weights 17.28 + KV 1.50 + logits 0.29 = 19.07 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-18T17:16:46.389733Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 4, n_threads_batch = 4
+2026-11-18T17:16:46.389740Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch-run21c/models/chat/qwen3-30b-a3b-instruct-2507-gguf-Q4_K_M/Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf | ctx: 16384 tokens
+2026-11-18T17:16:46.566953Z  WARN [llama.cpp] llama_model_loader: tensor overrides to CPU are used with mmap enabled - consider using --load-mode none for better performance
+2026-11-18T17:16:47.706052Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/home/Aryan/ch-run21c/models/chat/qwen3-30b-a3b-instruct-2507-gguf-Q4_K_M"
+2026-11-18T17:16:47.710942Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-11-18T17:16:47.710960Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-11-18T17:16:47.710966Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16384 tokens
+2026-11-18T17:16:47.710972Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-18T17:16:47.710976Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-18T17:16:47.710981Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-18T17:16:47.710986Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 4/4
+2026-11-18T17:16:49.438666Z  INFO 🔍 [EngineHost] VRAM planned 14.83 GB, taken 18.00 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 48
+2026-11-18T17:16:49.438819Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /home/Aryan/ch-run21c/models/chat/qwen3-30b-a3b-instruct-2507-gguf-Q4_K_M/Qwen3-30B-A3B-Instruct-2507-Q4_K_M.gguf
+  placement  MoE split (attention on GPU, experts in RAM)
+  GPU        14.83 GB: attention of all 48 blocks, output head, KV
+  RAM        16.51 GB: experts of 48 blocks, input embeddings
+  MoE cache  12.27 GB in VRAM, CPU share 0
+  context    16,384 tokens | KV F16 on the GPU
+  llama.cpp  -ngl -1 -ncmoe 48 -c 16384 -ctk f16 -ctv f16
+  reason     MoE split: attention/shared 0.77 + KV 1.50 + buffers 0.29 on GPU, experts of 48 / 48 layers in RAM (16.35 GB), MoE cache 12.27 GB in VRAM (CPU share 0) | load retry: the planned placement (-1 GPU layers, 16384 tokens) failed to load; the miss was recorded
+running pp64 on MoE split (attention on GPU, experts in RAM) (1 runs)...
+running tg16 on MoE split (attention on GPU, experts in RAM) (1 runs)...

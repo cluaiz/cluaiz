@@ -1,0 +1,65 @@
+2026-11-18T16:59:24.917004Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-18T16:59:24.978247Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-18T16:59:25.274929Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+2026-11-18T16:59:25.470266Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-18T16:59:25.470402Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-18T16:59:25.951091Z  INFO 📐 [EngineHost] llama.cpp dry run, full GPU at 4096 tokens: model 16.88 + context 0.11 + compute 0.31 = 17.31 GB vs estimate 17.38 GB (-0.08) in 453 ms
+2026-11-18T16:59:25.969523Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : glm-4.7-flash-gguf-Q4_K_M
+║   • Architecture    : deepseek2 | 47 layers | heads 20 | KV heads 1 | head size K 576 / V 512 | 64 experts, 4 active | experts 15.62 GB
+║   • Weights         : file 18.31 GB (as Hugging Face counts it) | input embeddings 0.17 GB (always CPU) | output head 0.24 GB | vocab 154880
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 202752 tokens
+║   • Active context  : 16384 tokens, KV Kv16 (Auto: 16384 tokens, KV Kv16, buffer 0.45 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 21.90 of 22.49 GB | buffer kept free 0.45 GB (card-sized gap: 0.15 GB reserve + 0.30 GB for the GPU pool, model not measured on this machine yet; estimate corrected by llama.cpp's dry run -0.08 GB)
+║   • RAM             : free 29.85 of 31.35 GB | Cluaiz may use 28.44 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 47 on GPU, 0 in RAM (of 47)
+║   • VRAM            : 18.66 GB (weights + KV 1.56 + logits)
+║   • RAM             : 0.17 GB (incl. KV 0.00)
+║   • Reason         : Full GPU: weights 16.88 + KV 1.56 + buffers 0.22 = 18.66 GB vs usable VRAM 21.63 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM 18.66 GB | RAM  0.17 GB | weights 16.88 + KV 1.56 + buffers 0.22 = 18.66 GB vs usable VRAM 21.63 GB
+║   • MoE split        [FITS]     VRAM 18.66 GB | RAM  0.17 GB | attention/shared 1.26 + KV 1.56 + buffers 0.29 on GPU, experts of 0 / 47 layers in RAM (0.00 GB)
+║   • GPU + RAM split  [FITS]     VRAM 18.57 GB | RAM  0.25 GB | 46 / 47 blocks + output head on GPU (18.57 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM 18.90 GB | weights 17.05 + KV 1.56 + logits 0.30 = 18.90 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-18T16:59:25.969560Z  INFO ♻️ [EngineHost] Model unloaded from process memory
+2026-11-18T16:59:25.969718Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 4, n_threads_batch = 4
+2026-11-18T16:59:25.969724Z  INFO 🧬 [Native-Llama] Loading model: /home/Aryan/ch-run21/models/chat/glm-4.7-flash-gguf-Q4_K_M/GLM-4.7-Flash-Q4_K_M.gguf | ctx: 16384 tokens
+2026-11-18T16:59:26.181396Z  WARN [llama.cpp] load: special_eot_id is not in special_eog_ids - the tokenizer config may be incorrect
+2026-11-18T16:59:26.181407Z  WARN [llama.cpp] load: special_eom_id is not in special_eog_ids - the tokenizer config may be incorrect
+2026-11-18T17:01:06.627175Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/home/Aryan/ch-run21/models/chat/glm-4.7-flash-gguf-Q4_K_M"
+2026-11-18T17:01:06.646963Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-11-18T17:01:06.646973Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-11-18T17:01:06.646980Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16384 tokens
+2026-11-18T17:01:06.647035Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-18T17:01:06.647041Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-18T17:01:06.647048Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-18T17:01:06.647054Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 4/4
+2026-11-18T17:01:07.071305Z  INFO 🔍 [EngineHost] VRAM planned 18.66 GB, taken 18.08 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-18T17:01:07.072567Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /home/Aryan/ch-run21/models/chat/glm-4.7-flash-gguf-Q4_K_M/GLM-4.7-Flash-Q4_K_M.gguf
+  placement  Full GPU
+  GPU        18.66 GB: all 47 blocks, output head, KV
+  RAM        0.17 GB: input embeddings
+  context    16,384 tokens | KV F16 on the GPU
+  llama.cpp  -ngl -1 -c 16384 -ctk f16 -ctv f16
+  reason     Full GPU: weights 16.88 + KV 1.56 + buffers 0.22 = 18.66 GB vs usable VRAM 21.63 GB
+running pp128 on Full GPU (1 runs)...
+running tg32 on Full GPU (1 runs)...
