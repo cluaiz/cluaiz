@@ -1,6 +1,6 @@
 //! The StepHost: how a run's steps reach the Engine. Only public doors are used: CEP methods
 //! through the dispatcher (scopes, folder roots, approvals and the audit log apply, as for any
-//! caller), the chat pipeline for `ask`, and the approval store for questions to the owner.
+//! caller), the chat pipeline for `ask`, and the approval store for questions to the user.
 
 use crate::catalog::Snapshot;
 use async_trait::async_trait;
@@ -93,7 +93,7 @@ impl EngineDoor {
         self.state.cep.invoke(ctx, principal.clone(), method, params, CallMeta { approval, ..Default::default() }).await
     }
 
-    /// Waits for the owner's answer to an approval, as long as the approval is open; `None` when
+    /// Waits for the user's answer to an approval, as long as the approval is open; `None` when
     /// nobody answered in time
     pub(crate) async fn wait_for(&self, approval_id: &str, expires_at: Option<&str>) -> Option<cluaiz_cep::approval::Decision> {
         let approvals = &self.state.cep.shared().approvals;
@@ -141,7 +141,7 @@ impl StepHost for EngineDoor {
             other => return Err(FlowError::new(Kind::InvalidInput, format!("params must be an object, not {other}"))),
         };
         let mut outcome = self.invoke(&principal, method, params.clone(), None).await;
-        // A call that needs the owner's approval waits for it, then goes on with that approval
+        // A call that needs the user's approval waits for it, then goes on with that approval
         if let Err(error) = &outcome {
             if error.code == code::APPROVAL_REQUIRED {
                 let data = error.data.clone().unwrap_or(Value::Null);

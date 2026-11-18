@@ -1,6 +1,6 @@
 //! Tools of layers outside the Engine (Automation's flows, `flow.<name>`) in a chat. They are
 //! matched to the message like installed tools (`ToolSearch::suggest`), and only those that fit
-//! are offered, so a chat without a fitting flow is as before. A call asks the owner on the chat's
+//! are offered, so a chat without a fitting flow is as before. A call asks the user on the chat's
 //! approval card when the tool says so, then runs in the extension.
 
 use crate::cep::extensions::{self, Caller, CONFIRM_META};
@@ -16,7 +16,7 @@ pub struct OfferedTool {
     pub function: String,
     /// The tool's own name (`flow.weekly-report`)
     pub tool: String,
-    /// The owner is asked before it runs
+    /// The user is asked before it runs
     pub confirm: bool,
 }
 

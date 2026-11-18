@@ -11,7 +11,7 @@ use std::pin::Pin;
 use std::sync::{Arc, OnceLock};
 
 /// The tools an extension offers, as MCP `tools/list` items. `_meta["cluaiz/confirm"]` (a
-/// boolean) says whether a call asks the owner first.
+/// boolean) says whether a call asks the user first.
 pub type ToolList = Pin<Box<dyn Future<Output = Vec<Value>> + Send>>;
 /// One call of an extension's tool: its result, or an error the client's model reads
 pub type ToolCall = Pin<Box<dyn Future<Output = Result<Value, CepError>> + Send>>;
@@ -23,11 +23,11 @@ pub struct Caller {
     pub kind: &'static str,
     /// The chat, for a call from a chat
     pub chat_id: Option<String>,
-    /// The owner already said yes to this call (a chat's approval card): the tool does not ask again
+    /// The user already said yes to this call (a chat's approval card): the tool does not ask again
     pub confirmed: bool,
 }
 
-/// `_meta` key of a listed tool: a call asks the owner first
+/// `_meta` key of a listed tool: a call asks the user first
 pub const CONFIRM_META: &str = "cluaiz/confirm";
 
 pub trait Extension: Send + Sync {

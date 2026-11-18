@@ -32,7 +32,7 @@ pub struct Execute {
     pub input: Value,
 }
 
-/// How long an install waits for the owner to answer its questions; then they count as no
+/// How long an install waits for the user to answer its questions; then they count as no
 const INSTALL_QUESTION_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(600);
 
 pub async fn install(ctx: CallCtx, call: Call, target: Target) -> Result<Value, CepError> {
@@ -197,7 +197,7 @@ pub async fn execute(ctx: CallCtx, call: Call, params: Execute) -> Result<Value,
     };
     common::directory(&call, &workspace, &target)?;
     // A permission the user switched off, or never allowed: a WebAssembly plugin is refused that
-    // access by the Engine itself; any other tool runs as a normal program, so the owner is asked
+    // access by the Engine itself; any other tool runs as a normal program, so the user is asked
     // first, as in the chat (`approval_required`, then the same call with `_meta.approval`)
     if let Ok(entry) = common::entry(&target) {
         let off = if entry.is_wasm_plugin() { Vec::new() } else { entry.permissions_off() };

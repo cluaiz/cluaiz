@@ -1,4 +1,4 @@
-//! `tokens.*`: the API keys in permission.json. Keys and auth on/off are the owner's settings;
+//! `tokens.*`: the API keys in permission.json. Keys and auth on/off are the user's settings;
 //! these methods never turn auth on or off.
 
 use crate::cep::CallCtx;

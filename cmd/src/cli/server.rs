@@ -40,7 +40,7 @@ pub async fn cep(method: &str, params: serde_json::Value) -> color_eyre::Result<
 }
 
 /// Like [`cep`], but an RPC error comes back as its `error` object, for commands that act on
-/// `error.data` (a confirmation the owner gives, then the same call again)
+/// `error.data` (a confirmation the user gives, then the same call again)
 pub async fn cep_reply(method: &str, params: serde_json::Value) -> color_eyre::Result<Result<serde_json::Value, serde_json::Value>> {
     use color_eyre::eyre::eyre;
     let response = request(reqwest::Method::POST, "/v1/cep")

@@ -1,4 +1,4 @@
-//! Flow files and what the owner decided about them (docs/automation/file.md#where-flows-are-kept).
+//! Flow files and what the user decided about them (docs/automation/file.md#where-flows-are-kept).
 //! A flow is named by `name` and `scope`; without a scope the project's flow is found first.
 
 use crate::format::{parse_text, Format};
@@ -125,7 +125,7 @@ impl Store {
         self.paths.state_dir(scope.as_str(), name).join("flow.json")
     }
 
-    /// What the owner decided: `{ enabled, permissions, hash }`
+    /// What the user decided: `{ enabled, permissions, hash }`
     pub fn settings(&self, scope: Scope, name: &str) -> Value {
         crate::journal::read_json(&self.settings_path(scope, name)).unwrap_or_else(|| json!({ "enabled": false, "permissions": null }))
     }

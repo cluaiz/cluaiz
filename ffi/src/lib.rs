@@ -7,7 +7,7 @@
 //! ```
 //!
 //! The first call starts the Engine inside the calling process (home from `CLUAIZ_HOME`, or the
-//! default). Calls come from the process itself, so the caller is the owner. Long work returns a
+//! default). Calls come from the process itself, so the caller is the user. Long work returns a
 //! task handle (`tasks.*`), so no callback API is needed.
 
 use cluaiz_api::cep::CallCtx;

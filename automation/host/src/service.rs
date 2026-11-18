@@ -51,7 +51,7 @@ pub struct Launch {
     /// The flow, already validated
     pub flow: Value,
     pub scope: Scope,
-    /// What the owner confirmed
+    /// What the user confirmed
     pub permissions: Value,
     pub inputs: Value,
     pub trigger: Value,
@@ -74,7 +74,7 @@ pub struct Launched {
     pub status: &'static str,
 }
 
-/// The permissions a saved flow asks for, when the owner has not confirmed them all
+/// The permissions a saved flow asks for, when the user has not confirmed them all
 pub fn unconfirmed(flow: &Value, needed: &Value, confirmed: &Value) -> Option<Value> {
     let wanted = permissions::merge(flow.get("permissions").unwrap_or(&Value::Null), needed);
     (!permissions::covers(confirmed, &wanted)).then_some(wanted)

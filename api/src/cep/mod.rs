@@ -21,7 +21,7 @@ pub struct CallCtx {
 
 pub type CepEngine = Engine<CallCtx>;
 
-/// How long the owner has to answer an approval request
+/// How long the user has to answer an approval request
 const APPROVAL_TTL: Duration = Duration::from_secs(300);
 /// Tasks: running at once per caller, kept after start by default, and at most
 const MAX_RUNNING_TASKS: usize = 8;

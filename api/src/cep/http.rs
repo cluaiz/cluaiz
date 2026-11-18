@@ -1,6 +1,6 @@
 //! `POST /v1/cep`: a JSON-RPC 2.0 request or batch in, the reply out.
-//! The route sits behind the auth middleware like every other route, so the owner's
-//! `api_auth.required` setting decides who gets here (decision D9); whoever does is the owner.
+//! The route sits behind the auth middleware like every other route, so the user's
+//! `api_auth.required` setting decides who gets here (decision D9); whoever does is the user.
 
 use super::CallCtx;
 use crate::state::AppState;

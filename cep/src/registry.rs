@@ -107,7 +107,7 @@ impl Meta {
         self
     }
 
-    /// Only the owner (it opens UI on the host, or decides for others)
+    /// Only the user (it opens UI on the host, or decides for others)
     pub fn owner_only(mut self) -> Self {
         self.owner_only = true;
         self.mcp = false;
@@ -142,7 +142,7 @@ impl Call {
         Self { principal, method, digest, approval, shared, approved: Arc::new(AtomicBool::new(false)) }
     }
 
-    /// Goes on only with an approval made for exactly this call; otherwise asks the owner
+    /// Goes on only with an approval made for exactly this call; otherwise asks the user
     pub fn require_approval(&self, target: &str) -> Result<(), CepError> {
         if self.approved.load(Ordering::Acquire) {
             return Ok(());
@@ -159,7 +159,7 @@ impl Call {
     }
 
     /// Roots check for a path the method already resolved (canonical): inside goes on; outside is
-    /// `forbidden`, or an approval for a principal that asks the owner
+    /// `forbidden`, or an approval for a principal that asks the user
     pub fn check_path(&self, resolved: &Path) -> Result<(), CepError> {
         if self.principal.within_roots(resolved) {
             return Ok(());

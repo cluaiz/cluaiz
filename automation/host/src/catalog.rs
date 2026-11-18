@@ -50,11 +50,11 @@ fn function_info(function: &Value) -> NodeInfo {
 }
 
 impl Snapshot {
-    /// Reads the catalog as the owner (only reading methods are called)
+    /// Reads the catalog as the user (only reading methods are called)
     pub async fn read(state: &Arc<AppState>) -> Snapshot {
         let mut snapshot = Snapshot::default();
         for method in state.cep.registry().methods() {
-            // A flow may call what is neither refused to flows nor the owner's alone
+            // A flow may call what is neither refused to flows nor the user's alone
             if !permissions::not_callable(method.name) && !method.meta.owner_only && method.meta.scope != Scope::Admin {
                 snapshot.nodes.push(json!({
                     "ref": method.name,

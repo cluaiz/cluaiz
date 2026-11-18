@@ -55,7 +55,7 @@ use cluaiz_core::providers::Target;
 use serde_json::{json, Value};
 
 /// One sentence when providers are set up but API authentication is off: anyone who can reach the
-/// server can then use the providers' keys. The owner decides; the Engine only says so.
+/// server can then use the providers' keys. The user decides; the Engine only says so.
 pub fn open_server_warning(auth_required: bool) -> Option<String> {
     if auth_required {
         return None;

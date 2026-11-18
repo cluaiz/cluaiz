@@ -300,7 +300,7 @@ async fn a_run_stopped_mid_way_goes_on_without_repeating_finished_steps() {
     assert!(stopped.is_err());
     let dir = b.paths.run_dir("test", &run_id);
     assert_eq!(journal::read_run(&dir).unwrap().status, RunStatus::Running);
-    // On restart the owner is asked about the step with a key; they say do not repeat it
+    // On restart the user is asked about the step with a key; they say do not repeat it
     b.host.owner_says.store(false, Ordering::SeqCst);
     let reopened = runner.reopen(dir.clone(), serde_json::from_str(ALL).unwrap()).unwrap();
     let done = runner.execute(reopened, Arc::new(AtomicBool::new(false)), no_events()).await;

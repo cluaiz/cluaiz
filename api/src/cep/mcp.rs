@@ -2,7 +2,7 @@
 //! registry. A tool is a CEP method with the same name, its params schema
 //! as `inputSchema`; a call goes through the same dispatcher as `/v1/cep`. MCP clients act as the
 //! `mcp` principal: read-only methods. Layers outside the Engine may add their own tools
-//! (`Extension::mcp_tools`): Automation offers the flows their owner made tools.
+//! (`Extension::mcp_tools`): Automation offers the flows the user made tools.
 
 use super::CallCtx;
 use crate::state::AppState;
@@ -21,8 +21,8 @@ use std::sync::{Arc, LazyLock};
 /// Protocol versions this server speaks, newest first
 const VERSIONS: [&str; 3] = ["2025-11-25", "2025-06-18", "2025-03-26"];
 
-/// MCP clients: read-only methods, anywhere on disk the owner could read (the route already sits
-/// behind the owner's authentication setting)
+/// MCP clients: read-only methods, anywhere on disk the user could read (the route already sits
+/// behind the user's authentication setting)
 static MCP: LazyLock<Arc<Principal>> = LazyLock::new(|| {
     Arc::new(Principal { id: "mcp".into(), scopes: vec![Scope::Read], roots: None, on_denied: OnDenied::Error, owner: false })
 });

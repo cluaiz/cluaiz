@@ -12,7 +12,7 @@ pub struct RunInfo {
     pub flow: String,
     pub scope: String,
     pub run_id: String,
-    /// The flow's `permissions` (as confirmed by the owner)
+    /// The flow's `permissions` (as confirmed by the user)
     pub permissions: Value,
     /// The folder of the flow's file, when known
     pub flow_dir: Option<std::path::PathBuf>,
@@ -99,13 +99,13 @@ pub struct AskAnswer {
     pub completion_tokens: u64,
 }
 
-/// A yes-or-no question to the owner (`approve`, `approve_before`)
+/// A yes-or-no question to the user (`approve`, `approve_before`)
 #[derive(Debug, Clone, Default)]
 pub struct OwnerQuestion {
     pub question: String,
-    /// Where in the flow it is asked (for the owner's list)
+    /// Where in the flow it is asked (for the user's list)
     pub target: String,
-    /// What the owner should see to decide
+    /// What the user should see to decide
     pub details: Value,
     /// How long the question stays open; `None` is the Engine's usual time
     pub timeout_ms: Option<u64>,
@@ -163,7 +163,7 @@ pub trait StepHost: Send + Sync {
     /// One answer from a model through the chat pipeline (installed or a provider's)
     async fn ask(&self, run: &RunInfo, request: AskRequest) -> Result<AskAnswer, FlowError>;
 
-    /// A question to the owner, as an approval
+    /// A question to the user, as an approval
     async fn approval(&self, run: &RunInfo, question: OwnerQuestion) -> Result<OwnerAnswer, FlowError>;
 
     /// A yes-or-no question with the Engine's usual time: `false` is a no or no answer

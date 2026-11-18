@@ -1,6 +1,6 @@
-//! `approvals.*`: the owner's answers to approval requests. One store for everything that asks:
+//! `approvals.*`: the user's answers to approval requests. One store for everything that asks:
 //! a chat tool call waiting in the agent loop, a `system.exec` call, and a CEP call outside its
-//! caller's roots. Only the owner answers.
+//! caller's roots. Only the user answers.
 
 use crate::cep::CallCtx;
 use crate::handlers::chat::authorize;

@@ -17,7 +17,7 @@ pub struct TestHost {
     pub asks: Mutex<Vec<AskRequest>>,
     pub flaky_left: AtomicUsize,
     pub owner_says: AtomicBool,
-    /// The owner does not answer at all
+    /// The user does not answer at all
     pub owner_silent: AtomicBool,
     pub owner_asked: AtomicUsize,
     pub questions: Mutex<Vec<OwnerQuestion>>,

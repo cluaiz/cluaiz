@@ -1,5 +1,5 @@
 //! What the `flows.*` methods share: names and scopes, reading a flow from params, flow
-//! summaries, typed errors, and the owner's confirmation of permissions.
+//! summaries, typed errors, and the user's confirmation of permissions.
 
 use crate::service::Service;
 use cluaiz_automation::format::{parse_text, Format};
@@ -111,7 +111,7 @@ pub fn time_text(time: std::time::SystemTime) -> String {
     chrono::DateTime::<chrono::Utc>::from(time).to_rfc3339_opts(chrono::SecondsFormat::Secs, true)
 }
 
-/// The owner confirms: the owner directly, any other caller through an approval the owner gives
+/// The user confirms: the user directly, any other caller through an approval the user gives
 pub fn owner_confirms(call: &Call, what: &str) -> Result<(), CepError> {
     if call.principal.owner {
         Ok(())

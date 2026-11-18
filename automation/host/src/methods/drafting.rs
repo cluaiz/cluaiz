@@ -268,7 +268,7 @@ async fn write_draft(state: Arc<cluaiz_api::AppState>, principal: Arc<cluaiz_cep
         let problems: Vec<&Problem> = errors(&report.problems);
         return Err(typed(MODEL_FAILED, "draft_failed", format!("after {rounds} correction rounds the flow still has {} error(s); see data.problems", problems.len()), json!({ "problems": report.problems, "text": last_text, "flow": flow })));
     }
-    // The test: a dry run, only for the owner (a draft's reads use permissions nobody confirmed yet)
+    // The test: a dry run, only for the user (a draft's reads use permissions nobody confirmed yet)
     let mut test = Value::Null;
     let mut test_run_id = Value::Null;
     if params.test.unwrap_or(true) && report.valid {
@@ -430,7 +430,7 @@ async fn write_fix(state: Arc<cluaiz_api::AppState>, catalog: crate::catalog::Sn
     let nodes = catalog.nodes();
     let door = EngineDoor { state, catalog };
     let mut talk = Talk::new(&door, params.model.clone());
-    // The model never sees or changes `permissions`: the owner confirms those, and they are put
+    // The model never sees or changes `permissions`: the user confirms those, and they are put
     // back into the corrected flow as they were
     let permissions = failure.flow.get("permissions").cloned();
     let mut shown = failure.flow.clone();

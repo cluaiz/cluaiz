@@ -1,6 +1,6 @@
 //! Saved flows as tools of the terminal agent. Flows run on the server (Automation lives there),
 //! so they are offered only while a server answers: the flows with a `tool` trigger, as its MCP
-//! route lists them (`flow.<name>`). A call runs the flow with `flows.run` as the owner, after the
+//! route lists them (`flow.<name>`). A call runs the flow with `flows.run` as the user, after the
 //! agent's own question when the flow asks for one (`confirm`), and waits for its outputs.
 
 use crate::cli::server::{cep_reply, request_with_timeout};
@@ -11,7 +11,7 @@ use std::time::Duration;
 const LIST_TIMEOUT: Duration = Duration::from_secs(3);
 /// One `tasks.result` wait
 const RESULT_WAIT_MS: u64 = 5_000;
-/// `_meta` key of a listed tool: a call asks the owner first
+/// `_meta` key of a listed tool: a call asks the user first
 const CONFIRM_META: &str = "cluaiz/confirm";
 
 #[derive(Debug, Clone)]

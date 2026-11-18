@@ -29,7 +29,7 @@ pub struct RunParams {
     pub scope: Option<ScopeName>,
     /// An unsaved flow to run instead (testing from an editor)
     pub flow: Option<Value>,
-    /// For an inline `flow`: the owner accepts its permissions
+    /// For an inline `flow`: the user accepts its permissions
     pub permissions_confirmed: Option<bool>,
     /// The run's inputs, checked against the flow's `inputs`
     pub inputs: Option<Value>,

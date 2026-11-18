@@ -1,4 +1,4 @@
-//! Steps that wait: `wait`, `approve`, and the owner's approval before a step
+//! Steps that wait: `wait`, `approve`, and the user's approval before a step
 //! (docs/automation/steps/wait.md, approve.md). While a step waits, the run is `waiting` in its
 //! record. Its deadline is written to the journal, so after a restart it waits only for what was
 //! left. Waiting counts toward `limits.max_wait`, not `limits.timeout`.
@@ -83,7 +83,7 @@ impl Runner {
         until
     }
 
-    /// A question to the owner that waits up to `timeout_ms` (default: what `max_wait` allows)
+    /// A question to the user that waits up to `timeout_ms` (default: what `max_wait` allows)
     pub(super) async fn ask_and_wait(&self, st: &RunState, question: &str, at: &At<'_>, details: Value, timeout_ms: Option<i64>) -> Result<OwnerAnswer, Stop> {
         let budget = Self::wait_budget(st);
         let until = self.deadline(st, at, "approval", timeout_ms.unwrap_or(budget).min(budget));

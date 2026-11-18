@@ -122,7 +122,7 @@ pub fn installer_directory(
     Ok(path)
 }
 
-/// Relative asset paths stay in their package even for an owner with unrestricted roots.
+/// Relative asset paths stay in their package even for a user with unrestricted roots.
 pub fn file(base: &Path, relative: &str, write: bool) -> Result<PathBuf, CepError> {
     use std::path::Component;
     let path = Path::new(relative);

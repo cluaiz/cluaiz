@@ -33,7 +33,7 @@ async fn test_exec_asks_the_owner_for_every_call_and_refuses_a_shell_line() -> R
         ensure!(ran["exit_code"] == 0 && ran["stdout"].as_str().unwrap_or("").contains("cep-exec"), "{ran}");
     }
 
-    // A shell line is refused until the owner allows it
+    // A shell line is refused until the user allows it
     let line = json!({ "command": "echo cep-exec" });
     let refused = support::cep(&router, "system.exec", line.clone()).await?.err().ok_or_else(|| anyhow!("shell line ran"))?;
     ensure!(refused["code"] == -32602, "{refused}");

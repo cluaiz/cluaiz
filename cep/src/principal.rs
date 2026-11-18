@@ -39,7 +39,7 @@ impl Scope {
 pub enum OnDenied {
     /// The call fails with `forbidden`
     Error,
-    /// The owner is asked (an approval)
+    /// The user is asked (an approval)
     Ask,
 }
 
@@ -48,16 +48,16 @@ pub struct Principal {
     /// "owner", "token:<name>", "extension:<id>", "mcp"
     pub id: String,
     pub scopes: Vec<Scope>,
-    /// Folders `fs.*` may touch; `None` = anywhere (the owner)
+    /// Folders `fs.*` may touch; `None` = anywhere (the user)
     pub roots: Option<Vec<PathBuf>>,
     pub on_denied: OnDenied,
-    /// Only the owner approves, and only the owner opens UI on the host
+    /// Only the user approves, and only the user opens UI on the host
     pub owner: bool,
 }
 
 impl Principal {
     /// The person at the machine: the session token, the native pipe, the in-process library, or
-    /// any caller while API authentication is off (the owner's setting)
+    /// any caller while API authentication is off (the user's setting)
     pub fn owner() -> Self {
         Self { id: "owner".into(), scopes: Scope::ALL.to_vec(), roots: None, on_denied: OnDenied::Error, owner: true }
     }

@@ -1,4 +1,4 @@
-//! Approvals: the owner's yes for one exact call. An approval is bound to the
+//! Approvals: the user's yes for one exact call. An approval is bound to the
 //! principal, the method and a hash of the params, is used once, and expires.
 
 use crate::error::CepError;
@@ -27,7 +27,7 @@ pub struct Approval {
     pub id: String,
     pub principal: String,
     pub method: String,
-    /// What the owner is shown: a path, a command, a tool
+    /// What the user is shown: a path, a command, a tool
     pub target: String,
     #[serde(skip)]
     pub digest: [u8; 32],
@@ -38,7 +38,7 @@ pub struct Approval {
     expires_ms: u64,
 }
 
-/// The owner's answer, for a caller that waits (the chat agent loop)
+/// The user's answer, for a caller that waits (the chat agent loop)
 #[derive(Debug, Clone, PartialEq)]
 pub struct Decision {
     pub approved: bool,
@@ -123,7 +123,7 @@ impl ApprovalStore {
     }
 
     /// A new pending approval, open for `ttl` (at most 90 days) instead of the usual time: a
-    /// flow's `approve` step may wait hours or days for the owner
+    /// flow's `approve` step may wait hours or days for the user
     pub fn request_for(&self, principal: &str, method: &str, digest: [u8; 32], target: &str, ttl: Option<Duration>) -> Approval {
         let now = now_ms();
         let ttl = ttl.unwrap_or(self.ttl).min(MAX_TTL);
@@ -164,7 +164,7 @@ impl ApprovalStore {
         valid
     }
 
-    /// The owner's answer to a pending approval
+    /// The user's answer to a pending approval
     pub fn decide(&self, id: &str, approved: bool, feedback: Option<String>) -> Result<Approval, CepError> {
         let decided = {
             let mut items = self.items();
@@ -185,7 +185,7 @@ impl ApprovalStore {
         Ok(decided)
     }
 
-    /// Waits for the owner's answer to `id` (the receiver ends if the approval is dropped)
+    /// Waits for the user's answer to `id` (the receiver ends if the approval is dropped)
     pub fn wait(&self, id: &str) -> oneshot::Receiver<Decision> {
         let (tx, rx) = oneshot::channel();
         self.waiters.lock().unwrap_or_else(|e| e.into_inner()).insert(id.to_string(), tx);

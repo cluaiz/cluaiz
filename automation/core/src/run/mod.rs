@@ -42,7 +42,7 @@ pub struct RunRequest {
     /// The flow, already validated
     pub flow: Value,
     pub scope: String,
-    /// The permissions the owner confirmed
+    /// The permissions the user confirmed
     pub permissions: Value,
     pub inputs: Value,
     /// The whole trigger data, with `kind` (and `id`, `by`…)

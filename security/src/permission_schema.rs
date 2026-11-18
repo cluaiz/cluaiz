@@ -33,14 +33,14 @@ fn default_api_host() -> String {
     "0.0.0.0".to_string()
 }
 
-/// What CEP `system.exec` may do. Both off by default: every call asks the owner, and only a
+/// What CEP `system.exec` may do. Both off by default: every call asks the user, and only a
 /// program with its arguments runs (no shell line).
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub struct ExecPolicy {
     /// Accept `{"command": "<shell line>"}` (cmd /C, sh -c) besides `{"program", "args"}`
     #[serde(default)]
     pub allow_shell: bool,
-    /// Run without the owner's approval of each call
+    /// Run without the user's approval of each call
     #[serde(default)]
     pub without_approval: bool,
 }

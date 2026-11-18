@@ -2,7 +2,7 @@
 //!
 //! `assess` decides whether a call needs the user's approval. `request` registers it in the CEP
 //! approval store, where the App sees it (`approvals.list`, and the SSE `permission_request` chunk
-//! when streaming), and `wait` holds the call until the owner answers (`approvals.approve` /
+//! when streaming), and `wait` holds the call until the user answers (`approvals.approve` /
 //! `approvals.reject`) or the time runs out.
 
 use crate::state::AppState;
@@ -129,7 +129,7 @@ fn read_only_trusted(entry: &cluaiz_agents::ToolEntry, master_mode: &str, functi
 
 /// A call waiting for the user's decision.
 pub struct PendingApproval {
-    /// The approval id the owner answers (`approvals.approve {approval_id}`)
+    /// The approval id the user answers (`approvals.approve {approval_id}`)
     pub request_id: String,
     decision: oneshot::Receiver<Decision>,
 }

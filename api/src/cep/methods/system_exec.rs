@@ -1,6 +1,6 @@
-//! `system.exec`: runs a program on the host. Admin scope, never an MCP tool, the owner's approval
+//! `system.exec`: runs a program on the host. Admin scope, never an MCP tool, the user's approval
 //! on every call, and a program with its arguments by default. A shell line (`cmd /C`, `sh -c`) and
-//! running without approval are the owner's choices in permission.json (`exec.allow_shell`,
+//! running without approval are the user's choices in permission.json (`exec.allow_shell`,
 //! `exec.without_approval`, both off).
 
 use crate::cep::roots::invalid;

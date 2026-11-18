@@ -18,7 +18,7 @@ pub struct EnableParams {
     pub name: String,
     /// Which flow of that name. Absent: the project's, then the user's
     pub scope: Option<ScopeName>,
-    /// The owner accepts the permissions the file asks for
+    /// The user accepts the permissions the file asks for
     pub permissions_confirmed: Option<bool>,
     /// Only these trigger ids (default all)
     pub triggers: Option<Vec<String>>,

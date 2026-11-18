@@ -2,7 +2,7 @@ pub mod slots;
 
 /// Shared filesystem authorization for every attachment consumer. Remote/inline data
 /// has no client-selected local file; temporary source lifetime belongs to cluaiz-media.
-/// Standard routes execute as the authenticated owner. CEP methods check their own `Call` principal.
+/// Standard routes execute as the authenticated user. CEP methods check their own `Call` principal.
 pub(crate) async fn authorize_source(
     state: &std::sync::Arc<crate::AppState>,
     source: &mut String,

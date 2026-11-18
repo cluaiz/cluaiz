@@ -81,7 +81,7 @@ pub struct SaveParams {
     pub scope: Option<ScopeName>,
     /// Replace a flow of the same name; default false
     pub overwrite: Option<bool>,
-    /// The owner accepted `permissions_needed` from the last answer
+    /// The user accepted `permissions_needed` from the last answer
     pub permissions_confirmed: Option<bool>,
     /// Turn its triggers on after saving (default true)
     pub enable: Option<bool>,
@@ -110,7 +110,7 @@ pub async fn save(ctx: CallCtx, call: Call, params: SaveParams) -> Result<Value,
         }
         owner_confirms(&call, &format!("replace the flow file {}", common::display(&existing.path)))?;
     }
-    // What the owner must have confirmed: what the file lists, and what its steps use
+    // What the user must have confirmed: what the file lists, and what its steps use
     let wanted = permissions::merge(flow.get("permissions").unwrap_or(&Value::Null), &report.permissions_needed);
     let confirmed = store.settings(scope, &name)["permissions"].clone();
     if !permissions::covers(&confirmed, &wanted) {

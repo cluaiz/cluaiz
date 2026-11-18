@@ -1,7 +1,7 @@
 //! Flows offered as tools: the `tool` trigger (docs/automation/triggers.md#tool). An enabled flow
 //! with one is listed for MCP clients next to the Engine's methods as `flow.<name>` (MCP tool
 //! names cannot hold the `:` of `flow:<name>`); its parameters are the flow's `inputs`, and a
-//! call runs it and answers with its outputs. A flow that changes things asks the owner first.
+//! call runs it and answers with its outputs. A flow that changes things asks the user first.
 
 use crate::catalog::Snapshot;
 use crate::engine::EngineDoor;
@@ -101,9 +101,9 @@ pub async fn list(state: Arc<AppState>) -> Vec<Value> {
         .collect()
 }
 
-/// Whether a call asks the owner first. `confirm` is `true` (always), `false` (never), or a mode:
+/// Whether a call asks the user first. `confirm` is `true` (always), `false` (never), or a mode:
 /// `strict` always, `sandboxed` when the flow changes something, `full_access` never, and `auto`
-/// the owner's agent security mode at the time of the call. Absent, it is `sandboxed`.
+/// the user's agent security mode at the time of the call. Absent, it is `sandboxed`.
 fn must_confirm(confirm: Option<&Value>, changes: bool) -> bool {
     let by_mode = |mode: &str| match mode {
         "strict" => true,
@@ -139,7 +139,7 @@ pub async fn call(state: Arc<AppState>, tool: String, arguments: Map<String, Val
         CepError::invalid_params(error.message, errors, None)
     })?;
     let confirm = must_confirm(offered.spec.field("confirm"), changes(&offered, &catalog));
-    // A chat asked the owner with its own approval card already
+    // A chat asked the user with its own approval card already
     if confirm && !caller.confirmed {
         let approvals = &state.cep.shared().approvals;
         let digest = cluaiz_cep::approval::params_digest(&json!({ "flow": name, "inputs": inputs }));

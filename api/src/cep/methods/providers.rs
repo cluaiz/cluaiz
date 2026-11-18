@@ -1,6 +1,6 @@
 //! `providers.*`: the model providers in providers.json (services with an OpenAI-compatible API),
 //! whose models a chat request names as `<provider>/<model>`. Replies never hold a key: only where
-//! it comes from (`env MYAPI_KEY`, `file sk-a…a1b2`). API authentication stays the owner's
+//! it comes from (`env MYAPI_KEY`, `file sk-a…a1b2`). API authentication stays the user's
 //! setting; these methods only add a `warning` when it is off and keys are set up.
 
 use std::collections::BTreeMap;
