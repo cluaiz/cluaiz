@@ -40,3 +40,12 @@ channel = "pre-release"
 [profile.dev]
 debug = false
 split-debuginfo = "off"
+
+# Release: the same speed or faster, smaller binary. lto "thin" and one codegen unit optimize
+# across crates; strip removes the symbol table (Windows keeps debug info in the .pdb anyway).
+# Not used: opt-level "s"/"z" (size before speed, "z" turns off loop vectorization) and
+# panic = "abort" (catch_unwind keeps a bad PDF or media file from stopping the Engine).
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
