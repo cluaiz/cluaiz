@@ -332,29 +332,27 @@ impl EngineHost {
                 plan = self.load_model_inner(&path_str, &better, settings).await?;
             }
         }
-        // A load that left less than the minimum reserve free took more than planned (the load
-        // records it, `load_model_inner`): planned again on the same free memory, that gives a
-        // smaller placement, loaded once. The same plan is never loaded again.
+        // A load that took more than planned steps down once to a smaller placement (`after_low_vram`)
         for _ in 0..2 {
             let free = cluaiz_hw::HardwareProber::with_live_memory().gpus.first().map_or(0.0, |g| g.vram_available_gb);
-            let reserve = cluaiz_plan::margin::DEVICE_RESERVE_MIN_GB;
-            if plan.n_gpu_layers == 0 || hw.gpus.is_empty() || free >= reserve {
-                break;
+            match Planner::after_low_vram(&plan, &geometry, free, &hw, settings) {
+                cluaiz_plan::StepDown::Keep => break,
+                cluaiz_plan::StepDown::NoSmaller => {
+                    tracing::warn!(
+                        "⚠️ [EngineHost] Only {:.2} GB VRAM left after the load and no smaller placement to load",
+                        free
+                    );
+                    break;
+                }
+                cluaiz_plan::StepDown::Smaller(safe) => {
+                    tracing::warn!(
+                        "⚠️ [EngineHost] Only {:.2} GB VRAM left after the load; loading {} blocks on the GPU and {} tokens ({:.2} GB planned, was {:.2})",
+                        free, safe.block_split().0, safe.context_window, safe.vram_budget_gb, plan.vram_budget_gb
+                    );
+                    self.unload_model_inner().await;
+                    plan = self.load_model_inner(&path_str, &safe, settings).await?;
+                }
             }
-            let safe = Planner::create_plan(model_id, &geometry, &hw, settings);
-            if !safe.is_feasible() || safe.vram_budget_gb + 0.01 >= plan.vram_budget_gb {
-                tracing::warn!(
-                    "⚠️ [EngineHost] Only {:.2} GB VRAM left after the load (reserve {:.2}) and no smaller placement to load",
-                    free, reserve
-                );
-                break;
-            }
-            tracing::warn!(
-                "⚠️ [EngineHost] Only {:.2} GB VRAM left after the load (reserve {:.2}); loading {} blocks on the GPU and {} tokens ({:.2} GB planned, was {:.2})",
-                free, reserve, safe.block_split().0, safe.context_window, safe.vram_budget_gb, plan.vram_budget_gb
-            );
-            self.unload_model_inner().await;
-            plan = self.load_model_inner(&path_str, &safe, settings).await?;
         }
         *self.current_plan.lock().await = Some(plan.clone());
         *self.loaded_settings.lock().await = Some(settings.clone());

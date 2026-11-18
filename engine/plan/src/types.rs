@@ -180,51 +180,6 @@ impl ExecutionPlan {
         }
     }
 
-    /// Short plan report (plan values only): what a terminal shows after a load. The full banner,
-    /// with hardware and every candidate, is `format_telemetry_banner`.
-    pub fn summary(&self) -> String {
-        if !self.is_feasible() {
-            return self.rejected_summary();
-        }
-        let (gpu_blocks, ram_blocks) = self.block_split();
-        let kv_place = if self.kv_offload && self.n_gpu_layers != 0 { "next to its layers" } else { "in RAM" };
-        let mut out = format!(
-            "placement  {} | {} of {} blocks on GPU, {} in RAM | n_gpu_layers {}{}\n",
-            self.placement_label(), gpu_blocks, self.total_layers, ram_blocks, self.n_gpu_layers,
-            if self.n_cpu_moe > 0 { format!(" | n_cpu_moe {}", self.n_cpu_moe) } else { String::new() },
-        );
-        out.push_str(&format!("context    {} tokens | KV {:?} {}\n", self.context_window, self.kv_cache_type, kv_place));
-        out.push_str(&format!("memory     VRAM {:.2} GB | RAM {:.2} GB", self.vram_budget_gb, self.ram_budget_gb));
-        if self.disk_stream_gb > 0.0 {
-            out.push_str(&format!(" | {:.2} GB of experts read from disk", self.disk_stream_gb));
-        }
-        if self.moe_cache_bytes > 0 {
-            out.push_str(&format!(" | MoE cache {:.2} GB, CPU share {}", cluaiz_core::bytes_to_gib(self.moe_cache_bytes), self.moe_cache_cpu_share));
-        }
-        out.push_str(&format!("\nreason     {}", self.explanation));
-        out
-    }
-
-    /// A rejected plan: what the closest placement needs against what may be used, per device
-    fn rejected_summary(&self) -> String {
-        let Some(c) = self.closest_candidate() else {
-            return format!("placement  Rejected\nreason     {}", self.explanation);
-        };
-        let verdict = |need: f64, may: f64| {
-            if need <= may + 0.005 { "fits".to_string() } else { format!("{:.2} GB short", need - may) }
-        };
-        let ram_verdict = if c.disk_stream_gb > 0.0 {
-            "the rest read from the SSD".to_string()
-        } else {
-            verdict(c.ram_required_gb, self.ram_budget_limit_gb)
-        };
-        format!(
-            "placement  Rejected | closest: {}\nmemory     VRAM needs {:.2} GB, may use {:.2} GB ({}) | RAM needs {:.2} GB, may use {:.2} GB ({})\nreason     {}",
-            c.name, c.vram_required_gb, self.usable_vram_gb(), verdict(c.vram_required_gb, self.usable_vram_gb()),
-            c.ram_required_gb, self.ram_budget_limit_gb, ram_verdict, self.explanation,
-        )
-    }
-
     /// Formats the resource execution banner printed once per model load
     pub fn format_telemetry_banner(
         &self,
@@ -267,7 +222,7 @@ impl ExecutionPlan {
             geometry.architecture, geometry.block_count, geometry.head_count, geometry.head_count_kv,
             geometry.key_length, geometry.value_length, swa, moe_line));
         out.push_str(&format!("║   • Weights         : file {:.2} GB (as Hugging Face counts it) | input embeddings {:.2} GB (always CPU) | output head {:.2} GB | vocab {}\n",
-            geometry.file_size_bytes as f64 / 1e9, gib(w.input_cpu), gib(w.output_gpu()), geometry.vocab_size));
+            cluaiz_core::bytes_to_gb(geometry.file_size_bytes), gib(w.input_cpu), gib(w.output_gpu()), geometry.vocab_size));
         out.push_str(&format!("╠{}╣\n║ [CONTEXT]\n", line));
         out.push_str(&format!("║   • Native limit    : {} tokens\n", geometry.context_length));
         out.push_str(&format!("║   • Active context  : {} tokens, KV {:?} ({})\n", self.context_window, self.kv_cache_type, self.context_reason));

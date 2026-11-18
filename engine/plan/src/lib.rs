@@ -11,6 +11,6 @@ pub mod report;
 
 pub use types::{ExecutionPlan, ExecutionCandidate, PlacementTier};
 pub use planner::{
-    ram_budget_bytes, resolve_context, vram_buffer_options, ContextChoice, DeviceBudget, Planner,
+    ram_budget_bytes, resolve_context, vram_buffer_options, ContextChoice, DeviceBudget, Planner, StepDown,
     AUTO_CONTEXT_FLOOR, AUTO_CONTEXT_MIN, RAM_CEILING_FRACTION,
 };

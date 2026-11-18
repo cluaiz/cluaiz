@@ -628,3 +628,31 @@ fn a_moe_split_gets_the_share_of_the_correction_its_gpu_weights_are() {
     let added = a.vram_required_gb - b.vram_required_gb;
     assert!(added > 0.0 && added < 0.05, "{added}");
 }
+
+#[test]
+fn a_load_that_left_too_little_vram_steps_down_once_and_never_reloads_the_same_plan() {
+    // A size no other test uses: the learned margin is kept per model
+    let g = qwen3_like(2.23);
+    let s = settings(ContextSetting::Auto, KvCacheQuantization::Auto);
+    let planned_on = hw(3.6, 16.0);
+    let loaded = Planner::create_plan("step-down-test", &g, &planned_on, &s);
+    assert!(loaded.n_gpu_layers != 0 && loaded.is_feasible(), "{}", loaded.explanation);
+    // Enough left free: the plan stays
+    assert!(matches!(Planner::after_low_vram(&loaded, &g, 0.5, &planned_on, &s), StepDown::Keep));
+    // Too little left but nothing learned yet: re-planning gives the same plan, which is never loaded again
+    assert!(matches!(Planner::after_low_vram(&loaded, &g, 0.05, &planned_on, &s), StepDown::NoSmaller));
+    // The load recorded that the model needed 1.5 GB more than planned (more than any default gap):
+    // the next plan is smaller
+    crate::margin::record(&g, &s, 1.5);
+    match Planner::after_low_vram(&loaded, &g, 0.05, &planned_on, &s) {
+        StepDown::Smaller(next) => assert!(next.vram_budget_gb + 0.01 < loaded.vram_budget_gb,
+            "{} GB then {} GB", loaded.vram_budget_gb, next.vram_budget_gb),
+        other => panic!("expected a smaller plan, got {other:?}"),
+    }
+    // Nothing on the GPU, or no GPU: nothing to step down
+    let cpu = ExecutionPlan { n_gpu_layers: 0, ..loaded.clone() };
+    assert!(matches!(Planner::after_low_vram(&cpu, &g, 0.0, &planned_on, &s), StepDown::Keep));
+    let mut no_gpu = planned_on.clone();
+    no_gpu.gpus.clear();
+    assert!(matches!(Planner::after_low_vram(&loaded, &g, 0.0, &no_gpu, &s), StepDown::Keep));
+}

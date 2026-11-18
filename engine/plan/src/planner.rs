@@ -216,6 +216,14 @@ fn largest_fitting_context(ceiling: u32, fits: impl Fn(u32) -> bool) -> u32 {
 
 pub struct Planner;
 
+/// [`Planner::after_low_vram`]: keep the loaded plan, load a smaller one, or there is none smaller
+#[derive(Debug)]
+pub enum StepDown {
+    Keep,
+    Smaller(Box<ExecutionPlan>),
+    NoSmaller,
+}
+
 /// Bytes of one llama.cpp placement (weights + KV + logits buffer per device).
 struct Placement {
     vram: u64,
@@ -253,6 +261,29 @@ impl Planner {
             || next.kv_offload != failed.kv_offload
             || next.moe_cache_bytes != failed.moe_cache_bytes;
         (next.is_feasible() && changed).then_some(next)
+    }
+
+    /// What to do after a load that left `free_after_gb` of VRAM free. Less than
+    /// [`crate::margin::DEVICE_RESERVE_MIN_GB`] means the load took more than planned (the load has
+    /// recorded what it took): planned again on the free memory the load was planned with
+    /// (`planned_on`), that gives a smaller placement. The same plan, or a larger one, is never
+    /// loaded again.
+    pub fn after_low_vram(
+        loaded: &ExecutionPlan,
+        geometry: &ModelGeometry,
+        free_after_gb: f64,
+        planned_on: &SystemInfo,
+        settings: &ActiveUserSettings,
+    ) -> StepDown {
+        if loaded.n_gpu_layers == 0 || planned_on.gpus.is_empty() || free_after_gb >= crate::margin::DEVICE_RESERVE_MIN_GB {
+            return StepDown::Keep;
+        }
+        let next = Self::create_plan(&loaded.model_id, geometry, planned_on, settings);
+        if next.is_feasible() && next.vram_budget_gb + 0.01 < loaded.vram_budget_gb {
+            StepDown::Smaller(Box::new(next))
+        } else {
+            StepDown::NoSmaller
+        }
     }
 
     pub fn create_plan(
@@ -776,4 +807,4 @@ fn moe_cache_split(
 #[cfg(test)]
 pub(crate) mod tests;
 #[cfg(test)]
-mod matrix;
+pub(crate) mod matrix;

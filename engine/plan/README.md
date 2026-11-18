@@ -152,6 +152,9 @@ After a load:
   smaller placement. The same plan is not loaded twice.
 - a load that llama.cpp cannot allocate records the miss and loads the next smaller placement.
 
+Both decisions are planner functions with unit tests (`Planner::after_low_vram`,
+`Planner::after_failed_load`); the host only loads what they return.
+
 ## RAM buffer
 
 Auto keeps 5% of total RAM free, at most 4 GB (`RAM_RESERVE_MAX_GB`), counting what other apps use now.
@@ -159,13 +162,21 @@ A GB buffer set by the user (`custom_ram_buffer_gb`) replaces it.
 
 ## Plan report
 
-`cluaiz show` prints, per device: free now, kept free (and why), what Cluaiz may use, what goes there
-(weights, KV, llama.cpp's working space, MoE cache) and whether the total fits; then what is read from
-the SSD, a one-line summary, the context and KV choice, the same placement as llama.cpp flags, the
-measured speed, and the other placements with what each needs. A rejected plan shows the placement
-closest to fitting, its shortfall per device and what would make it fit. Every number comes from the
-plan (`vram_weights_gb`, `ram_weights_gb`, `vram_free_gb`, `ram_free_gb` and the candidate fields);
-`system.plan` returns the same values as data.
+Two sizes, built from the same parts in [`report.rs`](src/report.rs):
+
+- `cluaiz show`: MODEL, THIS MACHINE NOW, YOUR SETTINGS (only the ones that change the plan), then
+  PLAN. For a MoE split it first says how the blocks are split (attention / experts and where each
+  goes). Then, per device: free now, kept free and why, what Cluaiz may use, what goes there
+  (weights, KV, llama.cpp's working space, MoE cache) and whether the total fits; what is read from
+  the SSD; a one-line summary; context, KV, the same placement as llama.cpp flags, speed; and the
+  other placements with what each needs.
+- After a load (`run`, chat header, `bench`, `/plan`): placement, GPU and RAM totals with what goes
+  there, SSD, context and KV, llama.cpp flags and the reason.
+
+A rejected plan shows the placement closest to fitting, its shortfall per device and what would make
+it fit. Every number comes from the plan (`vram_weights_gb`, `ram_weights_gb`, `vram_free_gb`,
+`ram_free_gb` and the candidate fields); `system.plan` returns the same values as data. A test builds
+both reports for every plan of the rule table.
 
 Memory is in GB of 1024³ bytes, as the OS reports RAM and VRAM. File sizes are in GB as Hugging Face
 counts them (10⁹ bytes), as `cluaiz pull` and `cluaiz list` show them. A negative measured gap is

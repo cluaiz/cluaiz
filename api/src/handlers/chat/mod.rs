@@ -30,6 +30,7 @@ use serde_json::json;
 use std::sync::Arc;
 
 pub use tool_parser::{extract_tool_call, ExtractedToolCall};
+pub use tool_turns::template_renders_tools;
 pub use types::{
     ExternalChatRequest, ExternalMessage, MessageContent, TemporaryChatMode, DEFAULT_MAX_TOKENS,
 };

@@ -127,16 +127,24 @@ fn broken_rules(plan: &ExecutionPlan, g: &ModelGeometry, h: &SystemInfo) -> Vec<
     out
 }
 
-#[test]
-fn placement_rules_hold_across_gpus_models_ram_and_settings() {
+/// One row of the rule table: its label, the model, the machine, the settings and the plan
+pub(crate) struct Row {
+    pub label: String,
+    pub geometry: ModelGeometry,
+    pub hardware: SystemInfo,
+    pub settings: ActiveUserSettings,
+    pub plan: ExecutionPlan,
+}
+
+/// Every plan of the rule table: models x measurement states x settings x GPU sizes x free RAM
+pub(crate) fn all_plans() -> Vec<Row> {
     let cards: [Option<f64>; 7] = [None, Some(2.0), Some(4.0), Some(6.0), Some(8.0), Some(12.0), Some(24.0)];
     let rams = [("RAM plenty", 28.0), ("RAM tight", 12.0), ("RAM short", 5.0)];
     let setting_rows = [
         ("Auto", settings(ContextSetting::Auto, KvCacheQuantization::Auto)),
         ("Custom 32768", settings(ContextSetting::Custom(32768), KvCacheQuantization::Auto)),
     ];
-    let mut failures = Vec::new();
-    let mut rows = 0;
+    let mut rows = Vec::new();
     for (m, (model_name, base)) in models().into_iter().enumerate() {
         for (k, state) in ["dry run", "no dry run", "estimate measured 0.6 GB too high"].into_iter().enumerate() {
             let g = sized(base.clone(), m as u64 * 3 + k as u64);
@@ -157,21 +165,31 @@ fn placement_rules_hold_across_gpus_models_ram_and_settings() {
                     for (ram_name, ram_free) in rams {
                         let h = machine(gpu, ram_free);
                         let plan = Planner::create_plan("matrix", &g, &h, s);
-                        rows += 1;
-                        for rule in broken_rules(&plan, &g, &h) {
-                            failures.push(format!(
-                                "{model_name} | {state} | {setting_name} | GPU {} | {ram_name}: {rule}\n    plan: {}",
-                                card.map_or("none".to_string(), |t| format!("{t} GB")),
-                                plan.explanation
-                            ));
-                        }
+                        let label = format!("{model_name} | {state} | {setting_name} | GPU {} | {ram_name}",
+                            card.map_or("none".to_string(), |t| format!("{t} GB")));
+                        rows.push(Row { label, geometry: g.clone(), hardware: h, settings: s.clone(), plan });
                     }
                 }
             }
         }
     }
-    assert!(rows > 500, "{rows} rows");
-    assert!(failures.is_empty(), "{} of {rows} rows broke a rule:\n{}", failures.len(), failures.join("\n"));
+    rows
+}
+
+#[test]
+fn placement_rules_hold_across_gpus_models_ram_and_settings() {
+    let rows = all_plans();
+    let mut failures = Vec::new();
+    for row in &rows {
+        for rule in broken_rules(&row.plan, &row.geometry, &row.hardware) {
+            failures.push(format!("{}: {rule}
+    plan: {}", row.label, row.plan.explanation));
+        }
+    }
+    assert!(rows.len() > 500, "{} rows", rows.len());
+    assert!(failures.is_empty(), "{} of {} rows broke a rule:
+{}", failures.len(), rows.len(), failures.join("
+"));
 }
 
 #[test]

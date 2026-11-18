@@ -333,7 +333,10 @@ async fn main() -> Result<()> {
         }
         SetConsoleOutputCP(65001);
     }
-    std::env::set_var("GGML_LOG_LEVEL", "ERROR");
+    // ggml's own log is errors only, unless the user set GGML_LOG_LEVEL to debug llama.cpp
+    if std::env::var_os("GGML_LOG_LEVEL").is_none() {
+        std::env::set_var("GGML_LOG_LEVEL", "ERROR");
+    }
     color_eyre::install()?;
 
     // Colours only on a terminal (NO_COLOR is honoured by `colored` itself)
