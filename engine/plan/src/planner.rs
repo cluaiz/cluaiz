@@ -270,7 +270,42 @@ impl Planner {
                 return smaller;
             }
         }
-        plan
+        Self::fewer_disk_reads(plan, model_id, geometry, hardware, settings)
+    }
+
+    /// A MoE model that reads experts from disk: the context is chosen before the experts are
+    /// placed, so a bigger KV cache can take the VRAM that would have held expert layers and send
+    /// them to the disk instead (more free VRAM then read more from disk). With the KV type on Auto,
+    /// KV Q8 (near lossless; Q4 is not used for this) is tried, and the plan reading less from disk
+    /// is kept (owner's rule: among placements that fit, the one that reads the least from the SSD).
+    fn fewer_disk_reads(
+        plan: ExecutionPlan,
+        model_id: &str,
+        geometry: &ModelGeometry,
+        hardware: &SystemInfo,
+        settings: &ActiveUserSettings,
+    ) -> ExecutionPlan {
+        let kv_auto = settings.optimization.kv_cache_quantization == KvCacheQuantization::Auto;
+        if plan.disk_stream_gb <= 0.0 || !kv_auto || settings.optimization.is_manual_placement() {
+            return plan;
+        }
+        let mut best = plan;
+        for kv in [KvCacheQuantization::Kv8] {
+            if best.kv_cache_type == kv || best.disk_stream_gb <= 0.0 {
+                continue;
+            }
+            let mut smaller_kv = settings.clone();
+            smaller_kv.optimization.kv_cache_quantization = kv;
+            let mut other = Self::plan(model_id, geometry, hardware, &smaller_kv, false);
+            if other.is_feasible() && other.disk_stream_gb + 0.01 < best.disk_stream_gb {
+                other.context_reason = format!(
+                    "{}; KV {:?} instead of {:?} so {:.2} GB less of the experts is read from disk",
+                    other.context_reason, kv, best.kv_cache_type, best.disk_stream_gb - other.disk_stream_gb
+                );
+                best = other;
+            }
+        }
+        best
     }
 
     fn plan(
@@ -652,3 +687,5 @@ fn moe_cache_split(
 
 #[cfg(test)]
 pub(crate) mod tests;
+#[cfg(test)]
+mod matrix;
