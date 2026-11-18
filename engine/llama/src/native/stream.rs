@@ -631,6 +631,7 @@ pub(crate) fn stream_tokens_with_media(
             } else if cached_before == 0 {
                 "cold"
             } else if n_past + 1 < common_prefix.min(prompt_tokens.len()) {
+                report.edit_at = Some(common_prefix);
                 "restart"
             } else if common_prefix >= cached_before {
                 "append"

@@ -52,6 +52,9 @@ pub struct PreparedChatContext {
     /// Chat id and key of the current user message, for recording this turn in the chat's
     /// ledger (None for private chats and requests without a session)
     pub ledger_turn: Option<(String, String)>,
+    /// Conversation and key of the current user message for a request without a session id,
+    /// whose ledger is kept in memory only (`live_ledger`)
+    pub live_turn: Option<(u64, String)>,
     /// The tool hint put in front of the current user message
     pub tool_hint: String,
     /// What the Engine chose about tools for this request (the tools part of `context_report`)
@@ -484,7 +487,15 @@ impl PreparedChatContext {
         // The chat's ledger: what the Engine added to its earlier turns (tool hints and tool
         // steps), which the client does not send back. Private chats keep none.
         let ledger_chat = request.session_id.clone().filter(|_| request.temporary_chat.is_none());
-        let ledger = ledger_chat.as_deref().map(cluaiz_agents::ChatLedger::get);
+        // Without a session id the conversation's ledger lives in memory only, so its next turn
+        // renders this one the same way and reuses the KV cache (`live_ledger`)
+        let live_conversation = (request.session_id.is_none() && request.temporary_chat.is_none())
+            .then(|| super::live_ledger::conversation(&request.messages));
+        let ledger = match (&ledger_chat, live_conversation) {
+            (Some(chat), _) => Some(cluaiz_agents::ChatLedger::get(chat)),
+            (None, Some(conversation)) => super::live_ledger::get(conversation),
+            (None, None) => None,
+        };
         if let (Some(chat), Some(saved)) = (&ledger_chat, &ledger) {
             // After a restart the chat's loaded tools come back from disk
             cluaiz_agents::SessionToolManager::restore_if_missing(chat, saved.bindings.clone());
@@ -1332,7 +1343,8 @@ impl PreparedChatContext {
             // Tools in the system prompt; tools loaded in the conversation can still be found
             // again (the turn holding them may have been dropped for room)
             loaded_tool_ids: tool_ids_to_compile.clone(),
-            ledger_turn: ledger_chat.clone().zip(current_turn_key),
+            ledger_turn: ledger_chat.clone().zip(current_turn_key.clone()),
+            live_turn: if request.preview { None } else { live_conversation.zip(current_turn_key) },
             message_count: request.messages.len(),
             memory_tools: memory_tools || remember_tool,
             z0_note_ids,
@@ -1536,8 +1548,18 @@ pub fn tool_event(name: &str, payload: &str, result: &str) -> serde_json::Value 
     })
 }
 
-/// Records what the Engine added to the turn that just ended (its tool hint and tool steps)
-/// and the chat's current tool bindings, so the next request renders this turn the same way
+/// What the Engine added to the turn that just ended (its block and tool steps), the pinned notes
+/// of the system prompt and the project items sent whole, so the next request renders the same
+fn add_turn(ledger: &mut cluaiz_agents::ChatLedger, ctx: &PreparedChatContext, key: &str, steps: Vec<cluaiz_agents::RecordedStep>) {
+    ledger.set_turn(cluaiz_agents::TurnRecord { key: key.to_string(), block: ctx.tool_hint.clone(), steps });
+    ledger.notes = Some(ctx.z0_note_ids.clone());
+    for item in &ctx.project_sent {
+        if !ledger.project_sent.contains(item) {
+            ledger.project_sent.push(item.clone());
+        }
+    }
+}
+
 /// Records what the Engine added to the turn that just ended. Returns, for a chat the app keeps
 /// (external storage), every event this request added, for the app to store.
 pub fn record_turn(
@@ -1548,6 +1570,11 @@ pub fn record_turn(
     tool_events: &[serde_json::Value],
 ) -> Option<serde_json::Value> {
     let Some((chat, key)) = &ctx.ledger_turn else {
+        if let Some((conversation, key)) = &ctx.live_turn {
+            let mut ledger = super::live_ledger::get(*conversation).unwrap_or_default();
+            add_turn(&mut ledger, ctx, key, steps);
+            super::live_ledger::put(*conversation, ledger);
+        }
         return None;
     };
     super::ingest_events::ingest_turn(chat, &steps, tool_events, ctx.plan_report.get("compaction"), answer, ctx.message_count);
@@ -1583,14 +1610,8 @@ pub fn record_turn(
         }
     }
     let mut ledger = cluaiz_agents::ChatLedger::get(chat);
-    ledger.set_turn(cluaiz_agents::TurnRecord { key: key.clone(), block: ctx.tool_hint.clone(), steps });
+    add_turn(&mut ledger, ctx, key, steps);
     ledger.bindings = cluaiz_agents::SessionToolManager::get_session_tools(chat);
-    ledger.notes = Some(ctx.z0_note_ids.clone());
-    for key in &ctx.project_sent {
-        if !ledger.project_sent.contains(key) {
-            ledger.project_sent.push(key.clone());
-        }
-    }
     cluaiz_agents::ChatLedger::put(chat, ledger);
     // Every event the app has not had: this request's and answer's, and those added since the
     // last answer (an idle-time card, a note)

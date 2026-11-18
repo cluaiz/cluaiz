@@ -83,7 +83,7 @@ pub struct ContextReport {
     /// turns dropped to fit), "shift" (a continuation shifted the context), "restart" (the cache
     /// could not be cut at the change: sliding-window or recurrent memory), "media"
     pub cause: &'static str,
-    /// First prompt position that differs from the cache (cause "edit")
+    /// First prompt position that differs from the cache (causes "edit" and "restart")
     pub edit_at: Option<usize>,
     /// Messages the chat template did not show (indexes; see `missing_messages`)
     #[serde(skip_serializing_if = "Vec::is_empty")]
