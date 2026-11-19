@@ -491,7 +491,7 @@ impl EngineHost {
         result.map(|(loaded, _)| loaded)
     }
 
-    /// The load itself, with one retry one placement smaller when llama.cpp fails on the GPU
+    /// The load itself, retried in smaller placements (at most 3 loads) when llama.cpp fails on the GPU
     async fn load_model_attempts(
         &self,
         model_id: &str,
@@ -500,7 +500,7 @@ impl EngineHost {
         settings: &ActiveUserSettings,
     ) -> anyhow::Result<(ExecutionPlan, LoadFacts)> {
         let geometry = cluaiz_models::GgufProber::probe_geometry(std::path::Path::new(model_path))?;
-        let hw = crate::host::native_load::gguf_hardware();
+        let mut hw = crate::host::native_load::gguf_hardware();
 
         // The plan carries the exact llama.cpp values; nothing is re-derived here
         let target_fp = Self::load_key(model_path, settings);
@@ -535,55 +535,62 @@ impl EngineHost {
         let first = observed_load(model_id, 1, || load_with_plan(model_path, plan, settings, &hw, &mut dna_guard));
         drop(dna_guard);
         // A load that fails on the GPU (most often the KV cache or a compute buffer that did not fit)
-        // is planned once more: the miss is recorded, so the planner keeps that much more free on
-        // this GPU for this model and settings, and the next candidate is tried (plan §5.4)
+        // is planned again: the miss is recorded, so the planner keeps that much more free on this
+        // GPU for this model and settings, and the next, smaller candidate is tried (plan §5.4). At
+        // most `MAX_LOAD_ATTEMPTS` loads; the weight file is in the system's cache after the first,
+        // so a retry costs seconds.
         let mut facts = LoadFacts { attempts: 1, ..Default::default() };
-        let (llama, retried) = match first {
-            Ok(llama) => (llama, None),
-            Err(error) => match Planner::after_failed_load(
-                plan,
-                &geometry,
-                hw.gpus.first().map_or(0.0, |g| g.vram_available_gb),
-                &crate::host::native_load::gguf_hardware(),
-                settings,
-            ) {
-                Some(next) => {
-                    crate::vram_use::save();
-                    tracing::warn!(
-                        "⚠️ [EngineHost] Load failed with {:?}, {} GPU layers, n_cpu_moe {}, {} tokens ({error:#}); retrying with {:?}, {} GPU layers, n_cpu_moe {}, {} tokens",
-                        plan.selected_tier, plan.n_gpu_layers, plan.n_cpu_moe, plan.context_window,
-                        next.selected_tier, next.n_gpu_layers, next.n_cpu_moe, next.context_window
-                    );
-                    load_events::publish(LoadEvent {
-                        kind: Some(load_events::Kind::Retry),
-                        attempt: Some(2),
-                        detail: Some(format!("{error:#}")),
-                        ..event_with_plan(LoadEvent { model: model_id.to_string(), ..Default::default() }, &next)
-                    });
-                    self.record_plan_report(next.format_telemetry_banner(&geometry, &hw, settings)).await;
-                    facts.attempts = 2;
-                    facts.first_error = Some(format!("{error:#}"));
-                    let mut dna_guard = self.dna.lock().await;
-                    let llama = observed_load(model_id, 2, || load_with_plan(model_path, &next, settings, &hw, &mut dna_guard))
-                        .map_err(|second| anyhow::anyhow!("{error:#}; the retry with a smaller placement failed too: {second:#}"))?;
-                    (llama, Some(next))
-                }
-                None => return Err(error),
-            },
+        let mut tried = plan.clone();
+        let mut outcome = first;
+        let llama = loop {
+            let error = match outcome {
+                Ok(llama) => break llama,
+                Err(error) => error,
+            };
+            if facts.attempts >= MAX_LOAD_ATTEMPTS {
+                return Err(error.context(format!("{} loads with smaller placements failed", facts.attempts)));
+            }
+            let live = crate::host::native_load::gguf_hardware();
+            let free_before = hw.gpus.first().map_or(0.0, |g| g.vram_available_gb);
+            let Some(next) = Planner::after_failed_load(&tried, &geometry, free_before, &live, settings) else {
+                return Err(error);
+            };
+            crate::vram_use::save();
+            facts.attempts += 1;
+            tracing::warn!(
+                "⚠️ [EngineHost] Load failed with {:?}, {} GPU layers, n_cpu_moe {}, {} tokens ({error:#}); retry {} of {}: {:?}, {} GPU layers, n_cpu_moe {}, {} tokens",
+                tried.selected_tier, tried.n_gpu_layers, tried.n_cpu_moe, tried.context_window,
+                facts.attempts, MAX_LOAD_ATTEMPTS,
+                next.selected_tier, next.n_gpu_layers, next.n_cpu_moe, next.context_window
+            );
+            load_events::publish(LoadEvent {
+                kind: Some(load_events::Kind::Retry),
+                attempt: Some(facts.attempts),
+                detail: Some(format!("{error:#}")),
+                ..event_with_plan(LoadEvent { model: model_id.to_string(), ..Default::default() }, &next)
+            });
+            self.record_plan_report(next.format_telemetry_banner(&geometry, &live, settings)).await;
+            facts.first_error.get_or_insert_with(|| format!("{error:#}"));
+            // What the next load takes is measured from what is free now
+            hw = live;
+            let attempt = facts.attempts;
+            let mut dna_guard = self.dna.lock().await;
+            outcome = observed_load(model_id, attempt, || load_with_plan(model_path, &next, settings, &hw, &mut dna_guard));
+            drop(dna_guard);
+            tried = next;
         };
         let retried_plan;
-        let plan = match retried {
-            Some(next) => {
-                retried_plan = ExecutionPlan {
-                    explanation: format!(
-                        "{} | load retry: the planned placement ({} GPU layers, {} tokens) failed to load; the miss was recorded",
-                        next.explanation, plan.n_gpu_layers, plan.context_window
-                    ),
-                    ..next
-                };
-                &retried_plan
-            }
-            None => plan,
+        let plan = if facts.attempts > 1 {
+            retried_plan = ExecutionPlan {
+                explanation: format!(
+                    "{} | load retry {}: the planned placement ({} GPU layers, {} tokens) failed to load; the miss was recorded",
+                    tried.explanation, facts.attempts, plan.n_gpu_layers, plan.context_window
+                ),
+                ..tried
+            };
+            &retried_plan
+        } else {
+            plan
         };
         let n_gpu_layers = plan.n_gpu_layers;
         let n_ctx = plan.context_window as u32;
@@ -1203,6 +1210,9 @@ struct GpuUse {
     free_before_gb: f64,
     planned_gb: f64,
 }
+
+/// llama.cpp loads one request may make: the planned placement and two smaller ones
+const MAX_LOAD_ATTEMPTS: u8 = 3;
 
 /// What a load did besides the plan it returns, for the load history
 #[derive(Default)]

@@ -25,7 +25,7 @@ pub enum Action {
 pub enum Outcome {
     /// Loaded (or unloaded)
     Ok,
-    /// llama.cpp could not load it, the retry included
+    /// llama.cpp could not load it, the retries included
     Failed,
     /// The planner found no placement that fits; nothing was loaded
     Refused,
@@ -59,8 +59,8 @@ pub struct Record {
     pub file: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub file_bytes: Option<u64>,
-    /// llama.cpp loads made for this action: 2 when the planned placement failed and one placement
-    /// smaller was tried
+    /// llama.cpp loads made for this action: more than 1 when the planned placement failed and
+    /// smaller ones were tried (at most 3)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub attempts: Option<u8>,
     /// Placement as loaded (`GpuOnly`, `MoE split`, …)

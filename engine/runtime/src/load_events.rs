@@ -1,5 +1,5 @@
 //! Live notices of a chat-model load while it runs: started (with the plan), each step (weights
-//! read in percent, a llama.cpp fallback, context, warmup), a retry one placement smaller, and how
+//! read in percent, a llama.cpp fallback, context, warmup), a retry in a smaller placement, and how
 //! it ended; also unloads. The CLI draws them, the API turns them into task progress and Engine
 //! events. Nobody listening costs nothing: a notice without subscribers is dropped. The finished
 //! action is kept in `load_history`; these are only the live view.

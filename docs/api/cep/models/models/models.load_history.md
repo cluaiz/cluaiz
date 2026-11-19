@@ -119,10 +119,10 @@ Each record:
 |---|---|
 | `seq`, `at` | Position in the history; RFC 3339 time the action ended |
 | `action` | `load` or `unload` |
-| `outcome` | `ok`; `failed` (llama.cpp could not load it, the retry included); `refused` (no placement fits, nothing was loaded) |
+| `outcome` | `ok`; `failed` (llama.cpp could not load it, the retries included); `refused` (no placement fits, nothing was loaded) |
 | `cause` | Loads only. `requested`; `remeasured` (the first load measured the model and a better placement fits); `step_down` (too little VRAM was left after the load, loaded one placement smaller) |
 | `model`, `file`, `file_bytes` | Installed model id, weight file, its size |
-| `attempts` | llama.cpp loads for this action: 2 when the planned placement failed and one placement smaller was tried |
+| `attempts` | llama.cpp loads for this action: more than 1 when the planned placement failed and smaller ones were tried (at most 3) |
 | `placement`, `n_gpu_layers`, `n_cpu_moe`, `n_ctx` | The placement as loaded (for `failed` and `refused`, as planned) |
 | `vram_planned_gb`, `vram_taken_gb` | VRAM the plan counted; free VRAM before the load minus after it. `vram_taken_gb` is absent when it could not be measured (no GPU, a load fallback, shared GPU memory) |
 | `ms` | Wall time of the action. A first load reads the weights from disk and is much slower than a load of a file the system has cached |

@@ -52,6 +52,11 @@ flowchart LR
 
 More detail: [src/README.md](src/README.md).
 
+While a model loads, `cluaiz run` shows what the load is doing on its loading line (`Loading model:
+reading weights 42%`, `making KV cache and compute buffers`, `did not fit; retry 2: …`). A local load
+gets the steps from `cluaiz_runtime::load_events` (`ui/spinner.rs`, `Spinner::follow_loads`); through
+a running server, from the `models.load` task (`chat/remote.rs`).
+
 ## Build
 
 Build it with `cargo build --release -p cmd` (only this package; building the whole workspace

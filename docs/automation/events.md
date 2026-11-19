@@ -33,7 +33,7 @@ What an [`engine` trigger](triggers.md#engine) or a [`wait`](steps/wait.md) with
 | `model.downloaded` | A download finished | `model`, `category`, `bytes` |
 | `model.load_started` | A chat model starts to load in a planned placement | `model`, `attempt`, `placement`, `n_gpu_layers`, `n_cpu_moe`, `n_ctx`, `vram_planned_gb`, `message` |
 | `model.load_step` | A load step: `step` is `weights` (`percent` read), `fallback` (`detail`), `context` or `warmup` | `model`, `attempt`, `step`, `percent`, `detail`, `message` |
-| `model.load_retry` | The planned placement did not load; one placement smaller is tried | `model`, `attempt`, placement fields, `detail`, `message` |
+| `model.load_retry` | A placement did not load; a smaller one is tried (at most 3 loads) | `model`, `attempt`, placement fields, `detail`, `message` |
 | `model.loaded` | A chat model was loaded into memory | `model`, `attempt`, placement fields, `vram_taken_gb`, `ms`, `message` |
 | `model.load_failed`, `model.load_refused` | It was not loaded (`refused`: no placement fits) | `model`, placement fields, `detail`, `ms`, `message` |
 | `model.unloaded` | A chat model left memory | `model`, `ms`, `message` |

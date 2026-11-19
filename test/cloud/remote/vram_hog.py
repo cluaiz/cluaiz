@@ -2,10 +2,12 @@
 Usage: vram_hog.py <start> <GB to leave free> <hold s>. <start> is seconds to wait, or `load` to wait
 until another process has taken 1 GB (the load has begun), so the memory goes while the model loads.
 Uses the CUDA runtime through ctypes."""
-import ctypes, glob, sys, time
+import ctypes, glob, os, sys, time
 
 start, leave_gb, hold = sys.argv[1], float(sys.argv[2]), float(sys.argv[3])
-paths = sorted(glob.glob("/usr/local/cuda/lib64/libcudart.so*")) or ["libcudart.so"]
+# Linux: the CUDA toolkit's runtime; Windows: the toolkit's (CUDA_PATH) cudart64_*.dll
+windows = sorted(glob.glob(os.path.join(os.environ.get("CUDA_PATH", ""), "bin", "**", "cudart64_*.dll"), recursive=True))
+paths = sorted(glob.glob("/usr/local/cuda/lib64/libcudart.so*")) or windows or ["libcudart.so"]
 cuda = ctypes.CDLL(paths[0])
 free, total = ctypes.c_size_t(), ctypes.c_size_t()
 

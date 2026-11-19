@@ -150,7 +150,8 @@ After a load:
   moved memory to Windows' shared GPU memory, so its size is not known; it is kept as needing all the
   VRAM that was free, and the model is planned again on the same free memory and loaded once with the
   smaller placement. The same plan is not loaded twice.
-- a load that llama.cpp cannot allocate records the miss and loads the next smaller placement.
+- a load that llama.cpp cannot allocate records the miss and loads the next smaller placement; the host
+  stops after three loads in all.
 
 Both decisions are planner functions with unit tests (`Planner::after_low_vram`,
 `Planner::after_failed_load`); the host only loads what they return.

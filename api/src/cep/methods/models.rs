@@ -243,7 +243,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         "models.load",
         Meta::new(
             Scope::Write,
-            "Loads an installed GGUF model using the existing Engine host. A task: its progress is the share of the weights read, its events the load's steps (started with the plan, a llama.cpp fallback, context, warmup, a retry one placement smaller)",
+            "Loads an installed GGUF model using the existing Engine host. A task: its progress is the share of the weights read, its events the load's steps (started with the plan, a llama.cpp fallback, context, warmup, a retry in a smaller placement, at most 3 loads)",
         )
         .task()
         .idempotent(false)

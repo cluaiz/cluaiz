@@ -9,7 +9,7 @@
 | [`models.embedding_room`](./models/models.embedding_room.md) | read | sync | Where each embedding model would run beside the chat model (GPU, CPU or no room) on today's free memory, and the one to recommend |
 | [`models.inspect`](./models/models.inspect.md) | read | sync | Raw GGUF metadata and tensor table of an installed model |
 | [`models.list`](./models/models.list.md) | read | sync | Installed registry entries, optionally filtered by category |
-| [`models.load`](./models/models.load.md) | write | task | Loads an installed GGUF model using the existing Engine host. A task: its progress is the share of the weights read, its events the load's steps (started with the plan, a llama.cpp fallback, context, warmup, a retry one placement smaller) |
+| [`models.load`](./models/models.load.md) | write | task | Loads an installed GGUF model using the existing Engine host. A task: its progress is the share of the weights read, its events the load's steps (started with the plan, a llama.cpp fallback, context, warmup, a retry in a smaller placement, at most 3 loads) |
 | [`models.load_history`](./models/models.load_history.md) | read | sync | This machine's chat-model loads, refusals, failures and unloads, oldest first: placement, VRAM planned and taken, attempts, time (the newest 500 are kept) |
 | [`models.remove`](./models/models.remove.md) | write | sync | Unloads the selected model if active and removes its installed package |
 | [`providers.list`](./providers/providers.list.md) | admin | sync | The model providers and their listed models; keys are never returned |
