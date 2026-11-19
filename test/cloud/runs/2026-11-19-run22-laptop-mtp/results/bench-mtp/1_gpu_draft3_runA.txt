@@ -1,0 +1,7 @@
+qwen3.5-2b-mtp-gguf-Q4_K_M | Full GPU | ngl 99 | n_cpu_moe 0 | n_ctx 4096 | greedy, thinking off, 3 runs each
+| prompt | tokens | t/s off | t/s on | gain | kept | prompt t/s off | prompt t/s on | same text |
+| ------ | -----: | ------: | -----: | ---: | ---: | -------------: | ------------: | :-------: |
+| code | 222 | 55.05 | 65.43 | 1.19x | 63% | 476.0 | 727.9 | yes |
+| chat | 152 | 54.81 | 46.83 | 0.85x | 35% | 503.0 | 798.6 | no |
+| list | 181 | 54.83 | 81.90 | 1.49x | 90% | 516.8 | 801.1 | yes |
+| long | 128 | 54.42 | 51.85 | 0.95x | 44% | 3068.7 | 3121.1 | no |

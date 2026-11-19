@@ -1,0 +1,24 @@
+== draft 1
+qwen3.5-2b-mtp-gguf-Q4_K_M | Full GPU | ngl 99 | n_cpu_moe 0 | n_ctx 4096 | greedy, thinking off, 2 runs each
+| prompt | tokens | t/s off | t/s on | gain | kept | prompt t/s off | prompt t/s on | same text |
+| ------ | -----: | ------: | -----: | ---: | ---: | -------------: | ------------: | :-------: |
+| code | 222 | 55.94 | 64.81 | 1.16x | 82% | 494.2 | 700.5 | yes |
+| chat | 152 | 55.01 | 58.98 | 1.07x | 64% | 498.0 | 782.3 | yes |
+| list | 181 | 56.64 | 70.44 | 1.24x | 98% | 519.1 | 794.7 | yes |
+| long | 128 | 56.54 | 61.80 | 1.09x | 74% | 3065.2 | 3213.1 | yes |
+== draft 2
+qwen3.5-2b-mtp-gguf-Q4_K_M | Full GPU | ngl 99 | n_cpu_moe 0 | n_ctx 4096 | greedy, thinking off, 2 runs each
+| prompt | tokens | t/s off | t/s on | gain | kept | prompt t/s off | prompt t/s on | same text |
+| ------ | -----: | ------: | -----: | ---: | ---: | -------------: | ------------: | :-------: |
+| code | 222 | 56.74 | 71.09 | 1.25x | 76% | 431.1 | 695.3 | no |
+| chat | 152 | 57.32 | 57.64 | 1.01x | 52% | 531.9 | 795.6 | no |
+| list | 181 | 57.46 | 79.45 | 1.38x | 95% | 550.3 | 854.5 | yes |
+| long | 128 | 56.59 | 59.28 | 1.05x | 56% | 3065.1 | 3261.1 | no |
+== draft 4
+qwen3.5-2b-mtp-gguf-Q4_K_M | Full GPU | ngl 99 | n_cpu_moe 0 | n_ctx 4096 | greedy, thinking off, 2 runs each
+| prompt | tokens | t/s off | t/s on | gain | kept | prompt t/s off | prompt t/s on | same text |
+| ------ | -----: | ------: | -----: | ---: | ---: | -------------: | ------------: | :-------: |
+| code | 222 | 56.90 | 61.85 | 1.09x | 52% | 486.2 | 741.5 | no |
+| chat | 152 | 57.12 | 47.72 | 0.84x | 28% | 520.4 | 842.9 | no |
+| list | 181 | 57.18 | 109.02 | 1.91x | 86% | 525.0 | 902.8 | yes |
+| long | 128 | 56.82 | 61.14 | 1.08x | 39% | 3102.4 | 4078.3 | yes |
