@@ -142,3 +142,107 @@ graph LR
 - **Observed image proof:** `test_session_encoded_images_change_answers_and_recover_text` used the same installed CPU model/projector pair and the same question for three encoded 128x128 fixtures: red PNG returned `Red`, blue PNG returned `Blue`, and blue JPEG returned `Blue`. Actual data URIs pass through `SourceResolver`, `prepare_chat`, the shared RGB decoder, native image encoder and the existing generation loop. Native logs show 81 image tokens per fixture. Ground-truth colors are asserted only in the test, never supplied in the prompt. The temporary resolver directory is empty after requests and plain text generation succeeds afterward: `1 passed; 0 failed`, 61.13 seconds. Image encoding, base64 and temporary-directory dependencies are test-only; no production decoder/encoder was added by this test.
 - **HTTP evidence:** `api/tests/media_contract.rs` additionally exercises actual loopback JSON/SSE chat routes, including one image plus inline audio request and image-preserving continuation. The final native CPU run passed in 104.92 seconds with fixture-specific configured workspace/decoded ceilings; see the API README for scope and resource refusal evidence.
 - **Proof limits:** the speech and solid-color fixtures do not certify App UI behavior, photographs, multiple images in one turn, full transcript accuracy across languages, driver failure recovery or full model/platform coverage. Upstream logs label audio experimental.
+
+## MTP speculative decoding (experimental)
+
+- **Status:** built and measured on one machine (RTX 3050 Laptop 4 GB, CUDA, Windows). Off by default,
+  switched on with `CLUAIZ_MTP=on`. Commit `d9ae0a48`.
+- **Files:** `native/speculative.rs` (Rust owner `MtpDrafter`), `ffi/speculative_bridge.cpp` (C ABI),
+  `native/stream.rs` (prefill hook, draft and check in the generation loop), `native/core.rs` (load),
+  `native/sampler.rs` (`sample_token_at`).
+
+### What it does
+
+Some models ship multi-token-prediction ("NextN") layers trained to predict tokens further ahead:
+Qwen3.5 / 3.6, GLM-4.5 and later, DeepSeek-V3, Step-3.5, MiMo and others (`src/models/*.cpp` in the
+pinned llama.cpp lists the graphs that use them). The NextN layers guess the next few tokens; the
+target model checks all guesses in one decode; every guess its own sampler would have picked is a
+token gained without a decode of its own. The text does not change, because a guess is kept only when
+the target's sampler picks the same token.
+
+```mermaid
+graph LR
+    P["Prompt chunk decoded (target)"] --> H["Drafter reads the target's hidden rows (cluaiz_mtp_process)"]
+    T["Token t sampled"] --> D["Drafter guesses d1..dk (cluaiz_mtp_draft)"]
+    D --> B["One target decode: t, d1..dk, logits for every row"]
+    B --> H2["Drafter reads this batch too"]
+    B --> S["Sample row 0, 1, ...: keep d_i while the target picks it"]
+    S -->|"first refusal or all kept"| R["KV of target and drafter cut after the last kept token"]
+    R --> T
+```
+
+### Decisions and why
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| Use llama.cpp's own drafter (`common_speculative`, type `draft-mtp`) through a C bridge | Same code as `llama-server --spec-type draft-mtp`; head modes per model (Gemma 4 shared KV, Step-3.5 chained heads, Qwen single head) stay upstream's job and follow llama.cpp updates | Re-implementing the drafter in Rust: duplicate logic that drifts from upstream |
+| Target decode and the check stay in Rust (`stream.rs`) | The Engine's sampler chain (reasoning budget, lazy tool grammar, JSON schema check, penalties) must judge every token; llama.cpp's `common_sampler` is not the Engine's chain | `common_sampler_sample_and_accept_n`: would bypass the Engine's sampler |
+| Each kept guess goes through the normal per-token path before the next row is sampled | Grammar and thinking state change after a token (the end of thinking wakes the tool grammar); sampling row i+1 before handling token i would use stale state | Sampling all rows first, then emitting |
+| Load with `load_mtp` only when MTP is asked for | NextN tensors are skipped unless asked (`llama-model.cpp:4118`); loading them always costs memory for nothing | Always load |
+| Target context gets `n_rs_seq = draft size` | Hybrid / recurrent models (Qwen3.5) can roll back refused guesses only with recurrent snapshots (`common_params_speculative::need_n_rs_seq`) | Checkpoint and restore the whole state per step |
+| MTP context `n_outputs_max = 1` | The drafter reads one token per step (`common_base_params_to_speculative`). Without it the context kept logits for 512 rows: +0.63 GB on a 248k vocabulary, spill into shared GPU memory, 26 t/s instead of 68 (measured, fixed before the commit) | llama.cpp's default (n_batch outputs) |
+| Draft size 3 (`CLUAIZ_MTP_DRAFT`) | llama-server's default `--spec-draft-n-max 3`; reports show acceptance falls with longer drafts (72% at 3, 83% at 2, 44% at 6 in the sources below) | Larger drafts |
+| No drafting for media prompts and after a context shift | The drafter did not see the media embeddings; after a shift its positions no longer match the target's. Both only lower acceptance, so there is no gain to keep | Feeding media rows to the drafter (not built) |
+| Off by default | Measured on one GPU only; several setups lose speed (table below); its memory is not in the load plan | On by default |
+
+### Measured
+
+RTX 3050 Laptop 4 GB, Windows, CUDA. `unsloth/Qwen3.5-2B-MTP-GGUF` Q4_K_M (NextN inside the file),
+`n_gpu_layers 99`, context 4096, temperature 0, `/v1/chat/completions`, three runs after one warm-up.
+llama.cpp b12534 (official Windows CUDA 12.4 build) on the same file and settings, run in the same
+hour.
+
+| Run | Without MTP | With MTP | Guesses kept |
+|---|---|---|---|
+| Cluaiz, 222-token answer | 67.8 t/s | 85.1 t/s | 64% |
+| llama-server b12534 | 66.6 t/s | 82.0 t/s | 145 / 228 |
+| Cluaiz, thinking on (268 tokens) | 66.0 t/s | 95.3 t/s | 75% |
+| Cluaiz, JSON schema answer (39 tokens) | 50.9 t/s | 76.0 t/s | 79% |
+
+- Text: identical with and without MTP in all six Cluaiz comparisons (byte compare of the answers).
+- VRAM after load: 1.83 GB without, 1.96 GB with MTP.
+- Placement changes the text: runs with 22 and 23 GPU layers gave different greedy answers, so text
+  and speed comparisons pin `n_gpu_layers`. llama-server's own plain and MTP answers also differed.
+
+### Where MTP is expected to lose (from sources, not measured here)
+
+Speculative decoding speedup is `E / (v + g*c)`: `E = (1 - a^(g+1)) / (1 - a)` tokens per target run
+(acceptance `a`, draft size `g`), `v` = time to check `g+1` tokens over the time for one, `c` = drafter
+cost over target cost (Leviathan et al., Equation 1 and Theorem 3.8; the theorem assumes `v = 1`).
+With all weights in VRAM a decode is limited by reading the weights once, so `v` stays near 1. It
+grows, and MTP can lose, when:
+
+| Setup | Reason | Source |
+|---|---|---|
+| MoE with experts in RAM (`n_cpu_moe`) | each checked token can route to other experts: more expert bytes read and computed on the CPU | ik_llama.cpp issue 1630; PR 22673 comment (6 GB laptop, 35B-A3B: best gain at draft 2) |
+| Low VRAM | NextN weights and the MTP context push layers off the GPU or spill to shared memory | PR 22673 (27B: +2.49 GiB); our 26 t/s run above |
+| Metal with K-quants at draft 1-2 | the small-batch kernel `mul_mv_ext` covers Q2_K..Q6_K only for 4-8 rows, IQ2/IQ3/IQ4_XS not at all | `llama.cpp/ggml/src/ggml-metal/ggml-metal-ops.cpp:2763-2790`; issue 23752 (M1 Max, 9B Q4_K_M: 25.3 t/s plain, 21.9 at draft 2) |
+| Long prompts | the drafter reads the target's hidden rows on every prompt chunk | PR 22673: prefill 1315 -> 665 t/s, "mainly due to Device-To-Host (D2H) embedding transfers" |
+| Sampling at temperature > 0 | the sampled token must equal the drafter's greedy guess | follows from sample-and-match; not measured |
+
+### Failure and recovery
+
+- Drafter cannot be made (no NextN layers, context creation fails): logged, the model runs without MTP.
+- Drafter fails to read a batch: drafting stops for that answer; generation continues plain.
+- Target cannot drop refused guesses (`llama_memory_seq_rm` false): the answer stops with `stop = error`
+  and an error line. Not seen in tests.
+- Generation stops with guesses unchecked: the KV of both contexts is cut back to the last kept token.
+
+### Sources
+
+- Leviathan, Kalman, Matias, *Fast Inference from Transformers via Speculative Decoding*, arXiv 2211.17192 (formulas read from the PDF).
+- llama.cpp PR 22673 (MTP support): https://github.com/ggml-org/llama.cpp/pull/22673
+- llama.cpp issue 23752 (MTP slower on an M1 Max): https://github.com/ggml-org/llama.cpp/issues/23752
+- ik_llama.cpp issue 1630 (MoE offload with speculative decoding): https://github.com/ikawrakow/ik_llama.cpp/issues/1630
+- Pinned llama.cpp: `common/speculative.cpp` (`common_speculative_impl_draft_mtp`, `common_speculative_init_result`), `examples/speculative-simple/speculative-simple.cpp` (the loop this follows).
+
+### Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| Auto on/off: MTP only when it does not change the placement, off with experts in RAM, measured per model and placement in `cluaiz bench` | MTP should be on by default where it is faster and off where it is slower | design proposed 2026-11-19; not built |
+| Memory of MTP in the load plan | a model that just fits may spill with MTP on | planner work (parked) |
+| Tests: GPU + RAM split, MoE `n_cpu_moe`, CPU only, weights larger than RAM, draft 1-4, temperature > 0, long prompt prefill | each can turn the gain into a loss (table above) | laptop runs |
+| Metal and Vulkan runs | reports disagree on Metal; Vulkan had wrong output in early reports | a Mac and a Vulkan machine |
+| Gemma 4 MTP sidecar file (`mtp-*.gguf`) | `pull` downloads it, the Engine does not use it | load it as a draft model (`common_speculative_init_result` takes its path) |
+| A setting / CLI flag and drafted/accepted counts in the engine report | env var only today; numbers only in the log | after Auto is decided |
