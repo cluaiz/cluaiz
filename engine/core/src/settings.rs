@@ -159,6 +159,11 @@ pub struct OptimizationControl {
     /// `--reasoning-budget-message`), so the model wraps up instead of stopping mid-thought. None = no text.
     #[serde(default)]
     pub reasoning_budget_message: Option<String>,
+    /// MTP speculative decoding with the model's own multi-token-prediction layers (llama.cpp
+    /// `--spec-type draft-mtp`). On = used when the model has them; Off and Auto = not used (the
+    /// Auto rules are not built yet, see engine/llama/README.md "MTP speculative decoding").
+    #[serde(default)]
+    pub mtp: FeatureState,
 }
 
 /// Thinking token budget ("Effort" in the app): how many tokens a reasoning model may think before it must
@@ -276,7 +281,7 @@ const OPTIMIZATION_FIELDS: &[&str] = &[
     "flash_attention", "kv_cache_quantization", "context_shifting", "custom_vram_buffer_gb",
     "custom_ram_buffer_gb", "n_gpu_layers", "think_mode", "batch_size", "ubatch_size", "use_mmap",
     "custom_context_window", "n_cpu_moe", "offload_kqv", "n_threads", "n_threads_batch", "op_offload",
-    "reasoning_effort", "thinking_presets", "reasoning_budget_message",
+    "reasoning_effort", "thinking_presets", "reasoning_budget_message", "mtp",
 ];
 
 /// Context window setting, same meaning as llama.cpp `n_ctx`: 0 = Auto, -1 = Max (native), N = exactly N.
@@ -422,7 +427,7 @@ impl OptimizationControl {
     /// When this string changes, the model must be reloaded; sampler settings are not part of it.
     pub fn load_fingerprint(&self) -> String {
         format!(
-            "ctx={:?}|ngl={:?}|ncmoe={:?}|kqv={:?}|opo={:?}|kv={:?}|fa={:?}|b={}|ub={}|mmap={}|vbuf={:?}|t={:?}/{:?}",
+            "ctx={:?}|ngl={:?}|ncmoe={:?}|kqv={:?}|opo={:?}|kv={:?}|fa={:?}|b={}|ub={}|mmap={}|vbuf={:?}|t={:?}/{:?}|mtp={}",
             self.context_setting(),
             self.n_gpu_layers,
             self.n_cpu_moe,
@@ -436,7 +441,13 @@ impl OptimizationControl {
             self.custom_vram_buffer_gb,
             self.n_threads,
             self.n_threads_batch,
+            self.mtp_on(),
         )
+    }
+
+    /// Whether this load uses MTP when the model has the layers for it (On only, until Auto has rules)
+    pub fn mtp_on(&self) -> bool {
+        self.mtp == FeatureState::On
     }
 
     /// True when the user fixed the placement (n_gpu_layers / n_cpu_moe / offload_kqv):
@@ -535,6 +546,7 @@ impl Default for OptimizationControl {
             reasoning_effort: ThinkingBudget::Auto,
             thinking_presets: ThinkingPresets::default(),
             reasoning_budget_message: None,
+            mtp: FeatureState::Auto,
         }
     }
 }
@@ -564,6 +576,8 @@ pub struct LlamaLoadParams {
     pub op_offload: Option<bool>,
     /// VRAM kept free in GB (replaces the 1024 / 512 MiB rule)
     pub vram_buffer_gb: Option<f64>,
+    /// MTP speculative decoding: "auto", "on", "off" (or true / false)
+    pub mtp: Option<serde_json::Value>,
 }
 
 impl LlamaLoadParams {
@@ -588,17 +602,10 @@ impl LlamaLoadParams {
             (None, None) => {}
         }
         if let Some(fa) = &self.flash_attn {
-            opt.flash_attention = match fa {
-                serde_json::Value::Bool(true) => FeatureState::On,
-                serde_json::Value::Bool(false) => FeatureState::Off,
-                serde_json::Value::String(s) => match s.to_lowercase().as_str() {
-                    "on" | "1" | "true" => FeatureState::On,
-                    "off" | "0" | "false" => FeatureState::Off,
-                    "auto" | "-1" => FeatureState::Auto,
-                    other => return Err(format!("flash_attn '{}': use \"auto\", \"on\" or \"off\"", other)),
-                },
-                other => return Err(format!("flash_attn {}: use \"auto\", \"on\" or \"off\"", other)),
-            };
+            opt.flash_attention = parse_feature("flash_attn", fa)?;
+        }
+        if let Some(mtp) = &self.mtp {
+            opt.mtp = parse_feature("mtp", mtp)?;
         }
         if let Some(n) = self.n_batch {
             opt.batch_size = Some(n);
@@ -625,6 +632,21 @@ impl LlamaLoadParams {
             opt.custom_vram_buffer_gb = Some(b);
         }
         Ok(())
+    }
+}
+
+/// An on / off / auto load value as llama.cpp flags take it (strings, numbers as strings, or booleans)
+fn parse_feature(field: &str, value: &serde_json::Value) -> Result<FeatureState, String> {
+    match value {
+        serde_json::Value::Bool(true) => Ok(FeatureState::On),
+        serde_json::Value::Bool(false) => Ok(FeatureState::Off),
+        serde_json::Value::String(s) => match s.to_lowercase().as_str() {
+            "on" | "1" | "true" => Ok(FeatureState::On),
+            "off" | "0" | "false" => Ok(FeatureState::Off),
+            "auto" | "-1" => Ok(FeatureState::Auto),
+            other => Err(format!("{field} '{other}': use \"auto\", \"on\" or \"off\"")),
+        },
+        other => Err(format!("{field} {other}: use \"auto\", \"on\" or \"off\"")),
     }
 }
 

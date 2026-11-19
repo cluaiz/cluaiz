@@ -108,6 +108,10 @@ command and subcommand at once; `cluaiz help <command> all` lists one command's.
 * Prompt and generation speed, like llama-bench (pp512, tg128). Runs locally.
 * `--placements` tests every placement that fits (full GPU, split, CPU only); the planner then
   loads the fastest one. See [measured speed](../engine/llm_optimization.md#measured-speed).
+* `--mtp-compare` measures MTP speculative decoding off and on for models with MTP layers: it answers a
+  few prompts (code, chat, a JSON list, a long text) greedily on the same placement and prints
+  generation speed, the share of guesses kept and whether the text changed. `--prompts <file>` uses
+  your own prompts (a JSON list of `{"name", "text", "max_tokens"}`).
 
 ---
 

@@ -12,7 +12,7 @@ use std::ffi::{c_char, c_void, CStr};
 use std::sync::atomic::{AtomicU64, Ordering};
 
 unsafe extern "C" {
-    fn cluaiz_mtp_init(model: *mut c_void, ctx: *mut c_void, n_max: i32, err: *mut c_char, err_len: usize) -> *mut c_void;
+    fn cluaiz_mtp_init(model: *mut c_void, ctx: *mut c_void, n_max: i32, p_min: f32, err: *mut c_char, err_len: usize) -> *mut c_void;
     fn cluaiz_mtp_free(mtp: *mut c_void);
     fn cluaiz_mtp_n_max(mtp: *const c_void) -> i32;
     fn cluaiz_mtp_process(mtp: *mut c_void, tokens: *const i32, pos: *const i32, output: *const i8, n_tokens: i32) -> bool;
@@ -44,6 +44,12 @@ pub fn draft_max() -> i32 {
     std::env::var("CLUAIZ_MTP_DRAFT").ok().and_then(|v| v.trim().parse().ok()).filter(|n| (1..=16).contains(n)).unwrap_or(DEFAULT_DRAFT_MAX)
 }
 
+/// The drafter's least probability for a guess (`CLUAIZ_MTP_PMIN`, 0..1); llama.cpp's default 0
+/// drafts `draft_max` tokens whatever the drafter's confidence
+pub fn p_min() -> f32 {
+    std::env::var("CLUAIZ_MTP_PMIN").ok().and_then(|v| v.trim().parse().ok()).filter(|p: &f32| (0.0..1.0).contains(p)).unwrap_or(0.0)
+}
+
 /// llama.cpp's MTP drafter over a loaded model and its context. Freed before the context. Used only
 /// by the thread that owns the context (every generation call holds `&mut NativeLlama`).
 pub struct MtpDrafter {
@@ -58,7 +64,7 @@ impl MtpDrafter {
     pub fn new(model: *mut c_void, ctx: *mut c_void, n_max: i32) -> Result<Self, String> {
         let mut err = [0 as c_char; 256];
         // SAFETY: model and ctx are live llama.cpp handles; err has room for its length.
-        let handle = unsafe { cluaiz_mtp_init(model, ctx, n_max, err.as_mut_ptr(), err.len()) };
+        let handle = unsafe { cluaiz_mtp_init(model, ctx, n_max, p_min(), err.as_mut_ptr(), err.len()) };
         if handle.is_null() {
             // SAFETY: the bridge writes a NUL-terminated string within the buffer.
             return Err(unsafe { CStr::from_ptr(err.as_ptr()) }.to_string_lossy().into_owned());

@@ -895,6 +895,11 @@ pub(crate) fn stream_tokens_with_media(
         let mtp_before = mtp.map(|m| m.totals());
         let mut check: Option<(Vec<i32>, usize)> = None;
         let mut row: i32 = -1;
+        // With MTP the prompt numbers are taken now (only the prompt was decoded so far) and the
+        // generation is timed here (see `NativeLlama::mtp_timings`)
+        let prompt_timings = mtp.map(|_| llama.timings());
+        let generation_started = std::time::Instant::now();
+        let mut tokens_out: i32 = 0;
 
         reasoning.poll(skip_requested(), &mut ended_by);
         let mut next_token_id =
@@ -940,6 +945,7 @@ pub(crate) fn stream_tokens_with_media(
 
             // sample_token already accepted this token into the chain (penalties see it once)
             history.push(next_token_id);
+            tokens_out += 1;
 
             // Convert token to UTF-8 piece (special = true ensures reasoning control tokens like <think> and <|channel> are emitted)
             let mut buf = [0u8; 256];
@@ -1211,6 +1217,16 @@ pub(crate) fn stream_tokens_with_media(
             let (drafted, accepted) = (drafted - drafted0, accepted - accepted0);
             if drafted > 0 {
                 info!("🔮 [MTP] {accepted} of {drafted} guessed tokens accepted ({:.0}%)", 100.0 * accepted as f64 / drafted as f64);
+                report.mtp = Some(crate::native::core::MtpReport { drafted, accepted });
+                if let Some(prompt) = prompt_timings {
+                    let ms = generation_started.elapsed().as_secs_f64() * 1000.0;
+                    llama.mtp_timings = Some(crate::native::core::GenerationTimings {
+                        predicted_n: tokens_out,
+                        predicted_ms: ms,
+                        predicted_per_second: if ms > 0.0 { tokens_out as f64 * 1000.0 / ms } else { 0.0 },
+                        ..prompt
+                    });
+                }
             }
         }
 

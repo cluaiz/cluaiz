@@ -7,4 +7,4 @@ pub mod native;
 pub mod moe_override;
 
 pub use native::core::tensor_type_names;
-pub use native::{gpu_offload_available, loaded_gpu_backends, route_llama_logs, ContextExceeded, ContextReport, GenerationTimings, NativeLlama, ThinkingReport, stream_tokens, extract_thinking_tags_native};
+pub use native::{gpu_offload_available, loaded_gpu_backends, route_llama_logs, ContextExceeded, ContextReport, GenerationTimings, MtpReport, NativeLlama, ThinkingReport, stream_tokens, extract_thinking_tags_native};

@@ -62,7 +62,8 @@ fn load_native(
         ctx_params.n_ubatch = plan.context_window;
     }
     // llama.cpp only reads the override list during load; `moe_overrides` lives until this returns
-    let loaded = NativeLlama::load(model_path, model_params, ctx_params, dna, 0, 0, 0, None);
+    let mtp = u8::from(settings.optimization.mtp_on() && !embedding);
+    let loaded = NativeLlama::load(model_path, model_params, ctx_params, dna, 0, 0, mtp, None);
     drop(moe_overrides);
     loaded
 }

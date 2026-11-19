@@ -51,7 +51,7 @@ graph TD
 | [`native/tokenizer.rs`](src/native/tokenizer.rs) | One native tokenizer (`VocabHandle`) for chat and embedding contexts. |
 | [`native/media_tests.rs`](src/native/media_tests.rs) | Tests of the media owners. |
 | [`ffi/chat.rs`](src/ffi/chat.rs) | Narrow C ABI to `chat_bridge.cpp` for native tool calls: llama.cpp's common chat layer renders tools in the model's own format (`ChatTools::apply`), gives the lazy tool-call grammar, parses the output (`ChatParser::parse`, partial too) and turns a JSON schema into a grammar (`json_schema_grammar`). |
-| [`native/speculative.rs`](src/native/speculative.rs), [`ffi/speculative_bridge.cpp`](src/ffi/speculative_bridge.cpp) | MTP speculative decoding, experimental, off unless `CLUAIZ_MTP=on` (`CLUAIZ_MTP_DRAFT` = guesses per step, default 3 as llama-server). A model with NextN layers (Qwen3.5 / 3.6, GLM-4.5+, DeepSeek-V3, ...) is loaded with `load_mtp`; llama.cpp's own `draft-mtp` drafter (`common_speculative`) guesses the next tokens on an MTP context; `stream.rs` decodes the token and its guesses in one batch and keeps a guess only when the target's sampler picks it, so the answer is the target's. The drafter sees every target decode (prompt chunks too). Media prompts do not draft; a context shift stops drafting for that answer. Its memory is not in the load plan yet. |
+| [`native/speculative.rs`](src/native/speculative.rs), [`ffi/speculative_bridge.cpp`](src/ffi/speculative_bridge.cpp) | MTP speculative decoding, experimental, off unless settings `optimization.mtp` is `on` (load flag `--mtp on`; `CLUAIZ_MTP=on` forces it for tests; `CLUAIZ_MTP_DRAFT` = guesses per step, default 3 as llama-server; `CLUAIZ_MTP_PMIN` = least drafter probability, default 0). A model with NextN layers (Qwen3.5 / 3.6, GLM-4.5+, DeepSeek-V3, ...) is loaded with `load_mtp`; llama.cpp's own `draft-mtp` drafter (`common_speculative`) guesses the next tokens on an MTP context; `stream.rs` decodes the token and its guesses in one batch and keeps a guess only when the target's sampler picks it, so the answer is the target's. The drafter sees every target decode (prompt chunks too). Media prompts do not draft; a context shift stops drafting for that answer. Its memory is not in the load plan yet. |
 | [`moe_override.rs`](src/moe_override.rs) | `--n-cpu-moe N`: the routed experts of the first N blocks stay in RAM (a CPU buffer), everything else of those blocks (attention, shared weights, KV) on the GPU; the same tensor overrides llama.cpp builds (`CpuMoeOverrides`). |
 
 ## Native text embedding boundary
@@ -146,7 +146,9 @@ graph LR
 ## MTP speculative decoding (experimental)
 
 - **Status:** built and measured on one machine (RTX 3050 Laptop 4 GB, CUDA, Windows). Off by default,
-  switched on with `CLUAIZ_MTP=on`. Commit `d9ae0a48`.
+  switched on with settings `optimization.mtp = "on"` or the load flag `--mtp on` (`auto` = off until
+  the Auto rules exist; `CLUAIZ_MTP=on` forces it for tests). Commit `d9ae0a48`; measuring tool
+  `cluaiz bench <model> --mtp-compare` (`cmd/src/cli/bench_mtp.rs`).
 - **Files:** `native/speculative.rs` (Rust owner `MtpDrafter`), `ffi/speculative_bridge.cpp` (C ABI),
   `native/stream.rs` (prefill hook, draft and check in the generation loop), `native/core.rs` (load),
   `native/sampler.rs` (`sample_token_at`).
@@ -157,8 +159,11 @@ Some models ship multi-token-prediction ("NextN") layers trained to predict toke
 Qwen3.5 / 3.6, GLM-4.5 and later, DeepSeek-V3, Step-3.5, MiMo and others (`src/models/*.cpp` in the
 pinned llama.cpp lists the graphs that use them). The NextN layers guess the next few tokens; the
 target model checks all guesses in one decode; every guess its own sampler would have picked is a
-token gained without a decode of its own. The text does not change, because a guess is kept only when
-the target's sampler picks the same token.
+token gained without a decode of its own. A guess is kept only when the target's sampler picks the
+same token, so the answer is the target's own. It is not always byte-identical to a run without MTP:
+the target computes a batch of 2-4 tokens with slightly different floating-point rounding than one
+token at a time, and where two tokens are nearly tied a greedy pick can flip. Measured below: 2 of 4
+`bench --mtp-compare` prompts changed text; llama-server's own runs with and without MTP differed too.
 
 ```mermaid
 graph LR
@@ -184,8 +189,13 @@ graph LR
 | Draft size 3 (`CLUAIZ_MTP_DRAFT`) | llama-server's default `--spec-draft-n-max 3`; reports show acceptance falls with longer drafts (72% at 3, 83% at 2, 44% at 6 in the sources below) | Larger drafts |
 | No drafting for media prompts and after a context shift | The drafter did not see the media embeddings; after a shift its positions no longer match the target's. Both only lower acceptance, so there is no gain to keep | Feeding media rows to the drafter (not built) |
 | Off by default | Measured on one GPU only; several setups lose speed (table below); its memory is not in the load plan | On by default |
+| `p_min` 0 (always draft `n_max`); `CLUAIZ_MTP_PMIN` only for tests | llama.cpp's default (`common.h`); 0.5 and 0.75 kept more guesses (74-90%) but were slower than 0 on every prose prompt on the GPU (`bench --mtp-compare` below) | Stopping drafts at low confidence |
+| Timings measured by the stream when MTP drafted (`NativeLlama::mtp_timings`) | llama.cpp counts every decode of more than one token as prompt processing (`llama-context.cpp`, `n_queued_tokens > 1`), so its counters put the checks of guesses into the prompt numbers | llama.cpp's perf counters |
+| Drafted / kept counts in `ContextReport.mtp` | `bench --mtp-compare` (and later the API report) reads them per answer; the field is absent when MTP did not draft | Log line only |
 
 ### Measured
+
+Full record with raw logs, answers and scripts: [run 22](../../test/cloud/runs/2026-11-19-run22-laptop-mtp/SUMMARY.md).
 
 RTX 3050 Laptop 4 GB, Windows, CUDA. `unsloth/Qwen3.5-2B-MTP-GGUF` Q4_K_M (NextN inside the file),
 `n_gpu_layers 99`, context 4096, temperature 0, `/v1/chat/completions`, three runs after one warm-up.
@@ -194,17 +204,66 @@ hour.
 
 | Run | Without MTP | With MTP | Guesses kept |
 |---|---|---|---|
-| Cluaiz, 222-token answer | 67.8 t/s | 85.1 t/s | 64% |
+| Cluaiz, 222-token answer | 67.8 t/s | 85.2 t/s | 64% |
 | llama-server b12534 | 66.6 t/s | 82.0 t/s | 145 / 228 |
 | Cluaiz, thinking on (268 tokens) | 66.0 t/s | 95.3 t/s | 75% |
 | Cluaiz, JSON schema answer (39 tokens) | 50.9 t/s | 76.0 t/s | 79% |
 
-- Text: identical with and without MTP in all six Cluaiz comparisons (byte compare of the answers).
+- Text: identical with and without MTP in the six comparisons of this table (byte compare). The
+  `bench --mtp-compare` runs below found two prompts (`chat`, `long`) whose text changed; see "What it does".
 - VRAM after load: 1.83 GB without, 1.96 GB with MTP.
 - Placement changes the text: runs with 22 and 23 GPU layers gave different greedy answers, so text
   and speed comparisons pin `n_gpu_layers`. llama-server's own plain and MTP answers also differed.
 
-### Where MTP is expected to lose (from sources, not measured here)
+### Measured with `cluaiz bench --mtp-compare` (real prompts, same placement)
+
+`cluaiz bench <model> --mtp-compare` plans once with MTP off, then loads MTP off and on with that exact
+placement and answers each prompt in `cmd/src/cli/data/bench_mtp_prompts.json` greedily with thinking
+off (one warm-up, then `-r` runs; the prompt cache is cleared before every run). Prompts: `code`
+(Python function and explanation, 256 tokens), `chat` (free prose, 256), `list` (ten countries as a
+JSON array, 256), `long` (summary of a 690-word text, 128). Same machine and model as above, context
+4096. Rerun: `CLUAIZ_MTP_DRAFT=<n> CLUAIZ_MTP_PMIN=<p> cluaiz bench qwen3.5-2b-mtp-gguf-Q4_K_M --mtp-compare -r 2`
+(add `--n-gpu-layers 12` or `0` for the split and CPU rows).
+
+Gain = generation t/s with MTP over without (kept share in brackets). Each row is one run of the
+tool; MTP off and on were measured minutes apart:
+
+| Setup | Off t/s | code | chat | list | long |
+|---|---|---|---|---|---|
+| Full GPU, draft 3, run A | 55 | 1.19x (63%) | 0.85x (35%) | 1.49x (90%) | 0.95x (44%) |
+| Full GPU, draft 3, run B | 72 | 1.12x (63%) | 0.81x (35%) | 1.38x (90%) | 0.90x (44%) |
+| Full GPU, draft 1, run A | 56 | 1.16x (82%) | 1.07x (64%) | 1.24x (98%) | 1.09x (74%) |
+| Full GPU, draft 1, run B | 71 | 1.05x (82%) | 0.96x (64%) | 1.14x (98%) | 1.02x (74%) |
+| Full GPU, draft 2, run A | 57 | 1.25x (76%) | 1.01x (52%) | 1.38x (95%) | 1.05x (56%) |
+| Full GPU, draft 2, run B | 71 | 1.17x (76%) | 0.97x (52%) | 1.33x (95%) | 1.00x (56%) |
+| Full GPU, draft 4 | 57 | 1.09x (52%) | 0.84x (28%) | 1.91x (86%) | 1.08x (39%) |
+| Full GPU, draft 3, `p_min` 0.5 | 75 | 1.03x (82%) | 0.76x (74%) | 1.40x (95%) | 0.75x (76%) |
+| Full GPU, draft 3, `p_min` 0.75 | 75 | 0.96x (90%) | 0.70x (90%) | 1.21x (95%) | 0.76x (88%) |
+| Split (`--n-gpu-layers 12`), draft 3 | 30 | 1.10x (62%) | 0.61x (32%) | 1.51x (91%) | 0.85x (33%) |
+| CPU only, draft 3 | 21 | 0.97x (66%) | 0.65x (34%) | 1.30x (90%) | 0.85x (48%) |
+| CPU only, draft 3, `p_min` 0.5 | 22 | 1.04x (77%) | 0.85x (72%) | 1.33x (96%) | 0.92x (75%) |
+| CPU only, draft 3, `p_min` 0.75 | 23 | 1.04x (89%) | 0.82x (89%) | 1.17x (96%) | 0.86x (92%) |
+
+What these runs show:
+
+- The text decides more than anything else: structured output (`list`) gained in every setup (1.14x
+  to 1.91x); free prose (`chat`) lost in most.
+- Fewer guesses per step lose least on prose: draft 1 never fell below 0.96x; draft 3 and 4 fell to
+  0.81-0.85x on prose on the GPU.
+- Split and CPU lose more on prose (0.61x, 0.65x): checking 4 tokens costs more there than on a GPU
+  that holds all weights.
+- `p_min` raised the kept share but not the speed on the GPU: drafts got shorter while each step still
+  paid for the drafter.
+- The same setup gave 55 t/s in run A and 72 t/s in run B (laptop GPU clock, other programs on the
+  GPU), and the gains moved with it: the faster the plain run, the smaller the gain. A difference under
+  about 10% is within this noise; rows from different runs are not compared to each other.
+- Prompt t/s: full GPU, MTP on was not slower on any prompt (`long`: 3689 vs 4011 t/s, run B); CPU only
+  it was up to 12% slower. In the split row the tool printed 0.0 prompt t/s with MTP on, so prompt speed
+  there is unknown (Pending).
+- Text: the same with and without MTP in 23 of 52 prompt pairs; draft 1 kept it in all 8, `list`
+  changed in 2 (split, CPU `p_min` 0.5).
+
+### Where MTP is expected to lose (from sources, not all measured here)
 
 Speculative decoding speedup is `E / (v + g*c)`: `E = (1 - a^(g+1)) / (1 - a)` tokens per target run
 (acceptance `a`, draft size `g`), `v` = time to check `g+1` tokens over the time for one, `c` = drafter
@@ -240,9 +299,11 @@ grows, and MTP can lose, when:
 
 | Item | Why it matters | Needs |
 |---|---|---|
-| Auto on/off: MTP only when it does not change the placement, off with experts in RAM, measured per model and placement in `cluaiz bench` | MTP should be on by default where it is faster and off where it is slower | design proposed 2026-11-19; not built |
+| Auto on/off: MTP only when it does not change the placement, off with experts in RAM, measured per model and placement in `cluaiz bench` | MTP should be on by default where it is faster and off where it is slower; the runs above show the result depends on the text, so a per-answer guard (stop drafting when the kept share is low) is likely needed too | design proposed 2026-11-19; not built |
+| MTP off and on measured in the same minute | GPU clock changes moved the plain speed from 55 to 72 t/s between runs | `bench --mtp-compare` alternating off and on loads per repetition |
+| Prompt t/s with MTP on in a split placement | the tool printed 0.0 | find where the timing is lost |
 | Memory of MTP in the load plan | a model that just fits may spill with MTP on | planner work (parked) |
-| Tests: GPU + RAM split, MoE `n_cpu_moe`, CPU only, weights larger than RAM, draft 1-4, temperature > 0, long prompt prefill | each can turn the gain into a loss (table above) | laptop runs |
+| Tests: MoE `n_cpu_moe`, weights larger than RAM, temperature > 0, a 3000-token prompt, Q4_0 / Q8_0 / IQ4_XS | each can turn the gain into a loss (table above); split, CPU, draft 1-4 and `p_min` are done | an MoE MTP model (the smallest Qwen3.5/3.6-35B-A3B MTP file is 11.4 GB) and small downloads for the quant types |
 | Metal and Vulkan runs | reports disagree on Metal; Vulkan had wrong output in early reports | a Mac and a Vulkan machine |
 | Gemma 4 MTP sidecar file (`mtp-*.gguf`) | `pull` downloads it, the Engine does not use it | load it as a draft model (`common_speculative_init_result` takes its path) |
-| A setting / CLI flag and drafted/accepted counts in the engine report | env var only today; numbers only in the log | after Auto is decided |
+| Drafted / kept counts in the API response | `ContextReport.mtp` has them; the API does not return them yet | API docs and App explorer (new API checklist) |

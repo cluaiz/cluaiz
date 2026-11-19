@@ -16,6 +16,6 @@ pub mod speculative;
 mod tokenizer;
 pub use tokenizer::VocabHandle;
 
-pub use core::{gpu_offload_available, loaded_gpu_backends, route_llama_logs, ContextExceeded, ContextReport, GenerationTimings, NativeLlama, ThinkingReport};
+pub use core::{gpu_offload_available, loaded_gpu_backends, route_llama_logs, ContextExceeded, ContextReport, GenerationTimings, MtpReport, NativeLlama, ThinkingReport};
 pub use stream::stream_tokens;
 pub use templater::extract_thinking_tags_native;

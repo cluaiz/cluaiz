@@ -81,15 +81,20 @@ the GPU) 18.2 t/s generation, 870 t/s prompt; CPU only 10.5 t/s and 48 t/s. The 
 Some models ship multi-token-prediction (NextN) layers next to the normal ones: Qwen3.5 and 3.6,
 GLM-4.5 and later, DeepSeek-V3, Step-3.5, MiMo and others. These layers guess the next few tokens.
 The model then checks all guesses in one decode and keeps each one its own sampler would have
-picked, so every kept guess saves a decode and the answer does not change. It is llama.cpp's own
+picked, so every kept guess saves a decode. The answer is the model's own, though not always
+byte-identical to a run without MTP: checking several tokens at once rounds slightly differently,
+which can flip a choice between two nearly equal tokens. It is llama.cpp's own
 `draft-mtp` drafter, the one behind `llama-server --spec-type draft-mtp`.
 
-It is off by default and set by environment variables for now, not by `settings.json`:
+It is off by default. `optimization.mtp` in `settings.json` (`"on"`, `"off"`, `"auto"`) or the load
+flag `--mtp on` turns it on; `auto` means off until the automatic rules are built. A model without
+NextN layers loads as usual (the log says so). Environment variables for tests:
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `CLUAIZ_MTP` | off | `on` loads the NextN layers and drafts with them. A model without NextN layers loads as usual (the log says so) |
+| `CLUAIZ_MTP` | off | `on` turns MTP on for every load, whatever the setting says |
 | `CLUAIZ_MTP_DRAFT` | `3` | Most tokens guessed per step (llama-server's `--spec-draft-n-max` default) |
+| `CLUAIZ_MTP_PMIN` | `0` | A draft stops at the first guess the drafter gives less than this probability (llama-server `--spec-draft-p-min`) |
 
 Limits today: prompts with images or audio do not draft; after a context shift the rest of that
 answer does not draft; the MTP context and the NextN weights are not in the load plan, so a model
@@ -97,9 +102,10 @@ that just fits may need a smaller context. A Gemma 4 MTP file published beside t
 downloaded by `pull` but not used yet.
 
 Measured on an RTX 3050 Laptop (4 GB), `unsloth/Qwen3.5-2B-MTP-GGUF` Q4_K_M, all layers on the GPU,
-4096 context, greedy, 222 tokens: 68 t/s without MTP, 85 t/s with it; 64% of guesses kept. The text
-was the same with and without MTP. llama.cpp b12534 `llama-server` on the same file and settings:
-67 and 82 t/s.
+4096 context, greedy, 222 tokens: 68 t/s without MTP, 85 t/s with it; 64% of guesses kept, same
+text. llama.cpp b12534 `llama-server` on the same file and settings: 67 and 82 t/s. The gain depends
+on the text: `cluaiz bench <model> --mtp-compare` measures it on your machine (MTP off and on, same
+placement), and on free-form prose MTP was slower (35% of guesses kept, 0.85x).
 
 ## ONNX models
 

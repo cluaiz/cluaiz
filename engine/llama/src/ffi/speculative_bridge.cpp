@@ -26,12 +26,14 @@ static void cluaiz_mtp_error(char * err, size_t err_len, const char * text) {
 }
 
 // The MTP draft context over the target's NextN layers (the model was loaded with `load_mtp`), and
-// llama.cpp's MTP drafter on it. `n_max`: the most tokens drafted per step (llama-server: 3).
+// llama.cpp's MTP drafter on it. `n_max`: the most tokens drafted per step (llama-server: 3);
+// `p_min`: the drafter's least probability for a guess to be drafted.
 // Returns null with a reason in `err` when the model has no NextN layers or a context cannot be made.
 extern "C" cluaiz_mtp * cluaiz_mtp_init(
         llama_model   * model_tgt,
         llama_context * ctx_tgt,
         int32_t         n_max,
+        float           p_min,
         char          * err,
         size_t          err_len) {
     if (llama_model_n_layer_nextn(model_tgt) <= 0) {
@@ -42,6 +44,9 @@ extern "C" cluaiz_mtp * cluaiz_mtp_init(
     try {
         mtp->params.speculative.types       = { COMMON_SPECULATIVE_TYPE_DRAFT_MTP };
         mtp->params.speculative.draft.n_max = n_max;
+        // a draft stops at the first guess the drafter gives less than p_min (llama-server
+        // --spec-draft-p-min; 0 = always draft n_max)
+        mtp->params.speculative.draft.p_min = p_min;
 
         // common_speculative_init_result + common_base_params_to_speculative: an MTP context type,
         // the target's context size, no recurrent snapshots of its own, one output

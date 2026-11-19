@@ -107,7 +107,7 @@ cluaiz provider test myapi model-name
 |---------|-------|-------------|
 | `cluaiz status` | | The hardware the planner sees, and the GPU backend that loaded (`backend`) |
 | `cluaiz calibrate` | | Re-scan the hardware (after a hardware or driver change) |
-| `cluaiz bench <model-id>` | `-p`, `-n`, `-r`, `--placements`, `-o md\|json`, load flags (`-c`, `--n-gpu-layers`, `--n-cpu-moe`, `--cache-type-k`…) | Prompt and generation speed (llama-bench: pp512, tg128); `--placements` tests every placement and the planner then loads the fastest |
+| `cluaiz bench <model-id>` | `-p`, `-n`, `-r`, `--placements`, `--mtp-compare`, `--prompts`, `-o md\|json`, load flags (`-c`, `--n-gpu-layers`, `--n-cpu-moe`, `--cache-type-k`…) | Prompt and generation speed (llama-bench: pp512, tg128); `--placements` tests every placement and the planner then loads the fastest; `--mtp-compare` compares MTP speculative decoding off and on on real prompts |
 | `cluaiz self update` | `--check`, `--to <version>` | Update to the newest release with that release's installer; models and settings stay |
 | `cluaiz self uninstall` | `--keep-models`, `-y` | Remove Cluaiz: its home, its program folder and its PATH entry |
 

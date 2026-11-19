@@ -1123,6 +1123,13 @@ impl EngineHost {
         report
     }
 
+    /// The next generation processes its whole prompt again instead of reusing the cached prefix
+    /// (a speed test that measures prompt processing)
+    pub async fn forget_prompt_cache(&self) {
+        self.last_prefilled_tokens.lock().await.clear();
+        *self.memory_owner.lock().await = None;
+    }
+
     /// llama.cpp timings of the last finished generation (None before the first one)
     pub async fn last_timings(&self) -> Option<GenerationTimings> {
         *self.last_timings.lock().await

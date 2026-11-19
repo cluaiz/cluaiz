@@ -36,6 +36,10 @@ pub struct NativeLlama {
     pub checkpoints: Vec<crate::native::context::Checkpoint>,
     /// Positions in the KV can be moved (not with quantized keys, see `keys_can_shift`)
     pub keys_can_shift: bool,
+    /// Timings of the last generation when MTP drafted in it. llama.cpp counts every decode of more
+    /// than one token as prompt processing (`llama-context.cpp`, `n_queued_tokens > 1`), so a check of
+    /// guesses would land in the prompt numbers; the stream measures generation itself then.
+    pub mtp_timings: Option<GenerationTimings>,
     /// llama.cpp's MTP drafter over the model's NextN layers (`CLUAIZ_MTP=on` and a model that has
     /// them); freed before the context
     pub mtp: Option<crate::native::speculative::MtpDrafter>,
@@ -94,6 +98,16 @@ pub struct ContextReport {
     /// The rendered prompt, when the request asked for it (`return_prompt`, for template tests)
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prompt: Option<String>,
+    /// MTP guesses in this answer, when MTP drafted (none = MTP not used)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mtp: Option<MtpReport>,
+}
+
+/// MTP speculative decoding in one answer: tokens the drafter guessed and the target kept
+#[derive(Debug, Clone, Copy, Default, serde::Serialize)]
+pub struct MtpReport {
+    pub drafted: u64,
+    pub accepted: u64,
 }
 
 impl ContextReport {
@@ -220,6 +234,7 @@ impl NativeLlama {
 
     /// Starts a new timing window (call before a generation).
     pub fn reset_timings(&mut self) {
+        self.mtp_timings = None;
         unsafe { llama_cpp::llama_perf_context_reset(self.ctx_ptr) }
     }
 
@@ -311,6 +326,9 @@ impl NativeLlama {
 
     /// llama.cpp timing counters since the last `reset_timings`.
     pub fn timings(&self) -> GenerationTimings {
+        if let Some(measured) = self.mtp_timings {
+            return measured;
+        }
         let d = unsafe { llama_cpp::llama_perf_context(self.ctx_ptr) };
         let per_second = |n: i32, ms: f64| if ms > 0.0 { n as f64 * 1000.0 / ms } else { 0.0 };
         GenerationTimings {
@@ -583,8 +601,10 @@ impl NativeLlama {
         );
         crate::native::load_steps::clear_error();
         let mut model_params = model_params;
-        // MTP asked for: the NextN layers are left out of a load unless asked for (llama.cpp `load_mtp`)
-        let mtp_requested = crate::native::speculative::requested();
+        // MTP asked for (settings `optimization.mtp`, passed as speculative_decoding_mode 1, or the
+        // CLUAIZ_MTP test override): the NextN layers are left out of a load unless asked for
+        // (llama.cpp `load_mtp`)
+        let mtp_requested = speculative_decoding_mode == 1 || crate::native::speculative::requested();
         if mtp_requested {
             model_params.load_mtp = true;
         }
@@ -840,6 +860,7 @@ impl NativeLlama {
             checkpoints: Vec::new(),
             keys_can_shift: cluaiz_core::KvCacheQuantization::keys_can_shift(ctx_params.type_k),
             mtp: None,
+            mtp_timings: None,
         };
         if mtp_wanted {
             match crate::native::speculative::MtpDrafter::new(model_ptr, ctx_ptr, mtp_draft_max) {

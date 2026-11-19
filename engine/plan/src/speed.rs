@@ -26,6 +26,10 @@ pub const NEAR_BLOCKS: i64 = 2;
 pub enum Test {
     Generation,
     Prompt,
+    /// Generation on real text (`cluaiz bench --mtp-compare`), MTP off
+    Text,
+    /// The same with MTP on
+    TextMtp,
 }
 
 impl Test {
@@ -33,6 +37,8 @@ impl Test {
         match self {
             Test::Generation => "tg",
             Test::Prompt => "pp",
+            Test::Text => "text",
+            Test::TextMtp => "text-mtp",
         }
     }
 }

@@ -31,6 +31,13 @@ pub struct BenchArgs {
     /// planner then loads the fastest one
     #[arg(long = "placements")]
     pub placements: bool,
+    /// MTP speculative decoding off and on, on real text (prompts answered greedily), on the same
+    /// placement: generation and prompt speed, guesses kept, same text or not
+    #[arg(long = "mtp-compare")]
+    pub mtp_compare: bool,
+    /// Prompts for --mtp-compare: a JSON list of {"name", "text", "max_tokens"} (default: code, chat, list, long)
+    #[arg(long = "prompts", value_name = "FILE", requires = "mtp_compare")]
+    pub prompts: Option<std::path::PathBuf>,
     /// Output format
     #[arg(short = 'o', long = "output", value_enum, default_value_t = Output::Md)]
     pub output: Output,
@@ -83,6 +90,9 @@ fn pinned(settings: &ActiveUserSettings, plan: &ExecutionPlan, candidate: &cluai
 }
 
 pub async fn execute(args: BenchArgs, verbose: bool) -> Result<()> {
+    if args.mtp_compare {
+        return crate::cli::bench_mtp::execute(args, verbose).await;
+    }
     let (path, id) = crate::cli::models::resolve_installed(&args.model)?;
     let mut settings = cluaiz_core::Settings::current();
     args.load.apply(&mut settings.optimization).map_err(|e| eyre!(e))?;

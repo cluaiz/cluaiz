@@ -1,6 +1,7 @@
 pub mod args;
 pub mod help;
 pub mod bench;
+pub mod bench_mtp;
 pub mod component;
 pub mod component_config;
 pub mod config_cmd;

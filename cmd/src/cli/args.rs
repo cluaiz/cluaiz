@@ -136,6 +136,9 @@ pub struct LoadArgs {
     /// VRAM to keep free, in GB (default: the planner's rule)
     #[arg(long = "vram-buffer", value_name = "GB", help_heading = "Load")]
     pub vram_buffer: Option<f64>,
+    /// MTP speculative decoding with the model's own prediction layers (experimental): on, off or auto
+    #[arg(long = "mtp", value_name = "on|off|auto", help_heading = "Load")]
+    pub mtp: Option<String>,
 }
 
 impl LoadArgs {
@@ -164,6 +167,7 @@ impl LoadArgs {
             offload_kqv: self.no_kv_offload.then_some(false),
             op_offload: self.no_op_offload.then_some(false),
             vram_buffer_gb: self.vram_buffer,
+            mtp: self.mtp.clone().map(serde_json::Value::String),
         };
         params.apply_to(opt)?;
         if self.n_gpu_layers == Some(GpuLayers::Auto) {
