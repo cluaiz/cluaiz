@@ -63,7 +63,13 @@ impl RegistryClient {
     }
 }
 
-const RESOLVER_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(6);
+/// One resolver request may take this long; a slow connection gets the whole time to answer
+const RESOLVER_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(20);
+/// Reaching the server at all may take this long (name lookup and connection)
+const RESOLVER_CONNECT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
+/// Requests that time out or cannot connect are sent again once; an answer from the server is never
+/// asked again
+const RESOLVER_ATTEMPTS: u32 = 2;
 const MAX_RESOLVER_BYTES: usize = 64 * 1024;
 const MAX_MODEL_ID_BYTES: usize = 256;
 const HF_PULL_HINT: &str = "Retry later or use cluaiz pull <owner>/<repo>[:quant] with the full Hugging Face repository ID.";
@@ -71,6 +77,10 @@ const HF_PULL_HINT: &str = "Retry later or use cluaiz pull <owner>/<repo>[:quant
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RegistryResolveError {
     Transport(String),
+    /// No answer within `seconds`, on every attempt: a slow or stalled connection
+    TimedOut { seconds: u64, attempts: u32 },
+    /// The server could not be reached at all (no connection, name lookup, firewall or proxy)
+    Unreachable { detail: String, attempts: u32 },
     RateLimited(Option<u64>),
     ClientRejected(u16),
     Unavailable(u16),
@@ -83,6 +93,14 @@ impl std::fmt::Display for RegistryResolveError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Transport(detail) => write!(f, "Cluaiz registry connection failed ({detail}). {HF_PULL_HINT}"),
+            Self::TimedOut { seconds, attempts } => write!(
+                f,
+                "cluaiz.com did not answer within {seconds} seconds ({attempts} tries): the internet connection is slow or stalled. Check it and pull again. {HF_PULL_HINT}"
+            ),
+            Self::Unreachable { detail, attempts } => write!(
+                f,
+                "cluaiz.com could not be reached ({attempts} tries: {detail}): this machine looks offline, or a firewall or proxy blocks it. Check the connection and pull again. {HF_PULL_HINT}"
+            ),
             Self::RateLimited(Some(seconds)) => write!(f, "Cluaiz registry request limit reached. Wait {seconds} seconds. {HF_PULL_HINT}"),
             Self::RateLimited(None) => write!(f, "Cluaiz registry request limit reached. {HF_PULL_HINT}"),
             Self::ClientRejected(status) => write!(f, "Cluaiz registry rejected this client or gateway (HTTP {status}). Update the Engine or use a full Hugging Face repository ID; no login is required."),
@@ -95,6 +113,20 @@ impl std::fmt::Display for RegistryResolveError {
 }
 
 impl std::error::Error for RegistryResolveError {}
+
+/// What a failed request says about the connection: no answer in time, no connection at all, or
+/// another transport failure
+fn transport_error(error: reqwest::Error, attempts: u32) -> RegistryResolveError {
+    if error.is_timeout() {
+        RegistryResolveError::TimedOut { seconds: RESOLVER_TIMEOUT.as_secs(), attempts }
+    } else if error.is_connect() {
+        let cause = std::error::Error::source(&error).map(|cause| cause.to_string());
+        let detail = cause.unwrap_or_else(|| error.without_url().to_string());
+        RegistryResolveError::Unreachable { detail, attempts }
+    } else {
+        RegistryResolveError::Transport(error.without_url().to_string())
+    }
+}
 
 /// Normalize public HF coordinates without allowing paths, query strings or another host.
 pub fn parse_hf_repository(value: &str) -> Option<String> {
@@ -157,6 +189,7 @@ pub async fn resolve_model_repo_with_fallback(
         .unwrap_or_else(|_| "https://cluaiz.com/api/models/resolve".to_string());
     let client = Client::builder()
         .timeout(RESOLVER_TIMEOUT)
+        .connect_timeout(RESOLVER_CONNECT_TIMEOUT)
         .redirect(reqwest::redirect::Policy::none())
         .build()
         .map_err(|error| RegistryResolveError::Transport(error.without_url().to_string()))?;
@@ -164,17 +197,27 @@ pub async fn resolve_model_repo_with_fallback(
     if let Some(base) = fallback {
         query.push(("fallback_id", base));
     }
-    let mut response = client
-        .get(&endpoint)
-        .query(&query)
-        .header(
-            "User-Agent",
-            format!("Cluaiz-Inference-Engine/{}", cluaiz_core::VERSION),
-        )
-        .header("X-Cluaiz-Client", "native-cli")
-        .send()
-        .await
-        .map_err(|error| RegistryResolveError::Transport(error.without_url().to_string()))?;
+    let mut attempt = 1;
+    let mut response = loop {
+        let sent = client
+            .get(&endpoint)
+            .query(&query)
+            .header(
+                "User-Agent",
+                format!("Cluaiz-Inference-Engine/{}", cluaiz_core::VERSION),
+            )
+            .header("X-Cluaiz-Client", "native-cli")
+            .send()
+            .await;
+        match sent {
+            Ok(response) => break response,
+            Err(error) if (error.is_timeout() || error.is_connect()) && attempt < RESOLVER_ATTEMPTS => {
+                tracing::warn!("⚠️ [Registry] cluaiz.com did not answer ({}); trying once more", error.without_url());
+                attempt += 1;
+            }
+            Err(error) => return Err(transport_error(error, attempt)),
+        }
+    };
     let status = response.status().as_u16();
     if status == 429 {
         let retry = response
@@ -203,7 +246,7 @@ pub async fn resolve_model_repo_with_fallback(
     while let Some(chunk) = response
         .chunk()
         .await
-        .map_err(|error| RegistryResolveError::Transport(error.without_url().to_string()))?
+        .map_err(|error| transport_error(error, attempt))?
     {
         if bytes.len().saturating_add(chunk.len()) > MAX_RESOLVER_BYTES {
             return Err(RegistryResolveError::InvalidResponse);

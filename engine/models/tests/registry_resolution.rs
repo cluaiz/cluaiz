@@ -148,26 +148,30 @@ async fn registry_client_sends_one_request_and_distinguishes_failures() {
     let address = listener.local_addr().expect("address");
     drop(listener);
     std::env::set_var("CLUAIZ_RESOLVER_ENDPOINT", format!("http://{address}"));
-    assert!(matches!(
-        resolve_model_repo("model").await,
-        Err(RegistryResolveError::Transport(_))
-    ));
+    // Nothing listens: tried twice, and named as a connection problem
+    let error = resolve_model_repo("model").await.expect_err("nothing listens");
+    assert!(matches!(error, RegistryResolveError::Unreachable { attempts: 2, .. }), "{error:?}");
+    assert!(error.to_string().contains("could not be reached"), "{error}");
 
     let listener = TcpListener::bind("127.0.0.1:0")
         .await
         .expect("loopback listener");
     let address = listener.local_addr().expect("address");
     std::env::set_var("CLUAIZ_RESOLVER_ENDPOINT", format!("http://{address}"));
+    // A server that takes each request and never answers (a stalled connection): both tries
+    // wait the whole timeout, and the error says the connection is slow
     let stalled = tokio::spawn(async move {
-        let (mut stream, _) = listener.accept().await.expect("request");
-        let mut buffer = [0u8; 2048];
-        stream.read(&mut buffer).await.expect("headers");
-        tokio::time::sleep(Duration::from_secs(10)).await;
+        let mut held = Vec::new();
+        loop {
+            let (mut stream, _) = listener.accept().await.expect("request");
+            let mut buffer = [0u8; 2048];
+            stream.read(&mut buffer).await.expect("headers");
+            held.push(stream);
+        }
     });
-    assert!(matches!(
-        resolve_model_repo("model").await,
-        Err(RegistryResolveError::Transport(_))
-    ));
+    let error = resolve_model_repo("model").await.expect_err("no answer");
+    assert_eq!(error, RegistryResolveError::TimedOut { seconds: 20, attempts: 2 });
+    assert!(error.to_string().contains("slow or stalled"), "{error}");
     stalled.abort();
 }
 
