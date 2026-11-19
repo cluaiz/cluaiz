@@ -495,6 +495,22 @@ pub fn gpu_offload_available() -> bool {
     unsafe { llama_cpp::llama_supports_gpu_offload() }
 }
 
+/// `GGML_TYPE_COUNT` of the bundled ggml (`ggml/include/ggml.h`): tensor types are numbered below it
+const GGML_TYPE_COUNT: i32 = 44;
+
+/// The tensor types this build of llama.cpp can read (lower case: `q4_k`, `tq1_0`, `mxfp4`, …),
+/// from ggml's own table. A GGUF with a type not in it cannot be loaded.
+pub fn tensor_type_names() -> Vec<String> {
+    (0..GGML_TYPE_COUNT)
+        .filter_map(|kind| {
+            // SAFETY: every number below GGML_TYPE_COUNT has an entry; a null name is skipped
+            let name = unsafe { llama_cpp::ggml_type_name(kind) };
+            (!name.is_null()).then(|| unsafe { std::ffi::CStr::from_ptr(name) }.to_string_lossy().to_lowercase())
+        })
+        .filter(|name| !name.is_empty() && !name.contains("removed"))
+        .collect()
+}
+
 pub fn print_memory_trace(step: &str) {
     let mut sys = sysinfo::System::new();
     sys.refresh_memory();

@@ -408,6 +408,7 @@ async fn main() -> Result<()> {
         _ => false,
     };
     init_logging(cli.verbose, matches!(cli.command, Some(CliCommand::Serve { .. })), screen);
+    cluaiz_runtime::register_loadable_quantizations();
 
     // 🚀 Cluaiz BOOTSTRAP (Local Dev-Sync & Registry Verification)
     let is_dev_sync = std::env::args().any(|arg| arg == "dev-sync");

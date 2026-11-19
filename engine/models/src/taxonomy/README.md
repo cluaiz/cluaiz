@@ -42,7 +42,7 @@ flowchart LR
   `UniversalTaskRules::{get_tasks_for_slot, get_tasks_for_category}`.
 - **`quantization.rs`:** `UniversalQuantization` with `QUANT_CANDIDATES`, `SHARD_PATTERNS`,
   `ONNX_COMPANION_SUFFIXES`, `strip_quant`, `extract_shard_base`,
-  `strip_onnx_companion_suffix`, …
+  `strip_onnx_companion_suffix`, …; `set_loadable_tensor_types`, `tag_loadable`.
 - **`tts_families.rs`:** `TtsFamily` (Piper, Kokoro, Supertonic, Matcha, CosyVoice, Chatterbox,
   OmniVoice, ParlerTts, ChatTts, Vits, Bark, Whisper, GenericOnnxTts, Unknown), `TtsTaxonomy`
   (`is_tts_asset`, `strip_quant`, `is_same_model_different_quant`, `is_scale_mismatch`, …).
@@ -64,7 +64,10 @@ flowchart LR
 - `quantization.rs`: recognises quantization names (`Q4_K_M`, `IQ3_XXS`, `fp16`, …) in file
   paths so variants of one model group together; recognises shard names
   (`-00001-of-00004.gguf`) so a multi-file model downloads whole; recognises ONNX companion files
-  (`.onnx_data` and the like) so they follow their graph.
+  (`.onnx_data` and the like) so they follow their graph. `tag_loadable` says whether a GGUF
+  quantization name can be read by this build: its family and bits (`q4` of `Q4_K_M`, `ptq1` of
+  `PTQ1_0`) are looked up in the tensor types llama.cpp reports at start (`ggml_type_name`,
+  registered by `cluaiz_runtime::register_loadable_quantizations`). Unset, nothing is judged.
 - `tts_families.rs` / `stt_families.rs`: which files of a speech package belong together
   (graphs, voices, tokens, configs), which file is the entry point, and which ONNX files are the
   same model at another precision or a different scale.

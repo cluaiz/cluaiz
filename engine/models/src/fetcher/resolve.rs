@@ -194,6 +194,16 @@ pub async fn resolve(model_id: &str, all: bool, ui: &dyn ResolveUi) -> Result<Re
             if variants.is_empty() {
                 return Err(format!("No variants found in repository '{repo_id}'"));
             }
+            // A named quantization this build cannot read (a llama.cpp fork's `PTQ1_0`): say so before
+            // any download instead of offering another size or failing at load
+            if let Some(tag) = explicit_tag.as_ref().filter(|tag| crate::taxonomy::tag_loadable(tag) == Some(false)) {
+                let have: Vec<String> = variants.iter().map(|v| format!("{} ({:.2} GB)", v.quant_tag, cluaiz_core::gib_to_gb(v.size_gb))).collect();
+                return Err(format!(
+                    "'{tag}' is a quantization this build of llama.cpp cannot read (it comes from a llama.cpp fork and is \
+                     not in mainline llama.cpp yet). Variants of '{repo_id}' that load: {}",
+                    have.join(", ")
+                ));
+            }
             let matched_from_tag = explicit_tag.as_ref().and_then(|tag| {
                 let tag_upper = tag.to_uppercase();
                 let clean_tag = tag_upper.replace(['-', '_'], "");

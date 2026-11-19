@@ -315,7 +315,37 @@ impl HuggingFaceHub {
             ));
         }
 
+        let (variants, unloadable) = Self::split_unloadable(variants);
+        if variants.is_empty() {
+            return Err(format!(
+                "Every GGUF file in '{repo_id}' uses a quantization this build of llama.cpp cannot read ({}). \
+                 These formats come from a llama.cpp fork and are not in mainline llama.cpp yet.",
+                unloadable.join(", ")
+            ));
+        }
+        if !unloadable.is_empty() {
+            tracing::info!("{repo_id}: left out {} (quantization this build of llama.cpp cannot read)", unloadable.join(", "));
+        }
+
         Ok(variants)
+    }
+
+    /// Splits off the GGUF variants whose quantization this build cannot load (`PTQ1_0`, `PQ2_0` from a
+    /// llama.cpp fork); returns the loadable variants and the left-out quantization names
+    pub fn split_unloadable(variants: Vec<HfVariant>) -> (Vec<HfVariant>, Vec<String>) {
+        let mut unloadable = Vec::new();
+        let loadable = variants
+            .into_iter()
+            .filter(|v| {
+                let keep = !v.primary_file.to_lowercase().ends_with(".gguf")
+                    || crate::taxonomy::tag_loadable(&v.quant_tag) != Some(false);
+                if !keep {
+                    unloadable.push(v.quant_tag.clone());
+                }
+                keep
+            })
+            .collect();
+        (loadable, unloadable)
     }
 
     /// The variants of a repository's file tree, before the repository's own companions are completed:
@@ -633,6 +663,18 @@ impl HuggingFaceHub {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_fork_only_quantization_is_left_out_of_the_variants() {
+        // The tensor types of this build's llama.cpp (ggml_type_name over 0..44, without the removed ones)
+        let types = "f32 f16 q4_0 q4_1 q5_0 q5_1 q8_0 q8_1 q2_k q3_k q4_k q5_k q6_k q8_k iq2_xxs iq2_xs iq3_xxs iq1_s iq4_nl iq3_s iq2_s iq4_xs i8 i16 i32 i64 f64 iq1_m bf16 tq1_0 tq2_0 mxfp4 nvfp4 f8_e4m3 q1_0 q2_0";
+        crate::taxonomy::set_loadable_tensor_types(types.split(' ').map(String::from).collect());
+        let item = |path: &str| HfTreeItem { r#type: Some("file".to_string()), path: path.to_string(), size: Some(1 << 30) };
+        let items = [item("Ternary-Bonsai-2-9B-PQ2_0.gguf"), item("Ternary-Bonsai-2-9B-PTQ1_0.gguf"), item("Ternary-Bonsai-2-9B-Q2_0.gguf")];
+        let (kept, left_out) = HuggingFaceHub::split_unloadable(HuggingFaceHub::variants_from_tree(&items));
+        assert_eq!(kept.iter().map(|v| v.quant_tag.as_str()).collect::<Vec<_>>(), ["Q2_0"]);
+        assert_eq!(left_out.len(), 2, "{left_out:?}");
+    }
 
     #[test]
     fn a_folder_is_not_a_companion_file() {

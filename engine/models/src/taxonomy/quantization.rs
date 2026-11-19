@@ -239,7 +239,7 @@ impl UniversalQuantization {
     /// The quantization a GGUF name ends with (upper case, extension and split suffix removed), or None
     /// when the last name part is not one: a known type prefix and its bit count, then `_` parts only
     /// (`Q4_K_XL`, `IQ2_XXS`, `TQ1_0`, `BF16`, `MXFP4`), with `UD-` kept when the name has it.
-    fn gguf_name_tag(upper: &str) -> Option<String> {
+    pub(crate) fn gguf_name_tag(upper: &str) -> Option<String> {
         let last = upper.rsplit(['-', '.']).next()?;
         let kind = ["MXFP", "NVFP", "PTQ", "IQ", "TQ", "PQ", "BF", "FP", "Q", "F"]
             .iter()
@@ -339,8 +339,55 @@ impl UniversalQuantization {
     }
 }
 
+/// Tensor types the bundled llama.cpp can read, lower case (`q4_k`, `tq1_0`): set once at start by the
+/// program that links llama.cpp (`llama_engine::tensor_type_names`). Unset, nothing is judged.
+static LOADABLE_TYPES: std::sync::OnceLock<Vec<String>> = std::sync::OnceLock::new();
+
+/// Records which tensor types this build can load (first call wins)
+pub fn set_loadable_tensor_types(names: Vec<String>) {
+    let _ = LOADABLE_TYPES.set(names);
+}
+
+/// Whether a GGUF variant named with quantization `tag` can be loaded by this build: `Some(false)` only
+/// when the tag is a quantization name (`PTQ1_0`, `Q4_K_M`) and no tensor type of its family and bit
+/// count is in the list; `None` when the list is not set or the tag is not a quantization name
+/// (nothing is hidden then). The family and bits (`q4`, `iq3`, `tq1`, `mxfp4`) are compared, not the
+/// whole name: llama.cpp's mixes are named after their main type and a size (`Q4_K_M` holds `q4_K`
+/// tensors, `IQ3_M` holds `iq3_s`).
+pub fn tag_loadable(tag: &str) -> Option<bool> {
+    tag_loadable_in(LOADABLE_TYPES.get()?, tag)
+}
+
+fn tag_loadable_in(types: &[String], tag: &str) -> Option<bool> {
+    let upper = tag.to_uppercase();
+    let name = upper.strip_prefix("UD-").unwrap_or(&upper);
+    UniversalQuantization::gguf_name_tag(name)?;
+    let lower = name.to_lowercase();
+    let lower = lower.strip_prefix("fp").map_or(lower.clone(), |rest| format!("f{rest}"));
+    let stem = lower.split('_').next().unwrap_or(&lower);
+    Some(types.iter().any(|t| t == stem || t.starts_with(&format!("{stem}_"))))
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_quantization_is_loadable_only_when_its_tensor_type_is_known() {
+        let types: Vec<String> = ["f32", "f16", "bf16", "q1_0", "q2_0", "q4_0", "q8_0", "mxfp4", "q2_k", "q4_k", "q6_k", "iq2_xxs", "iq3_s", "iq4_xs", "iq1_m", "tq1_0", "tq2_0"]
+            .iter()
+            .map(|t| t.to_string())
+            .collect();
+        let loadable = |tag: &str| super::tag_loadable_in(&types, tag);
+        for tag in ["Q4_K_M", "UD-Q4_K_XL", "Q2_K_L", "IQ4_XS", "IQ1_M", "IQ2_XXS", "IQ3_M", "IQ3_XS", "TQ1_0", "Q1_0", "Q2_0", "BF16", "F16", "FP16", "MXFP4", "Q8_0"] {
+            assert_eq!(loadable(tag), Some(true), "{tag}");
+        }
+        for tag in ["PTQ1_0", "PQ2_0", "Q5_K_M"] {
+            assert_eq!(loadable(tag), Some(false), "{tag}");
+        }
+        for tag in ["GGUF", "DEFAULT", "CUSTOM", "ONNX"] {
+            assert_eq!(loadable(tag), None, "{tag}: not a quantization name, nothing is judged");
+        }
+    }
+
     use super::UniversalQuantization;
 
     #[test]

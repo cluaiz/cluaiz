@@ -10,4 +10,4 @@ pub use tts_families::{TtsFamily, TtsTaxonomy};
 pub use stt_families::{SttFamily, SttTaxonomy};
 pub use rules::{ModelCapabilities, UniversalTaskRules};
 pub use classifier::{ClassificationResult, UniversalModelClassifier};
-pub use quantization::UniversalQuantization;
+pub use quantization::{set_loadable_tensor_types, tag_loadable, UniversalQuantization};

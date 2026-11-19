@@ -27,3 +27,9 @@ pub fn loaded_gpu_backends() -> Vec<String> {
     llama_engine::loaded_gpu_backends()
 }
 pub use llama_engine::{ContextReport, GenerationTimings, ThinkingReport};
+/// Tells the model catalogue which quantizations the bundled llama.cpp can read, so a pull offers
+/// only GGUF files that load (a llama.cpp fork's `PTQ1_0` or `PQ2_0` is left out). Call once at start.
+pub fn register_loadable_quantizations() {
+    cluaiz_models::taxonomy::set_loadable_tensor_types(llama_engine::tensor_type_names());
+}
+

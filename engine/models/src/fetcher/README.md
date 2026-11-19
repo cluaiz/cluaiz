@@ -74,7 +74,8 @@ flowchart TD
     matched, or the caller chooses (a prompt in the terminal, `FirstVariant` over the API).
   - **Why:** With nobody to ask, the default is Q4_K_M, else the smallest variant: the first one
     listed can be the largest, and a script should not start that download. A free pick of files
-    (`--all`) is refused without someone to choose.
+    (`--all`) is refused without someone to choose. A tag naming a quantization this build cannot
+    read (`PTQ1_0`) is refused before any download, with the variants that load.
 - `client.rs`:
   - **Logic:** Catalog resolution: one bounded request with the model id and, for `name:tag`,
     the base id as a fallback. Not found, rate limit, client rejection and service failure stay
@@ -82,7 +83,10 @@ flowchart TD
 - `hf_hub.rs`:
   - **Logic:** Reads a repository's file tree and metadata, groups files into variants (by
     quantization, multi-shard GGUF sets, ONNX precision), and builds the URL of each asset at the
-    manifest's revision.
+    manifest's revision. GGUF variants whose quantization the bundled llama.cpp cannot read are left
+    out (`split_unloadable`).
+  - **Why:** prism-ml's Bonsai repos hold `PQ2_0` and `PTQ1_0` files from their llama.cpp fork next
+    to a `Q2_0` file; the smallest (`PTQ1_0`) was offered and failed only at load, after the download.
 - `asset_bundler.rs`:
   - **Logic:** Which companion files a variant needs: config and tokenizer files, the `mmproj`
     projector, MTP and helper GGUFs; PyTorch weights are recognised and left out; the bundle's

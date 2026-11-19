@@ -173,6 +173,10 @@ extern "C" {
     /// True when a loaded backend can hold model layers (a GPU pack whose device was found).
     pub fn llama_supports_gpu_offload() -> bool;
 
+    /// Name of a tensor type (`ggml_type`, below `GGML_TYPE_COUNT`): `q4_K`, `tq1_0`, …; may be null
+    /// or contain "REMOVED" for a number no longer used.
+    pub fn ggml_type_name(kind: i32) -> *const c_char;
+
     /// First registered device of a type (`GGML_BACKEND_DEVICE_TYPE_*`), null when none.
     pub fn ggml_backend_dev_by_type(kind: i32) -> *mut std::ffi::c_void;
 
