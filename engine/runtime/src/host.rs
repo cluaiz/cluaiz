@@ -539,29 +539,41 @@ impl EngineHost {
         // GPU for this model and settings, and the next, smaller candidate is tried (plan §5.4). At
         // most `MAX_LOAD_ATTEMPTS` loads; the weight file is in the system's cache after the first,
         // so a retry costs seconds.
+        // Only a failure of memory is retried: for any other reason (a file llama.cpp cannot run,
+        // a drafter model that needs its main model) a smaller placement fails the same way. The
+        // error names every placement tried and llama.cpp's own reason.
         let mut facts = LoadFacts { attempts: 1, ..Default::default() };
         let mut tried = plan.clone();
         let mut outcome = first;
+        let mut failures: Vec<String> = Vec::new();
         let llama = loop {
             let error = match outcome {
                 Ok(llama) => break llama,
                 Err(error) => error,
             };
+            failures.push(format!("{}: {error:#}", placement_line(&tried)));
+            let memory = error
+                .downcast_ref::<llama_engine::native::load_steps::LoadFailure>()
+                .is_none_or(|failure| failure.is_memory());
+            if !memory {
+                return Err(anyhow::anyhow!(
+                    "llama.cpp could not load the model ({}); this is not a lack of memory, so no smaller placement was tried",
+                    failures.join("; ")
+                ));
+            }
             if facts.attempts >= MAX_LOAD_ATTEMPTS {
-                return Err(error.context(format!("{} loads with smaller placements failed", facts.attempts)));
+                return Err(anyhow::anyhow!("{} loads failed, each smaller: {}", facts.attempts, failures.join("; ")));
             }
             let live = crate::host::native_load::gguf_hardware();
             let free_before = hw.gpus.first().map_or(0.0, |g| g.vram_available_gb);
             let Some(next) = Planner::after_failed_load(&tried, &geometry, free_before, &live, settings) else {
-                return Err(error);
+                return Err(anyhow::anyhow!("{} (no smaller placement to try)", failures.join("; ")));
             };
             crate::vram_use::save();
             facts.attempts += 1;
             tracing::warn!(
-                "⚠️ [EngineHost] Load failed with {:?}, {} GPU layers, n_cpu_moe {}, {} tokens ({error:#}); retry {} of {}: {:?}, {} GPU layers, n_cpu_moe {}, {} tokens",
-                tried.selected_tier, tried.n_gpu_layers, tried.n_cpu_moe, tried.context_window,
-                facts.attempts, MAX_LOAD_ATTEMPTS,
-                next.selected_tier, next.n_gpu_layers, next.n_cpu_moe, next.context_window
+                "⚠️ [EngineHost] Load failed with {} ({error:#}); retry {} of {}: {}",
+                placement_line(&tried), facts.attempts, MAX_LOAD_ATTEMPTS, placement_line(&next)
             );
             load_events::publish(LoadEvent {
                 kind: Some(load_events::Kind::Retry),
@@ -1247,6 +1259,11 @@ fn event_with_plan(event: LoadEvent, plan: &ExecutionPlan) -> LoadEvent {
         vram_planned_gb: Some((plan.vram_budget_gb * 100.0).round() / 100.0),
         ..event
     }
+}
+
+/// `GpuOnly, -1 GPU layers, n_cpu_moe 0, 16384 tokens`
+fn placement_line(plan: &ExecutionPlan) -> String {
+    format!("{:?}, {} GPU layers, n_cpu_moe {}, {} tokens", plan.selected_tier, plan.n_gpu_layers, plan.n_cpu_moe, plan.context_window)
 }
 
 /// Runs a llama.cpp load with its steps published as load events

@@ -359,7 +359,10 @@ extern "C" fn llama_log_callback(
             return;
         }
         match level {
-            4 => tracing::error!("[llama.cpp] {}", trimmed),
+            4 => {
+                crate::native::load_steps::note_error(trimmed);
+                tracing::error!("[llama.cpp] {}", trimmed)
+            }
             3 => tracing::warn!("[llama.cpp] {}", trimmed),
             _ => tracing::debug!("[llama.cpp] {}", trimmed),
         }
@@ -559,6 +562,7 @@ impl NativeLlama {
             "🧬 [Native-Llama] Loading model: {} | ctx: {} tokens",
             model_path, ctx_params.n_ctx
         );
+        crate::native::load_steps::clear_error();
         let mut model_params = model_params;
         if crate::native::load_steps::observed() && model_params.progress_callback.is_none() {
             model_params.progress_callback = Some(crate::native::load_steps::weights_progress);
@@ -655,7 +659,7 @@ impl NativeLlama {
         }
 
         if model_ptr.is_null() {
-            return Err(anyhow::anyhow!("Model Load Failure: {}", model_path));
+            return Err(crate::native::load_steps::LoadFailure::now("model").into());
         }
 
         let model_dir = std::path::Path::new(model_path)
@@ -763,7 +767,7 @@ impl NativeLlama {
 
         if ctx_ptr.is_null() {
             unsafe { llama_cpp::llama_model_free(model_ptr) };
-            return Err(anyhow::anyhow!("Context Init Failure"));
+            return Err(crate::native::load_steps::LoadFailure::now("context").into());
         }
 
         // All repeating layers on the GPU (the output head works on one token per prompt) and no tensor

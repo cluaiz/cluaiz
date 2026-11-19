@@ -151,7 +151,7 @@ While the task runs, `tasks.get {task_id, after}` returns:
 |---|---|---|
 | `started` | The planned placement starts to load | `attempt` 1, `placement`, `n_gpu_layers`, `n_cpu_moe`, `n_ctx`, `vram_planned_gb` |
 | `step` | `step` is `fallback` (llama.cpp tried again another way: `detail` says which), `context` (KV cache and compute buffers) or `warmup` | `attempt`, `step`, `detail` |
-| `retry` | A placement did not load; a smaller one is tried (at most 3 loads in all) | `attempt` 2 or 3, the new placement fields, `detail` (why the last one failed) |
+| `retry` | A placement did not load for lack of memory; a smaller one is tried (at most 3 loads in all; any other failure is not retried) | `attempt` 2 or 3, the new placement fields, `detail` (why the last one failed) |
 | `loaded` | Loaded | `attempt`, placement fields, `vram_taken_gb` when measured, `ms` |
 | `failed`, `refused` | Not loaded (`refused`: no placement fits) | `detail`, `ms` |
 | `unloaded` | The model loaded before was freed to make room | `ms` |
@@ -186,7 +186,7 @@ The same notices go to the Engine's event bus as `model.load_started`, `model.lo
 | `-32602` / `invalid_params` | `model` is empty or looks like a path | Correct the option/value combination; install required assets where relevant |
 | `-32002` / `forbidden` | The model's folder is outside the caller's roots (`data.needs: "roots"`) | Read the error message, correct the backend/filesystem/configuration condition, then retry deliberately |
 | `-32007` / `not_implemented` | The model is not a GGUF (ONNX models load on their first request) | Read the error message, correct the backend/filesystem/configuration condition, then retry deliberately |
-| `-32010` / `model_load_failed` | llama.cpp could not load it, the retries included (memory, a broken file, an unsupported architecture), from the task's result | Read the error message, correct the backend/filesystem/configuration condition, then retry deliberately |
+| `-32010` / `model_load_failed` | llama.cpp could not load it, the retries included; the message names each placement tried and llama.cpp's own reason (memory, a broken file, an unsupported architecture), from the task's result | Read the error message, correct the backend/filesystem/configuration condition, then retry deliberately |
 | `-32010` / `placement_refused` | No placement fits this machine's free memory; nothing was loaded (from the task's result) | Free memory, choose a smaller quantization or context, or check `system.plan` |
 
 ### Invalid-field example
