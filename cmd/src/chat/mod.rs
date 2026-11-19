@@ -139,10 +139,12 @@ impl Session {
         }
         let settings = options.settings()?;
         let _spin = crate::ui::spinner::Spinner::start("Loading model…");
+        let _steps = _spin.follow_loads("Loading model");
         let plan = host
             .ensure_loaded(&model_id, &model_path, &settings)
             .await
             .map_err(|e| eyre!("{}", e))?;
+        drop(_steps);
         drop(_spin);
         Ok(Self {
             host,
@@ -214,11 +216,13 @@ impl Session {
         let settings = self.options.settings()?;
         let started = std::time::Instant::now();
         let _spin = crate::ui::spinner::Spinner::start("Switching model…");
+        let _steps = _spin.follow_loads("Switching model");
         self.plan = self
             .host
             .ensure_loaded(&model_id, &model_path, &settings)
             .await
             .map_err(|e| eyre!("{}", e))?;
+        drop(_steps);
         drop(_spin);
         self.load_ms = started.elapsed().as_millis();
         self.model_id = model_id;

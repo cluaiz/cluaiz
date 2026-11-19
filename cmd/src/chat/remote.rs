@@ -18,6 +18,32 @@ pub struct Remote {
     pub url: String,
 }
 
+/// `models.load` in the server (a task): its steps on `spin` while it runs; None when it failed
+async fn load_in_server(model_id: &str, spin: &crate::ui::spinner::Spinner) -> Option<()> {
+    let started = server::cep("models.load", json!({ "model": model_id })).await.ok()?;
+    let task_id = started["task"]["task_id"].as_str()?.to_string();
+    let (mut after, mut percent) = (0, None);
+    loop {
+        let view = server::cep("tasks.get", json!({ "task_id": task_id, "after": after })).await.ok()?;
+        let newest = view["events"].as_array().and_then(|events| events.last()).and_then(|event| event["message"].as_str());
+        let done = view["progress"]["done"].as_u64();
+        if let Some(message) = newest {
+            spin.set_message(format!("Loading the model in the running server: {message}"));
+        } else if done != percent {
+            if let Some(message) = view["progress"]["message"].as_str() {
+                spin.set_message(format!("Loading the model in the running server: {message}"));
+            }
+        }
+        percent = done;
+        after = view["next"].as_u64().unwrap_or(after);
+        if view["status"] != "working" {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(view["poll_ms"].as_u64().unwrap_or(500).min(500))).await;
+    }
+    server::cep("tasks.result", json!({ "task_id": task_id, "wait_ms": 1000 })).await.ok().map(|_| ())
+}
+
 impl Remote {
     /// The server's plan for `model_id` after it loaded it, or None when no server answers
     pub async fn attach(model_id: &str) -> Option<(Self, ExecutionPlan)> {
@@ -29,8 +55,9 @@ impl Remote {
         if !alive {
             return None;
         }
-        let _spin = crate::ui::spinner::Spinner::start("Loading the model in the running server…");
-        server::cep("models.load", json!({ "model": model_id })).await.ok()?;
+        let spin = crate::ui::spinner::Spinner::start("Loading the model in the running server…");
+        load_in_server(model_id, &spin).await?;
+        drop(spin);
         let ps = server::cep("system.ps", json!({})).await.ok()?;
         let plan = ps["active_processes"]
             .as_array()?

@@ -4,9 +4,9 @@ transport: "POST /v1/cep"
 category: "models"
 category_title: "Models & Engine Vault"
 group: "models"
-summary: "Loads an installed GGUF model using the existing Engine host"
+summary: "Loads an installed GGUF model using the existing Engine host. A task: its progress is the share of the weights read, its events the load's steps (started with the plan, a llama.cpp fallback, context, warmup, a retry one placement smaller)"
 scope: "write"
-execution: "sync"
+execution: "task"
 mcp: true
 owner_only: false
 destructive: false
@@ -31,8 +31,11 @@ response: |
     "id": 1,
     "jsonrpc": "2.0",
     "result": {
-      "loaded_ms": 125,
-      "model": "installed-model"
+      "task": {
+        "method": "models.load",
+        "status": "working",
+        "task_id": "t_9a1c…"
+      }
     }
   }
 errors:
@@ -53,19 +56,22 @@ errors:
     when: "The model is not a GGUF (ONNX models load on their first request)"
   - code: -32010
     type: "model_load_failed"
-    when: "llama.cpp could not load it (memory, a broken file, an unsupported architecture)"
+    when: "llama.cpp could not load it (memory, a broken file, an unsupported architecture) (from the task's result)"
+  - code: -32010
+    type: "placement_refused"
+    when: "No placement fits this machine's free memory; nothing was loaded (from the task's result)"
 ---
 
 # models.load
 
-Explicitly load an installed GGUF package through the existing Engine host. It is not the ONNX warmup endpoint: ONNX task runtimes load their packages on the first compatible inference request.
+Explicitly load an installed GGUF package through the existing Engine host. It is a task: the answer is a task handle at once, and `tasks.get` shows the load as it runs (the share of the weights read, then each step). It is not the ONNX warmup endpoint: ONNX task runtimes load their packages on the first compatible inference request.
 
 ## Endpoint, execution and permissions
 
 | Property | Contract |
 |---|---|
 | Wire endpoint | `POST /v1/cep`; logical method `models.load` |
-| Execution | Synchronous domain result in the JSON-RPC result field |
+| Execution | Task: the first result is a handle; use tasks.get / tasks.result for progress and output |
 | Required scope | `write` |
 | MCP facade | Not exposed by the current read-only MCP facade |
 | Side effects | Updates the state described below |
@@ -76,15 +82,18 @@ Send a Bearer token when API authentication is enabled. Authentication failures 
 
 1. Resolve the installed package and authorize its primary file
 2. Require the gguf format
-3. Call EngineHost.ensure_loaded with the current captured settings
+3. Start a task and call EngineHost.ensure_loaded with the current captured settings
+4. While it loads, the share of the weights read becomes the task's `progress` (`unit: "percent"`) and every other step is a task event (below)
+5. The result is the model and the load time; the action is also kept in [`models.load_history`](models.load_history.md)
 
 ```mermaid
 flowchart TD
     C["Client request"] --> A["Authentication, principal and typed params"]
     A --> P0["Resolve the installed package and authorize its primary file"]
     P0 --> P1["Require the gguf format"]
-    P1 --> P2["Call EngineHost.ensure_loaded with the current captured settings"]
-    P2 --> R["JSON-RPC result or explicit error"]
+    P1 --> P2["Task: EngineHost.ensure_loaded with the current captured settings"]
+    P2 --> E["tasks.get: progress (weights %) and step events"]
+    P2 --> R["tasks.result: result or explicit error"]
 ```
 
 ## Parameters, defaults and value effects
@@ -131,9 +140,27 @@ Use models.list and system.plan first when you need a specific selection or memo
 
 ## Response and field meanings
 
-model identifies the selected package and loaded_ms is measured elapsed load-owner time for this request. It is not a guaranteed cold-load benchmark: existing reusable residency can affect it.
+The call answers at once with `{"task": {"task_id", "method": "models.load", "status": "working", …}}`.
 
-The following response is an illustrative shape. IDs, byte counts, timings and array contents depend on the actual request and machine; shortened nested objects are not a second schema or a measured result.
+While the task runs, `tasks.get {task_id, after}` returns:
+
+- `progress`: `{"done": 37, "total": 100, "unit": "percent", "message": "reading weights 37%"}`, the share of the weights llama.cpp has read
+- `events` after the cursor `after`, each with `kind`, `model`, the placement fields where they apply, and `message` (one readable line):
+
+| `kind` | When | Fields besides `model` and `message` |
+|---|---|---|
+| `started` | The planned placement starts to load | `attempt` 1, `placement`, `n_gpu_layers`, `n_cpu_moe`, `n_ctx`, `vram_planned_gb` |
+| `step` | `step` is `fallback` (llama.cpp tried again another way: `detail` says which), `context` (KV cache and compute buffers) or `warmup` | `attempt`, `step`, `detail` |
+| `retry` | The planned placement did not load; one placement smaller is tried | `attempt` 2, the new placement fields, `detail` (why the first failed) |
+| `loaded` | Loaded | `attempt`, placement fields, `vram_taken_gb` when measured, `ms` |
+| `failed`, `refused` | Not loaded (`refused`: no placement fits) | `detail`, `ms` |
+| `unloaded` | The model loaded before was freed to make room | `ms` |
+
+One request can load more than once: after the first load of a model measures it, a better placement may be loaded (`started` again), or a smaller one when too little VRAM was left.
+
+`tasks.result` then gives what the direct call gave before: `model` and `loaded_ms`, the elapsed time for this request. It is not a guaranteed cold-load benchmark: a model already resident with the same settings is not loaded again, and a weight file the system has cached reads much faster than one read from disk.
+
+The following response is an illustrative shape, not a measured result.
 
 ```json
 {
@@ -146,6 +173,8 @@ The following response is an illustrative shape. IDs, byte counts, timings and a
 }
 ```
 
+The same notices go to the Engine's event bus as `model.load_started`, `model.load_step`, `model.load_retry`, `model.loaded`, `model.load_failed`, `model.load_refused` and `model.unloaded`, for loads started anywhere (a chat request, the CLI, a flow).
+
 ## Errors and recovery
 
 | Code / boundary | Meaning | Recovery |
@@ -157,7 +186,8 @@ The following response is an illustrative shape. IDs, byte counts, timings and a
 | `-32602` / `invalid_params` | `model` is empty or looks like a path | Correct the option/value combination; install required assets where relevant |
 | `-32002` / `forbidden` | The model's folder is outside the caller's roots (`data.needs: "roots"`) | Read the error message, correct the backend/filesystem/configuration condition, then retry deliberately |
 | `-32007` / `not_implemented` | The model is not a GGUF (ONNX models load on their first request) | Read the error message, correct the backend/filesystem/configuration condition, then retry deliberately |
-| `-32010` / `model_load_failed` | llama.cpp could not load it (memory, a broken file, an unsupported architecture) | Read the error message, correct the backend/filesystem/configuration condition, then retry deliberately |
+| `-32010` / `model_load_failed` | llama.cpp could not load it, the retry included (memory, a broken file, an unsupported architecture), from the task's result | Read the error message, correct the backend/filesystem/configuration condition, then retry deliberately |
+| `-32010` / `placement_refused` | No placement fits this machine's free memory; nothing was loaded (from the task's result) | Free memory, choose a smaller quantization or context, or check `system.plan` |
 
 ### Invalid-field example
 

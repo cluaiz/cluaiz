@@ -4,6 +4,7 @@
 pub mod chat_memory;
 pub mod embedding_host;
 pub mod host;
+pub mod load_events;
 pub mod load_history;
 pub mod media_admission;
 mod media_room;

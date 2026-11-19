@@ -27,6 +27,20 @@ pub fn create_router(state: AppState) -> Router {
     routes::build_api_router(shared_state)
 }
 
+/// Live chat-model load notices (`cluaiz_runtime::load_events`) become Engine events
+/// (`model.load_started`, `model.load_step`, … , `model.unloaded`)
+async fn forward_load_events() {
+    use tokio::sync::broadcast::error::RecvError;
+    let mut events = cluaiz_runtime::load_events::subscribe();
+    loop {
+        match events.recv().await {
+            Ok(event) => cluaiz_cep::events::publish(event.name(), event.to_json()),
+            Err(RecvError::Lagged(_)) => continue,
+            Err(RecvError::Closed) => break,
+        }
+    }
+}
+
 /// Boots and runs the unified HTTP/SSE daemon server.
 pub async fn run_daemon() -> anyhow::Result<()> {
     run_daemon_with_native_endpoint(None).await
@@ -41,6 +55,7 @@ pub async fn run_daemon_with_native_endpoint(endpoint: Option<String>) -> anyhow
     let session_token = state.session_token.clone();
     cep::extensions::start(&state);
     cluaiz_cep::events::publish("engine.started", serde_json::json!({ "version": env!("CARGO_PKG_VERSION") }));
+    tokio::spawn(forward_load_events());
     let app = routes::build_api_router(state);
 
     // Optional background async warmup if lazy_load_model is disabled (never blocks daemon port binding)

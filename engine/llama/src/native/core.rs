@@ -559,6 +559,10 @@ impl NativeLlama {
             "🧬 [Native-Llama] Loading model: {} | ctx: {} tokens",
             model_path, ctx_params.n_ctx
         );
+        let mut model_params = model_params;
+        if crate::native::load_steps::observed() && model_params.progress_callback.is_none() {
+            model_params.progress_callback = Some(crate::native::load_steps::weights_progress);
+        }
         let mut n_gpu_layers_loaded = model_params.n_gpu_layers;
         let mut model_ptr =
             unsafe { llama_cpp::llama_model_load_from_file(c_path.as_ptr(), model_params) };
@@ -568,6 +572,7 @@ impl NativeLlama {
         // 🔒 Mlock Graceful Fallback
         if model_ptr.is_null() && model_params.is_mlock() {
             warn!("🔒 [Arbiter] mlock failed. Falling back to high-speed mmap...");
+            crate::native::load_steps::emit(crate::native::load_steps::LoadStep::Fallback("without mlock"));
             let mut fallback_params = model_params;
             fallback_params.set_mlock(false);
             model_ptr =
@@ -580,6 +585,7 @@ impl NativeLlama {
         // We must gracefully fallback to CPU-only.
         if model_ptr.is_null() && model_params.n_gpu_layers > 1 {
             tracing::info!("⚠️ [Native-Llama] VRAM allocation pressure during model load. Clamping n_gpu_layers to {} and retrying...", model_params.n_gpu_layers / 2);
+            crate::native::load_steps::emit(crate::native::load_steps::LoadStep::Fallback("half the GPU layers"));
             let mut half_params = model_params;
             half_params.n_gpu_layers /= 2;
             n_gpu_layers_loaded = half_params.n_gpu_layers;
@@ -603,6 +609,7 @@ impl NativeLlama {
                 ));
             }
             tracing::warn!("⚠️ [Native-Llama] Model Load Failed on GPU. Falling back to CPU-only...");
+            crate::native::load_steps::emit(crate::native::load_steps::LoadStep::Fallback("CPU only"));
             let mut cpu_params = model_params;
             cpu_params.n_gpu_layers = 0; // Force CPU
             n_gpu_layers_loaded = 0;
@@ -637,6 +644,7 @@ impl NativeLlama {
             }
 
             tracing::warn!("⚠️ [Native-Llama] Model Load Failed with mmap. Falling back to RAM allocation (use_mmap = false)...");
+            crate::native::load_steps::emit(crate::native::load_steps::LoadStep::Fallback("CPU only, without mmap"));
             let mut ram_params = model_params;
             ram_params.n_gpu_layers = 0;
             n_gpu_layers_loaded = 0;
@@ -738,6 +746,7 @@ impl NativeLlama {
         );
 
         print_memory_trace("4. BEFORE CONTEXT CREATION");
+        crate::native::load_steps::emit(crate::native::load_steps::LoadStep::Context);
         let mut ctx_ptr = unsafe { llama_cpp::llama_init_from_model(model_ptr, ctx_params) };
         print_memory_trace("5. AFTER CONTEXT CREATION");
 
@@ -745,6 +754,7 @@ impl NativeLlama {
         // If Context Init fails with Flash Attention, fallback without Flash Attention (enforcing F16 V-cache as required by llama.cpp)
         if ctx_ptr.is_null() && ctx_params.flash_attn_type > 0 {
             tracing::info!("⚠️ [Native-Llama] Context Init Failed with Flash Attention ON. Retrying with fallback...");
+            crate::native::load_steps::emit(crate::native::load_steps::LoadStep::Fallback("without flash attention"));
             let mut fallback_ctx_params = ctx_params;
             fallback_ctx_params.flash_attn_type = 0;
             fallback_ctx_params.type_v = 1; // Upstream llama.cpp requires F16 V-cache when FA is disabled
@@ -790,6 +800,7 @@ impl NativeLlama {
             checkpoints: Vec::new(),
             keys_can_shift: cluaiz_core::KvCacheQuantization::keys_can_shift(ctx_params.type_k),
         };
+        crate::native::load_steps::emit(crate::native::load_steps::LoadStep::Warmup);
         llama.warmup();
         Ok(llama)
     }

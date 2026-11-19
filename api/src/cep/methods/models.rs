@@ -243,32 +243,83 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         "models.load",
         Meta::new(
             Scope::Write,
-            "Loads an installed GGUF model using the existing Engine host",
+            "Loads an installed GGUF model using the existing Engine host. A task: its progress is the share of the weights read, its events the load's steps (started with the plan, a llama.cpp fallback, context, warmup, a retry one placement smaller)",
         )
+        .task()
+        .idempotent(false)
         .error(-32004, "model_not_found", "No installed model with this id, or its weight file is missing")
         .error(-32005, "provider_model", "The model is a provider's (`<provider>/<model>` in providers.json); this method works on installed models only")
         .error(-32602, "invalid_params", "`model` is empty or looks like a path")
         .error(-32002, "forbidden", "The model's folder is outside the caller's roots (`data.needs: \"roots\"`)")
         .error(-32007, "not_implemented", "The model is not a GGUF (ONNX models load on their first request)")
-        .error(-32010, "model_load_failed", "llama.cpp could not load it (memory, a broken file, an unsupported architecture)")
+        .error(-32010, "model_load_failed", "llama.cpp could not load it (memory, a broken file, an unsupported architecture) (from the task's result)")
+        .error(-32010, "placement_refused", "No placement fits this machine's free memory; nothing was loaded (from the task's result)")
         .example(
             json!({"model":"installed-model"}),
-            json!({"model":"installed-model","loaded_ms":125}),
+            json!({"task": {"task_id": "t_9a1c…", "method": "models.load", "status": "working"}}),
         ),
         |ctx: CallCtx, call: Call, params: ModelParams| async move {
-            let (entry, path) = selected(&ctx, call, params.model, None, false).await?;
+            let (entry, path) = selected(&ctx, call.clone(), params.model, None, false).await?;
             if entry.format_type != "gguf" {
                 return Err(CepError::not_implemented(
                     "Explicit models.load for this model format",
                 ));
             }
-            let started = std::time::Instant::now();
-            ctx.state
-                .host
-                .ensure_loaded(&entry.id, &path, &cluaiz_core::Settings::current())
-                .await
-                .map_err(|error| CepError::unavailable("model_load_failed", error.to_string()))?;
-            Ok(json!({"model":entry.id,"loaded_ms":started.elapsed().as_millis()}))
+            let host = ctx.state.host.clone();
+            call.start_task(move |task| async move {
+                // The load's live notices of this model: weights read is the progress, the other
+                // steps are events
+                let mut notices = cluaiz_runtime::load_events::subscribe();
+                let updates = task.clone();
+                let model = entry.id.clone();
+                let (done, mut finished) = tokio::sync::oneshot::channel::<()>();
+                let forward = tokio::spawn(async move {
+                    use tokio::sync::broadcast::error::{RecvError, TryRecvError};
+                    let pass = |event: cluaiz_runtime::load_events::LoadEvent| {
+                        if event.model != model {
+                        } else if event.step == Some("weights") {
+                            updates.progress(Progress {
+                                done: u64::from(event.percent.unwrap_or(0)),
+                                total: Some(100),
+                                unit: Some("percent".into()),
+                                message: Some(event.describe()),
+                            });
+                        } else {
+                            updates.event(event.to_json());
+                        }
+                    };
+                    loop {
+                        tokio::select! {
+                            biased;
+                            received = notices.recv() => match received {
+                                Ok(event) => pass(event),
+                                Err(RecvError::Lagged(_)) => {}
+                                Err(RecvError::Closed) => break,
+                            },
+                            // The load returned: what it sent is in the channel already
+                            _ = &mut finished => {
+                                loop {
+                                    match notices.try_recv() {
+                                        Ok(event) => pass(event),
+                                        Err(TryRecvError::Lagged(_)) => {}
+                                        Err(_) => break,
+                                    }
+                                }
+                                break;
+                            }
+                        }
+                    }
+                });
+                let started = std::time::Instant::now();
+                let loaded = host.ensure_loaded(&entry.id, &path, &cluaiz_core::Settings::current()).await;
+                let _ = done.send(());
+                let _ = forward.await;
+                loaded.map_err(|error| {
+                    let code = if error.downcast_ref::<cluaiz_runtime::PlacementRefused>().is_some() { "placement_refused" } else { "model_load_failed" };
+                    CepError::unavailable(code, format!("{error:#}"))
+                })?;
+                Ok(json!({"model":entry.id,"loaded_ms":started.elapsed().as_millis()}))
+            })
         },
     );
     registry.add(

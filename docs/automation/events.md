@@ -2,9 +2,11 @@
 
 > **Draft for review.** The Engine sends these events now: `task.done`, `task.failed`,
 > `approval.requested`, `approval.decided`, `tool.installed`, `tool.removed`, `model.downloaded`,
+> the chat-model load events (`model.load_started`, `model.load_step`, `model.load_retry`,
+> `model.loaded`, `model.load_failed`, `model.load_refused`, `model.unloaded`),
 > `flow.finished`, `flow.failed` and `engine.started` (from `cep/src/events.rs`). A flow's `emit`
-> travels as the Engine event `flow.event` (`{ name, data, from }`). Not sent yet: `chat.finished`,
-> `model.loaded`, `model.unloaded`. See [Automation](README.md).
+> travels as the Engine event `flow.event` (`{ name, data, from }`). Not sent yet: `chat.finished`.
+> See [Automation](README.md).
 
 ## How events move
 
@@ -29,7 +31,12 @@ What an [`engine` trigger](triggers.md#engine) or a [`wait`](steps/wait.md) with
 | --- | --- | --- |
 | `chat.finished` | A chat answer ended | `chat_id`, `model`, `stop` (`eos`, `limit`, `cancel`), `tokens` |
 | `model.downloaded` | A download finished | `model`, `category`, `bytes` |
-| `model.loaded`, `model.unloaded` | A model was loaded into memory or left it | `model` |
+| `model.load_started` | A chat model starts to load in a planned placement | `model`, `attempt`, `placement`, `n_gpu_layers`, `n_cpu_moe`, `n_ctx`, `vram_planned_gb`, `message` |
+| `model.load_step` | A load step: `step` is `weights` (`percent` read), `fallback` (`detail`), `context` or `warmup` | `model`, `attempt`, `step`, `percent`, `detail`, `message` |
+| `model.load_retry` | The planned placement did not load; one placement smaller is tried | `model`, `attempt`, placement fields, `detail`, `message` |
+| `model.loaded` | A chat model was loaded into memory | `model`, `attempt`, placement fields, `vram_taken_gb`, `ms`, `message` |
+| `model.load_failed`, `model.load_refused` | It was not loaded (`refused`: no placement fits) | `model`, placement fields, `detail`, `ms`, `message` |
+| `model.unloaded` | A chat model left memory | `model`, `ms`, `message` |
 | `task.done` | A CEP task succeeded | `task_id`, `method` |
 | `task.failed` | A CEP task failed | `task_id`, `method`, `error` |
 | `approval.requested` | An approval is waiting | `approval_id`, `method`, `principal` |

@@ -224,7 +224,8 @@ Errors stop a save; warnings do not. [Validation](../automation/validation.md)
 
 ## Events
 
-- Engine events: `chat.finished`, `model.downloaded`, `model.loaded`, `model.unloaded`, `task.done`,
+- Engine events: `chat.finished`, `model.downloaded`, `model.load_started`, `model.load_step`,
+  `model.load_retry`, `model.loaded`, `model.load_failed`, `model.load_refused`, `model.unloaded`, `task.done`,
   `task.failed`, `approval.requested`, `approval.decided`, `tool.installed`, `tool.removed`,
   `flow.finished`, `flow.failed`, `engine.started`.
 - Run events: `run.queued`, `run.started`, `step.started`, `step.retrying`, `step.finished`,

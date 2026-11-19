@@ -45,6 +45,50 @@ impl Spinner {
     }
 }
 
+impl Spinner {
+    pub fn set_message(&self, message: impl Into<String>) {
+        self.0.set_message(message.into());
+    }
+
+    /// Shows the live steps of chat-model loads in this process after `label` (`Loading model:
+    /// reading weights 37%`) until the returned follower is dropped
+    pub fn follow_loads(&self, label: &str) -> LoadFollower {
+        use tokio::sync::broadcast::error::TryRecvError;
+        let bar = self.0.clone();
+        let label = label.to_string();
+        let stop = std::sync::Arc::new(AtomicBool::new(false));
+        let stopped = std::sync::Arc::clone(&stop);
+        let mut notices = cluaiz_runtime::load_events::subscribe();
+        // The load runs synchronously on a runtime thread, so the steps are drawn from a thread of
+        // their own
+        let thread = std::thread::spawn(move || loop {
+            match notices.try_recv() {
+                Ok(event) => bar.set_message(format!("{label}: {}", event.describe())),
+                Err(TryRecvError::Lagged(_)) => {}
+                Err(TryRecvError::Closed) => break,
+                Err(TryRecvError::Empty) if stopped.load(Ordering::Relaxed) => break,
+                Err(TryRecvError::Empty) => std::thread::sleep(Duration::from_millis(50)),
+            }
+        });
+        LoadFollower { stop, thread: Some(thread) }
+    }
+}
+
+/// Stops drawing load steps when dropped
+pub struct LoadFollower {
+    stop: std::sync::Arc<AtomicBool>,
+    thread: Option<std::thread::JoinHandle<()>>,
+}
+
+impl Drop for LoadFollower {
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::Relaxed);
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
+        }
+    }
+}
+
 impl Drop for Spinner {
     fn drop(&mut self) {
         self.0.finish_and_clear();

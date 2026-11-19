@@ -131,7 +131,7 @@ Every method can answer the protocol's errors below; each method page lists its 
 
 ## Long work: tasks
 
-Methods with `execution: task` answer at once with `{"task": {"task_id", "method", "status": "working", "created_at", "last_updated_at", "ttl_ms", "poll_ms"}}`: `audio.run`, `tools.install`, `chat.import_app`, `models.download`.
+Methods with `execution: task` answer at once with `{"task": {"task_id", "method", "status": "working", "created_at", "last_updated_at", "ttl_ms", "poll_ms"}}`: `audio.run`, `tools.install`, `chat.import_app`, `models.download`, `models.load`.
 
 ```mermaid
 sequenceDiagram

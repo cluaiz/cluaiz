@@ -3745,7 +3745,14 @@
           "data": {
             "type": "model_load_failed"
           },
-          "message": "llama.cpp could not load it (memory, a broken file, an unsupported architecture)"
+          "message": "llama.cpp could not load it (memory, a broken file, an unsupported architecture) (from the task's result)"
+        },
+        {
+          "code": -32010,
+          "data": {
+            "type": "placement_refused"
+          },
+          "message": "No placement fits this machine's free memory; nothing was loaded (from the task's result)"
         }
       ],
       "examples": [
@@ -3760,8 +3767,11 @@
           "result": {
             "name": "result",
             "value": {
-              "loaded_ms": 125,
-              "model": "installed-model"
+              "task": {
+                "method": "models.load",
+                "status": "working",
+                "task_id": "t_9a1c…"
+              }
             }
           }
         }
@@ -3784,10 +3794,10 @@
           "title": "AnyValue"
         }
       },
-      "summary": "Loads an installed GGUF model using the existing Engine host",
+      "summary": "Loads an installed GGUF model using the existing Engine host. A task: its progress is the share of the weights read, its events the load's steps (started with the plan, a llama.cpp fallback, context, warmup, a retry one placement smaller)",
       "x-cep": {
         "destructive": false,
-        "execution": "sync",
+        "execution": "task",
         "idempotent": false,
         "mcp": true,
         "owner_only": false,

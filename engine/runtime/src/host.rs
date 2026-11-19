@@ -19,6 +19,7 @@ mod media_generation;
 #[path = "native_load.rs"]
 pub(crate) mod native_load;
 use native_load::load_with_plan;
+use crate::load_events::{self, LoadEvent};
 use crate::load_history;
 
 enum GenerationRequest {
@@ -327,6 +328,11 @@ impl EngineHost {
                 error: Some(plan.explanation.clone()),
                 ..with_plan(load_history::Record::default(), &plan)
             });
+            load_events::publish(LoadEvent {
+                kind: Some(load_events::Kind::Refused),
+                detail: Some(plan.explanation.clone()),
+                ..event_with_plan(LoadEvent { model: model_id.to_string(), ..Default::default() }, &plan)
+            });
             return Err(PlacementRefused(plan.explanation.clone()).into());
         }
         let measured_before = cluaiz_plan::margin::learned(&geometry, settings).is_some();
@@ -438,20 +444,28 @@ impl EngineHost {
         cause: load_history::Cause,
     ) -> anyhow::Result<ExecutionPlan> {
         let started = std::time::Instant::now();
-        let result = self.load_model_attempts(model_path, plan, settings).await;
+        let result = self.load_model_attempts(model_id, model_path, plan, settings).await;
+        let ms = started.elapsed().as_millis() as u64;
+        let event = LoadEvent { model: model_id.to_string(), ms: Some(ms), ..Default::default() };
         let record = load_history::Record {
             action: Some(load_history::Action::Load),
             cause: Some(cause),
             model: model_id.to_string(),
             file: model_path.to_string(),
             file_bytes: std::fs::metadata(model_path).ok().map(|m| m.len()),
-            ms: started.elapsed().as_millis() as u64,
+            ms,
             ..Default::default()
         };
         match &result {
             Ok((_, facts)) if facts.attempts == 0 => {}
             Ok((loaded, facts)) => {
                 *self.active_model_id.lock().await = Some(model_id.to_string());
+                load_events::publish(LoadEvent {
+                    kind: Some(load_events::Kind::Loaded),
+                    attempt: Some(facts.attempts),
+                    vram_taken_gb: facts.vram_taken_gb.map(|gb| (gb * 100.0).round() / 100.0),
+                    ..event_with_plan(event, loaded)
+                });
                 load_history::append(load_history::Record {
                 outcome: Some(load_history::Outcome::Ok),
                 attempts: Some(facts.attempts),
@@ -460,15 +474,19 @@ impl EngineHost {
                 ..with_plan(record, loaded)
                 })
             }
-            Err(error) => load_history::append(load_history::Record {
-                outcome: Some(if error.downcast_ref::<PlacementRefused>().is_some() {
-                    load_history::Outcome::Refused
-                } else {
-                    load_history::Outcome::Failed
-                }),
-                error: Some(format!("{error:#}")),
-                ..with_plan(record, plan)
-            }),
+            Err(error) => {
+                let refused = error.downcast_ref::<PlacementRefused>().is_some();
+                load_events::publish(LoadEvent {
+                    kind: Some(if refused { load_events::Kind::Refused } else { load_events::Kind::Failed }),
+                    detail: Some(format!("{error:#}")),
+                    ..event_with_plan(event, plan)
+                });
+                load_history::append(load_history::Record {
+                    outcome: Some(if refused { load_history::Outcome::Refused } else { load_history::Outcome::Failed }),
+                    error: Some(format!("{error:#}")),
+                    ..with_plan(record, plan)
+                })
+            }
         }
         result.map(|(loaded, _)| loaded)
     }
@@ -476,6 +494,7 @@ impl EngineHost {
     /// The load itself, with one retry one placement smaller when llama.cpp fails on the GPU
     async fn load_model_attempts(
         &self,
+        model_id: &str,
         model_path: &str,
         plan: &ExecutionPlan,
         settings: &ActiveUserSettings,
@@ -507,8 +526,13 @@ impl EngineHost {
         // Prevents two models from colliding simultaneously in physical VRAM.
         self.unload_model_inner().await;
 
+        load_events::publish(LoadEvent {
+            kind: Some(load_events::Kind::Started),
+            attempt: Some(1),
+            ..event_with_plan(LoadEvent { model: model_id.to_string(), ..Default::default() }, plan)
+        });
         let mut dna_guard = self.dna.lock().await;
-        let first = load_with_plan(model_path, plan, settings, &hw, &mut dna_guard);
+        let first = observed_load(model_id, 1, || load_with_plan(model_path, plan, settings, &hw, &mut dna_guard));
         drop(dna_guard);
         // A load that fails on the GPU (most often the KV cache or a compute buffer that did not fit)
         // is planned once more: the miss is recorded, so the planner keeps that much more free on
@@ -526,14 +550,21 @@ impl EngineHost {
                 Some(next) => {
                     crate::vram_use::save();
                     tracing::warn!(
-                        "⚠️ [EngineHost] Load failed with {} GPU layers, {} tokens ({error:#}); retrying with {} GPU layers, {} tokens",
-                        plan.n_gpu_layers, plan.context_window, next.n_gpu_layers, next.context_window
+                        "⚠️ [EngineHost] Load failed with {:?}, {} GPU layers, n_cpu_moe {}, {} tokens ({error:#}); retrying with {:?}, {} GPU layers, n_cpu_moe {}, {} tokens",
+                        plan.selected_tier, plan.n_gpu_layers, plan.n_cpu_moe, plan.context_window,
+                        next.selected_tier, next.n_gpu_layers, next.n_cpu_moe, next.context_window
                     );
+                    load_events::publish(LoadEvent {
+                        kind: Some(load_events::Kind::Retry),
+                        attempt: Some(2),
+                        detail: Some(format!("{error:#}")),
+                        ..event_with_plan(LoadEvent { model: model_id.to_string(), ..Default::default() }, &next)
+                    });
                     self.record_plan_report(next.format_telemetry_banner(&geometry, &hw, settings)).await;
                     facts.attempts = 2;
                     facts.first_error = Some(format!("{error:#}"));
                     let mut dna_guard = self.dna.lock().await;
-                    let llama = load_with_plan(model_path, &next, settings, &hw, &mut dna_guard)
+                    let llama = observed_load(model_id, 2, || load_with_plan(model_path, &next, settings, &hw, &mut dna_guard))
                         .map_err(|second| anyhow::anyhow!("{error:#}; the retry with a smaller placement failed too: {second:#}"))?;
                     (llama, Some(next))
                 }
@@ -723,10 +754,12 @@ impl EngineHost {
         }
         let ms = started.elapsed().as_millis() as u64;
         tracing::info!("♻️ [EngineHost] Model unloaded from process memory ({ms} ms)");
+        let model = model.unwrap_or_default();
+        load_events::publish(LoadEvent { kind: Some(load_events::Kind::Unloaded), model: model.clone(), ms: Some(ms), ..Default::default() });
         load_history::append(load_history::Record {
             action: Some(load_history::Action::Unload),
             outcome: Some(load_history::Outcome::Ok),
-            model: model.unwrap_or_default(),
+            model,
             file: file.unwrap_or_default(),
             ms,
             ..Default::default()
@@ -1192,6 +1225,27 @@ fn with_plan(record: load_history::Record, plan: &ExecutionPlan) -> load_history
         vram_planned_gb: Some((plan.vram_budget_gb * 100.0).round() / 100.0),
         ..record
     }
+}
+
+/// `event` with the placement of `plan`
+fn event_with_plan(event: LoadEvent, plan: &ExecutionPlan) -> LoadEvent {
+    LoadEvent {
+        placement: Some(format!("{:?}", plan.selected_tier)),
+        n_gpu_layers: Some(plan.n_gpu_layers),
+        n_cpu_moe: Some(plan.n_cpu_moe),
+        n_ctx: Some(plan.context_window),
+        vram_planned_gb: Some((plan.vram_budget_gb * 100.0).round() / 100.0),
+        ..event
+    }
+}
+
+/// Runs a llama.cpp load with its steps published as load events
+fn observed_load<T>(model_id: &str, attempt: u8, load: impl FnOnce() -> T) -> T {
+    let model = model_id.to_string();
+    llama_engine::native::load_steps::observe(
+        move |step| load_events::publish(load_events::of_step(&model, attempt, step)),
+        load,
+    )
 }
 
 /// Whether `candidate` runs more of the model on the GPU than `current`, or as much with a bigger
