@@ -274,6 +274,7 @@ graph TD
 |---|---|
 | [`handlers/`](src/handlers/) | REST endpoints for chat, models, vault, and plan inspection. |
 | [`utils/`](src/utils/) | HTTP response wrappers, error encoders, and SSE streamers. |
+| [`lib.rs`](src/lib.rs) | Starts the server. `forward_load_events` passes the runtime's live chat-model load notices (`cluaiz_runtime::load_events`) to the Engine event bus as `model.load_started`, `model.load_step`, `model.load_retry`, `model.loaded`, `model.load_failed`, `model.load_refused` and `model.unloaded`, so Automation and other listeners see loads started anywhere (chat, CLI, flows). |
 
 ## Model capability reporting
 

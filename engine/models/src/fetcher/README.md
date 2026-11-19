@@ -54,7 +54,12 @@ flowchart TD
   `DownloadEvent`, `ABORTED`, `part_path`.
 - **Hub and catalog:** `HuggingFaceHub`, `HfTreeItem`, `HfVariant`, `HfRepositoryMetadata`
   (`hf_hub.rs`); `RegistryClient`, `RegistryResolveError`, `parse_hf_repository`,
-  `resolve_model_repo(_with_fallback)` (`client.rs`).
+  `resolve_model_repo(_with_fallback)` (`client.rs`). A catalogue id lookup on cluaiz.com waits
+  up to 20 s (10 s to connect); a request that timed out or could not connect is sent once more,
+  an answer from the server never is. The error names what happened: `TimedOut` (no answer in
+  time on both tries: a slow or stalled connection), `Unreachable` (no connection: offline,
+  firewall or proxy), `RateLimited`, `ClientRejected`, `Unavailable`, `InvalidResponse`,
+  `NotFound`. A full Hugging Face id (`owner/repo`) never contacts the catalogue.
 - **Bundling:** `AssetBundler` (`asset_bundler.rs`); `complete_variants`, `complete_custom`,
   `manifest_variant` (`package_bundler.rs`); `AutoHeal` (`auto_heal.rs`).
 - **Export Type:** Public Rust API.

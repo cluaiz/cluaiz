@@ -23,7 +23,7 @@ graph TD
 |---|---|
 | [`types.rs`](src/types.rs) | Typed data structures for Candidates, Tiers, and ExecutionPlans. |
 | [`planner.rs`](src/planner.rs) | Pure mathematical calculation of memory budgets and candidate selection. |
-| [`margin.rs`](src/margin.rs) | VRAM a model really took on this machine, kept in `config/vram_margins.json`. |
+| [`margin.rs`](src/margin.rs) | VRAM a model really took on this machine, kept in `config/vram_margins.json`: llama.cpp's dry-run correction (`proj3:` keys) and the largest pool gap seen (`pool2:` keys). The prefixes carry a version: when the estimate changes, the prefix changes too, so values measured against the old estimate are dropped instead of being applied to the new one (run 21: a gap learned while the estimate was 4 GB too high under-planned Gemma 3 by 0.64 GB). |
 | [`speed.rs`](src/speed.rs) | STEP 4: speeds measured by `cluaiz bench`; a placement measured faster replaces the rule-order pick. |
 | [`report.rs`](src/report.rs) | The plan as `cluaiz show` prints it (see Plan report below). |
 | [`moe_cache.rs`](src/moe_cache.rs) | Size and CPU share of llama.cpp's MoE GPU cache for a MoE split (see below). |
