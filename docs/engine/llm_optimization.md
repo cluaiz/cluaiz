@@ -76,6 +76,31 @@ the GPU) 18.2 t/s generation, 870 t/s prompt; CPU only 10.5 t/s and 48 t/s. The 
 | `thinking_presets` | built in | Share of the room and maximum tokens for Low / Medium / High |
 | `reasoning_budget_message` | built in | Text written before the end-of-thinking tag when the budget runs out |
 
+## MTP speculative decoding (experimental)
+
+Some models ship multi-token-prediction (NextN) layers next to the normal ones: Qwen3.5 and 3.6,
+GLM-4.5 and later, DeepSeek-V3, Step-3.5, MiMo and others. These layers guess the next few tokens.
+The model then checks all guesses in one decode and keeps each one its own sampler would have
+picked, so every kept guess saves a decode and the answer does not change. It is llama.cpp's own
+`draft-mtp` drafter, the one behind `llama-server --spec-type draft-mtp`.
+
+It is off by default and set by environment variables for now, not by `settings.json`:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `CLUAIZ_MTP` | off | `on` loads the NextN layers and drafts with them. A model without NextN layers loads as usual (the log says so) |
+| `CLUAIZ_MTP_DRAFT` | `3` | Most tokens guessed per step (llama-server's `--spec-draft-n-max` default) |
+
+Limits today: prompts with images or audio do not draft; after a context shift the rest of that
+answer does not draft; the MTP context and the NextN weights are not in the load plan, so a model
+that just fits may need a smaller context. A Gemma 4 MTP file published beside the model is
+downloaded by `pull` but not used yet.
+
+Measured on an RTX 3050 Laptop (4 GB), `unsloth/Qwen3.5-2B-MTP-GGUF` Q4_K_M, all layers on the GPU,
+4096 context, greedy, 222 tokens: 68 t/s without MTP, 85 t/s with it; 64% of guesses kept. The text
+was the same with and without MTP. llama.cpp b12534 `llama-server` on the same file and settings:
+67 and 82 t/s.
+
 ## ONNX models
 
 ONNX models (TTS, STT, embeddings) do not use these fields. Their precision is fixed by the model

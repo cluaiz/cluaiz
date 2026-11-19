@@ -196,6 +196,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=src/ffi/reasoning_bridge.cpp");
     println!("cargo:rerun-if-changed=src/ffi/chat_bridge.cpp");
     println!("cargo:rerun-if-changed=src/ffi/memory_bridge.cpp");
+    println!("cargo:rerun-if-changed=src/ffi/speculative_bridge.cpp");
     let mut bridge = cc::Build::new();
     if dynamic_backends {
         // The bridge calls into the llama / ggml libraries, not into copies linked beside it
@@ -211,6 +212,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .file("src/ffi/reasoning_bridge.cpp")
         .file("src/ffi/chat_bridge.cpp")
         .file("src/ffi/memory_bridge.cpp")
+        .file("src/ffi/speculative_bridge.cpp")
         .flag_if_supported("/EHsc")
         .compile("cluaiz-reasoning-bridge");
 

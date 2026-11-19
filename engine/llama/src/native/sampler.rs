@@ -12,13 +12,21 @@ use tracing::info;
 /// `chain` and `grammar` (null = none) are live samplers of this generation thread; `ctx` holds
 /// the logits of the last decoded token.
 pub unsafe fn sample_token(chain: *mut std::ffi::c_void, grammar: *mut std::ffi::c_void, ctx: *mut std::ffi::c_void, n_vocab: i32) -> i32 {
+    sample_token_at(chain, grammar, ctx, n_vocab, -1)
+}
+
+/// `sample_token` over the logits of batch row `idx` (-1 = the last): MTP checks each guess at its own row
+///
+/// # Safety
+/// As `sample_token`; row `idx` of the last decode has logits.
+pub unsafe fn sample_token_at(chain: *mut std::ffi::c_void, grammar: *mut std::ffi::c_void, ctx: *mut std::ffi::c_void, n_vocab: i32, idx: i32) -> i32 {
     // No grammar of its own: llama.cpp's own sampling, unchanged
     if grammar.is_null() {
-        return llama_cpp::llama_sampler_sample(chain, ctx, -1);
+        return llama_cpp::llama_sampler_sample(chain, ctx, idx);
     }
-    let logits = llama_cpp::llama_get_logits_ith(ctx, -1);
+    let logits = llama_cpp::llama_get_logits_ith(ctx, idx);
     if logits.is_null() {
-        return llama_cpp::llama_sampler_sample(chain, ctx, -1);
+        return llama_cpp::llama_sampler_sample(chain, ctx, idx);
     }
     let logits = std::slice::from_raw_parts(logits, n_vocab.max(0) as usize);
     let candidates = || -> Vec<llama_cpp::LlamaTokenData> {
@@ -48,7 +56,7 @@ pub unsafe fn sample_token(chain: *mut std::ffi::c_void, grammar: *mut std::ffi:
         }
     }
     if id < 0 {
-        return llama_cpp::llama_sampler_sample(chain, ctx, -1);
+        return llama_cpp::llama_sampler_sample(chain, ctx, idx);
     }
     llama_cpp::llama_sampler_accept(grammar, id);
     llama_cpp::llama_sampler_accept(chain, id);

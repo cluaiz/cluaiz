@@ -36,6 +36,9 @@ pub struct NativeLlama {
     pub checkpoints: Vec<crate::native::context::Checkpoint>,
     /// Positions in the KV can be moved (not with quantized keys, see `keys_can_shift`)
     pub keys_can_shift: bool,
+    /// llama.cpp's MTP drafter over the model's NextN layers (`CLUAIZ_MTP=on` and a model that has
+    /// them); freed before the context
+    pub mtp: Option<crate::native::speculative::MtpDrafter>,
 }
 
 /// The request does not fit the context (llama-server's `exceed_context_size_error`). It is raised
@@ -580,6 +583,11 @@ impl NativeLlama {
         );
         crate::native::load_steps::clear_error();
         let mut model_params = model_params;
+        // MTP asked for: the NextN layers are left out of a load unless asked for (llama.cpp `load_mtp`)
+        let mtp_requested = crate::native::speculative::requested();
+        if mtp_requested {
+            model_params.load_mtp = true;
+        }
         if crate::native::load_steps::observed() && model_params.progress_callback.is_none() {
             model_params.progress_callback = Some(crate::native::load_steps::weights_progress);
         }
@@ -765,6 +773,18 @@ impl NativeLlama {
             ctx_params.flash_attn_type, ctx_params.n_threads, ctx_params.n_threads_batch
         );
 
+        // MTP: a recurrent or hybrid model keeps a few recurrent-state snapshots so a refused guess
+        // can be rolled back (llama.cpp `need_n_rs_seq`: the draft size)
+        let n_layer_nextn = unsafe { llama_cpp::llama_model_n_layer_nextn(model_ptr) };
+        let mtp_draft_max = crate::native::speculative::draft_max();
+        let mtp_wanted = mtp_requested && n_layer_nextn > 0;
+        if mtp_requested && n_layer_nextn <= 0 {
+            info!("🔮 [MTP] CLUAIZ_MTP=on, but this model has no multi-token-prediction layers: decoding without it");
+        }
+        if mtp_wanted {
+            ctx_params.n_rs_seq = ctx_params.n_rs_seq.max(mtp_draft_max as u32);
+        }
+
         print_memory_trace("4. BEFORE CONTEXT CREATION");
         crate::native::load_steps::emit(crate::native::load_steps::LoadStep::Context);
         let mut ctx_ptr = unsafe { llama_cpp::llama_init_from_model(model_ptr, ctx_params) };
@@ -819,7 +839,17 @@ impl NativeLlama {
             last_context: None,
             checkpoints: Vec::new(),
             keys_can_shift: cluaiz_core::KvCacheQuantization::keys_can_shift(ctx_params.type_k),
+            mtp: None,
         };
+        if mtp_wanted {
+            match crate::native::speculative::MtpDrafter::new(model_ptr, ctx_ptr, mtp_draft_max) {
+                Ok(drafter) => {
+                    info!("🔮 [MTP] Drafting up to {} tokens per step with the model's {} NextN layer(s)", drafter.n_max(), n_layer_nextn);
+                    llama.mtp = Some(drafter);
+                }
+                Err(reason) => warn!("🔮 [MTP] Not used: {reason}"),
+            }
+        }
         crate::native::load_steps::emit(crate::native::load_steps::LoadStep::Warmup);
         llama.warmup();
         Ok(llama)
@@ -1078,6 +1108,8 @@ impl Drop for NativeLlama {
                 llama_cpp::llama_chat_templates_handle_free(self.chat_templates);
             }
             self.chat_tools = None;
+            // The draft context reads the target context: freed first
+            self.mtp = None;
             if !self.ctx_ptr.is_null() {
                 llama_cpp::llama_free(self.ctx_ptr);
             }

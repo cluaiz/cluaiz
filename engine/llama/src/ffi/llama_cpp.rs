@@ -275,6 +275,8 @@ extern "C" {
     pub fn llama_model_n_embd(model: *const std::ffi::c_void) -> i32;
     pub fn llama_model_n_head(model: *const std::ffi::c_void) -> i32;
     pub fn llama_model_n_layer(model: *const std::ffi::c_void) -> i32;
+    /// Multi-token-prediction (NextN) layers of the model, 0 when it has none
+    pub fn llama_model_n_layer_nextn(model: *const std::ffi::c_void) -> i32;
     pub fn llama_model_is_recurrent(model: *const std::ffi::c_void) -> bool;
     pub fn llama_model_is_hybrid(model: *const std::ffi::c_void) -> bool;
     pub fn llama_model_n_expert(model: *const std::ffi::c_void) -> i32;

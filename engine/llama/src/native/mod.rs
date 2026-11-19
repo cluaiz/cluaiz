@@ -12,6 +12,7 @@ pub mod speech;
 pub mod embedding;
 pub mod load_steps;
 pub mod projection;
+pub mod speculative;
 mod tokenizer;
 pub use tokenizer::VocabHandle;
 

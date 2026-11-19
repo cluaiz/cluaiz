@@ -690,6 +690,14 @@ pub(crate) fn stream_tokens_with_media(
                         );
                         return false;
                     }
+                    // MTP: the drafter sees every target decode, prompt chunks included (llama-server)
+                    if let Some(mtp) = llama.mtp.as_ref() {
+                        let pos0 = (start_pos + chunk_start) as i32;
+                        mtp.seq_rm(pos0);
+                        if !mtp.process_run(chunk, pos0, chunk_start + chunk.len() == tokens.len()) {
+                            tracing::warn!("🔮 [MTP] The drafter could not read prompt chunk at {pos0}; its guesses may be worse");
+                        }
+                    }
                 }
                 true
             };
@@ -877,6 +885,17 @@ pub(crate) fn stream_tokens_with_media(
             }
         }
 
+        // MTP (not with media in the prompt: the drafter did not see it). `check`: guesses the target
+        // decoded in one batch and the index of the next one to compare; `row`: the logits row the
+        // next token is sampled from (-1: the last, no guesses pending)
+        let mut mtp = llama.mtp.as_ref().filter(|_| !is_media && !is_pivot);
+        if let Some(m) = mtp {
+            m.begin(&history);
+        }
+        let mtp_before = mtp.map(|m| m.totals());
+        let mut check: Option<(Vec<i32>, usize)> = None;
+        let mut row: i32 = -1;
+
         reasoning.poll(skip_requested(), &mut ended_by);
         let mut next_token_id =
             crate::native::sampler::sample_token(safe_sampler.sampler, checked_grammar, llama.ctx_ptr, n_vocab);
@@ -909,7 +928,7 @@ pub(crate) fn stream_tokens_with_media(
                     closed_open_thinking = true;
                     ended_by = "closed";
                     info!("🧠 [NativeStream] The model ended inside its thinking; thinking closed so it answers outside it");
-                    next_token_id = crate::native::sampler::sample_token(safe_sampler.sampler, checked_grammar, llama.ctx_ptr, n_vocab);
+                    next_token_id = crate::native::sampler::sample_token_at(safe_sampler.sampler, checked_grammar, llama.ctx_ptr, n_vocab, row);
                     continue;
                 }
                 tracing::info!(
@@ -1057,6 +1076,10 @@ pub(crate) fn stream_tokens_with_media(
                             n_discard as i32,
                         );
                         llama.checkpoints.clear();
+                        // The draft context's positions no longer match: no guesses for the rest
+                        if let Some(m) = mtp.take() {
+                            m.seq_rm(0);
+                        }
                         history.drain(n_keep..n_keep + n_discard);
                         n_cur -= n_discard as i32;
                         report.shifted_tokens += n_discard;
@@ -1086,32 +1109,109 @@ pub(crate) fn stream_tokens_with_media(
                 }
             }
 
-            // Prepare single-token batch at pos n_cur
-            safe_batch.batch.n_tokens = 1;
-            *safe_batch.batch.token.add(0) = next_token_id;
-            *safe_batch.batch.pos.add(0) = n_cur;
-            *safe_batch.batch.n_seq_id.add(0) = 1;
-            *(*safe_batch.batch.seq_id.add(0)).add(0) = 0;
-            *safe_batch.batch.logits.add(0) = 1;
-
-            if llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch) != 0 {
-                if is_media {
-                    anyhow::bail!("Media generation decode failed at position {n_cur}");
+            // MTP: the token just handled was the next guess and the target agrees: it is in the KV
+            // already, and the next token's logits are the next row of the same decode
+            let mut in_kv = false;
+            if let Some((draft, next)) = check.as_mut() {
+                let j = *next;
+                if j < draft.len() && next_token_id == draft[j] {
+                    n_cur += 1;
+                    *next += 1;
+                    row = *next as i32;
+                    in_kv = true;
+                } else {
+                    // Refused at j (or j == all guesses: every one agreed and this token is the extra
+                    // one): the KV keeps the agreed guesses, the rest goes
+                    let refused = j < draft.len();
+                    check = None;
+                    if let Some(m) = mtp {
+                        m.accept(j);
+                        m.seq_rm(n_cur);
+                    }
+                    if refused && !llama_cpp::llama_memory_seq_rm(mem, 0, n_cur, -1) {
+                        tracing::error!("❌ [MTP] The target could not drop refused guesses at {n_cur}");
+                        report.stop = "error";
+                        break;
+                    }
                 }
-                tracing::error!(
-                    "❌ [NativeStream] llama_decode failed at position {}",
-                    n_cur
-                );
-                report.stop = "error";
-                break;
             }
 
-            n_cur += 1;
+            if !in_kv {
+                // Guesses for after this token, as many as fit the context and the answer left
+                let draft = match mtp {
+                    Some(m) => {
+                        let room = n_ctx as i32 - n_cur - 3;
+                        let left = max_tokens as i32 - n_gen;
+                        let n_max = m.n_max().min(room).min(left);
+                        let draft = if n_max > 0 {
+                            m.draft(n_cur, next_token_id, &history[..history.len().saturating_sub(1)], n_max)
+                        } else {
+                            Vec::new()
+                        };
+                        // What the drafter wrote from this token on is decoded again with the target's rows
+                        m.seq_rm(n_cur);
+                        draft
+                    }
+                    None => Vec::new(),
+                };
+
+                // The token, then the guesses, each with its logits: one decode checks them all
+                let batch_tokens: Vec<i32> = std::iter::once(next_token_id).chain(draft.iter().copied()).collect();
+                for (i, token) in batch_tokens.iter().enumerate() {
+                    *safe_batch.batch.token.add(i) = *token;
+                    *safe_batch.batch.pos.add(i) = n_cur + i as i32;
+                    *safe_batch.batch.n_seq_id.add(i) = 1;
+                    *(*safe_batch.batch.seq_id.add(i)).add(0) = 0;
+                    *safe_batch.batch.logits.add(i) = 1;
+                }
+                safe_batch.batch.n_tokens = batch_tokens.len() as i32;
+
+                if llama_cpp::llama_decode(llama.ctx_ptr, safe_batch.batch) != 0 {
+                    if is_media {
+                        anyhow::bail!("Media generation decode failed at position {n_cur}");
+                    }
+                    tracing::error!(
+                        "❌ [NativeStream] llama_decode failed at position {}",
+                        n_cur
+                    );
+                    report.stop = "error";
+                    break;
+                }
+                if let Some(m) = mtp {
+                    if !m.process_run_all(&batch_tokens, n_cur) {
+                        tracing::warn!("🔮 [MTP] The drafter could not read the target's decode; no more guesses in this answer");
+                        mtp = None;
+                    }
+                }
+
+                n_cur += 1;
+                if draft.is_empty() {
+                    row = -1;
+                } else {
+                    check = Some((draft, 0));
+                    row = 0;
+                }
+            }
 
             // Sample next token
             reasoning.poll(skip_requested(), &mut ended_by);
             next_token_id =
-                crate::native::sampler::sample_token(safe_sampler.sampler, checked_grammar, llama.ctx_ptr, n_vocab);
+                crate::native::sampler::sample_token_at(safe_sampler.sampler, checked_grammar, llama.ctx_ptr, n_vocab, row);
+        }
+
+        // Guesses left unchecked when generation stopped leave the KV
+        if check.is_some() {
+            if let Some(m) = mtp {
+                m.seq_rm(n_cur);
+            }
+            llama_cpp::llama_memory_seq_rm(mem, 0, n_cur, -1);
+        }
+        if let (Some(m), Some((drafted0, accepted0))) = (llama.mtp.as_ref(), mtp_before) {
+            let (drafted, accepted) = m.totals();
+            let (drafted, accepted) = (drafted - drafted0, accepted - accepted0);
+            if drafted > 0 {
+                info!("🔮 [MTP] {accepted} of {drafted} guessed tokens accepted ({:.0}%)", 100.0 * accepted as f64 / drafted as f64);
+            }
         }
 
         // Native tool calls: the rest of the answer, then each call as a <tool_call> block
