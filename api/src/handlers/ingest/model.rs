@@ -208,8 +208,9 @@ impl Processor {
         let cancel = Arc::new(AtomicBool::new(false));
         let mut guard = cluaiz_media::request::PreparationGuard::new(cancel.clone());
         if matches!(&self.kind, Kind::Vision { .. }) {
-            lease = Some(state.host.media_admission.try_acquire().map_err(|_| ModelFailure {
-                status: StatusCode::TOO_MANY_REQUESTS, body: json!({"error":{"type":"media_busy","message":"Another attachment request is still active"}})
+            // Waits behind a running attachment request, in arrival order; refused only after QUEUE_WAIT
+            lease = Some(state.host.media_admission.acquire(cluaiz_runtime::media_admission::QUEUE_WAIT).await.ok_or_else(|| ModelFailure {
+                status: StatusCode::TOO_MANY_REQUESTS, body: json!({"error":{"type":"media_busy","message":"Earlier attachment requests kept the media pipeline busy for 120 seconds"}})
             })?);
         }
         if pixel_source {

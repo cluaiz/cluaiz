@@ -127,14 +127,17 @@ async fn real_router_selected_gguf_text_embeddings() -> Result<()> {
         .await?;
         assert_eq!(status, StatusCode::BAD_REQUEST, "{body}");
     }
+    // A request that arrives while another holds the model waits in line, then runs
     let admission = state.host.embeddings.try_acquire()?;
-    let (status, body) = post(&router, "/v1/embeddings", request.clone()).await?;
-    assert_eq!(status, StatusCode::TOO_MANY_REQUESTS, "{body}");
-    assert_eq!(
-        serde_json::from_str::<Value>(&body)?["error"]["type"],
-        "embedding_busy"
-    );
+    let waiting = {
+        let (router, request) = (router.clone(), request.clone());
+        tokio::spawn(async move { post(&router, "/v1/embeddings", request).await })
+    };
+    tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+    assert!(!waiting.is_finished(), "the second request waits while the first holds the model");
     drop(admission);
+    let (status, body) = waiting.await??;
+    assert_eq!(status, StatusCode::OK, "{body}");
     // Abandoning the async caller must not release its permit until the native worker exits.
     let owner = state.host.embeddings.clone();
     let admission = owner.try_acquire()?;

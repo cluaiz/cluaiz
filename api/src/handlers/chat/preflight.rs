@@ -242,10 +242,12 @@ impl PreparedChatContext {
         }
 
         // After the model check: a wrong name is the caller's error (400), even while busy
+        // Waits behind a running attachment request, in arrival order, before decoding; refused only
+        // after QUEUE_WAIT
         let media_lease = if has_media {
-            Some(state.host.media_admission.try_acquire().map_err(|_| {
+            Some(state.host.media_admission.acquire(cluaiz_runtime::media_admission::QUEUE_WAIT).await.ok_or_else(|| {
                 error_response(request, request_id,
-                    "Another chat attachment request still owns processing buffers; retry after it finishes".into(),
+                    "Earlier chat attachment requests kept the media pipeline busy for 120 seconds; retry later".into(),
                     "resource_error", Some("media_busy"))
             })?)
         } else {

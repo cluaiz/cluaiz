@@ -29,8 +29,9 @@ impl MediaAdmission {
     /// arrive while one runs are then served in arrival order (tokio's semaphore is fair) instead
     /// of refused, as llama-server and Ollama queue them. Run 26 (2026-11-20, 4 GB VPS): with
     /// `try_acquire`, a second concurrent embedding request got HTTP 429, so 2 parallel callers
-    /// failed 99.96% of their requests. Used where the input is already prepared and small
-    /// (embedding text, speech text), so a waiting request holds little memory.
+    /// failed 99.96% of their requests. A waiting request holds only its undecoded input (text, or
+    /// attachment bytes within the media byte limit); decoding starts after the permit, so decoded
+    /// buffers never queue up.
     pub async fn acquire(&self, wait: std::time::Duration) -> Option<MediaLease> {
         let permit = tokio::time::timeout(wait, self.0.clone().acquire_owned()).await.ok()?.ok()?;
         Some(MediaLease { _permit: Arc::new(permit) })

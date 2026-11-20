@@ -128,14 +128,19 @@ async fn test_real_tts_capabilities_admission_devices_and_backend_replacement() 
         )
         .await?;
     assert_eq!(unauthenticated.status(), StatusCode::UNAUTHORIZED);
-    let lease = state.host.speech.try_acquire()?;
+    // A request that arrives while another holds the speech model waits in line, then runs
     for id in [&gguf, &onnx] {
-        let (status, body) =
-            support::post(&router, "/v1/audio/speech", payload(id, 0)).await?;
-        assert_eq!(status, StatusCode::TOO_MANY_REQUESTS, "{body}");
-        assert!(body.contains("speech_busy"));
+        let lease = state.host.speech.try_acquire()?;
+        let waiting = {
+            let (router, body) = (router.clone(), payload(id, 0));
+            tokio::spawn(async move { support::post(&router, "/v1/audio/speech", body).await })
+        };
+        tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+        assert!(!waiting.is_finished(), "the second request waits while the first holds the model");
+        drop(lease);
+        let (status, body) = waiting.await??;
+        assert_eq!(status, StatusCode::OK, "{body}");
     }
-    drop(lease);
     let mut unsupported = payload(&gguf, 0);
     unsupported["language"] = json!("hi");
     let (status, body) = support::post(&router, "/v1/audio/speech", unsupported).await?;

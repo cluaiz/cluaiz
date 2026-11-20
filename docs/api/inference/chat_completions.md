@@ -282,7 +282,7 @@ errors:
     when: "The body (with inline media) is over the attachment limit"
   - status: 503
     type: "resource_error"
-    when: "Another attachment request holds the media buffers (`code: media_busy`); retry after it ends"
+    when: "Earlier attachment requests kept the media pipeline busy for 120 seconds (`code: media_busy`); retry later"
   - status: 503
     type: "engine_load_error"
     when: "No placement of the model fits the free memory (`code: insufficient_memory`); the message says how much is missing. Free memory, lower the context, or use a smaller quantization"
@@ -404,7 +404,7 @@ flowchart LR
 
 Add `"return_progress":true` to the existing streaming chat request. Authorization remains required. Existing clients that omit this option receive their previous SSE contract.
 
-Chat attachment preparation is bounded to one request per engine host. While another chat attachment request still owns preparation/generation buffers, a new attachment request returns `error.type:"resource_error"`, `error.code:"media_busy"` before model loading/source decoding. Retry after the current request finishes; a cancellation may still be stopping its native worker. Non-streaming requests return HTTP 503; streaming requests use the existing SSE error followed by `[DONE]` (and terminal progress when opted in). Plain text requests bypass this admission. This bound does not certify free RAM, accelerate image encoding or coordinate separate ONNX tasks.
+Chat attachment preparation is bounded to one request per engine host. While another chat attachment request still owns preparation/generation buffers, a new attachment request waits in line (arrival order) before model loading/source decoding and runs next. Only after waiting 120 seconds does it return `error.type:"resource_error"`, `error.code:"media_busy"`; a cancellation may still be stopping the earlier native worker. Non-streaming requests return HTTP 503; streaming requests use the existing SSE error followed by `[DONE]` (and terminal progress when opted in). Plain text requests bypass this admission. This bound does not certify free RAM, accelerate image encoding or coordinate separate ONNX tasks.
 
 ```text
 event: cluaiz.progress
