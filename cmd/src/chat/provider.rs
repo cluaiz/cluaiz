@@ -201,7 +201,7 @@ impl ProviderChat {
             _ => "eos",
         };
         let context = used.map(|used| (used, target.context() as usize));
-        Ok((answer, TurnReport { timings: None, thinking: None, cancelled, stop, context, dropped: 0 }))
+        Ok((answer, TurnReport { timings: None, thinking: None, mtp_kept_percent: None, cancelled, stop, context, dropped: 0 }))
     }
 
     /// The answer, why it ended, and the tokens the provider counted (prompt + answer). An

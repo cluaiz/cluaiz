@@ -296,7 +296,7 @@ pub fn notes(session: &Session) {
     }
 }
 
-/// llama.cpp's timings of the last answer and what the thinking budget did (stderr).
+/// Generation timings, thinking budget and MTP draft acceptance on stderr.
 pub fn stats(report: &TurnReport) {
     if let Some(t) = &report.timings {
         eprintln!(
@@ -320,6 +320,9 @@ pub fn stats(report: &TurnReport) {
             )
             .dimmed()
         );
+    }
+    if let Some(percent) = report.mtp_kept_percent {
+        eprintln!("{}", format!("MTP {percent:.0}% kept").dimmed());
     }
     if report.cancelled {
         eprintln!("{}", "stopped by Ctrl+C".dimmed());

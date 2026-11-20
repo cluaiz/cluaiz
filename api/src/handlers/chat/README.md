@@ -62,6 +62,8 @@ flowchart TD
 - **Used by CEP methods:** `recall.rs` (`memory.*`), `authorize.rs` (`approvals.*`),
   `context_plan.rs` (`context.*`), `background.rs`, `ACTIVE_STREAMS` (`chat.cancel`,
   `chat.skip_reasoning`).
+- **Usage:** `turn_end.rs` builds the shared JSON and SSE usage payload. The optional
+  `usage.mtp` reports guesses and acceptance from the last generation when the engine drafted.
 - **Export Type:** Rust, inside `cluaiz-api`. HTTP/SSE outward.
 - **Dependencies:** `axum`, `tokio`, `async-stream`, `cluaiz_runtime` (`EngineHost`,
   `HostResponse`), `cluaiz_agents` (tools, turn, memory, workspace), `cluaiz_context` (planner),

@@ -461,6 +461,15 @@ Every non-streaming answer has a `usage` object, as OpenAI's does. A streamed an
 }
 ```
 
+When the last generation in the turn drafts tokens using multi-token prediction (MTP), `usage.mtp`
+carries `drafted` (guess count), `accepted` (guesses the target kept), and `stopped` (whether Auto's
+per-answer speed guard stopped drafting). The speed guard adds `plain_tps` and `drafting_tps` when it
+measured those speeds. The object is optional and is available in both usage responses independently
+of the stream telemetry setting. In a turn with tool calls, its counts cover the last generation.
+The standard token totals count generated tokens as before. In the App's API Explorer, the
+**JSON / Raw** response shows the field in the response body or final usage event. Request that
+event with `"stream_options": {"include_usage": true}` when using streaming.
+
 
 ## Context Window & Context Shifting
 

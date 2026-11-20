@@ -39,13 +39,19 @@ fn estimate_tokens(chars: usize) -> usize {
 }
 
 /// The standard OpenAI fields and the timings, from counts already known
-fn base_usage(prompt: usize, counts: &TurnCounts, total_time_ms: u128, model_load_ms: u128) -> Value {
+fn base_usage(
+    prompt: usize,
+    counts: &TurnCounts,
+    total_time_ms: u128,
+    model_load_ms: u128,
+    report: Option<&ContextReport>,
+) -> Value {
     let completion = counts.completion_tokens;
     // Speed over the decoding time; very short answers fall back to the whole time
     let decode_time_ms = total_time_ms.saturating_sub(counts.first_token_ms);
     let seconds = if decode_time_ms > 30 { decode_time_ms } else { total_time_ms } as f64 / 1000.0;
     let tokens_per_second = if seconds > 0.0 { (completion as f64 / seconds * 100.0).round() / 100.0 } else { 0.0 };
-    json!({
+    let mut usage = json!({
         "prompt_tokens": prompt,
         "completion_tokens": completion,
         "total_tokens": prompt + completion,
@@ -54,14 +60,24 @@ fn base_usage(prompt: usize, counts: &TurnCounts, total_time_ms: u128, model_loa
         "total_time_ms": total_time_ms,
         "model_load_ms": model_load_ms,
         "tokens_per_second": tokens_per_second
-    })
+    });
+    if let Some(mtp) = report.and_then(|report| report.mtp.as_ref()) {
+        usage["mtp"] = json!(mtp);
+    }
+    usage
 }
 
 /// OpenAI `usage` plus timings. The context breakdown and loaded models are added only with the
 /// stream telemetry setting (`ctx.send_telemetry`).
 pub fn usage(ctx: &PreparedChatContext, session_id: Option<&str>, report: Option<&ContextReport>, counts: &TurnCounts) -> Value {
     let completion = counts.completion_tokens;
-    let mut usage = base_usage(prompt_tokens(ctx, report), counts, ctx.start_time.elapsed().as_millis(), ctx.model_load_ms);
+    let mut usage = base_usage(
+        prompt_tokens(ctx, report),
+        counts,
+        ctx.start_time.elapsed().as_millis(),
+        ctx.model_load_ms,
+        report,
+    );
     if !ctx.send_telemetry {
         return usage;
     }
@@ -124,7 +140,7 @@ mod tests {
 
     #[test]
     fn usage_has_the_openai_fields_and_totals() {
-        let usage = base_usage(42, &counts(380, 128, 200), 2_200, 15);
+        let usage = base_usage(42, &counts(380, 128, 200), 2_200, 15, None);
         assert_eq!(usage["prompt_tokens"], 42);
         assert_eq!(usage["completion_tokens"], 380);
         assert_eq!(usage["total_tokens"], 422);
@@ -134,18 +150,40 @@ mod tests {
         assert_eq!(usage["model_load_ms"], 15);
         // 380 tokens over the 2.0 s after the first token
         assert_eq!(usage["tokens_per_second"], 190.0);
+        assert!(usage.get("mtp").is_none());
+    }
+
+    #[test]
+    fn usage_reports_mtp_for_the_last_generation_when_it_drafted() {
+        let mut report = ContextReport::default();
+        let counts = counts(10, 0, 100);
+        assert!(base_usage(5, &counts, 500, 0, Some(&report)).get("mtp").is_none());
+
+        let mtp = report.mtp.get_or_insert_with(Default::default);
+        mtp.drafted = 8;
+        mtp.accepted = 3;
+        mtp.stopped = true;
+        mtp.plain_tps = Some(50.0);
+        let usage = base_usage(5, &counts, 500, 0, Some(&report));
+        assert_eq!(usage["mtp"], json!({
+            "drafted": 8,
+            "accepted": 3,
+            "stopped": true,
+            "plain_tps": 50.0
+        }));
+        assert_eq!(usage["completion_tokens"], 10);
     }
 
     #[test]
     fn speed_of_a_very_short_answer_uses_the_whole_time() {
         // decode time 20 ms (under 30): 10 tokens over the whole 0.5 s
-        let usage = base_usage(5, &counts(10, 0, 480), 500, 0);
+        let usage = base_usage(5, &counts(10, 0, 480), 500, 0, None);
         assert_eq!(usage["tokens_per_second"], 20.0);
     }
 
     #[test]
     fn no_time_and_no_tokens_give_zero_not_a_division_error() {
-        let usage = base_usage(0, &counts(0, 0, 0), 0, 0);
+        let usage = base_usage(0, &counts(0, 0, 0), 0, 0, None);
         assert_eq!(usage["tokens_per_second"], 0.0);
         assert_eq!(usage["total_tokens"], 0);
     }

@@ -197,7 +197,7 @@ graph LR
 | Auto load rules: disk reads -> off; MTP memory (1.6 blocks + 0.15 GB, run 23) over the plan's headroom -> off; stored `bench --mtp-compare` result -> on at 5% faster, else off; otherwise on with the guard | Run 23: experts from the SSD lost on every prompt (0.63-0.98x); a model that just fits must not spill because of MTP; a measurement beats any rule | Planner counting MTP memory itself (step 3, parked) |
 | `p_min` 0 (always draft `n_max`); `CLUAIZ_MTP_PMIN` only for tests | llama.cpp's default (`common.h`); 0.5 and 0.75 kept more guesses (74-90%) but were slower than 0 on every prose prompt on the GPU (`bench --mtp-compare` below) | Stopping drafts at low confidence |
 | Timings measured by the stream when MTP drafted (`NativeLlama::mtp_timings`) | llama.cpp counts every decode of more than one token as prompt processing (`llama-context.cpp`, `n_queued_tokens > 1`), so its counters put the checks of guesses into the prompt numbers | llama.cpp's perf counters |
-| Drafted / kept counts in `ContextReport.mtp` | `bench --mtp-compare` (and later the API report) reads them per answer; the field is absent when MTP did not draft | Log line only |
+| Drafted / kept counts in `ContextReport.mtp` | `bench --mtp-compare` and chat API usage read them per generation; verbose `cluaiz run` prints the percentage kept | Log line only |
 
 ### Measured
 
@@ -320,4 +320,4 @@ grows, and MTP can lose, when:
 | Tests: MoE `n_cpu_moe`, weights larger than RAM, temperature > 0, a 3000-token prompt, Q4_0 / Q8_0 / IQ4_XS | each can turn the gain into a loss (table above); split, CPU, draft 1-4 and `p_min` are done | an MoE MTP model (the smallest Qwen3.5/3.6-35B-A3B MTP file is 11.4 GB) and small downloads for the quant types |
 | Metal and Vulkan runs | reports disagree on Metal; Vulkan had wrong output in early reports | a Mac and a Vulkan machine |
 | Gemma 4 MTP sidecar file (`mtp-*.gguf`) | `pull` downloads it, the Engine does not use it | load it as a draft model (`common_speculative_init_result` takes its path) |
-| Drafted / kept counts in the API response | `ContextReport.mtp` has them; the API does not return them yet | API docs and App explorer (new API checklist) |
+| Live API contract proof for MTP usage | A model with working MTP is needed to exercise both response modes | Run the ignored `mtp_contract` test with a model path and fresh isolated home |

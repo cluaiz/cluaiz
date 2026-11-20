@@ -70,12 +70,17 @@ impl ChatOptions {
 pub struct TurnReport {
     pub timings: Option<GenerationTimings>,
     pub thinking: Option<ThinkingReport>,
+    pub mtp_kept_percent: Option<f64>,
     pub cancelled: bool,
     pub stop: &'static str,
     /// Tokens in the context when the answer ended, of the context size
     pub context: Option<(usize, usize)>,
     /// Oldest messages the Engine left out so the request fitted
     pub dropped: usize,
+}
+
+fn mtp_kept_percent(drafted: u64, accepted: u64) -> Option<f64> {
+    (drafted > 0).then(|| 100.0 * accepted as f64 / drafted as f64)
 }
 
 /// True while an answer is streaming: Ctrl+C then stops the answer instead of the program.
@@ -367,6 +372,10 @@ impl Session {
         let report = TurnReport {
             timings: self.host.last_timings().await,
             thinking: self.host.last_thinking().await,
+            mtp_kept_percent: context
+                .as_ref()
+                .and_then(|report| report.mtp)
+                .and_then(|mtp| mtp_kept_percent(mtp.drafted, mtp.accepted)),
             cancelled,
             stop: context.as_ref().map(|report| report.stop).unwrap_or("unknown"),
             context: context.as_ref().map(|report| (report.n_tokens, report.n_ctx)),

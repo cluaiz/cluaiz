@@ -11,11 +11,18 @@ use cluaiz_plan::ExecutionPlan;
 use color_eyre::{eyre::eyre, Result};
 use serde_json::{json, Value};
 
-use super::{output, ChatOptions, TurnReport, GENERATING};
+use super::{mtp_kept_percent, output, ChatOptions, TurnReport, GENERATING};
 use crate::cli::server;
 
 pub struct Remote {
     pub url: String,
+}
+
+struct StreamResult {
+    answer: String,
+    finish: String,
+    plan: Option<Value>,
+    mtp_kept_percent: Option<f64>,
 }
 
 /// `models.load` in the server (a task): its steps on `spin` while it runs; None when it failed
@@ -98,6 +105,9 @@ impl Remote {
             "repetition_penalty": s.repeat_penalty, "seed": s.seed,
             "max_tokens": options.max_tokens,
         });
+        if options.verbose {
+            body["stream_options"] = json!({ "include_usage": true });
+        }
         if let Some(think) = options.think {
             body["think_mode"] = json!(think.name());
         }
@@ -114,7 +124,7 @@ impl Remote {
         GENERATING.store(false, Ordering::SeqCst);
         let cancelled = cluaiz_core::GLOBAL_CANCEL_SIGNAL.swap(false, Ordering::SeqCst);
         out.finish();
-        let (answer, finish, context) = result?;
+        let StreamResult { answer, finish, plan: context, mtp_kept_percent } = result?;
         let stop = match finish.as_str() {
             "length" => "limit",
             _ if cancelled => "cancel",
@@ -122,11 +132,11 @@ impl Remote {
         };
         let used = context.as_ref().and_then(|plan| Some((plan["used_tokens"].as_u64()? as usize + plan["protected_tokens"].as_u64().unwrap_or(0) as usize, plan["n_ctx"].as_u64()? as usize)));
         let dropped = context.as_ref().and_then(|plan| plan["dropped_messages"].as_u64()).unwrap_or(0) as usize;
-        Ok((answer, TurnReport { timings: None, thinking: None, cancelled, stop, context: used, dropped }))
+        Ok((answer, TurnReport { timings: None, thinking: None, mtp_kept_percent, cancelled, stop, context: used, dropped }))
     }
 
-    /// The answer, why it ended, and the server's context plan (`context_report.plan`) when sent
-    async fn stream(&self, body: Value, out: &mut dyn output::Output) -> Result<(String, String, Option<Value>)> {
+    /// Reads the streamed answer and any final context plan and usage.
+    async fn stream(&self, body: Value, out: &mut dyn output::Output) -> Result<StreamResult> {
         let mut response = server::request_with_timeout(reqwest::Method::POST, "/v1/chat/completions", Duration::from_secs(24 * 3600))
             .json(&body)
             .send()
@@ -141,9 +151,12 @@ impl Remote {
                 .unwrap_or(text);
             return Err(eyre!("server: {status}: {message}"));
         }
-        let mut answer = String::new();
-        let mut finish = String::from("stop");
-        let mut plan = None;
+        let mut result = StreamResult {
+            answer: String::new(),
+            finish: String::from("stop"),
+            plan: None,
+            mtp_kept_percent: None,
+        };
         let mut pending = String::new();
         let mut tick = tokio::time::interval(Duration::from_millis(120));
         loop {
@@ -164,18 +177,22 @@ impl Remote {
                 let line: String = pending.drain(..=end).collect();
                 let Some(data) = line.trim().strip_prefix("data:").map(str::trim) else { continue };
                 if data == "[DONE]" {
-                    return Ok((answer, finish, plan));
+                    return Ok(result);
                 }
                 let Ok(event) = serde_json::from_str::<Value>(data) else { continue };
                 if event["context_report"]["plan"].is_object() {
-                    plan = Some(event["context_report"]["plan"].clone());
+                    result.plan = Some(event["context_report"]["plan"].clone());
+                }
+                let mtp = &event["usage"]["mtp"];
+                if let (Some(drafted), Some(accepted)) = (mtp["drafted"].as_u64(), mtp["accepted"].as_u64()) {
+                    result.mtp_kept_percent = mtp_kept_percent(drafted, accepted);
                 }
                 if let Some(message) = event["error"]["message"].as_str() {
                     return Err(eyre!("{message}"));
                 }
                 let choice = &event["choices"][0];
                 if let Some(reason) = choice["finish_reason"].as_str() {
-                    finish = reason.to_owned();
+                    result.finish = reason.to_owned();
                 }
                 let delta = &choice["delta"];
                 if let Some(thinking) = delta["reasoning_content"].as_str() {
@@ -183,7 +200,7 @@ impl Remote {
                 }
                 if let Some(text) = delta["content"].as_str() {
                     out.content(text);
-                    answer.push_str(text);
+                    result.answer.push_str(text);
                 }
                 for call in delta["tool_calls"].as_array().into_iter().flatten() {
                     let name = call["function"]["name"].as_str().unwrap_or_default();
@@ -191,10 +208,10 @@ impl Remote {
                     let block = format!("\n{}", cluaiz_core::tool_calls::canonical_call(name, arguments));
                     cluaiz_core::live::set_call(name, arguments);
                     out.content(&block);
-                    answer.push_str(&block);
+                    result.answer.push_str(&block);
                 }
             }
         }
-        Ok((answer, finish, plan))
+        Ok(result)
     }
 }
