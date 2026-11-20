@@ -120,11 +120,59 @@ fn bwrap_args(policy: &SandboxPolicy) -> Vec<String> {
     }
     let ws = p(&policy.workspace);
     push(&["--bind", &ws, &ws, "--chdir", &ws]);
+    // A workspace that contains a hidden path (an agent started in `$HOME`) has just shown it again:
+    // mask it once more
+    for hide in &policy.hidden {
+        if hide != &policy.workspace && hide.starts_with(&policy.workspace) {
+            push(&["--tmpfs", &p(hide)]);
+        }
+    }
     if !policy.allow_network {
         push(&["--unshare-net"]);
     }
     push(&["--unshare-pid", "--die-with-parent", "--new-session"]);
     a
+}
+
+/// The mode from `CLUAIZ_OS_SANDBOX` (auto | required | off; default auto). A settings field replaces
+/// this in a later step of the plan.
+pub fn mode_from_env() -> SandboxMode {
+    match std::env::var("CLUAIZ_OS_SANDBOX").unwrap_or_default().trim().to_ascii_lowercase().as_str() {
+        "required" => SandboxMode::Required,
+        "off" => SandboxMode::Off,
+        _ => SandboxMode::Auto,
+    }
+}
+
+/// The policy for a command run in `workspace`: `$HOME`, its secret folders and the Cluaiz home hidden.
+/// Network stays allowed until the execution policy has a network permission (plan, step 3 note).
+pub fn policy_for(workspace: &Path) -> SandboxPolicy {
+    let mut hidden = Vec::new();
+    if let Some(home) = std::env::var_os("HOME").map(PathBuf::from) {
+        for sub in [".ssh", ".gnupg", ".aws", ".config/gh", ".docker"] {
+            hidden.push(home.join(sub));
+        }
+        hidden.push(home.join(".cluaiz"));
+        hidden.insert(0, home);
+    }
+    if let Some(cluaiz_home) = std::env::var_os("CLUAIZ_HOME").map(PathBuf::from) {
+        hidden.push(cluaiz_home);
+    }
+    SandboxPolicy { workspace: workspace.to_path_buf(), hidden, allow_network: true, ..Default::default() }
+}
+
+/// Confines `program args` run in `workspace` with the mode and backend of this machine. Says once per
+/// process when commands run unconfined in auto mode.
+pub fn confine_here(program: &str, args: &[String], workspace: &Path) -> Result<Confined> {
+    static BACKEND: std::sync::OnceLock<Backend> = std::sync::OnceLock::new();
+    static NOTICE: std::sync::Once = std::sync::Once::new();
+    let backend = BACKEND.get_or_init(detect);
+    let mode = mode_from_env();
+    let confined = confine(program, args, &policy_for(workspace), mode, backend)?;
+    if mode == SandboxMode::Auto && confined.backend == "none" {
+        NOTICE.call_once(|| tracing::warn!("Agent commands are not OS-confined here (no bubblewrap at /usr/bin/bwrap or /bin/bwrap); the allow/ask/deny policy still applies"));
+    }
+    Ok(confined)
 }
 
 #[cfg(test)]
@@ -193,6 +241,17 @@ mod tests {
         let auto = confine("sh", &args, &policy(), SandboxMode::Auto, &Backend::None).unwrap();
         assert_eq!((auto.program.as_str(), auto.args.clone(), auto.backend), ("sh", args.clone(), "none"));
         assert!(confine("sh", &args, &policy(), SandboxMode::Required, &Backend::None).is_err());
+    }
+
+    #[test]
+    fn a_workspace_at_home_masks_the_secret_folders_again() {
+        let mut p = policy();
+        p.workspace = PathBuf::from("/home/u");
+        p.hidden.push(PathBuf::from("/home/u/.ssh"));
+        let c = confine("sh", &[], &p, SandboxMode::Auto, &bwrap()).unwrap();
+        let ws = pos(&c.args, &["--bind", "/home/u", "/home/u"]);
+        let last_ssh = c.args.windows(2).rposition(|w| w[0] == "--tmpfs" && w[1] == "/home/u/.ssh").unwrap();
+        assert!(last_ssh > ws, "the secret folder is masked after the workspace bind");
     }
 
     #[test]

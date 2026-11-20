@@ -86,8 +86,10 @@ impl SandboxTerminalRunner {
 
         let (stdout, stdout_writer) = std::io::pipe()?;
         let (stderr, stderr_writer) = std::io::pipe()?;
-        let mut cmd = Command::new(program);
-        cmd.args(args)
+        // OS confinement (bubblewrap on Linux; see os_sandbox.rs)
+        let confined = super::os_sandbox::confine_here(program, args, &env_resolved.cwd)?;
+        let mut cmd = Command::new(&confined.program);
+        cmd.args(&confined.args)
             .current_dir(&env_resolved.cwd)
             .stdout(stdout_writer)
             .stderr(stderr_writer)
@@ -197,8 +199,11 @@ impl SandboxTerminalRunner {
         // 3. Build Process Command
         let (stdout, stdout_writer) = std::io::pipe()?;
         let (stderr, stderr_writer) = std::io::pipe()?;
-        let mut cmd = Command::new(shell_cmd);
-        cmd.args(&shell_args)
+        // OS confinement (bubblewrap on Linux; see os_sandbox.rs)
+        let shell_args: Vec<String> = shell_args.iter().map(|a| a.to_string()).collect();
+        let confined = super::os_sandbox::confine_here(shell_cmd, &shell_args, &env_resolved.cwd)?;
+        let mut cmd = Command::new(&confined.program);
+        cmd.args(&confined.args)
             .current_dir(&env_resolved.cwd)
             .stdout(stdout_writer)
             .stderr(stderr_writer);
