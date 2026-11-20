@@ -28,8 +28,9 @@ zstd = "0.14"
 sha2 = "0.10"
 
 [target.'cfg(windows)'.dependencies]
-# Job objects: an MCP server and the processes it starts end with the Engine
-windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects"] }
+# Job objects: an MCP server and the processes it starts end with the Engine. Authorization, Isolation,
+# FileSystem, Console and Threading: the AppContainer OS sandbox (execution/os_sandbox/appcontainer.rs)
+windows-sys = { version = "0.61", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_Security_Isolation", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_JobObjects", "Win32_System_Threading"] }
 
 [dev-dependencies]
 wat = "1"

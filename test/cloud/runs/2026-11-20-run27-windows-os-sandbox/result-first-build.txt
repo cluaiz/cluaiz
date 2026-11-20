@@ -1,0 +1,47 @@
+== 1 write+read inside the workspace
+hi 
+[exit 0]
+== 2 write outside (home)
+Access is denied.
+DENIED
+[exit 0]
+probe file absent: ok
+== 3 read ~/.ssh
+DENIED
+[exit 0]
+== 4 read ~/.cluaiz
+DENIED
+[exit 0]
+== 5 read Documents
+DENIED
+[exit 0]
+== 6 network off
+NET-BLOCKED
+[exit 0]
+== 7 network on
+NET-FAILED: The remote name could not be resolved: 'example.com'
+[exit 0]
+== 8 exit code
+[exit 7]
+== 9 tools
+-- git
+git version 2.50.1.windows.1
+[exit 0]
+-- node
+'node' is not recognized as an internal or external command,
+operable program or batch file.
+[exit 1]
+-- python
+'python' is not recognized as an internal or external command,
+operable program or batch file.
+[exit 1]
+-- cargo
+cargo 1.94.1 (29ea6fb6a 2026-03-24)
+[exit 0]
+-- npm
+'npm' is not recognized as an internal or external command,
+operable program or batch file.
+[exit 1]
+== 10 Program Files readable
+DENIED
+[exit 0]

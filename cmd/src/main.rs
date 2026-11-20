@@ -325,6 +325,9 @@ fn ghost_note() {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    // A helper run of the Windows OS sandbox confines one command and exits here; on a normal launch
+    // this only marks the binary as able to serve as that helper
+    cluaiz_agents::execution::os_sandbox::appcontainer::run_helper_if_requested();
     // ══ FORCE UTF-8 FOR WINDOWS CONSOLE ══
     #[cfg(windows)]
     unsafe {

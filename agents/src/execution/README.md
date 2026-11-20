@@ -117,12 +117,36 @@ plugins (`plugins/executor.rs`). Plan and reasons: `.agent/plans/security/os-san
 |---|---|---|
 | Linux | bubblewrap at `/usr/bin/bwrap` or `/bin/bwrap` (never through `PATH`) | whole filesystem read-only; fresh `/proc`, `/dev`, `/tmp`; agent: `$HOME` and the Cluaiz home hidden; tool: `$HOME` secret folders (`.ssh`, `.gnupg`, `.aws`, `.config/gh`, `.docker`) and the Cluaiz home hidden, its package folder read-only; the workspace writable (secret folders masked again when the workspace is `$HOME`); own PID namespace; no network unless allowed |
 | macOS | `/usr/bin/sandbox-exec` with a generated profile | the same rules as a Seatbelt profile |
-| Windows | none yet (AppContainer needs its own spawn path; Jan's takes about 1,000 lines) | the approval policy only |
+| Windows | AppContainer (`os_sandbox/appcontainer.rs`), one container per workspace | only what an ACL grants the container: the workspace (full access) and the read roots; Windows and Program Files stay readable (Windows grants them to all app containers); the user's home is not readable; no network unless allowed, and never `localhost` |
+
+How the Windows backend starts a command: an AppContainer is a token attribute passed to `CreateProcessW`,
+and `std`, `tokio` and `portable-pty` commands cannot pass it. So `confine` returns this binary with
+`--cluaiz-os-sandbox-exec <policy> -- <command>`; `cmd/src/main.rs` calls `run_helper_if_requested` first,
+which grants the ACLs, starts the command in the container with its own std handles (the caller's pipes or
+terminal pass through), waits, and exits with the command's code (126 when the setup itself fails). The
+helper sits in a kill-on-close job, so killing it on a timeout also ends the command. Jan does the same
+(`competitor-repos/jan@da44e32`, `tauri-plugin-agent-tools/src/tools/appcontainer.rs`); Codex's
+restricted-token backend with sandbox users and firewall rules was not taken, because our policy is a few
+roots and one network switch. Only a binary that called `run_helper_if_requested` gets this backend, so a
+test binary never re-runs itself.
+
+Decisions: an ACE is written only when the folder does not already have it, because applying an
+inheritable ACE walks the whole tree (seconds on a project with `target/`); a workspace that is the home
+folder or above it is not confined (auto runs it unconfined with the warning, required refuses), because
+granting it would rewrite the ACL of every file in the profile; secret folders inside a granted root get a
+deny ACE.
 
 Mode: `CLUAIZ_OS_SANDBOX=auto` (default: confine when a backend exists, else run and warn once),
 `required` (refuse without a backend), `off`. Network: agent commands keep it until the execution policy has a
 network permission; a tool loses it only when its declared `network` permission is off (`tool_network`).
 `/permissions` and `/strict` in the terminal agent print the state (`status_line`).
 
-Tested: argument and profile unit tests (`cargo test -p cluaiz-agents --lib os_sandbox`). Not tested yet: a
+On Windows, auto mode does not confine: in run 27 Node.js (its installer's folder does not grant app
+containers access) and a Python installed under AppData did not start inside a container, so confining by
+default would break common agent commands. `CLUAIZ_OS_SANDBOX=required` confines. Inside a container
+PowerShell's progress bar cannot read the console; `$ProgressPreference='SilentlyContinue'` avoids it.
+
+Tested: argument and profile unit tests (`cargo test -p cluaiz-agents --lib os_sandbox`, 16 pass). Windows
+on a real machine: `test/cloud/runs/2026-11-20-run27-windows-os-sandbox/` (home, `.ssh`, `.cluaiz` and
+Documents denied, workspace writable, network only when allowed, exit codes pass through). Not tested yet: a
 real run on Linux (bubblewrap) and macOS; this is step 4 of the plan, on the VPS or a cloud VM.

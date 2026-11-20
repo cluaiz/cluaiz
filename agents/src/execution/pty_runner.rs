@@ -195,19 +195,13 @@ fn run(
         .map_err(|e| anyhow!("Could not open a terminal: {e}"))?;
 
     #[cfg(target_os = "windows")]
-    let mut builder = {
-        let mut builder = CommandBuilder::new("powershell.exe");
-        builder.args(["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command]);
-        builder
-    };
+    let (shell, shell_args) = ("powershell.exe", ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command].map(String::from).to_vec());
     #[cfg(not(target_os = "windows"))]
-    let mut builder = {
-        // OS confinement (bubblewrap on Linux; see os_sandbox.rs)
-        let confined = super::os_sandbox::confine_here("sh", &["-c".to_string(), command.to_string()], &super::os_sandbox::SandboxPolicy::for_agent(&env.cwd))?;
-        let mut builder = CommandBuilder::new(&confined.program);
-        builder.args(&confined.args);
-        builder
-    };
+    let (shell, shell_args) = ("sh", vec!["-c".to_string(), command.to_string()]);
+    // OS confinement (bubblewrap, Seatbelt or AppContainer; see os_sandbox.rs)
+    let confined = super::os_sandbox::confine_here(shell, &shell_args, &super::os_sandbox::SandboxPolicy::for_agent(&env.cwd))?;
+    let mut builder = CommandBuilder::new(&confined.program);
+    builder.args(&confined.args);
     builder.cwd(&env.cwd);
     builder.env_clear();
     for (key, value) in &env.env_vars {

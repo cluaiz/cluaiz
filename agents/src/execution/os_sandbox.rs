@@ -5,7 +5,10 @@
 //! `/proc`, `/dev` and `/tmp`, `$HOME` and the Cluaiz home hidden, the workspace bound back writable, no
 //! network unless allowed. The argument order follows Jan's `jail.rs` (`competitor-repos/jan@da44e32`):
 //! masks first, then extra roots, then the workspace, so nothing later can shadow the one writable path.
-//! macOS and Windows backends are later steps; until then they report `Backend::None`.
+//! macOS uses `sandbox-exec` with a profile holding the same rules; Windows uses an AppContainer
+//! (`os_sandbox/appcontainer.rs`), started through a helper run of this binary.
+
+pub mod appcontainer;
 
 use std::path::{Path, PathBuf};
 
@@ -29,6 +32,8 @@ pub enum Backend {
     Bubblewrap(PathBuf),
     /// macOS `sandbox-exec` with a generated profile
     Seatbelt,
+    /// Windows AppContainer, through a helper run of this binary (its path)
+    AppContainer(PathBuf),
     None,
 }
 
@@ -37,6 +42,7 @@ impl Backend {
         match self {
             Backend::Bubblewrap(_) => "bubblewrap",
             Backend::Seatbelt => "seatbelt",
+            Backend::AppContainer(_) => "appcontainer",
             Backend::None => "none",
         }
     }
@@ -60,6 +66,11 @@ pub fn detect() -> Backend {
     }
     if cfg!(target_os = "macos") && Path::new(SEATBELT).is_file() {
         return Backend::Seatbelt;
+    }
+    if cfg!(windows) && appcontainer::available() {
+        if let Ok(exe) = std::env::current_exe() {
+            return Backend::AppContainer(exe);
+        }
     }
     Backend::None
 }
@@ -93,6 +104,12 @@ pub fn confine(program: &str, args: &[String], policy: &SandboxPolicy, mode: San
     if mode == SandboxMode::Off {
         return Ok(plain());
     }
+    let unconfined = |reason: &str| -> Result<Confined> {
+        if mode == SandboxMode::Required {
+            bail!("security.os_sandbox is required, but this command cannot be OS-confined: {reason}");
+        }
+        Ok(plain())
+    };
     match backend {
         Backend::Bubblewrap(bwrap) => {
             let mut wrapped = bwrap_args(policy);
@@ -107,10 +124,18 @@ pub fn confine(program: &str, args: &[String], policy: &SandboxPolicy, mode: San
             wrapped.extend(args.iter().cloned());
             Ok(Confined { program: SEATBELT.to_string(), args: wrapped, backend: backend.name() })
         }
-        Backend::None if mode == SandboxMode::Required => {
-            bail!("security.os_sandbox is required, but no OS sandbox is available here (bubblewrap not found at /usr/bin/bwrap or /bin/bwrap)")
+        // An AppContainer grant on the home folder (or a folder above it) would rewrite the ACL of every
+        // file under it, and expose all of it: refuse such a workspace instead of confining it
+        // Measured on a Windows 11 dev machine (2026-11-20): Node.js from its installer (its folder does
+        // not grant app containers access) and Python under AppData do not start in a container. Auto
+        // must not break them, so on Windows only `required` confines
+        Backend::AppContainer(_) if mode == SandboxMode::Auto => Ok(plain()),
+        Backend::AppContainer(_) if covers_home(policy) => unconfined("on Windows the workspace must be a project folder, not your home folder or a folder above it"),
+        Backend::AppContainer(exe) => {
+            let wrapped = appcontainer::helper_args(policy, program, args);
+            Ok(Confined { program: exe.to_string_lossy().into_owned(), args: wrapped, backend: backend.name() })
         }
-        Backend::None => Ok(plain()),
+        Backend::None => unconfined(NO_BACKEND),
     }
 }
 
@@ -202,7 +227,35 @@ pub fn mode_from_env() -> SandboxMode {
 const SECRET_DIRS: [&str; 5] = [".ssh", ".gnupg", ".aws", ".config/gh", ".docker"];
 
 fn home() -> Option<PathBuf> {
-    std::env::var_os("HOME").map(PathBuf::from)
+    std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")).map(PathBuf::from)
+}
+
+/// Why there is no backend, per platform
+const NO_BACKEND: &str = if cfg!(target_os = "linux") {
+    "bubblewrap not found at /usr/bin/bwrap or /bin/bwrap"
+} else if cfg!(target_os = "macos") {
+    "/usr/bin/sandbox-exec not found"
+} else if cfg!(windows) {
+    "AppContainer is not available (Windows 8 or later is needed)"
+} else {
+    "no OS sandbox exists for this platform"
+};
+
+/// Why auto mode left commands unconfined with this backend
+fn unconfined_reason(backend: &Backend) -> &'static str {
+    match backend {
+        Backend::None => NO_BACKEND,
+        Backend::AppContainer(_) => WINDOWS_AUTO,
+        _ => "the workspace is the home folder or above it",
+    }
+}
+
+const WINDOWS_AUTO: &str = "on Windows auto mode does not confine, because tools such as Node.js and a per-user Python cannot start inside an AppContainer; set CLUAIZ_OS_SANDBOX=required to confine";
+
+/// Whether a granted root is the home folder or contains it
+fn covers_home(policy: &SandboxPolicy) -> bool {
+    let Some(home) = home() else { return false };
+    std::iter::once(&policy.workspace).chain(&policy.read_roots).chain(&policy.write_roots).any(|root| home.starts_with(root))
 }
 
 /// The Cluaiz home (models, config with provider keys, tool packages)
@@ -236,7 +289,8 @@ pub fn status_line() -> String {
     let backend = detect();
     match (mode_from_env(), &backend) {
         (SandboxMode::Off, _) => "OS sandbox: off (CLUAIZ_OS_SANDBOX=off); only the approval policy applies.".into(),
-        (_, Backend::None) => "OS sandbox: not available here (Linux needs bubblewrap; Windows is not supported yet); only the approval policy applies.".into(),
+        (_, Backend::None) => format!("OS sandbox: not available here ({NO_BACKEND}); only the approval policy applies."),
+        (SandboxMode::Auto, Backend::AppContainer(_)) => format!("OS sandbox: available (AppContainer) but off: {WINDOWS_AUTO}."),
         (_, backend) => format!("OS sandbox: on ({}); commands see the workspace, not your home folder or Cluaiz's files.", backend.name()),
     }
 }
@@ -263,7 +317,7 @@ pub fn confine_here(program: &str, args: &[String], policy: &SandboxPolicy) -> R
     let mode = mode_from_env();
     let confined = confine(program, args, policy, mode, backend)?;
     if mode == SandboxMode::Auto && confined.backend == "none" {
-        NOTICE.call_once(|| tracing::warn!("Agent commands are not OS-confined here (no bubblewrap at /usr/bin/bwrap or /bin/bwrap); the allow/ask/deny policy still applies"));
+        NOTICE.call_once(|| tracing::warn!("Commands are not OS-confined here ({}); the allow/ask/deny policy still applies", unconfined_reason(backend)));
     }
     Ok(confined)
 }
@@ -370,6 +424,26 @@ mod tests {
         let ssh = profile.rfind("(subpath \"/home/u/.ssh\")").unwrap();
         assert!(profile[..ssh].rfind("(deny file-read* file-write*").unwrap() > reopen);
         assert!(reopen < ssh, "the workspace is usable and .ssh is denied after it");
+    }
+
+    #[test]
+    fn appcontainer_reruns_this_binary_as_the_helper() {
+        let exe = Backend::AppContainer(PathBuf::from("C:/bin/cluaiz.exe"));
+        assert_eq!(confine("cmd.exe", &[], &policy(), SandboxMode::Auto, &exe).unwrap().backend, "none", "auto does not confine on Windows");
+        let c = confine("cmd.exe", &["/c".into(), "dir".into()], &policy(), SandboxMode::Required, &exe).unwrap();
+        assert_eq!((c.program.as_str(), c.backend), ("C:/bin/cluaiz.exe", "appcontainer"));
+        assert_eq!(c.args[0], appcontainer::HELPER_FLAG);
+        assert_eq!(&c.args[c.args.len() - 3..], ["cmd.exe", "/c", "dir"]);
+    }
+
+    #[test]
+    fn appcontainer_refuses_the_home_folder_as_workspace() {
+        let Some(home) = home() else { return };
+        let mut p = policy();
+        p.workspace = home;
+        let exe = Backend::AppContainer(PathBuf::from("cluaiz.exe"));
+        assert!(confine("cmd.exe", &[], &p, SandboxMode::Required, &exe).is_err());
+        assert_eq!(confine("cmd.exe", &[], &p, SandboxMode::Auto, &exe).unwrap().backend, "none");
     }
 
     #[test]
