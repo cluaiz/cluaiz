@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Machine | Google Cloud `g2-standard-8` (us-central1-c): NVIDIA L4 23 GB, 8 vCPU, 31 GB RAM, Debian 13; laptop check on the RTX 3050 4 GB |
-| Cluaiz | `main` at `71fe3a34` plus this change: `optimization.mtp = auto` decides per load (`engine/runtime/src/native_load.rs` `mtp_mode`) and a guard in every answer stops guessing where it is slower (`engine/llama/src/native/stream.rs`, "MTP guard") |
+| Cluaiz | `main` at `b46c58d2` plus this change: `optimization.mtp = auto` decides per load (`engine/runtime/src/native_load.rs` `mtp_mode`) and a guard in every answer stops guessing where it is slower (`engine/llama/src/native/stream.rs`, "MTP guard") |
 | Models | as run 23: `unsloth/Qwen3.5-2B-MTP-GGUF` Q4_K_M (dense), `unsloth/Qwen3.6-35B-A3B-MTP-GGUF` UD-IQ4_XS (MoE) |
 | Method | `cluaiz bench <model> --mtp-compare` loads off, on and auto in turn every round on the same pinned placement, in a fresh `CLUAIZ_HOME` (no stored speeds at the start; the cases run in order, so a later case can use a speed an earlier one stored) |
 | Records | [`results/`](results/): `.json`, `.md`, `.err`, `.gpu` per case, `steps.log`, `auto_and_guard.log` (every Auto decision and guard stop); script `test/cloud/remote/mtp23/run24.sh` |

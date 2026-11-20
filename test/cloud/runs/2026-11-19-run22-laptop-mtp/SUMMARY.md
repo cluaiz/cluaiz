@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | Machine | Laptop, AMD Ryzen 7 7435HS (8 cores), 23.7 GB RAM, RTX 3050 Laptop 4 GB (driver 610.47), Windows 11 |
-| Cluaiz | local release builds of `main` during the MTP work: before commit `d9ae0a48` (server runs), then `1cf2d55b` plus the Step 1 changes (`bench --mtp-compare`, settings `optimization.mtp`, MTP timings fix, `CLUAIZ_MTP_PMIN`) |
+| Cluaiz | local release builds of `main` during the MTP work: before commit `abd5526f` (server runs), then `f8b5f64d` plus the Step 1 changes (`bench --mtp-compare`, settings `optimization.mtp`, MTP timings fix, `CLUAIZ_MTP_PMIN`) |
 | llama.cpp | official Windows CUDA 12.4 build `b12534`, `llama-server --spec-type draft-mtp` |
 | Model | `unsloth/Qwen3.5-2B-MTP-GGUF` Q4_K_M, file `Qwen3.5-2B-Q4_K_M.gguf` 1.33 GB with one NextN layer inside; hybrid model (recurrent + attention layers) |
 | Isolation | separate `CLUAIZ_HOME`, port 8011 (llama-server 8012), `--local` for `bench` |

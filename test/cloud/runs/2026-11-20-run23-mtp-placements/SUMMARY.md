@@ -4,7 +4,7 @@
 |---|---|
 | Cloud machine | Google Cloud `g2-standard-8` (us-central1-c): NVIDIA L4 23 GB, 8 vCPU, 31 GB RAM, Debian 13, CUDA build for sm_89 |
 | Laptop | Ryzen 7 7435HS, 23.7 GB RAM, RTX 3050 Laptop 4 GB, Windows 11; other apps held about 1.5 GB of the GPU |
-| Cluaiz | `main` at `206f85f1` plus the changes of this run: `bench --mtp-compare` alternates MTP off and on per round, `--placements` and `--temperature` for it, MTP prompt timing by wall clock |
+| Cluaiz | `main` at `07c039e8` plus the changes of this run: `bench --mtp-compare` alternates MTP off and on per round, `--placements` and `--temperature` for it, MTP prompt timing by wall clock |
 | Models | `unsloth/Qwen3.5-2B-MTP-GGUF` (dense, 24 layers + 1 NextN layer): Q4_K_M, Q4_0, Q8_0, IQ4_XS; `unsloth/Qwen3.6-35B-A3B-MTP-GGUF` UD-IQ4_XS (MoE, 18.2 GB, about 3B active per token) |
 | Records | [`results-cloud/`](results-cloud/): one `.json` (tool output), `.md` (table), `.err` (progress), `.gpu` (GPU clock, power, memory before and after) per case, `steps.log`, `run23.log`; [`results-laptop/`](results-laptop/); [`scripts/`](scripts/) (`run23.sh` runs every cloud case) |
 
