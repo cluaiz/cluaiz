@@ -82,7 +82,8 @@ No HTTP request is needed for the local CLI path. There is one EngineHost for th
   Live work never overwrites the starting metadata to display progress at the top of the screen.
 - Alt+T or `/think on/off/auto` changes actual request settings for the next generation. Shift+Tab
   toggles Ask/Strict approvals; `/strict` clears previous grants and asks for workspace reads too.
-  This is an approval policy, not OS process isolation. `/permissions` explains the boundary.
+  Approvals are the first wall; the OS sandbox (`agents/src/execution/os_sandbox.rs`, setting
+  `os_sandbox`) is the second. `/permissions` and `/strict` print whether commands are OS-confined here.
 - Alt+V (Ctrl+V when delivered), file drops and `/attach <path>` in rich mode add removable labels.
   Clipboard reads run in one bounded worker; ordinary text remains editor text. Raw recognized media
   Base64 becomes an attachment source. Files are canonicalized and authorized before content reads.

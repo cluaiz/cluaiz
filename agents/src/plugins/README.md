@@ -4,8 +4,10 @@
 
 - **Purpose:** Running a plugin's function. A WebAssembly plugin (`.wasm`) runs inside the
   Engine, closed in: its own memory, an instruction budget, no files, no programs, and the network
-  only through one checked door (`cluaiz.http_fetch`). Any other plugin runs as a normal child
-  process with the user's rights. This folder also owns the settings a tool names in `env`
+  only through one checked door (`cluaiz.http_fetch`). Any other plugin runs as a child process
+  through the OS sandbox (`execution::os_sandbox::confine_here`, `SandboxPolicy::for_tool`: secret
+  folders and the Cluaiz home hidden, its own folder read-only, network as its permission says); where
+  no sandbox applies (Windows in `auto`, `os_sandbox = off`) it has the user's rights. This folder also owns the settings a tool names in `env`
   (API keys, addresses) as the user sees them, and the secret filling for plugin requests.
 - **Platform Support:** Windows, Linux, macOS (`wasmtime`).
 - **Reusability Level:** Internal to `cluaiz-agents`; called by `ToolsEngine` in `lib.rs`, the

@@ -127,7 +127,7 @@ cluaiz run qwen3                                              # chat
 
 | Path | Contents |
 | --- | --- |
-| `main.rs` | clap definitions, logging setup, dispatch |
+| `main.rs` | clap definitions, logging setup, dispatch; first calls `os_sandbox::appcontainer::run_helper_if_requested` (a Windows OS sandbox helper run exits there) |
 | `cli/args.rs` | Shared load / sampling / thinking flags and llama.cpp short-flag names (`-ngl`, `-fa`, ...) |
 | `cli/models.rs` | Model name → file (path, or the installed registry the API also uses) |
 | `cli/keys.rs` | Dotted keys over JSON (`config`, `/set parameter`) |

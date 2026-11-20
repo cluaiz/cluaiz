@@ -13,7 +13,7 @@ graph LR
     B --> W["Worker retains lease through cancellation / completion"]
 ```
 
-The API uses `SpeechHost` admission for both TTS backends; overlapping requests return `speech_busy`. Preparation and backend-release workers keep a cloned lease if their caller disconnects, so prepared speech references do not accumulate behind an unbounded native queue. Chat/STT generation is independent. Only load decisions/allocations share `EngineHost::model_transition`, not all inference.
+The API uses `SpeechHost` admission for both TTS backends; a request that overlaps a running one waits in line (arrival order, `SpeechHost::acquire`) and gets `speech_busy` only after `QUEUE_WAIT` (120 s). Preparation and backend-release workers keep a cloned lease if their caller disconnects, so prepared speech references do not accumulate behind an unbounded native queue. Chat/STT generation is independent. Only load decisions/allocations share `EngineHost::model_transition`, not all inference.
 
 GGUF load identity includes relevant captured settings and backbone/projector path, size and mtime; CPU selection also disables operation/KV/projector GPU offload. ONNX TTS admission counts the complete installed package, with the same configurable media workspace/reserve policy. Live checks and estimates do not reserve OS memory or establish native peak usage.
 
@@ -48,7 +48,7 @@ graph TD
     R["Ordered prepared RGB / PCM request"] --> A
     I["API chat attachments"] --> J["MediaAdmission: before source decoding"]
     J -->|"permit retained by preparation, API context and worker"| R
-    J -->|"another owner is active"| K["media_busy: retry after completion"]
+    J -->|"another owner is active"| K["wait in line; media_busy only after QUEUE_WAIT (120 s)"]
     S --> T["Native media prefill then existing sampler loop"]
     E["Package input declarations and projector inventory"] --> F["media_support::resolve_support"]
     G["Wired inputs, validated model/projector pair, enabled attachment routes"] --> F
@@ -90,7 +90,7 @@ graph TD
 
 ## Native request continuation and resource policy
 
-- **Preparation admission:** Chat attachment requests acquire one per-host permit before model/media preparation. A second attachment request receives `media_busy` before reading/decoding its source, rather than growing a decoded waiting queue. Plain text chat bypasses this permit. The API context, owned preparation task and native worker share its lifetime, including document-to-text dispatch and tool continuations. Disconnect does not release admission while detached decoding/native work still owns buffers. This is a concurrency bound, not a memory reservation or a capacity guarantee; ONNX/audio/embedding admission remains separate.
+- **Preparation admission:** Chat attachment requests acquire one per-host permit before model/media preparation. A second attachment request waits in line (arrival order, `MediaAdmission::acquire`) before reading/decoding its source, so waiting requests hold only their undecoded input, never decoded buffers; it receives `media_busy` only after `QUEUE_WAIT` (120 s). Run 26 (4 GB VPS) is why: refusing at once made 2 parallel embedding clients fail 94-99% of their requests. Plain text chat bypasses this permit. The API context, owned preparation task and native worker share its lifetime, including document-to-text dispatch and tool continuations. Disconnect does not release admission while detached decoding/native work still owns buffers. This is a concurrency bound, not a memory reservation or a capacity guarantee; ONNX/audio/embedding admission remains separate.
 - **Media history:** each media turn re-evaluates its full typed input; text-only prefix history is cleared and no synthetic prefix cache is returned. The existing text sampler/prefill remains the single generation implementation. Oversized media context fails explicitly; whole-message auto fitting remains pending.
 - **Cancellation:** API chat callbacks use their own retained atomic flag. The legacy CLI entry retains its global cancellation source. A cancelled queued API request fails before encoding; an active request stops at callback/evaluation boundaries. Long native encode/decode operations have no newly certified immediate-abort latency.
 - **Skip reasoning:** text, prepared attachments and tool continuations retain the same request-owned skip flag created before dispatch. The serialized worker binds it to `NativeSession` only for that generation and clears the binding on success or error. Another queued request keeps its own flag. The shared native token loop invokes the upstream reasoning sampler and continues the existing answer stream; skipping does not cancel or reload the model.
@@ -133,7 +133,7 @@ graph LR
 ## More files
 
 - [`chat_memory.rs`](src/chat_memory.rs): a chat's KV cache on disk (llama-server's `--slot-save-path`, managed per chat). After an answer the KV goes to `kv_cache/chats/<chat>.kv` with its media layout and a JSON record (`ChatMemoryRecord`); when the chat continues after another chat, a model reload or a restart, the KV is read back instead of processing the whole history again. A record carries the exact model, load key and KV type it was made with (`memory_key`), so another model or context never restores it. `usage()` reports the disk it takes (CEP `kv.status`).
-- [`embedding_host.rs`](src/embedding_host.rs): a GGUF embedding model kept loaded on its own, apart from the chat model, with the planner's load parameters (`capture_settings`). `try_acquire` takes it for one request; `unload_idle` frees it when nothing uses it; `resident_model` says which one is loaded.
+- [`embedding_host.rs`](src/embedding_host.rs): a GGUF embedding model kept loaded on its own, apart from the chat model, with the planner's load parameters (`capture_settings`). `acquire` waits in line for it (up to `QUEUE_WAIT`), `try_acquire` takes it only if free; `unload_idle` frees it when nothing uses it; `resident_model` says which one is loaded.
 - [`media_room.rs`](src/media_room.rs): `MediaRoom`, the list of idle models of other kinds (ONNX, GGUF speech, GGUF embedding) that a model may free when memory is short for its load or request. A model in use is never freed (each owner frees only when its lock is free), and the chat model is never on the list.
 - [`vram_use.rs`](src/vram_use.rs): what models really took on this machine's GPU (`cluaiz_plan::margin`), kept in `engine/vram_margins.json` (`load`, `save`, `forget_model`, `free_gb`) so a restart plans with it on the first load.
 - [`load_history.rs`](src/load_history.rs): every chat-model load, refused load, failed load and unload, one JSON line each in `engine/load_history.jsonl` beside `vram_margins.json` (the newest 500): placement, VRAM planned and taken, llama.cpp attempts, why the first one failed, wall time, and why the load ran (`requested`, `remeasured`, `step_down`). Read with CEP [`models.load_history`](../../docs/api/cep/models/models/models.load_history.md). Ids, numbers and error text only, no chat content.

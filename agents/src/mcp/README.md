@@ -7,6 +7,10 @@
   MCP **server** is `api/src/cep/mcp.rs` and `cluaiz mcp-server`.)
 - **Platform Support:** Windows (a job object ends the server and everything it started),
   Linux, macOS.
+- **OS sandbox:** each server is started through `execution::os_sandbox::confine_here` with
+  `SandboxPolicy::for_tool` (secret folders and the Cluaiz home hidden, its package folder read-only,
+  the workspace writable); its network follows its declared `network` permission (`tool_network`).
+  Platform backends and modes: [execution/README.md](../execution/README.md#os-sandbox-os_sandboxrs-2026-11-20).
 - **Reusability Level:** Internal to `cluaiz-agents`; used by `ToolsEngine`, tool search (tool
   lists) and the API chat.
 

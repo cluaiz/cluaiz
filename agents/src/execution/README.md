@@ -91,6 +91,12 @@ flowchart LR
     `SECRET`, `TOKEN`, `PASSWORD`) and puts a virtualenv first on `PATH`. `for_tool` starts from
     an empty environment: only the system basics a program needs plus the tool's own values (see
     [docs/engine/tools.md](../../../docs/engine/tools.md)).
+- `os_sandbox.rs`: `confine` / `confine_here` turn a program and its arguments into the confined
+  ones for this platform; `SandboxPolicy::for_agent` / `for_tool` say what a process may touch;
+  `current_mode` reads `os_sandbox` (or `CLUAIZ_OS_SANDBOX`); `status_line` for `/permissions`. See the
+  section "OS sandbox" below.
+- `os_sandbox/appcontainer.rs`: the Windows backend: helper arguments, the helper's own parsing, ACL
+  grants and the `CreateProcessW` spawn inside the AppContainer.
 - `result.rs`: the run's result with stdout capped at 50 KiB and stderr at 20 KiB: the first and
   the last half are kept, the middle is cut, on character boundaries; and a sentence for
   well-known exit codes and for a cancel.
@@ -145,10 +151,19 @@ network permission; a tool loses it only when its declared `network` permission 
 
 On Windows, auto mode does not confine: in run 27 Node.js (its installer's folder does not grant app
 containers access) and a Python installed under AppData did not start inside a container, so confining by
-default would break common agent commands. `CLUAIZ_OS_SANDBOX=required` confines. Inside a container
+default would break common agent commands. `os_sandbox = required` confines. Inside a container
 PowerShell's progress bar cannot read the console; `$ProgressPreference='SilentlyContinue'` avoids it.
 
-Tested: argument and profile unit tests (`cargo test -p cluaiz-agents --lib os_sandbox`, 16 pass). Windows
+Tested: argument and profile unit tests (`cargo test -p cluaiz-agents --lib os_sandbox`, 17 pass). Windows
 on a real machine: `test/cloud/runs/2026-11-20-run27-windows-os-sandbox/` (home, `.ssh`, `.cluaiz` and
 Documents denied, workspace writable, network only when allowed, exit codes pass through). Not tested yet: a
 real run on Linux (bubblewrap) and macOS; this is step 4 of the plan, on the VPS or a cloud VM.
+
+## Pending
+
+| Item | Why it is open |
+|---|---|
+| A real run on Linux (bubblewrap, the namespace probe) and macOS | Only unit tests so far; needs the VPS or a cloud VM (plan step 4) |
+| Agent commands keep the network | No network permission for agent commands yet; cutting it would break `npm install` and `cargo build` |
+| Windows: agent and MCP through `required` end to end | Run 27 called the helper directly; the agent and MCP paths are covered by unit tests only |
+| Toolchains under the home folder (`~/.cargo`, per-user Python) are not visible to a confined agent command | Hiding the home folder hides them; read roots for them need a measured list |
