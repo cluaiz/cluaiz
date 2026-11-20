@@ -175,7 +175,7 @@ Use actual validated policy fields; changing percentages is not a one-off chat c
 
 ### 5. Change the agent's security mode
 
-Section `engine` saves `agent_security_mode` (`full_access`, `sandboxed` or `strict`), `wasm_firewall` (`auto`, `strict` or `off`) and the switches `stream_telemetry`, `lazy_load_model`, `model_header_info`, `vectorize_user_input`, `vectorize_ai_response` and `enable_kvcache`, besides `api_auth`, `active_slots`, `chat_models`, `vector_models` and `exec`. A wrong value for one of these is `invalid_params` and saves nothing. The address fields `api_port`, `api_host` and `connection_protocol` are not changed by this method. The next tool call reads the new mode.
+Section `engine` saves `agent_security_mode` (`full_access`, `sandboxed` or `strict`), `os_sandbox` (`auto`, `required` or `off`), `wasm_firewall` (`auto`, `strict` or `off`) and the switches `stream_telemetry`, `lazy_load_model`, `model_header_info`, `vectorize_user_input`, `vectorize_ai_response` and `enable_kvcache`, besides `api_auth`, `active_slots`, `chat_models`, `vector_models` and `exec`. A wrong value for one of these is `invalid_params` and saves nothing. The address fields `api_port`, `api_host` and `connection_protocol` are not changed by this method. The next tool call reads the new mode.
 
 ```json
 {

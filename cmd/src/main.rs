@@ -164,6 +164,8 @@ pub enum PermissionCommand {
     LazyLoad { status: String },
     /// API server port
     Port { number: u16 },
+    /// OS sandbox for agent commands and tools: auto, required or off
+    OsSandbox { mode: String },
 }
 
 #[derive(Subcommand)]
@@ -530,6 +532,7 @@ async fn main() -> Result<()> {
                 row("telemetry", schema.stream_telemetry.to_string());
                 row("lazy-load", schema.lazy_load_model.to_string());
                 row("port", schema.api_port.to_string());
+                row("os-sandbox", schema.os_sandbox.clone());
                 row("chat model", schema.get_active_chat_model().unwrap_or_else(|| "none".into()));
                 row("vector model", schema.get_active_embedding_model().unwrap_or_else(|| "none".into()));
                 eprintln!("{}", "Change one with `cluaiz permission <name> <value>`.".dimmed());
@@ -548,6 +551,14 @@ async fn main() -> Result<()> {
                     PermissionCommand::Port { number } => {
                         schema.api_port = number;
                         format!("port = {}", schema.api_port)
+                    }
+                    PermissionCommand::OsSandbox { mode } => {
+                        let mode = mode.trim().to_ascii_lowercase();
+                        if !cluaiz_security::OS_SANDBOX_MODES.contains(&mode.as_str()) {
+                            return Err(color_eyre::eyre::eyre!("os-sandbox must be one of: {}", cluaiz_security::OS_SANDBOX_MODES.join(", ")));
+                        }
+                        schema.os_sandbox = mode;
+                        format!("os-sandbox = {}", schema.os_sandbox)
                     }
                 })
             })();

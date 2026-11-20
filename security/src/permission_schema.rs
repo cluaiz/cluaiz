@@ -233,7 +233,15 @@ pub struct PermissionSchema {
     pub agent_security_mode: String,
     #[serde(default)]
     pub exec: ExecPolicy,
+    /// OS confinement of agent commands, MCP servers and native plugins: one of [`OS_SANDBOX_MODES`]
+    /// (`agents/src/execution/os_sandbox.rs`). The `CLUAIZ_OS_SANDBOX` environment variable wins for one run.
+    #[serde(default = "default_os_sandbox")]
+    pub os_sandbox: String,
 }
+
+/// `os_sandbox` values: `auto` confines where the platform allows it by default (Linux bubblewrap,
+/// macOS sandbox-exec; not Windows), `required` confines or refuses to run, `off` never confines
+pub const OS_SANDBOX_MODES: [&str; 3] = ["auto", "required", "off"];
 
 impl Default for PermissionSchema {
     fn default() -> Self {
@@ -254,11 +262,13 @@ impl Default for PermissionSchema {
             api_auth: ApiAuth::default(),
             agent_security_mode: default_agent_security_mode(),
             exec: ExecPolicy::default(),
+            os_sandbox: default_os_sandbox(),
         }
     }
 }
 
 fn default_wasm_firewall() -> String { "auto".to_string() }
+fn default_os_sandbox() -> String { "auto".to_string() }
 fn default_vectorize_user_input() -> bool { true }
 fn default_vectorize_ai_response() -> bool { true }
 fn default_stream_telemetry() -> bool { false }
@@ -373,6 +383,7 @@ impl PermissionSchema {
         let modes: Vec<&str> = SECURITY_MODES.iter().map(|m| m.id).collect();
         let mode = text("agent_security_mode", &modes)?;
         let firewall = text("wasm_firewall", &["auto", "strict", "off"])?;
+        let os_sandbox = text("os_sandbox", &OS_SANDBOX_MODES)?;
         let flags = [
             ("vectorize_user_input", flag("vectorize_user_input")?),
             ("vectorize_ai_response", flag("vectorize_ai_response")?),
@@ -386,6 +397,9 @@ impl PermissionSchema {
         }
         if let Some(firewall) = firewall {
             self.wasm_firewall = firewall;
+        }
+        if let Some(os_sandbox) = os_sandbox {
+            self.os_sandbox = os_sandbox;
         }
         for (name, value) in flags {
             let Some(value) = value else { continue };
@@ -432,6 +446,16 @@ impl PermissionSchema {
 #[cfg(test)]
 mod merge_tests {
     use super::*;
+
+    #[test]
+    fn os_sandbox_patch_takes_only_known_modes() {
+        let mut schema = PermissionSchema::default();
+        assert_eq!(schema.os_sandbox, "auto");
+        schema.merge_patch(&serde_json::json!({"os_sandbox": "required"})).unwrap();
+        assert_eq!(schema.os_sandbox, "required");
+        assert!(schema.merge_patch(&serde_json::json!({"os_sandbox": "maybe"})).is_err());
+        assert_eq!(schema.os_sandbox, "required", "a bad value saves nothing");
+    }
 
     #[test]
     fn the_security_mode_and_switches_are_saved_and_a_wrong_value_changes_nothing() {

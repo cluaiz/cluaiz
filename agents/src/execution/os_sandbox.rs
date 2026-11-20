@@ -234,13 +234,20 @@ fn bwrap_args(policy: &SandboxPolicy) -> Vec<String> {
     a
 }
 
-/// The mode from `CLUAIZ_OS_SANDBOX` (auto | required | off; default auto). A settings field replaces
-/// this in a later step of the plan.
-pub fn mode_from_env() -> SandboxMode {
-    match std::env::var("CLUAIZ_OS_SANDBOX").unwrap_or_default().trim().to_ascii_lowercase().as_str() {
-        "required" => SandboxMode::Required,
+/// The mode in force: `CLUAIZ_OS_SANDBOX` for one run, else `os_sandbox` in permission.json (default
+/// auto). Read on every command, so a changed setting applies to the next command without a restart.
+pub fn current_mode() -> SandboxMode {
+    let from_env = std::env::var("CLUAIZ_OS_SANDBOX").ok().filter(|v| !v.trim().is_empty());
+    parse_mode(&from_env.unwrap_or_else(|| cluaiz_security::PermissionSchema::load().os_sandbox))
+}
+
+/// One of `cluaiz_security::OS_SANDBOX_MODES`. Anything else is `Required`: a value the user typed
+/// wrong (`requierd`) must not quietly turn confinement down, and the refusal names the setting.
+fn parse_mode(value: &str) -> SandboxMode {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "auto" => SandboxMode::Auto,
         "off" => SandboxMode::Off,
-        _ => SandboxMode::Auto,
+        _ => SandboxMode::Required,
     }
 }
 
@@ -271,7 +278,7 @@ fn unconfined_reason(backend: &Backend) -> &'static str {
     }
 }
 
-const WINDOWS_AUTO: &str = "on Windows auto mode does not confine, because tools such as Node.js and a per-user Python cannot start inside an AppContainer; set CLUAIZ_OS_SANDBOX=required to confine";
+const WINDOWS_AUTO: &str = "on Windows auto mode does not confine, because tools such as Node.js and a per-user Python cannot start inside an AppContainer; confine with `cluaiz permission os-sandbox required`";
 
 /// Whether a granted root is the home folder or contains it
 fn covers_home(policy: &SandboxPolicy) -> bool {
@@ -308,8 +315,8 @@ impl SandboxPolicy {
 /// One line for users: whether agent commands are OS-confined here, and how
 pub fn status_line() -> String {
     let backend = backend_here();
-    match (mode_from_env(), &backend) {
-        (SandboxMode::Off, _) => "OS sandbox: off (CLUAIZ_OS_SANDBOX=off); only the approval policy applies.".into(),
+    match (current_mode(), &backend) {
+        (SandboxMode::Off, _) => "OS sandbox: off (os_sandbox = off); only the approval policy applies.".into(),
         (_, Backend::None) => format!("OS sandbox: not available here ({NO_BACKEND}); only the approval policy applies."),
         (SandboxMode::Auto, Backend::AppContainer(_)) => format!("OS sandbox: available (AppContainer) but off: {WINDOWS_AUTO}."),
         (_, backend) => format!("OS sandbox: on ({}); commands see the workspace, not your home folder or Cluaiz's files.", backend.name()),
@@ -334,7 +341,7 @@ pub fn tool_network(config_dir: &Path, tool_type: &str, id: &str, package: &Path
 pub fn confine_here(program: &str, args: &[String], policy: &SandboxPolicy) -> Result<Confined> {
     static NOTICE: std::sync::Once = std::sync::Once::new();
     let backend = backend_here();
-    let mode = mode_from_env();
+    let mode = current_mode();
     let confined = confine(program, args, policy, mode, backend)?;
     if mode == SandboxMode::Auto && confined.backend == "none" {
         NOTICE.call_once(|| tracing::warn!("Commands are not OS-confined here ({}); the allow/ask/deny policy still applies", unconfined_reason(backend)));
@@ -464,6 +471,14 @@ mod tests {
         let exe = Backend::AppContainer(PathBuf::from("cluaiz.exe"));
         assert!(confine("cmd.exe", &[], &p, SandboxMode::Required, &exe).is_err());
         assert_eq!(confine("cmd.exe", &[], &p, SandboxMode::Auto, &exe).unwrap().backend, "none");
+    }
+
+    #[test]
+    fn a_mistyped_mode_confines_instead_of_turning_confinement_down() {
+        assert_eq!(parse_mode("auto"), SandboxMode::Auto);
+        assert_eq!(parse_mode(" OFF "), SandboxMode::Off);
+        assert_eq!(parse_mode("required"), SandboxMode::Required);
+        assert_eq!(parse_mode("requierd"), SandboxMode::Required);
     }
 
     #[test]

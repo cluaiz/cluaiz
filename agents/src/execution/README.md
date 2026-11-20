@@ -136,7 +136,9 @@ folder or above it is not confined (auto runs it unconfined with the warning, re
 granting it would rewrite the ACL of every file in the profile; secret folders inside a granted root get a
 deny ACE.
 
-Mode: `CLUAIZ_OS_SANDBOX=auto` (default: confine when a backend exists, else run and warn once),
+Mode: `os_sandbox` in permission.json (`cluaiz permission os-sandbox <mode>`, CEP `config.set` section
+`engine`), or `CLUAIZ_OS_SANDBOX` for one run; read on every command. A value that is not one of the three
+counts as `required`, so a typo never turns confinement down. `auto` (default: confine when a backend exists, else run and warn once),
 `required` (refuse without a backend), `off`. Network: agent commands keep it until the execution policy has a
 network permission; a tool loses it only when its declared `network` permission is off (`tool_network`).
 `/permissions` and `/strict` in the terminal agent print the state (`status_line`).

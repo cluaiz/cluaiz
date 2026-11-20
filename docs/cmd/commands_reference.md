@@ -70,6 +70,7 @@ cluaiz model set-chat gemma4:e2b
 | `cluaiz mcp-server` | MCP over stdio for MCP clients; forwards to the running Engine's `/mcp` (read-only methods) |
 | `cluaiz permission` | Show the `permission.json` values |
 | `cluaiz permission port <number>` | API port |
+| `cluaiz permission os-sandbox auto\|required\|off` | OS sandbox for agent commands and tools (`auto`: Linux and macOS confine, Windows does not; `required`: confine everywhere or refuse) |
 | `cluaiz permission telemetry on\|off` | Usage details in chat responses |
 | `cluaiz permission lazy-load on\|off` | Load the chat model on first use, or at server start |
 | `cluaiz token show` (`--all`) | The active API token and whether auth is on |
