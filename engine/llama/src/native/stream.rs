@@ -491,6 +491,8 @@ pub(crate) fn stream_tokens_with_media(
         let mut safe_batch = SafeBatch {
             batch: llama_cpp::llama_batch_init(llama.n_batch as i32, 0, 1),
         };
+        // Wall clock of the prompt decodes (with MTP the prompt numbers are this, see below)
+        let mut prefill_started = std::time::Instant::now();
         let (full_prompt_tokens, mut n_cur) = if let Some((input, projector)) = media {
             let prefill = input.evaluate(projector, llama, max_tokens, &mut structured_messages, render)?;
             report = prefill.context;
@@ -714,6 +716,7 @@ pub(crate) fn stream_tokens_with_media(
             } else {
                 0
             };
+            prefill_started = std::time::Instant::now();
             let mut prefilled = decode_from(llama, &mut safe_batch.batch, &new_tokens[..split], n_past);
             if prefilled && split > 0 {
                 if let Some(checkpoint) =
@@ -895,9 +898,22 @@ pub(crate) fn stream_tokens_with_media(
         let mtp_before = mtp.map(|m| m.totals());
         let mut check: Option<(Vec<i32>, usize)> = None;
         let mut row: i32 = -1;
-        // With MTP the prompt numbers are taken now (only the prompt was decoded so far) and the
-        // generation is timed here (see `NativeLlama::mtp_timings`)
-        let prompt_timings = mtp.map(|_| llama.timings());
+        // With MTP the prompt numbers are the wall clock of the prompt work: the target's decodes and
+        // the drafter reading every chunk (its cost on long prompts), up to the moment the last chunk
+        // has finished on the device. llama.cpp's counters see only the target's decodes, and only
+        // after a synchronize, so they missed chunks (0.0 t/s in a split placement). The generation
+        // is timed here too (see `NativeLlama::mtp_timings`)
+        let prompt_timings = mtp.map(|_| {
+            llama_cpp::llama_synchronize(llama.ctx_ptr);
+            let ms = prefill_started.elapsed().as_secs_f64() * 1000.0;
+            let n = report.processed_tokens as i32;
+            crate::native::core::GenerationTimings {
+                prompt_n: n,
+                prompt_ms: ms,
+                prompt_per_second: if ms > 0.0 { n as f64 * 1000.0 / ms } else { 0.0 },
+                ..Default::default()
+            }
+        });
         let generation_started = std::time::Instant::now();
         let mut tokens_out: i32 = 0;
 

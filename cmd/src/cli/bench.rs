@@ -38,6 +38,10 @@ pub struct BenchArgs {
     /// Prompts for --mtp-compare: a JSON list of {"name", "text", "max_tokens"} (default: code, chat, list, long)
     #[arg(long = "prompts", value_name = "FILE", requires = "mtp_compare")]
     pub prompts: Option<std::path::PathBuf>,
+    /// Sampling temperature for --mtp-compare (default 0, greedy): with sampling the guess is kept only
+    /// when the sampled token equals it, so the kept share changes
+    #[arg(long = "temperature", value_name = "T", requires = "mtp_compare")]
+    pub temperature: Option<f32>,
     /// Output format
     #[arg(short = 'o', long = "output", value_enum, default_value_t = Output::Md)]
     pub output: Output,
