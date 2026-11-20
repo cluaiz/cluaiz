@@ -26,6 +26,48 @@ from the App settings screen.
 | `exec.allow_shell` | `false` | CEP `system.exec` also accepts a shell line, not only a program with arguments |
 | `exec.without_approval` | `false` | CEP `system.exec` runs without the owner's approval of each call |
 
+## Network access and API tokens
+
+The defaults are a design choice. You decide who can reach the server, the same way you do with a
+database server.
+
+**Who can reach the server.** `api_host` is `0.0.0.0`, so the server listens on every network address of
+the machine. Your own computer reaches it at `http://localhost:8000`. Other devices on the same network,
+a Docker container, or a phone running the App reach it at the machine's address (for example
+`http://192.168.1.20:8000`). A cloud server reaches it at its public address, unless its firewall blocks
+the port.
+
+- Listen only on this computer: set `"api_host": "127.0.0.1"` in `permission.json`, or start once with
+  `CLUAIZ_HOST=127.0.0.1 cluaiz serve`.
+- Change the port: `cluaiz permission port 8011`, or `CLUAIZ_PORT=8011` for one run.
+
+**Who may use the server.** `api_auth.required` is `false`, so every request is answered without a token.
+Turn tokens on whenever other people or programs can reach the port: on a shared network, on a cloud
+server, or when anything on the machine should not use the Engine freely.
+
+```bash
+cluaiz token create        # makes an API key and turns the guard on (api_auth.required = true)
+cluaiz token list          # shows the keys (at most 5)
+cluaiz token show --all    # prints them in full
+cluaiz token remove <key>  # removing the last key turns the guard off again
+```
+
+With the guard on, every request sends the key as a bearer token:
+
+```bash
+curl http://localhost:8000/v1/models -H "Authorization: Bearer <your key>"
+```
+
+- `/health` always answers without a token, so uptime checks keep working.
+- A program on the same computer can use the session token instead of an API key. The Engine writes a
+  new one to `session.token` in the Cluaiz home (`~/.cluaiz/session.token`) each time it starts, and
+  the App reads it from there.
+- When tokens are off and provider keys are saved, `cluaiz serve` prints a warning: anyone who can reach
+  the port can then use those keys.
+
+The code: `security/src/permission_schema.rs` (defaults), `api/src/lib.rs` (host and port),
+`api/src/auth.rs` (the token check).
+
 ## Fields that do nothing
 
 Existing files and the App settings screen may still hold these, so they are read and saved, but
