@@ -4,7 +4,8 @@
 //! greedy and without thinking: generation and prompt speed per answer, the share of guesses kept,
 //! the VRAM each load took, and whether the text is the same with and without MTP.
 //!
-//! MTP off and on alternate in every round (off, on, off, on, ...), each a fresh load: a laptop GPU
+//! MTP off, on and Auto (the load rules and the per-answer guard) alternate in every round, each a
+//! fresh load: a laptop GPU
 //! changes its clock between minutes (run 22: the same plain run gave 55 and 72 t/s), so measuring all
 //! "off" runs first and all "on" runs later would put that drift into the gain. With `--placements`
 //! every placement the planner can use is measured this way (full GPU, split, CPU only, MoE split,
@@ -57,6 +58,8 @@ struct Answer {
     prompt_tps: f64,
     drafted: u64,
     accepted: u64,
+    /// The Auto guard stopped guessing in this answer
+    stopped: bool,
 }
 
 /// A placement to measure: the load flags that give it
@@ -78,6 +81,8 @@ struct Measured {
     /// [prompt][run]
     off: Vec<Vec<Answer>>,
     on: Vec<Vec<Answer>>,
+    /// MTP Auto: the load rules decide, the guard may stop guessing per answer
+    auto: Vec<Vec<Answer>>,
 }
 
 fn mean(values: impl Iterator<Item = f64>) -> f64 {
@@ -100,7 +105,7 @@ fn cache_type(kv: KvCacheQuantization) -> Option<String> {
 }
 
 /// The load flags that give exactly `placement` with `plan`'s context and KV type, MTP on or off
-fn pinned(base: &LoadArgs, plan: &ExecutionPlan, placement: &Placement, mtp: bool) -> LoadArgs {
+fn pinned(base: &LoadArgs, plan: &ExecutionPlan, placement: &Placement, mtp: &str) -> LoadArgs {
     let mut load = base.clone();
     load.n_gpu_layers = Some(GpuLayers::Count(placement.n_gpu_layers));
     load.n_cpu_moe = Some(placement.n_cpu_moe);
@@ -108,7 +113,7 @@ fn pinned(base: &LoadArgs, plan: &ExecutionPlan, placement: &Placement, mtp: boo
     load.ctx_size = Some(plan.context_window as i64);
     load.cache_type_k = cache_type(plan.kv_cache_type);
     load.cache_type_v = load.cache_type_k.clone();
-    load.mtp = Some(if mtp { "on" } else { "off" }.into());
+    load.mtp = Some(mtp.into());
     load
 }
 
@@ -133,6 +138,7 @@ async fn answer(session: &Session, host: &cluaiz_runtime::EngineHost, prompt: &P
         prompt_tps: timings.prompt_per_second,
         drafted: mtp.drafted,
         accepted: mtp.accepted,
+        stopped: mtp.stopped,
     })
 }
 
@@ -143,7 +149,7 @@ async fn round(
     model: (&std::path::Path, &str),
     plan: &ExecutionPlan,
     placement: &Placement,
-    mtp: bool,
+    mtp: &str,
     prompts: &[Prompt],
     verbose: bool,
 ) -> Result<(ExecutionPlan, Option<f64>, Vec<Answer>)> {
@@ -224,31 +230,38 @@ pub async fn execute(args: BenchArgs, verbose: bool) -> Result<()> {
             on_failed: None,
             off: vec![Vec::new(); prompts.len()],
             on: vec![Vec::new(); prompts.len()],
+            auto: vec![Vec::new(); prompts.len()],
         };
         for r in 0..reps {
-            for mtp in [false, true] {
-                if mtp && measured.on_failed.is_some() {
+            for mtp in ["off", "on", "auto"] {
+                if mtp != "off" && measured.on_failed.is_some() {
                     continue;
                 }
                 eprintln!(
                     "placement {}/{} (ngl {}, n_cpu_moe {}), round {}/{}, MTP {}…",
                     n + 1, placements.len(), placement.n_gpu_layers, placement.n_cpu_moe, r + 1, reps,
-                    if mtp { "on" } else { "off" }
+                    mtp
                 );
                 match round(&host, &args, model, &plan, placement, mtp, &prompts, verbose).await {
                     Ok((loaded, vram, answers)) => {
-                        let slot = if mtp { &mut measured.on } else { &mut measured.off };
+                        let slot = match mtp {
+                            "on" => &mut measured.on,
+                            "auto" => &mut measured.auto,
+                            _ => &mut measured.off,
+                        };
                         for (runs, a) in slot.iter_mut().zip(answers) {
                             runs.push(a);
                         }
-                        if mtp {
-                            measured.vram_on = vram.or(measured.vram_on);
-                        } else {
-                            measured.vram_off = vram.or(measured.vram_off);
-                            measured.plan = loaded;
+                        match mtp {
+                            "on" => measured.vram_on = vram.or(measured.vram_on),
+                            "off" => {
+                                measured.vram_off = vram.or(measured.vram_off);
+                                measured.plan = loaded;
+                            }
+                            _ => {}
                         }
                     }
-                    Err(e) if mtp => {
+                    Err(e) if mtp != "off" => {
                         eprintln!("MTP on did not load on this placement: {e}");
                         measured.on_failed = Some(e.to_string());
                     }
@@ -292,9 +305,10 @@ pub async fn execute(args: BenchArgs, verbose: bool) -> Result<()> {
                 .iter()
                 .enumerate()
                 .map(|(i, prompt)| {
-                    let (off, on) = (&m.off[i], &m.on[i]);
+                    let (off, on, auto) = (&m.off[i], &m.on[i], &m.auto[i]);
                     let off_tps = mean(off.iter().map(|a| a.generation_tps));
                     let on_tps = mean(on.iter().map(|a| a.generation_tps));
+                    let auto_tps = mean(auto.iter().map(|a| a.generation_tps));
                     let drafted: u64 = on.iter().map(|a| a.drafted).sum();
                     let accepted: u64 = on.iter().map(|a| a.accepted).sum();
                     // gain per round (off and on of the same round were measured minutes apart at most)
@@ -310,6 +324,13 @@ pub async fn execute(args: BenchArgs, verbose: bool) -> Result<()> {
                         "generation_tps_off": off_tps,
                         "generation_tps_on": on_tps,
                         "gain": if off_tps > 0.0 && on_tps > 0.0 { on_tps / off_tps } else { 0.0 },
+                        "generation_tps_auto": auto_tps,
+                        "gain_auto": if off_tps > 0.0 && auto_tps > 0.0 { auto_tps / off_tps } else { 0.0 },
+                        // Auto answers that guessed at all (0 = the load rules turned MTP off) and
+                        // those where the guard stopped guessing
+                        "auto_drafted_runs": auto.iter().filter(|a| a.drafted > 0).count(),
+                        "auto_stopped_runs": auto.iter().filter(|a| a.stopped).count(),
+                        "auto_runs": auto.len(),
                         "gain_min": if gains.is_empty() { 0.0 } else { gains.iter().cloned().fold(f64::INFINITY, f64::min) },
                         "gain_max": gains.iter().cloned().fold(0.0, f64::max),
                         "prompt_tps_off": mean(off.iter().map(|a| a.prompt_tps)),
@@ -348,7 +369,7 @@ pub async fn execute(args: BenchArgs, verbose: bool) -> Result<()> {
                 Some(t) if t > 0.0 => format!("temperature {t}"),
                 _ => "greedy".to_string(),
             };
-            println!("{} | {}, thinking off, {} rounds of MTP off then on (fresh load each)", id, sampling, reps);
+            println!("{} | {}, thinking off, {} rounds of MTP off, on and auto (fresh load each)", id, sampling, reps);
             let gb = |v: &serde_json::Value| v.as_f64().map_or("?".to_string(), |g| format!("{g:.2} GB"));
             for p in &report {
                 println!();
@@ -366,11 +387,11 @@ pub async fn execute(args: BenchArgs, verbose: bool) -> Result<()> {
                     println!("MTP on did not load: {e}");
                 }
                 println!();
-                println!("| prompt | tokens | t/s off | t/s on | gain | gain range | kept | prompt t/s off | prompt t/s on | same text |");
-                println!("| ------ | -----: | ------: | -----: | ---: | ---------: | ---: | -------------: | ------------: | :-------: |");
+                println!("| prompt | tokens | t/s off | t/s on | gain | gain range | kept | t/s auto | gain auto | auto guessed / stopped | prompt t/s off | prompt t/s on | same text |");
+                println!("| ------ | -----: | ------: | -----: | ---: | ---------: | ---: | -------: | --------: | :--------------------: | -------------: | ------------: | :-------: |");
                 for r in p["prompts"].as_array().into_iter().flatten() {
                     println!(
-                        "| {} | {} | {:.2} | {:.2} | {:.2}x | {:.2}-{:.2} | {:.0}% | {:.1} | {:.1} | {} |",
+                        "| {} | {} | {:.2} | {:.2} | {:.2}x | {:.2}-{:.2} | {:.0}% | {:.2} | {:.2}x | {}/{} of {} | {:.1} | {:.1} | {} |",
                         r["prompt"].as_str().unwrap_or_default(),
                         r["tokens"],
                         r["generation_tps_off"].as_f64().unwrap_or(0.0),
@@ -379,6 +400,11 @@ pub async fn execute(args: BenchArgs, verbose: bool) -> Result<()> {
                         r["gain_min"].as_f64().unwrap_or(0.0),
                         r["gain_max"].as_f64().unwrap_or(0.0),
                         r["kept"].as_f64().unwrap_or(0.0) * 100.0,
+                        r["generation_tps_auto"].as_f64().unwrap_or(0.0),
+                        r["gain_auto"].as_f64().unwrap_or(0.0),
+                        r["auto_drafted_runs"],
+                        r["auto_stopped_runs"],
+                        r["auto_runs"],
                         r["prompt_tps_off"].as_f64().unwrap_or(0.0),
                         r["prompt_tps_on"].as_f64().unwrap_or(0.0),
                         if r["same_text"].as_bool().unwrap_or(false) { "yes" } else { "no" },

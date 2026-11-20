@@ -62,7 +62,7 @@ fn load_native(
         ctx_params.n_ubatch = plan.context_window;
     }
     // llama.cpp only reads the override list during load; `moe_overrides` lives until this returns
-    let mtp = u8::from(settings.optimization.mtp_on() && !embedding);
+    let mtp = if embedding { 0 } else { mtp_mode(model_path, plan, settings) };
     let loaded = NativeLlama::load(model_path, model_params, ctx_params, dna, 0, 0, mtp, None);
     drop(moe_overrides);
     loaded
@@ -186,4 +186,59 @@ pub(crate) fn project(
     let projected = llama_engine::native::projection::project(model_path, &model_params, &ctx_params);
     drop(moe_overrides);
     projected
+}
+
+/// MTP for this load: 0 = off, 1 = on, 2 = on with the per-answer guard (llama `stream.rs`, "MTP
+/// guard"). A model without MTP layers loads without it whatever this says. Auto follows run 23
+/// (`test/cloud/runs/2026-11-20-run23-mtp-placements`), first rule that applies:
+/// 1. experts read from the disk: off (every prompt was slower, 0.63-0.98x);
+/// 2. a `cluaiz bench --mtp-compare` result for this model and placement: on when generation was at
+///    least 5% faster ([`cluaiz_plan::speed::FASTER_BY`]), else off;
+/// 3. otherwise on with the guard, which stops guessing in an answer where it is slower (prose on a
+///    dense model, MoE experts in RAM) and keeps it where it gains (JSON, code, MoE on the GPU).
+fn mtp_mode(model_path: &str, plan: &ExecutionPlan, settings: &ActiveUserSettings) -> u8 {
+    use cluaiz_core::FeatureState;
+    let (mode, why) = match settings.optimization.mtp {
+        FeatureState::Off => return 0,
+        FeatureState::On => return 1,
+        FeatureState::Auto => mtp_auto(model_path, plan, settings),
+    };
+    tracing::info!("🔮 [MTP] Auto: {} ({})", ["off", "on", "on with the per-answer guard"][mode as usize], why);
+    mode
+}
+
+fn mtp_auto(model_path: &str, plan: &ExecutionPlan, settings: &ActiveUserSettings) -> (u8, &'static str) {
+    use cluaiz_plan::{speed, PlacementTier};
+    if plan.disk_stream_gb > 0.0 || plan.selected_tier == PlacementTier::SsdStreaming {
+        return (0, "weights are read from the disk, where MTP was slower on every prompt");
+    }
+    let Ok(geometry) = cluaiz_models::GgufProber::probe_geometry(std::path::Path::new(model_path)) else {
+        return (0, "the model file could not be read for the MTP rules");
+    };
+    // MTP's memory is not in the plan yet: off when it would not fit next to the planned placement.
+    // Run 23 measured +0.11-0.19 GB (dense 2B, 0.05 GB per block) and +0.45-0.71 GB (MoE 35B-A3B,
+    // 0.44 GB per block): about 1.6 blocks of weights plus 0.15 GB of context and buffers.
+    let block_gb = geometry.file_size_bytes as f64 / 1e9 / geometry.block_count.max(1) as f64;
+    let mtp_gb = 1.6 * block_gb + 0.15;
+    let headroom = if plan.n_gpu_layers != 0 {
+        plan.vram_free_gb - plan.vram_buffer_gb - plan.vram_budget_gb
+    } else {
+        plan.ram_budget_limit_gb - plan.ram_budget_gb
+    };
+    if headroom < mtp_gb {
+        return (0, "its memory would not fit next to this placement");
+    }
+    let signature = speed::Signature {
+        tier: plan.selected_tier,
+        n_gpu_layers: plan.n_gpu_layers,
+        n_cpu_moe: plan.n_cpu_moe,
+        kv_offload: plan.kv_offload,
+        moe_cache: plan.moe_cache_bytes > 0,
+    };
+    let measured = |test| speed::measured(test, &geometry, settings, plan.context_window, plan.kv_cache_type, &signature);
+    match (measured(speed::Test::Text), measured(speed::Test::TextMtp)) {
+        (Some(off), Some(on)) if on >= off * speed::FASTER_BY => (1, "measured faster on this placement"),
+        (Some(_), Some(_)) => (0, "measured slower on this placement"),
+        _ => (2, "no measurement for this placement"),
+    }
 }

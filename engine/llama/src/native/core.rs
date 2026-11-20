@@ -43,6 +43,8 @@ pub struct NativeLlama {
     /// llama.cpp's MTP drafter over the model's NextN layers (`CLUAIZ_MTP=on` and a model that has
     /// them); freed before the context
     pub mtp: Option<crate::native::speculative::MtpDrafter>,
+    /// Stop drafting in an answer where MTP is slower than plain decoding (Auto; see `stream.rs`)
+    pub mtp_guard: bool,
 }
 
 /// The request does not fit the context (llama-server's `exceed_context_size_error`). It is raised
@@ -108,6 +110,13 @@ pub struct ContextReport {
 pub struct MtpReport {
     pub drafted: u64,
     pub accepted: u64,
+    /// The guard stopped drafting in this answer (MTP was slower than plain decoding here)
+    pub stopped: bool,
+    /// Tokens/s measured by the guard: plain decoding (its first tokens) and while drafting
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub plain_tps: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub drafting_tps: Option<f64>,
 }
 
 impl ContextReport {
@@ -601,10 +610,12 @@ impl NativeLlama {
         );
         crate::native::load_steps::clear_error();
         let mut model_params = model_params;
-        // MTP asked for (settings `optimization.mtp`, passed as speculative_decoding_mode 1, or the
-        // CLUAIZ_MTP test override): the NextN layers are left out of a load unless asked for
-        // (llama.cpp `load_mtp`)
-        let mtp_requested = speculative_decoding_mode == 1 || crate::native::speculative::requested();
+        // MTP asked for: speculative_decoding_mode 1 = on (settings `optimization.mtp = on`), 2 = on with
+        // the per-answer guard (Auto, see `stream.rs` "MTP guard"), or the CLUAIZ_MTP test override.
+        // The NextN layers are left out of a load unless asked for (llama.cpp `load_mtp`)
+        let mtp_forced = crate::native::speculative::requested();
+        let mtp_requested = matches!(speculative_decoding_mode, 1 | 2) || mtp_forced;
+        let mtp_guard = speculative_decoding_mode == 2 && !mtp_forced;
         if mtp_requested {
             model_params.load_mtp = true;
         }
@@ -799,7 +810,7 @@ impl NativeLlama {
         let mtp_draft_max = crate::native::speculative::draft_max();
         let mtp_wanted = mtp_requested && n_layer_nextn > 0;
         if mtp_requested && n_layer_nextn <= 0 {
-            info!("🔮 [MTP] CLUAIZ_MTP=on, but this model has no multi-token-prediction layers: decoding without it");
+            info!("🔮 [MTP] MTP asked for, but this model has no multi-token-prediction layers: decoding without it");
         }
         if mtp_wanted {
             ctx_params.n_rs_seq = ctx_params.n_rs_seq.max(mtp_draft_max as u32);
@@ -860,6 +871,7 @@ impl NativeLlama {
             checkpoints: Vec::new(),
             keys_can_shift: cluaiz_core::KvCacheQuantization::keys_can_shift(ctx_params.type_k),
             mtp: None,
+            mtp_guard,
             mtp_timings: None,
         };
         if mtp_wanted {

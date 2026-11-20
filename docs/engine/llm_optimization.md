@@ -86,9 +86,13 @@ byte-identical to a run without MTP: checking several tokens at once rounds slig
 which can flip a choice between two nearly equal tokens. It is llama.cpp's own
 `draft-mtp` drafter, the one behind `llama-server --spec-type draft-mtp`.
 
-It is off by default. `optimization.mtp` in `settings.json` (`"on"`, `"off"`, `"auto"`) or the load
-flag `--mtp on` turns it on; `auto` means off until the automatic rules are built. A model without
-NextN layers loads as usual (the log says so). Environment variables for tests:
+`optimization.mtp` in `settings.json` (or the load flag `--mtp`) is `"auto"` by default; `"on"` and
+`"off"` force it. With `auto`, each load decides: off when the weights are read from the disk or MTP's
+memory would not fit next to the planned placement; on or off by a stored `cluaiz bench <model>
+--mtp-compare` result for that placement (on at 5% faster); otherwise on, with a guard in each answer
+that times the first tokens with and without guesses and stops guessing where it is slower. The log
+says which rule decided (`[MTP] Auto: ...`) and when the guard stopped (`[MTP] Guard: ...`). A model
+without NextN layers loads as usual. Environment variables for tests:
 
 | Variable | Default | Meaning |
 |---|---|---|

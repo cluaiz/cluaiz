@@ -51,7 +51,7 @@ graph TD
 | [`native/tokenizer.rs`](src/native/tokenizer.rs) | One native tokenizer (`VocabHandle`) for chat and embedding contexts. |
 | [`native/media_tests.rs`](src/native/media_tests.rs) | Tests of the media owners. |
 | [`ffi/chat.rs`](src/ffi/chat.rs) | Narrow C ABI to `chat_bridge.cpp` for native tool calls: llama.cpp's common chat layer renders tools in the model's own format (`ChatTools::apply`), gives the lazy tool-call grammar, parses the output (`ChatParser::parse`, partial too) and turns a JSON schema into a grammar (`json_schema_grammar`). |
-| [`native/speculative.rs`](src/native/speculative.rs), [`ffi/speculative_bridge.cpp`](src/ffi/speculative_bridge.cpp) | MTP speculative decoding, experimental, off unless settings `optimization.mtp` is `on` (load flag `--mtp on`; `CLUAIZ_MTP=on` forces it for tests; `CLUAIZ_MTP_DRAFT` = guesses per step, default 3 as llama-server; `CLUAIZ_MTP_PMIN` = least drafter probability, default 0). A model with NextN layers (Qwen3.5 / 3.6, GLM-4.5+, DeepSeek-V3, ...) is loaded with `load_mtp`; llama.cpp's own `draft-mtp` drafter (`common_speculative`) guesses the next tokens on an MTP context; `stream.rs` decodes the token and its guesses in one batch and keeps a guess only when the target's sampler picks it, so the answer is the target's. The drafter sees every target decode (prompt chunks too). Media prompts do not draft; a context shift stops drafting for that answer. Its memory is not in the load plan yet. |
+| [`native/speculative.rs`](src/native/speculative.rs), [`ffi/speculative_bridge.cpp`](src/ffi/speculative_bridge.cpp) | MTP speculative decoding, experimental. Settings `optimization.mtp`: `auto` (default: the runtime's load rules, then a guard in each answer that stops guessing where it is slower), `on`, `off` (load flag `--mtp`; `CLUAIZ_MTP=on` forces it for tests; `CLUAIZ_MTP_DRAFT` = guesses per step, default 3 as llama-server; `CLUAIZ_MTP_PMIN` = least drafter probability, default 0). A model with NextN layers (Qwen3.5 / 3.6, GLM-4.5+, DeepSeek-V3, ...) is loaded with `load_mtp`; llama.cpp's own `draft-mtp` drafter (`common_speculative`) guesses the next tokens on an MTP context; `stream.rs` decodes the token and its guesses in one batch and keeps a guess only when the target's sampler picks it, so the answer is the target's. The drafter sees every target decode (prompt chunks too). Media prompts do not draft; a context shift stops drafting for that answer. Its memory is not in the load plan yet (Auto turns MTP off when it would not fit next to the plan). |
 | [`moe_override.rs`](src/moe_override.rs) | `--n-cpu-moe N`: the routed experts of the first N blocks stay in RAM (a CPU buffer), everything else of those blocks (attention, shared weights, KV) on the GPU; the same tensor overrides llama.cpp builds (`CpuMoeOverrides`). |
 
 ## Native text embedding boundary
@@ -145,10 +145,14 @@ graph LR
 
 ## MTP speculative decoding (experimental)
 
-- **Status:** built and measured on one machine (RTX 3050 Laptop 4 GB, CUDA, Windows). Off by default,
-  switched on with settings `optimization.mtp = "on"` or the load flag `--mtp on` (`auto` = off until
-  the Auto rules exist; `CLUAIZ_MTP=on` forces it for tests). Commit `d9ae0a48`; measuring tool
-  `cluaiz bench <model> --mtp-compare` (`cmd/src/cli/bench_mtp.rs`).
+- **Status:** built and measured on CUDA (RTX 3050 Laptop 4 GB on Windows, L4 on Linux). Default
+  `optimization.mtp = "auto"`: the runtime decides per load (`engine/runtime/src/native_load.rs`
+  `mtp_mode`) and a guard in each answer stops guessing where it is slower (`native/stream.rs`, "MTP
+  guard"); `on` and `off` force it (load flag `--mtp`; `CLUAIZ_MTP=on` forces on for tests, without
+  the guard). Measuring tool `cluaiz bench <model> --mtp-compare` (off, on and auto per round).
+  Records: runs [22](../../test/cloud/runs/2026-11-19-run22-laptop-mtp/SUMMARY.md),
+  [23](../../test/cloud/runs/2026-11-20-run23-mtp-placements/SUMMARY.md),
+  [24](../../test/cloud/runs/2026-11-20-run24-mtp-auto/SUMMARY.md).
 - **Files:** `native/speculative.rs` (Rust owner `MtpDrafter`), `ffi/speculative_bridge.cpp` (C ABI),
   `native/stream.rs` (prefill hook, draft and check in the generation loop), `native/core.rs` (load),
   `native/sampler.rs` (`sample_token_at`).
@@ -188,7 +192,9 @@ graph LR
 | MTP context `n_outputs_max = 1` | The drafter reads one token per step (`common_base_params_to_speculative`). Without it the context kept logits for 512 rows: +0.63 GB on a 248k vocabulary, spill into shared GPU memory, 26 t/s instead of 68 (measured, fixed before the commit) | llama.cpp's default (n_batch outputs) |
 | Draft size 3 (`CLUAIZ_MTP_DRAFT`) | llama-server's default `--spec-draft-n-max 3`; reports show acceptance falls with longer drafts (72% at 3, 83% at 2, 44% at 6 in the sources below) | Larger drafts |
 | No drafting for media prompts and after a context shift | The drafter did not see the media embeddings; after a shift its positions no longer match the target's. Both only lower acceptance, so there is no gain to keep | Feeding media rows to the drafter (not built) |
-| Off by default | Measured on one GPU only; several setups lose speed (table below); its memory is not in the load plan | On by default |
+| Auto by default: load rules, then a per-answer guard | Run 23: whether MTP gains depends on the model (MoE on the GPU gained on every prompt, dense lost on prose everywhere), the placement (experts in RAM or on the SSD lose) and the text (JSON gains everywhere). No fixed rule by placement is right for all; a stored measurement and a timed guard are. Run 24: auto lost 0.81-1.02x where always-on lost 0.64-0.80x, and kept 1.19-1.66x where on gained 1.21-1.72x | Off by default (no gain for anyone); on by default (up to 39% slower on prose, run 22 split); a kept-share limit (break-even was 40% kept on one setup, 85% on another) |
+| Guard: 8 plain steps, then drafting timed, compared every 32 drafted tokens; slower stops guessing for the answer | Times the real thing on this machine and answer, so no per-model threshold is needed. The drafter still reads the plain steps, so plain is measured a little slow and the guard leans to keeping MTP | Probing again later in the answer (the drafter's state after a stop is not kept) |
+| Auto load rules: disk reads -> off; MTP memory (1.6 blocks + 0.15 GB, run 23) over the plan's headroom -> off; stored `bench --mtp-compare` result -> on at 5% faster, else off; otherwise on with the guard | Run 23: experts from the SSD lost on every prompt (0.63-0.98x); a model that just fits must not spill because of MTP; a measurement beats any rule | Planner counting MTP memory itself (step 3, parked) |
 | `p_min` 0 (always draft `n_max`); `CLUAIZ_MTP_PMIN` only for tests | llama.cpp's default (`common.h`); 0.5 and 0.75 kept more guesses (74-90%) but were slower than 0 on every prose prompt on the GPU (`bench --mtp-compare` below) | Stopping drafts at low confidence |
 | Timings measured by the stream when MTP drafted (`NativeLlama::mtp_timings`) | llama.cpp counts every decode of more than one token as prompt processing (`llama-context.cpp`, `n_queued_tokens > 1`), so its counters put the checks of guesses into the prompt numbers | llama.cpp's perf counters |
 | Drafted / kept counts in `ContextReport.mtp` | `bench --mtp-compare` (and later the API report) reads them per answer; the field is absent when MTP did not draft | Log line only |
@@ -305,7 +311,9 @@ grows, and MTP can lose, when:
 
 | Item | Why it matters | Needs |
 |---|---|---|
-| Auto on/off: MTP only when it does not change the placement, off with experts in RAM, measured per model and placement in `cluaiz bench` | MTP should be on by default where it is faster and off where it is slower; the runs above show the result depends on the text, so a per-answer guard (stop drafting when the kept share is low) is likely needed too | design proposed 2026-11-19; not built |
+| Guard cost on slow cases | auto still loses 11-19% on dense prose (the first ~40 tokens are measured before it stops) | a shorter probe, or a stored per-placement result per kind of text |
+| Stored result is one average over four prompts | it turned off a placement where JSON gains 1.37x (run 24, D) | store per prompt kind, or keep the guard on when the average is near even |
+| The planner counts MTP's memory | Auto only turns MTP off when its estimate does not fit | step 3 (planner parked) |
 | MTP off and on measured in the same minute | GPU clock changes moved the plain speed from 55 to 72 t/s between runs | `bench --mtp-compare` alternating off and on loads per repetition |
 | Prompt t/s with MTP on in a split placement | the tool printed 0.0 | find where the timing is lost |
 | Memory of MTP in the load plan | a model that just fits may spill with MTP on | planner work (parked) |

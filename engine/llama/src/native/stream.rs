@@ -916,6 +916,19 @@ pub(crate) fn stream_tokens_with_media(
         });
         let generation_started = std::time::Instant::now();
         let mut tokens_out: i32 = 0;
+        // MTP guard (Auto mode, `NativeLlama::mtp_guard`): the first GUARD_PROBE steps of an answer
+        // decode one token each without guesses and give this answer's plain speed (the drafter still
+        // reads each token, so plain is measured a little slow: the guard leans to keeping MTP).
+        // Drafting steps are then timed; every GUARD_JUDGE tokens from them, drafting slower than plain
+        // stops MTP for the rest of the answer. A limit on the kept share would not do: run 23 found the
+        // break-even between about 40% kept (MoE, all on the GPU) and 85% (MoE, experts in RAM).
+        let guard = mtp.is_some() && llama.mtp_guard;
+        let mut guard_plain = GuardSpan::default();
+        let mut guard_draft = GuardSpan::default();
+        let mut guard_probed = 0usize;
+        let mut guard_step: Option<(std::time::Instant, i32, bool)> = None;
+        let mut guard_stopped = false;
+        let mut guard_rates: (Option<f64>, Option<f64>) = (None, None);
 
         reasoning.poll(skip_requested(), &mut ended_by);
         let mut next_token_id =
@@ -1159,12 +1172,39 @@ pub(crate) fn stream_tokens_with_media(
             }
 
             if !in_kv {
+                // MTP guard: the step that ends here goes into its span; judge when enough was drafted
+                let mut probing = false;
+                if guard && mtp.is_some() {
+                    let now = std::time::Instant::now();
+                    if let Some((started, tokens0, drafting)) = guard_step.take() {
+                        let span = if drafting { &mut guard_draft } else { &mut guard_plain };
+                        span.tokens += (tokens_out - tokens0).max(0) as u32;
+                        span.secs += now.duration_since(started).as_secs_f64();
+                    }
+                    if guard_draft.tokens >= GUARD_JUDGE && guard_plain.secs > 0.0 && guard_draft.secs > 0.0 {
+                        let (plain, drafting) = (guard_plain.rate(), guard_draft.rate());
+                        guard_rates = (Some(plain), Some(drafting));
+                        if drafting < plain {
+                            if let Some(m) = mtp.take() {
+                                m.seq_rm(n_cur);
+                            }
+                            guard_stopped = true;
+                            info!("🔮 [MTP] Guard: {drafting:.1} t/s with guesses, {plain:.1} t/s without; no more guesses in this answer");
+                        }
+                        guard_draft = GuardSpan::default();
+                    }
+                    if mtp.is_some() {
+                        probing = guard_probed < GUARD_PROBE;
+                        guard_probed += usize::from(probing);
+                        guard_step = Some((now, tokens_out, !probing));
+                    }
+                }
                 // Guesses for after this token, as many as fit the context and the answer left
                 let draft = match mtp {
                     Some(m) => {
                         let room = n_ctx as i32 - n_cur - 3;
                         let left = max_tokens as i32 - n_gen;
-                        let n_max = m.n_max().min(room).min(left);
+                        let n_max = if probing { 0 } else { m.n_max().min(room).min(left) };
                         let draft = if n_max > 0 {
                             m.draft(n_cur, next_token_id, &history[..history.len().saturating_sub(1)], n_max)
                         } else {
@@ -1233,7 +1273,13 @@ pub(crate) fn stream_tokens_with_media(
             let (drafted, accepted) = (drafted - drafted0, accepted - accepted0);
             if drafted > 0 {
                 info!("🔮 [MTP] {accepted} of {drafted} guessed tokens accepted ({:.0}%)", 100.0 * accepted as f64 / drafted as f64);
-                report.mtp = Some(crate::native::core::MtpReport { drafted, accepted });
+                report.mtp = Some(crate::native::core::MtpReport {
+                    drafted,
+                    accepted,
+                    stopped: guard_stopped,
+                    plain_tps: guard_rates.0,
+                    drafting_tps: guard_rates.1,
+                });
                 if let Some(prompt) = prompt_timings {
                     let ms = generation_started.elapsed().as_secs_f64() * 1000.0;
                     llama.mtp_timings = Some(crate::native::core::GenerationTimings {
@@ -1374,5 +1420,23 @@ fn render_prompt(
             tracing::error!("❌ [NativeTemplate] llama.cpp chat template error: {}", e);
             Err(e)
         }
+    }
+}
+
+/// Plain steps the MTP guard times at the start of an answer, one token each
+const GUARD_PROBE: usize = 8;
+/// Tokens from drafting steps between two guard checks
+const GUARD_JUDGE: u32 = 32;
+
+/// Tokens and seconds of one kind of decode step (MTP guard)
+#[derive(Default)]
+struct GuardSpan {
+    tokens: u32,
+    secs: f64,
+}
+
+impl GuardSpan {
+    fn rate(&self) -> f64 {
+        if self.secs > 0.0 { self.tokens as f64 / self.secs } else { 0.0 }
     }
 }

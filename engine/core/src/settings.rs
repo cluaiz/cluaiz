@@ -160,8 +160,9 @@ pub struct OptimizationControl {
     #[serde(default)]
     pub reasoning_budget_message: Option<String>,
     /// MTP speculative decoding with the model's own multi-token-prediction layers (llama.cpp
-    /// `--spec-type draft-mtp`). On = used when the model has them; Off and Auto = not used (the
-    /// Auto rules are not built yet, see engine/llama/README.md "MTP speculative decoding").
+    /// `--spec-type draft-mtp`), used only when the model has them. On = always; Off = never; Auto =
+    /// the runtime's rules per load (`engine/runtime/src/native_load.rs` `mtp_mode`) and a guard in
+    /// each answer that stops guessing where it is slower (engine/llama/README.md, "MTP").
     #[serde(default)]
     pub mtp: FeatureState,
 }
@@ -427,7 +428,7 @@ impl OptimizationControl {
     /// When this string changes, the model must be reloaded; sampler settings are not part of it.
     pub fn load_fingerprint(&self) -> String {
         format!(
-            "ctx={:?}|ngl={:?}|ncmoe={:?}|kqv={:?}|opo={:?}|kv={:?}|fa={:?}|b={}|ub={}|mmap={}|vbuf={:?}|t={:?}/{:?}|mtp={}",
+            "ctx={:?}|ngl={:?}|ncmoe={:?}|kqv={:?}|opo={:?}|kv={:?}|fa={:?}|b={}|ub={}|mmap={}|vbuf={:?}|t={:?}/{:?}|mtp={:?}",
             self.context_setting(),
             self.n_gpu_layers,
             self.n_cpu_moe,
@@ -441,13 +442,8 @@ impl OptimizationControl {
             self.custom_vram_buffer_gb,
             self.n_threads,
             self.n_threads_batch,
-            self.mtp_on(),
+            self.mtp,
         )
-    }
-
-    /// Whether this load uses MTP when the model has the layers for it (On only, until Auto has rules)
-    pub fn mtp_on(&self) -> bool {
-        self.mtp == FeatureState::On
     }
 
     /// True when the user fixed the placement (n_gpu_layers / n_cpu_moe / offload_kqv):
