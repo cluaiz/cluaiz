@@ -144,31 +144,60 @@ pub fn mode_from_env() -> SandboxMode {
     }
 }
 
-/// The policy for a command run in `workspace`: `$HOME`, its secret folders and the Cluaiz home hidden.
-/// Network stays allowed until the execution policy has a network permission (plan, step 3 note).
-pub fn policy_for(workspace: &Path) -> SandboxPolicy {
-    let mut hidden = Vec::new();
-    if let Some(home) = std::env::var_os("HOME").map(PathBuf::from) {
-        for sub in [".ssh", ".gnupg", ".aws", ".config/gh", ".docker"] {
-            hidden.push(home.join(sub));
-        }
-        hidden.push(home.join(".cluaiz"));
-        hidden.insert(0, home);
-    }
-    if let Some(cluaiz_home) = std::env::var_os("CLUAIZ_HOME").map(PathBuf::from) {
-        hidden.push(cluaiz_home);
-    }
-    SandboxPolicy { workspace: workspace.to_path_buf(), hidden, allow_network: true, ..Default::default() }
+/// Folders under `$HOME` that hold credentials; hidden from every confined process
+const SECRET_DIRS: [&str; 5] = [".ssh", ".gnupg", ".aws", ".config/gh", ".docker"];
+
+fn home() -> Option<PathBuf> {
+    std::env::var_os("HOME").map(PathBuf::from)
 }
 
-/// Confines `program args` run in `workspace` with the mode and backend of this machine. Says once per
+/// The Cluaiz home (models, config with provider keys, tool packages)
+fn cluaiz_home() -> Option<PathBuf> {
+    std::env::var_os("CLUAIZ_HOME").map(PathBuf::from).or_else(|| home().map(|h| h.join(".cluaiz")))
+}
+
+impl SandboxPolicy {
+    /// An agent command: the whole `$HOME` hidden (its secret folders masked again if the workspace is
+    /// `$HOME`), the Cluaiz home hidden, the workspace writable. Network stays allowed until the execution
+    /// policy has a network permission (plan, step 3 note).
+    pub fn for_agent(workspace: &Path) -> Self {
+        let mut hidden: Vec<PathBuf> = home().into_iter().collect();
+        hidden.extend(home().into_iter().flat_map(|h| SECRET_DIRS.map(|d| h.join(d))));
+        hidden.extend(cluaiz_home());
+        Self { workspace: workspace.to_path_buf(), hidden, allow_network: true, ..Default::default() }
+    }
+
+    /// A tool's own process (MCP server, native plugin): `$HOME` stays readable for language caches
+    /// (npm, uv), its secret folders and the Cluaiz home are hidden, the tool's package folder is
+    /// bound back read-only, the workspace is writable, network as the tool's permission says.
+    pub fn for_tool(workspace: &Path, package: &Path, allow_network: bool) -> Self {
+        let mut hidden: Vec<PathBuf> = home().into_iter().flat_map(|h| SECRET_DIRS.map(|d| h.join(d))).collect();
+        hidden.extend(cluaiz_home());
+        Self { workspace: workspace.to_path_buf(), hidden, read_roots: vec![package.to_path_buf()], allow_network, ..Default::default() }
+    }
+}
+
+/// Whether a tool's own process may use the network: its declared `network` permission and the user's
+/// choice (`permissions.rs`). A tool that declares no network permission keeps the network for now, so
+/// existing packages that download at start (`npx`, `uvx`) keep working; this tightens once every
+/// registry package declares it.
+pub fn tool_network(config_dir: &Path, tool_type: &str, id: &str, package: &Path) -> bool {
+    let manifest = std::fs::read_to_string(package.join("package.json"))
+        .ok()
+        .and_then(|text| serde_json::from_str::<serde_json::Value>(&text).ok())
+        .unwrap_or_default();
+    let declared = crate::permissions::effective(config_dir, tool_type, id, &manifest);
+    declared.iter().find(|p| p.kind == "network").map_or(true, |p| p.on)
+}
+
+/// Confines `program args` under `policy` with the mode and backend of this machine. Says once per
 /// process when commands run unconfined in auto mode.
-pub fn confine_here(program: &str, args: &[String], workspace: &Path) -> Result<Confined> {
+pub fn confine_here(program: &str, args: &[String], policy: &SandboxPolicy) -> Result<Confined> {
     static BACKEND: std::sync::OnceLock<Backend> = std::sync::OnceLock::new();
     static NOTICE: std::sync::Once = std::sync::Once::new();
     let backend = BACKEND.get_or_init(detect);
     let mode = mode_from_env();
-    let confined = confine(program, args, &policy_for(workspace), mode, backend)?;
+    let confined = confine(program, args, policy, mode, backend)?;
     if mode == SandboxMode::Auto && confined.backend == "none" {
         NOTICE.call_once(|| tracing::warn!("Agent commands are not OS-confined here (no bubblewrap at /usr/bin/bwrap or /bin/bwrap); the allow/ask/deny policy still applies"));
     }

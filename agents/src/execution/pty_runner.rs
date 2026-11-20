@@ -203,7 +203,7 @@ fn run(
     #[cfg(not(target_os = "windows"))]
     let mut builder = {
         // OS confinement (bubblewrap on Linux; see os_sandbox.rs)
-        let confined = super::os_sandbox::confine_here("sh", &["-c".to_string(), command.to_string()], &env.cwd)?;
+        let confined = super::os_sandbox::confine_here("sh", &["-c".to_string(), command.to_string()], &super::os_sandbox::SandboxPolicy::for_agent(&env.cwd))?;
         let mut builder = CommandBuilder::new(&confined.program);
         builder.args(&confined.args);
         builder

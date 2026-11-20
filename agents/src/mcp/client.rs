@@ -199,10 +199,16 @@ impl McpSession {
         // named in its `env`. Not the Engine's own: that holds the user's provider keys.
         let mut own_env = exec.env.clone();
         own_env.extend(user_env(mcp_dir, &cluaiz_core::EnvironmentManager::current().config_dir()));
-        let mut cmd = Command::new(program_path(&exec.command));
+        // OS confinement (bubblewrap on Linux; see execution/os_sandbox.rs)
+        let mcp_id = mcp_dir.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
+        let network = crate::execution::os_sandbox::tool_network(&cluaiz_core::EnvironmentManager::current().config_dir(), "mcp", &mcp_id, mcp_dir);
+        let policy = crate::execution::os_sandbox::SandboxPolicy::for_tool(&workspace, mcp_dir, network);
+        let program = program_path(&exec.command);
+        let confined = crate::execution::os_sandbox::confine_here(&program.to_string_lossy(), &exec.args, &policy)?;
+        let mut cmd = Command::new(&confined.program);
         // Servers start in the open workspace, as other MCP clients do. The package folder
         // holds Cluaiz's own package.json, which npm would read as an npm project.
-        cmd.args(&exec.args)
+        cmd.args(&confined.args)
             .current_dir(&workspace)
             .env_clear()
             .envs(crate::execution::environment::EnvironmentResolver::for_tool(&own_env))

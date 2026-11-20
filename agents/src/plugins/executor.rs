@@ -57,8 +57,14 @@ impl PluginExecutor {
         }
         
         let payload_str = String::from_utf8_lossy(payload);
-        let mut cmd = std::process::Command::new(&binary);
-        cmd.arg(&*payload_str);
+        // OS confinement (bubblewrap on Linux; see execution/os_sandbox.rs)
+        let config_dir = cluaiz_core::EnvironmentManager::current().config_dir();
+        let plugin_id = plugin_dir.file_name().map(|name| name.to_string_lossy().into_owned()).unwrap_or_default();
+        let network = crate::execution::os_sandbox::tool_network(&config_dir, "plugin", &plugin_id, plugin_dir);
+        let policy = crate::execution::os_sandbox::SandboxPolicy::for_tool(plugin_dir, plugin_dir, network);
+        let confined = crate::execution::os_sandbox::confine_here(&binary.to_string_lossy(), &[payload_str.to_string()], &policy)?;
+        let mut cmd = std::process::Command::new(&confined.program);
+        cmd.args(&confined.args);
         cmd.current_dir(plugin_dir);
 
         let output = cmd.output()?;
