@@ -1,0 +1,4 @@
+2025 MHz, 62.71 W, 73.91, 0 MiB
+Mem:           32099         964       29207           0        2258       31135
+cgroup 0::/user.slice/user-1000.slice/session-11.scope memory.max max
+major faults 116, read 17380 MiB from disk

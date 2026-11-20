@@ -1,0 +1,11 @@
+[08:25:55] start A_dense_placements: qwen3.5-2b-mtp-gguf-Q4_K_M --placements -r 2
+[08:34:21] end A_dense_placements exit 0
+[08:34:21] start D_dense_long3k_gpu: qwen3.5-2b-mtp-gguf-Q4_K_M --prompts <home>/cluaiz/test/cloud/remote/mtp23/prompts_long3k.json -r 2
+[08:35:14] end D_dense_long3k_gpu exit 0
+[08:35:14] start E_moe_placements: qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS --placements -r 2
+[08:59:47] end E_moe_placements exit 0
+[09:00:07] start F_moe_vram8: qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS -r 2
+[09:08:51] end F_moe_vram8 exit 0
+[09:08:53] start G_moe_vram8_ram12: qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS -r 1
+[09:24:31] end G_moe_vram8_ram12 exit 0
+[09:24:31] all done

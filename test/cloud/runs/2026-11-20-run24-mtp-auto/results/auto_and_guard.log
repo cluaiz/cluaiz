@@ -1,0 +1,48 @@
+2026-11-20T08:26:20.377948Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-20T08:26:24.407547Z  INFO 🔮 [MTP] Guard: 126.3 t/s with guesses, 127.5 t/s without; no more guesses in this answer
+2026-11-20T08:26:26.623205Z  INFO 🔮 [MTP] Guard: 104.3 t/s with guesses, 125.7 t/s without; no more guesses in this answer
+2026-11-20T08:26:42.183668Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-20T08:26:46.213997Z  INFO 🔮 [MTP] Guard: 126.1 t/s with guesses, 127.2 t/s without; no more guesses in this answer
+2026-11-20T08:26:48.437832Z  INFO 🔮 [MTP] Guard: 103.7 t/s with guesses, 125.1 t/s without; no more guesses in this answer
+2026-11-20T08:27:07.559981Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-20T08:27:11.941505Z  INFO 🔮 [MTP] Guard: 94.2 t/s with guesses, 95.8 t/s without; no more guesses in this answer
+2026-11-20T08:27:12.563619Z  INFO 🔮 [MTP] Guard: 93.2 t/s with guesses, 96.8 t/s without; no more guesses in this answer
+2026-11-20T08:27:15.304243Z  INFO 🔮 [MTP] Guard: 92.8 t/s with guesses, 96.8 t/s without; no more guesses in this answer
+2026-11-20T08:27:35.069158Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-20T08:27:40.011584Z  INFO 🔮 [MTP] Guard: 94.2 t/s with guesses, 97.0 t/s without; no more guesses in this answer
+2026-11-20T08:27:42.717916Z  INFO 🔮 [MTP] Guard: 93.7 t/s with guesses, 98.3 t/s without; no more guesses in this answer
+2026-11-20T08:29:58.211970Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-20T08:30:11.834235Z  INFO 🔮 [MTP] Guard: 13.2 t/s with guesses, 16.0 t/s without; no more guesses in this answer
+2026-11-20T08:30:25.004376Z  INFO 🔮 [MTP] Guard: 13.5 t/s with guesses, 15.9 t/s without; no more guesses in this answer
+2026-11-20T08:30:29.804650Z  INFO 🔮 [MTP] Guard: 11.0 t/s with guesses, 16.0 t/s without; no more guesses in this answer
+2026-11-20T08:30:55.076511Z  INFO 🔮 [MTP] Guard: 13.2 t/s with guesses, 15.2 t/s without; no more guesses in this answer
+2026-11-20T08:33:18.231331Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-20T08:33:32.018537Z  INFO 🔮 [MTP] Guard: 13.1 t/s with guesses, 15.8 t/s without; no more guesses in this answer
+2026-11-20T08:33:45.243992Z  INFO 🔮 [MTP] Guard: 13.6 t/s with guesses, 15.8 t/s without; no more guesses in this answer
+2026-11-20T08:33:50.030638Z  INFO 🔮 [MTP] Guard: 11.0 t/s with guesses, 16.1 t/s without; no more guesses in this answer
+2026-11-20T08:34:15.282072Z  INFO 🔮 [MTP] Guard: 13.2 t/s with guesses, 15.3 t/s without; no more guesses in this answer
+2026-11-20T08:34:40.305858Z  INFO 🔮 [MTP] Auto: off (measured slower on this placement)
+2026-11-20T08:35:05.596830Z  INFO 🔮 [MTP] Auto: off (measured slower on this placement)
+2026-11-20T08:37:34.372917Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-20T08:38:29.436190Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-20T08:39:31.851439Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-20T08:40:37.060697Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-20T08:47:21.315447Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-20T08:48:27.409398Z  INFO 🔮 [MTP] Guard: 5.6 t/s with guesses, 6.0 t/s without; no more guesses in this answer
+2026-11-20T08:48:51.956460Z  INFO 🔮 [MTP] Guard: 5.2 t/s with guesses, 6.1 t/s without; no more guesses in this answer
+2026-11-20T08:50:11.021339Z  INFO 🔮 [MTP] Guard: 4.8 t/s with guesses, 5.8 t/s without; no more guesses in this answer
+2026-11-20T08:56:46.731903Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-20T08:57:51.045093Z  INFO 🔮 [MTP] Guard: 5.9 t/s with guesses, 6.2 t/s without; no more guesses in this answer
+2026-11-20T08:58:03.323030Z  INFO 🔮 [MTP] Guard: 6.2 t/s with guesses, 6.2 t/s without; no more guesses in this answer
+2026-11-20T08:59:31.937331Z  INFO 🔮 [MTP] Guard: 4.9 t/s with guesses, 5.9 t/s without; no more guesses in this answer
+2026-11-20T09:03:06.841320Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-20T09:03:24.077674Z  INFO 🔮 [MTP] Guard: 13.0 t/s with guesses, 13.6 t/s without; no more guesses in this answer
+2026-11-20T09:03:40.973108Z  INFO 🔮 [MTP] Guard: 13.0 t/s with guesses, 13.7 t/s without; no more guesses in this answer
+2026-11-20T09:03:47.799562Z  INFO 🔮 [MTP] Guard: 11.5 t/s with guesses, 13.6 t/s without; no more guesses in this answer
+2026-11-20T09:04:24.948701Z  INFO 🔮 [MTP] Guard: 9.8 t/s with guesses, 13.4 t/s without; no more guesses in this answer
+2026-11-20T09:07:27.025242Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-20T09:07:44.158904Z  INFO 🔮 [MTP] Guard: 13.1 t/s with guesses, 13.7 t/s without; no more guesses in this answer
+2026-11-20T09:08:00.909366Z  INFO 🔮 [MTP] Guard: 13.1 t/s with guesses, 13.8 t/s without; no more guesses in this answer
+2026-11-20T09:08:07.689536Z  INFO 🔮 [MTP] Guard: 11.6 t/s with guesses, 13.8 t/s without; no more guesses in this answer
+2026-11-20T09:08:44.730641Z  INFO 🔮 [MTP] Guard: 9.9 t/s with guesses, 13.6 t/s without; no more guesses in this answer
+2026-11-20T09:20:14.653374Z  INFO 🔮 [MTP] Auto: off (measured slower on this placement)

@@ -1,0 +1,148 @@
+== machine
+Linux cluaiz-32gb 6.12.117+deb13-cloud-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.117-1 (2026-11-12) x86_64 GNU/Linux
+Debian GNU/Linux 13 (trixie)
+8
+               total        used        free      shared  buff/cache   available
+Mem:              31           0          29           0           1          30
+Swap:              0           0           0
+Fri Nov 20 08:19:03 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 620.70.06              KMD Version: 620.70.06     CUDA UMD Version: 13.5     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA L4                      On  |   00000000:00:03.0 Off |                    0 |
+| N/A   50C    P8             14W /   72W |       0MiB /  23034MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+info: downloading installer
+warn: it looks like you have an existing rustup settings file at:
+warn: <home>/.rustup/settings.toml
+info: profile set to minimal
+info: default host tuple is x86_64-unknown-linux-gnu
+warn: Updating existing toolchain, profile choice will be ignored
+info: syncing channel updates for stable-x86_64-unknown-linux-gnu
+info: default toolchain set to stable-x86_64-unknown-linux-gnu
+
+  stable-x86_64-unknown-linux-gnu unchanged - rustc 1.100.0 (0ef1bc386 2026-11-09)
+
+
+Rust is installed now. Great!
+
+To get started you may need to restart your current shell.
+This would reload your PATH environment variable to include
+Cargo's bin directory ($HOME/.cargo/bin).
+
+To configure your current shell, you need to source the
+corresponding env file under $HOME/.cargo.
+
+Consider running the right command for your shell (note the leading DOT):
+. "$HOME/.cargo/env" # For sh/ash/dash/pdksh/bash
+cargo:rerun-if-env-changed=CC_x86_64-unknown-linux-gnu
+CC_x86_64-unknown-linux-gnu = None
+cargo:rerun-if-env-changed=CC_x86_64_unknown_linux_gnu
+CC_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=HOST_CC
+HOST_CC = None
+cargo:rerun-if-env-changed=CC
+CC = None
+cargo:rerun-if-env-changed=CC_ENABLE_DEBUG_OUTPUT
+cargo:rerun-if-env-changed=CPATH
+cargo:rerun-if-env-changed=C_INCLUDE_PATH
+cargo:rerun-if-env-changed=CPLUS_INCLUDE_PATH
+cargo:rerun-if-env-changed=OBJC_INCLUDE_PATH
+cargo:rerun-if-env-changed=OBJCPLUS_INCLUDE_PATH
+cargo:rerun-if-env-changed=COMPILER_PATH
+cargo:rerun-if-env-changed=SOURCE_DATE_EPOCH
+cargo:rerun-if-env-changed=GCC_EXEC_PREFIX
+cargo:rerun-if-env-changed=CRATE_CC_NO_DEFAULTS
+CRATE_CC_NO_DEFAULTS = None
+cargo:rerun-if-env-changed=CFLAGS
+CFLAGS = None
+cargo:rerun-if-env-changed=HOST_CFLAGS
+HOST_CFLAGS = None
+cargo:rerun-if-env-changed=CFLAGS_x86_64_unknown_linux_gnu
+CFLAGS_x86_64_unknown_linux_gnu = None
+cargo:rerun-if-env-changed=CFLAGS_x86_64-unknown-linux-gnu
+CFLAGS_x86_64-unknown-linux-gnu = None
+rustc 1.100.0 (0ef1bc386 2026-11-09)
+Build cuda_13.2.r13.2/compiler.37953736_0
+   Compiling cluaiz-core v0.1.0 (<home>/cluaiz/engine/core)
+   Compiling ort-sys v2.0.0-rc.15
+warning: llama-engine@0.1.0: 🔩 Found local cached llama.cpp at "<home>/cluaiz/engine/llama/llama.cpp"
+warning: llama-engine@0.1.0: In file included from <home>/cluaiz/engine/llama/llama.cpp/common/jinja/parser.h:4,
+warning: llama-engine@0.1.0:                  from <home>/cluaiz/engine/llama/llama.cpp/common/chat.h:7,
+warning: llama-engine@0.1.0:                  from src/ffi/chat_bridge.cpp:4:
+warning: llama-engine@0.1.0: <home>/cluaiz/engine/llama/llama.cpp/common/jinja/runtime.h:770:20: warning: 'std::string jinja::render_string_parts(const value_string&)' defined but not used [-Wunused-function]
+warning: llama-engine@0.1.0:   770 | static std::string render_string_parts(const value_string & parts) {
+warning: llama-engine@0.1.0:       |                    ^~~~~~~~~~~~~~~~~~~
+warning: llama-engine@0.1.0: In file included from <home>/cluaiz/engine/llama/llama.cpp/common/jinja/parser.h:3:
+warning: llama-engine@0.1.0: <home>/cluaiz/engine/llama/llama.cpp/common/jinja/lexer.h:50:20: warning: 'std::string jinja::type_to_string(token::type)' defined but not used [-Wunused-function]
+warning: llama-engine@0.1.0:    50 | static std::string type_to_string(token::type t) {
+warning: llama-engine@0.1.0:       |                    ^~~~~~~~~~~~~~
+warning: llama-engine@0.1.0: 🧿 [Llama-Engine] Industrial CMake Build Complete.
+   Compiling ort v2.0.0-rc.15
+   Compiling cluaiz-hw v0.1.0 (<home>/cluaiz/engine/hardware)
+   Compiling cluaiz-media v0.1.0 (<home>/cluaiz/engine/media)
+   Compiling cluaiz-security v0.1.0 (<home>/cluaiz/security)
+   Compiling cluaiz-models v0.1.0 (<home>/cluaiz/engine/models)
+   Compiling onnx-engine v0.1.0 (<home>/cluaiz/engine/onnx)
+   Compiling cluaiz-plan v0.1.0 (<home>/cluaiz/engine/plan)
+   Compiling cluaiz-agents v0.1.0 (<home>/cluaiz/agents)
+   Compiling llama-engine v0.1.0 (<home>/cluaiz/engine/llama)
+   Compiling cluaiz-runtime v0.1.0 (<home>/cluaiz/engine/runtime)
+   Compiling cluaiz-api v0.1.0 (<home>/cluaiz/api)
+   Compiling cluaiz-automation-host v0.1.0 (<home>/cluaiz/automation/host)
+   Compiling cmd v0.1.0 (<home>/cluaiz/cmd)
+warning: variable does not need to be mutable
+   --> cmd/src/core/bootstrapper.rs:101:17
+    |
+101 |             let mut res = std::fs::copy(src, dest);
+    |                 ----^^^
+    |                 |
+    |                 help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `e`
+   --> cmd/src/core/bootstrapper.rs:102:24
+    |
+102 |             if let Err(ref e) = res {
+    |                        ^^^^^ help: if this is intentional, prefix it with an underscore: `_e`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `cmd` (bin "cluaiz") generated 2 warnings (run `cargo fix --bin "cluaiz" -p cmd` to apply 2 suggestions)
+warning: unused dependency `winres`
+  --> cmd/Cargo.toml:55:1
+   |
+55 | winres = "0.1"
+   | ^^^^^^^^^^^^^^
+   |
+   = note: `cargo::unused_dependencies` is set to `warn` by default
+help: consider removing the dependency on `winres`
+warning: `cmd` (manifest) generated 1 warning
+    Finished `release` profile [optimized] target(s) in 4m 24s
+== build exit 0 after 265 s
+-rwxrwxr-x 2 <user> <user> 80870928 Nov 20 08:23 target/release/cluaiz
+[08:23:31] start A_dense_placements: qwen3.5-2b-mtp-gguf-Q4_K_M --placements -r 2
+[08:23:32] end A_dense_placements exit 1
+[08:23:32] start D_dense_long3k_gpu: qwen3.5-2b-mtp-gguf-Q4_K_M --prompts <home>/cluaiz/test/cloud/remote/mtp23/prompts_long3k.json -r 2
+[08:23:33] end D_dense_long3k_gpu exit 1
+[08:23:33] start E_moe_placements: qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS --placements -r 2
+[08:23:33] end E_moe_placements exit 1
+[08:23:53] start F_moe_vram8: qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS -r 2
+[08:23:53] end F_moe_vram8 exit 1
+[08:23:54] start G_moe_vram8_ram12: qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS -r 1
+[08:23:55] end G_moe_vram8_ram12 exit 1
+[08:23:56] all done

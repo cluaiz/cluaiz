@@ -1,0 +1,4 @@
+2040 MHz, 33.10 W, 69.66, 14424 MiB
+Mem:           32099        1036       31004           8         435       31063
+cgroup 0::/system.slice/run-p4774-i5074.scope memory.max 12884901888
+major faults 407262, read 136024 MiB from disk
