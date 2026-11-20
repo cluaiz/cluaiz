@@ -59,7 +59,7 @@ const SEATBELT: &str = "/usr/bin/sandbox-exec";
 pub fn detect() -> Backend {
     if cfg!(target_os = "linux") {
         for path in BWRAP_PATHS {
-            if Path::new(path).is_file() {
+            if Path::new(path).is_file() && bwrap_works(Path::new(path)) {
                 return Backend::Bubblewrap(PathBuf::from(path));
             }
         }
@@ -73,6 +73,27 @@ pub fn detect() -> Backend {
         }
     }
     Backend::None
+}
+
+/// Whether bubblewrap can create its namespaces here. The binary can be installed where it cannot
+/// run: WSL1, containers without user namespaces, kernels with unprivileged user namespaces turned off
+/// (sysctl or AppArmor). Found but not working would make every confined command fail, so it counts
+/// as no backend: auto runs unconfined with the warning, required refuses. The probe uses the same
+/// namespace flags as a real command (`bwrap_args`).
+fn bwrap_works(bwrap: &Path) -> bool {
+    std::process::Command::new(bwrap)
+        .args(["--ro-bind", "/", "/", "--proc", "/proc", "--dev", "/dev", "--unshare-net", "--unshare-pid", "--die-with-parent", "--", "/bin/sh", "-c", "true"])
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .is_ok_and(|status| status.success())
+}
+
+/// The backend of this machine, probed once per process
+fn backend_here() -> &'static Backend {
+    static BACKEND: std::sync::OnceLock<Backend> = std::sync::OnceLock::new();
+    BACKEND.get_or_init(detect)
 }
 
 /// What the confined command may touch
@@ -232,7 +253,7 @@ fn home() -> Option<PathBuf> {
 
 /// Why there is no backend, per platform
 const NO_BACKEND: &str = if cfg!(target_os = "linux") {
-    "bubblewrap not found at /usr/bin/bwrap or /bin/bwrap"
+    "bubblewrap not found at /usr/bin/bwrap or /bin/bwrap, or it cannot create namespaces here (WSL1, a container, or unprivileged user namespaces turned off)"
 } else if cfg!(target_os = "macos") {
     "/usr/bin/sandbox-exec not found"
 } else if cfg!(windows) {
@@ -286,7 +307,7 @@ impl SandboxPolicy {
 
 /// One line for users: whether agent commands are OS-confined here, and how
 pub fn status_line() -> String {
-    let backend = detect();
+    let backend = backend_here();
     match (mode_from_env(), &backend) {
         (SandboxMode::Off, _) => "OS sandbox: off (CLUAIZ_OS_SANDBOX=off); only the approval policy applies.".into(),
         (_, Backend::None) => format!("OS sandbox: not available here ({NO_BACKEND}); only the approval policy applies."),
@@ -311,9 +332,8 @@ pub fn tool_network(config_dir: &Path, tool_type: &str, id: &str, package: &Path
 /// Confines `program args` under `policy` with the mode and backend of this machine. Says once per
 /// process when commands run unconfined in auto mode.
 pub fn confine_here(program: &str, args: &[String], policy: &SandboxPolicy) -> Result<Confined> {
-    static BACKEND: std::sync::OnceLock<Backend> = std::sync::OnceLock::new();
     static NOTICE: std::sync::Once = std::sync::Once::new();
-    let backend = BACKEND.get_or_init(detect);
+    let backend = backend_here();
     let mode = mode_from_env();
     let confined = confine(program, args, policy, mode, backend)?;
     if mode == SandboxMode::Auto && confined.backend == "none" {

@@ -115,7 +115,7 @@ plugins (`plugins/executor.rs`). Plan and reasons: `.agent/plans/security/os-san
 
 | Platform | Backend | What a confined process gets |
 |---|---|---|
-| Linux | bubblewrap at `/usr/bin/bwrap` or `/bin/bwrap` (never through `PATH`) | whole filesystem read-only; fresh `/proc`, `/dev`, `/tmp`; agent: `$HOME` and the Cluaiz home hidden; tool: `$HOME` secret folders (`.ssh`, `.gnupg`, `.aws`, `.config/gh`, `.docker`) and the Cluaiz home hidden, its package folder read-only; the workspace writable (secret folders masked again when the workspace is `$HOME`); own PID namespace; no network unless allowed |
+| Linux | bubblewrap at `/usr/bin/bwrap` or `/bin/bwrap` (never through `PATH`), used only when a probe run with the same namespace flags succeeds (WSL1, containers and kernels without unprivileged user namespaces count as no backend) | whole filesystem read-only; fresh `/proc`, `/dev`, `/tmp`; agent: `$HOME` and the Cluaiz home hidden; tool: `$HOME` secret folders (`.ssh`, `.gnupg`, `.aws`, `.config/gh`, `.docker`) and the Cluaiz home hidden, its package folder read-only; the workspace writable (secret folders masked again when the workspace is `$HOME`); own PID namespace; no network unless allowed |
 | macOS | `/usr/bin/sandbox-exec` with a generated profile | the same rules as a Seatbelt profile |
 | Windows | AppContainer (`os_sandbox/appcontainer.rs`), one container per workspace | only what an ACL grants the container: the workspace (full access) and the read roots; Windows and Program Files stay readable (Windows grants them to all app containers); the user's home is not readable; no network unless allowed, and never `localhost` |
 
