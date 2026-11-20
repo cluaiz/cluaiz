@@ -231,6 +231,16 @@ impl SandboxPolicy {
     }
 }
 
+/// One line for users: whether agent commands are OS-confined here, and how
+pub fn status_line() -> String {
+    let backend = detect();
+    match (mode_from_env(), &backend) {
+        (SandboxMode::Off, _) => "OS sandbox: off (CLUAIZ_OS_SANDBOX=off); only the approval policy applies.".into(),
+        (_, Backend::None) => "OS sandbox: not available here (Linux needs bubblewrap; Windows is not supported yet); only the approval policy applies.".into(),
+        (_, backend) => format!("OS sandbox: on ({}); commands see the workspace, not your home folder or Cluaiz's files.", backend.name()),
+    }
+}
+
 /// Whether a tool's own process may use the network: its declared `network` permission and the user's
 /// choice (`permissions.rs`). A tool that declares no network permission keeps the network for now, so
 /// existing packages that download at start (`npx`, `uvx`) keep working; this tightens once every

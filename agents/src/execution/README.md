@@ -106,3 +106,23 @@ flowchart LR
   waiting for it.
 - **Huge output:** capped; the start and the end are kept, the middle is cut.
 - **Missing working folder:** denied with the path.
+
+## OS sandbox (`os_sandbox.rs`, 2026-11-20)
+
+Every process this crate starts for an agent or a tool goes through `os_sandbox::confine_here`: agent
+commands (`terminal_runner.rs` direct and shell, `pty_runner.rs`), MCP servers (`mcp/client.rs`) and native
+plugins (`plugins/executor.rs`). Plan and reasons: `.agent/plans/security/os-sandbox.md`.
+
+| Platform | Backend | What a confined process gets |
+|---|---|---|
+| Linux | bubblewrap at `/usr/bin/bwrap` or `/bin/bwrap` (never through `PATH`) | whole filesystem read-only; fresh `/proc`, `/dev`, `/tmp`; agent: `$HOME` and the Cluaiz home hidden; tool: `$HOME` secret folders (`.ssh`, `.gnupg`, `.aws`, `.config/gh`, `.docker`) and the Cluaiz home hidden, its package folder read-only; the workspace writable (secret folders masked again when the workspace is `$HOME`); own PID namespace; no network unless allowed |
+| macOS | `/usr/bin/sandbox-exec` with a generated profile | the same rules as a Seatbelt profile |
+| Windows | none yet (AppContainer needs its own spawn path; Jan's takes about 1,000 lines) | the approval policy only |
+
+Mode: `CLUAIZ_OS_SANDBOX=auto` (default: confine when a backend exists, else run and warn once),
+`required` (refuse without a backend), `off`. Network: agent commands keep it until the execution policy has a
+network permission; a tool loses it only when its declared `network` permission is off (`tool_network`).
+`/permissions` and `/strict` in the terminal agent print the state (`status_line`).
+
+Tested: argument and profile unit tests (`cargo test -p cluaiz-agents --lib os_sandbox`). Not tested yet: a
+real run on Linux (bubblewrap) and macOS; this is step 4 of the plan, on the VPS or a cloud VM.

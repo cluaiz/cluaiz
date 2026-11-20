@@ -506,9 +506,9 @@ context    {}", plan.summary(), plan.context_reason)
             "/strict" => {
                 self.tools.require_approval();
                 self.tools.strict = true;
-                "Strict approvals: every built-in tool asks, including workspace reads. This is an approval policy, not OS process isolation.".into()
+                format!("Strict approvals: every built-in tool asks, including workspace reads.\n{}", cluaiz_agents::execution::os_sandbox::status_line())
             }
-            "/permissions" => "Ask: workspace reads run; changes/commands ask.\nStrict: every built-in tool asks.\n/ask · /strict · /yes (session grants).\nThese policies do not provide an OS sandbox.".into(),
+            "/permissions" => format!("Ask: workspace reads run; changes/commands ask.\nStrict: every built-in tool asks.\n/ask · /strict · /yes (session grants).\n{}", cluaiz_agents::execution::os_sandbox::status_line()),
             "/think" | "/think on" | "/think off" | "/think auto" => {
                 use cluaiz_core::FeatureState;
                 let current = self.session.options.think.unwrap_or(cluaiz_core::Settings::current().optimization.think_mode);
