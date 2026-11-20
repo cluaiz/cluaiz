@@ -27,6 +27,8 @@ pub enum SandboxMode {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Backend {
     Bubblewrap(PathBuf),
+    /// macOS `sandbox-exec` with a generated profile
+    Seatbelt,
     None,
 }
 
@@ -34,6 +36,7 @@ impl Backend {
     pub fn name(&self) -> &'static str {
         match self {
             Backend::Bubblewrap(_) => "bubblewrap",
+            Backend::Seatbelt => "seatbelt",
             Backend::None => "none",
         }
     }
@@ -43,6 +46,9 @@ impl Backend {
 /// `PATH` would otherwise decide the confinement)
 const BWRAP_PATHS: [&str; 2] = ["/usr/bin/bwrap", "/bin/bwrap"];
 
+/// `sandbox-exec` is trusted only at its system path, as Jan does
+const SEATBELT: &str = "/usr/bin/sandbox-exec";
+
 /// The backend available here
 pub fn detect() -> Backend {
     if cfg!(target_os = "linux") {
@@ -51,6 +57,9 @@ pub fn detect() -> Backend {
                 return Backend::Bubblewrap(PathBuf::from(path));
             }
         }
+    }
+    if cfg!(target_os = "macos") && Path::new(SEATBELT).is_file() {
+        return Backend::Seatbelt;
     }
     Backend::None
 }
@@ -92,11 +101,56 @@ pub fn confine(program: &str, args: &[String], policy: &SandboxPolicy, mode: San
             wrapped.extend(args.iter().cloned());
             Ok(Confined { program: bwrap.to_string_lossy().into_owned(), args: wrapped, backend: backend.name() })
         }
+        Backend::Seatbelt => {
+            let mut wrapped = vec!["-p".to_string(), seatbelt_profile(policy)];
+            wrapped.push(program.to_string());
+            wrapped.extend(args.iter().cloned());
+            Ok(Confined { program: SEATBELT.to_string(), args: wrapped, backend: backend.name() })
+        }
         Backend::None if mode == SandboxMode::Required => {
             bail!("security.os_sandbox is required, but no OS sandbox is available here (bubblewrap not found at /usr/bin/bwrap or /bin/bwrap)")
         }
         Backend::None => Ok(plain()),
     }
+}
+
+/// A Seatbelt profile with the same rules as the bubblewrap arguments. In a profile the later rule
+/// wins, so the order matches bubblewrap's: everything readable, writes only to the workspace, write
+/// roots and temp, hidden paths unreadable, read roots and the workspace readable again.
+fn seatbelt_profile(policy: &SandboxPolicy) -> String {
+    let q = |path: &Path| format!("(subpath \"{}\")", path.to_string_lossy().replace('\\', "\\\\").replace('"', "\\\""));
+    let mut writable = vec![q(&policy.workspace), "(subpath \"/private/tmp\")".into(), "(subpath \"/private/var/folders\")".into(), "(subpath \"/dev\")".into()];
+    writable.extend(policy.write_roots.iter().map(|r| q(r)));
+    let mut profile = String::from("(version 1)
+(allow default)
+(deny file-write* (subpath \"/\"))
+");
+    profile += &format!("(allow file-write* {})
+", writable.join(" "));
+    if !policy.hidden.is_empty() {
+        let hidden: Vec<String> = policy.hidden.iter().map(|h| q(h)).collect();
+        profile += &format!("(deny file-read* file-write* {})
+", hidden.join(" "));
+    }
+    let back: Vec<String> = policy.read_roots.iter().chain(&policy.write_roots).map(|r| q(r)).chain([q(&policy.workspace)]).collect();
+    profile += &format!("(allow file-read* {})
+", back.join(" "));
+    let writable_back: Vec<String> = policy.write_roots.iter().map(|r| q(r)).chain([q(&policy.workspace)]).collect();
+    profile += &format!("(allow file-write* {})
+", writable_back.join(" "));
+    // A workspace that contains a hidden path (an agent started in `$HOME`) has just reopened it: deny
+    // it once more, as the bubblewrap arguments mask it again
+    let again: Vec<String> = policy.hidden.iter().filter(|h| *h != &policy.workspace && h.starts_with(&policy.workspace)).map(|h| q(h)).collect();
+    if !again.is_empty() {
+        profile += &format!("(deny file-read* file-write* {})
+", again.join(" "));
+    }
+    if !policy.allow_network {
+        profile += "(deny network*)
+(allow network* (local unix-socket))
+";
+    }
+    profile
 }
 
 /// bubblewrap arguments, in the order that keeps the workspace the last word on its own path
@@ -281,6 +335,31 @@ mod tests {
         let ws = pos(&c.args, &["--bind", "/home/u", "/home/u"]);
         let last_ssh = c.args.windows(2).rposition(|w| w[0] == "--tmpfs" && w[1] == "/home/u/.ssh").unwrap();
         assert!(last_ssh > ws, "the secret folder is masked after the workspace bind");
+    }
+
+    #[test]
+    fn seatbelt_profile_hides_home_and_keeps_the_workspace() {
+        let c = confine("sh", &["-c".into(), "ls".into()], &policy(), SandboxMode::Auto, &Backend::Seatbelt).unwrap();
+        assert_eq!((c.program.as_str(), c.backend), ("/usr/bin/sandbox-exec", "seatbelt"));
+        assert_eq!(c.args[0], "-p");
+        let profile = &c.args[1];
+        let deny = profile.find("(deny file-read* file-write* (subpath \"/home/u\")").unwrap();
+        let back = profile.rfind("(allow file-read* (subpath \"/home/u/.cargo\")").unwrap();
+        assert!(deny < back, "read roots come back after the home is hidden");
+        assert!(profile.contains("(deny network*)"));
+        assert_eq!(&c.args[2..], ["sh", "-c", "ls"]);
+    }
+
+    #[test]
+    fn seatbelt_reopens_a_home_workspace_but_not_its_secrets() {
+        let mut p = policy();
+        p.workspace = PathBuf::from("/home/u");
+        p.hidden.push(PathBuf::from("/home/u/.ssh"));
+        let profile = seatbelt_profile(&p);
+        let reopen = profile.rfind("(allow file-write* (subpath \"/home/u\")").unwrap();
+        let ssh = profile.rfind("(subpath \"/home/u/.ssh\")").unwrap();
+        assert!(profile[..ssh].rfind("(deny file-read* file-write*").unwrap() > reopen);
+        assert!(reopen < ssh, "the workspace is usable and .ssh is denied after it");
     }
 
     #[test]
