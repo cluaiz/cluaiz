@@ -1,0 +1,80 @@
+{
+  "model_id": "qwen3.5-2b-mtp-gguf-Q4_K_M",
+  "placements": [
+    {
+      "disk_stream_gb": 0.0,
+      "kv_offload": true,
+      "mtp_on_failed": null,
+      "n_cpu_moe": 0,
+      "n_ctx": 4096,
+      "n_gpu_layers": 0,
+      "placement": "CPU only",
+      "prompts": [
+        {
+          "accepted": 148,
+          "drafted": 258,
+          "gain": 0.9021445827128929,
+          "gain_max": 0.9021445827128929,
+          "gain_min": 0.9021445827128929,
+          "generation_tps_off": 17.815813148964686,
+          "generation_tps_on": 16.072439318963617,
+          "kept": 0.5736434108527132,
+          "prompt": "code",
+          "prompt_tps_off": 72.90738175481012,
+          "prompt_tps_on": 65.4330967387239,
+          "same_text": false,
+          "tokens": 235
+        },
+        {
+          "accepted": 76,
+          "drafted": 210,
+          "gain": 0.6930262463326297,
+          "gain_max": 0.6930262463326297,
+          "gain_min": 0.6930262463326297,
+          "generation_tps_off": 17.953029077439556,
+          "generation_tps_on": 12.441920351838489,
+          "kept": 0.3619047619047619,
+          "prompt": "chat",
+          "prompt_tps_off": 77.00582677422592,
+          "prompt_tps_on": 70.05731682056052,
+          "same_text": false,
+          "tokens": 161
+        },
+        {
+          "accepted": 130,
+          "drafted": 144,
+          "gain": 1.2231264553733041,
+          "gain_max": 1.2231264553733041,
+          "gain_min": 1.2231264553733041,
+          "generation_tps_off": 18.036347924539506,
+          "generation_tps_on": 22.060734304821654,
+          "kept": 0.9027777777777778,
+          "prompt": "list",
+          "prompt_tps_off": 76.59762367136916,
+          "prompt_tps_on": 69.50332920946913,
+          "same_text": true,
+          "tokens": 181
+        },
+        {
+          "accepted": 68,
+          "drafted": 175,
+          "gain": 0.7048545709629253,
+          "gain_max": 0.7048545709629253,
+          "gain_min": 0.7048545709629253,
+          "generation_tps_off": 17.59036949258243,
+          "generation_tps_on": 12.398652341773516,
+          "kept": 0.38857142857142857,
+          "prompt": "long",
+          "prompt_tps_off": 117.03601914499656,
+          "prompt_tps_on": 109.91060793907205,
+          "same_text": false,
+          "tokens": 128
+        }
+      ],
+      "vram_taken_gb_off": null,
+      "vram_taken_gb_on": null
+    }
+  ],
+  "rounds": 1,
+  "temperature": 0.0
+}

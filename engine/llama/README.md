@@ -263,6 +263,12 @@ What these runs show:
 - Text: the same with and without MTP in 23 of 52 prompt pairs; draft 1 kept it in all 8, `list`
   changed in 2 (split, CPU `p_min` 0.5).
 
+Placements, MoE and the SSD on an L4 and the laptop, with off and on alternated per round:
+[run 23](../../test/cloud/runs/2026-11-20-run23-mtp-placements/SUMMARY.md). In short: the MoE 35B-A3B
+gained on every prompt with all weights on the GPU (1.21-1.73x) but lost on prose with its experts
+in RAM (0.70x) and on every prompt with experts read from the SSD (0.63-0.98x); the dense 2B lost on
+prose in every placement; MTP cost 19-34% of the prompt speed on the GPU.
+
 ### Where MTP is expected to lose (from sources, not all measured here)
 
 Speculative decoding speedup is `E / (v + g*c)`: `E = (1 - a^(g+1)) / (1 - a)` tokens per target run

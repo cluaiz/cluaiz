@@ -1,0 +1,80 @@
+{
+  "model_id": "qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS",
+  "placements": [
+    {
+      "disk_stream_gb": 0.0,
+      "kv_offload": true,
+      "mtp_on_failed": null,
+      "n_cpu_moe": 41,
+      "n_ctx": 16384,
+      "n_gpu_layers": -1,
+      "placement": "MoE split (attention on GPU, experts in RAM)",
+      "prompts": [
+        {
+          "accepted": 170,
+          "drafted": 195,
+          "gain": 1.0477028273029265,
+          "gain_max": 1.0477028273029265,
+          "gain_min": 1.0477028273029265,
+          "generation_tps_off": 14.523386638694417,
+          "generation_tps_on": 15.216193243373686,
+          "kept": 0.8717948717948718,
+          "prompt": "code",
+          "prompt_tps_off": 24.051386174487376,
+          "prompt_tps_on": 23.531737093270518,
+          "same_text": false,
+          "tokens": 235
+        },
+        {
+          "accepted": 113,
+          "drafted": 243,
+          "gain": 0.6990174594377817,
+          "gain_max": 0.6990174594377817,
+          "gain_min": 0.6990174594377817,
+          "generation_tps_off": 14.544458737517475,
+          "generation_tps_on": 10.166830595597112,
+          "kept": 0.46502057613168724,
+          "prompt": "chat",
+          "prompt_tps_off": 28.675145548766114,
+          "prompt_tps_on": 24.4229685683566,
+          "same_text": false,
+          "tokens": 198
+        },
+        {
+          "accepted": 177,
+          "drafted": 183,
+          "gain": 1.1325349588240539,
+          "gain_max": 1.1325349588240539,
+          "gain_min": 1.1325349588240539,
+          "generation_tps_off": 14.537443870989534,
+          "generation_tps_on": 16.464163395838128,
+          "kept": 0.9672131147540983,
+          "prompt": "list",
+          "prompt_tps_off": 29.241450960796676,
+          "prompt_tps_on": 27.007021436354613,
+          "same_text": true,
+          "tokens": 241
+        },
+        {
+          "accepted": 82,
+          "drafted": 134,
+          "gain": 0.8223578019112359,
+          "gain_max": 0.8223578019112359,
+          "gain_min": 0.8223578019112359,
+          "generation_tps_off": 14.450070940817026,
+          "generation_tps_on": 11.883128576351714,
+          "kept": 0.6119402985074627,
+          "prompt": "long",
+          "prompt_tps_off": 147.78729878455974,
+          "prompt_tps_on": 139.03741208325704,
+          "same_text": false,
+          "tokens": 128
+        }
+      ],
+      "vram_taken_gb_off": 2.8,
+      "vram_taken_gb_on": 3.25
+    }
+  ],
+  "rounds": 1,
+  "temperature": 0.0
+}
