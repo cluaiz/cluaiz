@@ -365,9 +365,9 @@ flowchart LR
 | **`stream_options`** | Object | No | - | `{"include_usage": true}` | With `stream: true`, `include_usage: true` adds a last chunk with empty `choices` and the `usage` object (as OpenAI does). The owner's stream telemetry setting also turns this chunk on and adds the context breakdown to it. |
 | **`return_progress`** | Boolean | No | `false` | `true`, `false` | With `stream:true`, adds separate `event: cluaiz.progress` observations starting before model/source preparation. Completion chunks remain unchanged. Ignored for non-streaming responses. |
 | **`temperature`** | Float | No | `0.7` | `0.0 - 2.0` | Sampling temperature. Lower values (0.0) force factual logic; higher values increase variety. |
-| **`max_tokens`** | Integer | No | until the model ends or the context is full (`2048` with attachments) | $\ge 1$ | Maximum number of completion tokens to generate. Also the room kept free for the answer when the history is fitted; see [Context window](#-context-window--context-shifting). |
+| **`max_tokens`** | Integer | No | until the model ends or the context is full (`2048` with attachments) | $\ge 1$ | Maximum number of answer tokens to generate. Thinking is limited separately by `reasoning_effort`, so with a thinking model `usage.completion_tokens` (answer plus thinking) can be larger than `max_tokens`. Also the room kept free for the answer when the history is fitted; see [Context window](#-context-window--context-shifting). |
 | **`think_mode`** | String / Integer | No | `"auto"` | `"auto"`, `"off"`, `"on"`, or integer (e.g. `768`) | Controls Chain-of-Thought reasoning token emission and budget. |
-| **`reasoning_effort`** | String | No | `"auto"` | `"low"`, `"medium"`, `"high"`, `"max"`, `"auto"` | OpenAI-compatible alias for reasoning token budget. |
+| **`reasoning_effort`** | String or Integer | No | `"auto"` | `"low"`, `"medium"`, `"high"`, `"max"`, `"auto"`, or a number of thinking tokens | Thinking budget; see [Reasoning Budget Levels](#reasoning-budget-levels-think_mode--reasoning_effort). |
 | **`skip_reasoning`** | Boolean | No | `false` | `true`, `false` | Bypasses the reasoning monologue phase entirely for lower latency. |
 | **`temporary_chat`** | String | No | `null` | `"lite"`, `"strict"` | Private chat: `"lite"` keeps nothing on disk (no chat memory, events or ledger); `"strict"` also leaves out the project's agent files. |
 | **`session_id`** | String | No | `null` | String | Session identifier used to preserve conversation tool-call state across multi-turn sessions. |
@@ -439,12 +439,23 @@ After projector loading, the incremental request-RAM check returns an error cont
 
 | Mode / Effort | Budget Limit | Behavior Description |
 |:---|:---:|:---|
-| **`"auto"`** | None | Model generates reasoning with its default prompt template without budget cutoff. |
-| **`"off"` / `"minimal"`** | `0` | **Think Tag Prefill:** Thinking tags prefilled (`<think></think>`). 0 reasoning tokens emitted. |
-| **`"low"`** | `512` | Concise reasoning capped at 512 thinking tokens. |
-| **`"medium"`** | `1024` | Balanced analytical reasoning capped at 1024 thinking tokens. |
-| **`"high"`** | `Bounded by n_ctx` | Full reasoning bounded only by `max_tokens` and model context window (`n_ctx`). |
-| **Custom Integer** (e.g. `256`, `768`, `2048`) | Exact Count | Clamped to `n_ctx` and `max_tokens.saturating_sub(32)` to guarantee answer tokens. |
+The thinking budget is a share of the *room*: the context left after the prompt, minus the tokens kept
+for the answer (`max_tokens`), so the answer always fits. The shares are user settings
+(`settings.json` → `optimization.thinking_presets`); the defaults are in `engine/core/src/settings.rs`
+(`ThinkingPresets`).
+
+| Effort | Thinking budget (defaults) |
+|:---|:---|
+| **`"auto"`** | Same as `"high"` |
+| **`"low"`** | 25% of the room, at most 2,048 tokens |
+| **`"medium"`** | 50% of the room, at most 8,192 tokens |
+| **`"high"`** | 75% of the room, at most 32,768 tokens |
+| **`"max"`** | The whole room |
+| **Number** (e.g. `256`) | That many tokens, never more than the room; `0` answers without thinking |
+| `think_mode: "off"` | No thinking (the template's empty thinking block is prefilled) |
+
+When the budget runs out, the Engine closes the thinking block (with `reasoning_budget_message` when set)
+and the model writes its answer.
 
 ### Token Usage Telemetry
 Every non-streaming answer has a `usage` object, as OpenAI's does. A streamed answer has it in the last chunk when `stream_options.include_usage` is `true` or stream telemetry is on. Both paths build it the same way: `prompt_tokens` is the engine's count of the last generation's prompt, `completion_tokens` counts every token the model generated in the turn (tool-call steps included), and `completion_tokens_details.reasoning_tokens` the ones inside thinking. It also carries `time_to_first_token_ms`, `total_time_ms`, `model_load_ms` and `tokens_per_second`; `context_telemetry` and `model_header_info` are added only with stream telemetry on:
