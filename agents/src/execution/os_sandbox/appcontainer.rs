@@ -52,8 +52,7 @@ pub fn moniker(workspace: &Path) -> String {
 /// Hidden paths that sit inside a granted root. AppContainer hides everything not granted, so only
 /// these need an explicit deny (for example `.ssh` when the workspace is the home folder).
 pub fn deny_paths(policy: &SandboxPolicy) -> Vec<PathBuf> {
-    let roots: Vec<&PathBuf> = std::iter::once(&policy.workspace).chain(&policy.read_roots).chain(&policy.write_roots).collect();
-    policy.hidden.iter().filter(|h| roots.iter().any(|r| h != r && h.starts_with(r))).cloned().collect()
+    super::reopened(policy).into_iter().cloned().collect()
 }
 
 /// The helper's arguments: the policy, `--`, then the command
@@ -538,11 +537,12 @@ mod tests {
 
     #[test]
     fn secrets_inside_a_granted_root_are_denied() {
-        let mut p = policy();
-        p.workspace = PathBuf::from(r"C:\Users\u");
+        // Joined paths, not `C:\` literals, so the path logic is checked on every platform (run 28)
+        let home = PathBuf::from("users").join("u");
+        let p = SandboxPolicy { workspace: home.clone(), hidden: vec![home.clone(), home.join(".ssh")], ..Default::default() };
         let deny = deny_paths(&p);
-        assert!(deny.contains(&PathBuf::from(r"C:\Users\u\.ssh")));
-        assert!(!deny.contains(&PathBuf::from(r"C:\Users\u")), "the workspace itself is not denied");
+        assert!(deny.contains(&home.join(".ssh")));
+        assert!(!deny.contains(&home), "the workspace itself is not denied");
     }
 
     #[test]

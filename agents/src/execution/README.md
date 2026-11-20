@@ -121,7 +121,7 @@ plugins (`plugins/executor.rs`). Plan and reasons: `.agent/plans/security/os-san
 
 | Platform | Backend | What a confined process gets |
 |---|---|---|
-| Linux | bubblewrap at `/usr/bin/bwrap` or `/bin/bwrap` (never through `PATH`), used only when a probe run with the same namespace flags succeeds (WSL1, containers and kernels without unprivileged user namespaces count as no backend) | whole filesystem read-only; fresh `/proc`, `/dev`, `/tmp`; agent: `$HOME` and the Cluaiz home hidden; tool: `$HOME` secret folders (`.ssh`, `.gnupg`, `.aws`, `.config/gh`, `.docker`) and the Cluaiz home hidden, its package folder read-only; the workspace writable (secret folders masked again when the workspace is `$HOME`); own PID namespace; no network unless allowed |
+| Linux | bubblewrap at `/usr/bin/bwrap` or `/bin/bwrap` (never through `PATH`), used only when a probe run with the same namespace flags succeeds (WSL1, containers and kernels without unprivileged user namespaces count as no backend) | whole filesystem read-only; fresh `/proc`, `/dev`, `/tmp`; agent: `$HOME` and the Cluaiz home hidden, the toolchains on `PATH` under `$HOME` back read-only (`~/.cargo` with `~/.rustup`, `~/.nvm`, `~/.pyenv`, `~/.local/bin`, ...); tool: `$HOME` secret folders (`.ssh`, `.gnupg`, `.aws`, `.config/gh`, `.docker`), cargo's credential files and the Cluaiz home hidden, its package folder read-only; a secret inside any root that comes back is hidden again after it; the workspace writable (secret folders masked again when the workspace is `$HOME`); own PID namespace; no network unless allowed |
 | macOS | `/usr/bin/sandbox-exec` with a generated profile | the same rules as a Seatbelt profile |
 | Windows | AppContainer (`os_sandbox/appcontainer.rs`), one container per workspace | only what an ACL grants the container: the workspace (full access) and the read roots; Windows and Program Files stay readable (Windows grants them to all app containers); the user's home is not readable; no network unless allowed, and never `localhost` |
 
@@ -156,14 +156,17 @@ PowerShell's progress bar cannot read the console; `$ProgressPreference='Silentl
 
 Tested: argument and profile unit tests (`cargo test -p cluaiz-agents --lib os_sandbox`, 17 pass). Windows
 on a real machine: `test/cloud/runs/2026-11-20-run27-windows-os-sandbox/` (home, `.ssh`, `.cluaiz` and
-Documents denied, workspace writable, network only when allowed, exit codes pass through). Not tested yet: a
-real run on Linux (bubblewrap) and macOS; this is step 4 of the plan, on the VPS or a cloud VM.
+Documents denied, workspace writable, network only when allowed, exit codes pass through). Linux on a real
+machine: `test/cloud/runs/2026-11-21-run28-linux-os-sandbox/` (Ubuntu 24.04: 8 / 8 checks after the AppArmor
+profile; stock 24.04 blocks bubblewrap and the probe falls back). Not tested yet: macOS.
 
 ## Pending
 
 | Item | Why it is open |
 |---|---|
-| A real run on Linux (bubblewrap, the namespace probe) and macOS | Only unit tests so far; needs the VPS or a cloud VM (plan step 4) |
+| A real run on macOS | Linux done in run 28; the same test runs on a Mac: `cargo test -p cluaiz-agents --test os_sandbox_real -- --ignored --nocapture` |
+| Ubuntu 23.10+ blocks bubblewrap by default (AppArmor) | Run 28: the probe falls back to unconfined; the user needs the AppArmor profile in run 28's SUMMARY. A notice that names it, or an installer step, is not built |
 | Agent commands keep the network | No network permission for agent commands yet; cutting it would break `npm install` and `cargo build` |
 | Windows: agent and MCP through `required` end to end | Run 27 called the helper directly; the agent and MCP paths are covered by unit tests only |
-| Toolchains under the home folder (`~/.cargo`, per-user Python) are not visible to a confined agent command | Hiding the home folder hides them; read roots for them need a measured list |
+| Toolchain read roots measured on Linux and macOS (does `cargo build`, `npm test`, `python` run confined?) | Derived from `PATH` (`toolchain_roots`), unit-tested only; read-only, so a download into `~/.cargo/registry` or `~/.npm` fails |
+| Windows: per-user toolchains (Python under AppData) in `required` mode | Not given back: a read root on Windows is an ACL grant on the user's own folders |

@@ -186,7 +186,7 @@ fn seatbelt_profile(policy: &SandboxPolicy) -> String {
 ", writable_back.join(" "));
     // A workspace that contains a hidden path (an agent started in `$HOME`) has just reopened it: deny
     // it once more, as the bubblewrap arguments mask it again
-    let again: Vec<String> = policy.hidden.iter().filter(|h| *h != &policy.workspace && h.starts_with(&policy.workspace)).map(|h| q(h)).collect();
+    let again: Vec<String> = reopened(policy).into_iter().map(|h| q(h)).collect();
     if !again.is_empty() {
         profile += &format!("(deny file-read* file-write* {})
 ", again.join(" "));
@@ -207,8 +207,8 @@ fn bwrap_args(policy: &SandboxPolicy) -> Vec<String> {
 
     push(&["--ro-bind", "/", "/"]);
     push(&["--proc", "/proc", "--dev", "/dev", "--tmpfs", "/tmp"]);
-    for hide in &policy.hidden {
-        push(&["--tmpfs", &p(hide)]);
+    for hide in policy.hidden.iter().filter(|h| !inside_other(h, &policy.hidden)) {
+        push(&mask(hide).iter().map(String::as_str).collect::<Vec<_>>());
     }
     for root in &policy.read_roots {
         if !policy.write_roots.contains(root) {
@@ -220,18 +220,35 @@ fn bwrap_args(policy: &SandboxPolicy) -> Vec<String> {
     }
     let ws = p(&policy.workspace);
     push(&["--bind", &ws, &ws, "--chdir", &ws]);
-    // A workspace that contains a hidden path (an agent started in `$HOME`) has just shown it again:
-    // mask it once more
-    for hide in &policy.hidden {
-        if hide != &policy.workspace && hide.starts_with(&policy.workspace) {
-            push(&["--tmpfs", &p(hide)]);
-        }
+    // A hidden path inside a root that was just bound back (`.ssh` when the workspace is `$HOME`,
+    // `credentials.toml` inside `~/.cargo`) is visible again: mask it once more
+    for hide in reopened(policy) {
+        push(&mask(hide).iter().map(String::as_str).collect::<Vec<_>>());
     }
     if !policy.allow_network {
         push(&["--unshare-net"]);
     }
     push(&["--unshare-pid", "--die-with-parent", "--new-session"]);
     a
+}
+
+/// Hidden paths that sit strictly inside a root the policy binds back (workspace, read or write
+/// roots): every backend hides them again after the roots
+fn reopened(policy: &SandboxPolicy) -> Vec<&PathBuf> {
+    let roots: Vec<&PathBuf> = std::iter::once(&policy.workspace).chain(&policy.read_roots).chain(&policy.write_roots).collect();
+    policy.hidden.iter().filter(|h| roots.iter().any(|r| h != r && h.starts_with(r))).collect()
+}
+
+/// Inside another hidden path, so already hidden by that one's mask (and a bubblewrap mount point
+/// inside an empty tmpfs may not exist)
+fn inside_other(path: &Path, hidden: &[PathBuf]) -> bool {
+    hidden.iter().any(|other| other != path && path.starts_with(other))
+}
+
+/// bubblewrap arguments that hide one path: an empty tmpfs over a folder, `/dev/null` over a file
+fn mask(path: &Path) -> Vec<String> {
+    let shown = path.to_string_lossy().into_owned();
+    if path.is_file() { vec!["--ro-bind".into(), "/dev/null".into(), shown] } else { vec!["--tmpfs".into(), shown] }
 }
 
 /// The mode in force: `CLUAIZ_OS_SANDBOX` for one run, else `os_sandbox` in permission.json (default
@@ -254,13 +271,47 @@ fn parse_mode(value: &str) -> SandboxMode {
 /// Folders under `$HOME` that hold credentials; hidden from every confined process
 const SECRET_DIRS: [&str; 5] = [".ssh", ".gnupg", ".aws", ".config/gh", ".docker"];
 
+/// Credential files inside folders that come back as toolchain roots (crates.io token)
+const SECRET_FILES: [&str; 2] = [".cargo/credentials.toml", ".cargo/credentials"];
+
+/// Folders a toolchain under `$HOME` needs besides the one on `PATH`: rustup's `cargo` in
+/// `~/.cargo/bin` runs the toolchains kept in `~/.rustup`
+const TOOLCHAIN_COMPANIONS: [(&str, &str); 1] = [(".cargo", ".rustup")];
+
+/// Read roots for the toolchains on `PATH` that live under `$HOME` (rustup, nvm, pyenv, bun, go,
+/// `~/.local/bin`): each `PATH` entry's top folder under `$HOME` (only the entry itself for `.local`,
+/// whose `share` holds keyrings), never a secret folder, the Cluaiz home or `$HOME` itself. Without
+/// them a confined agent command finds no `cargo`, `node` or `python` installed per user (plan,
+/// risks). Read-only: a download into `~/.cargo/registry` still fails, as in any read-only toolchain.
+fn toolchain_roots(home: &Path, path_var: &std::ffi::OsStr, cluaiz_home: Option<&Path>) -> Vec<PathBuf> {
+    let mut roots: Vec<PathBuf> = Vec::new();
+    for entry in std::env::split_paths(path_var) {
+        let Ok(inside) = entry.strip_prefix(home) else { continue };
+        let Some(top) = inside.components().next().map(|c| c.as_os_str().to_string_lossy().into_owned()) else { continue };
+        if SECRET_DIRS.iter().any(|d| d.split('/').next() == Some(top.as_str())) {
+            continue;
+        }
+        let root = if top == ".local" { entry.clone() } else { home.join(&top) };
+        if cluaiz_home.is_some_and(|c| root.starts_with(c) || c.starts_with(&root)) {
+            continue;
+        }
+        let companions = TOOLCHAIN_COMPANIONS.iter().filter(|(t, _)| *t == top).map(|(_, c)| home.join(c));
+        for candidate in std::iter::once(root).chain(companions) {
+            if !roots.contains(&candidate) {
+                roots.push(candidate);
+            }
+        }
+    }
+    roots
+}
+
 fn home() -> Option<PathBuf> {
     std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE")).map(PathBuf::from)
 }
 
 /// Why there is no backend, per platform
 const NO_BACKEND: &str = if cfg!(target_os = "linux") {
-    "bubblewrap not found at /usr/bin/bwrap or /bin/bwrap, or it cannot create namespaces here (WSL1, a container, or unprivileged user namespaces turned off)"
+    "bubblewrap not found at /usr/bin/bwrap or /bin/bwrap, or it cannot create namespaces here (WSL1, a container, or unprivileged user namespaces turned off; Ubuntu 23.10 and later need an AppArmor profile for /usr/bin/bwrap, see docs/engine/permission.md)"
 } else if cfg!(target_os = "macos") {
     "/usr/bin/sandbox-exec not found"
 } else if cfg!(windows) {
@@ -291,23 +342,38 @@ fn cluaiz_home() -> Option<PathBuf> {
     std::env::var_os("CLUAIZ_HOME").map(PathBuf::from).or_else(|| home().map(|h| h.join(".cluaiz")))
 }
 
+/// What every confined process loses: the secret folders and files under `$HOME`, and the Cluaiz home.
+/// Only those that exist: bubblewrap mounts a mask on each, and a mount point it would have to create
+/// inside a read-only root fails the whole command (run 28: `Can't mkdir ~/.cargo/credentials`); a path
+/// that does not exist holds nothing to hide.
+fn secrets() -> Vec<PathBuf> {
+    let mut hidden: Vec<PathBuf> = home().into_iter().flat_map(|h| SECRET_DIRS.iter().chain(&SECRET_FILES).map(move |d| h.join(d))).collect();
+    hidden.extend(cluaiz_home());
+    hidden.retain(|path| path.exists());
+    hidden
+}
+
 impl SandboxPolicy {
     /// An agent command: the whole `$HOME` hidden (its secret folders masked again if the workspace is
     /// `$HOME`), the Cluaiz home hidden, the workspace writable. Network stays allowed until the execution
     /// policy has a network permission (plan, step 3 note).
     pub fn for_agent(workspace: &Path) -> Self {
         let mut hidden: Vec<PathBuf> = home().into_iter().collect();
-        hidden.extend(home().into_iter().flat_map(|h| SECRET_DIRS.map(|d| h.join(d))));
-        hidden.extend(cluaiz_home());
-        Self { workspace: workspace.to_path_buf(), hidden, allow_network: true, ..Default::default() }
+        hidden.extend(secrets());
+        // Toolchains under `$HOME` come back read-only on Linux and macOS. Not on Windows: there a read
+        // root is an ACL grant written on the user's folders, and auto mode does not confine anyway
+        let read_roots = match (cfg!(unix), home(), std::env::var_os("PATH")) {
+            (true, Some(home), Some(path)) => toolchain_roots(&home, &path, cluaiz_home().as_deref()),
+            _ => Vec::new(),
+        };
+        Self { workspace: workspace.to_path_buf(), hidden, read_roots, allow_network: true, ..Default::default() }
     }
 
     /// A tool's own process (MCP server, native plugin): `$HOME` stays readable for language caches
     /// (npm, uv), its secret folders and the Cluaiz home are hidden, the tool's package folder is
     /// bound back read-only, the workspace is writable, network as the tool's permission says.
     pub fn for_tool(workspace: &Path, package: &Path, allow_network: bool) -> Self {
-        let mut hidden: Vec<PathBuf> = home().into_iter().flat_map(|h| SECRET_DIRS.map(|d| h.join(d))).collect();
-        hidden.extend(cluaiz_home());
+        let hidden = secrets();
         Self { workspace: workspace.to_path_buf(), hidden, read_roots: vec![package.to_path_buf()], allow_network, ..Default::default() }
     }
 }
@@ -479,6 +545,32 @@ mod tests {
         assert_eq!(parse_mode(" OFF "), SandboxMode::Off);
         assert_eq!(parse_mode("required"), SandboxMode::Required);
         assert_eq!(parse_mode("requierd"), SandboxMode::Required);
+    }
+
+    #[test]
+    fn toolchains_on_path_under_home_come_back_but_secrets_do_not() {
+        let home = Path::new("/home/u");
+        let path = std::env::join_paths([
+            "/usr/bin", "/home/u/.cargo/bin", "/home/u/.nvm/versions/node/v22/bin", "/home/u/.local/bin",
+            "/home/u/.ssh/bin", "/home/u/.cluaiz/bin", "/home/u", "/home/u/.cargo/bin",
+        ]).unwrap();
+        let roots = toolchain_roots(home, &path, Some(Path::new("/home/u/.cluaiz")));
+        let want: Vec<PathBuf> = ["/home/u/.cargo", "/home/u/.rustup", "/home/u/.nvm", "/home/u/.local/bin"].iter().map(PathBuf::from).collect();
+        assert_eq!(roots, want);
+    }
+
+    #[test]
+    fn a_secret_inside_a_read_root_is_masked_after_the_root() {
+        let mut p = policy();
+        p.hidden.push(PathBuf::from("/home/u/.cargo/credentials.toml"));
+        let c = confine("sh", &[], &p, SandboxMode::Auto, &bwrap()).unwrap();
+        let cargo = pos(&c.args, &["--ro-bind", "/home/u/.cargo", "/home/u/.cargo"]);
+        let cred = c.args.iter().rposition(|x| x == "/home/u/.cargo/credentials.toml").unwrap();
+        assert!(cred > cargo, "the credentials are hidden after ~/.cargo comes back");
+        let profile = confine("sh", &[], &p, SandboxMode::Auto, &Backend::Seatbelt).unwrap().args[1].clone();
+        let back = profile.rfind("(allow file-read* (subpath \"/home/u/.cargo\")").unwrap();
+        let deny = profile.rfind("/home/u/.cargo/credentials.toml").unwrap();
+        assert!(deny > back);
     }
 
     #[test]

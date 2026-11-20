@@ -1,0 +1,48 @@
++ sudo apt-get update -qq
++ sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq bubblewrap build-essential pkg-config curl python3
++ uname -a
+Linux <vm> 7.0.0-1017-gcp #19~24.04.1-Ubuntu SMP PREEMPT Thu Oct 29 22:34:06 UTC 2026 x86_64 x86_64 x86_64 GNU/Linux
++ lsb_release -ds
+Ubuntu 24.04.5 LTS
++ bwrap --version
++ sysctl kernel.apparmor_restrict_unprivileged_userns kernel.unprivileged_userns_clone
+kernel.apparmor_restrict_unprivileged_userns = 1
+kernel.unprivileged_userns_clone = 1
++ curl -sSf https://sh.rustup.rs
++ sh -s -- -y --profile minimal
++ . /home/<user>/.cargo/env
++ mkdir -p /home/<user>/src
++ tar -xzf /home/<user>/src.tgz -C /home/<user>/src
++ cd /home/<user>/src
++ mkdir -p /home/<user>/.cargo
++ '[' -f /home/<user>/.cargo/credentials.toml ']'
++ printf '[registry]\ntoken = "dummy-test-token"\n'
++ mkdir -p /home/<user>/.ssh
++ '[' -f /home/<user>/.ssh/run28_dummy ']'
++ echo dummy
++ cargo test --release -p cluaiz-agents --test os_sandbox_real -- --ignored --nocapture
+thread 'real_confinement' (8436) panicked at agents/tests/os_sandbox_real.rs:15:5:
+test real_confinement ... FAILED
+test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+real	8m6.480s
++ echo 'EXIT 101'
+EXIT 101
++ cargo test --release -p cluaiz-agents --lib os_sandbox
+test execution::os_sandbox::appcontainer::tests::secrets_inside_a_granted_root_are_denied ... FAILED
+thread 'execution::os_sandbox::appcontainer::tests::secrets_inside_a_granted_root_are_denied' (8805) panicked at agents/src/execution/os_sandbox/appcontainer.rs:543:9:
+test result: FAILED. 18 passed; 1 failed; 0 ignored; 0 measured; 143 filtered out; finished in 0.00s
+real	2m48.991s
++ echo DONE
+===FINAL===
+workspace is writable: PASS
+a write to home never reaches the host: PASS
+~/.ssh is hidden: PASS
+cargo credentials are hidden: PASS
+cargo runs confined: PASS
+python3 runs confined: PASS
+network on when allowed: PASS
+network off when not allowed: PASS
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+test execution::os_sandbox::appcontainer::tests::secrets_inside_a_granted_root_are_denied ... FAILED
+test result: FAILED. 18 passed; 1 failed; 0 ignored; 0 measured; 143 filtered out; finished in 0.00s
+test result: ok. 19 passed; 0 failed; 0 ignored; 0 measured; 143 filtered out; finished in 0.00s

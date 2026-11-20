@@ -25,7 +25,7 @@ from the App settings screen.
 | `agent_security_mode` | `sandboxed` | Approval rule for tool calls, used by the App, the API chat and the terminal agent: `full_access`, `sandboxed` (workspace-gated) or `strict` |
 | `exec.allow_shell` | `false` | CEP `system.exec` also accepts a shell line, not only a program with arguments |
 | `exec.without_approval` | `false` | CEP `system.exec` runs without the owner's approval of each call |
-| `os_sandbox` | `auto` | OS confinement of agent commands, MCP servers and native plugins. `auto`: confine on Linux (bubblewrap) and macOS (sandbox-exec), not on Windows; `required`: confine on every platform or refuse to run the command; `off`: never. Change with `cluaiz permission os-sandbox <mode>`; `CLUAIZ_OS_SANDBOX` wins for one run. Applies from the next command |
+| `os_sandbox` | `auto` | OS confinement of agent commands, MCP servers and native plugins. `auto`: confine on Linux (bubblewrap) and macOS (sandbox-exec), not on Windows; `required`: confine on every platform or refuse to run the command; `off`: never. Change with `cluaiz permission os-sandbox <mode>`; `CLUAIZ_OS_SANDBOX` wins for one run. Applies from the next command. Ubuntu 23.10 and later block bubblewrap until `/etc/apparmor.d/bwrap` holds `abi <abi/4.0>, include <tunables/global> profile bwrap /usr/bin/bwrap flags=(unconfined) { userns, }` (loaded with `sudo apparmor_parser -r /etc/apparmor.d/bwrap`); without it commands run unconfined (auto) or are refused (required) |
 
 ## Network access and API tokens
 
