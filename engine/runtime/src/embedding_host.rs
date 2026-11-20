@@ -76,6 +76,11 @@ impl EmbeddingHost {
         self.admission.try_acquire()
     }
 
+    /// Waits in line behind the running request (at most `QUEUE_WAIT`); `None` when the wait ran out
+    pub async fn acquire(&self) -> Option<crate::media_admission::MediaLease> {
+        self.admission.acquire(crate::media_admission::QUEUE_WAIT).await
+    }
+
     /// Frees the resident model when no request is using it; true when one was freed
     pub fn unload_idle(&self) -> bool {
         self.state.try_lock().ok().and_then(|mut state| state.take()).is_some()

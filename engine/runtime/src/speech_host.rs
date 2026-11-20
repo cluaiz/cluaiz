@@ -72,6 +72,11 @@ impl SpeechHost {
         self.admission.try_acquire()
     }
 
+    /// Waits in line behind the running request (at most `QUEUE_WAIT`); `None` when the wait ran out
+    pub async fn acquire(&self) -> Option<crate::media_admission::MediaLease> {
+        self.admission.acquire(crate::media_admission::QUEUE_WAIT).await
+    }
+
     /// Emits distinct WAV parts during generation, then the whole utterance's WAV data URI.
     pub fn dispatch(
         &self,

@@ -350,7 +350,7 @@ Final result: {model,task,output:{text,audio_data,segments}}. Decode a returned 
 | `-32004` / `model_not_found` | No installed model with this id, or no installed model for the task | Refresh the relevant inventory/IDs and check whether the resource expired |
 | `-32602` / `model_contract_error` | The model's package does not match its declared task (missing voices, config or assets) | Correct the option/value combination; install required assets where relevant |
 | `-32002` / `forbidden` | The model or the source file is outside the caller's roots (`data.needs: "roots"`) | Read the error message, correct the backend/filesystem/configuration condition, then retry deliberately |
-| `-32010` / `speech_busy` | Another speech request is running (from the task's result) | Read the error message, correct the backend/filesystem/configuration condition, then retry deliberately |
+| `-32010` / `speech_busy` | Earlier speech requests kept the model busy for 120 seconds (from the task's result) | Read the error message, correct the backend/filesystem/configuration condition, then retry deliberately |
 | `-32010` / `engine_error` | The model failed while running (from the task's result) | Read the error message, correct the backend/filesystem/configuration condition, then retry deliberately |
 | `-32008` / `cancelled` | `tasks.cancel` stopped it (from the task's result) | Treat as cancelled; review partial side effects before starting new work |
 

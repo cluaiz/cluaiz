@@ -24,7 +24,21 @@ impl MediaAdmission {
             _permit: Arc::new(p),
         })
     }
+
+    /// Waits in line for the permit, at most `wait`; `None` when the wait ran out. Requests that
+    /// arrive while one runs are then served in arrival order (tokio's semaphore is fair) instead
+    /// of refused, as llama-server and Ollama queue them. Run 26 (2026-11-20, 4 GB VPS): with
+    /// `try_acquire`, a second concurrent embedding request got HTTP 429, so 2 parallel callers
+    /// failed 99.96% of their requests. Used where the input is already prepared and small
+    /// (embedding text, speech text), so a waiting request holds little memory.
+    pub async fn acquire(&self, wait: std::time::Duration) -> Option<MediaLease> {
+        let permit = tokio::time::timeout(wait, self.0.clone().acquire_owned()).await.ok()?.ok()?;
+        Some(MediaLease { _permit: Arc::new(permit) })
+    }
 }
+
+/// How long an embedding or speech request waits for the one running before it is refused
+pub const QUEUE_WAIT: std::time::Duration = std::time::Duration::from_secs(120);
 
 /// Clones share one permit, including tool continuations and native workers.
 #[derive(Clone, Debug)]
@@ -64,6 +78,21 @@ mod tests {
         assert!(admission.try_acquire().is_err());
         drop(worker);
         assert!(admission.try_acquire().is_ok());
+    }
+
+    #[tokio::test]
+    async fn a_second_request_waits_for_the_first_instead_of_failing() {
+        let admission = MediaAdmission::default();
+        let first = admission.try_acquire().unwrap();
+        let waiting = admission.clone();
+        let second = tokio::spawn(async move { waiting.acquire(std::time::Duration::from_secs(5)).await.is_some() });
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+        assert!(!second.is_finished(), "the second request waits while the first runs");
+        drop(first);
+        assert!(second.await.unwrap(), "and runs once the first is done");
+        let held = admission.try_acquire().unwrap();
+        assert!(admission.acquire(std::time::Duration::from_millis(20)).await.is_none(), "a wait that runs out is refused");
+        drop(held);
     }
 
     #[tokio::test]

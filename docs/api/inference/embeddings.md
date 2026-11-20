@@ -94,7 +94,7 @@ errors:
 
 Returns vectors computed by the selected installed model. Text and text batches support compatible ONNX graphs or GGUF sequence-embedding models; image input requires an ONNX image graph. ONNX uses its declared output and pooling configuration; GGUF uses native mean, CLS or last-token pooling from model metadata. Both return finite L2-normalized vectors. Vector dimensions and retrieval quality depend on the selected model.
 
-GGUF execution has its own serialized resident, preserving chat KV and speech state. Placement and threads use the existing planner/settings. The active sequence limit is the explicit context setting within the model's limit, or the configured batch size when no context is selected. Inputs beyond that limit are rejected without truncation. A second active GGUF embedding request receives HTTP429 `embedding_busy`; cancelling the caller keeps admission held until its blocking worker exits. A native operation in progress is not preempted.
+GGUF execution has its own serialized resident, preserving chat KV and speech state. Placement and threads use the existing planner/settings. The active sequence limit is the explicit context setting within the model's limit, or the configured batch size when no context is selected. Inputs beyond that limit are rejected without truncation. A GGUF embedding request that arrives while another runs waits in line (arrival order) and runs next; it receives HTTP 429 `embedding_busy` only after waiting 120 seconds; cancelling the caller keeps admission held until its blocking worker exits. A native operation in progress is not preempted.
 
 Unsupported GGUF architectures, models without supported sequence pooling, rerankers and encoder-decoder models do not produce substitute vectors. Installation alone is not proof of runtime compatibility. In particular, a newer model architecture may require a separately reviewed native backend update.
 
@@ -414,7 +414,7 @@ The numerical arrays below are shortened illustrations, not complete model outpu
 | Empty batch/text or unsupported encoding | HTTP 400 |
 | Unknown fields or wrong field types | HTTP 422 JSON schema rejection |
 | Input exceeds the selected GGUF sequence limit | Error; no silent truncation |
-| Another GGUF embedding operation is active | HTTP 429 `embedding_busy` |
+| Earlier GGUF embedding requests kept the model busy for 120 seconds | HTTP 429 `embedding_busy` |
 | Inline JSON exceeds the configured transport ceiling | HTTP 413 `request_too_large` |
 
 Host/device memory admission can reject a load even when the download is small. GGUF embeddings use a separate resident from chat and speech; all still share the same physical RAM/VRAM and load-transition checks. Device placement comes from engine settings, not a `device` field in this payload. This endpoint computes vectors; saving, indexing and searching those vectors belong to your application.

@@ -67,7 +67,7 @@ pub(crate) fn is_embedding_model(
     })
 }
 /// Embeds texts with an installed embedding model for the Engine's own use (note matching); the
-/// same hosts as `/v1/embeddings`. A GGUF model that is busy with another request is an error.
+/// same hosts as `/v1/embeddings`. A GGUF model busy with another request is waited for, in line.
 pub async fn embed_texts(
     host: &cluaiz_runtime::EngineHost,
     entry: &cluaiz_models::types::manifest::ModelRegistryEntry,
@@ -75,7 +75,7 @@ pub async fn embed_texts(
 ) -> anyhow::Result<Vec<Vec<f32>>> {
     let settings = cluaiz_core::Settings::current();
     let outputs = if entry.format_type.eq_ignore_ascii_case("gguf") {
-        let admission = host.embeddings.try_acquire().map_err(|_| anyhow::anyhow!("the embedding model is busy"))?;
+        let admission = host.embeddings.acquire().await.ok_or_else(|| anyhow::anyhow!("the embedding model stayed busy too long"))?;
         host.embeddings.embed(entry.clone(), texts, settings, None, admission).await?.into_iter().map(|o| o.vector).collect()
     } else {
         let model = OnnxModel::from_package(entry)?;
@@ -305,15 +305,13 @@ impl EmbeddingExecutor {
                 .embed(model, inputs, settings.clone(), keep_alive)
                 .await
         } else {
-            let admission = match state.host.embeddings.try_acquire() {
-                Ok(admission) => admission,
-                Err(_) => {
-                    return error(
-                        StatusCode::TOO_MANY_REQUESTS,
-                        "embedding_busy",
-                        "Another GGUF embedding request is still active",
-                    )
-                }
+            // Waits behind a running request, in arrival order; refused only after QUEUE_WAIT
+            let Some(admission) = state.host.embeddings.acquire().await else {
+                return error(
+                    StatusCode::TOO_MANY_REQUESTS,
+                    "embedding_busy",
+                    "The embedding model stayed busy with earlier requests for 120 seconds",
+                );
             };
             let texts: anyhow::Result<Vec<_>> = inputs
                 .into_iter()

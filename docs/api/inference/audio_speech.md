@@ -182,7 +182,7 @@ This is a schema example, not a named model's complete inventory. A default-only
 
 `language_control` is `explicit` or `auto`. `voice_mode` is `preset`, `embedded`, `generated` (no declared reference encoder), `reference_source` (authorized GGUF audio), or `reference_profile` (package-local encoded profile). `coherent_input:true` tells clients to keep a narration together: independent unconditioned requests may choose different speakers. It does not guarantee speaker identity. A reference encoder is advertised only when the inspected matching projector declares one.
 
-One TTS request is admitted at a time across ONNX/GGUF, before reference decoding. Overlap returns HTTP429 `speech_busy`; stopping a client releases admission after outstanding preparation/native work finishes. Native load/frame operations remain non-preemptible.
+One TTS request is admitted at a time across ONNX/GGUF, before reference decoding. A request that arrives while another runs waits in line (arrival order); it returns HTTP 429 `speech_busy` only after waiting 120 seconds; stopping a client releases admission after outstanding preparation/native work finishes. Native load/frame operations remain non-preemptible.
 
 GGUF speech honors captured `optimization.n_gpu_layers` (null Auto, 0 CPU, -1 all GPU layers, positive exact count), generation/batch threads and mmap preference. CPU mode disables GPU operation/KV offload and GPU speaker encoding. Changing load settings or backbone/projector path/size/mtime replaces the resident. ONNX uses `onnx.n_gpu_layers` and its existing provider configuration.
 
@@ -406,6 +406,6 @@ Omit `voice` and `language` for this example. Audio8's manifest-selected package
 
 ## Common request errors
 
-Missing/invalid authentication returns HTTP 401 when required. An uninstalled model returns HTTP 404 `model_not_found`. Wrong-task packages, unsupported language/voice controls, invalid speed, incompatible assets and unknown top-level fields return errors. `response_format`, `device` and chat `messages` are not fields of this route. Concurrent TTS returns HTTP 429 `speech_busy`. A frame/context limit is a failure, not a successful shortened narration.
+Missing/invalid authentication returns HTTP 401 when required. An uninstalled model returns HTTP 404 `model_not_found`. Wrong-task packages, unsupported language/voice controls, invalid speed, incompatible assets and unknown top-level fields return errors. `response_format`, `device` and chat `messages` are not fields of this route. A TTS request that waited 120 seconds behind earlier ones returns HTTP 429 `speech_busy`. A frame/context limit is a failure, not a successful shortened narration.
 
 An SSE response can start with HTTP 200 and later emit `status:"error"`; only the terminal `done` event carries the successful complete result. The abbreviated Base64 strings in response examples illustrate the schema and are not playable WAV fixtures.

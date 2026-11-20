@@ -299,9 +299,10 @@ pub(crate) async fn dispatch_audio(
     let model_id = entry.id.clone();
     let settings = cluaiz_core::Settings::current();
     let admission = if task == AudioTask::TextToSpeech {
-        match state.host.speech.try_acquire() {
-            Ok(lease) => Some(lease),
-            Err(e) => return error(StatusCode::TOO_MANY_REQUESTS, "speech_busy", e),
+        // Waits behind a running request, in arrival order; refused only after QUEUE_WAIT
+        match state.host.speech.acquire().await {
+            Some(lease) => Some(lease),
+            None => return error(StatusCode::TOO_MANY_REQUESTS, "speech_busy", "The speech model stayed busy with earlier requests for 120 seconds"),
         }
     } else {
         None
