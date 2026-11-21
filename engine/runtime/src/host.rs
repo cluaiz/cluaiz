@@ -595,8 +595,8 @@ impl EngineHost {
         let plan = if facts.attempts > 1 {
             retried_plan = ExecutionPlan {
                 explanation: format!(
-                    "{} | load retry {}: the planned placement ({} GPU layers, {} tokens) failed to load; the miss was recorded",
-                    tried.explanation, facts.attempts, plan.n_gpu_layers, plan.context_window
+                    "{} | load retry {}: the planned placement ({} GPU layers, n_cpu_moe {}, {} tokens) failed to load; the miss was recorded",
+                    tried.explanation, facts.attempts, plan.n_gpu_layers, plan.n_cpu_moe, plan.context_window
                 ),
                 ..tried
             };
