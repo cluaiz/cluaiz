@@ -36,10 +36,10 @@ graph TD
     M --> Rec
 ```
 
-No GitHub workflow runs `cargo test` (2026-11-21: the workflows in `.github/workflows/` build drivers,
-run the release smoke test `.github/scripts/smoke_test.sh`, the clean-Windows runtime check
-`test/workflows/test_clean_windows_runtime.py` and the docs check). Unit tests run on developer
-machines and inside cloud runs (`test/cloud/remote/linux_tests.sh`).
+`.github/workflows/rust-tests.yml` (added 2026-11-21) runs `cargo test` on every push for the crates that
+build without llama.cpp or ONNX Runtime, and the CEP file-method contracts; it has not run on GitHub yet.
+The llama, onnx, runtime, api and cmd tests run on developer machines and inside cloud runs
+(`test/cloud/remote/linux_tests.sh`).
 
 ### Test functions next to the code (`#[test]` / `#[tokio::test]`, counted 2026-11-21)
 

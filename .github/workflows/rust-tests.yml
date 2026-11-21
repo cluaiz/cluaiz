@@ -1,0 +1,34 @@
+# The Engine's unit and contract tests that build without llama.cpp or ONNX Runtime: core, hardware,
+# models, plan, context, CEP, security, media, automation and the CEP file-method contracts (wave_b).
+# The llama, onnx, runtime, api and cmd crates are not here: building them compiles llama.cpp (with
+# CUDA on a developer machine, about 25 minutes). Runs on every push to main and pull request.
+name: Rust tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Crates without llama.cpp
+        run: >
+          cargo test --release
+          -p cluaiz-core -p cluaiz-hw -p cluaiz-models -p cluaiz-plan -p cluaiz-context
+          -p cluaiz-security -p cluaiz-media -p cluaiz-automation
+      # One test thread: the event bus is shared by the whole process, so parallel tests can see
+      # each other's events (a flaky test otherwise)
+      - name: CEP core
+        run: cargo test --release -p cluaiz-cep -- --test-threads=1
+      - name: CEP file and workspace method contracts
+        run: cargo test --manifest-path test/cep/wave_b/Cargo.toml --target-dir target/cep-wave-b-contracts

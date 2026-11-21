@@ -759,7 +759,7 @@ def test_kinds() -> Fig:
     f.edge("cargo", "dev", "b", "t")
     f.edge("dir", "dev", "b", "t", oa=0.25, ob=0.8)
     f.edge("dir", "runs", "b", "t", oa=0.6, ob=0.6)
-    f.note("No GitHub workflow runs cargo test (2026-11-21).", "triangle-alert", "white")
+    f.note("GitHub runs cargo test for the crates without llama.cpp (rust-tests.yml); llama, onnx, runtime, api and cmd run on developer machines.", "info", "white")
     f.source("Details: test/README.md")
     return f
 

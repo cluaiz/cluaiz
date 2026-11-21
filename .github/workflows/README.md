@@ -46,6 +46,8 @@ The release page text comes from `.github/release-notes.md` (install commands an
 |---|---|---|
 | File names and matrix structure stay fixed once released | the installers find packs by name (for example `cluaiz-0.1.0-linux-x64-llama-cuda12.tar.gz`) | rename freely |
 | Each GPU driver builds in its own job; the release job collects what built | a failing driver must not block the core release | one job for everything |
+| `rust-tests.yml` runs only the crates that build without native backends | minutes instead of a llama.cpp build per push; still catches most logic changes | every crate on every push |
+| CEP tests run with one test thread | the event bus is shared by the process, so parallel tests could see each other's events (the flaky events test) | a bus per test |
 | Release notes from `.github/release-notes.md`, Release Drafter removed | Release Drafter builds its changelog from pull requests, which this repository does not use | Release Drafter |
 
 ## 5. What runs where (2026-11-21)
@@ -56,10 +58,11 @@ The release page text comes from `.github/release-notes.md` (install commands an
 | `cluaize-llama-driver.yml`, `cluaize-onnx-driver.yml` | the GPU driver packs |
 | `installer-smoke.yml` | `install.sh` on a GitHub macOS runner, started by hand (`workflow_dispatch`, a release version as input) |
 | `docs-check.yml` | `docs/tools/check_docs.py` (registry, links, anchors) |
+| `rust-tests.yml` | `cargo test` for the crates that build without llama.cpp or ONNX Runtime (core, hardware, models, plan, context, CEP, security, media, automation) and the CEP file-method contracts; on every push to `main` and pull request. Added 2026-11-21; the same commands passed on the developer machine that day, the workflow itself has not run on GitHub yet |
 
 ## 6. Pending
 
 | Item | Why it matters | Needs |
 |---|---|---|
-| No workflow runs `cargo test` | unit and contract tests run only on developer machines and cloud runs | a job for the crates that build without native backends (see `test/README.md`) |
+| `rust-tests.yml` leaves out llama, onnx, runtime, api and cmd | their tests build llama.cpp; they run only on developer machines and cloud runs | a CPU-only llama.cpp build job with a cache |
 | `test/workflows/` installer tests fail against the current installers and are not in any workflow | they protect nothing today | see `test/workflows/README.md` |
