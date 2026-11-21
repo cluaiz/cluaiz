@@ -74,6 +74,7 @@ pub struct ExternalChatRequest {
     /// --reasoning-budget-message). Missing = the user's default setting; "" = no text.
     pub reasoning_budget_message: Option<String>,
     pub skip_reasoning: Option<bool>,
+    #[serde(default, deserialize_with = "crate::utils::keep_alive_minutes")]
     pub keep_alive: Option<i32>,
     pub min_p: Option<f32>,
     pub repetition_penalty: Option<f32>,

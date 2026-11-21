@@ -441,7 +441,7 @@ Route behaviour is also exercised by every cloud run (`test/cloud/BENCHMARKS.md`
 | Item | Why it matters | Needs |
 |---|---|---|
 | `n`, `logprobs`, `logit_bias` are ignored on an installed model (`stop` and `max_completion_tokens` work since run 34) | OpenAI clients send them and get a different result without an error (run 32) | read them in `handlers/chat` and pass them to llama.cpp |
-| `/api/chat` answers in OpenAI's shape; `/api/generate`, `/api/embed`, `/api/ps`, `/api/show`, `/api/version` are 404; `keep_alive` takes only minutes as a number | Ollama libraries and tools do not work, though the routes carry Ollama's names (run 33) | an Ollama request and reply mapping, or say OpenAI-only and drop the alias |
-| `/api/tags` writes a fixed `modified_at` (`2026-10-08T00:00:00Z`) and `parameter_size: Unknown` | a reply carries invented data (`handlers/models.rs:96`, run 33) | the file's date and the GGUF parameter count |
+| `/api/chat` answers in OpenAI's shape; `/api/generate`, `/api/embed`, `/api/ps`, `/api/show`, `/api/version` are 404 | Ollama libraries and tools do not work, though the routes carry Ollama's names (run 33) | an Ollama request and reply mapping, or say OpenAI-only and drop the alias |
+| `/api/tags` sends `parameter_size: Unknown` when the registry has no parameter count | Ollama clients show an empty size class | the GGUF parameter count in the registry |
 | `api` tests not in CI and not rerun since the October acceptance sections | the dated results may not hold for the current code | a CI job with the CPU backend, or a recorded run |
 | This README mixes reference text and dated acceptance logs | a reader cannot tell current behaviour from history | move the dated logs to run folders in `test/cloud/runs/` |

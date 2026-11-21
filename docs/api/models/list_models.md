@@ -85,4 +85,4 @@ an optional category. Load, inspect, remove and download through
 `GET /api/tags` provides the existing Ollama inventory shape
 `{"models":[{"name","model","modified_at","size","details"}]}`. It uses the
 same inventory; it does not include the full CEP registry entry. Its current
-`modified_at` value is a fixed compatibility value, not a measured install time.
+`modified_at` value is the change time of the model's main file (null when it cannot be read).

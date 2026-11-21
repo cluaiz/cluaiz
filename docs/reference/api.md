@@ -89,7 +89,7 @@ Selection does not override context/live-memory limits. Missing/incompatible pac
 | Source/decoded bytes | Media limits still apply after Base64 validation; document batches also check aggregate input/output bytes |
 | Ingest chunk size | UTF-8 bytes, not tokenizer tokens |
 | Context/output | Model context/output-token limits are separate from file/JSON sizes |
-| `keep_alive` | Supported direct domains use minutes: `0` releases after execution, positive schedules expiry, `-1` retains; Ingest has no per-request field |
+| `keep_alive` | Supported direct domains use minutes (a number, or a string such as `"5m"`, `"30s"`, `"1h"`): `0` releases after execution, positive schedules expiry, `-1` retains; Ingest has no per-request field |
 | Non-stream output | Check status, then parse the documented domain JSON |
 | SSE | Chat/audio schemas differ; parse complete event frames, not arbitrary network chunks |
 | Partial Ingest | HTTP 200 may contain `status:"partial"`; inspect every source and page warning/omission |

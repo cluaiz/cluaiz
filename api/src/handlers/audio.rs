@@ -617,6 +617,7 @@ struct SpeechRequest {
     language: Option<String>,
     speed: Option<f32>,
     stream: Option<bool>,
+    #[serde(default, deserialize_with = "crate::utils::keep_alive_minutes")]
     keep_alive: Option<i32>,
 }
 
@@ -634,6 +635,7 @@ struct TranscriptionRequest {
     temperature: Option<f32>,
     timestamps: Option<bool>,
     stream: Option<bool>,
+    #[serde(default, deserialize_with = "crate::utils::keep_alive_minutes")]
     keep_alive: Option<i32>,
 }
 

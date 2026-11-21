@@ -90,10 +90,16 @@ pub async fn tags() -> Json<Value> {
         .values()
         .map(|entry| {
             let total_size = entry.files.iter().map(|f| f.size_bytes).sum::<u64>();
+            // The main file's change time, as Ollama sends it; null when the file cannot be read
+            let modified_at = entry
+                .primary_path()
+                .and_then(|path| std::fs::metadata(path).ok())
+                .and_then(|meta| meta.modified().ok())
+                .map(|time| chrono::DateTime::<chrono::Utc>::from(time).to_rfc3339_opts(chrono::SecondsFormat::Secs, true));
             json!({
                 "name": entry.id,
                 "model": entry.id,
-                "modified_at": "2026-10-08T00:00:00Z",
+                "modified_at": modified_at,
                 "size": total_size,
                 "details": {
                     "format": entry.format_type,

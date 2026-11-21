@@ -26,7 +26,7 @@ graph LR
 | `ingest/` (`mod.rs`, `model.rs`) | `/v1/ingest` | Shared document extraction/source resolution and existing embedding/native model owners; direct final JSON, not a CEP task |
 | `embeddings.rs` | `/v1/embeddings` | `EmbeddingExecutor` is reused by `/v1/ingest` with a model |
 | `audio.rs` (+ `audio_types.rs`, `audio_tests.rs`) | `/v1/audio/speech`, `/v1/audio/transcriptions` | One dispatch for the standard routes and `audio.run`; `audio.voices` / `audio.languages` use its model selection |
-| `models.rs` | `/v1/models`, `/api/tags`, `/api/pull` | `/api/tags` writes a fixed `modified_at` (line 96; gap, run 33). The registry listing used by `models.list` lives in `cluaiz_models`. `/api/pull` and CEP `models.download` share `pull()` here, which runs `cluaiz_models::fetcher::pull` (the resolver `cluaiz pull` uses). |
+| `models.rs` | `/v1/models`, `/api/tags`, `/api/pull` | `/api/tags` sends the main file's change time as `modified_at` (run 35). The registry listing used by `models.list` lives in `cluaiz_models`. `/api/pull` and CEP `models.download` share `pull()` here, which runs `cluaiz_models::fetcher::pull` (the resolver `cluaiz pull` uses). |
 | `health.rs` | `/health` | - |
 
 Rules for this folder:
@@ -43,5 +43,5 @@ Rules for this folder:
 | Item | Why it matters | Needs |
 |---|---|---|
 | `/api/chat` has no Ollama request or reply mapping | Ollama libraries cannot use it (run 33) | a mapping in `chat/`, or drop the alias |
-| `/api/tags` fixed `modified_at`, `parameter_size: Unknown` | invented data in a reply (run 33) | the file's date and the GGUF parameter count |
+| `/api/tags` `parameter_size: Unknown` when the registry has no count | an empty size class in Ollama clients | the GGUF parameter count in the registry |
 | OpenAI fields ignored on installed models (`n`, `logprobs`, `logit_bias`) | clients get a different result without an error (run 32) | read them in `chat/types.rs` and pass them to llama.cpp |

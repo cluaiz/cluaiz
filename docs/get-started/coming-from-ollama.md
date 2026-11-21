@@ -69,7 +69,7 @@ one JSON object per line. The Ollama Python and JavaScript libraries expect Olla
 | `POST /api/chat` | HTTP 200 in OpenAI's shape | `POST /v1/chat/completions` |
 | `POST /api/generate` | HTTP 404 | `POST /v1/chat/completions` with one user message |
 | `POST /api/embed`, `/api/embeddings` | HTTP 404 | `POST /v1/embeddings` ([Embeddings](../api/inference/embeddings.md)) |
-| `GET /api/tags` | HTTP 200 in Ollama's shape | works; `modified_at` is a fixed date, not the file's |
+| `GET /api/tags` | HTTP 200 in Ollama's shape | works; `modified_at` is the model file's change time (run 35) |
 | `POST /api/pull` | Ollama's request | works ([Pull a model](../api/models/pull_model.md)) |
 | `GET /api/ps` | HTTP 404 | CEP `system.ps`, or `cluaiz ps` |
 | `POST /api/show` | HTTP 404 | CEP `models.inspect`, or `cluaiz show` |
@@ -83,7 +83,7 @@ one JSON object per line. The Ollama Python and JavaScript libraries expect Olla
 | `options.num_predict` | `max_tokens` |
 | `options.num_ctx` | `llama.n_ctx` in the request, or `optimization.custom_context_window` in settings; by default the planner chooses the context from free memory |
 | `think: false` | `think_mode: "off"`; `think` is ignored (run 33: the model still thought) |
-| `keep_alive: "5m"` | `keep_alive: 5` (minutes as a number); `0` unloads after the answer. A string gets HTTP 422 |
+| `keep_alive: "5m"` | the same string works (`"30s"`, `"5m"`, `"1h"`); a plain number is minutes, not seconds as in Ollama; `0` unloads after the answer (run 35) |
 | `format: "json"` or a schema | `response_format` (OpenAI form) |
 
 ## Modelfile settings

@@ -1,0 +1,32 @@
+### 1 /api/tags
+GET /api/tags -> HTTP 200
+{"models":[{"details":{"family":"qwen3","format":"gguf","parameter_size":"Unknown"},"model":"qwen3-0.6b-gguf-Q4_K_M","modified_at":"2026-11-21T01:53:27Z","name":"qwen3-0.6b-gguf-Q4_K_M","size":396705472}]}
+
+### keep_alive '5m'
+POST /v1/chat/completions -> HTTP 200
+{"choices":[{"finish_reason":"length","index":0,"message":{"content":"Hello! How can I assist you today","role":"assistant"}}],"context_report":{"plan":{"available_tokens":16038,"compaction":null,"history_mode":"recent","messages_over_budget":0,"n_ctx":16384,"needs_compaction":false,"notes":{"system
+
+### keep_alive '30s'
+POST /v1/chat/completions -> HTTP 200
+{"choices":[{"finish_reason":"length","index":0,"message":{"content":"Hello! How can I assist you today","role":"assistant"}}],"context_report":{"plan":{"available_tokens":16038,"compaction":null,"history_mode":"recent","messages_over_budget":0,"n_ctx":16384,"needs_compaction":false,"notes":{"system
+
+### keep_alive '1h'
+POST /v1/chat/completions -> HTTP 200
+{"choices":[{"finish_reason":"length","index":0,"message":{"content":"Hello! How can I assist you today","role":"assistant"}}],"context_report":{"plan":{"available_tokens":16038,"compaction":null,"history_mode":"recent","messages_over_budget":0,"n_ctx":16384,"needs_compaction":false,"notes":{"system
+
+### keep_alive '-1'
+POST /v1/chat/completions -> HTTP 200
+{"choices":[{"finish_reason":"length","index":0,"message":{"content":"Hello! How can I assist you today","role":"assistant"}}],"context_report":{"plan":{"available_tokens":16038,"compaction":null,"history_mode":"recent","messages_over_budget":0,"n_ctx":16384,"needs_compaction":false,"notes":{"system
+
+### keep_alive 0
+POST /v1/chat/completions -> HTTP 200
+{"choices":[{"finish_reason":"length","index":0,"message":{"content":"Hello! How can I assist you today","role":"assistant"}}],"context_report":{"plan":{"available_tokens":16038,"compaction":null,"history_mode":"recent","messages_over_budget":0,"n_ctx":16384,"needs_compaction":false,"notes":{"system
+
+### keep_alive 5
+POST /v1/chat/completions -> HTTP 200
+{"choices":[{"finish_reason":"length","index":0,"message":{"content":"Hello! How can I assist you today","role":"assistant"}}],"context_report":{"plan":{"available_tokens":16038,"compaction":null,"history_mode":"recent","messages_over_budget":0,"n_ctx":16384,"needs_compaction":false,"notes":{"system
+
+### keep_alive 'soon' (invalid)
+POST /v1/chat/completions -> HTTP 422
+Failed to deserialize the JSON body into the target type: keep_alive: keep_alive "soon": use minutes (5), or a duration such as "30s", "5m", "1h" at line 1 column 149
+

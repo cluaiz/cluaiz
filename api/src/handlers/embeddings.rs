@@ -30,6 +30,7 @@ pub struct EmbeddingRequest {
     pub model: Option<String>,
     pub encoding_format: Option<String>,
     pub user: Option<String>,
+    #[serde(default, deserialize_with = "crate::utils::keep_alive_minutes")]
     pub keep_alive: Option<i32>,
 }
 #[derive(Serialize)]

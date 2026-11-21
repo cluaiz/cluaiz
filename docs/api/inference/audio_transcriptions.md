@@ -156,7 +156,7 @@ An explicit ID selects that installed package. Omission/`auto` uses the active e
 | **`temperature`** | Float | No | `0.0` | `0.0` only | Nonzero sampling temperature is not implemented and is rejected. |
 | **`timestamps`** | Boolean | No | `false` | `false` only | `true` is rejected; `output.segments` is currently null. |
 | **`stream`** | Boolean | No | `false` | `true`, `false` | When `true`, tokens are emitted incrementally via SSE. When `false`, returns single complete JSON object. |
-| **`keep_alive`** | Integer | No | `null` | Minutes (e.g. `5`, `0` to unload, `-1` forever) | Session cache lifetime in memory before automatic session cleanup. |
+| **`keep_alive`** | Integer or String | No | `null` | Minutes (e.g. `5`, `0` to unload, `-1` forever), or `"30s"`, `"5m"`, `"1h"` | Session cache lifetime in memory before automatic session cleanup. A string may carry Ollama's units: `"30s"`, `"5m"`, `"1h"` (seconds round up to whole minutes). |
 
 Use one of `input_source` and `file`; if both are present, `input_source` wins. A bare Base64 string is not a source URI: include `data:audio/<format>;base64,`. `prompt` is accepted by the wrapper, but a nonempty prompt is rejected by the current graph contract. Unknown fields, timestamps, VAD, diarization, and beam search beyond one beam are not implemented. This endpoint processes a recording; SSE is not a bidirectional live-microphone protocol.
 

@@ -51,6 +51,8 @@ pub struct AudioExecuteRequest {
     /// Task options
     pub parameters: Option<AudioParameters>,
     /// Minutes the model stays loaded after the task: -1 = until replaced, 0 = unload now, N = N minutes
+    #[serde(default, deserialize_with = "crate::utils::keep_alive_minutes")]
+    #[schemars(with = "Option<i32>")]
     pub keep_alive: Option<i32>,
 }
 

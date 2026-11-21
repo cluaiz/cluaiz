@@ -81,7 +81,7 @@ def from_ollama() -> Fig:
         f.card(f"c{i}", 470, y, 626, 88, b, note, ic, tone, strong=kind == "same" and i == 0, mono=False)
         f.edge(f"o{i}", f"c{i}")
     f.note("Ollama's downloaded model files are not imported; pull the model again from Hugging Face.")
-    f.note("keep_alive is a number of minutes (0 unloads now, -1 keeps it loaded); a string such as \"5m\" gets HTTP 422.", "timer")
+    f.note("keep_alive: \"5m\", \"30s\", \"1h\" work as in Ollama; a plain number is minutes, not seconds (run 35).", "timer")
     f.source("Details: docs/get-started/coming-from-ollama.md  ·  Run: test/cloud/runs/2026-11-21-run33-ollama-client-probe")
     return f
 

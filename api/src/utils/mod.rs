@@ -1,3 +1,4 @@
+use serde::Deserialize;
 pub mod slots;
 
 /// Shared filesystem authorization for every attachment consumer. Remote/inline data
@@ -140,6 +141,48 @@ pub(crate) fn task_error(
         "details":details}}))).into_response()
 }
 
+/// `keep_alive` as minutes. A number is minutes (`-1` = until replaced, `0` = unload now), as before.
+/// A string may also carry Ollama's units: `"30s"`, `"5m"`, `"1h"` (seconds round up to whole
+/// minutes), or be a plain number such as `"-1"`.
+pub fn keep_alive_minutes<'de, D>(deserializer: D) -> Result<Option<i32>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Error;
+    let value = Option::<serde_json::Value>::deserialize(deserializer)?;
+    match value {
+        None | Some(serde_json::Value::Null) => Ok(None),
+        Some(serde_json::Value::Number(n)) => n
+            .as_i64()
+            .and_then(|v| i32::try_from(v).ok())
+            .map(Some)
+            .ok_or_else(|| D::Error::custom("keep_alive must be a whole number of minutes")),
+        Some(serde_json::Value::String(text)) => parse_keep_alive(&text)
+            .map(Some)
+            .ok_or_else(|| D::Error::custom(format!("keep_alive {text:?}: use minutes (5), or a duration such as \"30s\", \"5m\", \"1h\""))),
+        Some(_) => Err(D::Error::custom("keep_alive must be a number of minutes or a duration string")),
+    }
+}
+
+fn parse_keep_alive(text: &str) -> Option<i32> {
+    let text = text.trim();
+    if let Ok(minutes) = text.parse::<i32>() {
+        return Some(minutes);
+    }
+    let (number, unit) = text.split_at(text.find(|c: char| c.is_ascii_alphabetic())?);
+    let number: f64 = number.trim().parse().ok()?;
+    if number < 0.0 {
+        return Some(-1);
+    }
+    let seconds = match unit.trim() {
+        "s" => number,
+        "m" => number * 60.0,
+        "h" => number * 3600.0,
+        _ => return None,
+    };
+    i32::try_from((seconds / 60.0).ceil() as i64).ok()
+}
+
 #[cfg(test)]
 mod tests {
     use super::authorize_source;
@@ -191,5 +234,18 @@ mod tests {
             .unwrap()
             .is_none());
         assert_eq!(inline, before);
+    }
+
+    #[test]
+    fn keep_alive_takes_minutes_or_ollama_durations() {
+        assert_eq!(super::parse_keep_alive("5"), Some(5));
+        assert_eq!(super::parse_keep_alive("-1"), Some(-1));
+        assert_eq!(super::parse_keep_alive("5m"), Some(5));
+        assert_eq!(super::parse_keep_alive("30s"), Some(1));
+        assert_eq!(super::parse_keep_alive("0s"), Some(0));
+        assert_eq!(super::parse_keep_alive("1h"), Some(60));
+        assert_eq!(super::parse_keep_alive("-1m"), Some(-1));
+        assert_eq!(super::parse_keep_alive("5d"), None);
+        assert_eq!(super::parse_keep_alive("soon"), None);
     }
 }
