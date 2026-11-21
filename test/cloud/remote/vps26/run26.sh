@@ -127,6 +127,8 @@ manifest = {
     "engines": {
         "cluaiz_version": cmd("CLUAIZ_HOME=/root/vps26-cluaiz-home /root/.cluaiz/bin/cluaiz --version | head -1"),
         "cluaiz_sha256": sha("/root/.cluaiz/bin/cluaiz"),
+        # Set CLUAIZ_COMMIT to the commit the binary was built from (run 26 did not record it)
+        "cluaiz_commit": os.environ.get("CLUAIZ_COMMIT"),
         "ollama_version": cmd("/root/ollama-official/bin/ollama --version | tail -1"),
         "ollama_sha256": sha("/root/ollama-official/bin/ollama"),
         "llama_version": cmd("LD_LIBRARY_PATH=/root/llama-official/llama-b12428 /root/llama-official/llama-b12428/llama-server --version 2>&1 | head -2"),

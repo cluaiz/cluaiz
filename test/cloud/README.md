@@ -48,7 +48,7 @@ keeps its disk with the build and the models, so `start` continues; `delete` rem
 | `remote/ssd_test.sh`, `ssd_same_settings.sh` | a model bigger than RAM + VRAM; Cluaiz against official llama.cpp with the same settings |
 | `remote/vps_cpu_same_settings.sh`, `vps_run16_ollama.sh`, `vps_run18_features.sh`, `vps19/` | runs 15-19 on a 1 vCPU / 4 GB VPS without a GPU |
 | `remote/mtp23/` | runs 23-24: MTP off, on and Auto in every placement |
-| `remote/vps26/` | run 26: Cluaiz, llama.cpp and Ollama next to a web app and PostgreSQL on the 1 vCPU VPS, native and Docker (`run26.sh`, `workloads.py`, `analyze.py`) |
+| `remote/vps26/` | run 26: Cluaiz, llama.cpp and Ollama next to a web app and PostgreSQL on the 1 vCPU VPS, native and Docker (`run26.sh`, `workloads.py`, `analyze.py`); `run40.sh` reruns its checks with the engines interleaved, the answer texts saved and the Cluaiz commit recorded |
 | `remote/models*.txt` | model lists the scripts pull |
 
 ## Rules for a run

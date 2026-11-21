@@ -803,7 +803,7 @@ def main():
                         "phase_kind": phase_kind, "subtask": "W1_chat", "level": lvl,
                         "ok": r["ok"], "http_status": r["http_status"], "ttft_s": r["ttft_s"],
                         "total_s": r["total_s"], "in_tokens": r["in_tokens"], "out_tokens": r["out_tokens"],
-                        "gen_tps": r["gen_tps"], "think_leak": r["think_leak"],
+                        "gen_tps": r["gen_tps"], "think_leak": r["think_leak"], "text": r.get("text", "")[:400],
                         "valid_json": vjson, "label_correct": lbl == tk["label"], "error": r["error"],
                     })
 
@@ -902,7 +902,7 @@ def main():
                     "ok": r["ok"], "http_status": r["http_status"], "ttft_s": r["ttft_s"],
                     "total_s": r["total_s"], "in_tokens": r["in_tokens"], "out_tokens": r["out_tokens"],
                     "chars": len(r["text"]),
-                    "gen_tps": r["gen_tps"], "think_leak": r["think_leak"],
+                    "gen_tps": r["gen_tps"], "think_leak": r["think_leak"], "text": r.get("text", "")[:400],
                     "valid_json": vjson, "parsed_label": lbl, "expected_label": tk["label"],
                     "label_correct": lbl == tk["label"], "error": r["error"],
                 }
@@ -928,7 +928,7 @@ def main():
                     "ok": r["ok"], "http_status": r["http_status"], "ttft_s": r["ttft_s"],
                     "total_s": r["total_s"], "in_tokens": r["in_tokens"], "out_tokens": r["out_tokens"],
                     "chars": len(r["text"]),
-                    "gen_tps": r["gen_tps"], "think_leak": r["think_leak"], "error": r["error"],
+                    "gen_tps": r["gen_tps"], "think_leak": r["think_leak"], "text": r.get("text", "")[:400], "error": r["error"],
                 }
                 write_req(row)
                 return row
@@ -949,7 +949,7 @@ def main():
                     "ok": r["ok"], "http_status": r["http_status"], "ttft_s": r["ttft_s"],
                     "total_s": r["total_s"], "in_tokens": r["in_tokens"], "out_tokens": r["out_tokens"],
                     "chars": len(r["text"]),
-                    "gen_tps": r["gen_tps"], "think_leak": r["think_leak"], "error": r["error"],
+                    "gen_tps": r["gen_tps"], "think_leak": r["think_leak"], "text": r.get("text", "")[:400], "error": r["error"],
                 }
                 write_req(trow)
                 turn_rows.append(trow)
