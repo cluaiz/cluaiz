@@ -77,7 +77,7 @@ fn thinking_budget_names_numbers_and_auto() {
     // room = n_ctx - prompt (1000) - answer reserve (n_ctx / 4, 256..2048)
     let p = ThinkingPresets::default();
     let room = |n_ctx: usize| n_ctx - 1000 - (n_ctx / 4).clamp(256, 2048);
-    let t = |b: ThinkingBudget, n_ctx: usize| b.limit(room(n_ctx), &p).tokens;
+    let t = |b: ThinkingBudget, n_ctx: usize| b.limit(room(n_ctx), &p, None).tokens;
     use ThinkingBudget::*;
     for (n_ctx, low, medium, high, max) in [
         (4096, 518, 1036, 1554, 2072),
@@ -98,25 +98,37 @@ fn thinking_budget_names_numbers_and_auto() {
             "n_ctx {}",
             n_ctx
         );
-        assert_eq!(t(Auto, n_ctx), high, "auto = high at n_ctx {}", n_ctx);
+        // before the first answer (no measured speed) Auto takes High's share
+        assert_eq!(t(Auto, n_ctx), high, "auto without a speed at n_ctx {}", n_ctx);
     }
     // a user number bigger than the room is lowered so the answer still fits
     assert_eq!(
-        Tokens(100_000).limit(2072, &p),
+        Tokens(100_000).limit(2072, &p, None),
         ThinkingLimit {
             tokens: 2072,
             capped: true
         }
     );
     assert_eq!(
-        Tokens(500).limit(2072, &p),
+        Tokens(500).limit(2072, &p, None),
         ThinkingLimit {
             tokens: 500,
             capped: false
         }
     );
     // no room: no thinking, straight to the answer
-    assert_eq!(High.limit(0, &p).tokens, 0);
+    assert_eq!(High.limit(0, &p, None).tokens, 0);
+    // Auto: 3 minutes at the measured speed, between the floor and High's share; never Max
+    let auto = |room: usize, speed: f64| Auto.limit(room, &p, Some(speed)).tokens;
+    assert_eq!(auto(100_000, 5.0), 1024, "slow CPU: the floor");
+    assert_eq!(auto(100_000, 36.0), 6480);
+    assert_eq!(auto(100_000, 80.0), 14_400);
+    assert_eq!(auto(100_000, 250.0), 32_768, "fast GPU: High's upper limit");
+    assert_eq!(auto(28_000, 250.0), 21_000, "fast GPU, small room: 75% of it");
+    assert_eq!(auto(800, 5.0), 600, "room smaller than the floor: High's share of the room");
+    assert_eq!(auto(0, 80.0), 0, "no room: no thinking");
+    assert_eq!(Auto.limit(100_000, &p, Some(f64::NAN)).tokens, 32_768, "no usable speed: High's share");
+    assert_eq!(Auto.limit(100_000, &p, Some(0.0)).tokens, 32_768);
     // default effort is saved with the settings and is not a reload reason
     let mut opt = OptimizationControl::default();
     let fp = opt.load_fingerprint();

@@ -152,7 +152,7 @@ pub struct OptimizationControl {
     /// Per request, not a load setting: changing it does not reload the model.
     #[serde(default)]
     pub reasoning_effort: ThinkingBudget,
-    /// Share of the room and maximum tokens for Low / Medium / High (Auto = High)
+    /// Share of the room and maximum tokens for Low / Medium / High (High is also Auto's upper limit)
     #[serde(default)]
     pub thinking_presets: ThinkingPresets,
     /// Text written before the end-of-thinking tag when the budget runs out (llama.cpp
@@ -171,7 +171,9 @@ pub struct OptimizationControl {
 /// answer. Accepts the names below or a number of tokens (as a JSON number or a numeric string).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum ThinkingBudget {
-    /// Same as High
+    /// A ceiling chosen per request from the room and the model's measured speed, never more than
+    /// High and never the whole room (see `ThinkingBudget::limit`). The model ends its thinking itself;
+    /// the ceiling only stops a long one.
     #[default]
     Auto,
     Low,
@@ -191,7 +193,7 @@ pub struct ThinkingShare {
     pub max_tokens: u32,
 }
 
-/// What Low / Medium / High mean (Auto uses High). User-editable defaults, not fixed in the engine.
+/// What Low / Medium / High mean (High is also Auto's upper limit). User-editable defaults, not fixed in the engine.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq)]
 pub struct ThinkingPresets {
     pub low: ThinkingShare,
@@ -209,6 +211,13 @@ impl Default for ThinkingPresets {
     }
 }
 
+/// Auto: thinking may run at most this long at the loaded model's measured decode speed (3 minutes).
+/// High's share of the room stays the upper limit, so a fast machine gets High and a slow one less.
+pub const AUTO_THINK_SECONDS: f64 = 180.0;
+/// Auto never sets fewer thinking tokens than this (or the room when it is smaller), so a thinking
+/// model on a slow machine can still reason before it answers.
+pub const AUTO_THINK_FLOOR: usize = 1024;
+
 /// Thinking budget for one generation, after the room limit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 pub struct ThinkingLimit {
@@ -220,12 +229,22 @@ pub struct ThinkingLimit {
 impl ThinkingBudget {
     /// Thinking tokens for one generation. `room` = context left after the prompt minus the tokens kept
     /// for the answer, so whatever is chosen, the answer still fits (room 0 = no thinking).
-    pub fn limit(&self, room: usize, presets: &ThinkingPresets) -> ThinkingLimit {
+    /// `decode_per_second` = the loaded model's last measured decode speed, used only by Auto
+    /// (None before its first answer: Auto then takes High's share of the room).
+    pub fn limit(&self, room: usize, presets: &ThinkingPresets, decode_per_second: Option<f64>) -> ThinkingLimit {
         let of_room = |p: &ThinkingShare| {
             ((room as f64 * p.share.clamp(0.0, 1.0)) as usize).min(p.max_tokens as usize)
         };
         match self {
-            ThinkingBudget::Auto | ThinkingBudget::High => ThinkingLimit { tokens: of_room(&presets.high), capped: false },
+            ThinkingBudget::Auto => {
+                let upper = of_room(&presets.high);
+                let tokens = match decode_per_second.filter(|s| s.is_finite() && *s > 0.0) {
+                    Some(speed) => ((speed * AUTO_THINK_SECONDS) as usize).clamp(AUTO_THINK_FLOOR.min(upper), upper),
+                    None => upper,
+                };
+                ThinkingLimit { tokens, capped: false }
+            }
+            ThinkingBudget::High => ThinkingLimit { tokens: of_room(&presets.high), capped: false },
             ThinkingBudget::Low => ThinkingLimit { tokens: of_room(&presets.low), capped: false },
             ThinkingBudget::Medium => ThinkingLimit { tokens: of_room(&presets.medium), capped: false },
             ThinkingBudget::Max => ThinkingLimit { tokens: room, capped: false },

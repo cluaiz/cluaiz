@@ -18,7 +18,7 @@ pub mod providers;
 pub use env::{EnvironmentManager, EnvironmentMode};
 pub use settings::{
     Settings, ActiveUserSettings, ChatMemorySettings, OptimizationControl, FeatureState, KvCacheQuantization, ContextShiftingMode,
-    ContextSetting, SamplerDefaults, LlamaLoadParams, ThinkingBudget, ThinkingLimit, ThinkingPresets, ThinkingShare, OnnxSettings, set_active_context, active_context_tokens, active_model_path,
+    ContextSetting, SamplerDefaults, LlamaLoadParams, ThinkingBudget, ThinkingLimit, ThinkingPresets, ThinkingShare, AUTO_THINK_SECONDS, AUTO_THINK_FLOOR, OnnxSettings, set_active_context, active_context_tokens, active_model_path,
     DEFAULT_SAFE_VRAM_BUFFER_GB, MIN_SAFE_VRAM_BUFFER_GB, DEFAULT_SAFE_RAM_BUFFER_GB, MIN_SAFE_RAM_BUFFER_GB,
 };
 pub use units::{BYTE, KIB, MIB, GIB, GIB_F64, MIB_F64, bytes_to_gb, bytes_to_gib, bytes_to_mib, gib_to_bytes, gib_to_gb, group_digits, mib_to_bytes};

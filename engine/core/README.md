@@ -27,7 +27,7 @@ graph TD
 | Module | Responsibility |
 |---|---|
 | [`env.rs`](src/env.rs) | Dynamic root discovery (Dev, Portable, Installed). Zero hardcoded paths. |
-| [`settings.rs`](src/settings.rs) | In-memory cached active user settings. Eliminates repeated disk reads. |
+| [`settings.rs`](src/settings.rs) | In-memory cached active user settings. Eliminates repeated disk reads. Also the thinking budget rule (`ThinkingBudget::limit`): Low / Medium / High are shares of the room (`ThinkingPresets`); Auto is a ceiling of `AUTO_THINK_SECONDS` (180 s) at the model's measured decode speed, at least `AUTO_THINK_FLOOR` (1,024) and at most High's share, never Max. Why: llama.cpp, Gemini (`thinkingBudget: -1`) and Claude (adaptive thinking) let the model decide how long to think and only cap it; an engine cannot judge a question's difficulty without running a model, but it can stop a slow machine from thinking for an hour. Tests: `settings_tests.rs` (`thinking_budget_names_numbers_and_auto`). |
 | [`units.rs`](src/units.rs) | Strict `GiB`, `MiB`, `bytes` conversion functions. |
 | [`contracts.rs`](src/contracts.rs) | Standard engine interfaces implemented by `llama` and `onnx`; shared finite L2 embedding normalization rejects empty, zero and non-finite output, and `InvalidEmbeddingInput` distinguishes input rejection from native failure. |
 | [`media.rs`](src/media.rs) | Backend-neutral RGB8 and PCM F32 buffers with layout validation and shared immutable storage. |

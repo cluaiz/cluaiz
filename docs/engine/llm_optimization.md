@@ -72,8 +72,8 @@ the GPU) 18.2 t/s generation, 870 t/s prompt; CPU only 10.5 t/s and 48 t/s. The 
 | Field | Default | Meaning |
 |---|---|---|
 | `think_mode` | `Auto` | Thinking for reasoning models: `On`, `Off`, `Auto` |
-| `reasoning_effort` | `auto` | Thinking budget for chats that send no `reasoning_effort`: `auto`, `low`, `medium`, `high`, `max` or a number of tokens. Not a load setting: changing it does not reload the model |
-| `thinking_presets` | built in | Share of the room and maximum tokens for Low / Medium / High |
+| `reasoning_effort` | `auto` | Thinking budget for chats that send no `reasoning_effort`: `auto`, `low`, `medium`, `high`, `max` or a number of tokens. `auto` = 3 minutes of thinking at the model's measured speed, from 1,024 tokens up to `high` ([details](../api/inference/chat_completions.md#reasoning-budget-levels-think_mode--reasoning_effort)). Not a load setting: changing it does not reload the model |
+| `thinking_presets` | built in | Share of the room and maximum tokens for Low / Medium / High (High is also the upper limit of `auto`) |
 | `reasoning_budget_message` | built in | Text written before the end-of-thinking tag when the budget runs out |
 
 ## MTP speculative decoding (experimental)

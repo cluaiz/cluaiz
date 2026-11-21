@@ -159,11 +159,11 @@ def request_queue() -> None:
 
 def thinking_budget() -> None:
     """api/inference/chat_completions.md: reasoning_effort as a share of the room"""
-    image, draw = canvas(600)
+    image, draw = canvas(630)
     title(draw, "How much a model may think: reasoning_effort")
     rows = [("low", 0.25, "25% of the room, at most 2,048 tokens"),
             ("medium", 0.50, "50% of the room, at most 8,192 tokens"),
-            ("high / auto", 0.75, "75% of the room, at most 32,768 tokens"),
+            ("high", 0.75, "75% of the room, at most 32,768 tokens"),
             ("max", 1.00, "the whole room")]
     left, width = 250, 560
     for i, (name, share, text) in enumerate(rows):
@@ -172,8 +172,9 @@ def thinking_budget() -> None:
         draw.rounded_rectangle([left, y, left + width, y + 44], radius=8, outline=CARD_LINE, width=1, fill=CARD)
         draw.rounded_rectangle([left, y, left + int(width * share), y + 44], radius=8, fill=ACCENT)
         draw.text((left + width + 20, y + 12), text, font=font(17), fill=GREY)
-    note(draw, "Room = context left after the prompt, minus max_tokens kept for the answer.", 470)
-    note(draw, "A number (e.g. 256) is that many tokens; 0 answers without thinking.", 504)
+    note(draw, "auto: 3 minutes at the model's measured speed, from 1,024 tokens up to high; never max.", 470)
+    note(draw, "Room = context left after the prompt, minus max_tokens kept for the answer.", 504)
+    note(draw, "A number (e.g. 256) is that many tokens; 0 answers without thinking.", 538)
     save(image, "api/thinking-budget.png")
 
 

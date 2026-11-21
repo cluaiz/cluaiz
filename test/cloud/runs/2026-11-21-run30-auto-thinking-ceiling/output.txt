@@ -1,0 +1,9 @@
+usage 295 reasoning 285 tps 164.16
+usage 1899 reasoning 1749 tps 159.01
+usage 1436 reasoning 1176 tps 158.96
+2026-11-21T02:36:47.943175Z  INFO 🧠 [NativeStream] Auto thinking ceiling 11976 tokens (High's share of room 15969; no speed measured yet)
+2026-11-21T02:36:49.741718Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 15 tokens in 70 ms (214.40 t/s) | generation 296 tokens in 1643 ms (180.16 t/s)
+2026-11-21T02:36:50.106176Z  INFO 🧠 [NativeStream] Auto thinking ceiling 11971 tokens (180.2 t/s for up to 180 s, room 15962)
+2026-11-21T02:37:02.050298Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 16 tokens in 23 ms (696.77 t/s) | generation 1900 tokens in 10923 ms (173.94 t/s)
+2026-11-21T02:37:02.427232Z  INFO 🧠 [NativeStream] Auto thinking ceiling 11963 tokens (173.9 t/s for up to 180 s, room 15951)
+2026-11-21T02:37:11.461809Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 30 tokens in 28 ms (1072.27 t/s) | generation 1437 tokens in 8130 ms (176.76 t/s)

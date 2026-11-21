@@ -20,6 +20,9 @@ pub(crate) struct StreamOptions<'a> {
 /// smaller: with layers in RAM every decode has a fixed cost (weights copied to the GPU, or a
 /// CPU pass under 32 tokens), so small chunks would multiply it without stopping sooner.
 const BACKGROUND_PROMPT_CHUNK: usize = 64;
+/// An answer shorter than this does not update the decode speed Auto effort uses (start-up costs
+/// dominate a few tokens)
+const MIN_TOKENS_FOR_SPEED: i32 = 32;
 
 struct SafeSampler {
     sampler: *mut std::ffi::c_void,
@@ -835,13 +838,26 @@ pub(crate) fn stream_tokens_with_media(
         cluaiz_core::live::start();
 
         // Room for thinking = context left after the prompt minus the answer's reserve, so whatever budget
-        // was chosen, the answer still fits; Low/Medium/High are shares of it (settings, Auto = High)
+        // was chosen, the answer still fits; Low/Medium/High are shares of it (settings), Auto is set
+        // by the last measured decode speed, at most High
         let room = n_ctx.saturating_sub(n_cur.max(0) as usize + gen_reserve);
         let presets = cluaiz_core::Settings::current()
             .optimization
             .thinking_presets;
-        let limit = thinking_budget.limit(room, &presets);
+        let limit = thinking_budget.limit(room, &presets, llama.decode_per_second);
         let max_think_tokens = limit.tokens;
+        if thinking_budget == cluaiz_core::ThinkingBudget::Auto && enable_thinking {
+            match llama.decode_per_second {
+                Some(speed) => info!(
+                    "🧠 [NativeStream] Auto thinking ceiling {} tokens ({:.1} t/s for up to {:.0} s, room {})",
+                    max_think_tokens, speed, cluaiz_core::AUTO_THINK_SECONDS, room
+                ),
+                None => info!(
+                    "🧠 [NativeStream] Auto thinking ceiling {} tokens (High's share of room {}; no speed measured yet)",
+                    max_think_tokens, room
+                ),
+            }
+        }
         if limit.capped {
             info!(
                 "🧠 [NativeStream] Thinking budget {:?} lowered to {} tokens so the answer fits the context",
@@ -1338,6 +1354,10 @@ pub(crate) fn stream_tokens_with_media(
         });
 
         let t = llama.timings();
+        // Remembered for Auto effort; very short answers give a noisy speed and are skipped
+        if t.predicted_n >= MIN_TOKENS_FOR_SPEED && t.predicted_per_second > 0.0 {
+            llama.decode_per_second = Some(t.predicted_per_second);
+        }
         info!(
             "⏱️ [NativeStream] llama.cpp timings: prompt {} tokens in {:.0} ms ({:.2} t/s) | generation {} tokens in {:.0} ms ({:.2} t/s)",
             t.prompt_n, t.prompt_ms, t.prompt_per_second, t.predicted_n, t.predicted_ms, t.predicted_per_second

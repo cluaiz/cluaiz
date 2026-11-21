@@ -45,6 +45,9 @@ pub struct NativeLlama {
     pub mtp: Option<crate::native::speculative::MtpDrafter>,
     /// Stop drafting in an answer where MTP is slower than plain decoding (Auto; see `stream.rs`)
     pub mtp_guard: bool,
+    /// Decode speed (tokens per second) of the last answer long enough to measure; Auto effort
+    /// turns it into a thinking ceiling (`ThinkingBudget::limit`). None until the first such answer.
+    pub decode_per_second: Option<f64>,
 }
 
 /// The request does not fit the context (llama-server's `exceed_context_size_error`). It is raised
@@ -873,6 +876,7 @@ impl NativeLlama {
             mtp: None,
             mtp_guard,
             mtp_timings: None,
+            decode_per_second: None,
         };
         if mtp_wanted {
             match crate::native::speculative::MtpDrafter::new(model_ptr, ctx_ptr, mtp_draft_max) {

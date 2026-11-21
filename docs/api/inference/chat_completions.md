@@ -437,9 +437,7 @@ After projector loading, the incremental request-RAM check returns an error cont
 
 ## Reasoning Budget Levels (`think_mode` & `reasoning_effort`)
 
-| Mode / Effort | Budget Limit | Behavior Description |
-|:---|:---:|:---|
-![reasoning_effort as a share of the room: low 25% (at most 2,048 tokens), medium 50% (at most 8,192), high and auto 75% (at most 32,768), max the whole room](../../assets/api/thinking-budget.png)
+![reasoning_effort as a share of the room: low 25% (at most 2,048 tokens), medium 50% (at most 8,192), high 75% (at most 32,768), max the whole room; auto is 3 minutes of thinking at the model's measured speed, from 1,024 tokens up to high](../../assets/api/thinking-budget.png)
 
 The thinking budget is a share of the *room*: the context left after the prompt, minus the tokens kept
 for the answer (`max_tokens`), so the answer always fits. The shares are user settings
@@ -448,13 +446,21 @@ for the answer (`max_tokens`), so the answer always fits. The shares are user se
 
 | Effort | Thinking budget (defaults) |
 |:---|:---|
-| **`"auto"`** | Same as `"high"` |
+| **`"auto"`** | What the machine can think in 3 minutes: the model's measured decode speed times 180 seconds, at least 1,024 tokens and at most `"high"`; never `"max"`. Before the model's first answer (no speed yet) it is `"high"`. |
 | **`"low"`** | 25% of the room, at most 2,048 tokens |
 | **`"medium"`** | 50% of the room, at most 8,192 tokens |
 | **`"high"`** | 75% of the room, at most 32,768 tokens |
 | **`"max"`** | The whole room |
 | **Number** (e.g. `256`) | That many tokens, never more than the room; `0` answers without thinking |
 | `think_mode: "off"` | No thinking (the template's empty thinking block is prefilled) |
+
+Every budget is a ceiling, not a target: a thinking model ends its thinking by itself, so an easy
+question uses far less. Auto follows the same idea as llama.cpp's unlimited default, Gemini's dynamic
+thinking and Claude's adaptive thinking (the model decides), and adds a cap that keeps a slow machine
+from thinking for an hour. Examples: 5 tokens per second gives 1,024 tokens; 36 gives 6,480; 80 gives
+14,400; a fast GPU reaches the `"high"` limit. The server log names the number
+(`Auto thinking ceiling ... tokens`). For a cloud provider, `"auto"` sends no effort and the provider
+decides.
 
 When the budget runs out, the Engine closes the thinking block (with `reasoning_budget_message` when set)
 and the model writes its answer.
