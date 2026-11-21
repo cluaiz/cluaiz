@@ -34,6 +34,32 @@ pub async fn version() -> Json<Value> {
     Json(json!({ "version": env!("CARGO_PKG_VERSION") }))
 }
 
+/// `GET /api/ps`: the chat model this server has loaded, in Ollama's shape. `size_vram` is the VRAM the
+/// plan gave the model (planned, not read from the driver); `size` is its files on disk
+pub async fn ps(State(state): State<Arc<AppState>>) -> Json<Value> {
+    let plan = state.host.current_plan.lock().await.clone();
+    let registry = cluaiz_models::registry::InstalledStateRegistry::load();
+    let models: Vec<Value> = plan
+        .into_iter()
+        .map(|plan| {
+            let entry = registry.installed_models.get(&plan.model_id);
+            json!({
+                "name": plan.model_id,
+                "model": plan.model_id,
+                "size": entry.map(|e| e.size_bytes()).unwrap_or(0),
+                "size_vram": (plan.vram_budget_gb * 1e9) as u64,
+                "context_length": plan.context_window,
+                "details": {
+                    "format": entry.map(|e| e.format_type.clone()),
+                    "family": entry.map(|e| e.metadata.architecture.clone()),
+                    "parameter_size": entry.map(|e| e.metadata.parameters.clone()),
+                },
+            })
+        })
+        .collect();
+    Json(json!({ "models": models }))
+}
+
 /// `POST /api/embed`: `{"model", "input": text or list}` → `{"model", "embeddings": [[...]]}`
 pub async fn embed(state: State<Arc<AppState>>, body: Bytes) -> Response {
     let request: Value = match serde_json::from_slice(&body) {

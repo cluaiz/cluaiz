@@ -1,0 +1,2 @@
+before a chat: models=[]
+after a chat: models=[Model(model='qwen3-0.6b-gguf-Q4_K_M', name='qwen3-0.6b-gguf-Q4_K_M', digest=None, expires_at=None, size=396705472, size_vram=1597270011, details=ModelDetails(parent_model=None, format='gguf', family='qwen3', families=None, parameter_size='Unknown', quantization_level=None), context_length=16384)]

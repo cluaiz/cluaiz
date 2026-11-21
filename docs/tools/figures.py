@@ -69,7 +69,7 @@ def from_ollama() -> Fig:
             ("ollama serve  (port 11434)", "cluaiz serve  (port 8000)", "`CLUAIZ_PORT`, `CLUAIZ_HOST` for one run", "same"),
             ("POST /api/chat", "POST /api/chat", "Ollama's request and reply; streams one JSON object per line", "same"),
             ("POST /api/generate · /api/embed", "the same routes", "generate as one chat turn; embed through /v1/embeddings", "same"),
-            ("GET /api/ps · POST /api/show", "cluaiz ps · cluaiz show", "these two routes are not there (HTTP 404)", "differs"),
+            ("GET /api/ps · POST /api/show", "/api/ps · cluaiz show", "ps lists the loaded model; /api/show is not there (HTTP 404)", "differs"),
             ("Modelfile", "settings.json and the request", "load settings, samplers, the system message", "differs")]
     marks = {"same": ("circle-check", "white"), "differs": ("triangle-alert", "mid")}
     f.text(0, 0, 400, "OLLAMA", 12, "#8a8a8a", weight=700)

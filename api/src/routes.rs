@@ -41,6 +41,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/api/generate", post(handlers::ollama::generate).layer(from_fn(attachment_body_limit)))
         .route("/api/embed", post(handlers::ollama::embed))
         .route("/api/version", get(handlers::ollama::version))
+        .route("/api/ps", get(handlers::ollama::ps))
         .route(
             "/v1/embeddings",
             post(handlers::embeddings::embeddings_entry).layer(from_fn(attachment_body_limit)),

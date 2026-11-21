@@ -70,7 +70,8 @@ from the Engine's own counts.
 | `GET /api/tags` | the installed models; `modified_at` is the model file's change time (run 35) |
 | `POST /api/pull` | Ollama's request ([Pull a model](../api/models/pull_model.md)) |
 | `GET /api/version` | this Engine's version (`0.1.0`), not an Ollama version |
-| `GET /api/ps`, `POST /api/show`, `/api/embeddings` (the old route), `/api/create`, `/api/copy`, `/api/delete`, `/api/push` | not there (HTTP 404). Use `cluaiz ps`, `cluaiz show`, `cluaiz rm`, or CEP `system.ps`, `models.inspect`, `models.remove` |
+| `GET /api/ps` | the chat model the server has loaded; `size_vram` is the VRAM its plan was given (planned, not read from the driver), `context_length` the planned context (run 37) |
+| `POST /api/show`, `/api/embeddings` (the old route), `/api/create`, `/api/copy`, `/api/delete`, `/api/push` | not there (HTTP 404). Use `cluaiz show`, `cluaiz rm`, or CEP `models.inspect`, `models.remove` |
 
 **With an OpenAI library:** send OpenAI requests to `POST /v1/chat/completions` with the base URL
 `http://localhost:8000/v1` ([OpenAI compatibility](../api/inference/openai_compatibility.md)).
@@ -120,7 +121,7 @@ speed settings](../engine/llm_optimization.md).
 
 ## Not available yet
 
-- `/api/ps`, `/api/show` and the model-management routes (`create`, `copy`, `delete`, `push`).
+- `/api/show` and the model-management routes (`create`, `copy`, `delete`, `push`).
 - Importing models from Ollama's store.
 - A Modelfile or saved model variants.
 - The Ollama JavaScript library was not tested; it reads the same replies as the Python library.

@@ -32,7 +32,7 @@ graph LR
 ```
 
 New Engine features are CEP methods, not new HTTP routes; the HTTP routes are OpenAI's (chat,
-models, embeddings, audio), Ollama's (`/api/chat`, `/api/generate`, `/api/embed`, `/api/tags`,
+models, embeddings, audio), Ollama's (`/api/chat`, `/api/generate`, `/api/embed`, `/api/ps`, `/api/tags`,
 `/api/pull`, `/api/version`), `/health` and `/v1/ingest`. The Ollama chat, generate and embed routes
 (`handlers/ollama.rs`) turn Ollama's request into the OpenAI request the chat and embeddings handlers
 take, and their answer back into Ollama's shape; the official Ollama Python library worked against them
@@ -444,7 +444,7 @@ Route behaviour is also exercised by every cloud run (`test/cloud/BENCHMARKS.md`
 | Item | Why it matters | Needs |
 |---|---|---|
 | `n`, `logprobs`, `logit_bias` are ignored on an installed model (`stop` and `max_completion_tokens` work since run 34) | OpenAI clients send them and get a different result without an error (run 32) | read them in `handlers/chat` and pass them to llama.cpp |
-| `/api/ps`, `/api/show` and Ollama's model-management routes are not there | tools that list running models or show model details through Ollama's API get 404 | map them to `system.ps` and `models.inspect` |
+| `/api/show` and Ollama's model-management routes are not there | tools that show model details through Ollama's API get 404 | map `/api/show` to `models.inspect` |
 | `/api/tags` sends `parameter_size: Unknown` when the registry has no parameter count | Ollama clients show an empty size class | the GGUF parameter count in the registry |
 | `api` tests not in CI and not rerun since the October acceptance sections | the dated results may not hold for the current code | a CI job with the CPU backend, or a recorded run |
 | This README mixes reference text and dated acceptance logs | a reader cannot tell current behaviour from history | move the dated logs to run folders in `test/cloud/runs/` |
