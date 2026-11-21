@@ -142,3 +142,15 @@ graph LR
 ### Load retries
 
 `EngineHost` loads the planned placement. When llama.cpp cannot load it for lack of memory (its error line says it could not allocate, or it gives no reason), `Planner::after_failed_load` records the miss and returns the next placement, which is loaded; at most three loads in all (`MAX_LOAD_ATTEMPTS` in `host.rs`), and each retry measures what it takes from the VRAM free right before it. After the first load the weight file is in the system's file cache, so a retry takes seconds, not the minute or more of a first read from a slow disk. llama.cpp's own fallbacks inside one load (fewer GPU layers, CPU only, without mmap or flash attention, in `engine/llama/src/native/core.rs`) still run inside an attempt and are shown as `fallback` steps. Any other failure (for example a drafter model that needs its main model: `dflash requires ctx_other to be set`) is not retried, since a smaller placement fails the same way. The error names every placement tried with llama.cpp's own last error line (`engine/llama/src/native/load_steps.rs`, `LoadFailure`).
+
+## Tests
+
+23 unit tests (`src/`); no `tests/` folder. `cluaiz-runtime` links both backends, so the tests were not
+run on 2026-11-21. Every cloud run loads models through this crate (`test/cloud/BENCHMARKS.md`).
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| A CUDA failure inside llama.cpp or cuDNN ends the whole server | runs 4a / 4b; one bad request takes every chat down | isolate the failing load or request (a child process, or catching the abort where llama.cpp allows) |
+| Tests not in CI | native build | a CI job with the CPU backend |

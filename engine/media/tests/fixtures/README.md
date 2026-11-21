@@ -11,3 +11,7 @@ flowchart LR
     C --> D[Rate / channels / finite nonzero PCM]
     B --> E[Corrupted header and budget negatives]
 ```
+
+## Tests
+
+Part of `cargo test -p cluaiz-media` (2026-11-21 (Windows 11): 49 passed, 4 ignored). Pending items: [`media/README.md`](../../README.md#pending).

@@ -27,3 +27,7 @@ graph LR
 - **Invalid JSON:** Returns an error through native speech input preparation.
 - **Missing alias:** Uses the normalized requested name; if the vocabulary lacks it, returns an error naming the request and supported names.
 - **Missing language token:** Does not silently choose another speech model. Omitted/auto language is handled by the caller/native default, independently of this support check.
+
+## Tests
+
+Part of the `llama-engine` tests (not run on 2026-11-21, native build).

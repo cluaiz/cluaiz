@@ -151,6 +151,13 @@ flowchart TD
     thinking off), on the chat's KV right after an answer. Stops at once when a request arrives;
     never loads a model; the event log is the job list, so a restart loses nothing.
 
+- `live_ledger.rs`: the ledger of a conversation sent without a session id (any OpenAI-style
+  client), in memory only. The Engine puts a block before the current user message (tool hints,
+  notes, project items); a chat with a session id gets it back from its ledger on disk, and this file
+  does the same for a chat without one, so earlier turns render identically and the KV cache is
+  reused (`preflight.rs:493`). Checked in cloud run 21 (`multiturn_cache.py`: later turns reuse the
+  whole earlier prompt).
+
 ## Failure & Recovery Logic
 
 - **Empty `messages`:** 400 `invalid_request_error`.
@@ -167,3 +174,15 @@ flowchart TD
   (`cluaiz_agents::turn`).
 - **Cancel:** `chat.cancel` sets the stream's flag; generation and tool waits stop.
 - **Embedding model missing for notes:** word matching instead.
+
+## Tests
+
+20 unit tests in this folder; route-level tests in `api/tests/` (`reasoning_contract.rs`,
+`media_contract.rs`, `processing_contract.rs`, `mtp_contract.rs`). `api` builds both native backends, so none of these tests were run on 2026-11-21 (see `api/README.md`, Tests). Thinking budget
+behaviour was checked live in runs 30 and 31 (`test/cloud/runs/`).
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| Route tests not run since October and not in CI | see `api/README.md` | a CI job with the CPU backend |

@@ -89,6 +89,7 @@ flowchart LR
 - `bench.rs`: llama-bench's test on the Engine: `pp N` and `tg N`, repeated, mean ± standard
   deviation; speeds are kept per placement (`cluaiz_plan::speed`), and `--placements` tests every
   placement so the planner then loads the fastest.
+- `bench_mtp.rs`: `cluaiz bench <model> --mtp-compare`: MTP off and on through the normal chat path on real prompts (`cmd/src/cli/data/bench_mtp_prompts.json`), greedy, same placement; generation and prompt speed per answer, the share of guesses kept, the VRAM of each load, and whether the text matches. Why not llama-bench `tg`: it generates from random tokens, where the model's guesses mean nothing. Results: runs 22-25 in `test/cloud/BENCHMARKS.md`.
 - `config_cmd.rs` + `keys.rs`: `config list|get|set|reset|path` on `settings.json` with the same
   merge rules as the API (`OptimizationControl::merged_with`); `set` takes `auto`/`null` for the
   automatic value; `reset` backs the file up first.

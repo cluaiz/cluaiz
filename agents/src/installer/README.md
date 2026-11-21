@@ -109,3 +109,28 @@ flowchart TD
 - **A dependency fails:** the tool stays installed and the dependency is named in the result.
 - **Required dependency not approved:** the install stops before any download.
 - **No `uv` or `python`:** the tool's environment is not ready; loading it reports why.
+
+## Decisions and why
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| The install plan is built and shown before anything is installed | the user sees the tool, its dependencies (`required`, `recommended`, `optional`) and permissions first; a refused required tool installs nothing (test below) | install, then ask |
+| Ids are one plain folder name (`is_valid_component_id`) | an id can never point outside the tools folder | accept paths |
+| Tool runtimes in their own environments (`uv`, local Node) | packages stay out of the user's own Python and Node | install into the user's interpreters |
+
+## Tested
+
+10 unit tests: `the_mode_table`, `permissions_by_mode`, `answers_decide_what_is_installed`,
+`a_refused_required_tool_installs_nothing`, `dependencies_are_read_with_need_and_info`,
+`test_detect_pure_skill`, `test_detect_node_runtime`, `test_detect_native_runtime`,
+`a_plugin_needs_a_program`, `listed_files_are_found_once_and_stay_inside`. Part of `cargo test -p cluaiz-agents`: 161 passed, 1 ignored on 2026-11-21 (Windows 11).
+
+Real installs from the registry are part of `test/cpu/cpu_test.ps1`, which has no recorded run. No run in
+`test/cloud/runs/` installs a tool from the registry (run 8 lists installed tools only; searched
+2026-11-21).
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| No test downloads a real package from the registry | the download, checksum and unpack path is covered only by machine runs | a contract test against a local registry fixture |

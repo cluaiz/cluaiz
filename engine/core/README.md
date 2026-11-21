@@ -62,3 +62,20 @@ graph TD
 ## Build step and version
 
 [`build.rs`](build.rs): the Engine's version has one home, the root `Cargo.toml` (`[workspace.package] version` and `[workspace.metadata.cluaiz] channel`, `pre-release` or `stable`). The build step reads it (or `CLUAIZ_RELEASE_VERSION` in a release build) into `cluaiz_core::VERSION` and `cluaiz_core::CHANNEL`, which `cluaiz --version`, `system.info`, `/health`, the update check and user agents read.
+
+## Tests
+
+`cargo test -p cluaiz-core --lib` on 2026-11-21 (Windows 11): 57 passed (settings, thinking budget, managed prompts,
+media buffers, tool-call form, providers).
+
+## Decisions and why
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| Settings cached in memory (`Settings::current`) | every request reads settings; a file read per request is wasted work | read `settings.json` each time |
+| Every instruction the Engine sends a model is a managed prompt with an id | a user can read and replace each one (`<home>/prompts/<id>.md`), and no prompt text hides in code | string literals in handlers |
+| `core` depends on no other engine crate | every crate uses it; a dependency back would make a cycle | shared types in the backends |
+
+## Pending
+
+None found in this crate on 2026-11-21.

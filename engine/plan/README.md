@@ -191,3 +191,16 @@ shown as 0 kept free: it only removes the margin, it never adds VRAM.
 - **Output:** immutable `MediaBudget` placement and estimated host/device/safety-buffer bytes. A resource failure allocates nothing. This helper does not modify `ExecutionPlan` or reserve OS memory.
 - **Request recheck:** `check_request_ram` charges only conservative workspace plus additional native conversion buffers against fresh usable RAM. Resident weights and already-prepared buffers are excluded from new allocation costs. The configured decoded ceiling remains a ceiling, not the request size. A refusal reports required/free/reserve/usable bytes; the existing Chat plan and its safety-buffer policy are unchanged.
 - **Limits:** estimates must cover native expansion/temporary work supplied by the caller. Peak encoder allocations and concurrent external memory use are not bounded by this arithmetic alone. The native session performs fresh live probes before new projector allocation.
+
+## Tests
+
+`cargo test -p cluaiz-plan` on 2026-11-21 (Windows 11): 54 passed, 1 ignored (`tests/real_models.rs`, needs installed
+models). Real loads: runs 11, 12, 21 (L4), 17, 20 (laptop), 15-19 (VPS) in `test/cloud/BENCHMARKS.md`.
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| Memory estimate for MLA and Kimi-Linear models | run 21 found the estimate off for these | parked with the planner (2026-11-19) until a big-GPU run |
+| Proof that the out-of-memory retry steps down correctly on big models | built, not measured on a big model | the same big-GPU run |
+| First load with other apps holding VRAM (run 20 chose CPU only) | the dry run before every GPU load may have fixed it | a rerun of the run 20 case |

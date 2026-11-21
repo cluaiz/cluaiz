@@ -1,5 +1,6 @@
 //! 🛡️ Cluaiz Security Subsystem (`security/`)
-//! Contains filesystem jails, permission verification schemas, and audit guards.
+//! The `permission.json` schema and the CEP audit log file. Enforcement lives at each call site
+//! (see README.md).
 
 pub mod permission_schema;
 pub mod audit;

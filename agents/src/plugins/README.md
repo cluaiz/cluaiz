@@ -91,3 +91,33 @@ flowchart LR
 - **Out of fuel or memory:** `ModuleError::Limit` with the budget it passed.
 - **Native plugin fails:** its non-zero exit and stderr come back as the error; it is not closed
   in, so its permissions are asked about before each call instead (`registry/types.rs`).
+
+## Decisions and why
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| WASM plugins get the network only through `cluaiz.http_fetch` | one checked door enforces https, public addresses, host lists and limits for every plugin; a WASI socket would bypass them | WASI networking |
+| Fuel (2,000,000,000) and memory (256 MiB) limits on every WASM call | an endless loop or memory grab stops with `ModuleError::Limit` instead of hanging the Engine (tests below) | trust the plugin |
+| Secrets filled by the Engine from `{{secret:NAME}}` | the plugin never sees the key, and a key goes only to a host the plugin may reach | pass keys in the environment or the payload |
+| Native plugins run through the OS sandbox | a native program has the user's rights otherwise; the sandbox hides secrets and the home (`executor.rs:60-65`) | no confinement |
+
+## Tested
+
+22 unit tests in this folder, part of `cargo test -p cluaiz-agents` (161 passed on 2026-11-21):
+
+| Area | Tests |
+|---|---|
+| Network permission and addresses (`net.rs`) | `a_plugin_without_the_permission_cannot_call`, `local_and_private_addresses_are_refused`, `a_nat64_address_counts_as_the_address_inside_it`, `plain_http_and_other_schemes_are_refused`, `a_url_with_a_password_is_refused`, `the_address_the_user_chose_may_be_local`, `a_redirect_cannot_leave_the_chosen_address_for_another_local_one`, `the_users_choice_switches_the_network`, `a_flow_module_reaches_only_its_hosts` |
+| Secrets and settings | `a_key_goes_only_where_the_plugin_may_reach`, `a_secret_that_is_not_set_is_reported_without_a_request`, `a_tool_is_asked_only_for_the_settings_its_manifest_names`, `a_saved_setting_reaches_only_its_own_plugin` |
+| Limits | `requests_per_call_are_limited`, `a_large_answer_is_cut_at_the_limit`, `a_loop_that_never_ends_is_stopped`, `a_plugin_cannot_take_more_memory_than_allowed`, `a_module_runs_its_named_function_within_its_budget` |
+| ABI and host functions (`wasm.rs`) | `a_plugin_answers_through_its_memory`, `an_answer_outside_its_memory_is_an_error`, `a_plugin_reaches_http_fetch_and_is_refused_without_the_permission`, `the_time_needs_no_permission` |
+
+Real plugins (`math`, `time`, `text`, `web-search`) are exercised by `test/cpu/cpu_test.ps1`, which has no
+recorded run (see `test/cpu/README.md`).
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| Native plugins on Windows in `auto` run unconfined | AppContainer is not used in `auto` on Windows (Node.js and per-user Python cannot start in it) | see `../execution/README.md` |
+| A recorded run with the published plugins | the unit tests use test modules, not the registry's plugins | the CPU test run, or a run folder |

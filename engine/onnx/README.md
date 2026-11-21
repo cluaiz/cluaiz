@@ -27,6 +27,7 @@ graph TD
 | [`engine.rs`](src/engine.rs) | ONNX Runtime session pooling and execution. |
 | [`media.rs`](src/media.rs) | Typed audio tasks/results, session probing, captured provider policy and processor/signature validation. |
 | [`ort_env.rs`](src/ort_env.rs) | The one ONNX Runtime environment of the process, made on first use; every session is built on it. |
+| [`chat.rs`](src/chat.rs) | `UnifiedBackend` / `StreamingInference` for `OnnxEngine` (text generation through ONNX). No caller uses these traits (searched 2026-11-21); chat runs on llama.cpp. |
 
 Image byte decoding now calls `cluaiz_media::image::decode_image` directly with core media limits. ONNX retains its current CLIP resize/normalization step; processor-config-driven normalization and runtime/API vision dispatch are separate pending phases.
 
@@ -63,3 +64,17 @@ STT input preparation directly imports shared source/audio/resample functions. O
 ## Build step
 
 [`build.rs`](build.rs) embeds every per-language JSON file of the TTS data folders (letter-to-sound rules in `src/audio/tts/data/g2p_rules/`, romanized-writing rules in `transliteration/`, number words in `numbers/`) as generated constants (`RULE_FILES`, `TRANSLITERATION_FILES`, `NUMBER_FILES`). Adding a language is adding a file; no code lists them.
+
+
+## Tests
+
+69 unit tests and `tests/media_integration.rs`; 11 are ignored (need model files or a GPU provider).
+`onnx-engine` builds ONNX Runtime, so the tests were not run on 2026-11-21. Speech and embeddings
+were measured in cloud runs (voice and embedding table in `test/cloud/BENCHMARKS.md`).
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| `chat.rs` has no caller | dead code that suggests ONNX chat is supported | remove it, or wire ONNX chat models |
+| cuDNN loading fix (2026-10-29) not re-run on a Linux GPU | see run 4b | a GPU run |

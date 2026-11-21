@@ -86,3 +86,7 @@ flowchart LR
   left half written.
 - **Library not reachable:** `fetch_external_registry` returns the error; the local roster still
   works.
+
+## Tests
+
+Part of `cargo test -p cluaiz-models` (2026-11-21 (Windows 11): 50 passed, 8 ignored). Pending items: [`models/README.md`](../../README.md#pending).

@@ -39,3 +39,31 @@ python test/cep/wave_b/tools_http_journey.py  --exe target/release/cluaiz.exe --
 `--check-load` also loads a small installed GGUF on the CPU and removes a hard-linked copy of it. Each journey writes `<home>/<group>-http-report.json` with every check.
 
 Not covered by the HTTP journeys: interactive folder picking (only a denied non-owner call is tested), third-party native plugin execution, other operating systems. The opt-in native picker test above does not prove the browser-to-Engine HTTP journey.
+
+## Results on 2026-11-21 (Windows 11)
+
+`cargo test --offline --manifest-path test/cep/wave_b/Cargo.toml --target-dir target/cep-wave-b-contracts`:
+
+| Test file | Result |
+|---|---|
+| `roots_contract.rs` | 10 passed |
+| `folder_picker_contract.rs` | 2 passed, 1 ignored (the desktop dialog check) |
+| `fs_methods_contract.rs` | 11 passed, 2 failed |
+
+The two failures are assertions older than the code they check:
+
+- `test_discovery_has_all_ten_methods_and_scope_metadata` (line 299) expects 2 methods in the
+  `workspace` group; `rpc.discover` now returns 7.
+- `test_workspace_set_reuses_existing_agent_workspace_owner` (line 242) compares the stored workspace
+  folder with `fs::canonicalize`, which on Windows adds the `\\?\` prefix; the Engine stores the path
+  without it. Whether the Engine should store one form is not decided here.
+
+The live journeys were not run on 2026-11-21.
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| Two failing assertions in `fs_methods_contract.rs` | a red suite hides new failures | update the method count; compare paths in one form (decide which form the Engine stores) |
+| These contracts are not in any workflow | they ran only by hand | a CI job (they need no CUDA build) |
+| Live journeys have no recorded run | the HTTP path of these methods has no checked-in result | one run saved under `test/cloud/runs/` |

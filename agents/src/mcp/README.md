@@ -71,5 +71,34 @@ flowchart LR
   `is_unavailable` is true (the tool is offered as unavailable).
 - **Request timeout:** the call fails with a timeout error; the process keeps running.
 - **Start timeout:** the start fails after 180 s; the error names the server.
-- **Server not allowed a permission:** asked before each call (`registry/types.rs`); the MCP
-  server itself is not closed in.
+- **Server not allowed a permission:** asked before each call (`registry/types.rs`). The server
+  process itself is confined by the OS sandbox where it is enabled (Technical Specification above);
+  with `os_sandbox: off`, or on Windows in `auto`, it runs with the user's rights.
+
+## Decisions and why
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| One long-lived process per server, reused for every call | starting `npx` / `uvx` servers takes seconds (the first start may download a package) | a process per call |
+| At most 4 servers running, idle stop after 10 minutes | each server holds memory while idle | keep every started server |
+| Crash backoff 1 s, 2 s, then unavailable after 3 crashes in 10 minutes | a server that crashes on start would otherwise be restarted in a loop on every call | restart without limit |
+| Windows job object around each server | ending `npx.cmd` left the real server running and holding inherited handles (a listening port) | kill the launcher only |
+
+## Tested
+
+| Test | What it proves |
+|---|---|
+| `user_env_gives_only_the_named_values_of_this_package` | a server gets only the values its manifest names |
+| `expose_limits_tools_and_inputs` | with an `expose` list, only the listed tools and their listed inputs are shown to the model, and a call outside it is refused whatever sends it (`only_exposed`, `check_exposed`) |
+| `test_restart_backoff_and_unavailable` | the 1 s / 2 s backoff and the unavailable state after 3 crashes |
+| `tests/mcp_reference_server.rs` (ignored) | the client against a real stdio server (`@modelcontextprotocol/server-everything`); `cargo test -p cluaiz-agents --test mcp_reference_server -- --ignored --nocapture` |
+
+Part of `cargo test -p cluaiz-agents`: 161 passed on 2026-11-21. The reference-server test was not run
+that day. MCP over the Engine's own CEP server: `test/cep/mcp_journey.py`.
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| A recorded run of `mcp_reference_server` | the real-server path has no checked-in result | one run, saved under `test/cloud/runs/` |
+| Only stdio servers | MCP servers that speak HTTP (streamable HTTP) cannot be installed | an HTTP transport in `client.rs` |

@@ -125,3 +125,20 @@ Not built yet (read and checked, and a run says so): flow templates as a registr
 registry suggestions in `flows.draft`'s `missing`, `step.output_delta` streaming, multipart and
 binary webhook bodies, and WebAssembly components (WIT). Project flows listen for the workspace
 that was current when the server started.
+
+## Tested
+
+`cargo test -p cluaiz-automation` (crate `automation/core`) on 2026-11-21 (Windows 11): unit 70 passed;
+integration 1, 6, 19 and 20 passed. `automation/host` depends on `cluaiz-api` and was not run (native
+backend build).
+
+## Decisions and why
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| Automation is its own layer, outside the Engine and the API | flows use the Engine through small additive hooks (events, extension routes and tools) and can change without touching Engine code | flows inside `api` |
+| Not-built features fail with a message that says so | a flow must never look like it ran a step that does not exist | silently skip unknown fields |
+
+## Pending
+
+The "Not built yet" list above is the Pending list of this layer.

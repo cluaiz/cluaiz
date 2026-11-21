@@ -166,3 +166,19 @@ do not constitute a full Engine/CLI native build or API regression pass.
 ## Mascot
 
 [`src/mascot.rs`](src/mascot.rs): the Cluaiz mascot's text art (`ART`, `ART_BLINK`), the wordmark, their colours, and the short animated banner every interactive command prints at start; the agent's intro draws the same art in its screen.
+
+## Tested
+
+`cargo test -p cluaiz-terminal` on 2026-11-21 (Windows 11): unit 2 passed; integration 10 and 37 passed;
+2 ignored (the interactive terminal tests above, run by hand one at a time).
+
+## Decisions and why
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| Presentation only; execution stays in the caller (`cmd/src/agent/terminal.rs`) | the library can be tested without a model or tools, and the agent loop stays in one place (`agents/src/turn.rs`) | a terminal app that runs tools itself |
+| One command, `cluaiz agent`, with `--ui plain` as the line-oriented fallback | no second executable to install or keep in step | a separate terminal binary |
+
+## Pending
+
+None found in this crate on 2026-11-21.

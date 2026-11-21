@@ -51,3 +51,15 @@ lib = ctypes.CDLL(r"...\cluaiz_cep.dll")
 
 - `cargo test --release -p cluaiz-ffi`: the panic guard and NULL handling.
 - `python test/cep/ffi_python.py --lib <dll> --home <isolated home>`: the whole library through ctypes.
+
+## Results
+
+`cluaiz-ffi` depends on `cluaiz-api`, so its tests build the native backends; not run on 2026-11-21.
+The ctypes journey `test/cep/ffi_python.py` has no recorded run in `test/cloud/runs/`.
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| The library is not in the release packages | embedding the Engine needs a local build | a release job for `cluaiz_cep` |
+| No recorded run of `ffi_python.py` | the C ABI path has no checked-in result | one run with an isolated home |

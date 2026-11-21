@@ -146,3 +146,13 @@ Every file per OS and GPU is listed in [`docs/deployments/install-layout.md`](..
 ## `media_assets`
 
 [`src/media_assets.rs`](src/media_assets.rs): packages existing native media assets, checking them with the runtime's own manifest verifier, so a package the builder makes is one the Engine accepts.
+
+## Tested
+
+`cargo test -p cluaiz-builder` on 2026-11-21 (Windows 11): 1 passed.
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| One unit test for the whole builder | build matrices and `dev-sync` copying are checked only by using them | tests for the target matrix and the sync file list |

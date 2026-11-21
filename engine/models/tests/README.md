@@ -27,3 +27,7 @@ flowchart LR
 - `package_install.rs` is an opt-in real fresh package download/repair acceptance. It requires a nonexistent isolated `CLUAIZ_HOME`, `CLUAIZ_PACKAGE_REPO`, and `CLUAIZ_ALLOW_PACKAGE_DOWNLOAD=1`. It checks the manifest-owned plan, complete install gate, upstream LFS SHA256 identities and missing-tokenizer repair without rewriting retained valid weights. It does not modify the normal installed vault or run inference; native speech acceptance is separate. Run it with `cargo test -p cluaiz-models --test package_install -- --ignored --nocapture` only when that download is intended.
 - **Errors:** missing environment/assets, corrupt graph and HTTP errors fail instead of returning mock success. Normal tests skip the external fixtures.
 - **Not established:** full CLI/HTTP installer workflow, numerical inference, semantic quality, native EP support, all external-reference forms or all TTS helpers.
+
+## Tests
+
+Part of `cargo test -p cluaiz-models` (2026-11-21 (Windows 11): 50 passed, 8 ignored). Pending items: [`models/README.md`](../README.md#pending).

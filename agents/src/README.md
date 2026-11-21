@@ -18,12 +18,12 @@ store and the project's `.agents/` workspace files live in this crate.
 | **Permissions** | [`permissions.rs`](./permissions.rs) | The permission types a tool's `package.json` may list, which are sensitive, the user's choices (`config/tool_permissions.json`) and the approval tags. See [docs/engine/tools.md](../../docs/engine/tools.md). |
 | **Tool settings** | [`tool_env.rs`](./tool_env.rs) | The values a tool names in `env` (API keys, addresses): the system environment first, then the value saved in `config/tool_settings.json`. A tool's program gets only these and the system basics (`execution/environment.rs`). |
 | **Memory** | [`memory/`](./memory/) | Chat event store and notes (`proposed`, `confirmed`, `moved`, …). |
-| **Execution** | [`execution/`](./execution/) | Command execution policy; destructive commands are always refused. |
+| **Execution** | [`execution/`](./execution/) | Command execution: approval policy (destructive commands are always refused), the terminal runner, and OS confinement of commands, MCP servers and native plugins ([README](./execution/README.md)). |
 | **Registry** | [`registry/`](./registry/) | Manages `tools_registry.json` (kept in RAM; JSON only, no `.bin` cache). Auto-probes `~/.cluaiz/tools/`. |
 | **Installer** | [`installer/`](./installer/) | Downloads, caches, installs, and uninstalls packages from Cluaiz Tools. `plan.rs` builds the install plan first: the tool, its dependencies (`required`, `recommended`, `optional`) and their permissions, each installed, asked or only suggested by the user's agent mode. |
 | **Workspace** | [`workspace/`](./workspace/) | A project's agent files: `AGENTS.md` (home, `.agents/`, folder files), and `rules/`, `workflows/`, `skills/` of each `.agents/` (or `.agent/`) folder up to the repository root and `~/.agents/`, with name, description and rule trigger, and the project's memory (`.agents/memory/*.md`, facts saved with `remember` after the user confirms; a newer fact on the same subject supersedes the older, both kept). One index, built from the files each time; `matching.rs` finds the items that fit a message (the `tool_search` matcher) or a file (glob rules). Used by the terminal agent and by the API chat (setting `project_files`). Files: `mod.rs` (the index: `Kind`, `Trigger`, `Item`), `instructions.rs` (the AGENTS.md files, with `CLAUDE.md` / `GEMINI.md` as alternatives, sharing one 8,000-character budget that the nearest files take first), `prompt.rs` (the workspace in the system prompt within `budget_for(n_ctx)`: instructions, then an index of rules, workflows, skills and facts the model reads with `read_item`), `matching.rs`, `memory.rs`, `tests.rs`. |
 | **Skills** | [`skills/`](./skills/) | `parser.rs`: a `SKILL.md`'s YAML front matter (`SkillMetadata`) and instruction body (`ParsedSkill`). `instructions.rs`: the parsed instructions of each enabled skill, shared in RAM (`SkillInstructions::shared`, `get`). Which skills a request gets is decided in `tool_search.rs`. |
-| **Plugins** | [`plugins/`](./plugins/) | Parses `package.json`. A `.wasm` plugin runs inside the Engine, closed in, with memory and instruction limits; any other runs as a normal child process (no OS isolation). |
+| **Plugins** | [`plugins/`](./plugins/) | Parses `package.json`. A `.wasm` plugin runs inside the Engine, closed in, with memory and instruction limits; any other runs as a child process, confined by the OS sandbox where it is enabled (`plugins/executor.rs:60-65`, `execution/os_sandbox.rs`). |
 | **MCP** | [`mcp/`](./mcp/README.md) | MCP client: long-lived server processes, timeouts, idle stop, crash backoff ([README](./mcp/README.md)). |
 | **Lifecycle** | [`lifecycle/`](./lifecycle/) | `session_map.rs`: the tools bound to each chat (`SESSION_TOOL_REGISTRY`) with their turns (`-1` always, `0` this answer, `N` answers); a loaded tool not used for `IDLE_TURNS` (3) answers is unloaded unless its manifest sets `default_turns`. `duration.rs`: counts the turns down after each answer. `ledger.rs`: what the Engine added to each turn (tool hints, calls, results), so the next request renders earlier turns exactly as the model saw them and the KV cache is reused. `grants.rs`: "allow this tool for this chat" after an approval with `remember: "chat"` (60 minutes by default, 24 hours at most), kept as `grant` events in the chat's log so they come back after a restart. |
 | **Telemetry** | [`telemetry/`](./telemetry/) | `context_tracker.rs`: the context breakdown of a request (system prompt, tools, messages, answer) for a model and chat. `types.rs`: the breakdown shapes; `apply_measured` replaces the character estimates with the engine's measured `n_ctx` and `n_tokens`, keeping the system and tool shares inside that total. |
@@ -39,9 +39,9 @@ store and the project's `.agents/` workspace files live in this crate.
 │   └── tools_registry.json              <── Master record for all installed tools (JSON only)
 └── tools/                               <── Master Tools domain folder
     ├── skills/                          <── Installed skills
-    │   └── frontend-dev/SKILL.md
+    │   └── <skill-id>/SKILL.md
     ├── plugins/                         <── Installed plugin programs
-    │   └── cluaiz-search/<program> & package.json
+    │   └── <plugin-id>/<program> & package.json
     └── mcp/                             <── Installed MCP Servers
-        └── sqlite-bridge/package.json
+        └── <server-id>/package.json
 ```

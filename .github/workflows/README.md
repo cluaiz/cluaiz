@@ -38,10 +38,26 @@ The release page text comes from `.github/release-notes.md` (install commands an
 
 ---
 
-## 4. THE FOUNDER'S MANDATE
+## 4. Decisions and why
 
-1. **Never Drift**: Do not change naming conventions or matrix structures once established. The installers rely on the file names (e.g., `cluaiz-0.1.0-linux-x64-llama-cuda12.tar.gz`).
-2. **Standard over Ad-hoc**: Every fix must be architectural. Do not create inline quick-fixes.
-3. **Decoupled by Design**: Each driver builds in its own job; a failing driver never blocks the core, and the release job only collects what built.
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| File names and matrix structure stay fixed once released | the installers find packs by name (for example `cluaiz-0.1.0-linux-x64-llama-cuda12.tar.gz`) | rename freely |
+| Each GPU driver builds in its own job; the release job collects what built | a failing driver must not block the core release | one job for everything |
+| Release notes from `.github/release-notes.md`, Release Drafter removed | Release Drafter builds its changelog from pull requests, which this repository does not use | Release Drafter |
 
-**This is the cluaiz Standard. Professional and Optimized.**
+## 5. What runs where (2026-11-21)
+
+| Workflow | Runs |
+|---|---|
+| `release.yml` | the core and pack builds, `test/workflows/test_clean_windows_runtime.py`, `.github/scripts/smoke_test.sh` with a small model |
+| `cluaize-llama-driver.yml`, `cluaize-onnx-driver.yml` | the GPU driver packs |
+| `installer-smoke.yml` | `install.sh` on a GitHub macOS runner, started by hand (`workflow_dispatch`, a release version as input) |
+| `docs-check.yml` | `docs/tools/check_docs.py` (registry, links, anchors) |
+
+## 6. Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| No workflow runs `cargo test` | unit and contract tests run only on developer machines and cloud runs | a job for the crates that build without native backends (see `test/README.md`) |
+| `test/workflows/` installer tests fail against the current installers and are not in any workflow | they protect nothing today | see `test/workflows/README.md` |

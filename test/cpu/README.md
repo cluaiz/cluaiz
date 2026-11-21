@@ -88,3 +88,27 @@ Every step prints its number and the time so far. Keep the PC awake and avoid ot
 ```powershell
 Remove-Item -Recurse -Force ~\cluaiz-cputest
 ```
+
+## Recorded runs
+
+None: no result archive of this script is in the repository (searched `test/` on 2026-11-21). CPU-only
+results that exist come from other scripts: run 6 (clean cloud machines, `cluaiz bench`,
+[`../cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md`](../cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md)),
+run 7 (Linux CPU VM) and runs 15-19 (1 vCPU VPS), all in [`../cloud/BENCHMARKS.md`](../cloud/BENCHMARKS.md).
+
+## Decisions and why
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| Installs with the website's command, not a local build | it tests what a user gets, including pack selection | test a developer build only (`CPU_TEST_EXE` still allows it) |
+| Own home (`~\cluaiz-cputest`) and port 8011, user PATH restored | the tester's own Cluaiz installation stays untouched | the default home and port |
+| `WARN` separate from `FAIL` | a small model giving a wrong answer is not an Engine failure | pass / fail only |
+| One archive on the Desktop | a non-developer tester sends one file | ask for several files |
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| The script installs the plugin `search`; the registry's id is now `web-search` (`cluaiz-tools/plugins/web-search/package.json`) | that step fails on a current registry | change the id in `cpu_test.ps1` (line 277) and rerun |
+| No recorded run of this script | the README describes a test whose output nobody has checked in | one run on a Windows PC without a GPU, saved as a run folder |
+| The Bonsai `Q1_0` models | a run would show whether the CPU build handles that type; not yet recorded | the run above |

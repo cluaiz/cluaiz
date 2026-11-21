@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2021"
 publish = false
 
-# Exercise the production path resolver without rebuilding CUDA or Claude's API target.
+# Exercise the production path resolver without building the api crate or the CUDA backends.
 [workspace]
 
 [dependencies]

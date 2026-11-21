@@ -46,3 +46,7 @@ flowchart TD
 - `api/tests/document_contract.rs`: actual native PDF/DOCX/DOC/text extraction and authentication.
 - `api/tests/media_resource_contract.rs`: declared and streamed oversized inline bodies.
 - `api/tests/ingest_models.rs`: opt-in installed-model acceptance; requires explicit disposable fixture configuration.
+
+## Results
+
+`api` builds both native backends, so none of these tests were run on 2026-11-21 (see `api/README.md`, Tests). No checked-in run executes `ingest_models.rs` with models.

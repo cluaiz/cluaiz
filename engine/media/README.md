@@ -124,3 +124,16 @@ These scopes are independent: decoder tests do not establish model inference, ro
 - [`wav.rs`](src/wav.rs): checked mono PCM16 WAV encoding shared by speech backends (`encode_pcm16`, `encode_data_uri`), within the media limits.
 - [`tempo.rs`](src/tempo.rs) (+ `tempo_tests.rs`): streaming speech tempo that keeps the pitch, with Sonic (Apache-2.0, through MIT bindings). `Tempo::new(sample_rate, speed)` accepts speeds from 0.25 to 4.0 (`SPEED_RANGE`); `write` returns the samples ready so far, `finish` the rest.
 - [`video.rs`](src/video.rs): lazy native video decoding into shared timestamped RGB frames (`DecodedVideo`, `TimestampedFrame`, `decode`, `decode_with_assets`, `attachment_formats`). No FFmpeg is linked into this crate or either inference backend.
+
+## Tests
+
+`cargo test -p cluaiz-media` on 2026-11-21 (Windows 11): 49 passed, 4 ignored (the ignored ones need a native package or
+real files; see `tests/README.md`). Integration files: `documents.rs`, `native_documents.rs`,
+`office_documents.rs`, `text_documents.rs`, `video.rs`. Release acceptance with the real executable:
+`test/media_regression/` (no run with models recorded).
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| The ignored native document and video tests have no recorded run | OCR and video decoding through the packaged providers have dated results only (October) | a run with the native package, saved under `test/cloud/runs/` |

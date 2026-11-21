@@ -126,3 +126,7 @@ flowchart TD
 - **Primary file or ONNX assets missing after download:** nothing is registered; the error names
   the missing assets.
 - **Nobody to ask:** the default variant, never a free file pick.
+
+## Tests
+
+Part of `cargo test -p cluaiz-models` (2026-11-21 (Windows 11): 50 passed, 8 ignored). Pending items: [`models/README.md`](../../README.md#pending).

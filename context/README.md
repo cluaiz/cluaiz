@@ -82,3 +82,19 @@ These build the Chat Map from a chat's cards by rules; no words of any language 
 - [`episode.rs`](src/memory/episode.rs): episodes, stretches of a chat about one thing. A new one starts at a user message after more than `gap_minutes` of silence, at `/new`, or when the message shares almost no keywords with the current episode (and is not a short follow-up) (`EpisodeRules`, `episodes`).
 - [`task.rs`](src/memory/task.rs): tasks, work done over several turns. Implicit tasks come from episodes in which tools changed something (write, edit, create, move, delete, run); the model can keep one itself with `task_update` (goal, stage, checkpoint), which wins. The active task's checkpoint travels with the current message when earlier turns are not all shown (`tasks`, `active`).
 - [`graph.rs`](src/memory/graph.rs): the graph of cards and episodes: messages follow each other, belong to an episode, use tools, touch files and mention values. Recall uses `expand` to bring along a message linked to a hit (the same file or value, a later message on the same thing, which may correct it).
+
+## Tested
+
+`cargo test -p cluaiz-context` on 2026-11-21 (Windows 11): 30 passed.
+
+## Decisions and why
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| The planner is a pure function of segments and a budget | the same input gives the same plan in any order; property tests over 2,000 random inputs check the budget and protected segments | planning inside the chat handler |
+| Chat Map rules read structure (time gaps, tool effects, shared keywords), no word lists | the Engine must work in any language without per-language lists | language-specific keyword lists |
+
+## Pending
+
+None found in this crate on 2026-11-21. Live long-chat checks: `test/context-runtime/` (results from
+October 2026, not rerun since).

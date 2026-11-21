@@ -30,3 +30,8 @@ graph LR
 Rules for this folder:
 - Ingest stays a direct inference route; new Engine control operations are CEP methods (`../cep/methods/`).
 - A function needed by both a route and a method lives in one place, and both call it.
+
+## Tests
+
+23 unit tests in this folder and below (chat 20, `audio_tests.rs` and others 3); route tests in
+`api/tests/`. `api` builds both native backends, so none of these tests were run on 2026-11-21 (see `api/README.md`, Tests).

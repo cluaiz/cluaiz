@@ -113,3 +113,22 @@ flowchart LR
     C --> F["Versioned registry and planner"]
     F --> G["Native task validates execution separately"]
 ```
+
+## Tests
+
+`cargo test -p cluaiz-models` on 2026-11-21 (Windows 11): 50 passed, 8 ignored (the ignored ones need the network, a
+Hugging Face file or an installed model). Integration files: `download_preview.rs`,
+`media_capabilities.rs`, `package_install.rs`, `real_geometry.rs`, `registry_resolution.rs`.
+
+## Decisions and why
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| Saved catalogue data is authoritative, blank values included | a console edit must not be replaced by a probe or an import (project rule, catalogue data authority) | refresh from Hugging Face on every read |
+| One GGUF header reader for every caller | the planner, `cluaiz show` and the API must see the same geometry | each caller parses the header |
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| The 8 ignored tests have no recorded run | download and real-geometry paths are checked only in cloud runs indirectly | a recorded run with network and models |

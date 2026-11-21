@@ -55,3 +55,7 @@ The legacy DOC reader's internal stream/piece/formatting allocations are not bou
 The embedding host must call `release_native_providers()` after stopping requests. CLI document extraction releases its providers before returning; the API waits for graceful Ctrl+C shutdown then releases them. Each lock excludes native use during destruction. Force-killing a process does not run Rust/native cleanup. Tesseract native work can reach its configured deadline; disconnect cancellation inside recognition and PDF rendering is not implemented.
 
 Windows acceptance uses the pinned [charlesw Tesseract 5.2.0 binaries](https://github.com/charlesw/tesseract/tree/b5329d5be92fa670031d94c3875f879651a01f55/src/Tesseract/x64), [tessdata_fast language data](https://github.com/tesseract-ocr/tessdata_fast/tree/87416418657359cb625c412a48b6e1d6d41c29bd), and [PDFium chromium/8100](https://github.com/bblanchon/pdfium-binaries/releases/tag/chromium%2F8100). The maintainer binaries require the compatible MSVC runtime. Linux/macOS/ARM and a clean Windows machine without existing runtime dependencies have not been executed. Bundled notices accompany the staged package; shipping/installer integration remains a separate acceptance step.
+
+## Tests
+
+Part of `cargo test -p cluaiz-media` (2026-11-21 (Windows 11): 49 passed, 4 ignored). Pending items: [`media/README.md`](../../README.md#pending).

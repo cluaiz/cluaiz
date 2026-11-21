@@ -23,3 +23,7 @@ flowchart LR
 - **`Frame`:** actual timestamp, visible dimensions, RGB stride and borrowed accessible byte range. The consumer validates lengths/stride before copying.
 - **`Info`:** actual audio-track presence and decoded/sampled counts. A failed call does not yield a successful partial model input.
 - **Failure:** nonzero C status plus bounded caller-owned error buffer. No `String`, `Vec`, panic unwinding or cross-library allocator transfer is part of the contract.
+
+## Tests
+
+Part of `cargo test -p cluaiz-media` (2026-11-21 (Windows 11): 49 passed, 4 ignored). Pending items: [`media/README.md`](../../README.md#pending).

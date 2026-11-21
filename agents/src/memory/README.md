@@ -110,3 +110,31 @@ flowchart TD
 - **Temporary chats (`temporary_chat`):** nothing is logged.
 - **Deleting a chat (`memory.delete`):** its log, segments, ledger and everything derived from it
   go; `DeleteReport` says what was removed.
+
+## Decisions and why
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| Append-only JSON-lines files | they survive crashes and any tool can read them; a line cut by a crash is skipped and reported (test below) | a database |
+| Edits and deletions are new events, nothing is removed | clients resend the whole conversation; history keeps what changed | rewrite the log |
+| Notes proposed by the model wait for the user | nothing is stored about the user by guessing (`test_proposals_wait_for_the_user`) | store at once |
+| Secrets are redacted before an event is written | the log must not keep keys (`test_secrets_are_redacted`) | redact on read |
+
+## Tested
+
+21 unit tests, among them `test_jsonl_store_conformance`, `test_mem_store_conformance`,
+`test_a_line_cut_by_a_crash_is_skipped_and_reported`, `test_full_segments_are_compressed_and_still_read`,
+`test_an_old_log_file_reads_and_is_cleaned_on_the_next_write`, `test_new_edited_and_retracted_messages`,
+`test_changes_from_events_match_diff`, `test_proposals_wait_for_the_user`,
+`test_a_named_replacement_takes_over_and_the_old_note_leaves`, `test_notes_of_an_app_user_stay_theirs`,
+`test_secrets_are_redacted`, `test_reserved_fields_cannot_overwrite_the_event`,
+`vectors_are_kept_per_text_and_dropped_with_their_model`. Part of `cargo test -p cluaiz-agents`: 161 passed, 1 ignored on 2026-11-21 (Windows 11).
+
+Long-chat memory through the Engine: `test/context-runtime/memory_suite.py` and `memory_journeys.py`
+(results from October 2026, not rerun since).
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| Rerun the memory journeys on the current Engine | their results predate later memory changes | a recorded run |

@@ -111,3 +111,16 @@ flowchart LR
   `api/tests/cep_docs.rs` if new, write the page body, then
   `CEP_DOCS_WRITE=1 cargo test --release -p cluaiz-api --test cep_docs` regenerates the front
   matter and `openrpc.json`; without it the test fails while the docs are stale.
+
+## Tests
+
+9 unit tests in `methods/`; contract tests `api/tests/cep_*.rs` (8 files, 13 tests) and the live
+journeys in `test/cep/`. `api` builds both native backends, so none of these tests were run on 2026-11-21 (see `api/README.md`, Tests). `test/cep/wave_b/` contracts were run that day: roots 10
+passed, folder picker 2 passed, fs methods 11 passed and 2 failed on stale assertions
+(`test/cep/wave_b/README.md`).
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| Two stale assertions in `test/cep/wave_b/fs_methods_contract.rs` | the suite is red | see `test/cep/wave_b/README.md` |

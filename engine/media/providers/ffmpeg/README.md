@@ -58,3 +58,7 @@ For native ABI tests, supply `CLUAIZ_VIDEO_TEST_FIXTURES` and run this manifest'
 - **Cancellation:** the decoder checks between packets/frames and during custom IO. It cannot preempt an arbitrary instruction already executing inside a native codec.
 - **Memory:** checked source, dimensions, output-copy and conservative workspace budgets cover owned buffers. Native parser allocations, codec reference frames, stack use and process-wide memory are not certified caps. H264 coded/padded dimensions can exceed visible pixels and be refused by a tight native pixel limit.
 - **Isolation:** this library runs inside the engine process; optional loading is not process isolation or protection against every native crash.
+
+## Tests
+
+Part of `cargo test -p cluaiz-media` (2026-11-21 (Windows 11): 49 passed, 4 ignored). Pending items: [`media/README.md`](../../README.md#pending).

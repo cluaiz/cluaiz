@@ -78,3 +78,7 @@ flowchart LR
 - **Unknown speech package:** `Unknown` / `GenericOnnx*` family; the runtime then checks the
   graph's inputs before loading.
 - **File that matches no pattern:** treated as its own file, not grouped.
+
+## Tests
+
+Part of `cargo test -p cluaiz-models` (2026-11-21 (Windows 11): 50 passed, 8 ignored). Pending items: [`models/README.md`](../../README.md#pending).

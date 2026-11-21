@@ -120,3 +120,29 @@ rm -rf ~/cluaiz-mactest
 
 The installer also adds a `# Cluaiz` PATH line to `~/.zshrc`; remove that line and the `export PATH=...` line
 below it if the Mac is not used for Cluaiz afterwards.
+
+## Recorded runs
+
+| Run | Machine | Result | Follow-up |
+|---|---|---|---|
+| [`runs/2026-10-28-m5-air-16gb/`](runs/2026-10-28-m5-air-16gb/SUMMARY.md) | MacBook Air M5, 16 GB, release v0.1.0 | install and chat worked; speed matched plain llama.cpp at the same settings (Qwen3-4B generation 22.7-24.6 vs 22.1-22.5 t/s), but the Engine never used the Metal GPU, read free RAM as 0.00-0.75 GB and refused Auto placement (HTTP 500) | fixed in `07cf30fa` (2026-10-29): Metal devices from llama.cpp's backends (`HardwareProber::set_backend_gpus`), free RAM as Activity Monitor counts it (`macos_available_ram`), HTTP 503 when nothing fits; see [`engine/hardware/README.md`](../../engine/hardware/README.md) |
+
+After the fix, macOS ran only on a virtual GitHub macOS 15 runner (Apple M1, no real GPU) in run 6
+([`../cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md`](../cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md)).
+The Metal path of `07cf30fa` has not been run on a real Mac.
+
+## Decisions and why
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| The script builds `llama-bench` with Metal from the same llama.cpp commit | a speed number is only meaningful next to plain llama.cpp on the same Mac and settings | report Cluaiz numbers alone |
+| Every mode (auto, gpu, split, cpu) per model | run 1 showed Auto failing while forced modes worked; one mode would have hidden it | Auto only |
+| Logs scrubbed of user name, host name, serial number | the archive comes from a tester's own Mac | commit logs as they are |
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| A real-Mac run after `07cf30fa` | Metal use, the macOS free-RAM formula and Auto placement are fixed in code but unmeasured on hardware | `mac_test.sh` on an Apple Silicon Mac |
+| The Mac run is not in `test/cloud/BENCHMARKS.md` | runs are listed in two places | a row there linking this folder |
+| The macOS OS sandbox (`sandbox-exec`) | built, never run on a Mac (Windows run 27, Linux run 28 only) | the same real-Mac run with `agents/tests/os_sandbox_real.rs` |

@@ -80,3 +80,23 @@ cargo test -p cluaiz-api --release --offline --test artifact_acceptance embeddin
 
 - `video_spike/`: isolated native SDK/ABI and SDK-free provider-package loading tests. These establish decoder behavior separately from model inference.
 - `../../api/tests/`: HTTP router fixtures and transport/model-specific acceptance. Existing document fixture construction lives in `../../engine/media/tests/support/` and is imported directly here.
+
+## Recorded results
+
+All four tests of the `artifact_acceptance` target are `#[ignore]` and need an explicit executable,
+model paths and a fresh home. Run 3 (Linux CPU, 2026-10-27) compiled them and listed all four as
+ignored (`test/cloud/runs/2026-10-27-run3-linux-cpu/unit_tests_full.log:940-946`). No checked-in run
+executes them with models (searched `test/cloud/runs/` on 2026-11-21).
+
+| Test | What it needs |
+|---|---|
+| `real_final_executable_attachments_and_onnx_apis` | executable, native package, real model and sample paths |
+| `real_chat_planner_only_selected_models_settings_and_timings` | executable, a read-only chat registry and settings |
+| `embedding_acceptance::real_final_executable_embeddings_and_vision` | executable, GGUF and ONNX embedding models, an image model |
+| `processing_acceptance::real_repeated_attachments_report_progress_and_keep_loaded_plan` | executable, registry, settings, model ID, optional image |
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| No recorded run of these acceptance tests with real models | the attachment, embedding and vision paths through the real executable have no checked-in result | one run with the environment variables above, saved under `test/cloud/runs/` |

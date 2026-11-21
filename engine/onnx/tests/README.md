@@ -24,3 +24,7 @@ flowchart LR
 ## Failure and Evidence Boundaries
 - **Failure:** Missing external environment/assets, unsupported signatures or failed inference return the actual error. Normal test runs skip this fixture.
 - **Limits:** Finite vectors do not prove semantic ranking, OCR output, numerical processor parity, platform-wide support or a process memory ceiling. HTTP request/rejection acceptance is separately exercised by the API embedding fixture.
+
+## Tests
+
+Part of the `onnx-engine` tests (69 unit, 11 ignored; not run on 2026-11-21, native build). Pending items: [`onnx/README.md`](../README.md#pending).

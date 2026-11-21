@@ -91,3 +91,22 @@ flowchart LR
 - **Crash while saving:** `save` writes a temporary file and renames it, so the registry file is
   never left half written.
 - **Unknown mode strings:** `from_raw` gives `None`; the caller refuses the value.
+
+## Decisions and why
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| The registry is kept in RAM, JSON on disk only | a chat turn looks tools up many times; reading the folders each time would repeat file work | read on every lookup; a binary cache |
+| A broken registry file is kept aside and a save writes the whole file | a bad file must not be overwritten silently or half-written (`a_broken_file_is_kept_aside_and_a_save_is_whole`) | overwrite |
+| A tool with a permission switched off is asked about in every mode, Full Access included | the user's own "off" outranks the mode (`a_tool_with_a_permission_off_is_asked_about_in_every_mode`) | let Full Access skip it |
+
+## Tested
+
+7 unit tests: `a_broken_file_is_kept_aside_and_a_save_is_whole`, `test_execution_mode_parsing`,
+`test_security_mode_parsing`, `a_tool_with_a_permission_off_is_asked_about_in_every_mode`,
+`test_serde_roundtrip`, `test_read_only_trusted_needs_trust_and_a_read_only_mark`,
+`test_matrix_9_combinations` (3 security modes x 3 execution modes). Part of `cargo test -p cluaiz-agents`: 161 passed, 1 ignored on 2026-11-21 (Windows 11).
+
+## Pending
+
+None found in this folder on 2026-11-21.

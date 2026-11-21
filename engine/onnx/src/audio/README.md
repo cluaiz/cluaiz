@@ -164,3 +164,6 @@ Decimal/grouping/time separators between digits, configured abbreviations, inter
 - **Low Signal Noise Amplification:** If max amplitude is below `0.01`, peak scaling is skipped to avoid multiplying background neural floating-point noise into blowing air sound ("fhoor fhoor").
 - **Asset Inventory Failure:** `validate_package_inventory` checks required ONNX sub-components before allocating GPU/RAM session memory and returns `PackageContractException`.
 
+## Tests
+
+Part of the `onnx-engine` tests (69 unit, 11 ignored; not run on 2026-11-21, native build). Pending items: [`onnx/README.md`](../../README.md#pending).

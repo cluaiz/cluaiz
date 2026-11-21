@@ -114,5 +114,13 @@ The screen uses the existing Markdown inline/table formatter without terminal wr
 Native clipboard format availability varies by OS/host. Decoding a format does not prove that every
 model can understand it; package capabilities and installed companions still apply.
 Sessions, checkpoints (`/undo`, `/rewind`) and installed tools are built. Task views are not built
-yet. A running command shows its last lines live; there is no interactive child PTY (a command gets
-no keyboard input).
+yet. A running command runs in a pseudo-terminal (`SandboxTerminalRunner::execute_interactive`,
+called from `tools.rs:860`): its last lines show live and keys typed while it waits reach it
+(`agents/src/execution/pty_runner.rs`, test `a_command_asks_and_the_keyboard_answers`).
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| Task views | listed above as not built | a design and the view |
+| The keyboard regression test (`cmd/tests/agent_keyboard.rs`) has no recorded run | it starts the real agent and is ignored by default | one run with `CLUAIZ_KEYBOARD_HOME`, saved as a run folder |

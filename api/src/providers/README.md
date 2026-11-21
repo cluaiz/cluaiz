@@ -183,3 +183,14 @@ flowchart TD
   nothing is asked for once more.
 - **Cancel:** every wait and every stream read checks the cancel flag; dropping the response ends
   the request at the provider.
+
+## Tests
+
+49 unit tests in this folder (`src/providers/tests/` and inline). `api` builds both native backends, so none of these tests were run on 2026-11-21 (see `api/README.md`, Tests). Real provider calls
+need keys and are not part of the tests.
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| No recorded run against real providers | request shapes per provider are covered by unit tests only | a run with test keys, saved without the keys |

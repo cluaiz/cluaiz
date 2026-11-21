@@ -66,3 +66,7 @@ flowchart LR
 - **Thinking left open at the end:** `flush_final` returns what was buffered; the engine closes
   the block once so the model answers outside it.
 - **A tag split across tokens:** held back until it is whole or proven not to be a tag.
+
+## Tests
+
+Part of `cargo test -p cluaiz-models` (2026-11-21 (Windows 11): 50 passed, 8 ignored). Pending items: [`models/README.md`](../../README.md#pending).

@@ -404,3 +404,22 @@ the restart working, Gemma 4 wrote no answer after the `calc.py` result (its fir
 `<eos>`; at temperature 0 every time, with the old build too), although the result was in its
 prompt. J15 therefore checks that the server started again and that its result reached the model
 (`return_prompt`), and shows the answer in its detail line.
+
+## State on 2026-11-21
+
+- Every result above is from 2026-10-24 to 2026-10-27. The tool matcher, the chat templates, memory and
+  the agent changed after that; none of these scripts was rerun since.
+- Labels like P1.3, P5.3, P6.1 and "plan §10.2" refer to the context-runtime plan in the git-ignored
+  `.agent/plans/`; a reader of this repository does not have it. The gate each script checks is
+  written next to its command above.
+- `routing_set.jsonl` expects the skill `learn-ai`, which is no longer in the `cluaiz-tools` registry
+  (`cluaiz-tools/skills/`, 2026-11-21); a fresh test home cannot install it.
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| Rerun the suite on the current Engine | the numbers above predate a month of changes | one recorded run with the isolated test home, saved under `test/cloud/runs/` |
+| `learn-ai` in the routing labels | rows that expect it fail on a fresh home | relabel those rows, or add a test-only skill |
+| A third model family whose template renders tools | the tool-call gate asks for three families; two passed | a third family installed in the test home |
+| Gate names that point to a private plan | the gates cannot be read from this repository | state each gate here in full (done for `calibrate.py`) |

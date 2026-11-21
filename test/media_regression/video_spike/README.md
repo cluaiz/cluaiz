@@ -36,3 +36,17 @@ Run the second command without SDK/library-search environment entries. On Linux 
 - **Missing SDK/package:** the relevant build or real load fails. The test does not substitute system FFmpeg or generated pixels.
 - **Padded dimensions:** H264 native coded dimensions can exceed visible 34x26. The lazy fixture allows 4096 native pixels while still comparing actual visible dimensions and colors.
 - **Scope:** these tests do not certify arbitrary codecs, models, hardware acceleration, a clean installer, native process memory bounds or the App UI. Real model/API acceptance lives in `api/tests/video_contract.rs`.
+
+## Results on 2026-11-21 (Windows 11)
+
+`cargo test --manifest-path test/media_regression/video_spike/Cargo.toml --offline`: 0 passed, 1
+ignored (`real_package_loads_without_sdk_search_path_and_decodes_via_shared_abi` needs a staged
+package and fixtures). The `native-sdk` test was not run (needs `FFMPEG_DIR` and the H264 file). No
+checked-in run of either test with its inputs exists.
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| A recorded run with a staged package and fixtures | the packaged-provider path has no checked-in result | the two commands above with their environment, saved as a run |
+| Linux and macOS packaging | the manifest keeps this crate isolated "until Windows and secondary-platform packaging are physically proven" | runs on those platforms |

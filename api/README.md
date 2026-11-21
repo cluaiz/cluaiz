@@ -9,6 +9,27 @@ documented in [`src/native/README.md`](src/native/README.md). Plain `serve` reta
 the existing HTTP mode. Native transport is host-level connectivity, not a
 per-extension authorization boundary.
 
+## Route map (`src/routes.rs`, 2026-11-21)
+
+```mermaid
+graph LR
+    C["Client"] --> R["routes.rs<br/>auth middleware (api/src/auth.rs)"]
+    R --> H["/health (no key)"]
+    R --> OAI["/v1/chat/completions, /api/chat<br/>handlers/chat"]
+    R --> M["/v1/models, /api/tags, /api/pull<br/>handlers/models.rs"]
+    R --> E["/v1/embeddings"]
+    R --> A["/v1/audio/speech, /v1/audio/transcriptions"]
+    R --> I["/v1/ingest<br/>handlers/ingest"]
+    R --> CEP["/v1/cep, /mcp<br/>src/cep (every Engine-specific method)"]
+    OAI --> RT["cluaiz-runtime (EngineHost)"]
+    E --> RT
+    A --> RT
+    CEP --> RT
+```
+
+New Engine features are CEP methods, not new HTTP routes; the HTTP routes are the OpenAI / Ollama
+compatible ones plus `/health` and `/v1/ingest`.
+
 ## Chat planner reference
 
 `system.plan` accepts a registered `model`, optional `model_path`, and transient `n_ctx`, `batch_tokens`, `ram_buffer_gb`, `vram_buffer_gb` overrides. `n_ctx`: `0` selects Auto, `-1` selects the native maximum, and positive values request a context capped by the model's native limit. Batch tokens must be positive and buffers finite/nonnegative. Invalid values and unknown fields (including removed synthetic `weights_gb`/`total_layers`) return CEP `-32602`. A plan request never persists settings or loads model weights.
@@ -272,7 +293,7 @@ graph TD
 
 | Module | Responsibility |
 |---|---|
-| [`handlers/`](src/handlers/) | REST endpoints for chat, models, vault, and plan inspection. |
+| [`handlers/`](src/handlers/) | The HTTP routes other than CEP: chat (`/v1/chat/completions`, `/api/chat`), models (`/v1/models`, `/api/tags`, `/api/pull`), `/v1/embeddings`, `/v1/audio/speech`, `/v1/audio/transcriptions`, `/v1/ingest`, `/health` (`src/routes.rs:34-62`). |
 | [`utils/`](src/utils/) | HTTP response wrappers, error encoders, and SSE streamers. |
 | [`lib.rs`](src/lib.rs) | Starts the server. `forward_load_events` passes the runtime's live chat-model load notices (`cluaiz_runtime::load_events`) to the Engine event bus as `model.load_started`, `model.load_step`, `model.load_retry`, `model.loaded`, `model.load_failed`, `model.load_refused` and `model.unloaded`, so Automation and other listeners see loads started anywhere (chat, CLI, flows). |
 
@@ -381,3 +402,36 @@ flowchart LR
 | [`src/url_resolver.rs`](src/url_resolver.rs) | A URL (http, `data:` base64, or file) as a local temporary file for attachments |
 | [`src/utils/slots.rs`](src/utils/slots.rs) | The model path of a slot (the active chat or vector model in `permission.json`) or of a model id, and capability notes in the log before a request |
 | [`src/handlers/`](src/handlers/README.md), [`src/cep/`](src/cep/README.md), [`src/providers/`](src/providers/README.md), [`src/native/`](src/native/README.md) | Each has its own README |
+
+## Tests
+
+21 contract test files in `tests/` (each starts the router in-process; ignored ones need a model or a
+native package) and unit tests in `src/` (providers 49, chat handlers 20, CEP methods 9, others 9):
+
+| File | Tests (ignored) |
+|---|---|
+| `cep_contract.rs`, `cep_docs.rs`, `cep_system_contract.rs`, `cep_fs_contract.rs`, `cep_exec_contract.rs`, `cep_models_contract.rs`, `cep_tools_contract.rs`, `cep_audio_contract.rs` | 2, 1, 3, 2, 2, 1, 1, 1 |
+| `native_contract.rs` | 5 |
+| `embedding_contract.rs`, `tts_hardening.rs` | 2 (2), 1 (1) |
+| `media_contract.rs`, `media_resource_contract.rs`, `video_contract.rs`, `document_contract.rs`, `processing_contract.rs` | 4 (2), 2, 2 (1), 2 (1), 1 |
+| `ingest_http_contract.rs`, `ingest_models.rs` | 2, 1 (1) |
+| `reasoning_contract.rs`, `mtp_contract.rs` | 3 (1), 1 (1) |
+
+`api` links the runtime and both backends, so these tests build llama.cpp and ONNX Runtime; they were not
+run on 2026-11-21. The dated "Executed ... acceptance" sections above are from 2026-10-14 and 2026-10-15.
+Route behaviour is also exercised by every cloud run (`test/cloud/BENCHMARKS.md`).
+
+## Decisions and why
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| Engine-specific operations are CEP methods on `/v1/cep` (also `/mcp`, the C ABI) | one method set for every transport, with schemas from code and one audit rule (`cep/README.md`) | a REST route per feature |
+| OpenAI and Ollama compatible routes kept as they are | existing client libraries work by changing the base URL | Cluaiz-only routes |
+| `/health` answers without a key | uptime checks keep working when API keys are on | protect every route |
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| `api` tests not in CI and not rerun since the October acceptance sections | the dated results may not hold for the current code | a CI job with the CPU backend, or a recorded run |
+| This README mixes reference text and dated acceptance logs | a reader cannot tell current behaviour from history | move the dated logs to run folders in `test/cloud/runs/` |
