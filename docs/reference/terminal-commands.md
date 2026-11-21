@@ -22,7 +22,7 @@ command and subcommand at once; `cluaiz help <command> all` lists one command's.
 * `model` is an installed id, a `.gguf` path, or an id to download first. If the model is
   missing, `run` downloads it, then loads it.
 * llama.cpp-style flags work: `-c`, `-ngl`, `-fa`, and more.
-* API: `POST /v1/chat/completions` (or `/api/chat`).
+* API: `POST /v1/chat/completions` (OpenAI), or `/api/chat` (Ollama).
 
 ---
 
@@ -67,7 +67,7 @@ command and subcommand at once; `cluaiz help <command> all` lists one command's.
 
 ### `cluaiz serve`
 * Starts the HTTP API on the host and port in `permission.json` (default port 8000).
-* Routes: `/v1/chat/completions`, `/api/chat`, `/v1/embeddings`, `/v1/audio/speech`,
+* Routes: `/v1/chat/completions`, `/api/chat`, `/api/generate`, `/api/embed`, `/v1/embeddings`, `/v1/audio/speech`,
   `/v1/audio/transcriptions`, `/v1/ingest`, `/v1/models`, `/api/tags`, `/api/pull`, `/health`,
   CEP `POST /v1/cep` and MCP `/mcp`. See [API](../api/README.md).
 * `--native-endpoint <pipe>`: a local pipe or socket instead of a TCP port.

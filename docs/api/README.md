@@ -40,7 +40,7 @@ The current middleware bypasses Bearer checks when `api_auth.required` is false.
 
 ## Direct inference and Engine controls
 
-- **Chat:** [POST /v1/chat/completions](./inference/chat_completions.md), with `/api/chat` using the same handler. Which OpenAI fields an installed model honours: [OpenAI compatibility](./inference/openai_compatibility.md).
+- **Chat:** [POST /v1/chat/completions](./inference/chat_completions.md), and Ollama's `/api/chat` and `/api/generate` in Ollama's shape ([Coming from Ollama](../get-started/coming-from-ollama.md)). Which OpenAI fields an installed model honours: [OpenAI compatibility](./inference/openai_compatibility.md).
 - **TTS:** [POST /v1/audio/speech](./inference/audio_speech.md).
 - **STT:** [POST /v1/audio/transcriptions](./inference/audio_transcriptions.md).
 - **Embeddings:** [POST /v1/embeddings](./inference/embeddings.md).

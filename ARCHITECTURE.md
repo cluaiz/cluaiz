@@ -41,7 +41,7 @@ routes. See [docs/api/cep/README.md](docs/api/cep/README.md).
 
 ## 3. How a chat request runs
 
-1. **Route.** `POST /v1/chat/completions` (or `/api/chat`) reaches `api/src/handlers/chat/`.
+1. **Route.** `POST /v1/chat/completions` reaches `api/src/handlers/chat/` (Ollama's `/api/chat` too, through `handlers/ollama.rs`).
 2. **Preflight** (`preflight.rs`) builds the prompt in zones:
    - the system prompt and managed prompts (`engine/core/prompts/*.md`);
    - the project's agent files (`AGENTS.md`, `.agents/rules`, memory), when `project_files` is on;

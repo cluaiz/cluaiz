@@ -9,7 +9,7 @@ The default base URL is `http://127.0.0.1:8000`; use your configured host/port. 
 | Domain | Method | Path | Request → response | Detailed contract |
 |---|---|---|---|---|
 | Chat | POST | `/v1/chat/completions` | `messages` and model controls → chat completion JSON or SSE deltas | [Chat](../api/inference/chat_completions.md) |
-| Chat | POST | `/api/chat` | Same handler and contract as the chat route | [Chat](../api/inference/chat_completions.md) |
+| Chat | POST | `/api/chat`, `/api/generate` | Ollama's request and reply (one JSON object per line when streaming), through the same chat pipeline | [Chat](../api/inference/chat_completions.md) |
 | TTS | POST | `/v1/audio/speech` | `input` text, optional voice/language/model → JSON WAV data URI or audio SSE | [Text to speech](../api/inference/audio_speech.md) |
 | STT | POST | `/v1/audio/transcriptions` | JSON `input_source` or `file` → transcription JSON or token SSE | [Speech to text](../api/inference/audio_transcriptions.md) |
 | Embeddings | POST | `/v1/embeddings` | Text, text batch, or one compatible image input → float vector list | [Embeddings](../api/inference/embeddings.md) |

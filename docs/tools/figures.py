@@ -62,14 +62,14 @@ def model_download() -> Fig:
 
 def from_ollama() -> Fig:
     f = Fig("get-started/from-ollama.png", "Get started · coming from Ollama", "From Ollama to Cluaiz",
-            "The commands map one to one. On the API, use the OpenAI routes: /api/chat answers in OpenAI's shape (run 33).",
+            "The commands map one to one, and the Ollama library works against the Engine's Ollama routes (run 36).",
             height=730)
     rows = [("ollama pull", "cluaiz pull", "Hugging Face GGUF or a catalogue id", "same"),
             ("ollama run · list · rm · show · ps", "cluaiz run · list · rm · show · ps", "show also prints the plan for this machine", "same"),
             ("ollama serve  (port 11434)", "cluaiz serve  (port 8000)", "`CLUAIZ_PORT`, `CLUAIZ_HOST` for one run", "same"),
-            ("POST /api/chat", "POST /v1/chat/completions", "OpenAI request and reply; /api/chat gives the same reply", "differs"),
-            ("POST /api/generate · /api/embed", "/v1/chat/completions · /v1/embeddings", "/api/generate and /api/embed answer 404", "differs"),
-            ("GET /api/tags · POST /api/pull", "the same routes", "Ollama's shape", "same"),
+            ("POST /api/chat", "POST /api/chat", "Ollama's request and reply; streams one JSON object per line", "same"),
+            ("POST /api/generate · /api/embed", "the same routes", "generate as one chat turn; embed through /v1/embeddings", "same"),
+            ("GET /api/ps · POST /api/show", "cluaiz ps · cluaiz show", "these two routes are not there (HTTP 404)", "differs"),
             ("Modelfile", "settings.json and the request", "load settings, samplers, the system message", "differs")]
     marks = {"same": ("circle-check", "white"), "differs": ("triangle-alert", "mid")}
     f.text(0, 0, 400, "OLLAMA", 12, "#8a8a8a", weight=700)
@@ -81,8 +81,8 @@ def from_ollama() -> Fig:
         f.card(f"c{i}", 470, y, 626, 88, b, note, ic, tone, strong=kind == "same" and i == 0, mono=False)
         f.edge(f"o{i}", f"c{i}")
     f.note("Ollama's downloaded model files are not imported; pull the model again from Hugging Face.")
-    f.note("keep_alive: \"5m\", \"30s\", \"1h\" work as in Ollama; a plain number is minutes, not seconds (run 35).", "timer")
-    f.source("Details: docs/get-started/coming-from-ollama.md  ·  Run: test/cloud/runs/2026-11-21-run33-ollama-client-probe")
+    f.note("keep_alive on the Ollama routes works as in Ollama (a number is seconds, \"5m\" a duration); on the OpenAI routes a number is minutes.", "timer")
+    f.source("Details: docs/get-started/coming-from-ollama.md  ·  Run: test/cloud/runs/2026-11-21-run36-ollama-library")
     return f
 
 
@@ -596,12 +596,12 @@ def terminal_screen() -> Fig:
 
 def route_map() -> Fig:
     f = Fig("api/route-map.png", "API · routes", "The HTTP routes of the Engine",
-            "OpenAI clients work as they are; /api/chat answers in the same OpenAI shape. Everything Engine-specific goes through CEP.", height=398)
-    f.card("client", 0, 128, 230, 128, "Client", "", "monitor", "light", chips=["OpenAI library", "curl", "the App"])
+            "OpenAI and Ollama clients work as they are. Everything Engine-specific goes through CEP.", height=398)
+    f.card("client", 0, 128, 230, 128, "Client", "", "monitor", "light", chips=["OpenAI library", "Ollama library", "curl", "the App"])
     f.card("auth", 290, 128, 210, 128, "Auth", "Bearer token when `api_auth.required` is on; `/health` stays open", "lock", "white")
-    routes = [("/v1/chat/completions · /api/chat", "Chat", "message-square"),
+    routes = [("/v1/chat/completions · /api/chat · /api/generate", "Chat (OpenAI and Ollama shapes)", "message-square"),
               ("/v1/models · /api/tags · /api/pull", "Models", "package"),
-              ("/v1/embeddings · /v1/audio/*", "Embeddings and speech", "radio"),
+              ("/v1/embeddings · /api/embed · /v1/audio/*", "Embeddings and speech", "radio"),
               ("/v1/cep · /mcp", "Every Engine-specific method", "network")]
     for i, (path, what, ic) in enumerate(routes):
         f.card(f"r{i}", 570, i * 102, 526, 92, path, what, ic, "white" if i == 3 else "light", strong=i == 3, mono=True)

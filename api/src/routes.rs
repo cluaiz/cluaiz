@@ -35,8 +35,12 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         // CEP: every Engine-specific method (docs/api/cep)
         .route("/v1/cep", post(crate::cep::http::handle).layer(from_fn(attachment_body_limit)))
         // ── 2. External Streaming, Embeddings & Audio API ──
-        .route("/v1/chat/completions", chat.clone())
-        .route("/api/chat", chat)
+        .route("/v1/chat/completions", chat)
+        // Ollama's routes: the same chat and embeddings, in Ollama's request and reply shape
+        .route("/api/chat", post(handlers::ollama::chat).layer(from_fn(attachment_body_limit)))
+        .route("/api/generate", post(handlers::ollama::generate).layer(from_fn(attachment_body_limit)))
+        .route("/api/embed", post(handlers::ollama::embed))
+        .route("/api/version", get(handlers::ollama::version))
         .route(
             "/v1/embeddings",
             post(handlers::embeddings::embeddings_entry).layer(from_fn(attachment_body_limit)),

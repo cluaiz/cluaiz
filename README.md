@@ -39,7 +39,7 @@ scripts and agents memory, tools and workflows on top of them:
 - **MoE models larger than the GPU, and larger than free RAM:** attention stays on the GPU, the experts sit in
   RAM with llama.cpp's MoE GPU cache sized by the planner, and experts that do not fit RAM are read from the
   memory-mapped model file on the disk when used (at the disk's speed; a dedicated SSD prefetch is planned).
-- **APIs** that existing clients already speak (OpenAI-compatible routes; `/api/tags` and `/api/pull` for Ollama), plus CEP, one
+- **APIs** that existing clients already speak (OpenAI-compatible routes, and Ollama's chat, generate, embed, tags and pull routes), plus CEP, one
   JSON-RPC 2.0 protocol for everything engine-specific, over HTTP, MCP or a C library.
 - **Cloud providers** beside local models, through the same APIs.
 - **Memory and projects:** project rules, notes kept between conversations that become memory only when you
@@ -197,7 +197,7 @@ Not included yet: the OCR pack and a persistent vector index. Details:
 
 | Route | Purpose |
 | :--- | :--- |
-| `POST /v1/chat/completions`, `POST /api/chat` | Chat, streaming or not, with tools, images, audio and documents |
+| `POST /v1/chat/completions`, `POST /api/chat` (Ollama's shape) | Chat, streaming or not, with tools, images, audio and documents |
 | `POST /v1/embeddings` | Text and image embeddings |
 | `POST /v1/audio/speech`, `POST /v1/audio/transcriptions` | Text-to-speech, speech-to-text |
 | `POST /v1/ingest` | Document to text or vectors |

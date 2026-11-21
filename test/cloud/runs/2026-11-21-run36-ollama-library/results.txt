@@ -1,0 +1,26 @@
+ollama library 0.6.1 (python -c "import importlib.metadata as m; print(m.version('ollama'))")
+
+### 1 chat, not streaming
+content='hello' done=True done_reason=stop eval_count=1 prompt_eval_count=19
+
+### 2 chat, streaming (the library's default for stream=True)
+chunks=26 text='From 1 to 5, one number per line, the sequence is:\n\n1  \n2  \n3  \n4  \n5' final done=True done_reason=stop eval_count=25
+
+### 3 chat with think=True
+thinking=765 chars, content='2 + 3 = 5.'
+
+### 4 chat with format=json
+content='{\n  "city": "Paris"\n}' parses=True
+
+### 5 generate with a system text
+response='yes' done=True
+
+### 6 list (/api/tags)
+['qwen3-0.6b-gguf-Q4_K_M']
+
+### 7 /api/version
+{"version":"0.1.0"}
+
+### 8 embed with a chat model (no embedding model installed)
+ERROR ResponseError: Selected model does not declare an embedding task (status code: 400)
+

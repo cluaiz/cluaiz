@@ -204,7 +204,7 @@ These are not `cluaiz` commands. They run in the repository.
 | `POST` | `/v1/ingest` | Direct document/image extraction with optional selected-model processing |
 | `POST` | `/v1/cep` | Engine control operations, as JSON-RPC 2.0 methods (`system.info`, `models.load`, `config.set`, `fs.*`, `memory.*`, …). See [docs/api/cep](../api/cep/README.md) |
 | `POST` | `/mcp` | The same methods for MCP clients (read-only) |
-| `POST` | `/v1/chat/completions`, `/api/chat` | Chat, streaming. Both take the OpenAI request and answer in OpenAI's shape ([Coming from Ollama](../get-started/coming-from-ollama.md)) |
+| `POST` | `/v1/chat/completions`, `/api/chat`, `/api/generate` | Chat, streaming: OpenAI's shape, and Ollama's on the `/api/` routes ([Coming from Ollama](../get-started/coming-from-ollama.md)) |
 | `POST` | `/v1/embeddings` | Embeddings (OpenAI) |
 | `POST` | `/v1/audio/speech`, `/v1/audio/transcriptions` | Text-to-speech and speech-to-text (OpenAI) |
 | `GET` | `/v1/models`, `/api/tags` | Installed models (OpenAI / Ollama) |

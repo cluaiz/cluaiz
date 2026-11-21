@@ -6,7 +6,7 @@ This folder holds direct inference, document extraction and compatibility routes
 
 ```mermaid
 graph LR
-    Client["OpenAI clients (also on /api/chat)"] --> Router["routes.rs"]
+    Client["OpenAI and Ollama clients"] --> Router["routes.rs"]
     Router --> Chat["chat/: /v1/chat/completions, /api/chat"]
     Router --> Ingest["ingest/: /v1/ingest"]
     Ingest --> Emb["embeddings.rs: shared EmbeddingExecutor"]
@@ -22,7 +22,8 @@ graph LR
 
 | File | Routes | Shared with CEP |
 |---|---|---|
-| `chat/` | `/v1/chat/completions`, `/api/chat` | The whole chat pipeline. Both routes take the OpenAI request and answer in OpenAI's shape (run 33: an Ollama client cannot parse `/api/chat`). `chat.*`, `memory.*`, `context.*` and `approvals.*` call into `chat/recall.rs`, `chat/authorize.rs`, `chat/context_plan.rs` and `chat/background.rs`. |
+| `ollama.rs` | `/api/chat`, `/api/generate`, `/api/embed`, `/api/version` | Ollama's request turned into the OpenAI request of `chat/` or `embeddings.rs`, and the answer turned back: one object, or one JSON object per line when streaming (Ollama's default). Ollama's `keep_alive` number is seconds; it is turned into the Engine's minutes. Unit tests in the file; the Ollama Python library 0.6.1 against it in run 36. |
+| `chat/` | `/v1/chat/completions` (and `/api/chat` through `ollama.rs`) | The whole chat pipeline. `chat.*`, `memory.*`, `context.*` and `approvals.*` call into `chat/recall.rs`, `chat/authorize.rs`, `chat/context_plan.rs` and `chat/background.rs`. |
 | `ingest/` (`mod.rs`, `model.rs`) | `/v1/ingest` | Shared document extraction/source resolution and existing embedding/native model owners; direct final JSON, not a CEP task |
 | `embeddings.rs` | `/v1/embeddings` | `EmbeddingExecutor` is reused by `/v1/ingest` with a model |
 | `audio.rs` (+ `audio_types.rs`, `audio_tests.rs`) | `/v1/audio/speech`, `/v1/audio/transcriptions` | One dispatch for the standard routes and `audio.run`; `audio.voices` / `audio.languages` use its model selection |
@@ -42,6 +43,6 @@ Rules for this folder:
 
 | Item | Why it matters | Needs |
 |---|---|---|
-| `/api/chat` has no Ollama request or reply mapping | Ollama libraries cannot use it (run 33) | a mapping in `chat/`, or drop the alias |
+| `/api/ps` and `/api/show` are not there | Ollama tools that call them get 404 | map them to `system.ps` and `models.inspect` |
 | `/api/tags` `parameter_size: Unknown` when the registry has no count | an empty size class in Ollama clients | the GGUF parameter count in the registry |
 | OpenAI fields ignored on installed models (`n`, `logprobs`, `logit_bias`) | clients get a different result without an error (run 32) | read them in `chat/types.rs` and pass them to llama.cpp |

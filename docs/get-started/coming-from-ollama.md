@@ -1,12 +1,13 @@
 # Coming from Ollama
 
 If you use Ollama today, most of what you know carries over: the same kind of model files (GGUF,
-run by llama.cpp), the same command names and a local HTTP server. This page lists what is the
-same, what is different, and what to change in your code. Each API difference below was checked
-in [run 33](../../test/cloud/runs/2026-11-21-run33-ollama-client-probe/SUMMARY.md) (Engine 0.1.0,
-Windows, Qwen3-0.6B).
+run by llama.cpp), the same command names, and Ollama's own chat, generate, embed and model routes,
+so the Ollama libraries work by pointing them at the Engine. This page lists what is the same, what
+is different, and what to change. The API behaviour was checked with the official Ollama Python
+library in [run 36](../../test/cloud/runs/2026-11-21-run36-ollama-library/SUMMARY.md) (library 0.6.1,
+Engine 0.1.0, Windows, Qwen3-0.6B).
 
-![Ollama commands and routes next to their Cluaiz equivalents: the commands map one to one, chat moves to /v1/chat/completions, /api/generate and /api/embed answer 404, /api/tags and /api/pull work, a Modelfile becomes settings.json and request fields](../assets/get-started/from-ollama.png)
+![Ollama commands and routes next to their Cluaiz equivalents: the commands map one to one; /api/chat, /api/generate, /api/embed, /api/tags, /api/pull and /api/version answer in Ollama's shape; /api/ps and /api/show are not there; a Modelfile becomes settings.json and request fields](../assets/get-started/from-ollama.png)
 
 ## Commands
 
@@ -44,47 +45,53 @@ downloading](model-downloading.md).
 
 ## API: what to change in your code
 
-**Chat.** Send OpenAI requests to `POST /v1/chat/completions`. Any OpenAI client library works by
-setting its base URL to `http://localhost:8000/v1` ([OpenAI compatibility](../api/inference/openai_compatibility.md)).
+**With the Ollama library:** only the address and, when keys are on, the token.
 
 ```python
-from openai import OpenAI
+import ollama
 
-client = OpenAI(base_url="http://localhost:8000/v1", api_key="unused")  # a token when keys are on
-reply = client.chat.completions.create(
-    model="qwen3-0.6b-gguf-Q4_K_M",          # the ID from `cluaiz list`
-    messages=[{"role": "user", "content": "Hello"}],
-)
-print(reply.choices[0].message.content)
+client = ollama.Client(host="http://localhost:8000",
+                       headers={"Authorization": "Bearer sk-cluaiz-..."})  # only when keys are on
+reply = client.chat(model="qwen3-0.6b-gguf-Q4_K_M",  # the ID from `cluaiz list`
+                    messages=[{"role": "user", "content": "Hello"}])
+print(reply.message.content)
 ```
 
-`POST /api/chat` exists, but it is the same handler as `/v1/chat/completions`: it takes the OpenAI
-request and answers in OpenAI's shape (`choices[0].message`, not Ollama's `message` and `done`). It
-does not stream unless `stream: true` is sent, and then it streams Server-Sent Events, not Ollama's
-one JSON object per line. The Ollama Python and JavaScript libraries expect Ollama's shape, so their
-`chat()` calls do not work against Cluaiz today.
+What run 36 checked with that library: `chat` (one reply, and streaming, which the library reads line
+by line), `think=True` (the thinking arrives in `message.thinking`), `format="json"`, `generate` with a
+system text, `list`, and `/api/version`. `done_reason`, `eval_count` and `prompt_eval_count` are filled
+from the Engine's own counts.
 
-| Ollama route | In Cluaiz (run 33) | Use instead |
-|---|---|---|
-| `POST /api/chat` | HTTP 200 in OpenAI's shape | `POST /v1/chat/completions` |
-| `POST /api/generate` | HTTP 404 | `POST /v1/chat/completions` with one user message |
-| `POST /api/embed`, `/api/embeddings` | HTTP 404 | `POST /v1/embeddings` ([Embeddings](../api/inference/embeddings.md)) |
-| `GET /api/tags` | HTTP 200 in Ollama's shape | works; `modified_at` is the model file's change time (run 35) |
-| `POST /api/pull` | Ollama's request | works ([Pull a model](../api/models/pull_model.md)) |
-| `GET /api/ps` | HTTP 404 | CEP `system.ps`, or `cluaiz ps` |
-| `POST /api/show` | HTTP 404 | CEP `models.inspect`, or `cluaiz show` |
-| `GET /api/version` | HTTP 404 | `GET /health` returns the version |
+| Ollama route | In Cluaiz |
+|---|---|
+| `POST /api/chat` | Ollama's request and reply; streams by default, one JSON object per line (run 36) |
+| `POST /api/generate` | the prompt (and `system`) as one chat turn; the answer in `response` (run 36) |
+| `POST /api/embed` | `{"model", "input"}` to `{"model", "embeddings"}` through `/v1/embeddings`; needs an embedding model ([Embeddings](../api/inference/embeddings.md)) |
+| `GET /api/tags` | the installed models; `modified_at` is the model file's change time (run 35) |
+| `POST /api/pull` | Ollama's request ([Pull a model](../api/models/pull_model.md)) |
+| `GET /api/version` | this Engine's version (`0.1.0`), not an Ollama version |
+| `GET /api/ps`, `POST /api/show`, `/api/embeddings` (the old route), `/api/create`, `/api/copy`, `/api/delete`, `/api/push` | not there (HTTP 404). Use `cluaiz ps`, `cluaiz show`, `cluaiz rm`, or CEP `system.ps`, `models.inspect`, `models.remove` |
 
-**Request fields.**
+**With an OpenAI library:** send OpenAI requests to `POST /v1/chat/completions` with the base URL
+`http://localhost:8000/v1` ([OpenAI compatibility](../api/inference/openai_compatibility.md)).
+
+**Request fields** on the Ollama routes:
 
 | Ollama field | In Cluaiz |
 |---|---|
-| `options.temperature`, `options.top_p`, `options.seed` | top-level `temperature`, `top_p`, `seed` (OpenAI names); `options` is ignored |
-| `options.num_predict` | `max_tokens` |
-| `options.num_ctx` | `llama.n_ctx` in the request, or `optimization.custom_context_window` in settings; by default the planner chooses the context from free memory |
-| `think: false` | `think_mode: "off"`; `think` is ignored (run 33: the model still thought) |
-| `keep_alive: "5m"` | the same string works (`"30s"`, `"5m"`, `"1h"`); a plain number is minutes, not seconds as in Ollama; `0` unloads after the answer (run 35) |
-| `format: "json"` or a schema | `response_format` (OpenAI form) |
+| `options.temperature`, `top_p`, `top_k`, `min_p`, `seed`, `presence_penalty`, `frequency_penalty`, `repeat_penalty`, `stop` | used, under the Engine's names |
+| `options.num_predict` | the answer limit (`-1` = no limit) |
+| `options.num_ctx` | the context size of this load (`llama.n_ctx`); without it the planner chooses from free memory |
+| other `options` (for example `num_gpu`, `num_thread`, `mirostat`) | ignored; load settings are in `settings.json` or the `llama` object of `/v1/chat/completions` |
+| `think`: `true`, `false` or a level | thinking on or off; a level (`low`, `medium`, `high`) sets the thinking budget |
+| `format`: `"json"` or a JSON schema | the answer is held to it by a grammar |
+| `keep_alive` | as in Ollama: a number is seconds, a string a duration (`"5m"`). On the OpenAI routes a number means minutes |
+| `images` (base64) | sent to a vision model as images |
+| `tools`, `tool_calls` | passed through; the model's calls come back in `message.tool_calls` |
+| `raw`, `suffix`, `context` (generate) | ignored |
+
+Not tested in run 36: `num_ctx`, `images`, `tools` and `/api/embed` with an embedding model (the run
+had only a chat model, and `/api/embed` refused it with HTTP 400, as `/v1/embeddings` does).
 
 ## Modelfile settings
 
@@ -113,6 +120,7 @@ speed settings](../engine/llm_optimization.md).
 
 ## Not available yet
 
-- An Ollama-shaped reply on `/api/chat`, `/api/generate`, `/api/embed`, `/api/ps`, `/api/show`.
+- `/api/ps`, `/api/show` and the model-management routes (`create`, `copy`, `delete`, `push`).
 - Importing models from Ollama's store.
 - A Modelfile or saved model variants.
+- The Ollama JavaScript library was not tested; it reads the same replies as the Python library.

@@ -18,7 +18,8 @@ per-extension authorization boundary.
 graph LR
     C["Client"] --> R["routes.rs<br/>auth middleware (api/src/auth.rs)"]
     R --> H["/health (no key)"]
-    R --> OAI["/v1/chat/completions, /api/chat<br/>handlers/chat"]
+    R --> OAI["/v1/chat/completions<br/>handlers/chat"]
+    R --> OLL["/api/chat, /api/generate, /api/embed<br/>handlers/ollama.rs"] --> OAI
     R --> M["/v1/models, /api/tags, /api/pull<br/>handlers/models.rs"]
     R --> E["/v1/embeddings"]
     R --> A["/v1/audio/speech, /v1/audio/transcriptions"]
@@ -31,9 +32,11 @@ graph LR
 ```
 
 New Engine features are CEP methods, not new HTTP routes; the HTTP routes are OpenAI's (chat,
-models, embeddings, audio), three Ollama-named routes (`/api/chat`, `/api/tags`, `/api/pull`), `/health`
-and `/v1/ingest`. `/api/chat` is the same handler as `/v1/chat/completions`: it takes the OpenAI request
-and answers in OpenAI's shape, so Ollama's own libraries cannot parse it (run 33).
+models, embeddings, audio), Ollama's (`/api/chat`, `/api/generate`, `/api/embed`, `/api/tags`,
+`/api/pull`, `/api/version`), `/health` and `/v1/ingest`. The Ollama chat, generate and embed routes
+(`handlers/ollama.rs`) turn Ollama's request into the OpenAI request the chat and embeddings handlers
+take, and their answer back into Ollama's shape; the official Ollama Python library worked against them
+in run 36.
 
 ![The HTTP routes: clients pass the auth check, then chat, models, embeddings and speech, or CEP for every Engine-specific method](../docs/assets/api/route-map.png)
 
@@ -300,7 +303,7 @@ graph TD
 
 | Module | Responsibility |
 |---|---|
-| [`handlers/`](src/handlers/) | The HTTP routes other than CEP: chat (`/v1/chat/completions`, `/api/chat`), models (`/v1/models`, `/api/tags`, `/api/pull`), `/v1/embeddings`, `/v1/audio/speech`, `/v1/audio/transcriptions`, `/v1/ingest`, `/health` (`src/routes.rs:34-62`). |
+| [`handlers/`](src/handlers/) | The HTTP routes other than CEP: chat (`/v1/chat/completions`), Ollama (`/api/chat`, `/api/generate`, `/api/embed`, `/api/version` in `ollama.rs`), models (`/v1/models`, `/api/tags`, `/api/pull`), `/v1/embeddings`, `/v1/audio/speech`, `/v1/audio/transcriptions`, `/v1/ingest`, `/health` (`src/routes.rs:34-62`). |
 | [`utils/`](src/utils/) | HTTP response wrappers, error encoders, and SSE streamers. |
 | [`lib.rs`](src/lib.rs) | Starts the server. `forward_load_events` passes the runtime's live chat-model load notices (`cluaiz_runtime::load_events`) to the Engine event bus as `model.load_started`, `model.load_step`, `model.load_retry`, `model.loaded`, `model.load_failed`, `model.load_refused` and `model.unloaded`, so Automation and other listeners see loads started anywhere (chat, CLI, flows). |
 
@@ -315,7 +318,7 @@ graph TD
 
 ## Native image/audio chat contract
 
-- **Routes:** `POST /v1/chat/completions` and its existing `/api/chat` alias use the same handler for text and supported native multimodal chat. No backend-specific chat URL is added. An explicit missing model returns an error; an image does not substitute another slot model.
+- **Routes:** `POST /v1/chat/completions` is the chat handler for text and supported native multimodal chat; Ollama's `/api/chat` and `/api/generate` reach it through `handlers/ollama.rs`. No backend-specific chat URL is added. An explicit missing model returns an error; an image does not substitute another slot model.
 - **Parts:** a message's existing `content` array accepts `text`, `image_url: {url}`, `audio_url: {url}`, `input_audio: {format, data}` with base64 data, and additive `file_url: {url}` for document extraction. URL sources can be HTTP(S), data URIs or authorized local paths/file URIs. Inline audio format hints use the MIME registry. Source decoding preserves message/part ordering. These are Cluaiz request forms, not a claim of full OpenAI upload/file-ID compatibility.
 - **Model contract:** selected GGUF image/audio chat requires the declared modality and one compatible projector validated by the native backend. A document is extracted into actual text; a text-only GGUF does not need a projector for that request. Typed ONNX chat media and video remain unavailable. Selecting an unsupported model returns an error without an automatic backend/model substitution.
 - **Local access:** a standard route runs as the authenticated owner; local paths are canonicalized (`cep::roots`) before they are read. Tool calls the model makes still go through the agent's security mode and `approvals.*`.
@@ -404,7 +407,7 @@ flowchart LR
 |---|---|
 | [`src/boot.rs`](src/boot.rs) | One start for every way the Engine runs: the HTTP / native-pipe daemon (`boot`) and the in-process C library (`boot_in_process`, for `cep_call`) |
 | [`src/state.rs`](src/state.rs) | `AppState`: the `EngineHost`, the open workspace folder, the session token for local clients, `permission.json` in RAM, and the CEP engine |
-| [`src/routes.rs`](src/routes.rs) | The HTTP routes: the OpenAI routes, `/api/chat` (same handler), `/api/tags`, `/api/pull`, `/health`, `/v1/ingest`, and CEP (`/v1/cep`, `/mcp`); request body limits (`inline_body_bytes`) |
+| [`src/routes.rs`](src/routes.rs) | The HTTP routes: the OpenAI routes, Ollama's routes (`handlers/ollama.rs`, `/api/tags`, `/api/pull`), `/health`, `/v1/ingest`, and CEP (`/v1/cep`, `/mcp`); request body limits (`inline_body_bytes`) |
 | [`src/update.rs`](src/update.rs) | Is a newer release out: one request to the GitHub releases list of `cluaiz/cluaiz` (pre-releases included), the same source the installers read; used by `cluaiz self update` and `system.update_check` |
 | [`src/url_resolver.rs`](src/url_resolver.rs) | A URL (http, `data:` base64, or file) as a local temporary file for attachments |
 | [`src/utils/slots.rs`](src/utils/slots.rs) | The model path of a slot (the active chat or vector model in `permission.json`) or of a model id, and capability notes in the log before a request |
@@ -441,7 +444,7 @@ Route behaviour is also exercised by every cloud run (`test/cloud/BENCHMARKS.md`
 | Item | Why it matters | Needs |
 |---|---|---|
 | `n`, `logprobs`, `logit_bias` are ignored on an installed model (`stop` and `max_completion_tokens` work since run 34) | OpenAI clients send them and get a different result without an error (run 32) | read them in `handlers/chat` and pass them to llama.cpp |
-| `/api/chat` answers in OpenAI's shape; `/api/generate`, `/api/embed`, `/api/ps`, `/api/show`, `/api/version` are 404 | Ollama libraries and tools do not work, though the routes carry Ollama's names (run 33) | an Ollama request and reply mapping, or say OpenAI-only and drop the alias |
+| `/api/ps`, `/api/show` and Ollama's model-management routes are not there | tools that list running models or show model details through Ollama's API get 404 | map them to `system.ps` and `models.inspect` |
 | `/api/tags` sends `parameter_size: Unknown` when the registry has no parameter count | Ollama clients show an empty size class | the GGUF parameter count in the registry |
 | `api` tests not in CI and not rerun since the October acceptance sections | the dated results may not hold for the current code | a CI job with the CPU backend, or a recorded run |
 | This README mixes reference text and dated acceptance logs | a reader cannot tell current behaviour from history | move the dated logs to run folders in `test/cloud/runs/` |
