@@ -233,13 +233,15 @@ async fn test_workspace_set_reuses_existing_agent_workspace_owner() {
     let old = f.ok("workspace.get", json!({})).await;
     assert!(Path::new(old["path"].as_str().unwrap()).is_dir());
     let result = f.ok("workspace.set", json!({"path":"next"})).await;
-    let actual = fs::canonicalize(f.root.path().join("next")).unwrap();
+    // The reply shows the plain path; inside, the Engine keeps the canonical form (on Windows with the
+    // `\\?\` prefix that `fs::canonicalize` adds). Both must name the same folder.
+    let actual = plain(fs::canonicalize(f.root.path().join("next")).unwrap());
     assert_eq!(
-        fs::canonicalize(result["path"].as_str().unwrap()).unwrap(),
+        plain(fs::canonicalize(result["path"].as_str().unwrap()).unwrap()),
         actual
     );
-    assert_eq!(*f.ctx.state.current_workspace_dir.read().await, actual);
-    assert_eq!(cluaiz_agents::ToolsEngine::workspace_dir(), actual);
+    assert_eq!(plain(f.ctx.state.current_workspace_dir.read().await.clone()), actual);
+    assert_eq!(plain(cluaiz_agents::ToolsEngine::workspace_dir()), actual);
     assert_eq!(f.ok("workspace.get", json!({})).await, result);
 }
 
@@ -296,7 +298,12 @@ async fn test_discovery_has_all_ten_methods_and_scope_metadata() {
     assert_eq!(picker["x-cep"]["owner_only"], true);
     assert_eq!(picker["x-cep"]["mcp"], false);
     let workspace = f.ok("rpc.discover", json!({"group":"workspace"})).await;
-    assert_eq!(workspace["methods"].as_array().unwrap().len(), 2);
+    let mut names: Vec<&str> = workspace["methods"].as_array().unwrap().iter().filter_map(|m| m["name"].as_str()).collect();
+    names.sort_unstable();
+    assert_eq!(
+        names,
+        ["workspace.forget", "workspace.get", "workspace.index", "workspace.item", "workspace.memory", "workspace.remember", "workspace.set"]
+    );
 }
 
 #[tokio::test]
@@ -401,4 +408,13 @@ async fn test_review_approved_directory_copy_authorizes_the_tree_once() {
         fs::read_to_string(f.root.path().join("copied-tree/nested/two.txt")).unwrap(),
         "two"
     );
+}
+
+/// A canonical path without Windows' verbatim `\\?\` prefix (unchanged elsewhere)
+fn plain(path: std::path::PathBuf) -> std::path::PathBuf {
+    let text = path.to_string_lossy();
+    match text.strip_prefix(r"\\?\") {
+        Some(rest) if !rest.starts_with("UNC") => std::path::PathBuf::from(rest),
+        _ => path,
+    }
 }
