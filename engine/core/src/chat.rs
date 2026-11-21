@@ -36,6 +36,9 @@ pub struct ChatEnvelope<Content = String> {
     /// Native tool schemas survive text/media conversion; omitted for callers without tools.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tools: Option<serde_json::Value>,
+    /// OpenAI `stop`: the answer ends before the first of these strings; empty = none
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub stop: Vec<String>,
 }
 
 impl ChatEnvelope {
@@ -65,6 +68,7 @@ impl<Content> ChatEnvelope<Content> {
             grammar: self.grammar,
             response_format: self.response_format,
             tools: self.tools,
+            stop: self.stop,
         })
     }
 }
@@ -496,6 +500,7 @@ mod tests {
             grammar: None,
             response_format: None,
             tools: None,
+            stop: Vec::new(),
         };
         let v: serde_json::Value = serde_json::from_str(&env.to_prompt()).unwrap();
         assert_eq!(v["messages"][0]["content"], "hi");

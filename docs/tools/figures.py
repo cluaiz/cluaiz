@@ -721,11 +721,10 @@ def thinking_close() -> Fig:
 
 def openai_fields() -> Fig:
     f = Fig("api/openai-fields.png", "API · OpenAI compatibility", "OpenAI chat fields on an installed model",
-            "stop, max_completion_tokens and n were recorded in run 32 (Engine 0.1.0, Qwen3-0.6B). stop and logit_bias reach provider models only.", height=360)
-    ok = ["messages, stream", "max_tokens", "temperature, top_p, seed", "frequency and presence penalty",
-          "response_format (JSON, JSON schema)", "tools, tool_choice", "reasoning_effort"]
-    no = [("stop", "ignored; a single string gets HTTP 422"), ("max_completion_tokens", "ignored; use max_tokens"),
-          ("n", "always one choice"), ("logprobs, top_logprobs", "ignored"), ("logit_bias", "ignored")]
+            "stop and max_completion_tokens work since run 34; n was recorded in run 32 (Engine 0.1.0, Qwen3-0.6B). logit_bias reaches provider models only.", height=400)
+    ok = ["messages, stream", "max_tokens, max_completion_tokens", "stop (a string or a list)", "temperature, top_p, seed",
+          "frequency and presence penalty", "response_format (JSON, JSON schema)", "tools, tool_choice", "reasoning_effort"]
+    no = [("n", "always one choice"), ("logprobs, top_logprobs", "ignored"), ("logit_bias", "ignored")]
 
     def column(x, head, ic, items, strong):
         border = "border:1.5px solid #f2f2f2;" if strong else "border:1px solid rgba(255,255,255,.1);"
@@ -735,7 +734,7 @@ def openai_fields() -> Fig:
             f'<span class="mono" style="font-size:13.4px;color:#efefef">{esc(a)}</span>'
             + (f'<span style="font-size:13px;color:#a3a3a3;margin-left:auto;text-align:right">{esc(b)}</span>' if b else "") + '</div>'
             for a, b in items)
-        return (f'<div style="position:absolute;left:{x}px;top:0;width:530px;min-height:360px;border-radius:14px;padding:18px 20px;'
+        return (f'<div style="position:absolute;left:{x}px;top:0;width:530px;min-height:400px;border-radius:14px;padding:18px 20px;'
                 f'background:#131313;{border}"><div style="display:flex;gap:10px;align-items:center;font-size:17px;font-weight:700;'
                 f'margin-bottom:10px"><span class="ic" style="--t:#ffffff">{icon(ic)}</span>{head}</div>{rows}</div>')
 

@@ -433,14 +433,14 @@ Route behaviour is also exercised by every cloud run (`test/cloud/BENCHMARKS.md`
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | Engine-specific operations are CEP methods on `/v1/cep` (also `/mcp`, the C ABI) | one method set for every transport, with schemas from code and one audit rule (`cep/README.md`) | a REST route per feature |
-| OpenAI routes kept as OpenAI defines them | OpenAI client libraries work by changing the base URL (fields an installed model ignores: run 32) | Cluaiz-only routes |
+| OpenAI routes kept as OpenAI defines them | OpenAI client libraries work by changing the base URL (fields an installed model ignores: run 32; `stop` and `max_completion_tokens` fixed in run 34) | Cluaiz-only routes |
 | `/health` answers without a key | uptime checks keep working when API keys are on | protect every route |
 
 ## Pending
 
 | Item | Why it matters | Needs |
 |---|---|---|
-| `stop`, `max_completion_tokens`, `n`, `logprobs`, `logit_bias` are ignored on an installed model; a string `stop` is HTTP 422 | OpenAI clients send them and get a different result without an error (run 32) | read them in `handlers/chat` and pass them to llama.cpp |
+| `n`, `logprobs`, `logit_bias` are ignored on an installed model (`stop` and `max_completion_tokens` work since run 34) | OpenAI clients send them and get a different result without an error (run 32) | read them in `handlers/chat` and pass them to llama.cpp |
 | `/api/chat` answers in OpenAI's shape; `/api/generate`, `/api/embed`, `/api/ps`, `/api/show`, `/api/version` are 404; `keep_alive` takes only minutes as a number | Ollama libraries and tools do not work, though the routes carry Ollama's names (run 33) | an Ollama request and reply mapping, or say OpenAI-only and drop the alias |
 | `/api/tags` writes a fixed `modified_at` (`2026-10-08T00:00:00Z`) and `parameter_size: Unknown` | a reply carries invented data (`handlers/models.rs:96`, run 33) | the file's date and the GGUF parameter count |
 | `api` tests not in CI and not rerun since the October acceptance sections | the dated results may not hold for the current code | a CI job with the CPU backend, or a recorded run |

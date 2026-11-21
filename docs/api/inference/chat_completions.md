@@ -47,6 +47,12 @@ params:
     default: "until the model ends or the context is full (`2048` with attachments)"
     allowed: "$\\ge 1$"
     desc: "Maximum number of completion tokens to generate. Also the room kept free for the answer when the history is fitted; see Context window."
+  - name: "max_completion_tokens"
+    type: "Integer"
+    req: false
+    default: "null"
+    allowed: "$\ge 1$"
+    desc: "OpenAI's newer name for max_tokens; used when max_tokens is not sent."
   - name: "think_mode"
     type: "String / Integer"
     req: false
@@ -114,11 +120,11 @@ params:
     allowed: "$\\ge 0.0$"
     desc: "Penalizes new tokens based on their frequency in the text so far."
   - name: "stop"
-    type: "Array"
+    type: "String or Array"
     req: false
     default: "null"
-    allowed: "Array of strings"
-    desc: "Strings that end the answer. Applied only to provider models today; an installed model ignores it, and a single string is refused with HTTP 422 (run 32)."
+    allowed: "A string or an array of strings"
+    desc: "The answer ends before the first of these strings; the string itself is not sent and `finish_reason` is `stop`. Applies to the answer, not to thinking. Installed and provider models (run 34)."
   - name: "seed"
     type: "Integer"
     req: false
@@ -367,6 +373,7 @@ flowchart LR
 | **`stream_options`** | Object | No | - | `{"include_usage": true}` | With `stream: true`, `include_usage: true` adds a last chunk with empty `choices` and the `usage` object (as OpenAI does). The owner's stream telemetry setting also turns this chunk on and adds the context breakdown to it. |
 | **`return_progress`** | Boolean | No | `false` | `true`, `false` | With `stream:true`, adds separate `event: cluaiz.progress` observations starting before model/source preparation. Completion chunks remain unchanged. Ignored for non-streaming responses. |
 | **`temperature`** | Float | No | `0.7` | `0.0 - 2.0` | Sampling temperature. Lower values (0.0) force factual logic; higher values increase variety. |
+| **`max_completion_tokens`** | Integer | No | - | $\ge 1$ | OpenAI's newer name for `max_tokens`; used when `max_tokens` is not sent (run 34). |
 | **`max_tokens`** | Integer | No | until the model ends or the context is full (`2048` with attachments) | $\ge 1$ | Maximum number of answer tokens to generate. Thinking is limited separately by `reasoning_effort`, so with a thinking model `usage.completion_tokens` (answer plus thinking) can be larger than `max_tokens`. Also the room kept free for the answer when the history is fitted; see [Context window](#context-window--context-shifting). |
 | **`think_mode`** | String / Integer | No | `"auto"` | `"auto"`, `"off"`, `"on"`, or integer (e.g. `768`) | Controls Chain-of-Thought reasoning token emission and budget. |
 | **`reasoning_effort`** | String or Integer | No | `"auto"` | `"low"`, `"medium"`, `"high"`, `"max"`, `"auto"`, or a number of thinking tokens | Thinking budget; see [Reasoning Budget Levels](#reasoning-budget-levels-think_mode--reasoning_effort). |

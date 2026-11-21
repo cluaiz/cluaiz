@@ -3,7 +3,8 @@
 Cluaiz serves OpenAI's chat, models, embeddings and audio routes, so an OpenAI client library works by
 pointing its base URL at the Engine. This page lists which request fields an installed (llama.cpp) model
 honours, which it ignores, and what Cluaiz adds. Everything marked "recorded" was checked in run 32
-(`test/cloud/runs/2026-11-21-run32-openai-compat-probe/`, Engine 0.1.0, Windows, Qwen3-0.6B).
+(`test/cloud/runs/2026-11-21-run32-openai-compat-probe/`, Engine 0.1.0, Windows, Qwen3-0.6B) or, after the fix, run 34
+(`test/cloud/runs/2026-11-21-run34-openai-stop-and-limit/`).
 
 ## Connect a client
 
@@ -34,7 +35,7 @@ Python example above was not run in run 32 (the requests there used `curl`).
 
 ## Chat request fields on an installed model
 
-![OpenAI chat fields an installed model honours, and the ones it ignores today: stop, max_completion_tokens, n, logprobs, logit_bias](../../assets/api/openai-fields.png)
+![OpenAI chat fields an installed model honours, including stop and max_completion_tokens, and the ones it ignores today: n, logprobs, logit_bias](../../assets/api/openai-fields.png)
 
 | Field | Honoured | Notes |
 |---|---|---|
@@ -45,8 +46,8 @@ Python example above was not run in run 32 (the requests there used `curl`).
 | `response_format` | yes | JSON or a JSON schema, enforced by a grammar |
 | `tools`, `tool_choice` | yes | `tool_choice: "none"` sends no tools |
 | `reasoning_effort` | yes | `low`, `medium`, `high`, plus `auto`, `max` or a number of tokens |
-| `stop` | **no** (recorded) | an installed model ignores it; only provider models get it. A single string instead of an array is refused with HTTP 422 |
-| `max_completion_tokens` | **no** (recorded) | ignored: a request with `5` produced 576 tokens. Use `max_tokens` |
+| `stop` | yes (recorded) | a string or an array; the answer ends before the first match, `finish_reason: "stop"` (run 34) |
+| `max_completion_tokens` | yes (recorded) | the answer limit when `max_tokens` is not sent; `max_tokens` wins when both are (run 34) |
 | `n` | **no** (recorded) | always one choice |
 | `logprobs`, `top_logprobs` | no | ignored |
 | `logit_bias` | no | only provider models get it |
@@ -85,6 +86,4 @@ request with different load settings reloads the model. (The `extra_body` exampl
 
 The fields marked **no** above are recorded gaps in the Engine, not choices. Until they are fixed:
 
-- send `max_tokens`, not `max_completion_tokens`;
-- do not rely on `stop` with an installed model;
-- send `stop` as an array.
+- do not rely on `n`, `logprobs` or `logit_bias` with an installed model.

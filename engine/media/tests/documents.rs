@@ -113,6 +113,7 @@ async fn test_document_request_prepares_real_text_in_order_and_drops_source() ->
         grammar: None,
         response_format: None,
         tools: None,
+        stop: Vec::new(),
     };
     let resolver = cluaiz_media::source::SourceResolver::new(
         dir.path().to_path_buf(),

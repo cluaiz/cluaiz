@@ -212,6 +212,7 @@ pub async fn generate_embeddings(
                 grammar: None,
                 response_format: None,
                 tools: None,
+                stop: Vec::new(),
             };
             let request = match prepare_authorized_media(
                 &state, request, &settings, false, None, None,

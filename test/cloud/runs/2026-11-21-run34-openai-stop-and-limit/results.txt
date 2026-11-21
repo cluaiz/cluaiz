@@ -1,0 +1,35 @@
+### 1 stop as a string
+HTTP 200
+finish_reason: stop, completion_tokens: 8
+answer: '1  \n2  \n3  \n4  \n'
+
+### 2 stop as a list
+HTTP 200
+finish_reason: stop, completion_tokens: 8
+answer: '1  \n2  \n3  \n4  \n'
+
+### 3 stop with two strings, the later one first in the text
+HTTP 200
+finish_reason: stop, completion_tokens: 4
+answer: '1  \n2  \n'
+
+### 4 stop while streaming
+HTTP 200
+finish_reason: stop
+answer: '1  \n2  \n3  \n4  \n'
+
+### 5 max_completion_tokens 5
+HTTP 200
+finish_reason: length, completion_tokens: 5
+answer: '1  \n2  \n3'
+
+### 6 max_tokens wins over max_completion_tokens
+HTTP 200
+finish_reason: length, completion_tokens: 8
+answer: '1  \n2  \n3  \n4  \n'
+
+### 7 no stop (control)
+HTTP 200
+finish_reason: stop, completion_tokens: 20
+answer: '1  \n2  \n3  \n4  \n5  \n6  \n7  \n8  \n9  \n10'
+

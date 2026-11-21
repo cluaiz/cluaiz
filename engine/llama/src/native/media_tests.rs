@@ -30,6 +30,7 @@ fn request(parts: Vec<PreparedPart>) -> ChatEnvelope<Vec<PreparedPart>> {
         grammar: Some("grammar".into()),
         response_format: None,
         tools: Some(serde_json::json!([])),
+        stop: Vec::new(),
     }
 }
 

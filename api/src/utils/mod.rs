@@ -95,6 +95,7 @@ pub(crate) async fn prepare_authorized_audio(
         grammar: None,
         response_format: None,
         tools: None,
+        stop: Vec::new(),
     };
     let prepared =
         prepare_authorized_media(state, request, settings, false, cancellation, None)

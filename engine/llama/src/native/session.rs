@@ -763,6 +763,7 @@ mod tests {
                 grammar: None,
                 response_format: None,
                 tools: None,
+                stop: Vec::new(),
             };
             let mut prepared = runtime.block_on(cluaiz_media::request::prepare_chat(
                 request,
@@ -820,6 +821,7 @@ mod tests {
             grammar: None,
             response_format: None,
             tools: None,
+            stop: Vec::new(),
         };
         follow_up.messages.push(ChatMessage {
             role: "user".into(),
@@ -893,6 +895,7 @@ mod tests {
             grammar: None,
             response_format: None,
             tools: None,
+            stop: Vec::new(),
         };
         let plain_prompt = serde_json::to_string(&plain)?;
         let text_output = Arc::new(std::sync::Mutex::new(String::new()));
@@ -923,7 +926,7 @@ mod tests {
                 text: "Transcribe the spoken words in this audio. Reply only with the transcript.".into() },
                 cluaiz_core::media::InputPart::Audio { source: url }] }], samplers: plain.samplers,
             think_mode: plain.think_mode, reasoning_effort: plain.reasoning_effort,
-            reasoning_budget_message: None, chat_template_kwargs: None, grammar: None, response_format: None, tools: None };
+            reasoning_budget_message: None, chat_template_kwargs: None, grammar: None, response_format: None, tools: None, stop: Vec::new() };
         let prepared = runtime.block_on(cluaiz_media::request::prepare_chat(
             request,
             &resolver,

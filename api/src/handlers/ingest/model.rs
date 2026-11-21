@@ -433,6 +433,7 @@ async fn vision(
         grammar: None,
         response_format: None,
         tools: None,
+        stop: Vec::new(),
     };
     let maximum = options
         .max_tokens

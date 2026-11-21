@@ -34,7 +34,7 @@ graph TD
 | [`units.rs`](src/units.rs) | Strict `GiB`, `MiB`, `bytes` conversion functions. |
 | [`contracts.rs`](src/contracts.rs) | Standard engine interfaces implemented by `llama` and `onnx`; shared finite L2 embedding normalization rejects empty, zero and non-finite output, and `InvalidEmbeddingInput` distinguishes input rejection from native failure. |
 | [`media.rs`](src/media.rs) | Backend-neutral RGB8 and PCM F32 buffers with layout validation and shared immutable storage. |
-| [`chat.rs`](src/chat.rs) | One message/envelope definition for text and typed content; generation settings survive content preparation. Existing token estimates/history trimming remain text-only. |
+| [`chat.rs`](src/chat.rs) | One message/envelope definition for text and typed content; generation settings survive content preparation. `ChatEnvelope.stop` carries the request's `stop` strings to the runtime (empty = none). Existing token estimates/history trimming remain text-only. |
 | [`media_limits.rs`](src/media_limits.rs) | Single definition of media byte ceilings, errors and default resource guards. |
 | [`processing.rs`](src/processing.rs) | Optional request-scoped backend/transport-neutral stage observations, real work counts, cancellation and source-to-prepared attachment identity. Retains a terminal snapshot for bounded transports; does not infer percentages. |
 | [`prompts.rs`](src/prompts.rs) | Managed prompts: every instruction the Engine itself sends to a model has an id and a default file in [`prompts/`](prompts/) (embedded at build time). `<CLUAIZ_HOME>/prompts/<id>.md` replaces one; replaced texts are kept in `prompts/history/<id>/` (last 20). `{{variable}}` is filled for the variables a prompt declares. CEP: `prompts.*`. |

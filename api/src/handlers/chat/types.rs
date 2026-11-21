@@ -30,6 +30,27 @@ pub enum TemporaryChatMode {
     Strict,
 }
 
+/// OpenAI's `stop` field: a single string or an array of strings
+#[derive(Deserialize, Serialize, Clone, Debug, PartialEq)]
+#[serde(untagged)]
+pub enum StopList {
+    One(String),
+    Many(Vec<String>),
+}
+
+impl StopList {
+    /// The stop strings, empty ones dropped
+    pub fn into_vec(self) -> Vec<String> {
+        match self {
+            StopList::One(s) => vec![s],
+            StopList::Many(v) => v,
+        }
+        .into_iter()
+        .filter(|s| !s.is_empty())
+        .collect()
+    }
+}
+
 #[derive(Deserialize, Clone)]
 pub struct ExternalChatRequest {
     pub model: Option<String>,
@@ -59,11 +80,14 @@ pub struct ExternalChatRequest {
 
     pub temperature: Option<f32>,
     pub max_tokens: Option<usize>,
+    /// OpenAI's current name for the answer limit; `max_tokens` wins when both are sent
+    pub max_completion_tokens: Option<usize>,
     pub top_p: Option<f32>,
     pub top_k: Option<i32>,
     pub frequency_penalty: Option<f32>,
     pub presence_penalty: Option<f32>,
-    pub stop: Option<Vec<String>>,
+    /// OpenAI `stop`: one string or a list of strings
+    pub stop: Option<StopList>,
     pub seed: Option<i64>,
     pub response_format: Option<serde_json::Value>,
     pub chat_template_kwargs: Option<serde_json::Value>,
@@ -349,4 +373,34 @@ pub fn generate_model_header_info() -> Vec<Value> {
     }
 
     loaded_models
+}
+
+impl ExternalChatRequest {
+    /// The answer limit: `max_tokens`, else OpenAI's newer `max_completion_tokens`
+    pub fn answer_limit(&self) -> Option<usize> {
+        self.max_tokens.or(self.max_completion_tokens)
+    }
+}
+
+#[cfg(test)]
+mod openai_field_tests {
+    use super::*;
+
+    fn parse(extra: &str) -> ExternalChatRequest {
+        serde_json::from_str(&format!(r#"{{"messages":[{{"role":"user","content":"hi"}}]{extra}}}"#)).unwrap()
+    }
+
+    #[test]
+    fn stop_takes_a_string_or_a_list() {
+        assert_eq!(parse(r#","stop":"5""#).stop.unwrap().into_vec(), vec!["5"]);
+        assert_eq!(parse(r#","stop":["a","","b"]"#).stop.unwrap().into_vec(), vec!["a", "b"]);
+        assert!(parse("").stop.is_none());
+    }
+
+    #[test]
+    fn max_completion_tokens_is_the_answer_limit_unless_max_tokens_is_sent() {
+        assert_eq!(parse(r#","max_completion_tokens":5"#).answer_limit(), Some(5));
+        assert_eq!(parse(r#","max_completion_tokens":5,"max_tokens":9"#).answer_limit(), Some(9));
+        assert_eq!(parse("").answer_limit(), None);
+    }
 }

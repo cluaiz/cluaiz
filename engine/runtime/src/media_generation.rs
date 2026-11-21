@@ -167,6 +167,7 @@ mod tests {
                 grammar: None,
                 response_format: None,
                 tools: None,
+                stop: Vec::new(),
             };
             let response = host
                 .dispatch_prepared_with_progress(

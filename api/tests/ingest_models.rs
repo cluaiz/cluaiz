@@ -101,6 +101,7 @@ async fn pdf_preparation(pdf: &str, mut settings: cluaiz_core::ActiveUserSetting
         grammar: None,
         response_format: None,
         tools: None,
+        stop: Vec::new(),
     };
     let resolver = cluaiz_media::source::SourceResolver::from_environment(settings.media)?
         .with_document_images(true);

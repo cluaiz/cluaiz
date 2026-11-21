@@ -44,4 +44,4 @@ Rules for this folder:
 |---|---|---|
 | `/api/chat` has no Ollama request or reply mapping | Ollama libraries cannot use it (run 33) | a mapping in `chat/`, or drop the alias |
 | `/api/tags` fixed `modified_at`, `parameter_size: Unknown` | invented data in a reply (run 33) | the file's date and the GGUF parameter count |
-| OpenAI fields ignored on installed models (`stop`, `max_completion_tokens`, `n`, `logprobs`, `logit_bias`) | clients get a different result without an error (run 32) | read them in `chat/types.rs` and pass them to llama.cpp |
+| OpenAI fields ignored on installed models (`n`, `logprobs`, `logit_bias`) | clients get a different result without an error (run 32) | read them in `chat/types.rs` and pass them to llama.cpp |

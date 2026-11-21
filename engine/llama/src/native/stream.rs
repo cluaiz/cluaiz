@@ -101,7 +101,7 @@ pub(crate) fn stream_tokens_with_media(
         let mut return_prompt = false;
         // An idle-time job (card, summary): its prompt goes in small chunks, so it stops quickly
         let mut background = false;
-        let (req_samplers, req_think_mode, req_reasoning_effort, req_output, req_budget_message, req_kv_reuse, req_tools, keep_prefix) =
+        let (req_samplers, req_think_mode, req_reasoning_effort, req_output, req_budget_message, req_kv_reuse, req_tools, keep_prefix, req_stops) =
             if let Ok(envelope) = serde_json::from_str::<serde_json::Value>(&actual_prompt) {
                 if envelope.is_object()
                     && (envelope.get("messages").is_some()
@@ -160,6 +160,12 @@ pub(crate) fn stream_tokens_with_media(
                     let keep_prefix = envelope.get("thinking_off_keeps_prefix").and_then(|k| k.as_bool()) == Some(true);
                     return_prompt = envelope.get("return_prompt").and_then(|k| k.as_bool()) == Some(true);
                     background = envelope.get("background").and_then(|k| k.as_bool()) == Some(true);
+                    // OpenAI `stop`: the answer ends before the first of these strings (not sent)
+                    let stops: Vec<String> = envelope
+                        .get("stop")
+                        .and_then(|s| s.as_array())
+                        .map(|s| s.iter().filter_map(|v| v.as_str()).filter(|v| !v.is_empty()).map(str::to_string).collect())
+                        .unwrap_or_default();
                     (
                         samplers,
                         think_mode,
@@ -169,12 +175,13 @@ pub(crate) fn stream_tokens_with_media(
                         kv_reuse,
                         tools,
                         keep_prefix,
+                        stops,
                     )
                 } else {
-                    (None, None, None, None, None, None, None, false)
+                    (None, None, None, None, None, None, None, false, Vec::new())
                 }
             } else {
-                (None, None, None, None, None, None, None, false)
+                (None, None, None, None, None, None, None, false, Vec::new())
             };
 
         let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
@@ -800,11 +807,12 @@ pub(crate) fn stream_tokens_with_media(
                 }
             }
         }
-        let additional_stops: Vec<String> = native_apply
+        let mut additional_stops: Vec<String> = native_apply
             .as_ref()
             .and_then(|apply| apply["additional_stops"].as_array())
             .map(|stops| stops.iter().filter_map(|s| s.as_str().map(str::to_string)).collect())
             .unwrap_or_default();
+        additional_stops.extend(req_stops.iter().cloned());
         if let Some(apply) = &native_apply {
             info!(
                 "🧰 [NativeTools] Format {} | grammar {} (lazy {}, {} triggers)",
@@ -898,6 +906,8 @@ pub(crate) fn stream_tokens_with_media(
         // the parsed answer was sent
         let mut generated = String::new();
         let mut answer_raw = String::new();
+        // Answer text held back while it could be the start of a request `stop` string
+        let mut stop_hold = String::new();
         let mut content_stream = cluaiz_core::tool_calls::ContentStream::default();
         let skip_requested = || skip_reasoning
             .is_some_and(|signal| signal.load(Ordering::Acquire));
@@ -1100,7 +1110,32 @@ pub(crate) fn stream_tokens_with_media(
                             next_token_id,
                             emit_str
                         );
-                        if !callback(opened.unwrap_or_else(|| emit_str.to_string())) {
+                        let text = opened.unwrap_or_else(|| emit_str.to_string());
+                        if !req_stops.is_empty() && !in_think_block && !was_thinking {
+                            // Request `stop` strings: send nothing that could begin one; at a match
+                            // send the text before it and end the answer (finish_reason "stop")
+                            stop_hold.push_str(&text);
+                            match stop_match(&stop_hold, &req_stops) {
+                                StopScan::Found(at) => {
+                                    if at > 0 && !callback(stop_hold[..at].to_string()) {
+                                        report.stop = "cancel";
+                                        break;
+                                    }
+                                    stop_hold.clear();
+                                    report.stop = "stop";
+                                    break;
+                                }
+                                StopScan::Send(upto) => {
+                                    if upto > 0 {
+                                        let out: String = stop_hold.drain(..upto).collect();
+                                        if !callback(out) {
+                                            report.stop = "cancel";
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                        } else if !callback(text) {
                             report.stop = "cancel";
                             break;
                         }
@@ -1288,6 +1323,11 @@ pub(crate) fn stream_tokens_with_media(
                 crate::native::sampler::sample_token_at(safe_sampler.sampler, checked_grammar, llama.ctx_ptr, n_vocab, row);
         }
 
+        // Text held for a `stop` string that never came is part of the answer
+        if !stop_hold.is_empty() && report.stop != "stop" && report.stop != "cancel" {
+            callback(std::mem::take(&mut stop_hold));
+        }
+
         // Guesses left unchecked when generation stopped leave the KV
         if check.is_some() {
             if let Some(m) = mtp {
@@ -1469,5 +1509,53 @@ struct GuardSpan {
 impl GuardSpan {
     fn rate(&self) -> f64 {
         if self.secs > 0.0 { self.tokens as f64 / self.secs } else { 0.0 }
+    }
+}
+
+/// Where a request `stop` string stands in the held answer text
+#[derive(Debug, PartialEq)]
+enum StopScan {
+    /// A stop string starts at this byte: the answer ends before it
+    Found(usize),
+    /// No stop string yet: the first this many bytes can be sent; the rest could begin one
+    Send(usize),
+}
+
+fn stop_match(held: &str, stops: &[String]) -> StopScan {
+    if let Some(at) = stops.iter().filter_map(|stop| held.find(stop.as_str())).min() {
+        return StopScan::Found(at);
+    }
+    // The longest end of `held` that is the beginning of a stop string stays held
+    let keep = stops
+        .iter()
+        .flat_map(|stop| (1..stop.len()).filter(|n| stop.is_char_boundary(*n)).map(move |n| &stop[..n]))
+        .filter(|prefix| held.ends_with(prefix))
+        .map(str::len)
+        .max()
+        .unwrap_or(0);
+    StopScan::Send(held.len() - keep)
+}
+
+#[cfg(test)]
+mod stop_tests {
+    use super::{stop_match, StopScan};
+
+    fn stops(list: &[&str]) -> Vec<String> {
+        list.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn stop_strings_end_the_answer_before_them() {
+        assert_eq!(stop_match("1
+2
+3
+4
+5", &stops(&["5"])), StopScan::Found(8));
+        assert_eq!(stop_match("abc", &stops(&["x"])), StopScan::Send(3));
+        // "EN" could begin "END": held back
+        assert_eq!(stop_match("the EN", &stops(&["END"])), StopScan::Send(4));
+        assert_eq!(stop_match("the END here", &stops(&["END", "the"])), StopScan::Found(0));
+        // multi-byte text is cut only at character boundaries
+        assert_eq!(stop_match("नमस्", &stops(&["स्ते"])), StopScan::Send("नम".len()));
     }
 }

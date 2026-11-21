@@ -159,6 +159,7 @@ async fn real_packaged_video_pixels_timestamps_audio_limits_and_shared_request()
         grammar: None,
         response_format: None,
         tools: None,
+        stop: Vec::new(),
     };
     let prepared = cluaiz_media::request::prepare_chat(request, &resolver, |_| Ok(())).await?;
     let parts = &prepared.messages[0].content;

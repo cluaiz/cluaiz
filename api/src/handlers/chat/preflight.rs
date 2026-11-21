@@ -192,7 +192,7 @@ impl PreparedChatContext {
         // installed model and the provider generates it
         let provider = crate::providers::target_for_model(request.model.as_deref()).map(|target| {
             let mut extra = serde_json::Map::new();
-            if let Some(stop) = request.stop.as_ref().filter(|s| !s.is_empty()) {
+            if let Some(stop) = request.stop.clone().map(|s| s.into_vec()).filter(|s| !s.is_empty()) {
                 extra.insert("stop".into(), json!(stop));
             }
             if let Some(bias) = request.logit_bias.as_ref().filter(|b| !b.is_empty()) {
@@ -201,7 +201,7 @@ impl PreparedChatContext {
             if let Some(user) = request.user.as_ref() {
                 extra.insert("user".into(), json!(user));
             }
-            Arc::new(crate::providers::ProviderRun::new(target, request.max_tokens, extra))
+            Arc::new(crate::providers::ProviderRun::new(target, request.answer_limit(), extra))
         });
         if let Some(run) = &provider {
             if let Err(message) = run.target.check_kind("chat") {
@@ -483,7 +483,7 @@ impl PreparedChatContext {
                 }
             };
 
-        let validated_max_tokens = request.max_tokens.map(|t| t.min(dynamic_context_limit));
+        let validated_max_tokens = request.answer_limit().map(|t| t.min(dynamic_context_limit));
         let skip_brain = matches!(request.temporary_chat, Some(TemporaryChatMode::Strict));
 
         // The chat's ledger: what the Engine added to its earlier turns (tool hints and tool
@@ -639,7 +639,7 @@ impl PreparedChatContext {
         // conversation, but never less than a quarter of it (the engine drops the oldest turns
         // before it drops tools the model needs)
         let n_ctx_limit = dynamic_context_limit;
-        let answer_reserve = cluaiz_core::answer_reserve(request.max_tokens.unwrap_or(n_ctx_limit), n_ctx_limit);
+        let answer_reserve = cluaiz_core::answer_reserve(request.answer_limit().unwrap_or(n_ctx_limit), n_ctx_limit);
         let thinks = dyn_think_start.as_ref().is_some_and(|tag| !tag.is_empty());
         let reserve_tokens = if thinks { answer_reserve * 2 } else { answer_reserve };
         // Token counts from the loaded model's tokenizer (characters ÷ 3.5 when none is loaded)
@@ -1193,6 +1193,7 @@ impl PreparedChatContext {
             grammar: request.grammar.clone(),
             response_format: request.response_format.clone(),
             tools: None,
+            stop: request.stop.clone().map(|s| s.into_vec()).unwrap_or_default(),
         };
         let cancel_signal = progress
             .as_ref()
