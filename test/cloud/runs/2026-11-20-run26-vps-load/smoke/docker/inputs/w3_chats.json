@@ -1,0 +1,222 @@
+[
+  {
+    "id": 0,
+    "code": "PRJ-100",
+    "turns": [
+      "We are designing a small service called PRJ-100 for inventory sync on a 1 vCPU Linux server. List two main risks in two short sentences.",
+      "For PRJ-100, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?",
+      "What single health metric should our monitor check every second for PRJ-100?",
+      "If PRJ-100 restarts after an OOM event, what two state checks should run before accepting traffic again?",
+      "Summarize our entire PRJ-100 plan in three bullet points."
+    ]
+  },
+  {
+    "id": 1,
+    "code": "PRJ-101",
+    "turns": [
+      "We are designing a small service called PRJ-101 for invoice export on a 1 vCPU Linux server. List two main risks in two short sentences.",
+      "For PRJ-101, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?",
+      "What single health metric should our monitor check every second for PRJ-101?",
+      "If PRJ-101 restarts after an OOM event, what two state checks should run before accepting traffic again?",
+      "Summarize our entire PRJ-101 plan in three bullet points."
+    ]
+  },
+  {
+    "id": 2,
+    "code": "PRJ-102",
+    "turns": [
+      "We are designing a small service called PRJ-102 for alert routing on a 1 vCPU Linux server. List two main risks in two short sentences.",
+      "For PRJ-102, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?",
+      "What single health metric should our monitor check every second for PRJ-102?",
+      "If PRJ-102 restarts after an OOM event, what two state checks should run before accepting traffic again?",
+      "Summarize our entire PRJ-102 plan in three bullet points."
+    ]
+  },
+  {
+    "id": 3,
+    "code": "PRJ-103",
+    "turns": [
+      "We are designing a small service called PRJ-103 for backup retention on a 1 vCPU Linux server. List two main risks in two short sentences.",
+      "For PRJ-103, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?",
+      "What single health metric should our monitor check every second for PRJ-103?",
+      "If PRJ-103 restarts after an OOM event, what two state checks should run before accepting traffic again?",
+      "Summarize our entire PRJ-103 plan in three bullet points."
+    ]
+  },
+  {
+    "id": 4,
+    "code": "PRJ-104",
+    "turns": [
+      "We are designing a small service called PRJ-104 for API rate limits on a 1 vCPU Linux server. List two main risks in two short sentences.",
+      "For PRJ-104, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?",
+      "What single health metric should our monitor check every second for PRJ-104?",
+      "If PRJ-104 restarts after an OOM event, what two state checks should run before accepting traffic again?",
+      "Summarize our entire PRJ-104 plan in three bullet points."
+    ]
+  },
+  {
+    "id": 5,
+    "code": "PRJ-105",
+    "turns": [
+      "We are designing a small service called PRJ-105 for inventory sync on a 1 vCPU Linux server. List two main risks in two short sentences.",
+      "For PRJ-105, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?",
+      "What single health metric should our monitor check every second for PRJ-105?",
+      "If PRJ-105 restarts after an OOM event, what two state checks should run before accepting traffic again?",
+      "Summarize our entire PRJ-105 plan in three bullet points."
+    ]
+  },
+  {
+    "id": 6,
+    "code": "PRJ-106",
+    "turns": [
+      "We are designing a small service called PRJ-106 for invoice export on a 1 vCPU Linux server. List two main risks in two short sentences.",
+      "For PRJ-106, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?",
+      "What single health metric should our monitor check every second for PRJ-106?",
+      "If PRJ-106 restarts after an OOM event, what two state checks should run before accepting traffic again?",
+      "Summarize our entire PRJ-106 plan in three bullet points."
+    ]
+  },
+  {
+    "id": 7,
+    "code": "PRJ-107",
+    "turns": [
+      "We are designing a small service called PRJ-107 for alert routing on a 1 vCPU Linux server. List two main risks in two short sentences.",
+      "For PRJ-107, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?",
+      "What single health metric should our monitor check every second for PRJ-107?",
+      "If PRJ-107 restarts after an OOM event, what two state checks should run before accepting traffic again?",
+      "Summarize our entire PRJ-107 plan in three bullet points."
+    ]
+  },
+  {
+    "id": 8,
+    "code": "PRJ-108",
+    "turns": [
+      "We are designing a small service called PRJ-108 for backup retention on a 1 vCPU Linux server. List two main risks in two short sentences.",
+      "For PRJ-108, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?",
+      "What single health metric should our monitor check every second for PRJ-108?",
+      "If PRJ-108 restarts after an OOM event, what two state checks should run before accepting traffic again?",
+      "Summarize our entire PRJ-108 plan in three bullet points."
+    ]
+  },
+  {
+    "id": 9,
+    "code": "PRJ-109",
+    "turns": [
+      "We are designing a small service called PRJ-109 for API rate limits on a 1 vCPU Linux server. List two main risks in two short sentences.",
+      "For PRJ-109, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?",
+      "What single health metric should our monitor check every second for PRJ-109?",
+      "If PRJ-109 restarts after an OOM event, what two state checks should run before accepting traffic again?",
+      "Summarize our entire PRJ-109 plan in three bullet points."
+    ]
+  },
+  {
+    "id": 10,
+    "code": "PRJ-110",
+    "turns": [
+      "We are designing a small service called PRJ-110 for inventory sync on a 1 vCPU Linux server. List two main risks in two short sentences.",
+      "For PRJ-110, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?",
+      "What single health metric should our monitor check every second for PRJ-110?",
+      "If PRJ-110 restarts after an OOM event, what two state checks should run before accepting traffic again?",
+      "Summarize our entire PRJ-110 plan in three bullet points."
+    ]
+  },
+  {
+    "id": 11,
+    "code": "PRJ-111",
+    "turns": [
+      "We are designing a small service called PRJ-111 for invoice export on a 1 vCPU Linux server. List two main risks in two short sentences.",
+      "For PRJ-111, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?",
+      "What single health metric should our monitor check every second for PRJ-111?",
+      "If PRJ-111 restarts after an OOM event, what two state checks should run before accepting traffic again?",
+      "Summarize our entire PRJ-111 plan in three bullet points."
+    ]
+  },
+  {
+    "id": 12,
+    "code": "PRJ-112",
+    "turns": [
+      "We are designing a small service called PRJ-112 for alert routing on a 1 vCPU Linux server. List two main risks in two short sentences.",
+      "For PRJ-112, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?",
+      "What single health metric should our monitor check every second for PRJ-112?",
+      "If PRJ-112 restarts after an OOM event, what two state checks should run before accepting traffic again?",
+      "Summarize our entire PRJ-112 plan in three bullet points."
+    ]
+  },
+  {
+    "id": 13,
+    "code": "PRJ-113",
+    "turns": [
+      "We are designing a small service called PRJ-113 for backup retention on a 1 vCPU Linux server. List two main risks in two short sentences.",
+      "For PRJ-113, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?",
+      "What single health metric should our monitor check every second for PRJ-113?",
+      "If PRJ-113 restarts after an OOM event, what two state checks should run before accepting traffic again?",
+      "Summarize our entire PRJ-113 plan in three bullet points."
+    ]
+  },
+  {
+    "id": 14,
+    "code": "PRJ-114",
+    "turns": [
+      "We are designing a small service called PRJ-114 for API rate limits on a 1 vCPU Linux server. List two main risks in two short sentences.",
+      "For PRJ-114, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?",
+      "What single health metric should our monitor check every second for PRJ-114?",
+      "If PRJ-114 restarts after an OOM event, what two state checks should run before accepting traffic again?",
+      "Summarize our entire PRJ-114 plan in three bullet points."
+    ]
+  },
+  {
+    "id": 15,
+    "code": "PRJ-115",
+    "turns": [
+      "We are designing a small service called PRJ-115 for inventory sync on a 1 vCPU Linux server. List two main risks in two short sentences.",
+      "For PRJ-115, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?",
+      "What single health metric should our monitor check every second for PRJ-115?",
+      "If PRJ-115 restarts after an OOM event, what two state checks should run before accepting traffic again?",
+      "Summarize our entire PRJ-115 plan in three bullet points."
+    ]
+  },
+  {
+    "id": 16,
+    "code": "PRJ-116",
+    "turns": [
+      "We are designing a small service called PRJ-116 for invoice export on a 1 vCPU Linux server. List two main risks in two short sentences.",
+      "For PRJ-116, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?",
+      "What single health metric should our monitor check every second for PRJ-116?",
+      "If PRJ-116 restarts after an OOM event, what two state checks should run before accepting traffic again?",
+      "Summarize our entire PRJ-116 plan in three bullet points."
+    ]
+  },
+  {
+    "id": 17,
+    "code": "PRJ-117",
+    "turns": [
+      "We are designing a small service called PRJ-117 for alert routing on a 1 vCPU Linux server. List two main risks in two short sentences.",
+      "For PRJ-117, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?",
+      "What single health metric should our monitor check every second for PRJ-117?",
+      "If PRJ-117 restarts after an OOM event, what two state checks should run before accepting traffic again?",
+      "Summarize our entire PRJ-117 plan in three bullet points."
+    ]
+  },
+  {
+    "id": 18,
+    "code": "PRJ-118",
+    "turns": [
+      "We are designing a small service called PRJ-118 for backup retention on a 1 vCPU Linux server. List two main risks in two short sentences.",
+      "For PRJ-118, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?",
+      "What single health metric should our monitor check every second for PRJ-118?",
+      "If PRJ-118 restarts after an OOM event, what two state checks should run before accepting traffic again?",
+      "Summarize our entire PRJ-118 plan in three bullet points."
+    ]
+  },
+  {
+    "id": 19,
+    "code": "PRJ-119",
+    "turns": [
+      "We are designing a small service called PRJ-119 for API rate limits on a 1 vCPU Linux server. List two main risks in two short sentences.",
+      "For PRJ-119, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?",
+      "What single health metric should our monitor check every second for PRJ-119?",
+      "If PRJ-119 restarts after an OOM event, what two state checks should run before accepting traffic again?",
+      "Summarize our entire PRJ-119 plan in three bullet points."
+    ]
+  }
+]

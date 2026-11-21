@@ -1,0 +1,4 @@
+FROM ubuntu:24.04
+RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq libgomp1 && rm -rf /var/lib/apt/lists/*
+ENV LD_LIBRARY_PATH=/opt/llama
+ENTRYPOINT ["/opt/llama/llama-server"]

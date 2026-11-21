@@ -1,0 +1,9 @@
+FROM ubuntu:24.04
+RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ca-certificates libgomp1 && rm -rf /var/lib/apt/lists/*
+ENV CLUAIZ_HOME=/cluaiz_home \
+    CLUAIZ_HOST=127.0.0.1 \
+    CLUAIZ_PORT=8011 \
+    CLUAIZ_NONINTERACTIVE=1 \
+    LD_LIBRARY_PATH=/cluaiz_home/bin
+ENTRYPOINT ["/cluaiz_home/bin/cluaiz"]
+CMD ["serve"]

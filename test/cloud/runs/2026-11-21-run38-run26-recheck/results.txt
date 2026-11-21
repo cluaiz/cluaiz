@@ -1,0 +1,13 @@
+### 1 embeddings, 1 request
+[('ok', 200, 8, 1.67)]
+
+### 2 embeddings, 2 requests at once
+[('ok', 200, 8, 0.06), ('ok', 200, 8, 0.11)]
+
+### 3 embeddings, 4 requests at once
+[('ok', 200, 8, 0.06), ('ok', 200, 8, 0.11), ('ok', 200, 8, 0.16), ('ok', 200, 8, 0.21)]
+
+### 4 streamed chat: content chunks against the usage chunk
+{'content_chunks': 33, 'usage': {'completion_tokens': 33, 'completion_tokens_details': {'reasoning_tokens': 0}, 'model_load_ms': 1285, 'prompt_tokens': 40, 'time_to_first_token_ms': 142, 'tokens_per_second': 86.16, 'total_time_ms': 525, 'total_tokens': 73}, 'text': '{\n  "label": "Support Ticket",\n  "amount": "2",\n  "date": "2023-04-05"\n}'}
+{'content_chunks': 33, 'usage': {'completion_tokens': 33, 'completion_tokens_details': {'reasoning_tokens': 0}, 'model_load_ms': 0, 'prompt_tokens': 40, 'time_to_first_token_ms': 85, 'tokens_per_second': 89.19, 'total_time_ms': 455, 'total_tokens': 73}, 'text': '{\n  "label": "Support Ticket",\n  "amount": "2",\n  "date": "2023-04-05"\n}'}
+{'content_chunks': 33, 'usage': {'completion_tokens': 33, 'completion_tokens_details': {'reasoning_tokens': 0}, 'model_load_ms': 0, 'prompt_tokens': 40, 'time_to_first_token_ms': 76, 'tokens_per_second': 93.48, 'total_time_ms': 429, 'total_tokens': 73}, 'text': '{\n  "label": "Support Ticket",\n  "amount": "2",\n  "date": "2023-04-05"\n}'}
