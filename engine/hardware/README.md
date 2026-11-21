@@ -56,7 +56,6 @@ change.
 | `SystemInfo`, `CpuSubsystem`, `MemorySubsystem`, `StorageSubsystem`, `GpuSubsystem` | serde types; the whole `SystemInfo` is sent as JSON by CEP `system.info` and the snapshot methods | everywhere above |
 | `GpuSubsystem::used_only_by_cluaiz` | `Option<bool>`, live, not saved | `engine/plan/src/margin.rs` (a smaller VRAM margin when nothing else can take GPU memory) |
 | `MemorySubsystem::is_unified_memory`, `GpuSubsystem::integrated` | RAM shared with the GPU (Apple Silicon, AMD APU, Intel iGPU) | `engine/plan` (count GPU layers in RAM), `cluaiz status` |
-| `telemetry.rs`: `get_pulse`, `LivePulse`, `EngineGear` | background polling thread | nothing (see Pending) |
 
 ### Which fields drive decisions, which are only reported
 
@@ -91,10 +90,10 @@ change.
     product name and kernel build are used instead (`os_name_and_version`).
 - `src/types.rs`: the serde types. `used_only_by_cluaiz` is `#[serde(skip)]` (changes all the time);
   `integrated` has a default so older profiles load.
-- `src/telemetry.rs`: a 1-second polling thread that fills `LivePulse` and an `EngineGear` (CPU or GPU
-  over 95% = Emergency, over 80% = Survival, CPU over 40% = Balanced). Started lazily by `get_pulse()`;
-  no code calls it.
 - `src/lib.rs`: re-exports.
+
+Removed on 2026-11-21: `telemetry.rs` (a polling thread with "gears" that no code called); live
+numbers come from CEP `system.live`.
 
 ## Decisions and why
 
@@ -122,7 +121,7 @@ Result on 2026-11-21 (Windows 11): 5 passed, 1 ignored.
 Real machines: every run in [`test/cloud/BENCHMARKS.md`](../../test/cloud/BENCHMARKS.md) loads models
 through these numbers. The macOS RAM formula and the backend GPUs come from the M5 Mac run
 [`test/mac/runs/2026-10-28-m5-air-16gb/`](../../test/mac/runs/2026-10-28-m5-air-16gb/SUMMARY.md) (free RAM read
-as 0.00-0.75 GB of 16 GB, Metal unused; fixed in `07cf30fa`, not rerun on a real Mac since). Not tested anywhere: the telemetry thread, the storage benchmark, AMD or Intel GPUs
+as 0.00-0.75 GB of 16 GB, Metal unused; fixed in `07cf30fa`, not rerun on a real Mac since). Not tested anywhere: the storage benchmark, AMD or Intel GPUs
 through Vulkan on Windows.
 
 ## Failure and recovery
@@ -135,7 +134,7 @@ through Vulkan on Windows.
 | A live query fails | the old free-memory number is kept (`apply_memory_snapshot`) |
 | `wmic` missing (not installed on this Windows 11 machine on 2026-11-21) | `speed_mts` stays 0 |
 | Disk benchmark cannot write to the drive root (`C:\` without admin rights) | read and write speed 0 (seen in a saved profile on 2026-11-21) |
-| A poisoned cache lock | recovered (`PoisonError::into_inner`): the last cached profile is still used, as `telemetry.rs` does |
+| A poisoned cache lock | recovered (`PoisonError::into_inner`): the last cached profile is still used |
 
 ## Sources
 
@@ -148,7 +147,6 @@ through Vulkan on Windows.
 
 | Item | Why it matters | Needs |
 |---|---|---|
-| `telemetry.rs` has no caller | dead code that a reader may think drives "gears" | remove it, or wire it to a real consumer |
 | Only GPU 0 gets a live free-VRAM reading | a second NVIDIA GPU is planned from its start-up number | read every device in `live_snapshot` |
 | Disk benchmark writes to the drive root | gives 0 without admin rights on Windows; the numbers are unused anyway | write in the Cluaiz home, or drop the benchmark |
 | `detect_drive_type` reads the first physical disk for every drive on Windows and prefixes "NVMe/" | wrong label for a second or SATA disk | per-disk query, or drop the field |
