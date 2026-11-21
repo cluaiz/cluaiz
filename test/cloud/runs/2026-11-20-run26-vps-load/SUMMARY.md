@@ -14,8 +14,8 @@ was 2.6x faster. That was wrong: the host capped the CPU partway through, after 
 | Load | 5-minute steps at 1, 2, 4, 8, 16, 32 requests at once; then 1-hour soaks |
 | Scripts | `test/cloud/remote/vps26/`; per-stage tables in each folder's `analysis.md`; large engine logs are gzipped |
 
-Folders: `smoke/` (first short pass), `native_*`, `docker_*` (ramps), `soak_*` (1 hour each). Stage 10
-(llama.cpp in Docker) was stopped after its Qwen3 0.6B steps; those steps are only in `master.log`.
+Folders: `smoke/` (first short pass), `native_*`, `docker_*` (ramps), `soak_*` (1 hour each). The
+conclusion and the list of what to fix: [README.md](README.md).
 
 ## The CPU cap
 
