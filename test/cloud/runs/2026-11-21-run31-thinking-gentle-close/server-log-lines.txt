@@ -1,0 +1,5 @@
+2026-11-21T02:53:25.372865Z  INFO 🧠 [NativeStream] Thinking budget reached; closed at the end of a line
+2026-11-21T02:53:30.214419Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 49 tokens in 35 ms (1400.24 t/s) | generation 2670 tokens in 16344 ms (163.37 t/s)
+2026-11-21T02:53:44.708151Z  INFO 🧠 [NativeStream] Thinking budget reached; closed at the end of a line
+2026-11-21T02:53:49.108254Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 49 tokens in 22 ms (2193.08 t/s) | generation 2673 tokens in 16330 ms (163.69 t/s)
+2026-11-21T02:53:55.518344Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 46 tokens in 25 ms (1854.09 t/s) | generation 914 tokens in 5110 ms (178.85 t/s)

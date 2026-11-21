@@ -24,11 +24,16 @@ pub(crate) struct ReasoningHandle(*mut c_void);
 impl ReasoningHandle {
     /// # Safety
     /// The owning chain is live and exclusively used by this generation thread.
-    pub(crate) unsafe fn poll(&self, requested: bool, ended_by: &mut &'static str) {
+    /// `line_done` = the budget is spent and the thinking just finished a line: it is closed now,
+    /// before the sampler's hard limit (budget + grace) would cut it mid-sentence.
+    pub(crate) unsafe fn poll(&self, requested: bool, line_done: bool, ended_by: &mut &'static str) {
         // SAFETY: this method has the same chain lifetime as force/is_forcing.
         if requested && unsafe { self.force() } {
             *ended_by = "skip";
             tracing::info!("Native reasoning sampler accepted this request's skip signal");
+        } else if line_done && *ended_by == "model" && unsafe { self.force() } {
+            *ended_by = "budget";
+            tracing::info!("🧠 [NativeStream] Thinking budget reached; closed at the end of a line");
         } else if *ended_by == "model" && unsafe { self.is_forcing() } {
             // Forcing that the generation started itself ("closed") keeps its own name
             *ended_by = "budget";

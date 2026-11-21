@@ -846,6 +846,8 @@ pub(crate) fn stream_tokens_with_media(
             .thinking_presets;
         let limit = thinking_budget.limit(room, &presets, llama.decode_per_second);
         let max_think_tokens = limit.tokens;
+        // The sampler's hard limit; between the budget and it, thinking closes at the next line end
+        let hard_think_tokens = limit.tokens + limit.grace;
         if thinking_budget == cluaiz_core::ThinkingBudget::Auto && enable_thinking {
             match llama.decode_per_second {
                 Some(speed) => info!(
@@ -868,15 +870,19 @@ pub(crate) fn stream_tokens_with_media(
         // Thinking still open at the model's end was closed for it (once per generation)
         let mut closed_open_thinking = false;
         let mut thought = false;
-        // What is written to close thinking early: the optional budget message, then the end tag
+        // What is written to close thinking early: the request's or the settings' budget message, else
+        // the managed `chat.thinking_close` prompt (Qwen's early-stopping text), then the end tag, so the
+        // model answers from what it thought instead of stopping mid-thought
         let close_text = match &req_budget_message {
             Some(message) => format!("{}{}", message, think_end_tag),
-            None => think_end_tag.clone(),
+            None => format!("\n{}\n{}", cluaiz_core::prompts::text("chat.thinking_close").trim(), think_end_tag),
         };
         let (root, reasoning) = crate::ffi::reasoning::ReasoningHandle::wrap(
             safe_sampler.sampler, vocab, (&think_start_tag, &think_end_tag, &close_text),
-            max_think_tokens, prompt_opens_thinking,
+            hard_think_tokens, prompt_opens_thinking,
         )?;
+        // The last thinking token ended a line (set per token below)
+        let mut think_line_end = false;
         safe_sampler.sampler = root;
         // The grammar sees only what the model writes outside thinking
         let mut grammar_active = false;
@@ -946,7 +952,7 @@ pub(crate) fn stream_tokens_with_media(
         let mut guard_stopped = false;
         let mut guard_rates: (Option<f64>, Option<f64>) = (None, None);
 
-        reasoning.poll(skip_requested(), &mut ended_by);
+        reasoning.poll(skip_requested(), false, &mut ended_by);
         let mut next_token_id =
             crate::native::sampler::sample_token(safe_sampler.sampler, checked_grammar, llama.ctx_ptr, n_vocab);
         tracing::debug!(
@@ -1044,6 +1050,8 @@ pub(crate) fn stream_tokens_with_media(
                         }
                         tag_window.drain(..cut);
                     }
+
+                    think_line_end = in_think_block && emit_str.contains('\n');
 
                     // Thinking just ended: the grammar wakes up and sees the end tag (llama-server)
                     // (a strict grammar starts at the answer itself: nothing to replay)
@@ -1271,8 +1279,11 @@ pub(crate) fn stream_tokens_with_media(
                 }
             }
 
-            // Sample next token
-            reasoning.poll(skip_requested(), &mut ended_by);
+            // Sample next token. A spent budget closes thinking at the end of a line (the hard limit
+            // budget + grace is the sampler's own backstop).
+            let line_done = think_line_end && limit.grace > 0 && think_tokens_count >= max_think_tokens;
+            reasoning.poll(skip_requested(), line_done, &mut ended_by);
+            think_line_end = false;
             next_token_id =
                 crate::native::sampler::sample_token_at(safe_sampler.sampler, checked_grammar, llama.ctx_ptr, n_vocab, row);
         }

@@ -217,6 +217,11 @@ pub const AUTO_THINK_SECONDS: f64 = 180.0;
 /// Auto never sets fewer thinking tokens than this (or the room when it is smaller), so a thinking
 /// model on a slow machine can still reason before it answers.
 pub const AUTO_THINK_FLOOR: usize = 1024;
+/// A named effort (Auto, Low, Medium, High) that reaches its budget mid-line may think on to the end of
+/// that line, at most a quarter of the budget and never more than this, so thinking closes after a
+/// finished thought instead of mid-sentence (NVIDIA Nemotron's budget control ends at the next newline,
+/// within 500 tokens). A number of tokens and Max stay exact.
+pub const THINK_GRACE_MAX: usize = 500;
 
 /// Thinking budget for one generation, after the room limit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -224,6 +229,9 @@ pub struct ThinkingLimit {
     pub tokens: usize,
     /// The chosen budget was bigger than the room and was lowered so the answer still fits
     pub capped: bool,
+    /// Extra tokens thinking may take past `tokens` to finish its line (0 = close exactly at `tokens`);
+    /// `tokens + grace` never exceeds the room
+    pub grace: usize,
 }
 
 impl ThinkingBudget {
@@ -235,6 +243,11 @@ impl ThinkingBudget {
         let of_room = |p: &ThinkingShare| {
             ((room as f64 * p.share.clamp(0.0, 1.0)) as usize).min(p.max_tokens as usize)
         };
+        let soft = |tokens: usize| ThinkingLimit {
+            tokens,
+            capped: false,
+            grace: (tokens / 4).min(THINK_GRACE_MAX).min(room.saturating_sub(tokens)),
+        };
         match self {
             ThinkingBudget::Auto => {
                 let upper = of_room(&presets.high);
@@ -242,13 +255,13 @@ impl ThinkingBudget {
                     Some(speed) => ((speed * AUTO_THINK_SECONDS) as usize).clamp(AUTO_THINK_FLOOR.min(upper), upper),
                     None => upper,
                 };
-                ThinkingLimit { tokens, capped: false }
+                soft(tokens)
             }
-            ThinkingBudget::High => ThinkingLimit { tokens: of_room(&presets.high), capped: false },
-            ThinkingBudget::Low => ThinkingLimit { tokens: of_room(&presets.low), capped: false },
-            ThinkingBudget::Medium => ThinkingLimit { tokens: of_room(&presets.medium), capped: false },
-            ThinkingBudget::Max => ThinkingLimit { tokens: room, capped: false },
-            ThinkingBudget::Tokens(n) => ThinkingLimit { tokens: (*n as usize).min(room), capped: *n as usize > room },
+            ThinkingBudget::High => soft(of_room(&presets.high)),
+            ThinkingBudget::Low => soft(of_room(&presets.low)),
+            ThinkingBudget::Medium => soft(of_room(&presets.medium)),
+            ThinkingBudget::Max => ThinkingLimit { tokens: room, capped: false, grace: 0 },
+            ThinkingBudget::Tokens(n) => ThinkingLimit { tokens: (*n as usize).min(room), capped: *n as usize > room, grace: 0 },
         }
     }
 

@@ -100,6 +100,7 @@ Lists every prompt.
 | `agent.compact_summary` | After `/compact`, the message that carries the summary | `summary` |
 | `agent.compact_ack` | After `/compact`, the assistant reply to the summary | none |
 | `agent.call_unreadable` | Told to the model when a tool call of its answer could not be read; nothing ran, and it answers again (at most twice in a row) | `call` |
+| `chat.thinking_close` | Written into the model's thinking when the thinking budget runs out or the user skips it, before the end-of-thinking tag, so the model answers from what it has thought (Qwen's early-stopping prompt). `reasoning_budget_message` replaces it | none |
 | `agent.no_answer` | Told to the model when its answer had no text and no call outside its thinking; it answers again (at most twice in a row) | none |
 | `workspace.instructions` | Heading of the project's AGENTS.md files in the agent's system prompt | none |
 | `workspace.rules` | Heading of the project's always-on rules | none |

@@ -106,14 +106,16 @@ fn thinking_budget_names_numbers_and_auto() {
         Tokens(100_000).limit(2072, &p, None),
         ThinkingLimit {
             tokens: 2072,
-            capped: true
+            capped: true,
+            grace: 0
         }
     );
     assert_eq!(
         Tokens(500).limit(2072, &p, None),
         ThinkingLimit {
             tokens: 500,
-            capped: false
+            capped: false,
+            grace: 0
         }
     );
     // no room: no thinking, straight to the answer
@@ -129,6 +131,18 @@ fn thinking_budget_names_numbers_and_auto() {
     assert_eq!(auto(0, 80.0), 0, "no room: no thinking");
     assert_eq!(Auto.limit(100_000, &p, Some(f64::NAN)).tokens, 32_768, "no usable speed: High's share");
     assert_eq!(Auto.limit(100_000, &p, Some(0.0)).tokens, 32_768);
+    // Named levels may finish the line they are on: a quarter of the budget, at most 500, inside the room
+    assert_eq!(Auto.limit(100_000, &p, Some(5.0)).grace, 256);
+    assert_eq!(High.limit(100_000, &p, None).grace, 500);
+    assert_eq!(Low.limit(1000, &p, None).grace, 62);
+    assert_eq!(Medium.limit(10_000, &p, None).grace, 500);
+    let tight = High.limit(4000, &p, None);
+    assert_eq!((tight.tokens, tight.grace), (3000, 500));
+    let full = Auto.limit(1000, &p, None);
+    assert!(full.tokens + full.grace <= 1000);
+    // A number and Max are exact
+    assert_eq!(Tokens(800).limit(100_000, &p, None).grace, 0);
+    assert_eq!(Max.limit(100_000, &p, None).grace, 0);
     // default effort is saved with the settings and is not a reload reason
     let mut opt = OptimizationControl::default();
     let fp = opt.load_fingerprint();

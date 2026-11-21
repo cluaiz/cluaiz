@@ -462,8 +462,18 @@ from thinking for an hour. Examples: 5 tokens per second gives 1,024 tokens; 36 
 (`Auto thinking ceiling ... tokens`). For a cloud provider, `"auto"` sends no effort and the provider
 decides.
 
-When the budget runs out, the Engine closes the thinking block (with `reasoning_budget_message` when set)
-and the model writes its answer.
+When the budget runs out, the Engine closes the thinking block gently, the way model makers describe it:
+
+1. **At the end of a line.** With `auto`, `low`, `medium` or `high`, a model in the middle of a line may
+   finish it first: up to a quarter of the budget more, at most 500 tokens, never past the room (NVIDIA's
+   Nemotron budget control also ends at the next newline). A number and `max` close exactly at the budget.
+2. **With a wrap-up sentence.** Before the end-of-thinking tag the Engine writes Qwen's early-stopping
+   text: "Considering the limited time by the user, I have to give the solution based on the thinking
+   directly now." The model then answers from what it has thought. `reasoning_budget_message` (request
+   or settings) replaces the text; the managed prompt `chat.thinking_close` changes the default.
+
+Recorded (run 31, Qwen3-0.6B, `low` = 2,048): two long thoughts closed at 2,069 and 2,124 tokens at a
+line end, each followed by a full answer.
 
 ### Token Usage Telemetry
 Every non-streaming answer has a `usage` object, as OpenAI's does. A streamed answer has it in the last chunk when `stream_options.include_usage` is `true` or stream telemetry is on. Both paths build it the same way: `prompt_tokens` is the engine's count of the last generation's prompt, `completion_tokens` counts every token the model generated in the turn (tool-call steps included), and `completion_tokens_details.reasoning_tokens` the ones inside thinking. It also carries `time_to_first_token_ms`, `total_time_ms`, `model_load_ms` and `tokens_per_second`; `context_telemetry` and `model_header_info` are added only with stream telemetry on:

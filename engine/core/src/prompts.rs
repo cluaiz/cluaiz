@@ -24,6 +24,7 @@ const DEFAULTS: &[&str] = &[
     include_str!("../prompts/agent.compact_ack.md"),
     include_str!("../prompts/agent.call_unreadable.md"),
     include_str!("../prompts/agent.no_answer.md"),
+    include_str!("../prompts/chat.thinking_close.md"),
     include_str!("../prompts/workspace.instructions.md"),
     include_str!("../prompts/workspace.rules.md"),
     include_str!("../prompts/workspace.index.md"),
