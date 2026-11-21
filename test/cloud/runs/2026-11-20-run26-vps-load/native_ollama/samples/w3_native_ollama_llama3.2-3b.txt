@@ -1,0 +1,23 @@
+U1: We are designing a small service called PRJ-100 for inventory sync on a 1 vCPU Linux server. List two main risks in two short sentences.
+A1: Two main risks for the PRJ-100 service are:
+
+1. **Performance Bottlenecks**: The 1 vCPU Linux server may struggle to handle high volumes of inventory data, leading to slow sync times and potential downtime.
+2. **Data Corruption or Loss**: The single vCPU may not be able to handle concurrent requests efficiently, increasing the risk of data corruption or loss during the inventory sync process.
+
+U2: For PRJ-100, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?
+A2: To limit queue depth for PRJ-100, consider implementing a message queue with a fixed maximum size, such as 1000 messages. This will prevent the system from accumulating too many pending requests and allow for efficient processing of inventory data. Additionally, setting a maximum queue size can help prevent memory exhaustion due to the 3 GB memory cap.
+
+U3: What single health metric should our monitor check every second for PRJ-100?
+A3: A single health metric to monitor every second for PRJ-100 is the **CPU utilization**. This will provide real-time feedback on the system's processing capacity and help detect potential performance bottlenecks or issues with concurrent requests.
+
+U4: If PRJ-100 restarts after an OOM event, what two state checks should run before accepting traffic again?
+A4: If PRJ-100 restarts after an OOM event, the following two state checks should run before accepting traffic again:
+
+1. **Memory check**: Verify that the system has sufficient free memory (above 1 GB) to handle incoming requests.
+2. **Queue check**: Ensure that the message queue is empty or has a low queue depth (e.g., below 1000 messages) to prevent accumulation of pending requests.
+
+U5: Summarize our entire PRJ-100 plan in three bullet points.
+A5: Here's a summary of the PRJ-100 plan in three bullet points:
+
+* **System Configuration**: The PRJ-100 service will run on a 1 vCPU Linux server with a 3 GB memory cap and no swap, requiring careful management of queue depth and message handling to prevent performance bottlenecks and memory exhaustion.
+* **Monitoring and Health Checks**: The system will be monitored for CPU utilization every second, and upon restart after an OOM event, two state

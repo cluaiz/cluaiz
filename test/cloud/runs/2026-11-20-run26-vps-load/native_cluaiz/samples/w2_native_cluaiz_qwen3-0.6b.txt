@@ -1,0 +1,21 @@
+=== Report #0 ===
+- **Service**: Payments-api operational behavior observed  
+- **Symptoms**: Latency spikes, memory overloads, and performance issues  
+- **Peak Resource Impact**: High memory usage and CPU contention  
+- **Root Cause Clues**: Kernel page cache pressure, lock contention, and checkpoint overlaps  
+- **Mitigations**: Pool timeouts, isolation, rate limits, circuit breakers, and automated checks.
+
+=== Report #1 ===
+- **Service**: Ingest-worker operational issues  
+- **Symptoms**: Latency, HTTP errors, memory overflows  
+- **Peak Resource Impact**: High CPU and memory usage  
+- **Root Cause**: NTP clock skew and resource contention  
+- **Mitigations**: Pool timeouts, circuit breakers, automated checks.
+
+=== Report #2 ===
+- **Service**: Operational behavior observed during peak load.  
+- **Symptoms**: Latency and HTTP errors.  
+- **Peak Resource Impact**: Memory and CPU usage.  
+- **Root Cause**: Kernel page cache pressure and lock contention.  
+- **Mitigations**: Pool timeouts, rate limits, circuit breakers, and automated checks.
+

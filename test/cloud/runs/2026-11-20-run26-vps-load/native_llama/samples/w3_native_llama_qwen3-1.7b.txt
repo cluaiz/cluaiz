@@ -1,0 +1,19 @@
+U1: We are designing a small service called PRJ-100 for inventory sync on a 1 vCPU Linux server. List two main risks in two short sentences.
+A1: 1. Risk of downtime due to insufficient resources or system instability.  
+2. Risk of data corruption or loss during the sync process.
+
+U2: For PRJ-100, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?
+A2: Given the 3 GB memory limit and zero swap, the queue depth should be limited to a reasonable value that prevents excessive memory usage while ensuring timely processing. A typical limit of 1000–2000 entries is suitable to balance performance and resource constraints.
+
+U3: What single health metric should our monitor check every second for PRJ-100?
+A3: The monitor should check the **number of active queues** every second to ensure that the system does not exceed the allowed queue depth and maintain stable processing performance.
+
+U4: If PRJ-100 restarts after an OOM event, what two state checks should run before accepting traffic again?
+A4: Before accepting traffic again after a restart following an OOM event, the system should check:  
+1. That the memory usage is within the allowed limits.  
+2. That the queue depth is within the acceptable range.
+
+U5: Summarize our entire PRJ-100 plan in three bullet points.
+A5: - **Architecture**: Designed for 1 vCPU, with memory capped at 3 GB and no swap.  
+- **Operations**: Handles inventory sync, with queue depth limited to prevent resource exhaustion.  
+- **Monitoring**: Tracks active queues and memory usage to ensure stable operation.

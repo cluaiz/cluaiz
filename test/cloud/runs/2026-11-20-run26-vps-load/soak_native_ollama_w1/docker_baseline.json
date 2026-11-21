@@ -1,0 +1,27 @@
+{
+  "docker_on": {
+    "label": "docker_on",
+    "samples": 15,
+    "mem_used_mb_avg": 478.21,
+    "mem_used_mb_min": 477.98,
+    "mem_used_mb_max": 478.39,
+    "mem_avail_mb_avg": 3437.02,
+    "cache_mb_avg": 1828.84,
+    "docker_rss_mb_avg": 102.08,
+    "cpu_pct_avg": 0.73
+  },
+  "docker_off": {
+    "label": "docker_off",
+    "samples": 15,
+    "mem_used_mb_avg": 422.98,
+    "mem_used_mb_min": 422.93,
+    "mem_used_mb_max": 423.21,
+    "mem_avail_mb_avg": 3492.25,
+    "cache_mb_avg": 1829.97,
+    "docker_rss_mb_avg": 0.0,
+    "cpu_pct_avg": 2.79
+  },
+  "delta_mem_used_mb": 55.23,
+  "docker_rss_mb_avg": 102.08,
+  "delta_cpu_pct": -2.06
+}
