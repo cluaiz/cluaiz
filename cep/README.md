@@ -14,6 +14,8 @@ cargo test --release -p cluaiz-cep
 
 Design: `.agent/plans/CEP/01-architecture.md`. Method list: `03-method-catalog.md`.
 
+![A CEP call: transport, JSON-RPC envelope, registry and schema check, principal scope, method, approval or task, and an audit line for every non-read call and denial](../docs/assets/api/cep-call.png)
+
 ```mermaid
 flowchart LR
     T["Transport: HTTP / pipe / C ABI / MCP"] -->|principal + bytes| D["Engine::call (dispatch.rs)"]

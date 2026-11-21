@@ -134,6 +134,8 @@ An explicit ID selects that installed package. Omission/`auto` uses the active e
 
 ## Endpoint Information
 
+![Audio is decoded, made mono at the right sample rate, and transcribed by Whisper](../../assets/engine/speech-pipeline.png)
+
 * **HTTP Method:** `POST`
 * **Path:** `/v1/audio/transcriptions` (or `audio.run`)
 * **Content-Type:** `application/json` (Pure JSON contract: `multipart/form-data` is **not** supported)

@@ -1,5 +1,8 @@
 # Cluaiz Engine API Reference
 
+![HTTP routes: chat, models, embeddings and audio routes, and /v1/cep and /mcp for every Engine-specific method, behind the bearer-token check; /health stays open](../assets/api/route-map.png)
+
+
 Reference for the Engine's direct inference routes and CEP controls at `/v1/cep`, model selection, media payloads and response formats. Use the endpoint pages below for accepted fields, examples and current limitations.
 
 ---
@@ -37,7 +40,7 @@ The current middleware bypasses Bearer checks when `api_auth.required` is false.
 
 ## Direct inference and Engine controls
 
-- **Chat:** [POST /v1/chat/completions](./inference/chat_completions.md), with `/api/chat` using the same handler.
+- **Chat:** [POST /v1/chat/completions](./inference/chat_completions.md), with `/api/chat` using the same handler. Which OpenAI fields an installed model honours: [OpenAI compatibility](./inference/openai_compatibility.md).
 - **TTS:** [POST /v1/audio/speech](./inference/audio_speech.md).
 - **STT:** [POST /v1/audio/transcriptions](./inference/audio_transcriptions.md).
 - **Embeddings:** [POST /v1/embeddings](./inference/embeddings.md).

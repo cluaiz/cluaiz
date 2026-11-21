@@ -1,5 +1,7 @@
 # Platform Support
 
+![The core plus one GPU pack chosen from the GPU: CUDA 13 or 12 for NVIDIA, Vulkan for AMD and Intel Arc, Metal inside the macOS core, otherwise CPU only](../assets/get-started/install-packs.png)
+
 Cluaiz ships as a **core** plus optional **GPU packs** (see [Release Workflow](cicd.md)). The core runs every model on the CPU and picks the fastest CPU code for the processor at start. A GPU pack in the same folder adds the GPU; when its driver or GPU is missing, ggml skips it and models stay on the CPU.
 
 ---

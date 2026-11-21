@@ -87,6 +87,8 @@ Send JSON and your configured `Authorization: Bearer <token>`. Paths refer to th
 
 ## Processing modes
 
+![One SourceResolver reads a local path, URL or base64 with size limits; shared decoders give the document text, images or audio](../../assets/engine/media-sources.png)
+
 ```mermaid
 flowchart TD
     R["POST /v1/ingest: source, optional model"] --> A["Bearer check, JSON validation, input byte ceiling"]

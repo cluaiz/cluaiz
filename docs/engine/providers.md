@@ -48,6 +48,9 @@ Not every platform has every route: Bedrock's `bedrock-runtime` URL and Claude o
 
 ## Use its models
 
+![A chat to a cloud provider: the model name picks the provider, its differences shape the body, the reply stream is decoded into the same blocks as an installed model](../assets/engine/provider-call.png)
+
+
 ```bash
 cluaiz provider models myapi           # the models it offers, with their context size
 cluaiz provider test myapi model-name

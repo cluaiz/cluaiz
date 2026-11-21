@@ -1,5 +1,7 @@
 # Agents crate source (`agents/src/`)
 
+![One agent turn: the message, tool search, schemas, the model, and for each tool call the approval, the run and the result going back to the model](../../docs/assets/engine/agent-turn.png)
+
 ## 1. Scope
 
 All tool logic (skills, plugins, MCP, registry, turn lifecycle, telemetry), the chat memory

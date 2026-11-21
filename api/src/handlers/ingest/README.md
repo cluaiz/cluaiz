@@ -1,5 +1,7 @@
 # Component: Direct document ingestion
 
+![One SourceResolver reads a local path, URL or base64 with size limits; shared decoders give images, audio, document text or video frames to the model](../../../../docs/assets/engine/media-sources.png)
+
 ## Technical specification
 
 - **Purpose:** Serve `POST /v1/ingest` as a plain JSON request with one final JSON response. Native extraction and optional model processing share the same source and media owners used elsewhere in the Engine.

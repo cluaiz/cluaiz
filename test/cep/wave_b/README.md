@@ -1,5 +1,7 @@
 # CEP file, system, model and tool tests
 
+![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/cloud/runs and BENCHMARKS.md](../../../docs/assets/contributing/test-kinds.png)
+
 Tests for the `fs.*`, `workspace.*`, `system.*`, `storage.*`, `models.*` and `tools.*` CEP methods. Two kinds:
 
 | Kind | Files | Needs |
@@ -10,6 +12,8 @@ Tests for the `fs.*`, `workspace.*`, `system.*`, `storage.*`, `models.*` and `to
 Python here is test tooling only; nothing in the Engine imports it.
 
 ## Rust contracts
+
+`audio_task.rs` is a task client over the real CEP router for audio acceptance (no audio or inference answer is made up); `api/tests/cep_audio_contract.rs` and `api/tests/media_contract.rs` include it by path.
 
 `roots_contract.rs` imports the production `api/src/cep/roots.rs`. `fs_methods_contract.rs` imports the production file and workspace method modules, registers them with the real CEP dispatcher, and runs real file operations in temporary folders. This Cargo workspace builds the CEP core and these modules without the inference runtime.
 

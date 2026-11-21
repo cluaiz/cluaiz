@@ -1,5 +1,7 @@
 # Cluaiz Models Subsystem (`engine/models`)
 
+![cluaiz pull: model id, resolve, plan the files, download with resume, check, registry, cluaiz list](../../docs/assets/get-started/model-download.png)
+
 Unified Model Subsystem for Cluaiz: HuggingFace model downloading, registry/vault tracking, multi-modal taxonomy, and single GGUF reader.
 
 ## Architecture

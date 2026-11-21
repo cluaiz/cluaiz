@@ -1,8 +1,12 @@
 # Cluaiz Engine Runtime & Host (`engine/runtime`)
 
+![EngineHost loads models into llama.cpp and ONNX Runtime and unloads idle speech and embedding models first when memory is short](../../docs/assets/engine/two-runtimes.png)
+
 Model execution supervisor with separate chat, ONNX-task and GGUF-speech owners.
 
 ## Speech admission and shared load transitions
+
+![Requests wait in arrival order and run one at a time; one still waiting after 120 seconds gets HTTP 429](../../docs/assets/api/request-queue.png)
 
 ```mermaid
 graph LR

@@ -1,5 +1,7 @@
 # KV Cache Reuse (Prefix Caching)
 
+![The KV cache holds the system message, tools, earlier turns and the last answer; the new prompt keeps that common prefix and computes only the new message. After each answer the KV is saved to disk and read back later when the model file and load settings are the same](../assets/engine/kv-reuse.png)
+
 When a chat continues, most of the new prompt is the same as the last one. The Engine keeps the
 KV cache of the last generation and computes only the tokens that changed. This works like
 llama-server's prompt cache, `--cache-reuse`, context shift and `--slot-save-path`.

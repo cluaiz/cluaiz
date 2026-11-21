@@ -14,6 +14,8 @@
 
 ## Architectural flow
 
+![The terminal screen draws and edits text; the agent runs the model and tools, gets send, stop, approve or exit from the screen and gives back what really happened](../docs/assets/engine/terminal-screen.png)
+
 ```mermaid
 flowchart LR
     Caller["Client supplies metadata and display entries"] --> State["App and bounded transcript"]

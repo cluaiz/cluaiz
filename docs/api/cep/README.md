@@ -81,6 +81,9 @@ The pages are written and checked by `api/tests/cep_docs.rs`. A change to a meth
 
 ## A call
 
+![A CEP call: transport, JSON-RPC envelope, registry and schema check, principal scope, method, approval or task, and an audit line for every non-read call and denial](../../assets/api/cep-call.png)
+
+
 ```json
 → {"jsonrpc":"2.0","id":1,"method":"fs.read","params":{"path":"notes.txt"}}
 ← {"jsonrpc":"2.0","id":1,"result":{"path":"D:/work/notes.txt","size":5,"binary":false,"text":"hello"}}

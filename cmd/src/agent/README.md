@@ -1,5 +1,7 @@
 # Component: terminal agent frontend
 
+![One agent turn: the message, tool search, schemas, the model, and for each tool call the approval, the run and the result going back to the model](../../../docs/assets/engine/agent-turn.png)
+
 `cluaiz agent` loads the existing local `chat::Session`, presents its six built-in file/command
 tools and repeats generation until the model answers without a tool call. The interactive UI and
 plain output both call that same CLI controller. This folder is not a second executable.
@@ -53,6 +55,7 @@ brings the message history, the file and command tools, approvals and the termin
 | `rules.rs` | `--allowed-tools` / `--disallowed-tools` and the agent settings files (`allow`, `deny`, `mode`): a rule is a tool name with an optional pattern, `run_command(git *)`, `edit_file(src/*)`. A denied call is refused before anything asks; an allowed one runs without asking. |
 | `skills.rs` | The user's and the project's skills (Agent Skills format, a folder with `SKILL.md`), found by `cluaiz_agents::workspace` nearest first. Only each skill's name and description go into the prompt; the model reads the one it needs with `read_item`. |
 | `flows.rs` | Saved flows with a `tool` trigger as tools of the agent (`flow.<name>`). Offered only while a server answers, since Automation runs there; a call runs `flows.run` as the owner, after the agent's own question when the flow asks for one, and waits for its outputs. |
+| `instructions.rs` | The project's agent files in the agent: `~/.cluaiz/AGENTS.md`, then per folder `.agents/AGENTS.md` and the folder's `AGENTS.md` (or `CLAUDE.md` / `GEMINI.md`), with rules, workflows, skills and memory from `.agents/`. Finding them is `cluaiz_agents::workspace`; this file scans them for the agent and is what `/memory` shows. |
 | `sessions.rs` | Saved agent conversations: one JSON file per session under `~/.cluaiz/sessions/<folder>-<hash>/<id>.json`, rewritten after every request, for `--continue` / `--resume`. Only text is kept; an attachment is saved as a short note. |
 | `checkpoints.rs` | What each request changed: the first content of every file a request writes or edits is kept (as bytes), so the request's end shows the changed files (`+3 −1`, `new`), `/undo` puts back the last request's files and `/rewind` goes back to before an earlier request. Saved next to the conversation (`<session>.checkpoints/<n>/`), so it survives closing the agent. Files changed by commands are not tracked. |
 | `line_diff.rs` | The line diff shown for a file change: `- ` removed, `+ ` added, two unchanged lines around each change, the rest folded into one row. |

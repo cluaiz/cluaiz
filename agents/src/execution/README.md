@@ -115,6 +115,9 @@ flowchart LR
 
 ## OS sandbox (`os_sandbox.rs`, 2026-11-20)
 
+![Approval policy first, then the OS sandbox: the command sees the project folder, not the home folder or secrets](../../../docs/assets/engine/two-walls.png)
+
+
 Every process this crate starts for an agent or a tool goes through `os_sandbox::confine_here`: agent
 commands (`terminal_runner.rs` direct and shell, `pty_runner.rs`), MCP servers (`mcp/client.rs`) and native
 plugins (`plugins/executor.rs`). Plan and reasons: `.agent/plans/security/os-sandbox.md`.

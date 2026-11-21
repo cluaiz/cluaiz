@@ -1,5 +1,7 @@
 # Two Runtimes: llama.cpp and ONNX Runtime
 
+![EngineHost loads models into llama.cpp (GGUF: chat, Qwen3-TTS, GGUF embeddings) and ONNX Runtime (Kokoro, Piper, Whisper, embeddings); when memory is short idle speech and embedding models are unloaded first, never a model in use or the chat model](../assets/engine/two-runtimes.png)
+
 The Engine runs models through two runtimes, inside one process.
 
 | Runtime | Model files | Used for | Code |

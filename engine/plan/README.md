@@ -31,6 +31,8 @@ graph TD
 
 ## Auto context and KV cache
 
+![Auto context steps: 16,384 tokens with F16 KV, then Q8 up to 16,384, then 4,096 with Q4, then 2,048-4,095 with Q4, then a GPU and RAM split at 8,192 with Q8](../../docs/assets/engine/auto-context.png)
+
 With context and KV cache on Auto, the model stays on the GPU first and the KV cache gets smaller
 before the context does. Each step uses the first VRAM buffer; the 512 MiB fallback buffer only
 reaches the floor (so less free memory never gives a bigger context).
@@ -55,6 +57,8 @@ linear-attention layers hold a fixed state (`ModelGeometry::recurrent_layers`), 
 llama.cpp allocates it.
 
 ## MoE GPU cache
+
+![The routed experts of the first n_cpu_moe blocks stay in RAM with a MoE GPU cache of the most used experts; everything else is on the GPU](../../docs/assets/engine/moe-placement.png)
 
 When a MoE model does not fit on the GPU, the MoE split keeps attention and KV on the GPU and
 the experts of the first `n_cpu_moe` layers in RAM. llama.cpp's MoE cache can then keep the most

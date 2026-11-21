@@ -1,5 +1,7 @@
 # The Engine as a C library (`ffi/`, crate `cluaiz-ffi`)
 
+![cep_call takes a JSON-RPC request and returns the reply from the same CEP methods as /v1/cep; cep_free frees it](../docs/assets/engine/ffi-call.png)
+
 The release packages do not include this library yet: build it with `cargo build --release -p cluaiz-ffi`.
 
 `cluaiz_cep.dll` / `libcluaiz_cep.so` / `libcluaiz_cep.dylib` runs the Cluaiz Engine inside another program. The library exports two functions (header: [`include/cep.h`](include/cep.h)):

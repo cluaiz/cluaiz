@@ -1,5 +1,7 @@
 # Component: `cmd/src/cli/`
 
+![cluaiz pull: model id, resolve, plan the files, download with resume, check, registry, cluaiz list](../../../docs/assets/get-started/model-download.png)
+
 ## Technical Specification
 
 - **Purpose:** The handlers of the `cluaiz` subcommands other than the chat and the agent

@@ -1,5 +1,7 @@
 # Component: `agents/src/registry/`
 
+![Installing a tool: the request, a plan, questions the user's mode leaves open, fetch, stage and place with checked paths, then permissions](../../../docs/assets/engine/tool-install.png)
+
 ## Technical Specification
 
 - **Purpose:** The list of installed tools (skills, plugins, MCP servers) and each one's

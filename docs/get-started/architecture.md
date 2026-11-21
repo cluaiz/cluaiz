@@ -6,6 +6,11 @@ One program, `cluaiz`, holds the CLI, the terminal agent, the HTTP server and th
 
 ## Layers
 
+![The Engine in four layers: api, cmd and automation on top; runtime and agents; plan, llama, onnx and media; models, hardware and core at the bottom. A crate depends only on crates below it](../assets/engine/crate-layers.png)
+
+![One chat request: api, runtime ensure_loaded, hardware free memory, plan, llama load, stream, answer with timings](../assets/engine/chat-request.png)
+
+
 ```mermaid
 flowchart TD
     CLI["cluaiz CLI and terminal agent (cmd/)"]

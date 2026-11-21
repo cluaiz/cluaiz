@@ -17,6 +17,9 @@
 
 ## Architectural flow: one agent turn
 
+![One agent turn: message, tool search, schemas, model; approval, run in the OS sandbox, results back to the model](../docs/assets/engine/agent-turn.png)
+
+
 ```mermaid
 sequenceDiagram
     participant FE as Front end (api chat / cmd agent)

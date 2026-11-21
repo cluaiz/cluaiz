@@ -24,6 +24,9 @@ graph TD
 
 ## Components
 
+![reasoning_effort as a share of the room: low 25%, medium 50%, high 75%, max the whole room; auto is 3 minutes at the measured speed, from 1,024 tokens up to high](../../docs/assets/api/thinking-budget.png)
+
+
 | Module | Responsibility |
 |---|---|
 | [`env.rs`](src/env.rs) | Dynamic root discovery (Dev, Portable, Installed). Zero hardcoded paths. |

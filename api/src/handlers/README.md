@@ -1,10 +1,12 @@
 # Direct HTTP route handlers (`api/src/handlers/`)
 
+![The HTTP routes behind the auth check: chat, models, embeddings and speech, and CEP](../../../docs/assets/api/route-map.png)
+
 This folder holds direct inference, document extraction and compatibility routes. Engine control operations are CEP methods in [`../cep/`](../cep/) (`POST /v1/cep`, `/mcp`, `cep_call`).
 
 ```mermaid
 graph LR
-    Client["OpenAI / Ollama clients"] --> Router["routes.rs"]
+    Client["OpenAI clients (also on /api/chat)"] --> Router["routes.rs"]
     Router --> Chat["chat/: /v1/chat/completions, /api/chat"]
     Router --> Ingest["ingest/: /v1/ingest"]
     Ingest --> Emb["embeddings.rs: shared EmbeddingExecutor"]
@@ -20,11 +22,11 @@ graph LR
 
 | File | Routes | Shared with CEP |
 |---|---|---|
-| `chat/` | `/v1/chat/completions`, `/api/chat` | The whole chat pipeline. `chat.*`, `memory.*`, `context.*` and `approvals.*` call into `chat/recall.rs`, `chat/authorize.rs`, `chat/context_plan.rs` and `chat/background.rs`. |
+| `chat/` | `/v1/chat/completions`, `/api/chat` | The whole chat pipeline. Both routes take the OpenAI request and answer in OpenAI's shape (run 33: an Ollama client cannot parse `/api/chat`). `chat.*`, `memory.*`, `context.*` and `approvals.*` call into `chat/recall.rs`, `chat/authorize.rs`, `chat/context_plan.rs` and `chat/background.rs`. |
 | `ingest/` (`mod.rs`, `model.rs`) | `/v1/ingest` | Shared document extraction/source resolution and existing embedding/native model owners; direct final JSON, not a CEP task |
 | `embeddings.rs` | `/v1/embeddings` | `EmbeddingExecutor` is reused by `/v1/ingest` with a model |
 | `audio.rs` (+ `audio_types.rs`, `audio_tests.rs`) | `/v1/audio/speech`, `/v1/audio/transcriptions` | One dispatch for the standard routes and `audio.run`; `audio.voices` / `audio.languages` use its model selection |
-| `models.rs` | `/v1/models`, `/api/tags`, `/api/pull` | The registry listing used by `models.list` lives in `cluaiz_models`. `/api/pull` and CEP `models.download` share `pull()` here, which runs `cluaiz_models::fetcher::pull` (the resolver `cluaiz pull` uses). |
+| `models.rs` | `/v1/models`, `/api/tags`, `/api/pull` | `/api/tags` writes a fixed `modified_at` (line 96; gap, run 33). The registry listing used by `models.list` lives in `cluaiz_models`. `/api/pull` and CEP `models.download` share `pull()` here, which runs `cluaiz_models::fetcher::pull` (the resolver `cluaiz pull` uses). |
 | `health.rs` | `/health` | - |
 
 Rules for this folder:
@@ -35,3 +37,11 @@ Rules for this folder:
 
 23 unit tests in this folder and below (chat 20, `audio_tests.rs` and others 3); route tests in
 `api/tests/`. `api` builds both native backends, so none of these tests were run on 2026-11-21 (see `api/README.md`, Tests).
+
+## Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| `/api/chat` has no Ollama request or reply mapping | Ollama libraries cannot use it (run 33) | a mapping in `chat/`, or drop the alias |
+| `/api/tags` fixed `modified_at`, `parameter_size: Unknown` | invented data in a reply (run 33) | the file's date and the GGUF parameter count |
+| OpenAI fields ignored on installed models (`stop`, `max_completion_tokens`, `n`, `logprobs`, `logit_bias`) | clients get a different result without an error (run 32) | read them in `chat/types.rs` and pass them to llama.cpp |

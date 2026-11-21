@@ -69,6 +69,7 @@ The CLI and the agent load models in their own process; they do not need the ser
 *   **[Quickstart Guide](quickstart.md)**: Install, first model, building from source.
 *   **[Your first API request](first-api-request.md)**: Serve a model, get an answer, stream it, add an API key.
 *   **[Troubleshooting](troubleshooting.md)**: Start from the message you see: port in use, 401, 429, OS sandbox.
+*   **[Coming from Ollama](coming-from-ollama.md)**: Which commands map one to one, and what to change in API code.
 
 ### 2. How-to
 *   **[System Architecture Overview](architecture.md)**: The layers of the program.

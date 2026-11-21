@@ -30,6 +30,8 @@ Measured (release, this machine): 20,000 cards built in 265 ms, their index in 2
 
 ## Planner (`src/planner.rs`)
 
+![The planner takes protected segments first, then the newest two turns, tools in use, evidence (at most 15%), suggestions (at most 5%), older history and evictable segments, until the room is full; compaction starts at 85%](../docs/assets/engine/context-plan.png)
+
 ```text
 room      = n_ctx − reserve_answer − reserve_thinking − margin
 available = room − protected

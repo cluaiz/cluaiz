@@ -1,10 +1,14 @@
 # Context runtime: routing set
 
+![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/cloud/runs and BENCHMARKS.md](../../docs/assets/contributing/test-kinds.png)
+
 `routing_set.jsonl` holds 165 labelled user messages for the tool matcher
 (`agents/src/tool_search.rs`): English, Hinglish and Devanagari; direct requests, paraphrases,
 several tools at once, follow-ups (with `previous`), false-positive traps, chit-chat, and
 requests no installed tool can do. `expect` lists the tool ids that should be suggested, or is
 empty when none should be.
+
+`harness.py` holds the shared helpers: it starts and stops an isolated Engine (`--exe`, `--home`) or uses one that already runs (`--url`, `--token`), and talks to it like the App (streaming, approvals) or like a plain client. `journeys.py`, `memory_journeys.py` and `perf.py` import it. Never point it at your own server.
 
 `calibrate.py` sends every message to a running Engine's CEP `tools.discover` and reports:
 

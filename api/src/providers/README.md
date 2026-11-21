@@ -18,6 +18,8 @@
 
 ## Architectural Flow
 
+![A chat to a cloud provider: the model name picks the provider, its differences shape the body, the reply stream is decoded into the same blocks as an installed model](../../../docs/assets/engine/provider-call.png)
+
 ```mermaid
 flowchart TD
     CALLER["Caller<br/>/v1/chat/completions · cluaiz run/agent · providers.* · /v1/embeddings · /v1/audio/*"]

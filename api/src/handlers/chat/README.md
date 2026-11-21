@@ -16,6 +16,8 @@
 
 ## Architectural Flow
 
+![One chat request: the request, preflight (model, memory, project files, tools, context plan), dispatch, the agent turn, the approval gate for each tool call, then the answer with its context report](../../../../docs/assets/api/chat-pipeline.png)
+
 ```mermaid
 flowchart TD
     REQ["POST /v1/chat/completions<br/>ExternalChatRequest (types.rs)"]

@@ -16,6 +16,8 @@
 
 ## Architectural Flow
 
+![cluaiz pull: resolve the model id to a repository and variant, plan the files, download with resume, check the package, write the installed ID to the registry; cluaiz list shows that ID](../../../../docs/assets/get-started/model-download.png)
+
 ```mermaid
 flowchart TD
     ID["model id<br/>qwen3 · owner/repo · hf:// · URL · :Q4_K_M"]

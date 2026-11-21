@@ -12,6 +12,9 @@ This guide details how model retrieval works, how files are organized on disk, a
 
 ## How Model Downloading Works
 
+![cluaiz pull: resolve the model id to a repository and variant, plan the files, download with resume, check the package, write the installed ID to the registry; cluaiz list shows that ID](../assets/get-started/model-download.png)
+
+
 When you run `cluaiz run <repo-id>` or `cluaiz pull <repo-id>` (or trigger `models.download` via the API / Web UI), the engine executes the following steps:
 
 1. **HuggingFace API Scan**: Recursively scans the target repository's file tree to identify all `.gguf` or `.onnx` files.

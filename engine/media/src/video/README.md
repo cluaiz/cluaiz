@@ -1,5 +1,7 @@
 # Component: Video ABI contract
 
+![One SourceResolver reads a local path, URL or base64 with size limits; shared decoders give images, audio, document text or video frames to the model](../../../../docs/assets/engine/media-sources.png)
+
 ## Technical specification
 
 - **Purpose:** `abi.rs` owns the exact versioned C layout shared by the optional decoder and shared-media consumer. It contains actual interface definitions, not forwarding imports.

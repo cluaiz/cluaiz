@@ -13,6 +13,9 @@
 
 ## Architectural Flow
 
+![A chat request is compared with the log (new, edited, retracted), secrets are redacted, and events are appended to events.jsonl; large payloads go to blobs; notes and vectors are separate files](../../../docs/assets/engine/memory-store.png)
+
+
 ```mermaid
 flowchart TD
     REQ["Chat request<br/>(client messages)"]

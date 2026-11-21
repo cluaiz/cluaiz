@@ -39,7 +39,7 @@ scripts and agents memory, tools and workflows on top of them:
 - **MoE models larger than the GPU, and larger than free RAM:** attention stays on the GPU, the experts sit in
   RAM with llama.cpp's MoE GPU cache sized by the planner, and experts that do not fit RAM are read from the
   memory-mapped model file on the disk when used (at the disk's speed; a dedicated SSD prefetch is planned).
-- **APIs** that existing clients already speak (OpenAI-compatible and Ollama-style routes), plus CEP, one
+- **APIs** that existing clients already speak (OpenAI-compatible routes; `/api/tags` and `/api/pull` for Ollama), plus CEP, one
   JSON-RPC 2.0 protocol for everything engine-specific, over HTTP, MCP or a C library.
 - **Cloud providers** beside local models, through the same APIs.
 - **Memory and projects:** project rules, notes kept between conversations that become memory only when you
@@ -437,7 +437,7 @@ flowchart TB
     subgraph SERVICES["Request services"]
         SEC["security/<br/>permissions, audit"]
         CTX["context/<br/>pure context planning: fit, compaction,<br/>memory cards, episodes, recall"]
-        AGT["agents/<br/>tools, skills, plugins, MCP client,<br/>tool search, policy-checked execution<br/>(no OS sandbox)"]
+        AGT["agents/<br/>tools, skills, plugins, MCP client,<br/>tool search, policy-checked execution<br/>(OS sandbox on Linux and macOS)"]
         MEDIA["engine/media<br/>bounded sources, image / audio / video<br/>decoding, resampling"]
     end
 
@@ -565,7 +565,7 @@ sequenceDiagram
 | `cluaiz-cep` | [`cep/`](cep/) | Cluaiz Engine Protocol: JSON-RPC 2.0 envelope, method registry, approvals, tasks, discovery. |
 | `cluaiz-ffi` | [`ffi/`](ffi/) | The engine as a C library: `cep_call` / `cep_free`, the same messages as `POST /v1/cep`. |
 | `cluaiz-context` | [`context/`](context/) | Pure context planning (no I/O): fitting, compaction policy, memory cards, episodes, recall. |
-| `cluaiz-agents` | [`agents/`](agents/) | Tools, skills, plugins, MCP client, tool search, policy-checked command execution (no OS sandbox). |
+| `cluaiz-agents` | [`agents/`](agents/) | Tools, skills, plugins, MCP client, tool search, policy-checked command execution, OS sandbox on Linux and macOS (Windows with `os_sandbox: required`). |
 | `cluaiz-security` | [`security/`](security/) | Permission schema, audit log. |
 | `cluaiz-runtime` | [`engine/runtime/`](engine/runtime/) | The single model host: load / unload, chat sessions, speech and embedding hosts, VRAM use. |
 | `cluaiz-plan` | [`engine/plan/`](engine/plan/) | Placement planner: GPU / split / MoE / CPU candidates, context size, KV type, buffers, learned margins. |

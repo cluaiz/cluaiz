@@ -107,6 +107,8 @@ A tool that needs a value must name it in `env`.
 
 ## What an install does
 
+![Installing a tool: the request, a plan, questions the user's mode leaves open, fetch, stage and place with checked paths, then permissions](../assets/engine/tool-install.png)
+
 Before downloading, `cluaiz <type> install <id>` (CEP `tools.install`) builds a plan: the tool,
 the tools it depends on (`dependencies.<kind>.<id>.need`: `required`, `recommended` or
 `optional`; absent means required), and the permissions each asks for. The user's agent mode
@@ -131,6 +133,11 @@ three counts as `sandboxed`.
 ---
 
 ## Calling a plugin's function
+
+![A WebAssembly plugin runs inside the Engine with fuel and memory limits and reaches the network only through cluaiz.http_fetch; a native plugin runs as a child process through the OS sandbox](../assets/engine/plugin-runners.png)
+
+![MCP server process: started on the first call, reused, stopped after 10 idle minutes or when more than 4 run; restarted after 1 s then 2 s; unavailable after 3 crashes in 10 minutes](../assets/engine/mcp-server-life.png)
+
 
 A plugin lists its functions in `package.json`. A call to a function the plugin does not list
 fails and names the functions it has; it never runs another function.

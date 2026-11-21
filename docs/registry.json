@@ -9,7 +9,8 @@
           { "slug": "welcome", "title": "🌟 Welcome", "file_path": "docs/get-started/welcome.md" },
           { "slug": "introduction", "title": "📖 Introduction", "file_path": "docs/get-started/introduction.md" },
           { "slug": "architecture", "title": "📡 System Architecture", "file_path": "docs/get-started/architecture.md" },
-          { "slug": "model-downloading", "title": "📥 Model Downloading", "file_path": "docs/get-started/model-downloading.md" }
+          { "slug": "model-downloading", "title": "📥 Model Downloading", "file_path": "docs/get-started/model-downloading.md" },
+          { "slug": "coming-from-ollama", "title": "🦙 Coming from Ollama", "file_path": "docs/get-started/coming-from-ollama.md" }
         ]
       },
       {
@@ -36,7 +37,8 @@
       {
         "group": "Chat",
         "pages": [
-          {"slug": "chat-completions", "title": "POST /v1/chat/completions", "file_path": "docs/api/inference/chat_completions.md"}
+          {"slug": "chat-completions", "title": "POST /v1/chat/completions", "file_path": "docs/api/inference/chat_completions.md"},
+          {"slug": "openai-compatibility", "title": "OpenAI compatibility", "file_path": "docs/api/inference/openai_compatibility.md"}
         ]
       },
       {

@@ -1,8 +1,11 @@
 # Component: Media release acceptance
 
+![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/cloud/runs and BENCHMARKS.md](../../docs/assets/contributing/test-kinds.png)
+
 ## Technical specification
 
 - **Purpose:** exercise attachment APIs through an actual separately supplied CLI executable. This complements library and in-process router tests; it does not replace App or installer acceptance.
+- **Selected-model proof:** `processing_acceptance.rs` (a module of `artifact_acceptance.rs`) runs the real executable in a private home and checks the model it selected, without changing its planner.
 - **Owner:** `artifact_acceptance.rs` is registered as the `artifact_acceptance` integration target in `api/Cargo.toml`. It adds no production command or startup dependency.
 - **Platform:** the process launcher suppresses a background console on Windows. Runtime model/provider compatibility still depends on the supplied executable/package; results apply only to the actual target exercised.
 - **Fixtures:** real external model weights and a speech sample with independent reference text. Small PNG, PDF and DOCX fixtures reuse existing image/document builders; the scanned PDF contains raster pixels rather than an embedded answer layer. Encoded video is externally supplied.

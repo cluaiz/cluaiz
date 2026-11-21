@@ -14,6 +14,9 @@
 
 ## Architectural flow
 
+![permission.json has the file and a server copy loaded at boot; the CLI writes only the file, CEP writes both](../docs/assets/engine/permission-copies.png)
+
+
 ```mermaid
 graph LR
     subgraph security["security/ (this crate)"]

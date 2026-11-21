@@ -1,5 +1,7 @@
 # Shared document extraction
 
+![One SourceResolver reads a local path, URL or base64 with size limits; shared decoders give images, audio, document text or video frames to the model](../../../../docs/assets/engine/media-sources.png)
+
 ## Reference
 
 `extract` consumes bounded source bytes and their format evidence; it returns ordered `DocumentPart` values with real text, method, optional PDF page number, omissions, warnings and optional OCR confidence. UTF-8 text/code, BOM-marked UTF-16, legacy Word DOC, PDF text, main-body DOCX XML and native image/scanned-page OCR use this owner. Backend-specific neural encoders are not implemented here.

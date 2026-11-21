@@ -1,5 +1,7 @@
 # Component: `engine/models/src/registry/`
 
+![cluaiz pull ends by writing the installed ID to model_registry.json, which cluaiz list shows](../../../../docs/assets/get-started/model-download.png)
+
 ## Technical Specification
 
 - **Purpose:** Which models exist and where: the **installed state**

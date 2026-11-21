@@ -17,6 +17,9 @@
 
 ## Architectural Flow
 
+![A WebAssembly plugin runs inside the Engine with fuel and memory limits and reaches the network only through cluaiz.http_fetch; a native plugin runs as a child process through the OS sandbox](../../../docs/assets/engine/plugin-runners.png)
+
+
 ```mermaid
 flowchart LR
     CALL["Plugin call<br/>(function + JSON arguments)"]

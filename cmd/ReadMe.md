@@ -1,5 +1,7 @@
 # The `cluaiz` program (`cmd/`)
 
+![One agent turn: the message, tool search, schemas, the model, and for each tool call the approval, the run and the result going back to the model](../docs/assets/engine/agent-turn.png)
+
 The command line of the Engine. `cluaiz --help` lists every command; `cluaiz <command> -h` explains one.
 The full references are [docs/cmd/commands_reference.md](../docs/cmd/commands_reference.md) (commands),
 [docs/cmd/agent.md](../docs/cmd/agent.md) (coding agent) and [docs/cmd/chat.md](../docs/cmd/chat.md) (chat).

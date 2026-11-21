@@ -1,5 +1,7 @@
 # Component: Cluaiz Media
 
+![One SourceResolver reads a local path, URL or base64 with size limits; shared decoders give images, audio, document text or video frames to the model](../../docs/assets/engine/media-sources.png)
+
 ## Technical specification
 
 - **Purpose:** shared bounded source preparation, extensible format detection, owned temporary assets, image-to-RGB8 and audio-to-PCM F32 decoding, and model-independent document text extraction/chunking. Core remains the sole owner of decoded-buffer and settings/limit contracts.

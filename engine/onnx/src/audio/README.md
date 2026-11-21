@@ -1,5 +1,7 @@
 # Component: Cluaiz ONNX Audio & TTS Subsystem (`src/audio/`)
 
+![Text goes through reading preparation and a TTS family adapter (Kokoro, Piper, Supertonic, Chatterbox, CosyVoice, Matcha, OmniVoice) to a WAV; audio is decoded and prepared for Whisper](../../../../docs/assets/engine/speech-pipeline.png)
+
 ## Technical Specification
 - **Purpose:** ONNX STT model preprocessing/graphs and multi-family TTS orchestration. Input source reading, codec decoding and PCM preparation are shared through cluaiz-media.
 - **Platform Support:** Linux x86_64, macOS ARM64, Windows x86_64, Android AArch64.

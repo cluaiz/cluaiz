@@ -4,6 +4,8 @@ Automation runs **flows**: files of steps that use the Engine's tools, methods a
 a separate layer, not part of the Engine and not part of the API. The user docs are in
 [docs/automation](../docs/automation/README.md).
 
+![Automation: cluaiz serve and cluaiz flow start the host; the host runs flows defined by the core crate and reaches the Engine through events, extension routes and tools, long approvals and the WebAssembly runner](../docs/assets/engine/automation-layers.png)
+
 ```mermaid
 flowchart LR
     CMD["cmd: cluaiz serve, cluaiz flow"] --> HOST["automation/host<br/>cluaiz-automation-host"]

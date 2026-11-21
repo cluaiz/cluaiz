@@ -1,5 +1,10 @@
 # Context runtime (`context.*`)
 
+![The planner takes protected segments first, then the newest two turns, tools in use, evidence, suggestions, older history and evictable segments, until the room is full](../../../../assets/engine/context-plan.png)
+
+![A chat request is compared with the log (new, edited, retracted), secrets are redacted, and events are appended to events.jsonl; large payloads go to blobs; notes and vectors are separate files](../../../../assets/engine/memory-store.png)
+
+
 How the Engine shares a model's context between the system prompt, the conversation, tools and
 the answer, and what it did for each request. The plan itself is described in
 [Chat Completions → Context plan and compaction](../../../inference/chat_completions.md#context-plan-and-compaction).

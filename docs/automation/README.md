@@ -1,5 +1,8 @@
 # Cluaiz Automation
 
+![Automation: cluaiz serve and cluaiz flow start the host; the host runs flows defined by the core crate and reaches the Engine through events, extension routes and tools, long approvals and the WebAssembly runner](../assets/engine/automation-layers.png)
+
+
 > **Draft for review.** Four parts of Automation are built (not released): the format and all its
 > checks, every operator, all seventeen step kinds, run records with resuming after a restart
 > (waits too), every trigger (`tool` offers flows to MCP clients, chats and the coding agent), sixteen methods (drafting,

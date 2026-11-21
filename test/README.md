@@ -14,6 +14,9 @@
 
 ## Two kinds of tests in this repository
 
+![Two kinds of tests: cargo test next to the code, and the test folder with journeys against a started server; recorded runs go to test/cloud/runs](../docs/assets/contributing/test-kinds.png)
+
+
 ```mermaid
 graph TD
     subgraph cargo["cargo test (next to the code)"]

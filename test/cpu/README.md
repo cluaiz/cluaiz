@@ -1,5 +1,7 @@
 # CPU test (Windows PC without a graphics card)
 
+![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/cloud/runs and BENCHMARKS.md](../../docs/assets/contributing/test-kinds.png)
+
 Installs the newest release with the website's command and tests it on the CPU: chat, speed and memory on small
 models, the coding agent, plugins and skills, speech, embeddings and a document. It needs one command, takes
 about an hour on a laptop, and packs all results into one archive on the Desktop.

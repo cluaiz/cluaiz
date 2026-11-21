@@ -1,5 +1,7 @@
 # Quickstart Guide
 
+![The installer puts the core (the cluaiz program and CPU builds of llama.cpp) and one GPU pack chosen from the GPU: NVIDIA gets CUDA 13 or 12, AMD and Intel Arc get Vulkan, Apple Silicon uses Metal in the core, otherwise CPU only; every file is checked against SHA256SUMS.txt](../assets/get-started/install-packs.png)
+
 This guide details the deployment pathways to install, bootstrap, and execute cluaiz natively on your workstation. The runtime can be deployed via a single-line automated installer or compiled manually from source.
 
 Cluaiz is one native program: it needs no Docker and no Python.

@@ -51,6 +51,9 @@ the GPU) 18.2 t/s generation, 870 t/s prompt; CPU only 10.5 t/s and 48 t/s. The 
 
 ## Context and KV cache
 
+![Auto context steps: 16,384 tokens with F16 KV, then Q8 up to 16,384, then 4,096 with Q4, then 2,048-4,095 with Q4, then a GPU and RAM split at 8,192 with Q8](../assets/engine/auto-context.png)
+
+
 | Field | Default | Meaning |
 |---|---|---|
 | `custom_context_window` | auto | Context size in tokens. Empty = sized by free memory, `0` = the model's native maximum, `N` = exactly N |

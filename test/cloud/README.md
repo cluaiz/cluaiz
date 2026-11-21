@@ -10,6 +10,9 @@
 
 ## Flow of one run
 
+![Cloud run: vm.sh create, build, test, vm.sh get, run folder, BENCHMARKS row, vm.sh delete](../../docs/assets/contributing/cloud-run.png)
+
+
 ```mermaid
 graph LR
     Create["vm.sh create &lt;name&gt; &lt;machine&gt; &lt;gpu|none&gt;<br/>Spot VM, stops itself after MAX_RUN (3h)"] --> Put["vm.sh put: remote/*.sh, *.py"]

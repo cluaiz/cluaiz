@@ -125,7 +125,7 @@ cluaiz provider test myapi model-name
 | `cluaiz <type> config <id>` | | View or change a component's settings (asks for missing values) |
 | `cluaiz <type> permission <id> [permission] [on\|off]` | | Show a component's permissions, or switch one on or off |
 
-A WebAssembly (`.wasm`) plugin runs inside the Engine and reaches only the time and the OS name. Any other plugin runs as a normal child process with your user's rights.
+A WebAssembly (`.wasm`) plugin runs inside the Engine with an instruction and a memory limit, no files and no programs; its only network is `cluaiz.http_fetch` to the https hosts it declares. Any other plugin runs as a child process inside the OS sandbox (`os_sandbox`): your home folder and secrets are hidden and its own folder is read-only. On Windows, `auto` mode does not confine it; `required` does ([How a plugin runs](../../agents/src/plugins/README.md)).
 
 ```bash
 cluaiz plugin install cluaiz-search
@@ -204,7 +204,7 @@ These are not `cluaiz` commands. They run in the repository.
 | `POST` | `/v1/ingest` | Direct document/image extraction with optional selected-model processing |
 | `POST` | `/v1/cep` | Engine control operations, as JSON-RPC 2.0 methods (`system.info`, `models.load`, `config.set`, `fs.*`, `memory.*`, …). See [docs/api/cep](../api/cep/README.md) |
 | `POST` | `/mcp` | The same methods for MCP clients (read-only) |
-| `POST` | `/v1/chat/completions`, `/api/chat` | Chat (OpenAI / Ollama), streaming |
+| `POST` | `/v1/chat/completions`, `/api/chat` | Chat, streaming. Both take the OpenAI request and answer in OpenAI's shape ([Coming from Ollama](../get-started/coming-from-ollama.md)) |
 | `POST` | `/v1/embeddings` | Embeddings (OpenAI) |
 | `POST` | `/v1/audio/speech`, `/v1/audio/transcriptions` | Text-to-speech and speech-to-text (OpenAI) |
 | `GET` | `/v1/models`, `/api/tags` | Installed models (OpenAI / Ollama) |

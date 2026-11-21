@@ -16,6 +16,9 @@
 
 ## How the crates depend on each other
 
+![The Engine in four layers: api, cmd and automation on top; runtime and agents; plan, llama, onnx and media; models, hardware and core at the bottom. A crate depends only on crates below it](../docs/assets/engine/crate-layers.png)
+
+
 Taken from each crate's `Cargo.toml` on 2026-11-21. An arrow means "depends on".
 
 ```mermaid
@@ -50,6 +53,9 @@ Rules this graph keeps: `core` depends on no other engine crate (only `context`,
 rules); `hardware` only on `core`; nothing inside `engine/` depends on `api`, `agents` or `cmd`.
 
 ## One chat request through the engine
+
+![One chat request: api, runtime ensure_loaded, hardware free memory, plan, llama load, stream, answer with timings](../docs/assets/engine/chat-request.png)
+
 
 ```mermaid
 sequenceDiagram

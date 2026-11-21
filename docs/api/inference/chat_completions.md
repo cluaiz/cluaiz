@@ -118,7 +118,7 @@ params:
     req: false
     default: "null"
     allowed: "Array of strings"
-    desc: "Custom token strings that halt generation immediately when matched."
+    desc: "Strings that end the answer. Applied only to provider models today; an installed model ignores it, and a single string is refused with HTTP 422 (run 32)."
   - name: "seed"
     type: "Integer"
     req: false
@@ -208,7 +208,7 @@ params:
     req: false
     default: "null"
     allowed: "Map of token ID to bias"
-    desc: "Token ID probability bias adjustments (-100 to +100)."
+    desc: "Token ID probability bias adjustments (-100 to +100). Applied only to provider models today; an installed model ignores it."
 request_payload: |
   {
     "model": "llama_3.2_instruct-3b-gguf-q4_k_m",
@@ -336,6 +336,8 @@ A model named `<provider>/<model>`, such as `myapi/model-name`, belongs to a pro
 
 ## Request flow
 
+![One chat request: preflight (model, memory, project files, tools, context plan), dispatch, the agent turn, the approval gate for each tool call, then the answer](../../assets/api/chat-pipeline.png)
+
 ```mermaid
 flowchart LR
     C["POST /v1/chat/completions: messages"] --> A["Auth and request validation"]
@@ -377,7 +379,7 @@ flowchart LR
 | **`repetition_penalty`** | Float | No | `1.1` | $\ge 1.0$ | Penalizes repetitive phrases and token loops. |
 | **`presence_penalty`** | Float | No | `0.0` | $\ge 0.0$ | Penalizes new tokens based on whether they appear in the text so far. |
 | **`frequency_penalty`** | Float | No | `0.0` | $\ge 0.0$ | Penalizes new tokens based on their frequency in the text so far. |
-| **`stop`** | Array | No | `null` | Array of strings | Custom token strings that halt generation immediately when matched. |
+| **`stop`** | Array | No | `null` | Array of strings | Strings that end the answer. **Applied only to provider models today;** an installed (llama.cpp) model ignores it, and a single string instead of an array is refused with HTTP 422 (recorded in run 32, `test/cloud/runs/2026-11-21-run32-openai-compat-probe/`). |
 | **`seed`** | Integer | No | `null` | Integer | Random seed for deterministic, reproducible generation. |
 | **`keep_alive`** | Integer | No | `null` | Minutes (e.g. `5`, `0`, `-1`) | Positive minutes retain after completion; `0` unloads, omission/`-1` retains. This value is not seconds. |
 | **`response_format`** | Object | No | `null` | Object | The answer is JSON, held to its shape by a grammar (llama-server's way): `{"type": "json_object"}` (any object, or the object's `schema`), or `{"type": "json_schema", "json_schema": {"schema": {...}}}`. The grammar applies after thinking. Note: the Engine keeps request JSON in sorted maps, so the properties of a schema come out in alphabetical order; send a `grammar` when the order matters. Ignored when native tool calls carry their own grammar. |
@@ -393,7 +395,7 @@ flowchart LR
 | **`kv_reuse`** | String | No | auto | `"prefix"`, `"chunk"` | How the KV cache is matched to the new prompt. `prefix`: only the common prefix is kept. `chunk`: shared chunks after it are moved too (llama-server `--cache-reuse`), which keeps the context they were computed with. Auto: `chunk` only when the Engine dropped old turns to fit, otherwise `prefix`, so an edit such as unloading a tool is computed again from the change. |
 | **`grammar`** | String | No | `null` | GBNF string | llama.cpp GBNF grammar the answer must follow (after thinking); takes precedence over `response_format`. A grammar llama.cpp cannot parse is logged and the answer is not constrained. As in llama-server, the sampler picks a token first and the grammar checks only that token; only a rejected token makes the grammar go over the whole vocabulary, so a grammar costs almost no speed (Gemma 4: 14.6 tokens/s with a grammar, 7.5 before this). The same holds for `response_format`; the grammar of native tool calls still masks every candidate, as before. |
 | **`chat_template_kwargs`** | Object | No | `null` | Object | Additional keyword arguments passed directly to the Jinja chat tokenizer template. |
-| **`logit_bias`** | Object | No | `null` | Map of token ID to bias | Token ID probability bias adjustments (-100 to +100). |
+| **`logit_bias`** | Object | No | `null` | Map of token ID to bias | Token ID probability bias adjustments (-100 to +100). **Applied only to provider models today;** an installed model ignores it. |
 
 > [!NOTE]
 > **BitNet (1-bit / 1.58-bit) Models**:
@@ -463,6 +465,9 @@ from thinking for an hour. Examples: 5 tokens per second gives 1,024 tokens; 36 
 decides.
 
 When the budget runs out, the Engine closes the thinking block gently, the way model makers describe it:
+
+![When the thinking budget runs out: finish the line (up to a quarter of the budget, at most 500 tokens), write the wrap-up sentence, then the end tag](../../assets/api/thinking-close.png)
+
 
 1. **At the end of a line.** With `auto`, `low`, `medium` or `high`, a model in the middle of a line may
    finish it first: up to a quarter of the budget more, at most 500 tokens, never past the room (NVIDIA's

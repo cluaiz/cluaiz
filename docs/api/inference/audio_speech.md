@@ -100,6 +100,8 @@ Synthesizes speech with an installed ONNX TTS package or a GGUF speech backbone 
 
 ## Endpoint Information
 
+![Text goes through reading preparation and a TTS family adapter to a WAV](../../assets/engine/speech-pipeline.png)
+
 * **HTTP Method:** `POST`
 * **Path:** `/v1/audio/speech` (CEP task: `audio.run`)
 * **Content-Type:** `application/json`

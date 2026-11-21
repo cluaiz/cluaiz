@@ -11,6 +11,9 @@ per-extension authorization boundary.
 
 ## Route map (`src/routes.rs`, 2026-11-21)
 
+![HTTP routes: chat, models, embeddings and audio routes, and /v1/cep and /mcp for every Engine-specific method, behind the bearer-token check; /health stays open](../docs/assets/api/route-map.png)
+
+
 ```mermaid
 graph LR
     C["Client"] --> R["routes.rs<br/>auth middleware (api/src/auth.rs)"]
@@ -27,8 +30,12 @@ graph LR
     CEP --> RT
 ```
 
-New Engine features are CEP methods, not new HTTP routes; the HTTP routes are the OpenAI / Ollama
-compatible ones plus `/health` and `/v1/ingest`.
+New Engine features are CEP methods, not new HTTP routes; the HTTP routes are OpenAI's (chat,
+models, embeddings, audio), three Ollama-named routes (`/api/chat`, `/api/tags`, `/api/pull`), `/health`
+and `/v1/ingest`. `/api/chat` is the same handler as `/v1/chat/completions`: it takes the OpenAI request
+and answers in OpenAI's shape, so Ollama's own libraries cannot parse it (run 33).
+
+![The HTTP routes: clients pass the auth check, then chat, models, embeddings and speech, or CEP for every Engine-specific method](../docs/assets/api/route-map.png)
 
 ## Chat planner reference
 
@@ -397,7 +404,7 @@ flowchart LR
 |---|---|
 | [`src/boot.rs`](src/boot.rs) | One start for every way the Engine runs: the HTTP / native-pipe daemon (`boot`) and the in-process C library (`boot_in_process`, for `cep_call`) |
 | [`src/state.rs`](src/state.rs) | `AppState`: the `EngineHost`, the open workspace folder, the session token for local clients, `permission.json` in RAM, and the CEP engine |
-| [`src/routes.rs`](src/routes.rs) | The HTTP routes: the OpenAI / Ollama compatible routes, `/health`, `/v1/ingest`, and CEP (`/v1/cep`, `/mcp`); request body limits (`inline_body_bytes`) |
+| [`src/routes.rs`](src/routes.rs) | The HTTP routes: the OpenAI routes, `/api/chat` (same handler), `/api/tags`, `/api/pull`, `/health`, `/v1/ingest`, and CEP (`/v1/cep`, `/mcp`); request body limits (`inline_body_bytes`) |
 | [`src/update.rs`](src/update.rs) | Is a newer release out: one request to the GitHub releases list of `cluaiz/cluaiz` (pre-releases included), the same source the installers read; used by `cluaiz self update` and `system.update_check` |
 | [`src/url_resolver.rs`](src/url_resolver.rs) | A URL (http, `data:` base64, or file) as a local temporary file for attachments |
 | [`src/utils/slots.rs`](src/utils/slots.rs) | The model path of a slot (the active chat or vector model in `permission.json`) or of a model id, and capability notes in the log before a request |
@@ -426,12 +433,15 @@ Route behaviour is also exercised by every cloud run (`test/cloud/BENCHMARKS.md`
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | Engine-specific operations are CEP methods on `/v1/cep` (also `/mcp`, the C ABI) | one method set for every transport, with schemas from code and one audit rule (`cep/README.md`) | a REST route per feature |
-| OpenAI and Ollama compatible routes kept as they are | existing client libraries work by changing the base URL | Cluaiz-only routes |
+| OpenAI routes kept as OpenAI defines them | OpenAI client libraries work by changing the base URL (fields an installed model ignores: run 32) | Cluaiz-only routes |
 | `/health` answers without a key | uptime checks keep working when API keys are on | protect every route |
 
 ## Pending
 
 | Item | Why it matters | Needs |
 |---|---|---|
+| `stop`, `max_completion_tokens`, `n`, `logprobs`, `logit_bias` are ignored on an installed model; a string `stop` is HTTP 422 | OpenAI clients send them and get a different result without an error (run 32) | read them in `handlers/chat` and pass them to llama.cpp |
+| `/api/chat` answers in OpenAI's shape; `/api/generate`, `/api/embed`, `/api/ps`, `/api/show`, `/api/version` are 404; `keep_alive` takes only minutes as a number | Ollama libraries and tools do not work, though the routes carry Ollama's names (run 33) | an Ollama request and reply mapping, or say OpenAI-only and drop the alias |
+| `/api/tags` writes a fixed `modified_at` (`2026-10-08T00:00:00Z`) and `parameter_size: Unknown` | a reply carries invented data (`handlers/models.rs:96`, run 33) | the file's date and the GGUF parameter count |
 | `api` tests not in CI and not rerun since the October acceptance sections | the dated results may not hold for the current code | a CI job with the CPU backend, or a recorded run |
 | This README mixes reference text and dated acceptance logs | a reader cannot tell current behaviour from history | move the dated logs to run folders in `test/cloud/runs/` |

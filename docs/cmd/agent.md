@@ -765,6 +765,9 @@ model; the full log is always in `~/.cluaiz/cluaiz_Core.log`.
 
 ## How it works
 
+![One agent turn: message, tool search, schemas, model; approval, run in the OS sandbox, results back to the model](../assets/engine/agent-turn.png)
+
+
 1. Your task, the conversation so far and the agent's instructions are sent to the loaded model
    with the six tool descriptions, the same way an API request's `tools` are sent.
 2. The model's chat template renders the tools in its own format. If the template cannot, the tools

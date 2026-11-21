@@ -132,7 +132,7 @@ curl http://localhost:8000/v1/models -H "Authorization: Bearer sk-cluaiz-…"
 
 ## Next
 
-- From an OpenAI client library: set its base URL to `http://localhost:8000/v1` (the routes above; not
-  recorded here with a library).
+- From an OpenAI client library: set its base URL to `http://localhost:8000/v1`; which fields an
+  installed model honours: [OpenAI compatibility](../api/inference/openai_compatibility.md).
 - Everything the Engine does, one protocol: [CEP](../api/cep/README.md).
 - All HTTP routes: [API overview](../api/README.md).

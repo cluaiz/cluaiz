@@ -1,5 +1,7 @@
 # Mac test (Apple Silicon)
 
+![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/cloud/runs and BENCHMARKS.md](../../docs/assets/contributing/test-kinds.png)
+
 Runs Cluaiz on a Mac with Apple Silicon and compares it with plain llama.cpp on the same model files and the
 same settings. It takes about an hour and needs one command; all results are packed into one archive.
 

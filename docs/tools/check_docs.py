@@ -2,7 +2,7 @@
 """Checks the Engine docs the way the website and GitHub read them (no network, no dependencies).
 
 1. `docs/registry.json` (the website navigation): every page's `file_path` exists, slugs are unique.
-2. Every relative link in `docs/**/*.md` and the root README points to a file that exists, and a
+2. Every relative link in `docs/**/*.md`, the root README and every folder README points to a file that exists, and a
    `#heading` anchor to a heading that exists in that file (GitHub's slug rules).
 3. No page links to a local Windows path (`C:\\...`, `file://`), which works on nobody else's machine.
 
@@ -104,10 +104,24 @@ def check_links(path: Path, problems: list[str]) -> None:
                     problems.append(f"{rel}:{number}: link to a missing heading #{anchor} in {destination.relative_to(ROOT).as_posix()}")
 
 
+SKIP_DIRS = {"target", "node_modules", ".git", ".agent", "llama.cpp"}
+
+
+def code_readmes() -> list[Path]:
+    """Folder READMEs outside docs/ (they link docs/assets images and source files too)."""
+    found = []
+    for path in ROOT.rglob("*"):
+        if path.name.lower() == "readme.md" and path.is_file() and path != ROOT / "README.md":
+            parts = set(path.relative_to(ROOT).parts)
+            if not parts & SKIP_DIRS and path.relative_to(ROOT).parts[0] != "docs":
+                found.append(path)
+    return sorted(found)
+
+
 def main() -> int:
     problems: list[str] = []
     check_registry(problems)
-    pages = sorted(DOCS.rglob("*.md")) + [ROOT / "README.md"]
+    pages = sorted(DOCS.rglob("*.md")) + [ROOT / "README.md"] + code_readmes()
     for page in pages:
         check_links(page, problems)
     for problem in problems:

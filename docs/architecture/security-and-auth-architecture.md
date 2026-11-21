@@ -12,7 +12,9 @@ Cluaiz is an AI engine that runs models and an agent runtime. Because the engine
 
 1. **Local Threat Model:** Protect developer laptops against browser drive-by attacks, malicious web scripts attempting cross-origin requests, and untrusted agent file escapes.
 2. **Server/Cloud Threat Model:** Protect multi-tenant, remote, or LAN deployments with Bearer token authentication (`Authorization: Bearer sk-cluaiz-...`) instead of hardcoded URL or origin lists.
-3. **No OS sandbox:** the controls are workspace checks and human approval (Workspace-Gated + Human-in-the-Loop). A command that is allowed runs as a normal process with the user's access; the operating system does not confine it. WebAssembly plugins are the exception: they run inside the Engine with no file or program access and with instruction and memory limits.
+3. **Two walls around a command:** the approval policy (workspace checks and human approval) decides whether a command runs; the OS sandbox (`os_sandbox` in `permission.json`) decides what the running process can touch. With `auto` (the default) agent commands, MCP servers and native plugins are confined on Linux (bubblewrap) and macOS (sandbox-exec): they see the project folder and the system, not your home folder, `~/.ssh`, `~/.aws` or Cluaiz's own files. Windows is not confined in `auto`; `required` confines on every platform or refuses to run. WebAssembly plugins run inside the Engine with no file or program access and with instruction and memory limits. Details: [permission.json](../engine/permission.md#approvals-and-the-os-sandbox).
+
+![The agent wants to run a command; the approval policy decides whether it runs, then the OS sandbox decides what it can touch](../assets/engine/two-walls.png)
 
 ```mermaid
 flowchart TD
@@ -29,7 +31,7 @@ flowchart TD
     Pass --> Route{"Route"}
     Route -->|"/v1/cep, /mcp"| Cep["CEP: scope check, path check
 (cep::roots + Call::check_path), approvals"]
-    Route -->|"standard routes"| Std["OpenAI / Ollama handlers"]
+    Route -->|"standard routes"| Std["Chat, models, embeddings, audio handlers"]
 ```
 
 ---

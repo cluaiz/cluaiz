@@ -2,6 +2,8 @@
 
 ## 1. The Engine as a C library
 
+![A host program calls cep_call with a JSON-RPC request and gets the reply from the same CEP methods as /v1/cep, then frees it with cep_free; a panic becomes a -32603 reply](../assets/engine/ffi-call.png)
+
 `cluaiz_cep.dll` / `libcluaiz_cep.so` / `libcluaiz_cep.dylib` runs the Engine inside another
 program. It exports two functions:
 

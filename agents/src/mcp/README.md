@@ -16,6 +16,9 @@
 
 ## Architectural Flow
 
+![MCP server process: started on the first call, reused, stopped after 10 idle minutes or when more than 4 run; restarted after 1 s then 2 s; unavailable after 3 crashes in 10 minutes](../../../docs/assets/engine/mcp-server-life.png)
+
+
 ```mermaid
 flowchart LR
     CALL["call_tool / list_tools<br/>(server folder)"]

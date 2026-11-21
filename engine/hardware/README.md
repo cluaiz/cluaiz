@@ -15,6 +15,9 @@
 
 ## Architectural flow
 
+![Hardware profile: quick facts at start; unchanged profile reused with free memory measured now; changed or missing profile probed again; free memory measured again before a load](../../docs/assets/engine/hardware-profile.png)
+
+
 ```mermaid
 graph TD
     Caller["Callers: engine/plan, engine/runtime,<br/>llama session, CEP system.*, CLI"] --> Cur["HardwareProber::current()"]

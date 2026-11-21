@@ -1,5 +1,7 @@
 # cluaiz: CI/CD & RELEASE ARCHITECTURE
 
+![The release ships a core and GPU packs; the installer adds one pack chosen from the GPU: CUDA 13 or 12, Vulkan, Metal in the macOS core, or CPU only](../../docs/assets/get-started/install-packs.png)
+
 This document is the entry point for the CI/CD pipeline. The full job list, file names and smoke test are in [docs/deployments/cicd.md](../../docs/deployments/cicd.md); hardware and OS coverage is in [docs/deployments/platforms.md](../../docs/deployments/platforms.md).
 
 ---
