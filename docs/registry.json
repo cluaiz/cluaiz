@@ -15,7 +15,9 @@
       {
         "group": "Quickstart",
         "pages": [
-          { "slug": "quickstart", "title": "⚡ Quickstart", "file_path": "docs/get-started/quickstart.md" }
+          { "slug": "quickstart", "title": "⚡ Quickstart", "file_path": "docs/get-started/quickstart.md" },
+          { "slug": "first-api-request", "title": "🔌 Your first API request", "file_path": "docs/get-started/first-api-request.md" },
+          { "slug": "troubleshooting", "title": "🩺 Troubleshooting", "file_path": "docs/get-started/troubleshooting.md" }
         ]
       }
     ]

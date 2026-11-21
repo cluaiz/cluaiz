@@ -1,0 +1,27 @@
+# The Engine docs the way GitHub and cluaiz.com read them: every page in docs/registry.json exists,
+# every relative link and #heading anchor resolves, no local machine paths. Python only, a few seconds;
+# no build, no network. Runs when docs change on main or a pull request, and by hand.
+name: Docs check
+
+on:
+  push:
+    branches: [main]
+    paths: ["docs/**", "README.md", ".github/workflows/docs-check.yml"]
+  pull_request:
+    paths: ["docs/**", "README.md", ".github/workflows/docs-check.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  links:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Registry, links and anchors
+        run: python docs/tools/check_docs.py

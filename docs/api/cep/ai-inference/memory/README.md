@@ -1,6 +1,6 @@
 # Chat memory (`memory.*`)
 
-The Engine keeps an event log for every chat sent with a `session_id` (and not `temporary_chat`), and builds a Chat Map from it: one card per message, episodes, open tasks and a graph. Recall in a chat, and the `memory.*` methods, read them. The chat request side is in [Chat Completions](../../../inference/chat_completions.md#-chat-event-log).
+The Engine keeps an event log for every chat sent with a `session_id` (and not `temporary_chat`), and builds a Chat Map from it: one card per message, episodes, open tasks and a graph. Recall in a chat, and the `memory.*` methods, read them. The chat request side is in [Chat Completions](../../../inference/chat_completions.md#chat-event-log).
 
 ```mermaid
 flowchart LR

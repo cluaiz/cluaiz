@@ -53,6 +53,10 @@ cluaiz token show --all    # prints them in full
 cluaiz token remove <key>  # removing the last key turns the guard off again
 ```
 
+A server that is already running keeps the setting it started with: restart `cluaiz serve` after
+`cluaiz token create` (recorded 2026-11-21: HTTP 200 without a key before the restart, 401 after). The CEP
+method `tokens.create` adds a key to the running server at once but does not turn the guard on.
+
 With the guard on, every request sends the key as a bearer token:
 
 ```bash
@@ -68,6 +72,22 @@ curl http://localhost:8000/v1/models -H "Authorization: Bearer <your key>"
 
 The code: `security/src/permission_schema.rs` (defaults), `api/src/lib.rs` (host and port),
 `api/src/auth.rs` (the token check).
+
+## Approvals and the OS sandbox
+
+Two separate checks guard every command an agent or a tool runs:
+
+1. **Approval policy** (`agent_security_mode`): whether the command may run at all: allowed, asked
+   about, or refused.
+2. **OS sandbox** (`os_sandbox`): what the running process can touch. On Linux (bubblewrap) and macOS
+   (sandbox-exec) it sees the project folder and the system, not your home folder, `~/.ssh`, `~/.aws` or
+   Cluaiz's own files; network only when allowed. Windows uses an AppContainer in `required` mode.
+
+![The agent wants to run a command; the approval policy decides whether it runs, then the OS sandbox decides what it can touch: the project folder, not the home folder, ~/.ssh, ~/.aws or Cluaiz's files](../assets/engine/two-walls.png)
+
+An approval says "yes, run it"; the sandbox still applies after that. Platform details, tests and
+limits: [agents/src/execution/README.md](../../agents/src/execution/README.md#os-sandbox-os_sandboxrs-2026-11-20).
+Messages and fixes: [Troubleshooting](../get-started/troubleshooting.md#agent-commands-and-tools).
 
 ## Fields that do nothing
 

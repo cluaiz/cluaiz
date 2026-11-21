@@ -94,6 +94,8 @@ errors:
 
 Returns vectors computed by the selected installed model. Text and text batches support compatible ONNX graphs or GGUF sequence-embedding models; image input requires an ONNX image graph. ONNX uses its declared output and pooling configuration; GGUF uses native mean, CLS or last-token pooling from model metadata. Both return finite L2-normalized vectors. Vector dimensions and retrieval quality depend on the selected model.
 
+![Requests A, B and C arrive within three seconds; A runs first, B waits and runs when A ends, C waits and runs after B. A request still waiting after 120 seconds gets HTTP 429](../../assets/api/request-queue.png)
+
 GGUF execution has its own serialized resident, preserving chat KV and speech state. Placement and threads use the existing planner/settings. The active sequence limit is the explicit context setting within the model's limit, or the configured batch size when no context is selected. Inputs beyond that limit are rejected without truncation. A GGUF embedding request that arrives while another runs waits in line (arrival order) and runs next; it receives HTTP 429 `embedding_busy` only after waiting 120 seconds; cancelling the caller keeps admission held until its blocking worker exits. A native operation in progress is not preempted.
 
 Unsupported GGUF architectures, models without supported sequence pooling, rerankers and encoder-decoder models do not produce substitute vectors. Installation alone is not proof of runtime compatibility. In particular, a newer model architecture may require a separately reviewed native backend update.

@@ -1,0 +1,64 @@
+### pull
+  │ 🚀 Run Command:   cluaiz run qwen3-0.6b-gguf-Q4_K_M
+  └─────────────────────────────────────────────────────────────┘
+
+### list
+ID                        CATEGORY    FORMAT        SIZE
+qwen3-0.6b-gguf-Q4_K_M    chat        gguf       0.40 GB
+### health
+{"channel":"pre-release","engine":"Cluaiz Engine","message":"Cluaiz Engine is alive and operational.","status":"alive","version":"0.1.0"}
+### models
+{"data":[{"category":"chat","context_window":"40960","created":1795226010,"id":"qwen3-0.6b-gguf-Q4_K_M","object":"model","owned_by":"cluaiz","package_capabilities":{"asset_snapshot":[{"bytes":396705472,"modified_ns":1795226007172612800,"name":"Qwen3-0.6B-Q4_K_M.gguf"},{"bytes":752,"modified_ns":1795226007550421200,"name":"config.json"},{"bytes":876,"modified_ns":1795226007557449100,"name":"model_manifest.json"}],"diagnostics":[],"inputs":[{"evidence":["tokenizer/text embedding: positive declaration"],"modality":"text","state":"supported"},{"evidence":["clip.has_vision_encoder / vision_config: no declaration"],"modality":"image","state":"unknown"},{"evidence":["clip.has_audio_encoder / audio_config: no declaration"],"modality":"audio","state":"unknown"}],"onnx_graphs":[],"primary_file":"\\\\?\\C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf","projector":null,"projector_candidates":[]},"parent":null,"permission":[],"root":"qwen3-0.6b-gguf-Q4_K_M","task_support":null}],"object":"list"}
+### model id: qwen3-0.6b-gguf-Q4_K_M
+### chat
+{"choices":[{"finish_reason":"stop","index":0,"message":{"content":"**Paris**","role":"assistant"}}],"context_report":{"plan":{"available_tokens":16008,"compaction":null,"history_mode":"recent","messages_over_budget":0,"n_ctx":16384,"needs_compaction":false,"notes":{"system":[],"with_message":[]},"policy":{"auto_load":"off","compact_at_pct":85,"compact_to_pct":60,"cross_chat":"ask","evidence_cap_pct":15,"indexer":"auto","margin_pct":2,"mcp_prewarm":"on","notes":"ask","notes_change":"ask","notes_history_days":0,"notes_match":"auto","notes_max":3,"notes_recall_pct":50,"notes_similar_pct":50,"project_files":"on","recent_turns_min":2,"suggestions_cap_pct":5,"tool_format":"native"},"project":{"budget_chars":16384,"chars":0,"parts":[],"problems":[],"read_item":false,"root":"C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home","with_message":[],"workflow":null},"protected_tokens":9,"recall":null,"reserve":{"answer":20,"margin":327,"thinking":20},"task":null,"used_tokens":0},"timing":{"count_ms":0,"ingest_ms":0,"matcher_ms":1.68,"model_load_ms":2815,"plan_ms":2,"preflight_ms":2870,"recall_ms":0,"registry_template_ms":28,"render_ms":0,"tools_ms":20},"tools":{"auto_loaded":null,"bound":[],"conversation_tokens":9,"estimate":"load costs and load room are estimated from characters","events":[],"format":"inline","hint_tokens":0,"load_room_tokens":null,"loaded_in_chat":[],"meta_tools":false,"search_offered":false,"sugg
+### stream
+data: {"choices":[],"created":1795226014,"id":"chatcmpl-a195ce3f78214506a1fccbc9034ca33f","model":"qwen3-0.6b-gguf-Q4_K_M","object":"chat.completion.chunk","usage":{"active_session_tools":[],"context_telemetry":{"active_session_id":"default","context_breakdown":{"active_percentage":0.0,"active_tools_count":0,"active_tools_tokens":0,"base_system_tokens":0,"chat_history_tokens":0,"deferred_mcp_tokens":0,"deferred_plugins_tokens":0,"deferred_system_tools_tokens":0,"deferred_tools_tokens_saved":0,"free_space_percentage":100.0,"free_space_tokens":16383,"mcp_tools":{"count":0,"items":[],"percent":0.0,"tokens":0},"mcp_tools_percentage":0.0,"mcp_tools_tokens":0,"messages_percentage":0.0,"messages_tokens":1,"model_native_context":40960,"plugins":{"count":0,"items":[],"percent":0.0,"tokens":0},"plugins_percentage":0.0,"plugins_tokens":0,"skills":{"count":0,"items":[],"percent":0.0,"tokens":0},"skills_percentage":0.0,"skills_tokens":0,"system_prompt_percentage":0.0,"system_prompt_tokens":0,"system_tools_percentage":0.0,"system_tools_tokens":0,"total_active_tokens":1,"total_context_limit":16384,"user_prompt_tokens":1},"kv_cache_vram_bytes_allocated":8192}}}
+
+data: {"choices":[],"context":{"tools":{"auto_loaded":null,"bound":[],"conversation_tokens":3,"estimate":"load costs and load room are estimated from characters","format":"inline","hint_tokens":0,"load_room_tokens":null,"loaded_in_chat":[],"meta_tools":false,"search_offered":false,"suggested":[],"system_tools_tokens":0,"template_tools_tokens":0,"token_counts":"tokenizer"}},"created":1795226014,"id":"chatcmpl-a195ce3f78214506a1fccbc9034ca33f","model":"qwen3-0.6b-gguf-Q4_K_M","object":"chat.completion.chunk"}
+
+data: {"choices":[{"delta":{"content":"Hello"}}],"created":1795226014,"id":"chatcmpl-a195ce3f78214506a1fccbc9034ca33f","model":"qwen3-0.6b-gguf-Q4_K_M","object":"chat.completion.chunk"}
+
+data: {"choices":[{"delta":{"content":"!"}}],"created":1795226014,"id":"chatcmpl-a195ce3f78214506a1fccbc9034ca33f","model":"qwen3-0.6b-gguf-Q4_K_M","object":"chat.completion.chunk"}
+
+data: {"choices":[{"delta":{"content":" How"}}],"created":1795226014,"id":"chatcmpl-a195ce3f78214506a1fccbc9034ca33f","model":"qwen3-0.6b-gguf-Q4_K_M","object":"chat.completion.chunk"}
+
+data: {"choices":[{"delta":{"content":" can"}}],"created":1795226014,"id":"chatcmpl-a195ce3f78214506a1fccbc9034ca33f","model":"qwen3-0.6b-gguf-Q4_K_M","object":"chat.completion.chunk"}
+
+data: {"choices":[{"delta":{"content":" I"}}],"created":1795226014,"id":"chatcmpl-a195ce3f78214506a1fccbc9034ca33f","model":"qwen3-0.6b-gguf-Q4_K_M","object":"chat.completion.chunk"}
+
+data: {"choices":[{"delta":{"content":" assist"}}],"created":1795226014,"id":"chatcmpl-a195ce3f78214506a1fccbc9034ca33f","model":"qwen3-0.6b-gguf-Q4_K_M","object":"chat.completion.chunk"}
+
+data: {"choices":[{"delta":{"content":" you"}}],"created":1795226014,"id":"chatcmpl-a195ce3f78214506a1fccbc9034ca33f","model":"qwen3-0.6b-gguf-Q4_K_M","object":"chat.completion.chunk"}
+
+data: {"choices":[{"
+### wrong model
+{"error":{"code":"model_not_found","message":"Requested model 'no-such-model' was not found","type":"invalid_request_error"}}
+HTTP 400
+### token
+
+  ✨ New API Token Created Successfully!
+  🔑 Token: <key>
+  🛡️ Auth Guard: Enabled
+
+### no key
+{"data":[{"category":"chat","context_window":"40960","created":1795226016,"id":"qwen3-0.6b-gguf-Q4_K_M","object":"model","owned_by":"cluaiz","package_capabilities":{"asset_snapshot":[{"bytes":396705472,"modified_ns":1795226007172612800,"name":"Qwen3-0.6B-Q4_K_M.gguf"},{"bytes":752,"modified_ns":1795226007550421200,"name":"config.json"},{"bytes":876,"modified_ns":1795226007557449100,"name":"model_manifest.json"}],"diagnostics":[],"inputs":[{"evidence":["tokenizer/text embedding: positive declaration"],"modality":"text","state":"supported"},{"evidence":["clip.has_vision_encoder / vision_config: no declaration"],"modality":"image","state":"unknown"},{"evidence":["clip.has_audio_encoder / audio_config: no declaration"],"modality":"audio","state":"unknown"}],"onnx_graphs":[],"primary_file":"\\\\?\\C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf","projector":null,"projector_candidates":[]},"parent":null,"permission":[],"root":"qwen3-0.6b-gguf-Q4_K_M","task_support":null}],"object":"list"}
+HTTP 200
+### with key
+HTTP 200
+### after restart, no key
+
+HTTP 000
+### after restart, with key
+HTTP 000
+### health without key
+HTTP 000
+<scratch>/first-api.sh: line 26: kill: (2902) - No such process
+### server stopped
+### after restart, no key
+{"error":"Unauthorized","message":"API Authentication is required. Provide a valid Bearer token in the Authorization header."}
+HTTP 401
+### after restart, with key
+HTTP 200
+### health without key
+HTTP 200

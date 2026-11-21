@@ -16,6 +16,7 @@ Only when started by hand. Pushes and pull requests never start a build.
 | **Run workflow** on `Release` (manual, with a version such as `0.1.2` that equals `Cargo.toml`) | The core for every platform, the smoke test, both driver workflows, and the GitHub release `v<version>` with `SHA256SUMS.txt`. |
 | **Run workflow** on a driver workflow | Only those drivers, as run artifacts (no release). |
 | **Run workflow** on `Release` with **drivers_run** set to an earlier run's ID | The core and the release; the GPU drivers are taken from that run instead of being built again. |
+| A push to `main` or a pull request that changes `docs/` or `README.md` | Only `docs-check.yml`: `python docs/tools/check_docs.py` (registry pages exist, relative links and `#heading` anchors resolve, no local machine paths). No build. |
 
 ## Jobs
 
