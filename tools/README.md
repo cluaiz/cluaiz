@@ -7,7 +7,6 @@ inside the Engine.
 |---|---|---|
 | [`cluaiz-builder/`](cluaiz-builder/README.md) | Builds the `cluaiz` program and the GPU driver libraries without compiling unused parts; also a local CI runner (`local_ci.rs`) and the packaging of native media assets (`media_assets.rs`) | see its README |
 | `cldr/make_numbers.py` | Writes the spoken-number rules for text to speech, `engine/onnx/src/audio/tts/data/numbers/<lang>.json`, from Unicode CLDR (cldr-json, pinned commit `91c26740`, the same as `reading_rules.json`) | `python -I tools/cldr/make_numbers.py engine/onnx/src/audio/tts/data/numbers es fr ...` from the repository root |
-| `training-scripts/distill_atma.py` | An old script (2026-06-29) that asked Gemini 1.5 Pro for training pairs for an "Atma" routing model. Nothing in the Engine uses it | not used |
 
 ## `cldr/make_numbers.py`
 
@@ -21,9 +20,11 @@ inside the Engine.
   published Unicode data and its licence (`tts/data/CLDR-LICENSE.txt`).
 - Used by `engine/onnx/src/audio/tts/numbers.rs` and `rbnf.rs` (ICU rule-based number format).
 
+Removed on 2026-11-21: `training-scripts/distill_atma.py`, an unused script from 2026-06-29 that named files
+which do not exist (it is in the git history).
+
 ## Pending
 
 | Item | Why it matters | Needs |
 |---|---|---|
-| `training-scripts/distill_atma.py` is unused and names files that do not exist (`docs/master_landscape.md`, `NEURAL_PATHWAYS.yaml`) | dead code confuses readers | the owner's decision: delete it or move it out |
 | `make_numbers.py` has no test | a CLDR update could change the spoken numbers silently | compare the generated files with the committed ones in CI |

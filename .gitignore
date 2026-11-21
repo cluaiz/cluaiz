@@ -75,3 +75,4 @@ deps_tool/
 # --- Diagnostic Logs & Scratch ---
 test/*.txt
 x/
+__pycache__/

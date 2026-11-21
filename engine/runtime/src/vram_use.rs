@@ -1,5 +1,5 @@
 //! What models really took on this machine's GPU (`cluaiz_plan::margin`), kept in
-//! `engine/vram_margins.json` so a restart plans with it on the first load.
+//! `<home>/config/vram_margins.json` so a restart plans with it on the first load.
 
 /// Where the measurements are kept
 fn path() -> std::path::PathBuf {

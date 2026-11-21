@@ -74,7 +74,6 @@ keeps its disk with the build and the models, so `start` continues; `delete` rem
 | Item | Why it matters | Needs |
 |---|---|---|
 | Runs 2, 6, 14 and 26 have no row in `BENCHMARKS.md` | run 6 has a folder (`2026-11-09-run6-cpu-os-matrix/RESULTS.md`), run 14 a script (`ssd_same_settings.sh`) but no folder, run 26 a folder not yet committed, run 2 nothing | rows, or a note that the run was dropped |
-| `remote/vram_hog.py` and `remote/mtp23/vram_hog.py` are identical | two copies drift | keep one |
-| `remote/vps19/__pycache__/*.pyc` is committed | generated files in the repository | remove and ignore `__pycache__` |
+| `remote/vram_hog.py` and `remote/mtp23/vram_hog.py` are identical | two copies drift | keep one; `mtp23/run23.sh` and `run24.sh` call `$HERE/vram_hog.py`, so first check how `mtp23/` is copied to the VM |
 | The Mac run is in `test/mac/runs/`, not here | runs are in two places | move it, or link it from `BENCHMARKS.md` |
 | A CPU-only run on an 8 GB VM for the Auto thinking ceiling | the slow-machine path is unit-tested only (runs 30-31 were on a GPU) | the planned VM run |

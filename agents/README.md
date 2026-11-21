@@ -86,6 +86,5 @@ Live checks through the Engine: tool routing and tool-call format in
 
 | Item | Why it matters | Needs |
 |---|---|---|
-| `src/mod.rs` (`pub use crate::*;`) is not declared anywhere | a file the compiler never reads | delete it |
 | No README in `lifecycle/`, `skills/`, `telemetry/`, `workspace/` | covered only by rows in `src/README.md` | own READMEs if those rows grow |
 | macOS confinement never run on a Mac | see `src/execution/README.md` | a real-Mac run |
