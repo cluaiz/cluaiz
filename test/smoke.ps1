@@ -1,11 +1,11 @@
 # Cluaiz System Plan Audit & Smoke Test (CEP `models.list` + `system.plan`)
 # Usage:
-#   .\test\smoke.ps1                           (Audits all installed chat models against :8000)
+#   .\test\smoke.ps1                           (Audits all installed chat models against a test server on :8011)
 #   .\test\smoke.ps1 -Port 8080                (Custom port)
 #   .\test\smoke.ps1 -OutputFile ".\audit.txt" (Custom output text path)
 
 param (
-    [int]$Port = 8000,
+    [int]$Port = 8011,
     [string]$OutputFile = ".\test\system_plan_audit.txt"
 )
 

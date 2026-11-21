@@ -17,7 +17,8 @@ use std::time::{Duration, Instant};
 use tokio::sync::Mutex;
 
 const USER_PROMPT: &str = "what is cluaiz tell me about web search cluaiz.com";
-const ENGINE_BASE_URL: &str = "http://127.0.0.1:8000";
+/// A test server on port 8011 (its own CLUAIZ_HOME), never a developer's own Engine on 8000
+const ENGINE_BASE_URL: &str = "http://127.0.0.1:8011";
 
 #[derive(Deserialize, Debug)]
 struct RegistryYaml {

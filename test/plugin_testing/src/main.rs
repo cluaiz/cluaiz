@@ -5,7 +5,7 @@ use std::time::Duration;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("============================================================");
-    println!("🚀 [Cluaiz Test] End-to-End Plugin Test: cluaiz-search");
+    println!("🚀 [Cluaiz Test] End-to-End Plugin Test: web-search");
     println!("============================================================\n");
     
     let client = Client::builder()
@@ -14,8 +14,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // 1. Check if Engine is alive
     println!("🔍 [Step 1] Checking Engine Health...");
-    match client.get("http://127.0.0.1:8000/health").send().await {
-        Ok(res) if res.status().is_success() => println!("✅ Engine is ALIVE and reachable on port 8000.\n"),
+    match client.get("http://127.0.0.1:8011/health").send().await {
+        Ok(res) if res.status().is_success() => println!("✅ Engine is ALIVE and reachable on port 8011.\n"),
         _ => {
             println!("❌ Engine is NOT running. Please start the engine (`cluaiz serve`).");
             return Ok(());
@@ -24,20 +24,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 2. Run the search plugin through CEP `tools.call`
     println!("🌐 [Step 2] Executing Native Web Search via CEP tools.call...");
-    let cep_url = "http://127.0.0.1:8000/v1/cep";
+    let cep_url = "http://127.0.0.1:8011/v1/cep";
     let call = json!({
         "jsonrpc": "2.0",
         "id": 1,
         "method": "tools.call",
         "params": {
             "kind": "plugin",
-            "name": "cluaiz-search",
-            "fn": "search",
-            "input": { "action": "query", "target": "Who is the current CEO of OpenAI?" }
+            "name": "web-search",
+            "fn": "web_search",
+            "input": { "query": "Who is the current CEO of OpenAI?" }
         }
     });
 
-    println!("   Sending tools.call to cluaiz-search...");
+    println!("   Sending tools.call to web-search...");
 
     let start_search = std::time::Instant::now();
     let reply: Value = client.post(cep_url).json(&call).send().await?.json().await?;
@@ -59,7 +59,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     };
 
     // 3. Send the JSON to the AI Model to Summarize
-    let chat_url = "http://127.0.0.1:8000/v1/chat/completions";
+    let chat_url = "http://127.0.0.1:8011/v1/chat/completions";
     println!("🧠 [Step 3] Passing Search Data to AI Model for Synthesis...");
     
     let chat_payload = json!({

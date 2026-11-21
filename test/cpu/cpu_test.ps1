@@ -274,7 +274,7 @@ try {
 
     # ------ 6. Plugins, skills ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
     Step 'plugins and skills'
-    foreach ($item in @(@('plugin', 'math'), @('plugin', 'time'), @('plugin', 'search'), @('plugin', 'text'), @('skill', 'learn-cluaiz'))) {
+    foreach ($item in @(@('plugin', 'math'), @('plugin', 'time'), @('plugin', 'rank'), @('plugin', 'text'), @('skill', 'learn-cluaiz'))) {
         $r = Run "install_$($item[1])" @($item[0], 'install', $item[1]) 300
         Result 'tools' "install $($item[1])" $(if ($r.code -eq 0) { 'PASS' } else { 'FAIL' }) "exit $($r.code)"
     }
@@ -286,8 +286,8 @@ try {
     $time = Cep 'tools.call' @{ kind = 'plugin'; name = 'time'; fn = 'time_now'; input = @{} }
     Result 'tools' 'time plugin' $(if ($time -match 'timestamp_ms') { 'PASS' } else { 'FAIL' }) (Short $time)
     $docs = @(@{ id = '1'; title = 'Notes'; content = 'nothing here' }, @{ id = '2'; title = 'Memory'; content = 'memory limit' })
-    $search = Cep 'tools.call' @{ kind = 'plugin'; name = 'search'; fn = 'rank_documents'; input = @{ query = 'memory'; documents = $docs } }
-    Result 'tools' 'search plugin' $(if ($search -match '"id":\s*"2"') { 'PASS' } else { 'FAIL' }) (Short $search)
+    $search = Cep 'tools.call' @{ kind = 'plugin'; name = 'rank'; fn = 'rank_documents'; input = @{ query = 'memory'; documents = $docs } }
+    Result 'tools' 'rank plugin' $(if ($search -match '"id":\s*"2"') { 'PASS' } else { 'FAIL' }) (Short $search)
     $text = Cep 'tools.call' @{ kind = 'plugin'; name = 'text'; fn = 'text_transform'; input = @{ action = 'base64_encode'; input = 'hello' } }
     Result 'tools' 'text plugin' $(if ($text -match 'aGVsbG8=') { 'PASS' } else { 'FAIL' }) (Short $text)
 

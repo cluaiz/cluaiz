@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Cluaiz Automated API Smoke Test Suite (Bash)
 # Usage: 
-#   ./test/smoke.sh                (Tests against currently running server on :8000)
+#   ./test/smoke.sh                (Tests against a running test server on :8011, never a developer's own :8000)
 #   ./test/smoke.sh --start        (Automatically boots cluaiz serve, tests, and shuts down)
 #   ./test/smoke.sh 8080           (Custom port)
 
 START_SERVER=false
-PORT=8000
+PORT=8011
 
 for arg in "$@"; do
     if [ "$arg" == "--start" ]; then

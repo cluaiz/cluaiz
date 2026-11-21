@@ -25,6 +25,10 @@ free VRAM (unless `--allow-big`), `cpu` when it is bigger than free RAM.
 
 ## Run
 
+Defaults (since 2026-11-21): `--api http://127.0.0.1:8011`, and the token and models from
+`$CLUAIZ_HOME`; without `CLUAIZ_HOME` (or `--token-file` and `--models-dir`) the script stops, so it
+never tests a developer's own Engine on port 8000 or `~/.cluaiz`.
+
 ```bash
 CLUAIZ_HOME=<test home> CLUAIZ_PORT=8011 target/release/cluaiz.exe serve
 python test/engine_regression/run.py --api http://127.0.0.1:8011 \
@@ -45,5 +49,4 @@ through `test/cloud/remote/regression_tests.sh` (runs 5 and 9 in `test/cloud/BEN
 
 | Item | Why it matters | Needs |
 |---|---|---|
-| Defaults point at the developer's own Engine: `--api http://127.0.0.1:8000`, `--token-file ~/.cluaiz/session.token`, `--models-dir ~/.cluaiz/models` (`run.py:234-236`) | run without options, it tests the developer's own server and home | defaults to port 8011 and a required `--home` |
 | `RESULTS.md` is from 2026-10-12 | the laptop numbers predate a month of changes | a rerun with `--report` |

@@ -15,7 +15,8 @@ Usage (engine running: cluaiz serve):
       --llama-bench target/llama-ref/bin/Release/llama-bench.exe --report test/engine_regression/RESULTS.md
 Exit code: 0 = all passed, 1 = a check failed.
 """
-import argparse, datetime, json, platform, random, re, shutil, subprocess, sys, time, urllib.error, urllib.request
+import argparse
+import os, datetime, json, platform, random, re, shutil, subprocess, sys, time, urllib.error, urllib.request
 from pathlib import Path
 
 # Text a model should never show the user: chat-template control tokens ("<|...|>", "<|tag>", "<tag|>")
@@ -231,9 +232,13 @@ def write_report(path, rows, args, hardware, started):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--api", default="http://127.0.0.1:8000")
-    ap.add_argument("--token-file", default=str(Path.home() / ".cluaiz" / "session.token"))
-    ap.add_argument("--models-dir", default=str(Path.home() / ".cluaiz" / "models"))
+    # A test server in its own home on port 8011, never a developer's own Engine (port 8000, ~/.cluaiz)
+    home = os.environ.get("CLUAIZ_HOME")
+    ap.add_argument("--api", default="http://127.0.0.1:8011")
+    ap.add_argument("--token-file", default=str(Path(home) / "session.token") if home else None,
+                    help="default: $CLUAIZ_HOME/session.token")
+    ap.add_argument("--models-dir", default=str(Path(home) / "models") if home else None,
+                    help="default: $CLUAIZ_HOME/models")
     ap.add_argument("--modes", default="auto,gpu,split", help="comma list of auto,gpu,split,cpu")
     ap.add_argument("--only", default="", help="run models whose id contains this text")
     ap.add_argument("--skip", default="", help="comma list: skip models whose id contains any of these")
@@ -244,6 +249,8 @@ def main():
     ap.add_argument("--min-ratio", type=float, default=0.85, help="flag when engine gen < ratio x llama-bench")
     ap.add_argument("--report", default="", help="write a markdown report to this path")
     args = ap.parse_args()
+    if not args.token_file or not args.models_dir:
+        ap.error("set CLUAIZ_HOME to the test server's home, or pass --token-file and --models-dir")
     if args.runs < 2:
         sys.exit("--runs must be at least 2 (run 1 is the cold run)")
     if args.llama_bench:

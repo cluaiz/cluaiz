@@ -111,6 +111,6 @@ run 7 (Linux CPU VM) and runs 15-19 (1 vCPU VPS), all in [`../cloud/BENCHMARKS.m
 
 | Item | Why it matters | Needs |
 |---|---|---|
-| The script installs the plugin `search`; the registry's id is now `web-search` (`cluaiz-tools/plugins/web-search/package.json`) | that step fails on a current registry | change the id in `cpu_test.ps1` (line 277) and rerun |
+| The plugin step was changed for the current registry (2026-11-21): `rank_documents` is in the plugin `rank` (the script used the old id `search`) | the step has not been run since | rerun the script |
 | No recorded run of this script | the README describes a test whose output nobody has checked in | one run on a Windows PC without a GPU, saved as a run folder |
 | The Bonsai `Q1_0` models | a run would show whether the CPU build handles that type; not yet recorded | the run above |
