@@ -59,7 +59,7 @@ impl HardwareProber {
     /// The snapshot as kept in `hardware_profile.json` (NVIDIA GPUs only).
     fn current_saved() -> SystemInfo {
         {
-            let guard = CACHED_HARDWARE.read().unwrap();
+            let guard = CACHED_HARDWARE.read().unwrap_or_else(std::sync::PoisonError::into_inner);
             if let Some(ref info) = *guard {
                 return info.clone();
             }
@@ -78,7 +78,7 @@ impl HardwareProber {
                 fresh
             }
         };
-        *CACHED_HARDWARE.write().unwrap() = Some(info.clone());
+        *CACHED_HARDWARE.write().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(info.clone());
         info
     }
 
@@ -116,7 +116,7 @@ impl HardwareProber {
     pub fn calibrate() -> SystemInfo {
         let mut fresh = Self::probe_system();
         Self::save_profile(&fresh);
-        *CACHED_HARDWARE.write().unwrap() = Some(fresh.clone());
+        *CACHED_HARDWARE.write().unwrap_or_else(std::sync::PoisonError::into_inner) = Some(fresh.clone());
         Self::add_backend_gpus(&mut fresh);
         fresh
     }

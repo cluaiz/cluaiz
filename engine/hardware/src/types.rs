@@ -22,11 +22,13 @@ pub struct CpuSubsystem {
     pub logical_threads: usize,
     pub frequency_mhz: u64,
     pub base_clock_mhz: f64,
+    /// An estimate, not a reading: the base clock x 1.25 (`prober.rs`). Nothing in the Engine plans with it
     pub boost_clock_mhz: f64,
     pub l1_cache_kb: u32,
     pub l2_cache_kb: u32,
     pub l3_cache_kb: u32,
     pub isa_features: Vec<String>,
+    /// An estimate, not a measurement: physical cores x the estimated boost clock x a factor for the widest SIMD extension (AVX-512, AVX2, AVX or NEON)
     pub gflops_fp32: f64,
 }
 
@@ -78,7 +80,8 @@ pub struct GpuSubsystem {
 }
 
 impl GpuSubsystem {
-    /// Estimates physical onboard VRAM memory bus bandwidth (GB/s) based on capacity and architectural bus tier
+    /// A guess from the VRAM size only (a typical bus for that size), not a reading of this GPU; no caller in
+    /// the Engine uses it for planning
     pub fn estimated_vram_bandwidth_gbps(&self) -> f64 {
         if self.vram_total_gb >= 24.0 {
             1008.0 // 384-bit GDDR6X flagship (RTX 4090 / 3090 / A5000 class)

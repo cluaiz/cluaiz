@@ -135,7 +135,7 @@ through Vulkan on Windows.
 | A live query fails | the old free-memory number is kept (`apply_memory_snapshot`) |
 | `wmic` missing (not installed on this Windows 11 machine on 2026-11-21) | `speed_mts` stays 0 |
 | Disk benchmark cannot write to the drive root (`C:\` without admin rights) | read and write speed 0 (seen in a saved profile on 2026-11-21) |
-| A poisoned cache lock | `unwrap()` panics (`CACHED_HARDWARE.read().unwrap()`) |
+| A poisoned cache lock | recovered (`PoisonError::into_inner`): the last cached profile is still used, as `telemetry.rs` does |
 
 ## Sources
 
@@ -153,5 +153,4 @@ through Vulkan on Windows.
 | Disk benchmark writes to the drive root | gives 0 without admin rights on Windows; the numbers are unused anyway | write in the Cluaiz home, or drop the benchmark |
 | `detect_drive_type` reads the first physical disk for every drive on Windows and prefixes "NVMe/" | wrong label for a second or SATA disk | per-disk query, or drop the field |
 | `wmic` is gone on current Windows | memory speed is always 0 there | `Get-CimInstance Win32_PhysicalMemory`, or drop the field |
-| Reported-only estimates (`boost_clock_mhz`, `gflops_fp32`, `estimated_vram_bandwidth_gbps`) | they look measured in JSON but are formulas | mark them as estimates in the API, or remove them |
-| `CACHED_HARDWARE` lock `unwrap()` | a panic while holding the lock makes every later call panic | recover the poisoned lock (`into_inner`), as `telemetry.rs` does |
+| Reported-only estimates (`boost_clock_mhz`, `gflops_fp32`, `estimated_vram_bandwidth_gbps`) | they are marked as estimates in the code (`types.rs`) and here, but the JSON field names do not say so | rename them in a versioned API change, or remove them (the App may read them) |
