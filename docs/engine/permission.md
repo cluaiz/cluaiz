@@ -2,7 +2,9 @@
 
 `permission.json` is in the config folder (`~/.cluaiz/config/permission.json`, or
 `<CLUAIZ_HOME>/config/permission.json`). The schema is `security/src/permission_schema.rs`.
-Missing fields take their defaults. If the file cannot be parsed, the Engine uses the defaults.
+Missing fields take their defaults. If the file cannot be parsed, the Engine uses the defaults, logs a
+warning with the error, and copies the broken file to `permission.json.broken` so its tokens and
+settings can be recovered. A save writes a temporary file and renames it, so a crash never leaves a cut file.
 
 Change it with `cluaiz permission …`, `cluaiz token …`, `cluaiz model set-chat|set-vector`, or
 from the App settings screen.

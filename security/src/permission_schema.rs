@@ -288,21 +288,51 @@ impl PermissionSchema {
     }
 
     pub fn load() -> Self {
-        let path = Self::file_path();
-        if path.exists() {
-            if let Ok(data) = std::fs::read_to_string(&path) {
-                if let Ok(schema) = serde_json::from_str::<Self>(&data) {
-                    return schema;
-                }
+        Self::load_from(&Self::file_path())
+    }
+
+    /// A missing file is the defaults. A file that cannot be read or parsed is the defaults too (the
+    /// owner's choice of behaviour is unchanged), but it is no longer silent: a warning names the
+    /// file and the error, and the broken file is copied to `permission.json.broken` before a later
+    /// save can replace it, so its tokens and settings can be recovered.
+    pub fn load_from(path: &std::path::Path) -> Self {
+        let data = match std::fs::read_to_string(path) {
+            Ok(data) => data,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Self::default(),
+            Err(e) => {
+                tracing::warn!("permission.json could not be read ({}): {e}. Using the defaults", path.display());
+                return Self::default();
+            }
+        };
+        match serde_json::from_str::<Self>(&data) {
+            Ok(schema) => schema,
+            Err(e) => {
+                let kept = path.with_extension("json.broken");
+                let copied = std::fs::write(&kept, &data).is_ok();
+                tracing::warn!(
+                    "permission.json is not valid ({}): {e}. Using the defaults{}",
+                    path.display(),
+                    if copied { format!("; the file was copied to {}", kept.display()) } else { String::new() }
+                );
+                Self::default()
             }
         }
-        Self::default()
     }
 
     pub fn save(&self) -> anyhow::Result<()> {
-        let path = Self::file_path();
+        self.save_to(&Self::file_path())
+    }
+
+    /// Writes a temporary file next to the target, then renames it over the target, so a crash
+    /// mid-write leaves the old file whole instead of a cut one
+    pub fn save_to(&self, path: &std::path::Path) -> anyhow::Result<()> {
         let data = serde_json::to_string_pretty(self)?;
-        std::fs::write(path, data)?;
+        let tmp = path.with_extension("json.tmp");
+        std::fs::write(&tmp, data)?;
+        if let Err(e) = std::fs::rename(&tmp, path) {
+            let _ = std::fs::remove_file(&tmp);
+            return Err(e.into());
+        }
         Ok(())
     }
 
@@ -446,6 +476,37 @@ impl PermissionSchema {
 #[cfg(test)]
 mod merge_tests {
     use super::*;
+
+    fn temp_dir(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("cluaiz-perm-{name}-{}", uuid::Uuid::new_v4()));
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn a_broken_file_loads_as_defaults_and_is_kept_for_recovery() {
+        let dir = temp_dir("broken");
+        let path = dir.join("permission.json");
+        std::fs::write(&path, "{ \"api_port\": 9000, ").unwrap();
+        let schema = PermissionSchema::load_from(&path);
+        assert_eq!(schema.api_port, PermissionSchema::default().api_port);
+        assert_eq!(std::fs::read_to_string(dir.join("permission.json.broken")).unwrap(), "{ \"api_port\": 9000, ");
+        assert_eq!(PermissionSchema::load_from(&dir.join("missing.json")).api_port, PermissionSchema::default().api_port);
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn save_replaces_the_file_whole_and_leaves_no_temporary_file() {
+        let dir = temp_dir("save");
+        let path = dir.join("permission.json");
+        std::fs::write(&path, "old").unwrap();
+        let mut schema = PermissionSchema::default();
+        schema.api_port = 8123;
+        schema.save_to(&path).unwrap();
+        assert_eq!(PermissionSchema::load_from(&path).api_port, 8123);
+        assert!(!dir.join("permission.json.tmp").exists());
+        std::fs::remove_dir_all(dir).ok();
+    }
 
     #[test]
     fn os_sandbox_patch_takes_only_known_modes() {

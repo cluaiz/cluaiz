@@ -52,7 +52,8 @@ Two copies of the settings exist at run time:
 | Construct | Kind | What it is |
 |---|---|---|
 | `PermissionSchema` | struct, serde | The whole `permission.json`. Every field has a serde default, so an old or partial file loads |
-| `PermissionSchema::load()` | fn | Reads the file; a missing or unreadable file gives `Default` |
+| `PermissionSchema::load()`, `load_from(path)` | fn | Reads the file; a missing file gives `Default`; an unreadable or invalid one gives `Default` with a warning, and an invalid one is copied to `permission.json.broken` |
+| `PermissionSchema::save()`, `save_to(path)` | fn | Writes `permission.json.tmp`, then renames it over the file |
 | `PermissionSchema::save()` | fn | Writes the whole file, pretty JSON |
 | `PermissionSchema::merge_patch(&Value)` | fn | Applies a CEP `config.set` patch: checks every known field first, then writes; unknown fields are ignored |
 | `get_active_{chat,embedding,vision,audio}_model()` | fn | The model ID of a slot (`chat_slot`, `embed_slot`, ...), else the older `chat_models` / `vector_models` field |
@@ -132,15 +133,17 @@ Automation webhooks write the same lines (`automation/host/src/webhook.rs:43`).
 | `merge_tests::os_sandbox_patch_takes_only_known_modes` | only `auto`/`required`/`off` are saved; a bad value saves nothing | `cargo test -p cluaiz-security` |
 | `merge_tests::the_security_mode_and_switches_are_saved_and_a_wrong_value_changes_nothing` | valid patch saved; a patch with one bad value changes nothing; `api_port` / `api_host` are not patched | same |
 | `merge_tests::the_listed_modes_are_the_saved_values_and_one_is_the_default` | `SECURITY_MODES` and the stored values agree; exactly one default | same |
+| `merge_tests::a_broken_file_loads_as_defaults_and_is_kept_for_recovery` | an invalid file gives defaults and is copied to `.broken`; a missing file gives defaults | same |
+| `merge_tests::save_replaces_the_file_whole_and_leaves_no_temporary_file` | the saved values load back; no `.tmp` is left | same |
 | `audit::tests::test_lines_rotation_and_no_params` | lines are written, the newest is first, the hash is 64 hex chars, rotation at the size limit, no file past `KEEP` | same |
 
-Result on 2026-11-21 (Windows 11): 4 passed, 0 failed.
+Result on 2026-11-21 (Windows 11): 6 passed, 0 failed. By hand, `cluaiz -v permission` with a cut file in a temporary home printed the warning, showed port 8000 (the default) and left `permission.json.broken`.
 
 Covered elsewhere: the bearer token on HTTP routes in several `api/tests/*_contract.rs` suites (for example
 `embedding_contract.rs:91`, `document_contract.rs:44`: a request without a key gets 401), `system.exec` policy in `api/tests/cep_exec_contract.rs`,
 the token restart behaviour by hand in run 29.
 
-Not tested here: `load()` with a broken file, `save()` interrupted mid-write, concurrent writers, the
+Not tested here: a crash between the write and the rename, concurrent writers, the
 slot getters' fallback order, `remove_token` with each identifier form.
 
 ## Failure and recovery
@@ -148,8 +151,8 @@ slot getters' fallback order, `remove_token` with each identifier form.
 | Failure | What the code does |
 |---|---|
 | `permission.json` missing | `load()` returns defaults; the file is created on the first `save()` |
-| `permission.json` is not valid JSON | `load()` returns defaults without a log line, so the server runs with defaults until the file is fixed |
-| `save()` fails or is interrupted | the error goes to the caller (`anyhow::Result`); the write is not atomic, so a crash mid-write can leave a broken file (then: the row above) |
+| `permission.json` is not valid JSON | `load()` returns defaults with a `warn` line naming the file and the error, and copies the file to `permission.json.broken`, so a later save cannot lose its tokens. Why defaults and not a refusal to start: the defaults are the owner's choice, unchanged; refusing would change the start-up behaviour |
+| `save()` fails or is interrupted | the error goes to the caller (`anyhow::Result`); the new content is written to `permission.json.tmp` and renamed over the file, so a crash leaves the old file whole |
 | Two processes save at once | the last writer wins; there is no lock across processes |
 | Audit file cannot be written | a `warn` log line; the CEP call itself still succeeds |
 | Audit rotation rename fails | ignored; the next line is appended to the current file |
@@ -166,7 +169,5 @@ slot getters' fallback order, `remove_token` with each identifier form.
 
 | Item | Why it matters | Needs |
 |---|---|---|
-| A broken `permission.json` is read as defaults silently | a typo in the file turns every setting back to its default with no sign | a log line (and the file name) when parsing fails |
-| `save()` is not atomic | a crash mid-write leaves a file that then loads as defaults | write to a temp file and rename |
 | CLI changes do not reach a running server | `cluaiz token create` needs a server restart (run 29) | the server re-reading the file, or the CLI calling CEP when a server runs |
-| Tests for `load` with a broken file, `remove_token` forms, slot fallback | these paths have no unit test | tests in `permission_schema.rs` |
+| Tests for `remove_token` forms and slot fallback | these paths have no unit test | tests in `permission_schema.rs` |
