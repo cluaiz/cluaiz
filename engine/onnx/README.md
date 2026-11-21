@@ -31,7 +31,6 @@ graph TD
 | [`engine.rs`](src/engine.rs) | ONNX Runtime session pooling and execution. |
 | [`media.rs`](src/media.rs) | Typed audio tasks/results, session probing, captured provider policy and processor/signature validation. |
 | [`ort_env.rs`](src/ort_env.rs) | The one ONNX Runtime environment of the process, made on first use; every session is built on it. |
-| [`chat.rs`](src/chat.rs) | `UnifiedBackend` / `StreamingInference` for `OnnxEngine` (text generation through ONNX). No caller uses these traits (searched 2026-11-21); chat runs on llama.cpp. |
 
 Image byte decoding now calls `cluaiz_media::image::decode_image` directly with core media limits. ONNX retains its current CLIP resize/normalization step; processor-config-driven normalization and runtime/API vision dispatch are separate pending phases.
 
@@ -80,5 +79,4 @@ were measured in cloud runs (voice and embedding table in `test/cloud/BENCHMARKS
 
 | Item | Why it matters | Needs |
 |---|---|---|
-| `chat.rs` has no caller | dead code that suggests ONNX chat is supported | remove it, or wire ONNX chat models |
 | cuDNN loading fix (2026-10-29) not re-run on a Linux GPU | see run 4b | a GPU run |

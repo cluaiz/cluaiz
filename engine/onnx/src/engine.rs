@@ -65,8 +65,6 @@ pub struct OnnxEngine {
     pub(crate) tokenizer: Option<Arc<Tokenizer>>,
     // 🔢 Active Inference Counter: tracks in-flight requests for safe hot swap
     pub(crate) active_inferences: Arc<AtomicUsize>,
-    // 🧠 KV Cache for Chat Generation
-    pub(crate) active_kv_cache: Option<Vec<(Vec<usize>, std::sync::Arc<Vec<f32>>)>>,
     // 📂 Model Directory Path for loading dynamic configs
     pub(crate) model_dir: Option<std::path::PathBuf>,
     pub(crate) settings: cluaiz_core::OnnxSettings,
@@ -121,7 +119,6 @@ impl OnnxEngine {
             cached_decoder_session: None,
             tokenizer: None,
             active_inferences: Arc::new(AtomicUsize::new(0)),
-            active_kv_cache: None,
             model_dir: None,
             settings,
             vocoder_session: None,
