@@ -34,15 +34,14 @@ struct Offered {
 }
 
 /// Enabled flows with an enabled `tool` trigger, valid, with their permissions confirmed. A
-/// project's flow hides the user's flow of the same name.
-async fn offered(service: &Service, catalog: &Snapshot) -> Vec<Offered> {
+/// project's flow hides the user's flow of the same name. The catalog snapshot (every method and
+/// tool) is read only when some flow has such a trigger: a chat request asks for this list each
+/// time, and on a 1 vCPU server the snapshot cost about 60 ms of every request (run 26).
+async fn offered(service: &Service) -> Option<(Vec<Offered>, Snapshot)> {
     let store = service.store().await;
-    let mut out: Vec<Offered> = Vec::new();
+    let mut candidates = Vec::new();
     for scope in [Scope::Project, Scope::User] {
         for file in store.list(Some(scope)) {
-            if out.iter().any(|o| o.file.name == file.name) {
-                continue;
-            }
             let Ok(flow) = file.flow.clone() else { continue };
             let settings = store.settings(scope, &file.name);
             if settings["enabled"].as_bool() != Some(true) {
@@ -50,14 +49,25 @@ async fn offered(service: &Service, catalog: &Snapshot) -> Vec<Offered> {
             }
             let switched_off: Vec<&str> = settings["disabled_triggers"].as_array().map(|a| a.iter().filter_map(Value::as_str).collect()).unwrap_or_default();
             let Some(spec) = trigger::specs(&flow).into_iter().find(|s| s.kind == "tool" && s.enabled() && !switched_off.contains(&s.id.as_str())) else { continue };
-            let report = validate::validate(&flow, Some(&file.name), catalog);
-            if !report.valid || service::unconfirmed(&flow, &report.permissions_needed, &settings["permissions"]).is_some() {
-                continue;
-            }
-            out.push(Offered { file, flow, spec, report });
+            candidates.push((file, flow, spec, settings));
         }
     }
-    out
+    if candidates.is_empty() {
+        return None;
+    }
+    let catalog = service.snapshot().await;
+    let mut out: Vec<Offered> = Vec::new();
+    for (file, flow, spec, settings) in candidates {
+        if out.iter().any(|o| o.file.name == file.name) {
+            continue;
+        }
+        let report = validate::validate(&flow, Some(&file.name), &catalog);
+        if !report.valid || service::unconfirmed(&flow, &report.permissions_needed, &settings["permissions"]).is_some() {
+            continue;
+        }
+        out.push(Offered { file, flow, spec, report });
+    }
+    Some((out, catalog))
 }
 
 /// The flow changes something: it runs tools or programs, calls a method that is not read-only,
@@ -80,9 +90,10 @@ fn parameters(flow: &Value) -> Value {
 /// `tools/list` items for MCP clients
 pub async fn list(state: Arc<AppState>) -> Vec<Value> {
     let service = service::get(&state);
-    let catalog = service.snapshot().await;
-    offered(&service, &catalog)
-        .await
+    let Some((offered, catalog)) = offered(&service).await else {
+        return Vec::new();
+    };
+    offered
         .iter()
         .map(|o| {
             let name = &o.file.name;
@@ -129,8 +140,8 @@ fn failed(kind: &str, message: impl Into<String>, data: Value) -> CepError {
 pub async fn call(state: Arc<AppState>, tool: String, arguments: Map<String, Value>, caller: Caller) -> Result<Value, CepError> {
     let name = tool.strip_prefix(PREFIX).unwrap_or(&tool).to_string();
     let service = service::get(&state);
-    let catalog = service.snapshot().await;
-    let Some(offered) = offered(&service, &catalog).await.into_iter().find(|o| o.file.name == name) else {
+    let found = offered(&service).await.and_then(|(all, catalog)| Some((all.into_iter().find(|o| o.file.name == name)?, catalog)));
+    let Some((offered, catalog)) = found else {
         return Err(CepError::invalid_params(format!("Unknown tool: {tool} (no enabled flow {name} with a tool trigger)"), Vec::new(), None));
     };
     let inputs = Value::Object(arguments.clone());

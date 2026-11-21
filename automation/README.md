@@ -134,13 +134,23 @@ that was current when the server started.
 integration 1, 6, 19 and 20 passed. `automation/host` depends on `cluaiz-api` and was not run (native
 backend build).
 
+Flow tools with the lazy snapshot, live on an isolated server (2026-11-21, Windows 11, debug build): with no
+flow saved, the chat preflight's "skills + tools" part went from 15-17 ms to 1-2 ms over 8 requests; a saved
+flow with a `tool` trigger was still listed by MCP `tools/list` as `flow.weekly-report` and offered in a
+chat ("Please write the weekly report"), which called it.
+
 ## Decisions and why
 
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | Automation is its own layer, outside the Engine and the API | flows use the Engine through small additive hooks (events, extension routes and tools) and can change without touching Engine code | flows inside `api` |
 | Not-built features fail with a message that says so | a flow must never look like it ran a step that does not exist | silently skip unknown fields |
+| `tools.rs` reads the catalog snapshot (every method and tool) only when some enabled flow has an enabled `tool` trigger | chats ask for the flow tools on every message; reading the snapshot each time cost 15-17 ms per request on a desktop (debug build) and about 60 ms on a 1 vCPU VPS (run 26); with no such flow it is now 1-2 ms | cache the snapshot (it must follow tool and method changes) |
 
 ## Pending
 
-The "Not built yet" list above is the Pending list of this layer.
+The "Not built yet" list above is the Pending list of this layer, and:
+
+| Item | Seen | Next step |
+|---|---|---|
+| A chat that calls a flow whose `ask` step loads the chat model with other settings gets "Model/configuration changed before execution; retry" on its next step | live, 2026-11-21: "Please write the weekly report" with a flow `weekly-report` (one `ask` step) | the flow's `ask` should run with the chat's loaded settings, or the chat should reload instead of failing |
