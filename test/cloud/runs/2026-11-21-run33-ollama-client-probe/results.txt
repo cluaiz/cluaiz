@@ -1,0 +1,40 @@
+### 1 list models (Ollama)
+GET /api/tags -> HTTP 200, Content-Type: application/json
+{"models":[{"details":{"family":"qwen3","format":"gguf","parameter_size":"Unknown"},"model":"qwen3-0.6b-gguf-Q4_K_M","modified_at":"2026-10-08T00:00:00Z","name":"qwen3-0.6b-gguf-Q4_K_M","size":396705472}]}
+
+### 2 chat, Ollama body, stream false
+POST /api/chat -> HTTP 200, Content-Type: application/json
+{"choices":[{"finish_reason":"stop","index":0,"message":{"content":"hello","reasoning_content":"Okay, the user just asked me to reply with \"hello\" and I need to provide a single-word answer. Let me think. They might be testing my ability to respond quickly and simply. Since I'm a language model, I should respond with the most common greeting. But wait, the instruction says \"reply with the single word: hello\". So I need to make sure to use that exact word. Maybe they want me to confirm or start a conversation. But since the instruction is to reply with \"hello\", I should just stick to that
+
+### 3 chat, Ollama body without stream (Ollama streams by default)
+POST /api/chat -> HTTP 200, Content-Type: application/json
+{"choices":[{"finish_reason":"stop","index":0,"message":{"content":"hello","reasoning_content":"Okay, the user just said \"hello\" and wants a single word response. Hmm, \"hello\" is a common greeting. But maybe they're testing if I can generate a word in a different language? Let me think. \"Hello\" is in English. Maybe they want another word. Wait, maybe they just need a greeting? Like \"Hello, how are you?\" But the user said \"hello\", so perhaps they just want the word \"hello\" as a response. But the instructions say to reply with the single word. So maybe they want a greeting in another
+
+### 4 chat, Ollama body, stream true
+POST /api/chat -> HTTP 200, Content-Type: text/event-stream
+data: {"choices":[],"created":1795243348,"id":"chatcmpl-717496157a7e4a63b3071117fffc6ff0","model":"qwen3-0.6b-gguf-Q4_K_M","object":"chat.completion.chunk","usage":{"active_session_tools":[],"context_telemetry":{"active_session_id":"default","context_breakdown":{"active_percentage":0.0,"active_tools_count":0,"active_tools_tokens":0,"base_system_tokens":0,"chat_history_tokens":0,"deferred_mcp_tokens":0,"deferred_plugins_tokens":0,"deferred_system_tools_tokens":0,"deferred_tools_tokens_saved":0,"free_space_percentage":100.0,"free_space_tokens":16376,"mcp_tools":{"count":0,"items":[],"percent":0.
+
+### 5 keep_alive as Ollama's duration string
+POST /api/chat -> HTTP 422, Content-Type: text/plain; charset=utf-8
+Failed to deserialize the JSON body into the target type: keep_alive: invalid type: string "5m", expected i32 at line 1 column 151
+
+### 6 generate (Ollama)
+POST /api/generate -> HTTP 404, Content-Type: None
+
+
+### 7 running models (Ollama)
+GET /api/ps -> HTTP 404, Content-Type: None
+
+
+### 8 show model (Ollama)
+POST /api/show -> HTTP 404, Content-Type: None
+
+
+### 9 embeddings (Ollama)
+POST /api/embed -> HTTP 404, Content-Type: None
+
+
+### 10 version (Ollama)
+GET /api/version -> HTTP 404, Content-Type: None
+
+
