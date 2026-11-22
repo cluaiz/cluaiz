@@ -69,6 +69,9 @@ pub fn helper_args(policy: &SandboxPolicy, program: &str, args: &[String]) -> Ve
     for hidden in deny_paths(policy) {
         out.extend(["--deny".to_string(), p(&hidden)]);
     }
+    for path in &policy.read_only {
+        out.extend(["--read-only".to_string(), p(path)]);
+    }
     out.push("--".to_string());
     out.push(program.to_string());
     out.extend(args.iter().cloned());
@@ -83,6 +86,8 @@ pub struct Request {
     pub read: Vec<PathBuf>,
     pub write: Vec<PathBuf>,
     pub deny: Vec<PathBuf>,
+    /// Inside the workspace, but no write access (git hooks and config)
+    pub read_only: Vec<PathBuf>,
     pub program: String,
     pub args: Vec<String>,
 }
@@ -102,6 +107,7 @@ pub fn parse_request<I: IntoIterator<Item = String>>(argv: I) -> Option<Request>
             "--read" => req.read.push(PathBuf::from(it.next()?)),
             "--write" => req.write.push(PathBuf::from(it.next()?)),
             "--deny" => req.deny.push(PathBuf::from(it.next()?)),
+            "--read-only" => req.read_only.push(PathBuf::from(it.next()?)),
             "--" => break,
             _ => return None,
         }
@@ -211,8 +217,9 @@ mod win {
     };
     use windows_sys::Win32::Security::Isolation::{CreateAppContainerProfile, DeriveAppContainerSidFromAppContainerName};
     use windows_sys::Win32::Security::{
-        CreateWellKnownSid, EqualSid, FreeSid, GetAce, WinCapabilityInternetClientSid, ACCESS_ALLOWED_ACE, ACL, CONTAINER_INHERIT_ACE, DACL_SECURITY_INFORMATION, INHERITED_ACE, OBJECT_INHERIT_ACE,
-        PSECURITY_DESCRIPTOR, PSID, SECURITY_CAPABILITIES, SECURITY_MAX_SID_SIZE, SID_AND_ATTRIBUTES,
+        AddAccessAllowedAceEx, AddAce, CreateWellKnownSid, EqualSid, FreeSid, GetAce, GetLengthSid, InitializeAcl, WinCapabilityInternetClientSid, ACCESS_ALLOWED_ACE, ACE_HEADER, ACL,
+        ACL_REVISION, CONTAINER_INHERIT_ACE, DACL_SECURITY_INFORMATION, INHERITED_ACE, OBJECT_INHERIT_ACE, PROTECTED_DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, PSID,
+        SECURITY_CAPABILITIES, SECURITY_MAX_SID_SIZE, SID_AND_ATTRIBUTES,
     };
     use windows_sys::Win32::Storage::FileSystem::{FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ};
     use windows_sys::Win32::System::Console::{GetStdHandle, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE};
@@ -353,6 +360,63 @@ mod win {
         Ok(())
     }
 
+    /// Read-only for the container inside its writable workspace. A deny ACE does not do it: in an
+    /// AppContainer a write through the inherited workspace grant still succeeded with an explicit deny
+    /// for the container on the path (measured 2026-11-22, Windows 11). So the path stops inheriting:
+    /// the ACEs it inherited are copied as its own (nobody else's access changes), the container's
+    /// ACEs on it are dropped, and the container gets read and execute only.
+    fn make_read_only(path: &Path, sid: PSID) -> Result<(), String> {
+        let object = wide(path.as_os_str());
+        let mut dacl: *mut ACL = std::ptr::null_mut();
+        let mut descriptor: PSECURITY_DESCRIPTOR = std::ptr::null_mut();
+        let status = unsafe {
+            GetNamedSecurityInfoW(object.as_ptr(), SE_FILE_OBJECT, DACL_SECURITY_INFORMATION, std::ptr::null_mut(), std::ptr::null_mut(), &mut dacl, std::ptr::null_mut(), &mut descriptor)
+        };
+        if status != ERROR_SUCCESS {
+            return Err(format!("could not read the ACL of {}: {}", path.display(), os_error(status)));
+        }
+        let mut kept: Vec<Vec<u8>> = Vec::new();
+        let count = if dacl.is_null() { 0 } else { unsafe { (*dacl).AceCount } };
+        for i in 0..count as u32 {
+            let mut ace: *mut c_void = std::ptr::null_mut();
+            if unsafe { GetAce(dacl, i, &mut ace) } == 0 || ace.is_null() {
+                continue;
+            }
+            let header = unsafe { &*(ace as *const ACE_HEADER) };
+            let simple = matches!(header.AceType as u32, ACCESS_ALLOWED_ACE_TYPE | ACCESS_DENIED_ACE_TYPE);
+            if simple && unsafe { EqualSid(std::ptr::addr_of!((*(ace as *const ACCESS_ALLOWED_ACE)).SidStart) as PSID, sid) } != 0 {
+                continue;
+            }
+            let mut bytes = unsafe { std::slice::from_raw_parts(ace as *const u8, header.AceSize as usize) }.to_vec();
+            bytes[1] &= !(INHERITED_ACE as u8);
+            kept.push(bytes);
+        }
+        unsafe { LocalFree(descriptor) };
+        let allow_size = std::mem::size_of::<ACCESS_ALLOWED_ACE>() - std::mem::size_of::<u32>() + unsafe { GetLengthSid(sid) } as usize;
+        let size = std::mem::size_of::<ACL>() + kept.iter().map(Vec::len).sum::<usize>() + allow_size;
+        // u32 items keep the ACL aligned as the API expects
+        let mut buffer = vec![0u32; size.div_ceil(4)];
+        let acl = buffer.as_mut_ptr() as *mut ACL;
+        if unsafe { InitializeAcl(acl, (buffer.len() * 4) as u32, ACL_REVISION) } == 0 {
+            return Err(format!("could not build the ACL of {}: {}", path.display(), std::io::Error::last_os_error()));
+        }
+        for ace in &kept {
+            if unsafe { AddAce(acl, ACL_REVISION, u32::MAX, ace.as_ptr() as *const c_void, ace.len() as u32) } == 0 {
+                return Err(format!("could not build the ACL of {}: {}", path.display(), std::io::Error::last_os_error()));
+            }
+        }
+        let inherit = if path.is_dir() { CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE } else { 0 };
+        if unsafe { AddAccessAllowedAceEx(acl, ACL_REVISION, inherit, FILE_GENERIC_READ | FILE_GENERIC_EXECUTE, sid) } == 0 {
+            return Err(format!("could not build the ACL of {}: {}", path.display(), std::io::Error::last_os_error()));
+        }
+        let what = DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION;
+        let status = unsafe { SetNamedSecurityInfoW(object.as_ptr(), SE_FILE_OBJECT, what, std::ptr::null_mut(), std::ptr::null_mut(), acl, std::ptr::null()) };
+        if status != ERROR_SUCCESS {
+            return Err(format!("could not set the ACL of {}: {}", path.display(), os_error(status)));
+        }
+        Ok(())
+    }
+
     /// The `internetClient` capability: outbound network for the container
     fn internet_capability(buffer: &mut Vec<u8>) -> Result<SID_AND_ATTRIBUTES, String> {
         buffer.resize(SECURITY_MAX_SID_SIZE as usize, 0);
@@ -429,6 +493,9 @@ mod win {
         }
         for hidden in req.deny.iter().filter(|h| h.exists()) {
             set_ace(hidden, sid.0, DENY_ACCESS, FILE_ALL_ACCESS)?;
+        }
+        for path in req.read_only.iter().filter(|p| p.exists()) {
+            make_read_only(path, sid.0)?;
         }
 
         let mut capability_sid = Vec::new();
@@ -514,6 +581,7 @@ mod tests {
             read_roots: vec![PathBuf::from(r"C:\Users\u\.cluaiz\tools\x")],
             write_roots: vec![],
             allow_network: false,
+            ..Default::default()
         }
     }
 
@@ -526,6 +594,15 @@ mod tests {
         assert!(!req.allow_network);
         assert!(req.deny.is_empty(), "nothing hidden sits inside a granted root");
         assert_eq!((req.program.as_str(), req.args), ("cmd.exe", vec!["/c".to_string(), "echo hi".to_string()]));
+    }
+
+    #[test]
+    fn git_hooks_and_config_reach_the_helper_as_read_only() {
+        let mut p = policy();
+        p.read_only = vec![PathBuf::from(r"C:\work\p\.git\hooks"), PathBuf::from(r"C:\work\p\.git\config")];
+        let req = parse_request(helper_args(&p, "cmd.exe", &[])).unwrap();
+        assert_eq!(req.read_only, p.read_only);
+        assert!(req.write.is_empty(), "they never get a write grant");
     }
 
     #[test]

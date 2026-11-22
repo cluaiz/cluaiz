@@ -124,9 +124,9 @@ plugins (`plugins/executor.rs`). Plan and reasons: `.agent/plans/security/os-san
 
 | Platform | Backend | What a confined process gets |
 |---|---|---|
-| Linux | bubblewrap at `/usr/bin/bwrap` or `/bin/bwrap` (never through `PATH`), used only when a probe run with the same namespace flags succeeds (WSL1, containers and kernels without unprivileged user namespaces count as no backend) | whole filesystem read-only; fresh `/proc`, `/dev`, `/tmp`; agent: `$HOME` and the Cluaiz home hidden, the toolchains on `PATH` under `$HOME` back read-only (`~/.cargo` with `~/.rustup`, `~/.nvm`, `~/.pyenv`, `~/.local/bin`, ...); tool: `$HOME` secret folders (`.ssh`, `.gnupg`, `.aws`, `.config/gh`, `.docker`), cargo's credential files and the Cluaiz home hidden, its package folder read-only; a secret inside any root that comes back is hidden again after it; the workspace writable (secret folders masked again when the workspace is `$HOME`); own PID namespace; no network unless allowed |
-| macOS | `/usr/bin/sandbox-exec` with a generated profile | the same rules as a Seatbelt profile |
-| Windows | AppContainer (`os_sandbox/appcontainer.rs`), one container per workspace | only what an ACL grants the container: the workspace (full access) and the read roots; Windows and Program Files stay readable (Windows grants them to all app containers); the user's home is not readable; no network unless allowed, and never `localhost` |
+| Linux | bubblewrap at `/usr/bin/bwrap` or `/bin/bwrap` (never through `PATH`), used only when a probe run with the same namespace flags succeeds (WSL1, containers and kernels without unprivileged user namespaces count as no backend) | whole filesystem read-only; fresh `/proc`, `/dev`, `/tmp`; agent: `$HOME` and the Cluaiz home hidden, the toolchains on `PATH` under `$HOME` back read-only (`~/.cargo` with `~/.rustup`, `~/.nvm`, `~/.pyenv`, `~/.local/bin`, ...); tool: `$HOME` secret folders (`.ssh`, `.gnupg`, `.aws`, `.config/gh`, `.docker`), cargo's credential files and the Cluaiz home hidden, its package folder read-only; a secret inside any root that comes back is hidden again after it; the workspace writable (secret folders masked again when the workspace is `$HOME`), except its git hooks and config, read-only, and its `.git` folder bound onto itself so it cannot be moved or removed; own PID namespace; no network unless allowed |
+| macOS | `/usr/bin/sandbox-exec` with a generated profile | the same rules as a Seatbelt profile; git hooks and config get `(deny file-write*)` after the workspace's allow, and the `.git` entry itself a literal deny, so it cannot be renamed |
+| Windows | AppContainer (`os_sandbox/appcontainer.rs`), one container per workspace | only what an ACL grants the container: the workspace (full access, except its git hooks and config: read and execute) and the read roots; Windows and Program Files stay readable (Windows grants them to all app containers); the user's home is not readable; no network unless allowed, and never `localhost` |
 
 How the Windows backend starts a command: an AppContainer is a token attribute passed to `CreateProcessW`,
 and `std`, `tokio` and `portable-pty` commands cannot pass it. So `confine` returns this binary with
@@ -144,6 +144,24 @@ inheritable ACE walks the whole tree (seconds on a project with `target/`); a wo
 folder or above it is not confined (auto runs it unconfined with the warning, required refuses), because
 granting it would rewrite the ACL of every file in the profile; secret folders inside a granted root get a
 deny ACE.
+
+Git hooks and config stay read-only (`os_sandbox/git.rs`, reported by a Reddit user on 2026-11-22). A
+confined command may write the project, so without this it could put a script in `.git/hooks` or set
+`core.hooksPath` / `core.fsmonitor` in `.git/config`; the user's next `git commit`, outside the sandbox,
+would run it unconfined. `git::guard` lists, when the policy is made (per agent command; once when an MCP
+server starts): `<ws>/.git/hooks` and `<ws>/.git/config`; for a `.git` file (worktree, submodule) the file
+itself and the hooks and config of its `gitdir:` and that folder's `commondir`. Only paths that exist
+(a missing bind source fails bubblewrap, runs 28 and 41) and that sit inside the workspace (anything
+outside is not writable anyway). The `.git` folder itself cannot be swapped for a new one with its own
+hooks: bubblewrap binds it onto itself (a mount point cannot be renamed), Seatbelt denies writes to its
+literal path. On Windows a deny ACE was the first try and did not work: with the container's explicit deny
+on `.git/hooks`, a write through the inherited workspace grant still succeeded (2026-11-22, Windows 11;
+the same holds for the `--deny` ACEs on secrets inside a granted root, which is still open). So
+`make_read_only` stops the path inheriting: its inherited ACEs are copied as its own, the container's are
+dropped, and the container gets read and execute. Measured on this Windows 11 machine with the built
+helper and a fresh `git init`: writes to `.git/hooks/pre-commit`, a `.sample` hook and `.git/config`, `del
+.git\config` and `move .git .git-old` all exit 1; reading the config, writing `file.txt` and
+`.git/description2` exit 0; the host user can still write the hooks; a second run gives the same result.
 
 A workspace that is the Cluaiz home or a folder above it is never confined, on every backend: auto runs
 the command unconfined with a warning on every such command, required refuses (`exposes_engine_home`).
@@ -166,7 +184,7 @@ containers access) and a Python installed under AppData did not start inside a c
 default would break common agent commands. `os_sandbox = required` confines. Inside a container
 PowerShell's progress bar cannot read the console; `$ProgressPreference='SilentlyContinue'` avoids it.
 
-Tested: argument and profile unit tests (`cargo test -p cluaiz-agents --lib os_sandbox`, 20 pass on 2026-11-22, Windows 11, including `a_workspace_at_or_above_the_engine_home_runs_plain_in_auto_and_is_refused_in_required`). Windows
+Tested: argument and profile unit tests (`cargo test -p cluaiz-agents --lib os_sandbox`, 26 pass on 2026-11-22, Windows 11, including `a_workspace_at_or_above_the_engine_home_runs_plain_in_auto_and_is_refused_in_required` and the git checks). `agents/tests/os_sandbox_real.rs` has `git_hooks_are_read_only` (hooks, config, swapping `.git`, the rest writable); it is ignored by default and was not run yet on Linux or macOS. Windows
 on a real machine: `test/cloud/runs/2026-11-20-run27-windows-os-sandbox/` (home, `.ssh`, `.cluaiz` and
 Documents denied, workspace writable, network only when allowed, exit codes pass through). Linux on a real
 machine: `test/cloud/runs/2026-11-21-run28-linux-os-sandbox/` (Ubuntu 24.04: 8 / 8 checks after the AppArmor
@@ -180,14 +198,14 @@ toolchain roots that exist (same rule as the secret masks). Second run with that
 
 ## Tested
 
-43 unit tests in this folder. Part of `cargo test -p cluaiz-agents`: 161 passed, 1 ignored on 2026-11-21 (Windows 11).
+49 unit tests in this folder. Part of `cargo test -p cluaiz-agents`: 161 passed, 1 ignored on 2026-11-21 (Windows 11).
 
 | Area | Tests |
 |---|---|
 | Approval policy (`policy.rs`) | `test_hard_denied_destructive_commands_all_os`, `test_cross_platform_sensitive_paths_blocked_in_sandbox`, `test_non_existent_cwd_denied`, `test_strict_mode_confirmation_and_read_only_allowed`, `test_sandboxed_safe_commands_allowed`, `a_read_only_start_does_not_cover_a_chained_line`, `test_dangerous_command_blocked` |
 | Environment | `test_secret_scrubbing`, `a_tool_gets_only_the_system_basics_and_its_own_values`, `test_venv_path_injection`, `test_clean_shell_and_stdin` |
 | Terminal runner and PTY | `terminal_output_becomes_plain_lines`, `a_command_asks_and_the_keyboard_answers`, `stopping_and_the_timeout_end_a_waiting_command`, `a_timeout_also_ends_what_the_command_started`, `a_program_left_in_the_background_does_not_hold_the_answer`, `output_that_is_not_utf8_is_kept`, `test_truncate_small_output`, `test_truncate_large_output`, `test_signal_explanation`, `test_sandbox_runner_basic_echo`, `test_streaming_sends_each_line_while_keeping_the_output`, `test_cancel_handle` |
-| OS sandbox (all backends, built as text on every OS) | `bubblewrap_hides_home_and_binds_the_workspace_last`, `network_is_cut_unless_allowed`, `a_root_that_is_also_writable_is_bound_once_writable`, `without_a_backend_auto_runs_plain_and_required_refuses`, `a_workspace_at_home_masks_the_secret_folders_again`, `seatbelt_profile_hides_home_and_keeps_the_workspace`, `seatbelt_reopens_a_home_workspace_but_not_its_secrets`, `appcontainer_reruns_this_binary_as_the_helper`, `appcontainer_refuses_the_home_folder_as_workspace`, `a_mistyped_mode_confines_instead_of_turning_confinement_down`, `toolchains_on_path_under_home_come_back_but_secrets_do_not`, `a_secret_inside_a_read_root_is_masked_after_the_root`, `a_workspace_at_or_above_the_engine_home_runs_plain_in_auto_and_is_refused_in_required`, `off_never_wraps_even_with_a_backend`, `secrets_inside_a_granted_root_are_denied`, `one_container_per_workspace`, `quoting_follows_the_c_runtime_rules`, `cmd_gets_its_command_in_its_own_form`, `helper_args_round_trip`, `a_normal_launch_is_not_a_helper_run` |
+| OS sandbox (all backends, built as text on every OS) | `bubblewrap_hides_home_and_binds_the_workspace_last`, `network_is_cut_unless_allowed`, `a_root_that_is_also_writable_is_bound_once_writable`, `without_a_backend_auto_runs_plain_and_required_refuses`, `a_workspace_at_home_masks_the_secret_folders_again`, `seatbelt_profile_hides_home_and_keeps_the_workspace`, `seatbelt_reopens_a_home_workspace_but_not_its_secrets`, `appcontainer_reruns_this_binary_as_the_helper`, `appcontainer_refuses_the_home_folder_as_workspace`, `a_mistyped_mode_confines_instead_of_turning_confinement_down`, `toolchains_on_path_under_home_come_back_but_secrets_do_not`, `a_secret_inside_a_read_root_is_masked_after_the_root`, `a_workspace_at_or_above_the_engine_home_runs_plain_in_auto_and_is_refused_in_required`, `bubblewrap_keeps_git_hooks_and_config_read_only_after_the_workspace`, `seatbelt_denies_writes_to_git_hooks_and_config_after_the_workspace`, `off_never_wraps_even_with_a_backend`, `git_hooks_and_config_reach_the_helper_as_read_only`, `a_repository_keeps_its_hooks_and_config_and_its_git_folder_in_place`, `a_git_file_guards_itself_and_the_folders_it_names_inside_the_workspace`, `no_repository_guards_nothing`, `secrets_inside_a_granted_root_are_denied`, `one_container_per_workspace`, `quoting_follows_the_c_runtime_rules`, `cmd_gets_its_command_in_its_own_form`, `helper_args_round_trip`, `a_normal_launch_is_not_a_helper_run` |
 
 Real machines: `agents/tests/os_sandbox_real.rs` (ignored by default) passed on Windows (run 27) and
 Linux (run 28, 8 of 8 checks); see `test/cloud/runs/`. macOS on a GitHub `macos-15` runner: 9 of 9

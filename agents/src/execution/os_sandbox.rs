@@ -9,6 +9,7 @@
 //! (`os_sandbox/appcontainer.rs`), started through a helper run of this binary.
 
 pub mod appcontainer;
+pub mod git;
 
 use std::path::{Path, PathBuf};
 
@@ -108,6 +109,11 @@ pub struct SandboxPolicy {
     /// Bound back writable after the masks
     pub write_roots: Vec<PathBuf>,
     pub allow_network: bool,
+    /// Read-only inside the workspace: git hooks and config, which git runs outside the sandbox later
+    /// (`git::guard`)
+    pub read_only: Vec<PathBuf>,
+    /// The workspace's `.git` folder: writable inside, but it may not be moved or removed
+    pub git_dir: Option<PathBuf>,
 }
 
 /// The program and arguments to spawn, and which backend confines them
@@ -189,6 +195,13 @@ fn seatbelt_profile(policy: &SandboxPolicy) -> String {
     let writable_back: Vec<String> = policy.write_roots.iter().map(|r| q(r)).chain([q(&policy.workspace)]).collect();
     profile += &format!("(allow file-write* {})
 ", writable_back.join(" "));
+    // Git hooks and config stay read-only, and the `.git` folder's own entry cannot be renamed or removed
+    let lit = |path: &Path| format!("(literal \"{}\")", path.to_string_lossy().replace('\\', "\\\\").replace('"', "\\\""));
+    let locked: Vec<String> = policy.read_only.iter().map(|p| q(p)).chain(policy.git_dir.iter().map(|d| lit(d))).collect();
+    if !locked.is_empty() {
+        profile += &format!("(deny file-write* {})
+", locked.join(" "));
+    }
     // A workspace that contains a hidden path (an agent started in `$HOME`) has just reopened it: deny
     // it once more, as the bubblewrap arguments mask it again
     let again: Vec<String> = reopened(policy).into_iter().map(|h| q(h)).collect();
@@ -225,6 +238,14 @@ fn bwrap_args(policy: &SandboxPolicy) -> Vec<String> {
     }
     let ws = p(&policy.workspace);
     push(&["--bind", &ws, &ws, "--chdir", &ws]);
+    // `.git` bound onto itself becomes a mount point, which cannot be renamed or removed; then its hooks
+    // and config come back read-only
+    if let Some(dir) = &policy.git_dir {
+        push(&["--bind", &p(dir), &p(dir)]);
+    }
+    for path in &policy.read_only {
+        push(&["--ro-bind", &p(path), &p(path)]);
+    }
     // A hidden path inside a root that was just bound back (`.ssh` when the workspace is `$HOME`,
     // `credentials.toml` inside `~/.cargo`) is visible again: mask it once more
     for hide in reopened(policy) {
@@ -388,7 +409,8 @@ impl SandboxPolicy {
             (true, Some(home), Some(path)) => toolchain_roots(&home, &path, cluaiz_home().as_deref()).into_iter().filter(|r| r.exists()).collect(),
             _ => Vec::new(),
         };
-        Self { workspace: workspace.to_path_buf(), hidden, read_roots, allow_network: true, ..Default::default() }
+        let git = git::guard(workspace);
+        Self { workspace: workspace.to_path_buf(), hidden, read_roots, allow_network: true, read_only: git.read_only, git_dir: git.dir, ..Default::default() }
     }
 
     /// A tool's own process (MCP server, native plugin): `$HOME` stays readable for language caches
@@ -396,7 +418,8 @@ impl SandboxPolicy {
     /// bound back read-only, the workspace is writable, network as the tool's permission says.
     pub fn for_tool(workspace: &Path, package: &Path, allow_network: bool) -> Self {
         let hidden = secrets();
-        Self { workspace: workspace.to_path_buf(), hidden, read_roots: vec![package.to_path_buf()], allow_network, ..Default::default() }
+        let git = git::guard(workspace);
+        Self { workspace: workspace.to_path_buf(), hidden, read_roots: vec![package.to_path_buf()], allow_network, read_only: git.read_only, git_dir: git.dir, ..Default::default() }
     }
 }
 
@@ -454,6 +477,7 @@ mod tests {
             read_roots: vec![PathBuf::from("/home/u/.cargo")],
             write_roots: vec![],
             allow_network: false,
+            ..Default::default()
         }
     }
 
@@ -621,6 +645,33 @@ mod tests {
                 assert!(refused.contains(ENGINE_HOME_WORKSPACE), "{}: {refused}", backend.name());
             }
         }
+    }
+
+    fn git_policy() -> SandboxPolicy {
+        let mut p = policy();
+        p.git_dir = Some(PathBuf::from("/home/u/project/.git"));
+        p.read_only = vec![PathBuf::from("/home/u/project/.git/hooks"), PathBuf::from("/home/u/project/.git/config")];
+        p
+    }
+
+    #[test]
+    fn bubblewrap_keeps_git_hooks_and_config_read_only_after_the_workspace() {
+        let c = confine("sh", &[], &git_policy(), SandboxMode::Auto, &bwrap()).unwrap();
+        let ws = pos(&c.args, &["--bind", "/home/u/project", "/home/u/project"]);
+        let dir = pos(&c.args, &["--bind", "/home/u/project/.git", "/home/u/project/.git"]);
+        let hooks = pos(&c.args, &["--ro-bind", "/home/u/project/.git/hooks", "/home/u/project/.git/hooks"]);
+        let config = pos(&c.args, &["--ro-bind", "/home/u/project/.git/config", "/home/u/project/.git/config"]);
+        assert!(ws < dir && dir < hooks && hooks < config, "after the workspace bind, so it cannot shadow them");
+        let plain = confine("sh", &[], &policy(), SandboxMode::Auto, &bwrap()).unwrap();
+        assert!(!plain.args.iter().any(|a| a.contains(".git")), "no repository, no binds");
+    }
+
+    #[test]
+    fn seatbelt_denies_writes_to_git_hooks_and_config_after_the_workspace() {
+        let profile = seatbelt_profile(&git_policy());
+        let allow = profile.rfind("(allow file-write* (subpath \"/home/u/project\")").unwrap();
+        let deny = profile.find("(deny file-write* (subpath \"/home/u/project/.git/hooks\") (subpath \"/home/u/project/.git/config\") (literal \"/home/u/project/.git\"))").unwrap();
+        assert!(deny > allow, "the later rule wins in a profile");
     }
 
     #[test]

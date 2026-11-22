@@ -89,6 +89,11 @@ Two separate checks guard every command an agent or a tool runs:
 
 ![The agent wants to run a command; the approval policy decides whether it runs, then the OS sandbox decides what it can touch: the project folder, not the home folder, ~/.ssh, ~/.aws or Cluaiz's files](../assets/engine/two-walls.png)
 
+Inside the project folder, git's hooks (`.git/hooks`) and config (`.git/config`) stay read-only, and the
+`.git` folder cannot be moved or replaced, on every platform. Git runs hooks, and programs the config
+names (`core.hooksPath`, `core.fsmonitor`), when you commit later outside the sandbox, so a confined
+command must not be able to plant them. The rest of `.git` (objects, index, branches) stays writable.
+
 A workspace that is the Cluaiz home or a folder above it would show Cluaiz's own files (the session
 token, the config with provider keys) to the command, so it is never confined: `auto` runs the command
 unconfined with a warning, `required` refuses it. With no project open, the Engine's workspace is the

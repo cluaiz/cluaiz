@@ -72,3 +72,25 @@ fn real_confinement() {
     let _ = std::fs::remove_dir_all(&ws);
     assert!(all, "a confinement check failed (see the lines above)");
 }
+
+/// A confined command must not plant code that git runs later outside the sandbox: hooks, and config
+/// keys such as `core.hooksPath` or `core.fsmonitor`, or a whole new `.git` in place of the old one
+#[test]
+#[ignore = "needs bubblewrap or sandbox-exec and git on a test machine"]
+fn git_hooks_are_read_only() {
+    let ws = workspace().join("repo");
+    std::fs::create_dir_all(&ws).unwrap();
+    assert!(Command::new("git").arg("init").arg("-q").current_dir(&ws).status().expect("git").success(), "git init");
+    // The policy reads the repository when it is made, as the Engine makes it per command
+    let agent = SandboxPolicy::for_agent(&ws);
+    let mut all = true;
+
+    all &= report("git hooks are read-only", !confined_ok(&agent, "printf '#!/bin/sh\nexit 0\n' > .git/hooks/pre-commit"));
+    all &= report("git config is read-only", !confined_ok(&agent, "printf '[core]\n\thooksPath = /tmp\n' >> .git/config"));
+    all &= report("the .git folder cannot be swapped", !confined_ok(&agent, "mv .git .git-old"));
+    all &= report("the rest of the project stays writable", confined_ok(&agent, "echo hi > file.txt && git add file.txt"));
+    all &= report("no hook was planted on the host", !ws.join(".git/hooks/pre-commit").exists());
+
+    let _ = std::fs::remove_dir_all(ws.parent().unwrap());
+    assert!(all, "a git check failed (see the lines above)");
+}
