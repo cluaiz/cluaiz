@@ -314,8 +314,7 @@ mod win {
     }
 
     /// Adds an inheritable ACE for the container on `path`, merged into its DACL so the user keeps
-    /// their own access. Grants give the container access; a deny re-hides a secret folder that sits
-    /// inside a granted root (explicit denies are ordered before allows).
+    /// their own access. Used for grants; a path inside a granted root gets less through [`limit`].
     fn set_ace(path: &Path, sid: PSID, mode: ACCESS_MODE, mask: u32) -> Result<(), String> {
         let object = wide(path.as_os_str());
         let mut dacl: *mut ACL = std::ptr::null_mut();
@@ -360,12 +359,12 @@ mod win {
         Ok(())
     }
 
-    /// Read-only for the container inside its writable workspace. A deny ACE does not do it: in an
-    /// AppContainer a write through the inherited workspace grant still succeeded with an explicit deny
-    /// for the container on the path (measured 2026-11-22, Windows 11). So the path stops inheriting:
-    /// the ACEs it inherited are copied as its own (nobody else's access changes), the container's
-    /// ACEs on it are dropped, and the container gets read and execute only.
-    fn make_read_only(path: &Path, sid: PSID) -> Result<(), String> {
+    /// Less access for the container on a path inside a root it was granted: `access` only (0: none).
+    /// A deny ACE does not do it: in an AppContainer a write through the inherited workspace grant
+    /// still succeeded with an explicit deny for the container on the path (measured 2026-11-22,
+    /// Windows 11). So the path stops inheriting: the ACEs it inherited are copied as its own (nobody
+    /// else's access changes), the container's ACEs on it are dropped, and `access` is granted.
+    fn limit(path: &Path, sid: PSID, access: u32) -> Result<(), String> {
         let object = wide(path.as_os_str());
         let mut dacl: *mut ACL = std::ptr::null_mut();
         let mut descriptor: PSECURITY_DESCRIPTOR = std::ptr::null_mut();
@@ -406,7 +405,7 @@ mod win {
             }
         }
         let inherit = if path.is_dir() { CONTAINER_INHERIT_ACE | OBJECT_INHERIT_ACE } else { 0 };
-        if unsafe { AddAccessAllowedAceEx(acl, ACL_REVISION, inherit, FILE_GENERIC_READ | FILE_GENERIC_EXECUTE, sid) } == 0 {
+        if access != 0 && unsafe { AddAccessAllowedAceEx(acl, ACL_REVISION, inherit, access, sid) } == 0 {
             return Err(format!("could not build the ACL of {}: {}", path.display(), std::io::Error::last_os_error()));
         }
         let what = DACL_SECURITY_INFORMATION | PROTECTED_DACL_SECURITY_INFORMATION;
@@ -492,10 +491,10 @@ mod win {
             set_ace(root, sid.0, GRANT_ACCESS, FILE_GENERIC_READ | FILE_GENERIC_EXECUTE)?;
         }
         for hidden in req.deny.iter().filter(|h| h.exists()) {
-            set_ace(hidden, sid.0, DENY_ACCESS, FILE_ALL_ACCESS)?;
+            limit(hidden, sid.0, 0)?;
         }
         for path in req.read_only.iter().filter(|p| p.exists()) {
-            make_read_only(path, sid.0)?;
+            limit(path, sid.0, FILE_GENERIC_READ | FILE_GENERIC_EXECUTE)?;
         }
 
         let mut capability_sid = Vec::new();

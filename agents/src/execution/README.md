@@ -142,8 +142,9 @@ test binary never re-runs itself.
 Decisions: an ACE is written only when the folder does not already have it, because applying an
 inheritable ACE walks the whole tree (seconds on a project with `target/`); a workspace that is the home
 folder or above it is not confined (auto runs it unconfined with the warning, required refuses), because
-granting it would rewrite the ACL of every file in the profile; secret folders inside a granted root get a
-deny ACE.
+granting it would rewrite the ACL of every file in the profile; a secret folder inside a granted root (`.ssh` when
+the workspace is the home folder) stops inheriting the grant and gets no access for the container
+(`limit`, below; a deny ACE did not hide it).
 
 Git hooks and config stay read-only (`os_sandbox/git.rs`, reported by a Reddit user on 2026-11-22). A
 confined command may write the project, so without this it could put a script in `.git/hooks` or set
@@ -156,12 +157,14 @@ outside is not writable anyway). The `.git` folder itself cannot be swapped for 
 hooks: bubblewrap binds it onto itself (a mount point cannot be renamed), Seatbelt denies writes to its
 literal path. On Windows a deny ACE was the first try and did not work: with the container's explicit deny
 on `.git/hooks`, a write through the inherited workspace grant still succeeded (2026-11-22, Windows 11;
-the same holds for the `--deny` ACEs on secrets inside a granted root, which is still open). So
-`make_read_only` stops the path inheriting: its inherited ACEs are copied as its own, the container's are
-dropped, and the container gets read and execute. Measured on this Windows 11 machine with the built
+the same held for the deny ACE on a secret folder inside the workspace: the container could read and
+write it). So `limit` stops the path inheriting: its inherited ACEs are copied as its own, the
+container's are dropped, and the container gets read and execute (git paths) or nothing (secrets). Measured on this Windows 11 machine with the built
 helper and a fresh `git init`: writes to `.git/hooks/pre-commit`, a `.sample` hook and `.git/config`, `del
 .git\config` and `move .git .git-old` all exit 1; reading the config, writing `file.txt` and
-`.git/description2` exit 0; the host user can still write the hooks; a second run gives the same result.
+`.git/description2` exit 0; the host user can still write the hooks; a second run gives the same result. With a `.ssh` folder inside
+the workspace passed as hidden: reading a file in it, listing it and writing into it all exit 1, while
+the host user still reads it.
 
 A workspace that is the Cluaiz home or a folder above it is never confined, on every backend: auto runs
 the command unconfined with a warning on every such command, required refuses (`exposes_engine_home`).
