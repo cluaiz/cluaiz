@@ -52,8 +52,6 @@ pub struct StorageSubsystem {
     pub free_gb: f64,
     pub is_primary: bool,
     pub drive_type: String,
-    pub read_speed_mbps: f64,
-    pub write_speed_mbps: f64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

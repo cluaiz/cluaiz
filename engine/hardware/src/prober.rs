@@ -511,30 +511,7 @@ impl HardwareProber {
         }
     }
 
-    // ─── Storage Probing (5MB Atomic Speed Test & Drive Type Detection) ────
-
-    fn benchmark_storage(mount_path: &str) -> (f64, f64) {
-        use std::time::Instant;
-        let test_file = std::path::PathBuf::from(mount_path).join(".cluaiz_hw_bench");
-        let test_bytes = vec![0u8; 5 * 1024 * 1024]; // 5 MB atomic buffer
-
-        let start_write = Instant::now();
-        if std::fs::write(&test_file, &test_bytes).is_ok() {
-            let write_dur = start_write.elapsed().as_secs_f64();
-
-            let start_read = Instant::now();
-            if std::fs::read(&test_file).is_ok() {
-                let read_dur = start_read.elapsed().as_secs_f64();
-                let _ = std::fs::remove_file(&test_file);
-
-                let read_mbps = if read_dur > 0.0 { 5.0 / read_dur } else { 0.0 };
-                let write_mbps = if write_dur > 0.0 { 5.0 / write_dur } else { 0.0 };
-                return (read_mbps, write_mbps);
-            }
-            let _ = std::fs::remove_file(&test_file);
-        }
-        (0.0, 0.0)
-    }
+    // ─── Storage Probing (Drive Type Detection) ────
 
     fn detect_drive_type(kind_str: &str) -> String {
         #[cfg(target_os = "windows")]
@@ -571,11 +548,6 @@ impl HardwareProber {
             let total_gb = disk.total_space() as f64 / GIB_F64;
             let free_gb = disk.available_space() as f64 / GIB_F64;
             let is_primary = mount == "C:\\" || mount == "/";
-            let (read_mbps, write_mbps) = if is_primary {
-                Self::benchmark_storage(&mount)
-            } else {
-                (0.0, 0.0)
-            };
             let drive_type = Self::detect_drive_type(&format!("{:?}", disk.kind()));
 
             storage.push(StorageSubsystem {
@@ -584,8 +556,6 @@ impl HardwareProber {
                 free_gb,
                 is_primary,
                 drive_type,
-                read_speed_mbps: read_mbps,
-                write_speed_mbps: write_mbps,
             });
         }
         storage

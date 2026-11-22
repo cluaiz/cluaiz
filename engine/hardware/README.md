@@ -66,7 +66,7 @@ change.
 | `cpu.physical_cores`, `logical_threads` | yes (thread counts, change detection) | |
 | `cpu.l1/l2/l3_cache_kb`, `isa_features`, `base/boost_clock_mhz`, `gflops_fp32` | no, reported in JSON only | `boost_clock_mhz` is `base x 1.25`, an estimate, and `gflops_fp32` is built on it |
 | `memory.bandwidth_gbps`, `memory_latency_ns`, `speed_mts` | no, reported only | bandwidth and latency from a 64 MB read loop and a pointer chase (`benchmark_memory`); `speed_mts` on Windows from `Win32_PhysicalMemory` (the slowest module's `ConfiguredClockSpeed`, else `Speed`), 0 on Linux and macOS |
-| `storage[*]` (speeds, drive type) | no, reported only | see Failure |
+| `storage[*]` (mount point, size, free space, drive type) | no, reported only | no read or write speed since 2026-11-22 (below) |
 | `gpus[*].pcie_*`, `compute_capability` | no (`compute_capability` is shown by CEP `system.info`) | |
 | `GpuSubsystem::estimated_vram_bandwidth_gbps()` | no caller | a table by VRAM size, not a measurement |
 
@@ -74,7 +74,7 @@ change.
 
 - `src/prober.rs`
   - **Cache layers:** an in-process `RwLock<Option<SystemInfo>>`, then `hardware_profile.json` in the
-    home's `config/`. The deep probe (memory benchmark, disk write test, PowerShell/WMI calls) takes
+    home's `config/`. The deep probe (memory benchmark, PowerShell/WMI calls) takes
     seconds, so it runs once per machine, not per process.
   - **Live memory:** `live_snapshot` opens one NVML session and reads GPU 0's free memory and whether
     any other process or a display uses it (`used_only_by_this_process`: no active display, not a
@@ -103,6 +103,7 @@ numbers come from CEP `system.live`.
 | Free memory measured live for planning (`with_live_memory`) | free RAM and VRAM change between start-up and a model load | plan from the start-up numbers |
 | Non-NVIDIA GPUs from llama.cpp's backends, not a second probing library | llama.cpp is what will use the GPU; its device list and free memory are the numbers that matter for a load | a vendor library per GPU type |
 | macOS free RAM computed from `host_statistics64` | sysinfo's figure was 0 on a compressed-memory Mac (above) | trust sysinfo |
+| No disk speed test (removed 2026-11-22, with `read_speed_mbps` / `write_speed_mbps`) | it wrote 5 MB to the drive root, which fails without admin rights on Windows (0 in a saved profile on 2026-11-21); the file was read back right after it was written, so the read number may come from the OS file cache (not measured); and no code read the two fields (searched in the Engine and `cluaiz-app` on 2026-11-22: only saved profiles had them) | write the test file in the Cluaiz home |
 | `used_only_by_cluaiz` is `None` when unreadable | the planner then keeps its normal margin rather than guessing a smaller one | default to `false` or `true` |
 
 ## Tested
@@ -122,7 +123,7 @@ Result on 2026-11-22 (Windows 11): 6 passed, 1 ignored. On that machine `Get-Cim
 Real machines: every run in [`test/cloud/BENCHMARKS.md`](../../test/cloud/BENCHMARKS.md) loads models
 through these numbers. The macOS RAM formula and the backend GPUs come from the M5 Mac run
 [`test/mac/runs/2026-10-28-m5-air-16gb/`](../../test/mac/runs/2026-10-28-m5-air-16gb/SUMMARY.md) (free RAM read
-as 0.00-0.75 GB of 16 GB, Metal unused; fixed in `07cf30fa`, not rerun on a real Mac since). Not tested anywhere: the storage benchmark, AMD or Intel GPUs
+as 0.00-0.75 GB of 16 GB, Metal unused; fixed in `07cf30fa`, not rerun on a real Mac since). Not tested anywhere: AMD or Intel GPUs
 through Vulkan on Windows.
 
 ## Failure and recovery
@@ -134,7 +135,6 @@ through Vulkan on Windows.
 | NVML missing (no NVIDIA driver, macOS) | no NVIDIA GPUs; backend GPUs fill in if llama.cpp registered them |
 | A live query fails | the old free-memory number is kept (`apply_memory_snapshot`) |
 | PowerShell or `Win32_PhysicalMemory` cannot be read | `speed_mts` stays 0 (before 2026-11-22 it was always 0 on current Windows: the old code ran `wmic`, which is not installed there; `where wmic` found nothing on the dev machine) |
-| Disk benchmark cannot write to the drive root (`C:\` without admin rights) | read and write speed 0 (seen in a saved profile on 2026-11-21) |
 | A poisoned cache lock | recovered (`PoisonError::into_inner`): the last cached profile is still used |
 
 ## Sources
@@ -149,6 +149,5 @@ through Vulkan on Windows.
 | Item | Why it matters | Needs |
 |---|---|---|
 | Only GPU 0 gets a live free-VRAM reading | a second NVIDIA GPU is planned from its start-up number | read every device in `live_snapshot` |
-| Disk benchmark writes to the drive root | gives 0 without admin rights on Windows; the numbers are unused anyway | write in the Cluaiz home, or drop the benchmark |
 | `detect_drive_type` reads the first physical disk for every drive on Windows and prefixes "NVMe/" | wrong label for a second or SATA disk | per-disk query, or drop the field |
 | Reported-only estimates (`boost_clock_mhz`, `gflops_fp32`, `estimated_vram_bandwidth_gbps`) | they are marked as estimates in the code (`types.rs`) and here, but the JSON field names do not say so | rename them in a versioned API change, or remove them (the App may read them) |
