@@ -97,8 +97,27 @@ Reading:
 - One request at a time the engines are level on 0.6B. On 1.7B Cluaiz finished each request sooner
   (2.8 s against 3.7 s on 8 GB). Part of that may be shorter answers: Cluaiz's 1.7B answers were mostly
   the compact `{"label": "bug"}`, Ollama's sometimes spread over three lines. Not separated in this run.
-- With 4 at once, Ollama was faster. Both run one slot, so the requests queue; why Ollama's queue moves
-  faster is not investigated yet.
+- With 4 at once, Ollama was faster. Both run one slot, so the requests queue. Where the time goes
+  (8 GB, round 1, Qwen3 0.6B, medians from `requests_native_*.jsonl`, first request of a step left out):
+
+  | Engine | At once | Answer | First token | After first token | Total | Requests in 90 s |
+  |---|---:|---|---:|---:|---:|---:|
+  | Cluaiz | 1 | 23 characters | 0.723 s | 0.618 s | 1.342 s | 64 |
+  | Cluaiz | 4 | 23 characters | 4.765 s | 0.625 s | 5.387 s | 71 |
+  | Ollama | 1 | 23 characters | 0.729 s | 0.627 s | 1.312 s | 70 |
+  | Ollama | 4 | 23 characters | 3.815 s | 0.639 s | 4.484 s | 83 |
+
+  The model work is the same: one request at a time, the same 23-character answer took the same time to
+  its first token and the same time after it on both engines. With 4 clients and one slot a request waits
+  for the other three, so the total is about four times the time the slot is busy per request. For
+  Cluaiz 5.387 s is 4.0 times 1.342 s: the slot is busy for the whole request. For Ollama 4.484 s is 3.4
+  times 1.312 s: about 0.19 s of each request happens outside the slot, overlapped with the previous one.
+  Which part of Cluaiz's request is still inside the slot (request parsing, the chat template, tokenizing,
+  or the work after the last token) is not measured; the next step is to log when the slot is taken and
+  released for one request.
+- The same 23 characters were counted as 10 completion tokens by Cluaiz and 15 by Ollama (and 15 by
+  llama.cpp in the Hostinger data) while taking the same time, so Cluaiz's `completion_tokens` for this
+  answer looks low; not checked against the tokenizer yet.
 - The 4 GB machine was slower than the 8 GB one for both engines (same CPU type), which points at memory
   pressure or the 20-user website taking a larger share; not separated.
 
@@ -214,8 +233,10 @@ an agent with a sandbox, one permission system) is rare; LocalAI dev builds come
 ## Not proven yet
 
 - llama.cpp on the Google machines; Docker since run 26; more than 4 requests at once since run 26.
-- Why Ollama's queue is faster with 4 at once on the same single slot.
-- Apple hardware speed (the macOS sandbox runs in CI; speed was never measured on a Mac).
+- Which part of a Cluaiz chat request keeps the slot busy (Angle 2: about 0.19 s per request that
+  Ollama overlaps with the previous request).
+- Metal GPU speed on real Apple hardware after `07cf30fa` (the October M5 Air run,
+  `test/mac/runs/2026-10-28-m5-air-16gb/`, ran on the CPU because the engine did not use Metal then).
 - Bigger models (3B and up) under the website load on 4 GB.
 
 ## Rerun
@@ -227,3 +248,11 @@ at its top), then:
 CLUAIZ_COMMIT=<sha> ROUNDS="1 2" STEP_SECS=90 WEB_USERS=20 bash /root/vps26/run40.sh /root/results-run40
 python3 test/cloud/remote/vps26/compare40.py /root/results-run40 > tables.md
 ```
+
+## Charts
+
+`images/` holds the greyscale charts used in the blog draft and the Reddit post, drawn from the numbers in
+this README and run 26: `python images/run40_charts.py` (charts 1 to 4) and `python images/run40_charts2.py`
+(Docker, 4 GB against 8 GB, every test in one table) redraw them next to the scripts. The charts carry no
+paths or links, so a moved folder does not make them wrong; the post text carries the links.
+`8-setup-one-server.png` was drawn separately with Pillow.
