@@ -328,7 +328,7 @@ impl Runner {
         let run_value = json!({ "id": record.run_id, "flow": record.flow, "started_at": record.started_at, "attempt": record.attempt, "webhook_url": webhook_url });
         let previous = state::previous(&self.paths, &record.scope, &record.flow);
         let (done, unfinished, waits) = match &resume {
-            Some(journal) => (journal.finished_by_key(), journal.unfinished.iter().map(|(p, i)| journal::record_key(p, i)).collect(), journal.waiting.clone()),
+            Some(journal) => (journal.finished_by_key(), journal.unfinished.iter().map(|step| journal::record_key(&step.place, &step.item)).collect(), journal.waiting.clone()),
             None => (HashMap::new(), HashSet::new(), HashMap::new()),
         };
         if resume.is_some() {

@@ -174,8 +174,9 @@ pub async fn run_get(ctx: CallCtx, _call: Call, params: RunGetParams) -> Result<
     if params.steps.unwrap_or(true) {
         let journal = journal::read_journal(&dir);
         let mut records: Vec<Value> = journal.finished.iter().filter_map(|r| serde_json::to_value(r).ok()).collect();
-        for (place, item) in &journal.unfinished {
-            records.push(json!({ "place": place, "item": item, "status": if run.status.is_finished() { "unknown" } else { "running" } }));
+        for step in &journal.unfinished {
+            let status = if run.status.is_finished() { "unknown" } else { "running" };
+            records.push(json!({ "id": step.id, "place": step.place, "kind": step.kind, "item": step.item, "status": status }));
         }
         if let Some(step) = &params.step {
             records.retain(|r| r["id"] == json!(step));

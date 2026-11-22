@@ -230,11 +230,20 @@ pub fn read_json(path: &Path) -> Option<Value> {
 #[derive(Debug, Default)]
 pub struct Journal {
     pub finished: Vec<StepRecord>,
-    pub unfinished: Vec<(String, Value)>,
+    pub unfinished: Vec<Unfinished>,
     /// What waiting steps wrote when they started waiting (their deadline), by place and item
     pub waiting: std::collections::HashMap<String, Value>,
     /// Step id → how many records had finished when it first started
     pub started: std::collections::HashMap<String, usize>,
+}
+
+/// A step that started and has not finished: running now, or cut off by a restart
+#[derive(Debug, Clone)]
+pub struct Unfinished {
+    pub id: String,
+    pub place: String,
+    pub kind: String,
+    pub item: Value,
 }
 
 impl Journal {
@@ -247,7 +256,7 @@ impl Journal {
 pub fn read_journal(dir: &Path) -> Journal {
     let mut journal = Journal::default();
     let text = std::fs::read_to_string(dir.join("journal.jsonl")).unwrap_or_default();
-    let mut started: Vec<(String, Value)> = Vec::new();
+    let mut started: Vec<Unfinished> = Vec::new();
     for line in text.lines() {
         let Ok(entry) = serde_json::from_str::<Value>(line) else { continue };
         let data = &entry["data"];
@@ -256,7 +265,8 @@ pub fn read_journal(dir: &Path) -> Journal {
                 if let Some(id) = data["id"].as_str() {
                     journal.started.entry(id.to_string()).or_insert(journal.finished.len());
                 }
-                started.push((data["place"].as_str().unwrap_or_default().to_string(), data["item"].clone()));
+                let text = |key: &str| data[key].as_str().unwrap_or_default().to_string();
+                started.push(Unfinished { id: text("id"), place: text("place"), kind: text("kind"), item: data["item"].clone() });
             }
             Some("step_waiting") => {
                 let key = record_key(data["place"].as_str().unwrap_or_default(), &data["item"]);
@@ -264,7 +274,7 @@ pub fn read_journal(dir: &Path) -> Journal {
             }
             Some("step_finished") => {
                 if let Ok(record) = serde_json::from_value::<StepRecord>(data.clone()) {
-                    started.retain(|(place, item)| !(place == &record.place && item == &record.item));
+                    started.retain(|step| !(step.place == record.place && step.item == record.item));
                     journal.finished.push(record);
                 }
             }
@@ -314,4 +324,26 @@ pub fn prune(paths: &Paths, flow: &str, keep_runs: usize, keep_days: i64) -> usi
 /// A new run id: `run_` and 12 hex characters
 pub fn new_run_id() -> String {
     format!("run_{}", &uuid::Uuid::new_v4().simple().to_string()[..12])
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_step_that_has_not_finished_keeps_its_id_and_kind() {
+        let dir = tempfile::tempdir().unwrap();
+        let lines = [
+            json!({ "event": "step_started", "data": { "id": "calc", "place": "steps[0]", "kind": "tool", "item": null } }),
+            json!({ "event": "step_started", "data": { "id": "now", "place": "steps[1]", "kind": "tool", "item": null } }),
+        ];
+        let mut text: String = lines.iter().map(|line| format!("{line}\n")).collect();
+        let finished = StepRecord { id: "calc".into(), place: "steps[0]".into(), kind: "tool".into(), status: "succeeded".into(), item: Value::Null, attempts: Vec::new(), input: Value::Null, output: Value::Null, error: None, tokens: Value::Null, model: None, detail: Value::Null };
+        text.push_str(&format!("{}\n", json!({ "event": "step_finished", "data": finished })));
+        std::fs::write(dir.path().join("journal.jsonl"), text).unwrap();
+        let journal = read_journal(dir.path());
+        assert_eq!(journal.finished.len(), 1);
+        let running: Vec<_> = journal.unfinished.iter().map(|step| (step.id.as_str(), step.place.as_str(), step.kind.as_str())).collect();
+        assert_eq!(running, [("now", "steps[1]", "tool")]);
+    }
 }
