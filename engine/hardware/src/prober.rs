@@ -490,8 +490,7 @@ impl HardwareProber {
             "DDR4/DDR5".into()
         };
 
-        let speed_str = Self::fetch_raw_hw_value("memorychip", "Speed");
-        let speed_mts: f64 = speed_str.parse().unwrap_or(0.0);
+        let speed_mts = Self::memory_speed_mts();
         if speed_mts > 0.0 && live_bw < 10.0 {
             live_bw = (speed_mts * 8.0) / 1000.0; // Bus theoretical fallback if synthetic throttled
         }
@@ -644,28 +643,35 @@ impl HardwareProber {
         gpus
     }
 
-    fn fetch_raw_hw_value(domain: &str, field: &str) -> String {
+    /// RAM speed in MT/s on Windows: each module's running speed (`ConfiguredClockSpeed`, else its
+    /// rated `Speed`) from `Win32_PhysicalMemory`; `wmic`, used before, is not installed on current
+    /// Windows 11. 0 elsewhere or when it cannot be read.
+    fn memory_speed_mts() -> f64 {
         #[cfg(target_os = "windows")]
-        if let Ok(output) = std::process::Command::new("wmic")
-            .args([domain, "get", field])
+        if let Ok(output) = std::process::Command::new("powershell")
+            .args([
+                "-NoProfile",
+                "-Command",
+                "Get-CimInstance Win32_PhysicalMemory | ForEach-Object { if ($_.ConfiguredClockSpeed) { $_.ConfiguredClockSpeed } else { $_.Speed } }",
+            ])
             .output()
         {
-            let s = String::from_utf8_lossy(&output.stdout);
-            let lines: Vec<&str> = s.lines().map(|l| l.trim()).filter(|l| !l.is_empty()).collect();
-            if lines.len() > 1 {
-                return lines[1].to_string();
-            }
+            return slowest_module_speed(&String::from_utf8_lossy(&output.stdout));
         }
-
-        #[cfg(target_os = "linux")]
-        if domain == "csproduct" && field == "UUID" {
-            if let Ok(data) = std::fs::read_to_string("/sys/class/dmi/id/product_uuid") {
-                return data.trim().to_string();
-            }
-        }
-
-        "".into()
+        0.0
     }
+}
+
+/// The slowest module's speed from one number per line (the memory bus runs at the slowest
+/// module's speed); lines that are not a positive number are skipped; 0 when none is.
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+fn slowest_module_speed(lines: &str) -> f64 {
+    lines
+        .lines()
+        .filter_map(|line| line.trim().parse::<f64>().ok())
+        .filter(|speed| *speed > 0.0)
+        .reduce(f64::min)
+        .unwrap_or(0.0)
 }
 
 /// Free RAM as macOS's Activity Monitor counts it: the total minus app memory (anonymous pages that
@@ -734,6 +740,14 @@ mod live_memory_tests {
         assert!(HardwareProber::hardware_changed(&saved, &QuickFacts { ram_total_bytes: 32 * cluaiz_core::GIB, ..same() }));
         assert!(HardwareProber::hardware_changed(&saved, &QuickFacts { logical_threads: 16, ..same() }));
         assert!(HardwareProber::hardware_changed(&saved, &QuickFacts { gpus: vec![], ..same() }));
+    }
+
+    #[test]
+    fn memory_speed_is_the_slowest_module() {
+        assert_eq!(slowest_module_speed("4800\r\n4800\r\n"), 4800.0);
+        assert_eq!(slowest_module_speed("5600\n4800\n"), 4800.0);
+        assert_eq!(slowest_module_speed("0\n\nnot a number\n3200\n"), 3200.0);
+        assert_eq!(slowest_module_speed(""), 0.0);
     }
 
     #[test]

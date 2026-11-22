@@ -65,7 +65,7 @@ change.
 | `gpus[*].vram_total_bytes`, `vram_free_bytes`, `integrated`, `used_only_by_cluaiz` | yes, the planner | only GPU 0 gets a live free-VRAM reading |
 | `cpu.physical_cores`, `logical_threads` | yes (thread counts, change detection) | |
 | `cpu.l1/l2/l3_cache_kb`, `isa_features`, `base/boost_clock_mhz`, `gflops_fp32` | no, reported in JSON only | `boost_clock_mhz` is `base x 1.25`, an estimate, and `gflops_fp32` is built on it |
-| `memory.bandwidth_gbps`, `memory_latency_ns`, `speed_mts` | no, reported only | from a 64 MB read loop and a pointer chase (`benchmark_memory`) |
+| `memory.bandwidth_gbps`, `memory_latency_ns`, `speed_mts` | no, reported only | bandwidth and latency from a 64 MB read loop and a pointer chase (`benchmark_memory`); `speed_mts` on Windows from `Win32_PhysicalMemory` (the slowest module's `ConfiguredClockSpeed`, else `Speed`), 0 on Linux and macOS |
 | `storage[*]` (speeds, drive type) | no, reported only | see Failure |
 | `gpus[*].pcie_*`, `compute_capability` | no (`compute_capability` is shown by CEP `system.info`) | |
 | `GpuSubsystem::estimated_vram_bandwidth_gbps()` | no caller | a table by VRAM size, not a measurement |
@@ -112,11 +112,12 @@ numbers come from CEP `system.live`.
 | `test_zero_free_memory_is_not_replaced_by_stale_startup_values` | a failed query keeps the old number; a reading of 0 is written as 0 |
 | `saved_profile_is_stale_after_ram_cpu_or_gpu_changes` | same facts (RAM 100 MB less) = not stale; zeros = not stale; RAM, threads or GPU list changed = stale |
 | `macos_free_ram_is_total_minus_app_wired_and_compressed` | the Activity Monitor formula on the M5 numbers; more in use than the total gives 0, not an overflow |
+| `memory_speed_is_the_slowest_module` | the memory speed is the slowest module's number; blank, zero and non-number lines are skipped; nothing readable gives 0 |
 | `backend_gpus_fill_in_only_when_nvml_finds_none` | Metal/Vulkan devices are used only when NVML found nothing |
 | `integrated_backend_gpu_shares_the_ram` | an integrated GPU marks the memory as unified |
 | `this_machine_matches_a_fresh_probe` (ignored) | a fresh deep probe on this machine is not seen as a change; run with `--ignored` |
 
-Result on 2026-11-21 (Windows 11): 5 passed, 1 ignored.
+Result on 2026-11-22 (Windows 11): 6 passed, 1 ignored. On that machine `Get-CimInstance Win32_PhysicalMemory` gave two modules with `Speed` 4800 and `ConfiguredClockSpeed` 4800.
 
 Real machines: every run in [`test/cloud/BENCHMARKS.md`](../../test/cloud/BENCHMARKS.md) loads models
 through these numbers. The macOS RAM formula and the backend GPUs come from the M5 Mac run
@@ -132,7 +133,7 @@ through Vulkan on Windows.
 | Profile cannot be saved | ignored; the next process probes again |
 | NVML missing (no NVIDIA driver, macOS) | no NVIDIA GPUs; backend GPUs fill in if llama.cpp registered them |
 | A live query fails | the old free-memory number is kept (`apply_memory_snapshot`) |
-| `wmic` missing (not installed on this Windows 11 machine on 2026-11-21) | `speed_mts` stays 0 |
+| PowerShell or `Win32_PhysicalMemory` cannot be read | `speed_mts` stays 0 (before 2026-11-22 it was always 0 on current Windows: the old code ran `wmic`, which is not installed there; `where wmic` found nothing on the dev machine) |
 | Disk benchmark cannot write to the drive root (`C:\` without admin rights) | read and write speed 0 (seen in a saved profile on 2026-11-21) |
 | A poisoned cache lock | recovered (`PoisonError::into_inner`): the last cached profile is still used |
 
@@ -150,5 +151,4 @@ through Vulkan on Windows.
 | Only GPU 0 gets a live free-VRAM reading | a second NVIDIA GPU is planned from its start-up number | read every device in `live_snapshot` |
 | Disk benchmark writes to the drive root | gives 0 without admin rights on Windows; the numbers are unused anyway | write in the Cluaiz home, or drop the benchmark |
 | `detect_drive_type` reads the first physical disk for every drive on Windows and prefixes "NVMe/" | wrong label for a second or SATA disk | per-disk query, or drop the field |
-| `wmic` is gone on current Windows | memory speed is always 0 there | `Get-CimInstance Win32_PhysicalMemory`, or drop the field |
 | Reported-only estimates (`boost_clock_mhz`, `gflops_fp32`, `estimated_vram_bandwidth_gbps`) | they are marked as estimates in the code (`types.rs`) and here, but the JSON field names do not say so | rename them in a versioned API change, or remove them (the App may read them) |
