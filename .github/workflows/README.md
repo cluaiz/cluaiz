@@ -58,7 +58,8 @@ The release page text comes from `.github/release-notes.md` (install commands an
 | `cluaize-llama-driver.yml`, `cluaize-onnx-driver.yml` | the GPU driver packs |
 | `installer-smoke.yml` | `install.sh` on a GitHub macOS runner, started by hand (`workflow_dispatch`, a release version as input) |
 | `docs-check.yml` | `docs/tools/check_docs.py` (registry, links, anchors) |
-| `rust-tests.yml` | `cargo test` for the crates that build without llama.cpp or ONNX Runtime (core, hardware, models, plan, context, CEP, security, media, automation) and the CEP file-method contracts; on every push to `main` and pull request. Added 2026-11-21; the same commands passed on the developer machine that day, the workflow itself has not run on GitHub yet |
+| `rust-tests.yml` | `cargo test` for the crates that build without llama.cpp or ONNX Runtime (core, hardware, models, plan, context, CEP, security, media, automation) and the CEP file-method contracts; on every push to `main` and pull request. Added 2026-11-21; its first three runs failed in the CEP contracts step (`rfd` needed libwayland-client), fixed by turning on `wayland-sys`'s `dlopen` feature in `test/cep/wave_b/Cargo.toml` |
+| `os-sandbox.yml` | `agents/tests/os_sandbox_real.rs` (the real OS sandbox checks: workspace writable, home and secrets hidden, network on and off) on `macos-15` (sandbox-exec) and `ubuntu-24.04` (bubblewrap with the AppArmor profile from run 28); on pushes that change `agents/src/execution/` and by hand. Windows (AppContainer) needs the cluaiz binary as helper and is tested by hand (run 27). Added 2026-11-22, not run on GitHub yet |
 
 ## 6. Pending
 

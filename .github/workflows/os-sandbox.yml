@@ -1,0 +1,54 @@
+# The OS sandbox on real runners: agents/tests/os_sandbox_real.rs (ignored in normal test runs) on macOS
+# (sandbox-exec) and Ubuntu 24.04 (bubblewrap). The cluaiz-agents crate builds without llama.cpp, so no
+# CUDA. Dummy ~/.ssh and ~/.cargo/credentials.toml files give the "hidden" checks something to hide; the
+# test prints only PASS / FAIL, never file contents. Windows (AppContainer) needs the cluaiz binary as its
+# helper, so it is tested by hand (test/cloud/runs/2026-11-20-run27-windows-os-sandbox).
+name: OS sandbox
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "agents/src/execution/**"
+      - "agents/tests/os_sandbox_real.rs"
+      - ".github/workflows/os-sandbox.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  sandbox:
+    name: sandbox (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, ubuntu-24.04]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      # Ubuntu 23.10+ blocks unprivileged user namespaces through AppArmor; this profile allows them for
+      # /usr/bin/bwrap only (the same profile as run 28, documented in agents/src/execution/README.md)
+      - name: bubblewrap and its AppArmor profile (Ubuntu)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y bubblewrap
+          sysctl kernel.apparmor_restrict_unprivileged_userns || true
+          printf 'abi <abi/4.0>,\ninclude <tunables/global>\nprofile bwrap /usr/bin/bwrap flags=(unconfined) {\n  userns,\n  include if exists <local/bwrap>\n}\n' | sudo tee /etc/apparmor.d/bwrap
+          sudo apparmor_parser -r /etc/apparmor.d/bwrap
+      - name: Machine and dummy secrets
+        run: |
+          uname -a
+          if [ "$RUNNER_OS" = macOS ]; then sw_vers; ls -la /usr/bin/sandbox-exec; else bwrap --version; fi
+          mkdir -p ~/.ssh ~/.cargo
+          [ -f ~/.ssh/ci_dummy ] || echo dummy > ~/.ssh/ci_dummy
+          [ -f ~/.cargo/credentials.toml ] || printf '[registry]\ntoken = "dummy-test-token"\n' > ~/.cargo/credentials.toml
+          command -v cargo node python3 || true
+      - name: Real confinement checks
+        run: cargo test --release -p cluaiz-agents --test os_sandbox_real -- --ignored --nocapture
+      - name: Sandbox unit tests
+        run: cargo test --release -p cluaiz-agents --lib os_sandbox
