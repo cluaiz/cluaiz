@@ -16,6 +16,7 @@ The default base URL is `http://127.0.0.1:8000`; use your configured host/port. 
 | Ingest | POST | `/v1/ingest` | `source`, optional model and controls → final ordered source results | [Ingest](../api/inference/ingest.md) |
 | Models | GET | `/v1/models` | No body → installed models and providers' models in the `object/data` shape | [List models](../api/models/list_models.md) |
 | Models | GET | `/api/tags` | No body → installed model list in the tags shape | [List models](../api/models/list_models.md) |
+| Models | POST | `/api/show` | `{"model"}` → details and GGUF header in the show shape | [Show](../api/models/show_model.md) |
 | Models | POST | `/api/pull` | Model identifier/download controls → pull progress/result | [Pull](../api/models/pull_model.md) |
 | System | GET | `/health` | No body → Engine liveness JSON | [Health](../api/system/health.md) |
 | Engine controls | POST | `/v1/cep` | JSON-RPC `method/params` → `result` or `error`; long methods return a task | [CEP](../api/cep/README.md) |

@@ -77,7 +77,7 @@ Implemented in `api/src/auth.rs` (`auth_middleware`).
 | Route | `api_auth.required` off | `api_auth.required` on |
 |---|---|---|
 | `GET /health` | Open | Open |
-| Everything else: `/v1/cep`, `/mcp`, `/v1/chat/completions`, `/api/chat`, `/api/generate`, `/api/embed`, `/api/ps`, `/api/version`, `/v1/embeddings`, `/v1/audio/*`, `/v1/models`, `/api/tags`, `/api/pull` | Open | **Bearer token required (401)** |
+| Everything else: `/v1/cep`, `/mcp`, `/v1/chat/completions`, `/api/chat`, `/api/generate`, `/api/embed`, `/api/ps`, `/api/version`, `/v1/embeddings`, `/v1/audio/*`, `/v1/models`, `/api/tags`, `/api/show`, `/api/pull` | Open | **Bearer token required (401)** |
 
 Auth on/off, the tokens, the host/IP, the port and CORS are the owner's settings (`permission.json`, `settings.json`). The Engine does not change their defaults and does not force a token. A valid token is the session token or one of `api_auth.tokens`.
 

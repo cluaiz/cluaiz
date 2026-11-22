@@ -33,7 +33,7 @@ graph TD
 | [`capabilities_tests.rs`](src/capabilities_tests.rs), [`test_fixtures.rs`](src/test_fixtures.rs) | Tests of capability detection, and minimal GGUF v3 fixtures for metadata tests (never compiled into the library or the CLI). |
 | [`capabilities.rs`](src/capabilities.rs) | Tri-state native input declarations, actual same-folder projector inventory and conservative pairing status. |
 | [`gguf.rs`](src/gguf.rs) | Model geometry from the GGUF header and the KV / weight byte math llama.cpp uses, with correct Sliding Window Attention (SWA) math: a sliding layer holds `min(n_ctx, window + ubatch)` cells. |
-| [`prober/gguf.rs`](src/prober/gguf.rs) | Reads the header into `ModelGeometry`. Which layers slide comes from the file's `sliding_window_pattern` array; when the file has only `sliding_window`, llama.cpp's own period for the architecture is used (`default_swa_pattern`: 2 for gemma2 and gpt-oss, 6 for gemma3, 5 for gemma3n, 4 or 8 for others, as `load_swa_pattern` in llama.cpp's model files), and layers after the trunk (MTP heads) are full. |
+| [`prober/gguf.rs`](src/prober/gguf.rs) | `GgufHeader::parameter_count`: the weights in a file, every tensor's element count summed (Ollama's count, `fs/gguf/metadata.go`; unit test `parameter_count_is_the_sum_of_tensor_elements`). Reads the header into `ModelGeometry`. Which layers slide comes from the file's `sliding_window_pattern` array; when the file has only `sliding_window`, llama.cpp's own period for the architecture is used (`default_swa_pattern`: 2 for gemma2 and gpt-oss, 6 for gemma3, 5 for gemma3n, 4 or 8 for others, as `load_swa_pattern` in llama.cpp's model files), and layers after the trunk (MTP heads) are full. |
 
 ## Native package capability contract
 

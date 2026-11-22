@@ -48,6 +48,18 @@ pub struct GgufHeader {
     pub tensors: Vec<GgufTensor>,
 }
 
+impl GgufHeader {
+    /// Weights in this file: the element count of every tensor, summed. Ollama counts the same way
+    /// for its `general.parameter_count` (`fs/gguf/metadata.go`, `parameterCount += tensor.NumValues()`).
+    /// A split model needs the sum over all its parts.
+    pub fn parameter_count(&self) -> u64 {
+        self.tensors
+            .iter()
+            .map(|tensor| tensor.dims.iter().map(|&dim| dim as u64).product::<u64>())
+            .sum()
+    }
+}
+
 /// Per-layer arrays are tiny; vocab-sized arrays (token types, scores) are skipped, not stored.
 const MAX_STORED_ARRAY_LEN: u64 = 4096;
 /// GGUF default alignment of the tensor data section when `general.alignment` is absent (GGUF spec).
@@ -690,6 +702,14 @@ mod tests {
         assert_eq!(default_swa_pattern("gemma3"), Some((6, false)));
         assert_eq!(default_swa_pattern("gpt-oss"), Some((2, false)));
         assert_eq!(default_swa_pattern("llama"), None);
+    }
+
+    #[test]
+    fn parameter_count_is_the_sum_of_tensor_elements() {
+        let tensor = |dims: Vec<usize>| GgufTensor { name: String::new(), dims, ggml_type: 0, offset: 0, size_bytes: 0 };
+        let header = GgufHeader { tensors: vec![tensor(vec![2048, 50304]), tensor(vec![2048]), tensor(vec![4, 3, 2])], ..Default::default() };
+        assert_eq!(header.parameter_count(), 2048 * 50304 + 2048 + 24);
+        assert_eq!(GgufHeader::default().parameter_count(), 0);
     }
 
     #[test]

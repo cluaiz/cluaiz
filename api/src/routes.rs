@@ -62,6 +62,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         // ── 3. Models (OpenAI, Ollama) ──
         .route("/v1/models", get(handlers::models::v1_models))
         .route("/api/tags", get(handlers::models::tags))
+        .route("/api/show", post(handlers::models::show))
         .route("/api/pull", post(handlers::models::pull_model))
         // MCP server over the CEP registry
         .route("/mcp", post(crate::cep::mcp::handle))

@@ -113,6 +113,168 @@ pub async fn tags() -> Json<Value> {
     Json(json!({ "models": tags }))
 }
 
+/// Ollama's `/api/show` body (`api/types.go`, `ShowRequest`): `model`, or the older `name`.
+/// Its other fields (`verbose`, `system`, `template`, `options`) are accepted and not used.
+#[derive(Debug, Deserialize)]
+pub struct ShowPayload {
+    #[serde(default)]
+    pub model: String,
+    #[serde(default)]
+    pub name: String,
+}
+
+fn ollama_error(status: StatusCode, message: String) -> Response {
+    (status, Json(json!({ "error": message }))).into_response()
+}
+
+/// POST /api/show (Ollama): an installed model's GGUF header (the data CEP `models.inspect`
+/// reads) in Ollama's `ShowResponse` shape (`server/routes.go`, `GetModelInfo`). Nothing is loaded.
+pub async fn show(body: axum::body::Bytes) -> Response {
+    if body.iter().all(u8::is_ascii_whitespace) {
+        return ollama_error(StatusCode::BAD_REQUEST, "missing request body".into());
+    }
+    let payload: ShowPayload = match serde_json::from_slice(&body) {
+        Ok(payload) => payload,
+        Err(error) => return ollama_error(StatusCode::BAD_REQUEST, error.to_string()),
+    };
+    let model = if payload.model.trim().is_empty() { payload.name } else { payload.model }.trim().to_string();
+    if model.is_empty() {
+        return ollama_error(StatusCode::BAD_REQUEST, "model is required".into());
+    }
+    match tokio::task::spawn_blocking(move || show_model(&model)).await {
+        Ok(result) => result.unwrap_or_else(|(status, message)| ollama_error(status, message)),
+        Err(error) => ollama_error(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
+    }
+}
+
+fn show_model(model: &str) -> Result<Response, (StatusCode, String)> {
+    let not_found = || (StatusCode::NOT_FOUND, format!("model '{model}' not found"));
+    let entry = InstalledStateRegistry::find(model).ok_or_else(not_found)?;
+    let primary = entry.primary_path().ok_or_else(not_found)?;
+    let modified_at = std::fs::metadata(&primary)
+        .and_then(|meta| meta.modified())
+        .ok()
+        .map(|time| chrono::DateTime::<chrono::Utc>::from(time).to_rfc3339_opts(chrono::SecondsFormat::Secs, true));
+    let file_name = primary.file_name().map(|name| name.to_string_lossy().to_string()).unwrap_or_default();
+    let mut details = json!({
+        "parent_model": "",
+        "format": entry.format_type,
+        "family": entry.metadata.architecture,
+        "families": [entry.metadata.architecture],
+        "parameter_size": entry.metadata.parameters,
+        "quantization_level": cluaiz_models::taxonomy::UniversalQuantization::extract_quant_tag(&file_name),
+    });
+    // Ollama always sends `model_info` (an empty object when it has nothing), as clients expect it
+    let mut model_info = serde_json::Map::new();
+    let mut template = entry.metadata.chat_template.clone().unwrap_or_default();
+    if entry.format_type == "gguf" {
+        let header = cluaiz_models::GgufProber::read_header(&primary)
+            .map_err(|error| (StatusCode::INTERNAL_SERVER_ERROR, error.to_string()))?;
+        if let Some(chat_template) = header.metadata.get("tokenizer.chat_template") {
+            template = chat_template.clone();
+        }
+        for (key, value) in &header.metadata {
+            // Ollama leaves these two out of model_info (the template has its own field)
+            if key == "general.name" || key == "tokenizer.chat_template" {
+                continue;
+            }
+            let value = match header.int_arrays.get(key) {
+                Some(values) => json!(values),
+                None => gguf_value(value),
+            };
+            model_info.insert(key.clone(), value);
+        }
+        let parameters = gguf_parameter_count(&entry, &primary, &header);
+        if parameters > 0 {
+            model_info.insert("general.parameter_count".into(), json!(parameters));
+            details["parameter_size"] = json!(human_number(parameters));
+        }
+    }
+    Ok(Json(json!({
+        "modelfile": "",
+        "parameters": "",
+        "template": template,
+        "details": details,
+        "model_info": model_info,
+        "modified_at": modified_at,
+    }))
+    .into_response())
+}
+
+/// A header value as Ollama types it: the Engine's GGUF reader keeps every scalar as text and an
+/// array as a "[...Array: len=N ...]" summary. Numbers and booleans go back to JSON numbers and
+/// booleans; a skipped array is `[]`, as Ollama sends an array longer than its read limit
+/// (`fs/gguf/metadata.go`, `Values`: `skippedArray` becomes `[]any{}`).
+fn gguf_value(text: &str) -> Value {
+    if text.starts_with('[') && text.contains("Array: len=") {
+        return json!([]);
+    }
+    if let Ok(number) = text.parse::<i64>() {
+        return json!(number);
+    }
+    if let Ok(number) = text.parse::<f64>() {
+        if number.is_finite() {
+            return json!(number);
+        }
+    }
+    match text {
+        "true" => json!(true),
+        "false" => json!(false),
+        _ => json!(text),
+    }
+}
+
+/// Weights of an installed GGUF model counted from its tensor table (no model load). A split model
+/// adds the other parts listed in the registry (same `gguf-split` prefix and count); 0 when unknown.
+fn gguf_parameter_count(
+    entry: &cluaiz_models::types::manifest::ModelRegistryEntry,
+    primary: &std::path::Path,
+    header: &cluaiz_models::prober::gguf::GgufHeader,
+) -> u64 {
+    use cluaiz_models::taxonomy::UniversalQuantization;
+    let primary_name = primary.file_name().map(|name| name.to_string_lossy().to_string()).unwrap_or_default();
+    let Some((prefix, _, count)) = UniversalQuantization::gguf_split(&primary_name).filter(|(_, _, count)| *count > 1) else {
+        return header.parameter_count();
+    };
+    let dir = std::path::Path::new(&entry.local_dir);
+    let parts: Vec<_> = entry
+        .files
+        .iter()
+        .filter(|file| UniversalQuantization::gguf_split(&file.name).is_some_and(|(p, _, c)| p == prefix && c == count))
+        .map(|file| dir.join(&file.name))
+        .collect();
+    if parts.len() != count as usize {
+        return 0;
+    }
+    let mut total = 0;
+    for part in parts {
+        match cluaiz_models::GgufProber::read_header(&part) {
+            Ok(part_header) => total += part_header.parameter_count(),
+            Err(_) => return 0,
+        }
+    }
+    total
+}
+
+/// Ollama's parameter size text (`format/format.go`, `HumanNumber`): 6.9B, 125.08M, 512K
+fn human_number(count: u64) -> String {
+    const THOUSAND: f64 = 1e3;
+    const MILLION: f64 = 1e6;
+    const BILLION: f64 = 1e9;
+    let value = count as f64;
+    if value >= BILLION {
+        let number = value / BILLION;
+        if number == number.floor() { format!("{number:.0}B") } else { format!("{number:.1}B") }
+    } else if value >= MILLION {
+        let number = value / MILLION;
+        if number == number.floor() { format!("{number:.0}M") } else { format!("{number:.2}M") }
+    } else if value >= THOUSAND {
+        format!("{:.0}K", value / THOUSAND)
+    } else {
+        count.to_string()
+    }
+}
+
 /// Ollama's `/api/pull` body. `insecure` is accepted and has no effect (downloads use HTTPS).
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]

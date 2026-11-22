@@ -69,6 +69,7 @@
         "group": "Models",
         "pages": [
           {"slug": "list-models", "title": "GET /v1/models", "file_path": "docs/api/models/list_models.md"},
+          {"slug": "show-model", "title": "POST /api/show", "file_path": "docs/api/models/show_model.md"},
           {"slug": "pull-model", "title": "POST /api/pull", "file_path": "docs/api/models/pull_model.md"}
         ]
       },
