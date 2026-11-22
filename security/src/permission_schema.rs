@@ -545,3 +545,104 @@ mod merge_tests {
         }
     }
 }
+
+#[cfg(test)]
+mod token_and_slot_tests {
+    use super::*;
+
+    // Made-up keys in the generated format; none is a real key
+    const FIRST: &str = "sk-cluaiz-test0000aaaa1111";
+    const SECOND: &str = "sk-cluaiz-test0000bbbb2222";
+    const SAME_END: &str = "sk-cluaiz-test0000cccc2222";
+
+    fn auth(tokens: &[&str]) -> ApiAuth {
+        ApiAuth { required: false, tokens: tokens.iter().map(|t| t.to_string()).collect() }
+    }
+
+    #[test]
+    fn remove_token_by_index_counts_from_one() {
+        let mut keys = auth(&[FIRST, SECOND]);
+        assert_eq!(keys.remove_token(" 2 "), Ok(SECOND.to_string()));
+        assert_eq!(keys.tokens, [FIRST]);
+        assert_eq!(keys.remove_token("0"), Err("Token index out of range"));
+        assert_eq!(keys.remove_token("2"), Err("Token index out of range"));
+        assert_eq!(keys.tokens, [FIRST], "a refused index removes nothing");
+    }
+
+    #[test]
+    fn remove_token_by_the_full_key() {
+        let mut keys = auth(&[FIRST, SECOND]);
+        assert_eq!(keys.remove_token(&format!("  {FIRST}  ")), Ok(FIRST.to_string()));
+        assert_eq!(keys.tokens, [SECOND]);
+        assert_eq!(keys.remove_token("sk-cluaiz-not-there-1234"), Err("Token not found"));
+    }
+
+    #[test]
+    fn remove_token_by_a_masked_suffix() {
+        let mut keys = auth(&[FIRST, SECOND]);
+        // The form the CLI and the App show, with the bullet or with stars
+        assert_eq!(keys.remove_token(&ApiAuth::mask_token(SECOND)), Ok(SECOND.to_string()));
+        assert_eq!(keys.remove_token("sk-****1111"), Ok(FIRST.to_string()));
+        assert!(keys.tokens.is_empty());
+    }
+
+    #[test]
+    fn a_masked_suffix_that_is_short_unknown_or_shared_removes_nothing() {
+        let mut keys = auth(&[FIRST, SECOND, SAME_END]);
+        assert_eq!(keys.remove_token("sk-\u{2022}\u{2022}\u{2022}\u{2022}222"), Err("Masked token must have at least 4 visible trailing characters"));
+        assert_eq!(keys.remove_token("sk-****9999"), Err("No token matches the provided masked suffix"));
+        assert_eq!(
+            keys.remove_token("sk-****2222"),
+            Err("Multiple tokens match this masked suffix. Use index or full token instead.")
+        );
+        assert_eq!(keys.tokens.len(), 3);
+        assert_eq!(keys.remove_token("   "), Err("Target token identifier cannot be empty"));
+    }
+
+    #[test]
+    fn removing_a_key_also_drops_keys_that_are_not_valid() {
+        // Today's behaviour: `remove_token` runs `sanitize_tokens` after a removal
+        let mut keys = auth(&[FIRST, "short", SECOND]);
+        assert_eq!(keys.remove_token(FIRST), Ok(FIRST.to_string()));
+        assert_eq!(keys.tokens, [SECOND]);
+    }
+
+    #[test]
+    fn each_slot_getter_takes_the_slot_model_first_then_the_older_field() {
+        let mut schema = PermissionSchema::default();
+        schema.active_slots.clear();
+        schema.chat_models = ModelSelection { text: Some("chat-old".into()), vision: None, audio: None };
+        schema.vector_models = ModelSelection {
+            text: Some("embed-old".into()),
+            vision: Some("vision-old".into()),
+            audio: Some("audio-old".into()),
+        };
+        // No slot: the older field
+        assert_eq!(schema.get_active_chat_model().as_deref(), Some("chat-old"));
+        assert_eq!(schema.get_active_embedding_model().as_deref(), Some("embed-old"));
+        assert_eq!(schema.get_active_vision_model().as_deref(), Some("vision-old"));
+        assert_eq!(schema.get_active_audio_model().as_deref(), Some("audio-old"));
+
+        // A slot without a model: still the older field
+        for slot in ["chat_slot", "embed_slot", "vision_slot", "audio_slot"] {
+            schema.active_slots.insert(slot.into(), SlotConfig::default());
+        }
+        assert_eq!(schema.get_active_chat_model().as_deref(), Some("chat-old"));
+        assert_eq!(schema.get_active_audio_model().as_deref(), Some("audio-old"));
+
+        // A slot with a model wins
+        for (slot, model) in [("chat_slot", "chat-new"), ("embed_slot", "embed-new"), ("vision_slot", "vision-new"), ("audio_slot", "audio-new")] {
+            schema.active_slots.insert(slot.into(), SlotConfig { model_id: Some(model.into()), ..Default::default() });
+        }
+        assert_eq!(schema.get_active_chat_model().as_deref(), Some("chat-new"));
+        assert_eq!(schema.get_active_embedding_model().as_deref(), Some("embed-new"));
+        assert_eq!(schema.get_active_vision_model().as_deref(), Some("vision-new"));
+        assert_eq!(schema.get_active_audio_model().as_deref(), Some("audio-new"));
+
+        // Neither: none
+        let mut empty = PermissionSchema::default();
+        empty.active_slots.clear();
+        empty.chat_models = ModelSelection::default();
+        assert_eq!(empty.get_active_chat_model(), None);
+    }
+}

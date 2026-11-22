@@ -135,16 +135,21 @@ Automation webhooks write the same lines (`automation/host/src/webhook.rs:43`).
 | `merge_tests::the_listed_modes_are_the_saved_values_and_one_is_the_default` | `SECURITY_MODES` and the stored values agree; exactly one default | same |
 | `merge_tests::a_broken_file_loads_as_defaults_and_is_kept_for_recovery` | an invalid file gives defaults and is copied to `.broken`; a missing file gives defaults | same |
 | `merge_tests::save_replaces_the_file_whole_and_leaves_no_temporary_file` | the saved values load back; no `.tmp` is left | same |
+| `token_and_slot_tests::remove_token_by_index_counts_from_one` | `" 2 "` removes the second key; `0` and a number past the end are refused and remove nothing | same |
+| `token_and_slot_tests::remove_token_by_the_full_key` | the full key, with spaces around it, removes that key; an unknown key gives `Token not found` | same |
+| `token_and_slot_tests::remove_token_by_a_masked_suffix` | the masked form the CLI and the App show (`sk-••••2222`, or with `*`) removes the key with that ending | same |
+| `token_and_slot_tests::a_masked_suffix_that_is_short_unknown_or_shared_removes_nothing` | fewer than 4 visible characters, no match, or two keys with the same ending: refused, all keys kept; a blank identifier is refused | same |
+| `token_and_slot_tests::removing_a_key_also_drops_keys_that_are_not_valid` | records today's behaviour: after a removal `sanitize_tokens` also drops keys of 10 characters or fewer | same |
+| `token_and_slot_tests::each_slot_getter_takes_the_slot_model_first_then_the_older_field` | chat, embedding, vision and audio getters: the slot's `model_id` wins; a missing slot or a slot without a model falls back to `chat_models.text` / `vector_models.*`; neither gives none | same |
 | `audit::tests::test_lines_rotation_and_no_params` | lines are written, the newest is first, the hash is 64 hex chars, rotation at the size limit, no file past `KEEP` | same |
 
-Result on 2026-11-21 (Windows 11): 6 passed, 0 failed. By hand, `cluaiz -v permission` with a cut file in a temporary home printed the warning, showed port 8000 (the default) and left `permission.json.broken`.
+Result on 2026-11-22 (Windows 11): 12 passed, 0 failed (6 before the token and slot tests were added). By hand, `cluaiz -v permission` with a cut file in a temporary home printed the warning, showed port 8000 (the default) and left `permission.json.broken`.
 
 Covered elsewhere: the bearer token on HTTP routes in several `api/tests/*_contract.rs` suites (for example
 `embedding_contract.rs:91`, `document_contract.rs:44`: a request without a key gets 401), `system.exec` policy in `api/tests/cep_exec_contract.rs`,
 the token restart behaviour by hand in run 29.
 
-Not tested here: a crash between the write and the rename, concurrent writers, the
-slot getters' fallback order, `remove_token` with each identifier form.
+Not tested here: a crash between the write and the rename, concurrent writers.
 
 ## Failure and recovery
 
@@ -170,4 +175,3 @@ slot getters' fallback order, `remove_token` with each identifier form.
 | Item | Why it matters | Needs |
 |---|---|---|
 | CLI changes do not reach a running server | `cluaiz token create` needs a server restart (run 29) | the server re-reading the file, or the CLI calling CEP when a server runs |
-| Tests for `remove_token` forms and slot fallback | these paths have no unit test | tests in `permission_schema.rs` |
