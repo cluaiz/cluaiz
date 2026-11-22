@@ -74,8 +74,7 @@ keeps its disk with the build and the models, so `start` continues; `delete` rem
 
 | Item | Why it matters | Needs |
 |---|---|---|
-| Runs 2, 6 and 14 have no row in `BENCHMARKS.md` | run 6 has a folder (`2026-11-09-run6-cpu-os-matrix/RESULTS.md`), run 14 a script (`ssd_same_settings.sh`) but no folder, run 2 nothing | rows, or a note that the run was dropped |
 | llama.cpp has no row in run 40's GCP results | `llama-server` needed `libgomp1`, which the fresh image lacked (now in `gcp_setup.sh`); Docker was not run | rerun `remote/vps26/run40.sh` on a fresh VM after `gcp_setup.sh` |
 | `remote/vram_hog.py` and `remote/mtp23/vram_hog.py` are identical | two copies drift | keep one; `mtp23/run23.sh` and `run24.sh` call `$HERE/vram_hog.py`, so first check how `mtp23/` is copied to the VM |
-| The Mac run is in `test/mac/runs/`, not here | runs are in two places | move it, or link it from `BENCHMARKS.md` |
+| The Mac run is in `test/mac/runs/`, not here | runs are in two places (`BENCHMARKS.md` links it as "Mac 1" since 2026-11-22) | move it here, if one place is wanted |
 | A CPU-only run on an 8 GB VM for the Auto thinking ceiling | the slow-machine path is unit-tested only (runs 30-31 were on a GPU) | the planned VM run |

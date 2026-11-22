@@ -37,7 +37,10 @@ graph TD
 ```
 
 `.github/workflows/rust-tests.yml` (added 2026-11-21) runs `cargo test` on every push for the crates that
-build without llama.cpp or ONNX Runtime, and the CEP file-method contracts; it has not run on GitHub yet.
+build without llama.cpp or ONNX Runtime (core, hw, models, plan, context, security, media, automation, cep),
+and the CEP file-method contracts. It passed on GitHub on every push on 2026-11-22 (the last at 09:53 UTC,
+8 min 38 s; `gh run list --workflow rust-tests.yml`). `cluaiz-agents` is not in it; its OS sandbox tests run
+in `.github/workflows/os-sandbox.yml`.
 The llama, onnx, runtime, api and cmd tests run on developer machines and inside cloud runs
 (`test/cloud/remote/linux_tests.sh`).
 
@@ -96,6 +99,6 @@ longer exists and never compiled, and `benchmark_suite.json`, a prompt list no s
 
 | Item | Why it matters | Needs |
 |---|---|---|
-| `cargo test` in CI | today nothing runs the unit tests automatically on a push | a workflow that runs the crates that build without native backends (`core`, `hw`, `media`, `models`, `plan`, `security`, `cep`, `context`, `agents`) |
+| `cluaiz-agents` unit tests other than the OS sandbox are not in CI | they run only when a developer runs them | add `-p cluaiz-agents` to `rust-tests.yml` (check first that it builds without llama.cpp) |
 | `comprehensive_e2e_trace/output/comprehensive_trace.json` | an old saved answer with wording the project no longer uses | regenerate or delete |
 

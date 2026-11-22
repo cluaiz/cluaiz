@@ -12,7 +12,8 @@ This crate is only the protocol. It knows nothing about HTTP, models or the Engi
 cargo test --release -p cluaiz-cep
 ```
 
-Design: `.agent/plans/CEP/01-architecture.md`. Method list: `03-method-catalog.md`.
+Reference for every method (parameters, errors, examples): [`docs/api/cep/`](../docs/api/cep/README.md);
+the same list as OpenRPC: [`docs/api/cep/openrpc.json`](../docs/api/cep/openrpc.json).
 
 ![A CEP call: transport, JSON-RPC envelope, registry and schema check, principal scope, method, approval or task, and an audit line for every non-read call and denial](../docs/assets/api/cep-call.png)
 
@@ -101,4 +102,3 @@ End to end over HTTP, MCP and the C ABI: `test/cep/` (see [`test/README.md`](../
 | Item | Why it matters | Needs |
 |---|---|---|
 | The event ring is lost when the Engine stops | a client that was away across a restart cannot read the events of the old run; `latest_seq` below its cursor tells it to start again from 0 | only if a client needs older events: finished loads are already on disk in `models.load_history` |
-| Design and catalogue links point to the git-ignored `.agent/plans/CEP/` | a reader of the repository cannot open them | the generated reference in `docs/api/cep/` is the public copy; link it instead |
