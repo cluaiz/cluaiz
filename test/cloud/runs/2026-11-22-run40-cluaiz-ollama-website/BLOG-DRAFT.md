@@ -38,15 +38,21 @@ So the questions are: does it fit, does the app stay healthy, and what happens w
 
 Full numbers, method and raw files: [README.md](README.md) and [SUMMARY.md](SUMMARY.md).
 
+![Every test in one table: memory, Docker, speed, the 1-hour tests and the website, for Cluaiz, llama.cpp and Ollama](images/7-every-test.png)
+
 **The website stayed healthy.** On both Google Cloud machines (2 vCPU, 4 GB and 8 GB) a Node.js shop with
 PostgreSQL served 88,212 and 90,111 requests from 20 simulated users while the engines worked, with no
 failure; 95% of pages answered within 11 and 16 ms.
+
+![Website response time while the AI worked, and parallel embeddings and speech all answered](images/4-website-and-parallel.png)
 
 **No chat request failed**, on any engine, in any step.
 
 **Memory.** For the same model and settings, Cluaiz used 534-560 MB against Ollama's 782-788 MB on
 Qwen3 0.6B, and 1,004 MB against 1,448 MB on Qwen3 1.7B, about 30% less. In a one-hour soak on the
-3.8 GB VPS, Cluaiz had the lowest machine memory of the three (1,759 MB, with twice the queue).
+3.8 GB VPS, Cluaiz had the lowest machine memory of the three (1,759 MB, every request OK).
+
+![Peak memory: Cluaiz, llama.cpp and Ollama in a 1-hour chat test, and Cluaiz against Ollama on the 8 GB machine](images/1-memory.png)
 
 **Speed, one request at a time:** level. Qwen3 0.6B took 1.32-1.35 s per request on Cluaiz and
 1.31-1.32 s on Ollama; on the VPS Cluaiz 0.625 s and llama.cpp 0.629 s. On Qwen3 1.7B Cluaiz finished
@@ -55,13 +61,26 @@ sooner (2.8 s against 3.7 s), partly because its answers were shorter.
 **Speed, four requests at once:** Ollama was faster, by about 15% on 0.6B and 12% on 1.7B. We have not
 found why yet.
 
+![Generation speed level on 1 vCPU; seconds per request on the 8 GB machine at 1 and 4 requests at once](images/2-speed.png)
+
 **Chat, embeddings and speech in one program.** On the VPS, Cluaiz ran chat, embeddings, text to speech
 and speech to text together for an hour: 1,063 of 1,063 requests, the web app never down. On the Google
 machines, 1, 2 and 4 embedding or speech requests at once all completed; none was refused.
 
+![Chat, embeddings, text to speech and speech to text together for 1 hour on 1 vCPU: 1,063 of 1,063 OK](images/3-all-in-one.png)
+
 **Pick the model for the job.** Qwen3 0.6B chose the right ticket label about 3 times in 10 on every
 engine; Qwen3 1.7B about 8 times in 10. The engine does not change that. If the answer matters, start at
 1.7B.
+
+## In Docker
+
+On the 1 vCPU VPS, in Docker, Cluaiz again used the least memory of the three (Qwen3 1.7B: 1,520, 1,555 and
+2,074 MB machine peak), and its image is 405 MB on disk against Ollama's 8.52 GB. Docker itself added
+55 MB to an idle machine. These numbers are from an older Cluaiz build; on Qwen3 0.6B it was slower per
+request there, a cost since fixed.
+
+![Docker on a 1 vCPU VPS: machine memory and seconds per request for three models](images/5-docker.png)
 
 ## One trap: "burst" VPS plans
 
@@ -71,6 +90,8 @@ server is a burst plan, a benchmark that runs engines one after another is not a
 long batch job will slow down after a few hours. Dedicated vCPU plans do not do this.
 
 ## How to set it up with Cluaiz
+
+![One small server: the website, PostgreSQL and Cluaiz on 127.0.0.1](images/8-setup-one-server.png)
 
 1. Install (Linux and macOS):
 
