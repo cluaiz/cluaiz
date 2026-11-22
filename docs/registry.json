@@ -189,6 +189,7 @@
         "pages": [
           { "slug": "cep-system", "title": "Index", "file_path": "docs/api/cep/system/README.md" },
           { "slug": "cep-system-audit", "title": "system.audit", "file_path": "docs/api/cep/system/system/system.audit.md" },
+          { "slug": "cep-system-events", "title": "system.events", "file_path": "docs/api/cep/system/system/system.events.md" },
           { "slug": "cep-system-exec", "title": "system.exec", "file_path": "docs/api/cep/system/system/system.exec.md" },
           { "slug": "cep-system-info", "title": "system.info", "file_path": "docs/api/cep/system/system/system.info.md" },
           { "slug": "cep-system-live", "title": "system.live", "file_path": "docs/api/cep/system/system/system.live.md" },

@@ -92,7 +92,7 @@ flowchart LR
   | `prompts.rs` | `prompts.list`, `get`, `set`, `reset`, `history` | The instructions the Engine itself sends to a model, each with an id and a default |
   | `providers.rs` | `providers.list`, `set`, `remove`, `models`, `test` | providers.json; replies never hold a key, only where it comes from; a `warning` when auth is off and keys are set |
   | `storage.rs` | `storage.status`, `clean` | Temporary media |
-  | `system.rs` | `system.info`, `live`, `plan`, `ps`, `update_check` | The Engine and the machine |
+  | `system.rs` | `system.info`, `live`, `plan`, `ps`, `update_check`, `events` | The Engine and the machine; `events` reads the Engine event ring (`cep/src/events.rs`) by cursor, with a long poll of at most 30 s |
   | `system_exec.rs` | `system.exec` | Runs a program on the host: admin scope, never an MCP tool, the owner's approval on every call; a shell line and no-approval are the owner's choices in permission.json |
   | `tokens.rs` | `tokens.list`, `create`, `revoke` | API keys in permission.json; never turns auth on or off |
   | `tools.rs` (+ `tools/`) | `tools.list`, `discover`, `install`, `remove`, `get_settings`, `set_settings`, `call`, `files`, `read_file`, `write_file`, `open_file`, `cache`, `clear_cache` | Skills, plugins and MCP servers by `kind` + `name` (see [`tools/README.md`](methods/tools/README.md)) |

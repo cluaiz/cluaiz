@@ -10,6 +10,7 @@
 | [`storage.clean`](./storage/storage.clean.md) | write | sync | Removes cached temporary media |
 | [`storage.status`](./storage/storage.status.md) | read | sync | Temporary media storage usage |
 | [`system.audit`](./system/system.audit.md) | admin | sync | The newest lines of the CEP audit log, newest first |
+| [`system.events`](./system/system.events.md) | read | sync | Recent Engine events (model loads and unloads, downloads, tasks, approvals, tool installs) after a cursor, with an optional long-poll wait |
 | [`system.exec`](./system/system.exec.md) | admin | sync | Runs a program on the host and returns its output; the owner approves each call |
 | [`system.info`](./system/system.info.md) | read | sync | Engine name and version, CEP version, hardware, and the LAN address |
 | [`system.live`](./system/system.live.md) | read | sync | Current process, memory, CPU and GPU telemetry |

@@ -7,6 +7,25 @@ use cluaiz_hw::HardwareProber;
 use schemars::JsonSchema;
 use serde_json::{json, Value};
 
+/// `system.events` page size when `limit` is omitted: about one load's worth of step notices
+const EVENTS_DEFAULT_LIMIT: usize = 100;
+/// Largest `system.events` page; a bigger `limit` is lowered to this, so one reply stays small
+const EVENTS_MAX_LIMIT: usize = 256;
+
+#[derive(serde::Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct EventsParams {
+    /// Return events with `seq` greater than this cursor (default 0: the oldest event still held)
+    #[serde(default)]
+    after: Option<u64>,
+    /// Maximum events to return (default 100; 0 counts as 1; above 256 counts as 256)
+    #[serde(default)]
+    limit: Option<usize>,
+    /// When no event is newer than `after`, wait up to this many milliseconds for one (default 0: answer at once; above 30000 counts as 30000)
+    #[serde(default)]
+    wait_ms: Option<u64>,
+}
+
 pub fn register(registry: &mut Registry<CallCtx>) {
     registry.add(
         "system.info",
@@ -48,6 +67,27 @@ pub fn register(registry: &mut Registry<CallCtx>) {
                 .await
                 .map_err(|error| CepError::unavailable("update_check_failed", error))?;
             serde_json::to_value(check).map_err(|_| CepError::internal("system.update_check"))
+        },
+    );
+    registry.add(
+        "system.events",
+        Meta::new(
+            Scope::Read,
+            "Recent Engine events (model loads and unloads, downloads, tasks, approvals, tool installs) after a cursor, with an optional long-poll wait",
+        )
+        .example(
+            json!({"after":0,"limit":50}),
+            json!({"events":[{"seq":1,"name":"engine.started","at":"2026-11-22T09:30:00Z","data":{"version":"0.1.0"}},
+                             {"seq":2,"name":"model.load_started","at":"2026-11-22T09:31:02Z",
+                              "data":{"kind":"started","model":"qwen3-4b-gguf-Q4_K_M","attempt":1,"placement":"GpuOnly","n_gpu_layers":-1,
+                                      "n_cpu_moe":0,"n_ctx":8192,"vram_planned_gb":3.2,
+                                      "message":"loading: GpuOnly on the plan, 8192 tokens"}}],
+                   "next":2,"latest_seq":2}),
+        ),
+        |_: CallCtx, _: Call, params: EventsParams| async move {
+            let limit = params.limit.unwrap_or(EVENTS_DEFAULT_LIMIT).clamp(1, EVENTS_MAX_LIMIT);
+            let page = cluaiz_cep::events::wait_since(params.after.unwrap_or(0), limit, params.wait_ms.unwrap_or(0)).await;
+            serde_json::to_value(page).map_err(|_| CepError::internal("system.events"))
         },
     );
     registry.add(

@@ -734,6 +734,7 @@
           "name": "keep_alive",
           "required": false,
           "schema": {
+            "default": null,
             "description": "Minutes the model stays loaded after the task: -1 = until replaced, 0 = unload now, N = N minutes",
             "format": "int32",
             "type": [
@@ -5531,6 +5532,118 @@
         "mcp": false,
         "owner_only": false,
         "scope": "admin"
+      }
+    },
+    {
+      "errors": [],
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "after",
+              "value": 0
+            },
+            {
+              "name": "limit",
+              "value": 50
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "events": [
+                {
+                  "at": "2026-11-22T09:30:00Z",
+                  "data": {
+                    "version": "0.1.0"
+                  },
+                  "name": "engine.started",
+                  "seq": 1
+                },
+                {
+                  "at": "2026-11-22T09:31:02Z",
+                  "data": {
+                    "attempt": 1,
+                    "kind": "started",
+                    "message": "loading: GpuOnly on the plan, 8192 tokens",
+                    "model": "qwen3-4b-gguf-Q4_K_M",
+                    "n_cpu_moe": 0,
+                    "n_ctx": 8192,
+                    "n_gpu_layers": -1,
+                    "placement": "GpuOnly",
+                    "vram_planned_gb": 3.2
+                  },
+                  "name": "model.load_started",
+                  "seq": 2
+                }
+              ],
+              "latest_seq": 2,
+              "next": 2
+            }
+          }
+        }
+      ],
+      "name": "system.events",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "after",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "Return events with `seq` greater than this cursor (default 0: the oldest event still held)",
+            "format": "uint64",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "limit",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "Maximum events to return (default 100; 0 counts as 1; above 256 counts as 256)",
+            "format": "uint",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "wait_ms",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "When no event is newer than `after`, wait up to this many milliseconds for one (default 0: answer at once; above 30000 counts as 30000)",
+            "format": "uint64",
+            "minimum": 0,
+            "type": [
+              "integer",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Recent Engine events (model loads and unloads, downloads, tasks, approvals, tool installs) after a cursor, with an optional long-poll wait",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "read"
       }
     },
     {

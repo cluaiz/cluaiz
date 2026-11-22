@@ -26,6 +26,30 @@ async fn test_system_telemetry_has_domain_results_and_old_routes_are_gone() -> R
 }
 
 #[tokio::test]
+async fn test_system_events_reads_by_cursor_and_rejects_bad_params() -> Result<()> {
+    let workspace = tempfile::tempdir()?;
+    let state = cluaiz_api::AppState::new_test_state(workspace.path().to_owned());
+    let router = cluaiz_api::create_router(state);
+    // Optional params: an empty object and explicit nulls both answer
+    let start = support::cep(&router, "system.events", json!({})).await?.map_err(|e| anyhow!("{e}"))?;
+    support::cep(&router, "system.events", json!({"after":null,"limit":null,"wait_ms":null})).await?.map_err(|e| anyhow!("{e}"))?;
+    let cursor = start["latest_seq"].as_u64().ok_or_else(|| anyhow!("latest_seq: {start}"))?;
+    cluaiz_cep::events::publish("test.contract_load_started", json!({"model":"test-model","attempt":1}));
+    let page = support::cep(&router, "system.events", json!({"after":cursor,"limit":256,"wait_ms":0}))
+        .await?
+        .map_err(|e| anyhow!("{e}"))?;
+    let event = page["events"].as_array().and_then(|events| events.iter().find(|e| e["name"] == "test.contract_load_started"))
+        .ok_or_else(|| anyhow!("event missing: {page}"))?;
+    assert!(event["seq"].as_u64().unwrap_or(0) > cursor && event["at"].is_string() && event["data"]["model"] == "test-model");
+    assert!(page["next"].as_u64() >= event["seq"].as_u64() && page["latest_seq"].as_u64() >= page["next"].as_u64());
+    for params in [json!({"after":-1}), json!({"limit":"10"}), json!({"wait_ms":1.5}), json!({"since":0})] {
+        let error = support::cep(&router, "system.events", params).await?.unwrap_err();
+        assert_eq!(error["code"], -32602, "{error}");
+    }
+    Ok(())
+}
+
+#[tokio::test]
 async fn test_planner_rejects_bad_params_and_missing_models_without_loading() -> Result<()> {
     let workspace = tempfile::tempdir()?;
     let state = Arc::new(cluaiz_api::AppState::new_test_state(

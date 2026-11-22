@@ -305,7 +305,7 @@ graph TD
 |---|---|
 | [`handlers/`](src/handlers/) | The HTTP routes other than CEP: chat (`/v1/chat/completions`), Ollama (`/api/chat`, `/api/generate`, `/api/embed`, `/api/version` in `ollama.rs`), models (`/v1/models`, `/api/tags`, `/api/pull`), `/v1/embeddings`, `/v1/audio/speech`, `/v1/audio/transcriptions`, `/v1/ingest`, `/health` (`src/routes.rs:34-62`). |
 | [`utils/`](src/utils/) | HTTP response wrappers, error encoders, and SSE streamers. |
-| [`lib.rs`](src/lib.rs) | Starts the server. `forward_load_events` passes the runtime's live chat-model load notices (`cluaiz_runtime::load_events`) to the Engine event bus as `model.load_started`, `model.load_step`, `model.load_retry`, `model.loaded`, `model.load_failed`, `model.load_refused` and `model.unloaded`, so Automation and other listeners see loads started anywhere (chat, CLI, flows). |
+| [`lib.rs`](src/lib.rs) | Starts the server. `forward_load_events` passes the runtime's live chat-model load notices (`cluaiz_runtime::load_events`) to the Engine event bus as `model.load_started`, `model.load_step`, `model.load_retry`, `model.loaded`, `model.load_failed`, `model.load_refused` and `model.unloaded`, so Automation, other listeners and CEP `system.events` (the event ring read by cursor) see loads started anywhere (chat, CLI, flows). |
 
 ## Model capability reporting
 
