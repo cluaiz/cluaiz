@@ -249,8 +249,8 @@ an agent with a sandbox, one permission system) is rare; LocalAI dev builds come
 ## Not proven yet
 
 - llama.cpp on the Google machines; Docker since run 26; more than 4 requests at once since run 26.
-- Why Cluaiz reuses only 34 prompt tokens from the cache where llama-server reuses 41 to 50 (Angle 2):
-  the likely cause of Ollama's lead with 4 requests at once.
+- How much of Ollama's lead with 4 at once is left with prompts that do not repeat (Angle 2: llama-server's
+  RAM prompt cache reused whole earlier prompts because the test repeats its 200 tickets).
 - Metal GPU speed on real Apple hardware after `07cf30fa` (the October M5 Air run,
   `test/mac/runs/2026-10-28-m5-air-16gb/`, ran on the CPU because the engine did not use Metal then).
 - Bigger models (3B and up) under the website load on 4 GB.
