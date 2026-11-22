@@ -27,8 +27,9 @@ fn home() -> PathBuf {
     PathBuf::from(std::env::var_os("HOME").expect("HOME"))
 }
 
-fn workspace() -> PathBuf {
-    let dir = std::env::temp_dir().join(format!("cluaiz-sbx-{}", std::process::id()));
+/// A folder per test: the tests run in parallel threads of one process, and each removes its folder at the end
+fn workspace(test: &str) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("cluaiz-sbx-{}-{test}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     dir
 }
@@ -41,7 +42,7 @@ fn report(name: &str, ok: bool) -> bool {
 #[test]
 #[ignore = "needs bubblewrap or sandbox-exec on a test machine"]
 fn real_confinement() {
-    let ws = workspace();
+    let ws = workspace("confinement");
     let agent = SandboxPolicy::for_agent(&ws);
     let h = home();
     let q = |p: &Path| format!("'{}'", p.display());
@@ -78,7 +79,7 @@ fn real_confinement() {
 #[test]
 #[ignore = "needs bubblewrap or sandbox-exec and git on a test machine"]
 fn git_hooks_are_read_only() {
-    let ws = workspace().join("repo");
+    let ws = workspace("git").join("repo");
     std::fs::create_dir_all(&ws).unwrap();
     assert!(Command::new("git").arg("init").arg("-q").current_dir(&ws).status().expect("git").success(), "git init");
     // The policy reads the repository when it is made, as the Engine makes it per command
