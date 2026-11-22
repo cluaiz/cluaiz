@@ -5,6 +5,11 @@
 //! limited to 8 and 4 GB; `test/cloud/runs/2026-11-15-run13-moe-cache/SUMMARY.md`).
 //!
 //! `CLUAIZ_MOE_CACHE=off` turns the cache off for every plan (to compare or debug).
+//! `CLUAIZ_MOE_CACHE=on` is a test switch: the same split rules also for a split that reads experts
+//! from disk, which the rules otherwise leave without a cache (run 13 found the cache slower there).
+//! A split that fits in RAM without a cache keeps the rules, so `on` changes only plans read from disk.
+//! It exists so that "cache + expert prefetch" (`crate::expert_prefetch`) can be measured on such a
+//! model; it is not a speed setting.
 
 /// The MoE split gets the whole VRAM left after attention and KV as cache, with every expert in RAM,
 /// when that cache holds at least this share of the experts (run 13c: 2.15-2.45x faster than
@@ -50,9 +55,48 @@ pub fn cpu_share(cache_bytes: u64, experts: u64) -> f32 {
     }
 }
 
-/// False when `CLUAIZ_MOE_CACHE=off`
-pub fn enabled() -> bool {
-    !std::env::var("CLUAIZ_MOE_CACHE").is_ok_and(|v| v.eq_ignore_ascii_case("off"))
+/// When the planner may use the cache (`CLUAIZ_MOE_CACHE`)
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Mode {
+    /// Not set (or a value other than on/off): the rules of this module, no cache for a model read from disk
+    Rules,
+    /// `off`: never
+    Off,
+    /// `on` (test switch): the same rules, also when the split without a cache reads experts from disk
+    On,
+}
+
+/// The mode from `CLUAIZ_MOE_CACHE`
+pub fn mode() -> Mode {
+    #[cfg(test)]
+    if let Some(forced) = FORCED.with(|f| f.get()) {
+        return forced;
+    }
+    mode_of(std::env::var("CLUAIZ_MOE_CACHE").ok().as_deref())
+}
+
+/// [`mode`] for an environment value (None = not set)
+pub fn mode_of(env: Option<&str>) -> Mode {
+    match env.map(str::to_ascii_lowercase).as_deref() {
+        Some("off") => Mode::Off,
+        Some("on") => Mode::On,
+        _ => Mode::Rules,
+    }
+}
+
+// Tests set the mode per thread: the environment is process-wide and the tests run in parallel
+#[cfg(test)]
+thread_local! {
+    static FORCED: std::cell::Cell<Option<Mode>> = const { std::cell::Cell::new(None) };
+}
+
+/// Runs `f` with [`mode`] returning `forced` on this thread
+#[cfg(test)]
+pub(crate) fn with_mode<T>(forced: Mode, f: impl FnOnce() -> T) -> T {
+    FORCED.with(|c| c.set(Some(forced)));
+    let out = f();
+    FORCED.with(|c| c.set(None));
+    out
 }
 
 #[cfg(test)]
@@ -135,6 +179,57 @@ mod tests {
         }
 
         #[test]
+        fn forced_on_a_model_read_from_disk_gets_a_cache() {
+            // moe_like (11.7 GB of experts) with 5 GB of RAM and 8 GB of VRAM: the rules read experts
+            // from disk without a cache; CLUAIZ_MOE_CACHE=on adds one
+            let rules = Planner::create_plan("moe", &moe_like(), &gpu(8.0, 5.0), &auto());
+            assert!(rules.disk_stream_gb > 0.0 && rules.moe_cache_bytes == 0, "{}", rules.explanation);
+            let on = with_mode(Mode::On, || Planner::create_plan("moe", &moe_like(), &gpu(8.0, 5.0), &auto()));
+            assert_eq!(on.selected_tier, PlacementTier::MoeSplit, "{}", on.explanation);
+            assert!(on.moe_cache_bytes >= MIN_BYTES, "{}", on.explanation);
+            assert_eq!(on.moe_cache_cpu_share, cpu_share(on.moe_cache_bytes, moe_like().weights.experts_total()));
+            assert!(on.disk_stream_gb > 0.0, "{}", on.explanation);
+            // The cache is counted in the VRAM, which stays within what the GPU has
+            assert!(on.vram_budget_gb + on.vram_buffer_gb <= 8.0 + 1e-6, "{}", on.explanation);
+            // Experts that leave the VRAM for the cache are read from disk too
+            assert!(on.disk_stream_gb >= rules.disk_stream_gb, "{} vs {}", on.disk_stream_gb, rules.disk_stream_gb);
+            // Off still turns it off
+            let off = with_mode(Mode::Off, || Planner::create_plan("moe", &moe_like(), &gpu(8.0, 16.0), &auto()));
+            assert_eq!(off.moe_cache_bytes, 0);
+        }
+
+        #[test]
+        fn forced_on_changes_only_plans_that_read_from_disk() {
+            // Every row of the rule table planned again with CLUAIZ_MOE_CACHE=on: a plan that reads
+            // nothing from disk keeps its placement; the run 13 rule holds for the default
+            let mut forced = 0;
+            for row in crate::planner::matrix::all_plans() {
+                if row.plan.disk_stream_gb > 0.0 {
+                    assert_eq!(row.plan.moe_cache_bytes, 0, "{}: the default gives a disk plan no cache", row.label);
+                }
+                let on = with_mode(Mode::On, || Planner::create_plan("matrix", &row.geometry, &row.hardware, &row.settings));
+                if row.plan.disk_stream_gb == 0.0 {
+                    assert_eq!(selected(&on), selected(&row.plan), "{}", row.label);
+                } else if on.moe_cache_bytes > 0 {
+                    forced += 1;
+                    assert!(on.disk_stream_gb > 0.0, "{}", row.label);
+                }
+            }
+            assert!(forced > 0, "the table has disk plans that get a cache when forced on");
+        }
+
+        /// The chosen placement as JSON, without the list of candidates and the context note: when
+        /// the KV is lowered to read less from disk, the note quotes the GB saved against the plan
+        /// with the larger KV, which reads from disk and so gets a cache when forced on
+        fn selected(plan: &crate::ExecutionPlan) -> serde_json::Value {
+            let mut v = serde_json::to_value(plan).unwrap();
+            let o = v.as_object_mut().unwrap();
+            o.remove("candidates");
+            o.remove("context_reason");
+            v
+        }
+
+        #[test]
         fn the_users_placement_and_apple_silicon_get_no_cache() {
             let mut manual = auto();
             manual.optimization.n_cpu_moe = Some(30);
@@ -152,6 +247,17 @@ mod tests {
             assert_eq!(plan.selected_tier, PlacementTier::GpuOnly, "{}", plan.explanation);
             assert_eq!(plan.moe_cache_bytes, 0);
         }
+    }
+
+    #[test]
+    fn the_environment_value_picks_the_mode() {
+        assert_eq!(mode_of(None), Mode::Rules);
+        assert_eq!(mode_of(Some("off")), Mode::Off);
+        assert_eq!(mode_of(Some("OFF")), Mode::Off);
+        assert_eq!(mode_of(Some("on")), Mode::On);
+        assert_eq!(mode_of(Some("On")), Mode::On);
+        assert_eq!(mode_of(Some("auto")), Mode::Rules, "an unknown value keeps the rules");
+        assert_eq!(mode_of(Some("")), Mode::Rules);
     }
 
     #[test]

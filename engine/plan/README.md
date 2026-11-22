@@ -77,7 +77,7 @@ Prompt batches of more than 32 tokens do not use the cache. The planner sets it
 | When | What the planner does |
 |---|---|
 | The model fits on the GPU, CPU only, Apple Silicon (unified memory), user `n_gpu_layers` / `n_cpu_moe` | no cache; placement unchanged |
-| MoE split that needs experts read from disk (model bigger than the RAM limit) | no cache; placement unchanged |
+| MoE split that needs experts read from disk (model bigger than the RAM limit) | no cache; placement unchanged (`CLUAIZ_MOE_CACHE=on`, a test switch, applies the two rows below here too) |
 | MoE split in RAM, the VRAM left with every expert in RAM is at least 20% of the experts | every expert in RAM (`n_cpu_moe` = all layers), all that VRAM as the cache |
 | MoE split in RAM, less VRAM left | a cache of 10% of the experts (or the VRAM left, if less), plus the expert layers that still fit in VRAM |
 | A cache under 256 MiB | no cache |
@@ -134,6 +134,28 @@ cache.
   at load. llama.cpp prints the hit rate per ubatch only at its debug level (`llama-server -lv 4`).
 - **Turning it off:** set `CLUAIZ_MOE_CACHE=off` in the environment of `cluaiz serve` / `cluaiz run`.
   The plan is then exactly the plan without the cache, so a speed difference shows up directly.
+- **Forcing it on (test switch, not a speed setting):** `CLUAIZ_MOE_CACHE=on` applies the same split
+  rules to a MoE split that reads experts from disk, which the table above leaves without a cache. It
+  exists so that "cache + expert prefetch" can be measured on a model larger than RAM. **Warning (run 13):**
+  on gpt-oss-120b (59 GiB, 31 GB RAM) the cache was slower than no cache (7.4 against 10.15 t/s), and
+  every expert the cache split moves from VRAM to RAM is read from disk too, so `disk_stream_gb` can grow
+  (in the rule table: gpt-oss-120b-like, 24 GB GPU, from 36.6 to 44.7 GB). Use it only to compare.
+  - A split that fits in RAM without the cache keeps the rules, so `on` never turns a plan in RAM into
+    one read from disk. CPU only, Apple Silicon, a model that fits on the GPU and a user placement get no
+    cache, as with the rules. A value other than `on` / `off` keeps the rules.
+  - Code: `moe_cache::mode()` reads the variable once per plan; `moe_cache_split` in
+    [`planner.rs`](src/planner.rs) drops its "fits in RAM" check only when the split without a cache
+    already reads from disk.
+  - Tested (2026-11-22, `cargo test -p cluaiz-plan`): `forced_on_a_model_read_from_disk_gets_a_cache`
+    (cache counted in VRAM, VRAM within the GPU, disk reads not lower than without the cache) and
+    `forced_on_changes_only_plans_that_read_from_disk` (every rule-table row planned again with `on`: the
+    chosen placement of each plan in RAM is identical; with the default no disk plan has a cache). In
+    the table, 69 of the 201 plans that read from disk get a cache with `on`; the others have too little
+    VRAM left for a 256 MiB cache. The rule table was also dumped before and after the change (a test
+    kept out of the commit): 882 of 882 plans byte-identical with the variable not set.
+  - Decision: the switch is an environment variable only, like `off`, and no setting, because the cache
+    has no setting and this is for test runs. Alternative not taken: a cache size in MiB (the planner
+    would need a second sizing rule; the existing rule already sizes it from the free VRAM).
 - **Not tested yet:** Windows laptops, Vulkan and ROCm builds, and pinned experts (`-lm mlock`, which
   run 13 found faster but Cluaiz does not set). The measured rows above are CUDA on Linux.
 
@@ -160,7 +182,7 @@ The env value wins over the setting; a value other than `on` / `off` is ignored.
 | The value is added to the chosen plan and never takes part in choosing it | the owner's condition: the planner's existing outputs stay identical | a new candidate kind with prefetch |
 | Auto = off | nothing is measured: OLMoE fits in RAM on the dev laptop, so the live check proves only correctness and safety | Auto = on when the drive is an SSD |
 | Cap = the MoE cache size | one upload never fills more than the cache holds, so the prefetch never reads further ahead than the upload that follows it | a fixed number of MiB (no measurement behind any number yet) |
-| No change to "no MoE cache when the model needs the disk" (table above) | run 13 found the cache slower there; a change needs a run with cache plus prefetch against no cache | turning the cache on for disk models now |
+| No change to "no MoE cache when the model needs the disk" (table above) | run 13 found the cache slower there; a change needs a run with cache plus prefetch against no cache. For that run, `CLUAIZ_MOE_CACHE=on` forces the cache on such a model (see Debugging above) | turning the cache on for disk models now |
 
 **Tested:** `the_setting_changes_no_placement_and_auto_and_off_prefetch_nothing` plans every row of the rule
 table (882 plans on 2026-11-22) again with the setting Off and On, and checks that each plan, as JSON without
@@ -232,7 +254,7 @@ shown as 0 kept free: it only removes the margin, it never adds VRAM.
 
 ## Tests
 
-`cargo test -p cluaiz-plan` on 2026-11-22 (Windows 11): 57 passed, 1 ignored (`tests/real_models.rs`, needs installed
+`cargo test -p cluaiz-plan` on 2026-11-22 (Windows 11): 60 passed, 1 ignored (`tests/real_models.rs`, needs installed
 models). Real loads: runs 11, 12, 21 (L4), 17, 20 (laptop), 15-19 (VPS) in `test/cloud/BENCHMARKS.md`.
 
 ## Pending
@@ -243,5 +265,6 @@ models). Real loads: runs 11, 12, 21 (L4), 17, 20 (laptop), 15-19 (VPS) in `test
 | Proof that the out-of-memory retry steps down correctly on big models | built, not measured on a big model | the same big-GPU run |
 | First load with other apps holding VRAM (run 20 chose CPU only) | the dry run before every GPU load may have fixed it | a rerun of the run 20 case |
 | Expert prefetch speed | Auto stays off until a run shows a gain; nothing is measured | Phase 0/2: gpt-oss-120b on the L4 (model larger than RAM), cache + prefetch against no cache, page cache dropped, 3 rounds |
+| Forced MoE cache (`CLUAIZ_MOE_CACHE=on`) on a model read from disk | run 13 measured it slower without prefetch; whether cache + prefetch beats no cache is the question of Phase 0/2 | the L4 script in `test/cloud/remote/` (not run) |
 | Expert prefetch cap | the cache size is a rule, not a measured value | the same run, with the bytes prefetched per token |
 | Expert prefetch on Linux, macOS, Vulkan, Metal, CPU only | only Windows + CUDA was run; CPU only and Metal have no MoE cache upload path | runs on those machines; a CPU-only path (eval callback) is a later phase |

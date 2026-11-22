@@ -553,8 +553,10 @@ impl Planner {
             let n_cpu_moe = (0..=n_layers).find(|&n| over_vram(&place(-1, n, true)) == 0).unwrap_or(n_layers);
             let mut p = place(-1, n_cpu_moe, true);
             // llama.cpp's MoE cache (crate::moe_cache) when experts stay in RAM and the model fits in RAM;
-            // a model read from disk keeps this placement without a cache (run 13: the cache was slower there)
-            let (n_cpu_moe, cache) = match moe_cache_split(n_cpu_moe, n_layers, experts, unified, &place, vram_usable, ram_budget) {
+            // a model read from disk keeps this placement without a cache (run 13: the cache was slower there),
+            // unless CLUAIZ_MOE_CACHE=on (a test switch) asks for the cache there too
+            let mode = crate::moe_cache::mode();
+            let (n_cpu_moe, cache) = match moe_cache_split(n_cpu_moe, n_layers, experts, unified, mode, &place, vram_usable, ram_budget) {
                 Some((n, cache, with_cache)) => {
                     p = with_cache;
                     (n, Some(cache))
@@ -772,28 +774,34 @@ fn rank(plan: &ExecutionPlan) -> u8 {
 
 /// The MoE split with llama.cpp's MoE cache (`crate::moe_cache`): (n_cpu_moe, cache, placement with
 /// the cache counted in VRAM), or None to keep `n_cpu_moe` without a cache. Only when some experts
-/// stay in RAM, the GPU has its own memory, and the placement fits in RAM (no expert read from disk).
+/// stay in RAM, the GPU has its own memory, and the placement fits in RAM (no expert read from disk);
+/// `Mode::On` drops the last condition when the split without a cache already reads from disk (a split
+/// that fits in RAM keeps the rules, so `on` never turns a plan in RAM into one read from disk);
+/// `Mode::Off` returns None.
 /// - The VRAM left with every expert in RAM holds >= `ALL_EXPERTS_IN_RAM_FROM` of the experts: every
 ///   expert in RAM and that VRAM as cache.
 /// - Otherwise: a cache of `BESIDE_LAYERS` of the experts (or that VRAM, when it is less), and the
 ///   expert layers that still fit in VRAM.
+#[allow(clippy::too_many_arguments)]
 fn moe_cache_split(
     n_cpu_moe: usize,
     n_layers: usize,
     experts: u64,
     unified: bool,
+    mode: crate::moe_cache::Mode,
     place: &impl Fn(i32, usize, bool) -> Placement,
     vram_usable: u64,
     ram_budget: u64,
 ) -> Option<(usize, crate::moe_cache::MoeCache, Placement)> {
-    use crate::moe_cache::{MoeCache, ALL_EXPERTS_IN_RAM_FROM, BESIDE_LAYERS};
-    if n_cpu_moe == 0 || unified || !crate::moe_cache::enabled() {
+    use crate::moe_cache::{Mode, MoeCache, ALL_EXPERTS_IN_RAM_FROM, BESIDE_LAYERS};
+    if n_cpu_moe == 0 || unified || mode == Mode::Off {
         return None;
     }
+    let forced_on_disk = mode == Mode::On && place(-1, n_cpu_moe, true).ram > ram_budget;
     let with_cache = |n: usize, cache: MoeCache| {
         let mut p = place(-1, n, true);
         p.vram += cache.bytes;
-        (p.vram <= vram_usable && p.ram <= ram_budget).then_some((n, cache, p))
+        (p.vram <= vram_usable && (p.ram <= ram_budget || forced_on_disk)).then_some((n, cache, p))
     };
     let all_in_ram = place(-1, n_layers, true);
     let room = vram_usable.saturating_sub(all_in_ram.vram);
