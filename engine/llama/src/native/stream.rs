@@ -558,6 +558,49 @@ pub(crate) fn stream_tokens_with_media(
                 llama.checkpoints.retain(|c| c.n_tokens as usize <= start);
                 start
             } else {
+                // RAM prompt cache (llama-server `--cache-ram`, `prompt_cache.rs`): before the context is
+                // overwritten its state is kept, and an earlier prompt that shares more with this one is
+                // restored. Only for a plain KV: a sliding-window or recurrent state and MTP's own draft
+                // context do not come back whole from one sequence state.
+                let plain_kv = llama_cpp::llama_model_n_swa(llama.model_ptr) == 0
+                    && !llama_cpp::llama_model_is_recurrent(llama.model_ptr)
+                    && !llama_cpp::llama_model_is_hybrid(llama.model_ptr)
+                    && llama.mtp.is_none();
+                if plain_kv && llama.prompt_cache.enabled() {
+                    let lcp = crate::native::prompt_cache::common_prefix(&cached, &prompt_tokens);
+                    // The context will lose its tail: keep it first, as llama-server keeps an idle slot
+                    if lcp < cached.len() && !cached.is_empty() {
+                        let ctx = llama.ctx_ptr;
+                        let size = llama_cpp::llama_state_seq_get_size_ext(ctx, 0, 0);
+                        if size > 0 {
+                            let mut data = vec![0_u8; size];
+                            if llama_cpp::llama_state_seq_get_data_ext(ctx, data.as_mut_ptr(), size, 0, 0) == size {
+                                llama.prompt_cache.put(cached.clone(), data);
+                            }
+                        }
+                    }
+                    // Chosen after keeping the context: keeping may drop the oldest entries
+                    let best = llama.prompt_cache.best(&prompt_tokens, &cached);
+                    if let Some(entry) = best.and_then(|i| llama.prompt_cache.take(i)) {
+                        llama_cpp::llama_memory_seq_rm(mem, 0, -1, -1);
+                        let restored = llama_cpp::llama_state_seq_set_data_ext(llama.ctx_ptr, entry.data.as_ptr(), entry.data.len(), 0, 0) == entry.data.len();
+                        llama.checkpoints.clear();
+                        if restored {
+                            info!(
+                                "🗂️ [PromptCache] Restored an earlier prompt: {} tokens shared, against {} with the last one ({:.1} MB state, {} kept)",
+                                crate::native::prompt_cache::common_prefix(&entry.tokens, &prompt_tokens),
+                                lcp,
+                                entry.data.len() as f64 / (1024.0 * 1024.0),
+                                llama.prompt_cache.len()
+                            );
+                            cached = entry.tokens;
+                        } else {
+                            // The KV is empty now: start from nothing
+                            llama_cpp::llama_memory_seq_rm(mem, 0, -1, -1);
+                            cached.clear();
+                        }
+                    }
+                }
                 // Reuse the KV cache: the common prefix, then (llama-server `--cache-reuse`) shared chunks
                 // after it, such as the history left after old turns were dropped
                 let mut n_past = cached

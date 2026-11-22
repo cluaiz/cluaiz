@@ -34,6 +34,8 @@ pub struct NativeLlama {
     pub last_context: Option<ContextReport>,
     /// Sliding-window checkpoints of the current KV (llama-server context checkpoints), oldest first
     pub checkpoints: Vec<crate::native::context::Checkpoint>,
+    /// KV of earlier prompts in RAM (llama-server `--cache-ram`, `prompt_cache.rs`)
+    pub prompt_cache: crate::native::prompt_cache::PromptCache,
     /// Positions in the KV can be moved (not with quantized keys, see `keys_can_shift`)
     pub keys_can_shift: bool,
     /// Timings of the last generation when MTP drafted in it. llama.cpp counts every decode of more
@@ -872,6 +874,7 @@ impl NativeLlama {
             last_thinking: None,
             last_context: None,
             checkpoints: Vec::new(),
+            prompt_cache: crate::native::prompt_cache::PromptCache::from_env(),
             keys_can_shift: cluaiz_core::KvCacheQuantization::keys_can_shift(ctx_params.type_k),
             mtp: None,
             mtp_guard,

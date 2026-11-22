@@ -5,6 +5,7 @@ pub mod core;
 pub mod stream;
 pub mod sampler;
 pub mod context;
+pub mod prompt_cache;
 pub mod templater;
 pub mod media;
 pub mod session;

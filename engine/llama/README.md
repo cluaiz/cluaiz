@@ -43,6 +43,7 @@ graph TD
 | [`native/session.rs`](src/native/session.rs) | Paired model/projector lifetime, memory preflight, prepared media/text generation and pointer-free model telemetry used by EngineHost. |
 | [`native/media.rs`](src/native/media.rs) | Private projector/bitmap/chunk owners, queried audio preparation, template association and native encoder prefill. |
 | [`native/context.rs`](src/native/context.rs) | Shared native batch ownership and context shifting. |
+| [`native/prompt_cache.rs`](src/native/prompt_cache.rs) | RAM prompt cache (llama-server `--cache-ram`): earlier prompts' sequence states and the selection rule; off unless `CLUAIZ_PROMPT_CACHE_MB` is set. |
 | [`native/speech.rs`](src/native/speech.rs) | Experimental libmtmd speech generator, independent backbone/projector, vocabulary-derived language guard and optional authorized speaker PCM through the shared bitmap owner. |
 | [`ffi/reasoning.rs`](src/ffi/reasoning.rs), [`ffi/reasoning_bridge.cpp`](src/ffi/reasoning_bridge.cpp) | Narrow C ABI to the pinned upstream reasoning-budget sampler; no copied budget state machine. |
 | [`llama.cpp/`](llama.cpp/) | The underlying C/C++ inference engine with custom M-RoPE and chat C-ABI patches. |
@@ -148,6 +149,37 @@ graph LR
 - **Observed image proof:** `test_session_encoded_images_change_answers_and_recover_text` used the same installed CPU model/projector pair and the same question for three encoded 128x128 fixtures: red PNG returned `Red`, blue PNG returned `Blue`, and blue JPEG returned `Blue`. Actual data URIs pass through `SourceResolver`, `prepare_chat`, the shared RGB decoder, native image encoder and the existing generation loop. Native logs show 81 image tokens per fixture. Ground-truth colors are asserted only in the test, never supplied in the prompt. The temporary resolver directory is empty after requests and plain text generation succeeds afterward: `1 passed; 0 failed`, 61.13 seconds. Image encoding, base64 and temporary-directory dependencies are test-only; no production decoder/encoder was added by this test.
 - **HTTP evidence:** `api/tests/media_contract.rs` additionally exercises actual loopback JSON/SSE chat routes, including one image plus inline audio request and image-preserving continuation. The final native CPU run passed in 104.92 seconds with fixture-specific configured workspace/decoded ceilings; see the API README for scope and resource refusal evidence.
 - **Proof limits:** the speech and solid-color fixtures do not certify App UI behavior, photographs, multiple images in one turn, full transcript accuracy across languages, driver failure recovery or full model/platform coverage. Upstream logs label audio experimental.
+
+## RAM prompt cache (off by default)
+
+**What it does:** [`native/prompt_cache.rs`](src/native/prompt_cache.rs) is llama-server's `--cache-ram`
+(`tools/server/server-task.cpp`, `server_prompt_cache`). Before a new prompt overwrites the context, the
+sequence state of the old one (`llama_state_seq_get_data_ext`) is kept in RAM; then, if an earlier prompt
+shares more tokens with the new one than the current context does, its state is restored
+(`llama_state_seq_set_data_ext`) and only the rest is computed. The code is in `stream.rs`, just before the
+common-prefix reuse.
+
+**Why:** run 40 (`test/cloud/runs/2026-11-22-run40-cluaiz-ollama-website/README.md`, Angle 2): with 200
+repeated tickets, llama-server reused a whole earlier prompt in 94 of 219 requests (Ollama) and 3,019 of
+6,350 (llama.cpp), while Cluaiz compared only with the last prompt. That was the source of Ollama's lead
+with 4 requests at once.
+
+**Decisions:**
+- Selection follows llama-server's rule (`server_prompt_cache::load`): an entry wins only if it keeps more of
+  itself and covers more of the new prompt than the current context; an entry that would keep less than a
+  quarter of itself is skipped.
+- Size `CLUAIZ_PROMPT_CACHE_MB`, **default 0 = off** (owner, 2026-11-22). One state is large (below), so the
+  cache would raise RAM above the published numbers; llama-server's default (8192 MiB) is not taken for the
+  same reason. Oldest entries go first; a state larger than the whole limit is not kept.
+- Only for a plain KV: sliding-window, recurrent and hybrid models and MTP's draft context do not come back
+  whole from one sequence state, so the cache is skipped for them.
+
+**Tested** (2026-11-22, Windows 11, debug build, OLMoE-1B-7B Q4_K_M, isolated home on port 8012, 3 tickets
+sent 8 times in a fixed order with a ~260-token shared instruction): time to first token for a repeated
+ticket was 1.0-1.3 s with the cache off, 0.18-0.23 s with 256 MB (3 restores; only 2 states fit) and
+0.16-0.19 s with 1024 MB (5 of 5 repeats restored). One state was 103-123 MB. Answers were the same in all
+three runs. Log line: `🗂️ [PromptCache] Restored an earlier prompt: ...`. Rerun: `CLUAIZ_PROMPT_CACHE_MB=1024`
+on `cluaiz serve`, then send the same prompts twice in a different order.
 
 ## MTP speculative decoding (experimental)
 
@@ -329,3 +361,4 @@ grows, and MTP can lose, when:
 | Budget for models trained on one (Seed-OSS `thinking_budget`, multiples of 512) | such a model plans its thinking to the number; today it only gets the forced close | pass the budget to the template, which needs the room before the prompt is rendered |
 | Auto effort on a slow CPU | the speed rule is unit-tested (5 t/s gives the 1,024 floor, 36 t/s gives 6,480) but not run on a real CPU-only machine | a CPU-only run (the planned 8 GB cloud VM) reading the `Auto thinking ceiling` log line |
 | Live API contract proof for MTP usage | A model with working MTP is needed to exercise both response modes | Run the ignored `mtp_contract` test with a model path and fresh isolated home |
+| Prompt cache under load | measured with one request at a time only; run 40's 4-at-once gap is not rerun with it on, and the 4 unit tests in `prompt_cache.rs` were not run (the llama suite is not run on the dev machine) | run 40's ticket test with `CLUAIZ_PROMPT_CACHE_MB` set, and the unit tests in CI |
