@@ -65,7 +65,13 @@ fn load_native(
     let mtp = if embedding { 0 } else { mtp_mode(model_path, plan, settings) };
     let loaded = NativeLlama::load(model_path, model_params, ctx_params, dna, 0, 0, mtp, None);
     drop(moe_overrides);
-    loaded
+    let mut llama = loaded?;
+    // The fork's MoE expert prefetch needs the context, so it is set after the load (cluaiz_plan::expert_prefetch)
+    if !embedding && plan.expert_prefetch_bytes > 0 && ctx_params.moe_cache_size > 0 {
+        llama.set_moe_prefetch(plan.expert_prefetch_bytes as usize);
+        tracing::info!("📥 [MoE] Expert prefetch on: at most {} MiB per MoE cache upload", plan.expert_prefetch_bytes / (1024 * 1024));
+    }
+    Ok(llama)
 }
 
 /// What a placement sets in llama.cpp's parameters

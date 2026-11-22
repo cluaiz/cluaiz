@@ -237,6 +237,10 @@ extern "C" {
     /// 🗑️ Free context memory.
     pub fn llama_free(ctx: *mut std::ffi::c_void);
 
+    /// Fork-only (`llama.cpp/include/llama-cluaiz.h`, `CLUAIZ_PATCHES.md`): advisory OS prefetch of the
+    /// host experts the MoE cache uploads, at most `max_bytes` per upload; 0 = off. Set 0 before `llama_free`.
+    pub fn llama_cluaiz_set_moe_prefetch(ctx: *mut std::ffi::c_void, max_bytes: usize);
+
     /// 🔤 Tokenize text.
     pub fn llama_tokenize(
         vocab: *const std::ffi::c_void,

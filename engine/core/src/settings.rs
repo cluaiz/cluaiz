@@ -165,6 +165,12 @@ pub struct OptimizationControl {
     /// each answer that stops guessing where it is slower (engine/llama/README.md, "MTP").
     #[serde(default)]
     pub mtp: FeatureState,
+    /// Before each upload of llama.cpp's MoE GPU cache, ask the OS to read the selected experts from
+    /// the model file (fork-only, `engine/llama/llama.cpp/CLUAIZ_PATCHES.md`). Acts only where the
+    /// MoE cache is on. On = always there; Off = never; Auto = off until a measured run shows a gain
+    /// (`cluaiz_plan::expert_prefetch`). `CLUAIZ_EXPERT_PREFETCH=on|off` overrides this.
+    #[serde(default)]
+    pub expert_prefetch: FeatureState,
 }
 
 /// Thinking token budget ("Effort" in the app): how many tokens a reasoning model may think before it must
@@ -314,7 +320,7 @@ const OPTIMIZATION_FIELDS: &[&str] = &[
     "flash_attention", "kv_cache_quantization", "context_shifting", "custom_vram_buffer_gb",
     "custom_ram_buffer_gb", "n_gpu_layers", "think_mode", "batch_size", "ubatch_size", "use_mmap",
     "custom_context_window", "n_cpu_moe", "offload_kqv", "n_threads", "n_threads_batch", "op_offload",
-    "reasoning_effort", "thinking_presets", "reasoning_budget_message", "mtp",
+    "reasoning_effort", "thinking_presets", "reasoning_budget_message", "mtp", "expert_prefetch",
 ];
 
 /// Context window setting, same meaning as llama.cpp `n_ctx`: 0 = Auto, -1 = Max (native), N = exactly N.
@@ -460,7 +466,7 @@ impl OptimizationControl {
     /// When this string changes, the model must be reloaded; sampler settings are not part of it.
     pub fn load_fingerprint(&self) -> String {
         format!(
-            "ctx={:?}|ngl={:?}|ncmoe={:?}|kqv={:?}|opo={:?}|kv={:?}|fa={:?}|b={}|ub={}|mmap={}|vbuf={:?}|t={:?}/{:?}|mtp={:?}",
+            "ctx={:?}|ngl={:?}|ncmoe={:?}|kqv={:?}|opo={:?}|kv={:?}|fa={:?}|b={}|ub={}|mmap={}|vbuf={:?}|t={:?}/{:?}|mtp={:?}|xp={:?}",
             self.context_setting(),
             self.n_gpu_layers,
             self.n_cpu_moe,
@@ -475,6 +481,7 @@ impl OptimizationControl {
             self.n_threads,
             self.n_threads_batch,
             self.mtp,
+            self.expert_prefetch,
         )
     }
 
@@ -575,6 +582,7 @@ impl Default for OptimizationControl {
             thinking_presets: ThinkingPresets::default(),
             reasoning_budget_message: None,
             mtp: FeatureState::Auto,
+            expert_prefetch: FeatureState::Auto,
         }
     }
 }

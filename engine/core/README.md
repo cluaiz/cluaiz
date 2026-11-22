@@ -30,7 +30,7 @@ graph TD
 | Module | Responsibility |
 |---|---|
 | [`env.rs`](src/env.rs) | Dynamic root discovery (Dev, Portable, Installed). Zero hardcoded paths. `default_workspace_dir` is `<home>/workspace`, the open folder before a client opens a project: empty, so file tools never see the session token, config or memory beside it. With no project open, what the agent remembers goes to its `.agents/memory/`. `is_unchosen_workspace` tells that folder and the home from a project (tested by `the_default_workspace_and_the_home_are_not_projects`). |
-| [`settings.rs`](src/settings.rs) | In-memory cached active user settings. Eliminates repeated disk reads. Also the thinking budget rule (`ThinkingBudget::limit`): Low / Medium / High are shares of the room (`ThinkingPresets`); Auto is a ceiling of `AUTO_THINK_SECONDS` (180 s) at the model's measured decode speed, at least `AUTO_THINK_FLOOR` (1,024) and at most High's share, never Max. Why: llama.cpp, Gemini (`thinkingBudget: -1`) and Claude (adaptive thinking) let the model decide how long to think and only cap it; an engine cannot judge a question's difficulty without running a model, but it can stop a slow machine from thinking for an hour. Named levels also get a grace (`ThinkingLimit.grace`: a quarter of the budget, at most `THINK_GRACE_MAX` 500, inside the room) so thinking can close at a line end; a number and Max get none. Tests: `settings_tests.rs` (`thinking_budget_names_numbers_and_auto`). |
+| [`settings.rs`](src/settings.rs) | In-memory cached active user settings. Eliminates repeated disk reads. Also the thinking budget rule (`ThinkingBudget::limit`): Low / Medium / High are shares of the room (`ThinkingPresets`); Auto is a ceiling of `AUTO_THINK_SECONDS` (180 s) at the model's measured decode speed, at least `AUTO_THINK_FLOOR` (1,024) and at most High's share, never Max. Why: llama.cpp, Gemini (`thinkingBudget: -1`) and Claude (adaptive thinking) let the model decide how long to think and only cap it; an engine cannot judge a question's difficulty without running a model, but it can stop a slow machine from thinking for an hour. Named levels also get a grace (`ThinkingLimit.grace`: a quarter of the budget, at most `THINK_GRACE_MAX` 500, inside the room) so thinking can close at a line end; a number and Max get none. Tests: `settings_tests.rs` (`thinking_budget_names_numbers_and_auto`). `OptimizationControl.expert_prefetch` (auto / on / off, default Auto) switches the llama.cpp fork's MoE expert prefetch; it is part of `load_fingerprint` because it is applied when the model loads, and an older `settings.json` without it loads as Auto (`expert_prefetch_defaults_to_auto_and_is_a_load_setting`). The decision is in `engine/plan` (`expert_prefetch.rs`). |
 | [`units.rs`](src/units.rs) | Strict `GiB`, `MiB`, `bytes` conversion functions. |
 | [`contracts.rs`](src/contracts.rs) | Standard engine interfaces implemented by `llama` and `onnx`; shared finite L2 embedding normalization rejects empty, zero and non-finite output, and `InvalidEmbeddingInput` distinguishes input rejection from native failure. |
 | [`media.rs`](src/media.rs) | Backend-neutral RGB8 and PCM F32 buffers with layout validation and shared immutable storage. |
@@ -68,7 +68,7 @@ graph TD
 
 ## Tests
 
-`cargo test -p cluaiz-core --lib` on 2026-11-21 (Windows 11): 57 passed (settings, thinking budget, managed prompts,
+`cargo test -p cluaiz-core` on 2026-11-22 (Windows 11): 59 passed (settings, thinking budget, managed prompts,
 media buffers, tool-call form, providers).
 
 ## Decisions and why

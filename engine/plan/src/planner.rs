@@ -700,6 +700,8 @@ impl Planner {
             op_offload: opt.op_offload.unwrap_or(true),
             moe_cache_bytes: selected.moe_cache_bytes,
             moe_cache_cpu_share: selected.moe_cache_cpu_share,
+            // added to the chosen placement only: it never takes part in choosing it
+            expert_prefetch_bytes: crate::expert_prefetch::bytes(opt.expert_prefetch, selected.moe_cache_bytes),
             kv_cache_type: kv,
             vram_buffer_gb,
             ram_budget_limit_gb: bytes_to_gib(ram_budget),

@@ -7,6 +7,7 @@ pub mod media_budget;
 pub mod margin;
 pub mod speed;
 pub mod moe_cache;
+pub mod expert_prefetch;
 pub mod report;
 
 pub use types::{ExecutionPlan, ExecutionCandidate, PlacementTier};

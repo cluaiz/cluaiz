@@ -134,6 +134,7 @@ pub fn plan(target: &Target) -> cluaiz_plan::ExecutionPlan {
         op_offload: false,
         moe_cache_bytes: 0,
         moe_cache_cpu_share: 0.0,
+        expert_prefetch_bytes: 0,
         kv_cache_type: Default::default(),
         vram_buffer_gb: 0.0,
         ram_budget_limit_gb: 0.0,

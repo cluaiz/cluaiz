@@ -50,6 +50,8 @@ pub struct NativeLlama {
     /// Decode speed (tokens per second) of the last answer long enough to measure; Auto effort
     /// turns it into a thinking ceiling (`ThinkingBudget::limit`). None until the first such answer.
     pub decode_per_second: Option<f64>,
+    /// Cap of the fork's MoE expert prefetch for this context (0 = off); see `set_moe_prefetch`
+    moe_prefetch_bytes: usize,
 }
 
 /// The request does not fit the context (llama-server's `exceed_context_size_error`). It is raised
@@ -880,6 +882,7 @@ impl NativeLlama {
             mtp_guard,
             mtp_timings: None,
             decode_per_second: None,
+            moe_prefetch_bytes: 0,
         };
         if mtp_wanted {
             match crate::native::speculative::MtpDrafter::new(model_ptr, ctx_ptr, mtp_draft_max) {
@@ -932,6 +935,27 @@ impl NativeLlama {
         }
     }
 
+    /// The fork's MoE expert prefetch for this context: before each MoE cache upload, the OS is asked to
+    /// read the selected host experts (at most `max_bytes` per upload); 0 = off. Advisory: a failed
+    /// prefetch only logs a warning and the upload reads the pages as before. The planner decides the
+    /// value (`cluaiz_plan::expert_prefetch`); the context keeps it until it is freed.
+    pub fn set_moe_prefetch(&mut self, max_bytes: usize) {
+        if self.ctx_ptr.is_null() || (max_bytes == 0 && self.moe_prefetch_bytes == 0) {
+            return;
+        }
+        // SAFETY: ctx_ptr is this llama's live context; the call only updates the fork's table keyed by its backends
+        unsafe { llama_cpp::llama_cluaiz_set_moe_prefetch(self.ctx_ptr, max_bytes) };
+        self.moe_prefetch_bytes = max_bytes;
+    }
+
+    /// Drops this context's prefetch entry before the context is freed (the entry is keyed by its backends)
+    fn clear_moe_prefetch(&mut self) {
+        if self.moe_prefetch_bytes > 0 && !self.ctx_ptr.is_null() {
+            // SAFETY: called while ctx_ptr is still live, right before llama_free
+            unsafe { llama_cpp::llama_cluaiz_set_moe_prefetch(self.ctx_ptr, 0) };
+        }
+    }
+
     pub fn resize_context(&mut self, mut ctx_params: LlamaContextParams) -> anyhow::Result<()> {
         if self.model_ptr.is_null() {
             return Err(anyhow::anyhow!("Cannot resize context: Model not loaded"));
@@ -956,11 +980,15 @@ impl NativeLlama {
 
         unsafe {
             if !self.ctx_ptr.is_null() {
+                self.clear_moe_prefetch();
                 llama_cpp::llama_free(self.ctx_ptr);
             }
             self.ctx_ptr = llama_cpp::llama_init_from_model(self.model_ptr, ctx_params);
             if self.ctx_ptr.is_null() {
                 return Err(anyhow::anyhow!("Context Resize Failure"));
+            }
+            if self.moe_prefetch_bytes > 0 {
+                llama_cpp::llama_cluaiz_set_moe_prefetch(self.ctx_ptr, self.moe_prefetch_bytes);
             }
             self.n_ctx = ctx_params.n_ctx;
             self.keys_can_shift = cluaiz_core::KvCacheQuantization::keys_can_shift(ctx_params.type_k);
@@ -1151,6 +1179,7 @@ impl Drop for NativeLlama {
             // The draft context reads the target context: freed first
             self.mtp = None;
             if !self.ctx_ptr.is_null() {
+                self.clear_moe_prefetch();
                 llama_cpp::llama_free(self.ctx_ptr);
             }
             if !self.model_ptr.is_null() {

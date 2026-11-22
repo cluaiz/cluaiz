@@ -134,6 +134,10 @@ pub struct ExecutionPlan {
     /// Share of the MoE cache misses computed on the CPU
     #[serde(default)]
     pub moe_cache_cpu_share: f32,
+    /// Bytes the llama.cpp fork may prefetch from the model file per MoE cache upload, 0 = off
+    /// (`crate::expert_prefetch`); never changes the placement
+    #[serde(default)]
+    pub expert_prefetch_bytes: u64,
     /// KV cache type chosen by the CTX rules (Auto tries F16, then Q8_0); the engine uses exactly this.
     pub kv_cache_type: cluaiz_core::KvCacheQuantization,
     /// VRAM kept free by the BUFFER rules for this plan
@@ -245,6 +249,10 @@ impl ExecutionPlan {
             out.push_str(&format!("║   • MoE cache       : {:.2} GB in VRAM for the experts in RAM | CPU share of the misses {} (moe_cache_size / moe_cache_cpu_share)\n",
                 gib(self.moe_cache_bytes), self.moe_cache_cpu_share));
         }
+        if self.expert_prefetch_bytes > 0 {
+            out.push_str(&format!("║   • Expert prefetch : on, at most {:.2} GB per MoE cache upload (llama.cpp fork, advisory)\n",
+                gib(self.expert_prefetch_bytes)));
+        }
         out.push_str(&format!("║   • Reason         : {}\n", self.explanation));
         let selected = self.candidates.iter().find(|c| c.is_placement_of(self));
         let speed = match selected.and_then(|c| c.measured_tokens_per_s) {
@@ -301,6 +309,7 @@ mod tests {
             op_offload: true,
             moe_cache_bytes: 0,
             moe_cache_cpu_share: 0.0,
+            expert_prefetch_bytes: 0,
             kv_cache_type: cluaiz_core::KvCacheQuantization::Kv16,
             vram_buffer_gb: 1.0,
             ram_budget_limit_gb: 10.0,

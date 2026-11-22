@@ -46,7 +46,7 @@ graph TD
 | [`native/prompt_cache.rs`](src/native/prompt_cache.rs) | RAM prompt cache (llama-server `--cache-ram`): earlier prompts' sequence states and the selection rule; off unless `CLUAIZ_PROMPT_CACHE_MB` is set. |
 | [`native/speech.rs`](src/native/speech.rs) | Experimental libmtmd speech generator, independent backbone/projector, vocabulary-derived language guard and optional authorized speaker PCM through the shared bitmap owner. |
 | [`ffi/reasoning.rs`](src/ffi/reasoning.rs), [`ffi/reasoning_bridge.cpp`](src/ffi/reasoning_bridge.cpp) | Narrow C ABI to the pinned upstream reasoning-budget sampler; no copied budget state machine. |
-| [`llama.cpp/`](llama.cpp/) | The underlying C/C++ inference engine with custom M-RoPE and chat C-ABI patches. |
+| [`llama.cpp/`](llama.cpp/) | The underlying C/C++ inference engine with custom M-RoPE and chat C-ABI patches, and the MoE expert prefetch (see below); fork patches and their re-apply steps: [`CLUAIZ_PATCHES.md`](llama.cpp/CLUAIZ_PATCHES.md). |
 | [`native/projection.rs`](src/native/projection.rs) | What a model and context will take per device, from llama.cpp's own no-alloc dry run (the one behind `--fit`), so the planner can correct its byte estimate (`project`, `ProjectedMemory`, `DeviceBytes`). Nothing is allocated. |
 | [`native/load_steps.rs`](src/native/load_steps.rs) | What a chat-model load is doing, for an observer set on the loading thread (`observe`): weights read in percent (llama.cpp's `progress_callback`, set only when someone observes), a fallback llama.cpp's own load took, context creation, warmup. Used by `engine/runtime` load events. |
 | [`native/tokenizer.rs`](src/native/tokenizer.rs) | One native tokenizer (`VocabHandle`) for chat and embedding contexts. |
@@ -180,6 +180,90 @@ ticket was 1.0-1.3 s with the cache off, 0.18-0.23 s with 256 MB (3 restores; on
 0.16-0.19 s with 1024 MB (5 of 5 repeats restored). One state was 103-123 MB. Answers were the same in all
 three runs. Log line: `🗂️ [PromptCache] Restored an earlier prompt: ...`. Rerun: `CLUAIZ_PROMPT_CACHE_MB=1024`
 on `cluaiz serve`, then send the same prompts twice in a different order.
+
+## MoE expert prefetch (llama.cpp fork, off by default)
+
+**What it does:** with llama.cpp's MoE GPU cache on, each layer's selected experts that are not in the
+cache are uploaded from the host experts, which are mmap'd from the model file
+(`llama.cpp/src/llama-moe-cache.cpp`, `copy()`). When those pages are not in RAM, the upload page-faults
+them in one after another. With the prefetch on, the fork first passes the address ranges of those experts
+(every fill and every miss left to the CPU, for each expert tensor, up to a cap) to llama.cpp's own
+`llama_prefetch` in one call, so the OS can read them together (Windows: one `PrefetchVirtualMemory`
+call; Linux: one `madvise(MADV_WILLNEED)` per 128 KiB window). Then the upload runs as before.
+
+```mermaid
+graph LR
+    Plan["cluaiz_plan::expert_prefetch: expert_prefetch_bytes"] --> Load["runtime native_load.rs after the load"]
+    Load --> Set["NativeLlama::set_moe_prefetch"]
+    Set --> Setter["fork: llama_cluaiz_set_moe_prefetch(ctx, cap)"]
+    Copy["fork: llama_moe_cache copy(), selected experts known"] --> Hook["llama_cluaiz_moe_prefetch: ranges up to the cap"]
+    Setter -.->|"cap per GPU backend"| Hook
+    Hook --> Prefetch["llama_prefetch (upstream)"]
+    Hook --> Upload["upload loop, unchanged"]
+```
+
+**Where the code is:** fork files `include/llama-cluaiz.h`, `src/llama-cluaiz-prefetch.{h,cpp}`, two marked
+lines in `src/llama-moe-cache.cpp` and the source entry plus a guard in `src/CMakeLists.txt`; the list with
+re-apply steps is [`llama.cpp/CLUAIZ_PATCHES.md`](llama.cpp/CLUAIZ_PATCHES.md). Rust: the declaration in
+[`ffi/llama_cpp.rs`](src/ffi/llama_cpp.rs) and `NativeLlama::set_moe_prefetch` in
+[`native/core.rs`](src/native/core.rs), which keeps the value, drops the fork's entry before `llama_free`
+(Drop and `resize_context`) and sets it again on a resized context. The decision is the planner's
+(`engine/plan/README.md`, "MoE expert prefetch"); `engine/runtime/src/native_load.rs` is the only caller.
+
+**Decisions and why:**
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| A setter in a fork-only header, no field in `llama_context_params` | upstream appends fields to that struct; every merge would conflict and the hand-written mirror in `ffi/llama_cpp.rs` would drift | a new `moe_prefetch_bytes` field (first idea in the research plan) |
+| Fork table keyed by the context's GPU backends | `copy()` only receives its backend and `llama_context` keeps its MoE cache private; the setter reaches the backends through the public `get_sched()` | a field in the MoE cache class (an upstream struct) |
+| Rust sets 0 before `llama_free` | a freed backend's address may be reused by a later context, which would then inherit the cap | no cleanup (stale entries) |
+| Reuse `llama_prefetch` and the cache's own expert addresses (`w->data + expert*nb[2]`) | one owner: no second GGUF offset parser, cache, thread or CUDA call; the old Rust streaming code had its own offsets and was never connected (research plan, section 2) | own reads into a host buffer (a later phase) |
+| Linux window steps in the fork file, `llama_prefetch` not edited | upstream PR #32515 (open on 2026-11-22): one `MADV_WILLNEED` reads at most one readahead window | editing `llama_prefetch` (a third upstream file to carry) |
+| The build fails when the call is gone | a merge that drops the call would otherwise turn the feature off without a sign | a runtime check |
+| Advisory, off by default | `llama_prefetch` only logs a warning on failure and the upload then reads as before | treating a failed prefetch as an error |
+
+**Tested** (2026-11-22, Windows 11, debug build `cargo build -p cmd`, RTX 3050 Laptop 4 GB, CUDA,
+OLMoE-1B-7B-0125-Instruct Q4_K_M 4.2 GB, isolated home on port 8014, the planner's own MoE split: every expert
+in RAM, `n_cpu_moe = 16`, MoE cache 1.22-1.51 GB depending on the free VRAM at each load, CPU share 0.8).
+The same prompt twice per server ("Explain in three sentences why the sky is blue.", temperature 0, seed 42,
+96 tokens; the second with `keep_alive: 0`):
+
+| Mode | Answer (sha256 of the text, first 16 hex) | Fork log lines |
+|---|---|---|
+| Setting Auto, env not set | `852d80ab80084db0` both answers | none |
+| `CLUAIZ_EXPERT_PREFETCH=off` | `852d80ab80084db0` both answers | none |
+| `CLUAIZ_EXPERT_PREFETCH=on` | `852d80ab80084db0` both answers | `on, at most 1414 MiB per MoE cache upload`; `first prefetch: 153 ranges, 203184 KiB`; at unload `off: 2105 calls, 19272 ranges, 23387 MiB prefetched` |
+
+No warning, error or crash in any of the three logs. The model fits in RAM on this machine, so this proves
+that the call runs, changes no answer and stays silent when off; it says nothing about speed. The fork's
+log lines reach the Engine log at debug level (`serve -vv`). Configure guard: with the call removed from
+`llama-moe-cache.cpp`, `cmake -S engine/llama/llama.cpp` stopped with `cluaiz: src/llama-moe-cache.cpp lost
+the llama_cluaiz_moe_prefetch call in copy()` (exit 1). Rerun: build, then start `cluaiz serve -vv` on an
+isolated `CLUAIZ_HOME` with and without `CLUAIZ_EXPERT_PREFETCH=on`, chat with an MoE model whose plan shows
+`MoE cache`, compare the answers and grep the log for `llama_cluaiz_moe_prefetch`. The llama crate's own
+tests were not run (the llama suite is not run on the dev machine).
+
+**Failure and recovery:**
+- `PrefetchVirtualMemory` or `madvise` fails: `llama_prefetch` logs a warning (one per failed call, upstream
+  behaviour) and returns; the upload page-faults the experts as without the prefetch.
+- The context has no MoE cache: the cap would be stored but `copy()` never runs, so nothing happens;
+  `native_load.rs` does not set it then.
+- A merge loses the call: the configure step fails (above). A merge renames `fills`, `cpu` or `l.experts`:
+  the call does not compile.
+
+**Sources:** pinned `llama.cpp/src/llama-moe-cache.cpp` (`copy()`), `src/llama-mmap.cpp` (`llama_prefetch`),
+`src/llama-impl.cpp` (`llama_prefetch_rows`, the same pattern); llama.cpp PR #32515 (readahead window),
+https://github.com/ggml-org/llama.cpp/pull/32515.
+
+**Pending:**
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| Speed with a model larger than RAM | the reason for the feature; not measured | Phase 0/2 on the L4 with gpt-oss-120b, page cache dropped, 3 rounds, against official llama.cpp |
+| Linux window steps | written from #32515, not run | a Linux run with a model larger than RAM |
+| macOS, Vulkan, Metal, CPU only | Metal and CPU only have no MoE cache upload; Vulkan's MoE cache is untested | runs on those machines; a CPU-only path is a later phase |
+| One warning per failed call | could repeat for every layer if the OS keeps refusing | a counter in the fork file if it is ever seen |
+| `docs/engine/moe_ssd_streaming.md` and `docs/engine/llm_optimization.md` do not mention it | public docs; the owner decides | the owner's word after a measured run |
 
 ## MTP speculative decoding (experimental)
 

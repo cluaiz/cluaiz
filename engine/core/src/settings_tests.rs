@@ -275,3 +275,15 @@ fn a_compressed_kv_never_moves_positions() {
     assert!(!shifts(KvCacheQuantization::Kv8));
     assert!(!shifts(KvCacheQuantization::Kv4));
 }
+
+#[test]
+fn expert_prefetch_defaults_to_auto_and_is_a_load_setting() {
+    // settings.json from before the setting existed loads as Auto (off until measured)
+    let old: OptimizationControl = serde_json::from_value(serde_json::json!({ "mtp": "On" })).unwrap();
+    assert_eq!(old.expert_prefetch, FeatureState::Auto);
+    assert_eq!(OptimizationControl::default().expert_prefetch, FeatureState::Auto);
+    let on = old.merged_with(&serde_json::json!({ "expert_prefetch": "on" })).unwrap();
+    assert_eq!(on.expert_prefetch, FeatureState::On);
+    assert_ne!(on.load_fingerprint(), old.load_fingerprint(), "the prefetch is applied at load");
+    assert!(old.merged_with(&serde_json::json!({ "expert_prefetch": "sometimes" })).is_err());
+}

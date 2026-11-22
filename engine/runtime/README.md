@@ -64,7 +64,7 @@ graph TD
 | Module | Responsibility |
 |---|---|
 | [`host.rs`](src/host.rs) | Unified engine host for model preparation and streaming dispatch. |
-| [`native_load.rs`](src/native_load.rs) | Synchronous translation of the chat execution plan into native model/context parameters. |
+| [`native_load.rs`](src/native_load.rs) | Synchronous translation of the chat execution plan into native model/context parameters. After a chat load with a MoE cache it is the only caller of `NativeLlama::set_moe_prefetch` with the plan's `expert_prefetch_bytes` (the fork's setter needs the context, so it cannot be a context param); log line `📥 [MoE] Expert prefetch on: at most N MiB per MoE cache upload`. Off (no call) when the value is 0 or for embedding loads. |
 | [`media_admission.rs`](src/media_admission.rs) | Per-host prepared-chat permit and owned preparation lifetime; separate from byte budgets and model planning. |
 | [`media_generation.rs`](src/media_generation.rs) | Native prepared dispatch, retained admission and selected-package execution, as a child of the host. |
 | [`media_support.rs`](src/media_support.rs) | Effective request input/attachment availability from declared capability, real assets and trusted backend evidence. |

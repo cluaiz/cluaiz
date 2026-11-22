@@ -27,6 +27,7 @@ graph TD
 | [`speed.rs`](src/speed.rs) | STEP 4: speeds measured by `cluaiz bench`; a placement measured faster replaces the rule-order pick. |
 | [`report.rs`](src/report.rs) | The plan as `cluaiz show` prints it (see Plan report below). |
 | [`moe_cache.rs`](src/moe_cache.rs) | Size and CPU share of llama.cpp's MoE GPU cache for a MoE split (see below). |
+| [`expert_prefetch.rs`](src/expert_prefetch.rs) | Bytes the llama.cpp fork may prefetch per MoE cache upload (`expert_prefetch_bytes`), from the setting and the cache; never changes the placement (see below). |
 | [`media_budget.rs`](src/media_budget.rs) | Additive media preflight after model load. Reuses safety policies without changing text placement math. |
 
 ## Auto context and KV cache
@@ -136,6 +137,37 @@ cache.
 - **Not tested yet:** Windows laptops, Vulkan and ROCm builds, and pinned experts (`-lm mlock`, which
   run 13 found faster but Cluaiz does not set). The measured rows above are CUDA on Linux.
 
+## MoE expert prefetch (llama.cpp fork, off by default)
+
+Right before llama.cpp's MoE cache uploads the experts a layer selected, the fork asks the OS to read
+those experts (and the misses left to the CPU) from the model file in one call, with llama.cpp's own
+`llama_prefetch` (`engine/llama/llama.cpp/CLUAIZ_PATCHES.md`, `engine/llama/README.md`). The planner
+only decides the number: [`expert_prefetch.rs`](src/expert_prefetch.rs) sets the plan's
+`expert_prefetch_bytes` after the placement is chosen, and
+[`native_load.rs`](../runtime/src/native_load.rs) hands it to the loaded context.
+
+| Setting `optimization.expert_prefetch` / `CLUAIZ_EXPERT_PREFETCH` | `expert_prefetch_bytes` |
+|---|---|
+| Auto (default) | 0: no run has measured it yet |
+| Off, or the env set to `off` | 0 |
+| On, or the env set to `on`, with a MoE cache in the plan | the MoE cache size |
+| On without a MoE cache | 0: the prefetch runs only in the cache's upload path |
+
+The env value wins over the setting; a value other than `on` / `off` is ignored.
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| The value is added to the chosen plan and never takes part in choosing it | the owner's condition: the planner's existing outputs stay identical | a new candidate kind with prefetch |
+| Auto = off | nothing is measured: OLMoE fits in RAM on the dev laptop, so the live check proves only correctness and safety | Auto = on when the drive is an SSD |
+| Cap = the MoE cache size | one upload never fills more than the cache holds, so the prefetch never reads further ahead than the upload that follows it | a fixed number of MiB (no measurement behind any number yet) |
+| No change to "no MoE cache when the model needs the disk" (table above) | run 13 found the cache slower there; a change needs a run with cache plus prefetch against no cache | turning the cache on for disk models now |
+
+**Tested:** `the_setting_changes_no_placement_and_auto_and_off_prefetch_nothing` plans every row of the rule
+table (882 plans on 2026-11-22) again with the setting Off and On, and checks that each plan, as JSON without
+the new field, is identical, and that Auto and Off give 0. On 2026-11-22 the rule table was also dumped before
+and after the change (a test kept out of the commit): 882 of 882 plans identical without the new field, the
+new field 0 in all of them.
+
 ## VRAM buffer
 
 | Model | Kept free |
@@ -177,6 +209,8 @@ Two sizes, built from the same parts in [`report.rs`](src/report.rs):
   other placements with what each needs.
 - After a load (`run`, chat header, `bench`, `/plan`): placement, GPU and RAM totals with what goes
   there, SSD, context and KV, llama.cpp flags and the reason.
+- With the expert prefetch on, the load banner adds `Expert prefetch : on, at most X GB per MoE cache
+  upload` and the short report a `prefetch` line; with it off neither line is printed.
 
 A rejected plan shows the placement closest to fitting, its shortfall per device and what would make
 it fit. Every number comes from the plan (`vram_weights_gb`, `ram_weights_gb`, `vram_free_gb`,
@@ -198,7 +232,7 @@ shown as 0 kept free: it only removes the margin, it never adds VRAM.
 
 ## Tests
 
-`cargo test -p cluaiz-plan` on 2026-11-21 (Windows 11): 54 passed, 1 ignored (`tests/real_models.rs`, needs installed
+`cargo test -p cluaiz-plan` on 2026-11-22 (Windows 11): 57 passed, 1 ignored (`tests/real_models.rs`, needs installed
 models). Real loads: runs 11, 12, 21 (L4), 17, 20 (laptop), 15-19 (VPS) in `test/cloud/BENCHMARKS.md`.
 
 ## Pending
@@ -208,3 +242,6 @@ models). Real loads: runs 11, 12, 21 (L4), 17, 20 (laptop), 15-19 (VPS) in `test
 | Memory estimate for MLA and Kimi-Linear models | run 21 found the estimate off for these | parked with the planner (2026-11-19) until a big-GPU run |
 | Proof that the out-of-memory retry steps down correctly on big models | built, not measured on a big model | the same big-GPU run |
 | First load with other apps holding VRAM (run 20 chose CPU only) | the dry run before every GPU load may have fixed it | a rerun of the run 20 case |
+| Expert prefetch speed | Auto stays off until a run shows a gain; nothing is measured | Phase 0/2: gpt-oss-120b on the L4 (model larger than RAM), cache + prefetch against no cache, page cache dropped, 3 rounds |
+| Expert prefetch cap | the cache size is a rule, not a measured value | the same run, with the bytes prefetched per token |
+| Expert prefetch on Linux, macOS, Vulkan, Metal, CPU only | only Windows + CUDA was run; CPU only and Metal have no MoE cache upload path | runs on those machines; a CPU-only path (eval callback) is a later phase |

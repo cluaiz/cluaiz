@@ -124,6 +124,9 @@ impl ExecutionPlan {
         if self.moe_cache_bytes > 0 {
             lines.push(format!("MoE cache  {:.2} GB in VRAM, CPU share {}", cluaiz_core::bytes_to_gib(self.moe_cache_bytes), self.moe_cache_cpu_share));
         }
+        if self.expert_prefetch_bytes > 0 {
+            lines.push(format!("prefetch   experts read ahead of each MoE cache upload, at most {:.2} GB", cluaiz_core::bytes_to_gib(self.expert_prefetch_bytes)));
+        }
         lines.push(format!("context    {} tokens | KV {} {}", group_digits(self.context_window as u64), kv_name(self.kv_cache_type).to_uppercase(), self.kv_place()));
         if planned {
             lines.push(format!("llama.cpp  {}", llama_flags(self)));
