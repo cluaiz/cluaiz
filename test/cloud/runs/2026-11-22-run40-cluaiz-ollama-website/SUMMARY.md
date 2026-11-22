@@ -92,4 +92,6 @@ request (run 26's build spent about 60 ms there, fixed in `ef6a7113`).
 
 - llama.cpp on the GCP machines (did not start; rerun with `libgomp1`).
 - Docker: not run.
-- Why Ollama is faster at 4 at once with the same one slot: not investigated.
+- Why Ollama is faster at 4 at once with the same one slot: traced in README.md (Angle 2) to llama-server's
+  RAM prompt cache, which reused whole earlier prompts because the test repeats its tickets; not yet
+  measured with prompts that do not repeat.
