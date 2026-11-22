@@ -52,7 +52,7 @@ pub async fn ps(State(state): State<Arc<AppState>>) -> Json<Value> {
                 "details": {
                     "format": entry.map(|e| e.format_type.clone()),
                     "family": entry.map(|e| e.metadata.architecture.clone()),
-                    "parameter_size": entry.map(|e| e.metadata.parameters.clone()),
+                    "parameter_size": entry.map(super::models::parameter_size),
                 },
             })
         })

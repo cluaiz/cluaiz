@@ -84,6 +84,11 @@ pub async fn v1_models(State(state): State<Arc<AppState>>) -> Json<Value> {
 
 /// GET /api/tags (Ollama Compatibility)
 pub async fn tags() -> Json<Value> {
+    // Registry and GGUF header reads are file I/O
+    Json(tokio::task::spawn_blocking(tag_list).await.unwrap_or_else(|_| json!({ "models": [] })))
+}
+
+fn tag_list() -> Value {
     let registry = InstalledStateRegistry::load();
     let tags: Vec<Value> = registry
         .installed_models
@@ -104,13 +109,33 @@ pub async fn tags() -> Json<Value> {
                 "details": {
                     "format": entry.format_type,
                     "family": entry.metadata.architecture,
-                    "parameter_size": entry.metadata.parameters
+                    "parameter_size": parameter_size(entry)
                 }
             })
         })
         .collect();
 
-    Json(json!({ "models": tags }))
+    json!({ "models": tags })
+}
+
+/// Ollama's `parameter_size` of an installed model: the registry's value when it has one; when it
+/// says "Unknown" (or nothing), the weights counted from the GGUF tensor table, read from the file
+/// header without loading the model (headers are cached by path, size and change time). The
+/// registry is not changed.
+pub(crate) fn parameter_size(entry: &cluaiz_models::types::manifest::ModelRegistryEntry) -> String {
+    let saved = entry.metadata.parameters.trim();
+    if !saved.is_empty() && !saved.eq_ignore_ascii_case("unknown") {
+        return entry.metadata.parameters.clone();
+    }
+    let counted = (entry.format_type == "gguf")
+        .then(|| entry.primary_path())
+        .flatten()
+        .and_then(|primary| {
+            let header = cluaiz_models::GgufProber::read_header(&primary).ok()?;
+            Some(gguf_parameter_count(entry, &primary, &header))
+        })
+        .filter(|count| *count > 0);
+    counted.map(human_number).unwrap_or_else(|| entry.metadata.parameters.clone())
 }
 
 /// Ollama's `/api/show` body (`api/types.go`, `ShowRequest`): `model`, or the older `name`.
@@ -156,12 +181,12 @@ fn show_model(model: &str) -> Result<Response, (StatusCode, String)> {
         .ok()
         .map(|time| chrono::DateTime::<chrono::Utc>::from(time).to_rfc3339_opts(chrono::SecondsFormat::Secs, true));
     let file_name = primary.file_name().map(|name| name.to_string_lossy().to_string()).unwrap_or_default();
-    let mut details = json!({
+    let details = json!({
         "parent_model": "",
         "format": entry.format_type,
         "family": entry.metadata.architecture,
         "families": [entry.metadata.architecture],
-        "parameter_size": entry.metadata.parameters,
+        "parameter_size": parameter_size(&entry),
         "quantization_level": cluaiz_models::taxonomy::UniversalQuantization::extract_quant_tag(&file_name),
     });
     // Ollama always sends `model_info` (an empty object when it has nothing), as clients expect it
@@ -187,7 +212,6 @@ fn show_model(model: &str) -> Result<Response, (StatusCode, String)> {
         let parameters = gguf_parameter_count(&entry, &primary, &header);
         if parameters > 0 {
             model_info.insert("general.parameter_count".into(), json!(parameters));
-            details["parameter_size"] = json!(human_number(parameters));
         }
     }
     Ok(Json(json!({

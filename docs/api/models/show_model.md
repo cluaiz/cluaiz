@@ -81,7 +81,7 @@ Other Ollama fields (`system`, `template`, `options`) are accepted and not used.
 | Reply field | Where it comes from |
 |:---|:---|
 | `details.format`, `details.family`, `details.families` | the registry's format and architecture |
-| `details.parameter_size` | the weights counted from the GGUF tensor table (every tensor's element count, summed over all parts of a split model), written as Ollama writes it (`6.9B`, `125.08M`); the registry's value when the count is not known |
+| `details.parameter_size` | the registry's value; when it says `Unknown`, the weights counted from the GGUF tensor table (every tensor's element count, summed over all parts of a split model), written as Ollama writes it (`6.9B`, `125.08M`). `/api/tags` and `/api/ps` send the same value |
 | `details.quantization_level` | the quantization in the weight file's name (`Q4_K_M`) |
 | `model_info` | every GGUF header key, with `general.parameter_count` added; `general.name` and `tokenizer.chat_template` are left out, as Ollama leaves them out. Numbers and booleans are JSON numbers and booleans; long arrays (the vocabulary) are `[]`, as Ollama sends them |
 | `template` | the model's Jinja chat template (`tokenizer.chat_template`), as Ollama sends it for a GGUF model with its own template |

@@ -86,3 +86,6 @@ an optional category. Load, inspect, remove and download through
 `{"models":[{"name","model","modified_at","size","details"}]}`. It uses the
 same inventory; it does not include the full CEP registry entry. Its current
 `modified_at` value is the change time of the model's main file (null when it cannot be read).
+`details.parameter_size` is the registry's value; when the registry says `Unknown`, a GGUF model's
+weights are counted from its file header (no load) and written as Ollama writes them, for example
+`6.9B` for OLMoE-1B-7B and `4.2B` for Qwen3.5-4B (recorded 2026-11-22). ONNX models stay `Unknown`.
