@@ -66,7 +66,7 @@ change.
 | `cpu.physical_cores`, `logical_threads` | yes (thread counts, change detection) | |
 | `cpu.l1/l2/l3_cache_kb`, `isa_features`, `base/boost_clock_mhz`, `gflops_fp32` | no, reported in JSON only | `boost_clock_mhz` is `base x 1.25`, an estimate, and `gflops_fp32` is built on it |
 | `memory.bandwidth_gbps`, `memory_latency_ns`, `speed_mts` | no, reported only | bandwidth and latency from a 64 MB read loop and a pointer chase (`benchmark_memory`); `speed_mts` on Windows from `Win32_PhysicalMemory` (the slowest module's `ConfiguredClockSpeed`, else `Speed`), 0 on Linux and macOS |
-| `storage[*]` (mount point, size, free space, drive type) | no, reported only | no read or write speed since 2026-11-22 (below) |
+| `storage[*]` (mount point, size, free space, drive type) | no, reported only | no read or write speed since 2026-11-22 (below); `drive_type` is `SSD`, `HDD` or `Unknown`, read per disk |
 | `gpus[*].pcie_*`, `compute_capability` | no (`compute_capability` is shown by CEP `system.info`) | |
 | `GpuSubsystem::estimated_vram_bandwidth_gbps()` | no caller | a table by VRAM size, not a measurement |
 
@@ -104,6 +104,7 @@ numbers come from CEP `system.live`.
 | Non-NVIDIA GPUs from llama.cpp's backends, not a second probing library | llama.cpp is what will use the GPU; its device list and free memory are the numbers that matter for a load | a vendor library per GPU type |
 | macOS free RAM computed from `host_statistics64` | sysinfo's figure was 0 on a compressed-memory Mac (above) | trust sysinfo |
 | No disk speed test (removed 2026-11-22, with `read_speed_mbps` / `write_speed_mbps`) | it wrote 5 MB to the drive root, which fails without admin rights on Windows (0 in a saved profile on 2026-11-21); the file was read back right after it was written, so the read number may come from the OS file cache (not measured); and no code read the two fields (searched in the Engine and `cluaiz-app` on 2026-11-22: only saved profiles had them) | write the test file in the Cluaiz home |
+| `drive_type` from sysinfo's per-disk `DiskKind` (since 2026-11-22) | the old code asked PowerShell for the first physical disk's media type and gave that to every drive, prefixed "NVMe/"; on Linux it read `nvme0n1` for every drive | `Get-PhysicalDisk` joined to each volume per drive letter (more PowerShell calls, Windows only) |
 | `used_only_by_cluaiz` is `None` when unreadable | the planner then keeps its normal margin rather than guessing a smaller one | default to `false` or `true` |
 
 ## Tested
@@ -113,12 +114,13 @@ numbers come from CEP `system.live`.
 | `test_zero_free_memory_is_not_replaced_by_stale_startup_values` | a failed query keeps the old number; a reading of 0 is written as 0 |
 | `saved_profile_is_stale_after_ram_cpu_or_gpu_changes` | same facts (RAM 100 MB less) = not stale; zeros = not stale; RAM, threads or GPU list changed = stale |
 | `macos_free_ram_is_total_minus_app_wired_and_compressed` | the Activity Monitor formula on the M5 numbers; more in use than the total gives 0, not an overflow |
+| `drive_type_is_read_per_disk` | each sysinfo disk kind maps to its own label (a unit check; which kind sysinfo reports for a disk is sysinfo's) |
 | `memory_speed_is_the_slowest_module` | the memory speed is the slowest module's number; blank, zero and non-number lines are skipped; nothing readable gives 0 |
 | `backend_gpus_fill_in_only_when_nvml_finds_none` | Metal/Vulkan devices are used only when NVML found nothing |
 | `integrated_backend_gpu_shares_the_ram` | an integrated GPU marks the memory as unified |
 | `this_machine_matches_a_fresh_probe` (ignored) | a fresh deep probe on this machine is not seen as a change; run with `--ignored` |
 
-Result on 2026-11-22 (Windows 11): 6 passed, 1 ignored. On that machine `Get-CimInstance Win32_PhysicalMemory` gave two modules with `Speed` 4800 and `ConfiguredClockSpeed` 4800.
+Result on 2026-11-22 (Windows 11): 7 passed, 1 ignored. On that machine `Get-CimInstance Win32_PhysicalMemory` gave two modules with `Speed` 4800 and `ConfiguredClockSpeed` 4800.
 
 Real machines: every run in [`test/cloud/BENCHMARKS.md`](../../test/cloud/BENCHMARKS.md) loads models
 through these numbers. The macOS RAM formula and the backend GPUs come from the M5 Mac run
@@ -149,5 +151,5 @@ through Vulkan on Windows.
 | Item | Why it matters | Needs |
 |---|---|---|
 | Only GPU 0 gets a live free-VRAM reading | a second NVIDIA GPU is planned from its start-up number | read every device in `live_snapshot` |
-| `detect_drive_type` reads the first physical disk for every drive on Windows and prefixes "NVMe/" | wrong label for a second or SATA disk | per-disk query, or drop the field |
+| `drive_type` does not say NVMe or SATA | a reader cannot tell the bus | `Get-PhysicalDisk` `BusType` per volume |
 | Reported-only estimates (`boost_clock_mhz`, `gflops_fp32`, `estimated_vram_bandwidth_gbps`) | they are marked as estimates in the code (`types.rs`) and here, but the JSON field names do not say so | rename them in a versioned API change, or remove them (the App may read them) |

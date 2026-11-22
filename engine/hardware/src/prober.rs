@@ -513,29 +513,13 @@ impl HardwareProber {
 
     // ─── Storage Probing (Drive Type Detection) ────
 
-    fn detect_drive_type(kind_str: &str) -> String {
-        #[cfg(target_os = "windows")]
-        if let Ok(out) = std::process::Command::new("powershell")
-            .args(["-Command", "Get-PhysicalDisk | Select-Object -ExpandProperty MediaType -First 1"])
-            .output()
-        {
-            let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
-            if !s.is_empty() {
-                return format!("NVMe/{}", s);
-            }
-        }
-
-        #[cfg(target_os = "linux")]
-        if let Ok(rot) = std::fs::read_to_string("/sys/block/nvme0n1/queue/rotational") {
-            if rot.trim() == "0" {
-                return "NVMe SSD".into();
-            }
-        }
-
-        if kind_str.contains("SSD") {
-            "NVMe SSD".into()
-        } else {
-            kind_str.to_string()
+    /// The drive type of one disk as sysinfo reads it for that disk ("SSD", "HDD", "Unknown").
+    /// sysinfo cannot tell NVMe from SATA, so neither is claimed.
+    fn drive_type(kind: sysinfo::DiskKind) -> String {
+        match kind {
+            sysinfo::DiskKind::SSD => "SSD".into(),
+            sysinfo::DiskKind::HDD => "HDD".into(),
+            sysinfo::DiskKind::Unknown(_) => "Unknown".into(),
         }
     }
 
@@ -548,7 +532,7 @@ impl HardwareProber {
             let total_gb = disk.total_space() as f64 / GIB_F64;
             let free_gb = disk.available_space() as f64 / GIB_F64;
             let is_primary = mount == "C:\\" || mount == "/";
-            let drive_type = Self::detect_drive_type(&format!("{:?}", disk.kind()));
+            let drive_type = Self::drive_type(disk.kind());
 
             storage.push(StorageSubsystem {
                 mount_point: mount,
@@ -710,6 +694,13 @@ mod live_memory_tests {
         assert!(HardwareProber::hardware_changed(&saved, &QuickFacts { ram_total_bytes: 32 * cluaiz_core::GIB, ..same() }));
         assert!(HardwareProber::hardware_changed(&saved, &QuickFacts { logical_threads: 16, ..same() }));
         assert!(HardwareProber::hardware_changed(&saved, &QuickFacts { gpus: vec![], ..same() }));
+    }
+
+    #[test]
+    fn drive_type_is_read_per_disk() {
+        assert_eq!(HardwareProber::drive_type(sysinfo::DiskKind::SSD), "SSD");
+        assert_eq!(HardwareProber::drive_type(sysinfo::DiskKind::HDD), "HDD");
+        assert_eq!(HardwareProber::drive_type(sysinfo::DiskKind::Unknown(-1)), "Unknown");
     }
 
     #[test]
