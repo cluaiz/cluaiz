@@ -369,13 +369,27 @@ extern "C" fn silent_llama_log(
 ) {
 }
 
+/// llama.cpp lines that repeat once per tensor, metadata key, layer, graph node or token, so the
+/// Engine log does not grow with the model size. The one-line summaries next to them stay (layers
+/// offloaded, model / KV / compute buffer sizes, MoE cache size, load mode hints). Each entry is
+/// the start of the line or a fixed phrase of one llama.cpp log call; a line that merely contains
+/// a dot is kept.
 const NOISE_PATTERNS: &[&str] = &[
-    "load_tensors:",
+    // one per tensor (llama-model-loader.cpp create_tensor and its buffer type overrides)
     "create_tensor:",
+    "buffer type overridden to",
+    // one per GGUF metadata key (llama-model-loader.cpp); Cluaiz reads the header itself (GgufProber)
+    "llama_model_loader: - kv ",
+    // one per layer (llama-model.cpp load_tensors, llama-kv-cache.cpp constructor)
+    "assigned to device ",
+    "llama_kv_cache: layer ",
+    // one per mapped buffer (llama-model.cpp load_tensors); the GPU buffer line stays
+    "CPU_Mapped model buffer size",
+    // one per graph node at every graph reserve (llama-context.cpp llama_graph_n_input_tensors)
+    "llama_graph_n_input_tensors:",
+    // per token (ggml-cuda graph reuse)
     "CUDA Graph",
     "ggml_backend_cuda_graph_compute",
-    "llama_kv_cache",
-    ".",
 ];
 
 /// llama.cpp / ggml log lines go to the engine log (tracing), never straight to the terminal.
@@ -392,7 +406,9 @@ extern "C" fn llama_log_callback(
         let c_str = std::ffi::CStr::from_ptr(text);
         let s = c_str.to_string_lossy();
         let trimmed = s.trim();
-        if trimmed.is_empty() || trimmed == "." || NOISE_PATTERNS.iter().any(|&p| trimmed.contains(p)) {
+        // empty lines and the load progress dots (llama.cpp prints one "." per percent)
+        let progress_dots = trimmed.bytes().all(|b| b == b'.');
+        if progress_dots || NOISE_PATTERNS.iter().any(|&p| trimmed.contains(p)) {
             return;
         }
         match level {

@@ -150,6 +150,57 @@ graph LR
 - **HTTP evidence:** `api/tests/media_contract.rs` additionally exercises actual loopback JSON/SSE chat routes, including one image plus inline audio request and image-preserving continuation. The final native CPU run passed in 104.92 seconds with fixture-specific configured workspace/decoded ceilings; see the API README for scope and resource refusal evidence.
 - **Proof limits:** the speech and solid-color fixtures do not certify App UI behavior, photographs, multiple images in one turn, full transcript accuracy across languages, driver failure recovery or full model/platform coverage. Upstream logs label audio experimental.
 
+## llama.cpp log lines
+
+`route_llama_logs` (`native/core.rs`) sends every llama.cpp / ggml (and mtmd) log line to the Engine log
+through `llama_log_callback`: level 4 = error, 3 = warn, the rest = debug (so they show with `-vv`; the log
+file `cluaiz_Core.log` has them at `-vv`). Before that, `NOISE_PATTERNS` drops the lines that repeat once
+per tensor, GGUF metadata key, layer, mapped buffer, graph node or token, and the load progress dots:
+
+| Pattern | llama.cpp source | Why |
+|---|---|---|
+| `create_tensor:`, `buffer type overridden to` | `llama-model-loader.cpp` | one line per tensor (515 + 48 for OLMoE) |
+| `llama_model_loader: - kv ` | `llama-model-loader.cpp` | one per GGUF key; Cluaiz reads the header itself (`GgufProber`) |
+| `assigned to device `, `llama_kv_cache: layer ` | `llama-model.cpp` `load_tensors`, `llama-kv-cache.cpp` | one per layer |
+| `CPU_Mapped model buffer size` | `llama-model.cpp` `load_tensors` | one per mapped buffer (33 for OLMoE); the GPU buffer line stays |
+| `llama_graph_n_input_tensors:` | `llama-context.cpp` | one per graph node at every graph reserve (602 lines for one OLMoE load) |
+| `CUDA Graph`, `ggml_backend_cuda_graph_compute` | `ggml-cuda.cu` | per token |
+| a line of only dots (or empty) | `llama.cpp` load progress | one `.` per percent |
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| Specific patterns, no `"."` | the old list had `"."` (added with `eprintln!` output in eb18953a, 2026-08-17, to hide the progress dots), so every line containing a dot was dropped: the MoE cache size line, model / KV / compute buffer sizes, `offloaded 17/17 layers to GPU`, the backend paths, the GPU line (`compute capability 8.9`) | keep `"."`; or drop no line at all (the per-node dump alone doubles the log) |
+| The broad `load_tensors:` and `llama_kv_cache` became their per-layer / per-buffer lines only | the summary lines of both (layers offloaded, buffer sizes) explain a placement; the per-layer lines repeat it | keep hiding both families |
+| Debug level, not info | unchanged; the lines are for debugging a load | info level would put llama.cpp's load report into every normal log |
+
+**Measured (2026-11-22, Windows 11, RTX 3050 4 GB, `target\debug\cluaiz.exe serve -vv`, isolated
+`CLUAIZ_HOME`, port 8014, OLMoE-1B-7B Q4_K_M from the test install home, one load + one chat at
+temperature 0):**
+
+| Build | `cluaiz_Core.log` lines | of them `[llama.cpp]` |
+|---|---|---|
+| Old list (with `"."`) | 769 | 693 (602 of them `llama_graph_n_input_tensors`) |
+| No pattern at all (temporary build, not committed) | 1,466 | 1,390 |
+| New list | 207 | 131 |
+
+With the new list, 40 distinct llama.cpp lines appear that the old list hid (for example `MoE cache size =
+1642.03 MiB for 3720.00 MiB of host experts, 80% of the misses on the CPU`, `CUDA0 KV buffer size`,
+`offloaded 17/17 layers to GPU`, `load_mode = mmap`); the only family the old list showed and the new one
+hides is `llama_graph_n_input_tensors`. No `ERROR` or panic in the log. The same load + chat with other
+models (other architectures print other per-layer lines) was not run. Rerun: start `cluaiz serve -vv` on an
+isolated home, load a model with one chat, count `[llama.cpp]` lines in `cluaiz_Core.log` and group them by
+their first word. No unit test: the llama suite is not run on the dev machine.
+
+**Failure and recovery:** a llama.cpp merge that renames a logged phrase makes that family show again
+(more lines, nothing lost); a new per-tensor line in a merge shows up the same way and needs a pattern.
+
+**Pending:**
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| Lines from other architectures, Vulkan, Metal, multimodal (mtmd / CLIP) loads | only an OLMoE load on CUDA was counted | the same count on those loads |
+| `print_info:` (58 lines per load, fixed, not per tensor) | kept: it is llama.cpp's model summary | the owner's call if the log should be shorter |
+
 ## RAM prompt cache (off by default)
 
 **What it does:** [`native/prompt_cache.rs`](src/native/prompt_cache.rs) is llama-server's `--cache-ram`
