@@ -111,10 +111,24 @@ Reading:
   its first token and the same time after it on both engines. With 4 clients and one slot a request waits
   for the other three, so the total is about four times the time the slot is busy per request. For
   Cluaiz 5.387 s is 4.0 times 1.342 s: the slot is busy for the whole request. For Ollama 4.484 s is 3.4
-  times 1.312 s: about 0.19 s of each request happens outside the slot, overlapped with the previous one.
-  Which part of Cluaiz's request is still inside the slot (request parsing, the chat template, tokenizing,
-  or the work after the last token) is not measured; the next step is to log when the slot is taken and
-  released for one request.
+  times 1.312 s: the slot is busy for about 0.19 s less per request than one request on its own takes.
+  The engine logs show where the difference is: the prompt cache. Ollama 0.40.16 runs llama-server, which
+  logs each task; Cluaiz logs llama.cpp's timings per answer. Medians over round 1 on the 8 GB machine:
+
+  | Engine | Model | Prompt tokens reused from the cache | Prompt tokens computed | Prompt time | Generation |
+  |---|---|---:|---:|---:|---:|
+  | Cluaiz | Qwen3 0.6B | 34 of 67 | 32 | 685 ms | 10 tokens, 613 ms |
+  | Ollama | Qwen3 0.6B | 50 | 12 | 379 ms | 15 tokens, 812 ms |
+  | Cluaiz | Qwen3 1.7B | 34 of 67 | 32 | 1,734 ms | 7 tokens, 852 ms |
+  | Ollama | Qwen3 1.7B | 49 | 15 | 1,137 ms | 14 tokens, 1,884 ms |
+
+  Prompt speed per token is the same (about 48 tokens a second on 0.6B), and the slot is never idle in
+  Cluaiz's log (the next request starts about 6 ms after the previous one ends). Ollama computes fewer
+  prompt tokens because it reuses about 15 more tokens of the previous prompt: Cluaiz reuses exactly 34
+  in every request, which looks like a fixed point where the prompts stop matching, while llama-server
+  reuses a varying 41 to 50. One request at a time Cluaiz's shorter answers make up for it; in a queue
+  every request pays the extra prompt work. Why Cluaiz's match stops at 34 tokens is the next thing to
+  check (compare the rendered prompts of two requests token by token).
 - The same 23 characters were 10 completion tokens in Cluaiz and 15 in Ollama (and 15 in llama.cpp in the
   Hostinger data) while taking the same time. Cluaiz's count is not a reporting slip: its engine log
   agrees (`prompt 66 tokens ... context 76`, so 10 tokens were generated). The engines produced different
@@ -235,8 +249,8 @@ an agent with a sandbox, one permission system) is rare; LocalAI dev builds come
 ## Not proven yet
 
 - llama.cpp on the Google machines; Docker since run 26; more than 4 requests at once since run 26.
-- Which part of a Cluaiz chat request keeps the slot busy (Angle 2: about 0.19 s per request that
-  Ollama overlaps with the previous request).
+- Why Cluaiz reuses only 34 prompt tokens from the cache where llama-server reuses 41 to 50 (Angle 2):
+  the likely cause of Ollama's lead with 4 requests at once.
 - Metal GPU speed on real Apple hardware after `07cf30fa` (the October M5 Air run,
   `test/mac/runs/2026-10-28-m5-air-16gb/`, ran on the CPU because the engine did not use Metal then).
 - Bigger models (3B and up) under the website load on 4 GB.
