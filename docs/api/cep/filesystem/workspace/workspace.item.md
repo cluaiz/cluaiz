@@ -94,7 +94,7 @@ flowchart TD
     P3 --> R["JSON-RPC result or explicit error"]
 ```
 
-## Parameters
+## Parameters, defaults and value effects
 
 | Parameter | Type | Required | Meaning, default and constraints |
 |---|---|---|---|
@@ -137,7 +137,7 @@ By its label.
 }
 ```
 
-## Response
+## Response and field meanings
 
 The item's fields as in `workspace.index`, plus `text`. An instruction file comes back as `kind: "instructions"` with `name` (its label), `path` and `text`.
 
@@ -162,7 +162,47 @@ curl --fail-with-body http://127.0.0.1:8000/v1/cep \
   --data-binary @request.json
 ```
 
-## Limits and related operations
+## Python
+
+Install `requests` in your client environment. This sends the first request above.
+
+```python
+import json
+import os
+import requests
+
+payload = {"jsonrpc": "2.0", "id": 1, "method": "workspace.item", "params": {"kind": "workflow", "name": "release"}}
+response = requests.post(
+    "http://127.0.0.1:8000/v1/cep",
+    headers={"Authorization": "Bearer " + os.environ["CLUAIZ_TOKEN"]},
+    json=payload, timeout=60,
+)
+response.raise_for_status()
+reply = response.json()
+if "error" in reply:
+    raise RuntimeError(json.dumps(reply["error"], ensure_ascii=False))
+print(reply["result"])
+```
+
+## JavaScript / Node.js
+
+Use an owner token only in a trusted client. Do not ship it inside a public web page.
+
+```javascript
+const payload = { jsonrpc: "2.0", id: 1, method: "workspace.item", params: { kind: "workflow", name: "release" } };
+const response = await fetch("http://127.0.0.1:8000/v1/cep", {
+  method: "POST",
+  headers: { "content-type": "application/json", authorization: `Bearer ${process.env.CLUAIZ_TOKEN}` },
+  body: JSON.stringify(payload),
+});
+const raw = await response.text();
+if (!response.ok) throw new Error(`HTTP ${response.status}: ${raw}`);
+const reply = JSON.parse(raw);
+if (reply.error) throw new Error(JSON.stringify(reply.error));
+console.log(reply.result);
+```
+
+## Limits, state and related operations
 
 A skill's other files (references, scripts) are not returned; read them with `fs.read` in the skill's folder.
 

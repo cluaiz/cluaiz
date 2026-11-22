@@ -115,7 +115,7 @@ flowchart TD
     P4 --> R["JSON-RPC result or explicit error"]
 ```
 
-## Parameters
+## Parameters, defaults and value effects
 
 | Parameter | Type | Required | Meaning, default and constraints |
 |---|---|---|---|
@@ -153,7 +153,7 @@ Any folder inside the caller's roots.
 }
 ```
 
-## Response
+## Response and field meanings
 
 - `root`: the project root.
 - `instructions`: `label` (as the model sees it, e.g. `.agents/AGENTS.md`), `path`, `chars` (size of the file without front matter). Farthest first; the user's `~/.cluaiz/AGENTS.md` comes first.
@@ -182,7 +182,47 @@ curl --fail-with-body http://127.0.0.1:8000/v1/cep \
   --data-binary @request.json
 ```
 
-## Limits and related operations
+## Python
+
+Install `requests` in your client environment. This sends the first request above.
+
+```python
+import json
+import os
+import requests
+
+payload = {"jsonrpc": "2.0", "id": 1, "method": "workspace.index", "params": {}}
+response = requests.post(
+    "http://127.0.0.1:8000/v1/cep",
+    headers={"Authorization": "Bearer " + os.environ["CLUAIZ_TOKEN"]},
+    json=payload, timeout=60,
+)
+response.raise_for_status()
+reply = response.json()
+if "error" in reply:
+    raise RuntimeError(json.dumps(reply["error"], ensure_ascii=False))
+print(reply["result"])
+```
+
+## JavaScript / Node.js
+
+Use an owner token only in a trusted client. Do not ship it inside a public web page.
+
+```javascript
+const payload = { jsonrpc: "2.0", id: 1, method: "workspace.index", params: {} };
+const response = await fetch("http://127.0.0.1:8000/v1/cep", {
+  method: "POST",
+  headers: { "content-type": "application/json", authorization: `Bearer ${process.env.CLUAIZ_TOKEN}` },
+  body: JSON.stringify(payload),
+});
+const raw = await response.text();
+if (!response.ok) throw new Error(`HTTP ${response.status}: ${raw}`);
+const reply = JSON.parse(raw);
+if (reply.error) throw new Error(JSON.stringify(reply.error));
+console.log(reply.result);
+```
+
+## Limits, state and related operations
 
 The agent's system prompt is built from these files within a share of the model's context; this method returns every item, not what fits. Installed skills of `~/.cluaiz/tools/skills` are listed too.
 

@@ -96,6 +96,8 @@ installed (policy `notes_match`); without one, by words.
 | Required scope | `read` |
 | Side effects | None |
 
+Send a Bearer token when API authentication is enabled. Authentication failures are HTTP 401; ordinary CEP method errors are JSON-RPC error objects, normally with HTTP 200. See [the common CEP contract](../../README.md).
+
 ## How it works
 
 1. The chat model: `chat_model`, else the chat model loaded now. When it is not loaded yet, the planner plans it on today's free memory and its VRAM and RAM are counted as taken.
@@ -105,14 +107,57 @@ installed (policy `notes_match`); without one, by words.
 
 The embedding model never pushes the chat model off the GPU: when the chat model needs the room, the idle embedding model is freed and loads again on its next use.
 
-## Parameters
+```mermaid
+flowchart TD
+    C["Client request"] --> A["Authentication, principal and typed params"]
+    A --> P0["Chat model: chat_model, else the loaded one; plan it when not loaded"]
+    P0 --> P1["Room left: free VRAM and RAM minus the chat model and the reserve"]
+    P1 --> P2["Each candidate: file size plus buffers; runs_on gpu, cpu or none"]
+    P2 --> P3["recommended: first on the GPU, else first on the CPU"]
+    P3 --> R["JSON-RPC result or explicit error"]
+```
 
-| Parameter | Type | Required | Meaning |
+## Parameters, defaults and value effects
+
+| Parameter | Type | Required | Meaning, default and constraints |
 |---|---|---|---|
 | `candidates` | array of `{id, bytes}` | No | Embedding models to place, in order of preference; `bytes` is the weight file's size. Without it: the installed embedding models |
 | `chat_model` | string | No | An installed chat model the embedding model has to run beside; without it, the loaded one (or none) |
 
-## Response
+Unknown parameters are rejected.
+
+## Request examples
+
+### 1. The App's own list of embedding models
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "models.embedding_room",
+  "params": {
+    "candidates": [
+      { "id": "embeddinggemma-300m-gguf-Q8_0", "bytes": 333590944 },
+      { "id": "qwen3-embedding-0.6b-gguf-Q8_0", "bytes": 639150592 }
+    ]
+  }
+}
+```
+
+### 2. The installed embedding models beside a chat model that is not loaded
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "models.embedding_room",
+  "params": {
+    "chat_model": "qwen3.8-4b-distill-gguf-Q4_K_M"
+  }
+}
+```
+
+## Response and field meanings
 
 `chat_model`: `id`, `loaded`, `placement`, `vram_gb`, `ram_gb` (null without a chat model); `gpu_left_gb`, `ram_left_gb`; `candidates`: `id`, `bytes`, `installed`, `needs_gb`, `runs_on`, and `recommended: true` on one of them (none when nothing fits).
 
@@ -120,9 +165,62 @@ The embedding model never pushes the chat model off the GPU: when the chat model
 
 | Code / boundary | Meaning | Recovery |
 |---|---|---|
+| HTTP 401 | Missing/invalid token while authentication is enabled | Supply the configured token |
+| `-32602` / typed params | Wrong JSON types or unknown fields | Correct the request against this page |
 | `-32004` / `model_not_found` | `chat_model` is not an installed model | Use an id from `models.list` |
 
-## Limits and related operations
+## cURL
+
+Save one valid request above as `request.json`:
+
+```bash
+curl --fail-with-body http://127.0.0.1:8000/v1/cep \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $CLUAIZ_TOKEN" \
+  --data-binary @request.json
+```
+
+## Python
+
+Install `requests` in your client environment. This sends the first request above.
+
+```python
+import json
+import os
+import requests
+
+payload = {"jsonrpc": "2.0", "id": 1, "method": "models.embedding_room", "params": {"candidates": [{"bytes": 333590944, "id": "embeddinggemma-300m-gguf-Q8_0"}, {"bytes": 639150592, "id": "qwen3-embedding-0.6b-gguf-Q8_0"}]}}
+response = requests.post(
+    "http://127.0.0.1:8000/v1/cep",
+    headers={"Authorization": "Bearer " + os.environ["CLUAIZ_TOKEN"]},
+    json=payload, timeout=60,
+)
+response.raise_for_status()
+reply = response.json()
+if "error" in reply:
+    raise RuntimeError(json.dumps(reply["error"], ensure_ascii=False))
+print(reply["result"])
+```
+
+## JavaScript / Node.js
+
+Use an owner token only in a trusted client. Do not ship it inside a public web page.
+
+```javascript
+const payload = { jsonrpc: "2.0", id: 1, method: "models.embedding_room", params: { candidates: [{ bytes: 333590944, id: "embeddinggemma-300m-gguf-Q8_0" }, { bytes: 639150592, id: "qwen3-embedding-0.6b-gguf-Q8_0" }] } };
+const response = await fetch("http://127.0.0.1:8000/v1/cep", {
+  method: "POST",
+  headers: { "content-type": "application/json", authorization: `Bearer ${process.env.CLUAIZ_TOKEN}` },
+  body: JSON.stringify(payload),
+});
+const raw = await response.text();
+if (!response.ok) throw new Error(`HTTP ${response.status}: ${raw}`);
+const reply = JSON.parse(raw);
+if (reply.error) throw new Error(JSON.stringify(reply.error));
+console.log(reply.result);
+```
+
+## Limits, state and related operations
 
 An estimate from file sizes, not a load: the planner decides again when the model loads. Only the
 first GPU is counted. Checked on a 4 GB laptop GPU with Qwen3.8-4B (split between GPU and RAM)

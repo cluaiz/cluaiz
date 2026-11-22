@@ -83,13 +83,15 @@ flowchart TD
     I -- no --> D["Delete its download folder"] --> F["removed: folder"]
 ```
 
-## Parameters
+## Parameters, defaults and value effects
 
-| Parameter | Type | Required | Meaning |
+| Parameter | Type | Required | Meaning, default and constraints |
 |---|---|---|---|
-| `model` | string | Yes | The same reference given to `models.download` (catalog id, or `owner/name[:QUANT]`) |
+| `model` | string | Yes | The same reference given to `models.download` (catalog id, or `owner/name[:QUANT]`). Leading and trailing spaces are removed; at most 512 characters |
 
-## Request example
+Unknown parameters are rejected.
+
+## Request examples
 
 ```json
 {
@@ -102,9 +104,9 @@ flowchart TD
 }
 ```
 
-## Response
+## Response and field meanings
 
-`removed` is the folder deleted, or `null` when nothing was left or the model is installed.
+`model` is the reference as sent (trimmed). `removed` is the path of the folder deleted, or `null` when nothing was left or the model is installed or already on disk.
 
 ```json
 {
@@ -119,10 +121,77 @@ flowchart TD
 
 ## Errors and recovery
 
-| Code / type | Meaning | Recovery |
+| Code / boundary | Meaning | Recovery |
 |---|---|---|
+| HTTP 401 | Missing/invalid token while authentication is enabled | Supply the configured token |
+| `-32002` / principal | The caller has no `write` scope | Use a caller with `write` |
 | `-32602` / `invalid_params` | `model` is empty, too long or has control characters | Send the reference used for `models.download` |
 | `-32005` / `provider_model` | The model is a provider's | Providers have nothing to download |
 | `-32005` / `pull_running` | The download is still running | Stop it with `tasks.cancel`, then call again |
 | `-32010` / `discard_failed` | Resolving failed, the folder holds an installed model, or a file is in use | Read the message; use `models.remove` for an installed model |
 
+## cURL
+
+Save one valid request above as `request.json`:
+
+```bash
+curl --fail-with-body http://127.0.0.1:8000/v1/cep \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $CLUAIZ_TOKEN" \
+  --data-binary @request.json
+```
+
+## Python
+
+Install `requests` in your client environment. This sends the first request above.
+
+```python
+import json
+import os
+import requests
+
+payload = {"jsonrpc": "2.0", "id": 1, "method": "models.discard", "params": {"model": "owner/name-GGUF:Q4_K_M"}}
+response = requests.post(
+    "http://127.0.0.1:8000/v1/cep",
+    headers={"Authorization": "Bearer " + os.environ["CLUAIZ_TOKEN"]},
+    json=payload, timeout=60,
+)
+response.raise_for_status()
+reply = response.json()
+if "error" in reply:
+    raise RuntimeError(json.dumps(reply["error"], ensure_ascii=False))
+print(reply["result"])
+```
+
+## JavaScript / Node.js
+
+Use an owner token only in a trusted client. Do not ship it inside a public web page.
+
+```javascript
+const payload = { jsonrpc: "2.0", id: 1, method: "models.discard", params: { model: "owner/name-GGUF:Q4_K_M" } };
+const response = await fetch("http://127.0.0.1:8000/v1/cep", {
+  method: "POST",
+  headers: { "content-type": "application/json", authorization: `Bearer ${process.env.CLUAIZ_TOKEN}` },
+  body: JSON.stringify(payload),
+});
+const raw = await response.text();
+if (!response.ok) throw new Error(`HTTP ${response.status}: ${raw}`);
+const reply = JSON.parse(raw);
+if (reply.error) throw new Error(JSON.stringify(reply.error));
+console.log(reply.result);
+```
+
+## Limits, state and related operations
+
+Deleting cannot be undone; calling it again when nothing is left answers `"removed": null`. Resolving the reference works as in `models.download`, so a Hugging Face reference may need the network to find its files.
+
+- [`models.download`](models.download.md): start or continue a download.
+- [`models.remove`](models.remove.md): delete an installed model.
+- [`tasks.cancel`](../../system/tasks/tasks.cancel.md): stop a running download first.
+
+## Implementation reference
+
+- [api/src/cep/methods/models.rs](../../../../../api/src/cep/methods/models.rs)
+- [api/src/handlers/models.rs](../../../../../api/src/handlers/models.rs)
+- [engine/models/src/fetcher/resolve.rs](../../../../../engine/models/src/fetcher/resolve.rs)
+- [engine/models/src/fetcher/mod.rs](../../../../../engine/models/src/fetcher/mod.rs)

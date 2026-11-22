@@ -156,6 +156,24 @@ if result["update_available"]:
     print(f"Cluaiz {result['latest']['version']} is out (this is {result['current']}): run `cluaiz self update`")
 ```
 
+## JavaScript / Node.js
+
+Use an owner token only in a trusted client. Do not ship it inside a public web page.
+
+```javascript
+const payload = { jsonrpc: "2.0", id: 1, method: "system.update_check", params: {} };
+const response = await fetch("http://127.0.0.1:8000/v1/cep", {
+  method: "POST",
+  headers: { "content-type": "application/json", authorization: `Bearer ${process.env.CLUAIZ_TOKEN}` },
+  body: JSON.stringify(payload),
+});
+const raw = await response.text();
+if (!response.ok) throw new Error(`HTTP ${response.status}: ${raw}`);
+const reply = JSON.parse(raw);
+if (reply.error) throw new Error(JSON.stringify(reply.error));
+console.log(reply.result);
+```
+
 ## Limits, state and related operations
 
 There is no update or uninstall method in the API, on purpose. A running server cannot replace its own files (on Windows they are locked), and a remote caller must not be able to replace or delete the Engine. Update and uninstall are terminal commands on the machine itself:

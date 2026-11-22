@@ -83,9 +83,9 @@ flowchart TD
     P3 --> R["JSON-RPC result or explicit error"]
 ```
 
-## Parameters
+## Parameters, defaults and value effects
 
-| Parameter | Type | Required | Meaning and constraints |
+| Parameter | Type | Required | Meaning, default and constraints |
 |---|---|---|---|
 | `id` | string | Yes | The prompt's id from `prompts.list`. Resetting a prompt that has no user text changes nothing and returns the default. |
 
@@ -108,7 +108,7 @@ Back to the default tools folder line.
 }
 ```
 
-## Response
+## Response and field meanings
 
 `prompt` is the default, with `overridden: false`.
 
@@ -133,7 +133,47 @@ curl --fail-with-body http://127.0.0.1:8000/v1/cep \
   --data-binary @request.json
 ```
 
-## Limits and related operations
+## Python
+
+Install `requests` in your client environment. This sends the first request above.
+
+```python
+import json
+import os
+import requests
+
+payload = {"jsonrpc": "2.0", "id": 1, "method": "prompts.reset", "params": {"id": "tools.workspace"}}
+response = requests.post(
+    "http://127.0.0.1:8000/v1/cep",
+    headers={"Authorization": "Bearer " + os.environ["CLUAIZ_TOKEN"]},
+    json=payload, timeout=60,
+)
+response.raise_for_status()
+reply = response.json()
+if "error" in reply:
+    raise RuntimeError(json.dumps(reply["error"], ensure_ascii=False))
+print(reply["result"])
+```
+
+## JavaScript / Node.js
+
+Use an owner token only in a trusted client. Do not ship it inside a public web page.
+
+```javascript
+const payload = { jsonrpc: "2.0", id: 1, method: "prompts.reset", params: { id: "tools.workspace" } };
+const response = await fetch("http://127.0.0.1:8000/v1/cep", {
+  method: "POST",
+  headers: { "content-type": "application/json", authorization: `Bearer ${process.env.CLUAIZ_TOKEN}` },
+  body: JSON.stringify(payload),
+});
+const raw = await response.text();
+if (!response.ok) throw new Error(`HTTP ${response.status}: ${raw}`);
+const reply = JSON.parse(raw);
+if (reply.error) throw new Error(JSON.stringify(reply.error));
+console.log(reply.result);
+```
+
+## Limits, state and related operations
 
 Only one prompt per call. The history keeps the last 20 texts of each prompt.
 

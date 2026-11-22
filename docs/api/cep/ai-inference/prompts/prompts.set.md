@@ -94,9 +94,9 @@ flowchart TD
     P4 --> R["JSON-RPC result or explicit error"]
 ```
 
-## Parameters
+## Parameters, defaults and value effects
 
-| Parameter | Type | Required | Meaning and constraints |
+| Parameter | Type | Required | Meaning, default and constraints |
 |---|---|---|---|
 | `id` | string | Yes | The prompt's id from `prompts.list`. |
 | `text` | string | Yes | The new text, 1 to 20000 characters after trimming. `{{name}}` is filled in for the prompt's declared `variables`; any other `{{...}}` stays as written. Line ends are stored as `\n`. |
@@ -147,7 +147,7 @@ The terminal agent answers in Hindi from its next start.
 
 To undo a change, use `prompts.reset` (back to the default) or `prompts.history` and send the old text again.
 
-## Response
+## Response and field meanings
 
 `prompt` is the prompt as now in use, with `overridden: true`.
 
@@ -173,7 +173,47 @@ curl --fail-with-body http://127.0.0.1:8000/v1/cep \
   --data-binary @request.json
 ```
 
-## Limits and related operations
+## Python
+
+Install `requests` in your client environment. This sends the first request above.
+
+```python
+import json
+import os
+import requests
+
+payload = {"jsonrpc": "2.0", "id": 1, "method": "prompts.set", "params": {"id": "tools.workspace", "text": "Work only inside {{folder}}."}}
+response = requests.post(
+    "http://127.0.0.1:8000/v1/cep",
+    headers={"Authorization": "Bearer " + os.environ["CLUAIZ_TOKEN"]},
+    json=payload, timeout=60,
+)
+response.raise_for_status()
+reply = response.json()
+if "error" in reply:
+    raise RuntimeError(json.dumps(reply["error"], ensure_ascii=False))
+print(reply["result"])
+```
+
+## JavaScript / Node.js
+
+Use an owner token only in a trusted client. Do not ship it inside a public web page.
+
+```javascript
+const payload = { jsonrpc: "2.0", id: 1, method: "prompts.set", params: { id: "tools.workspace", text: "Work only inside {{folder}}." } };
+const response = await fetch("http://127.0.0.1:8000/v1/cep", {
+  method: "POST",
+  headers: { "content-type": "application/json", authorization: `Bearer ${process.env.CLUAIZ_TOKEN}` },
+  body: JSON.stringify(payload),
+});
+const raw = await response.text();
+if (!response.ok) throw new Error(`HTTP ${response.status}: ${raw}`);
+const reply = JSON.parse(raw);
+if (reply.error) throw new Error(JSON.stringify(reply.error));
+console.log(reply.result);
+```
+
+## Limits, state and related operations
 
 The terminal agent reads its prompts when it starts and when it builds a request; an agent already running keeps the system prompt it started with. Writing needs the `write` scope.
 

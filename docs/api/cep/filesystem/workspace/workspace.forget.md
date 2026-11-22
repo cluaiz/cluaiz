@@ -70,7 +70,16 @@ Send a Bearer token when API authentication is enabled. Authentication failures 
 2. Find the live fact named `name` (the name as listed by `workspace.memory`)
 3. Delete its file
 
-## Parameters
+```mermaid
+flowchart TD
+    C["Client request"] --> A["Authentication, principal and typed params"]
+    A --> P0["Resolve path; it and .agents/memory inside the caller's roots?"]
+    P0 --> P1["Find the live fact by name"]
+    P1 --> P2["Delete its file"]
+    P2 --> R["JSON-RPC result or explicit error"]
+```
+
+## Parameters, defaults and value effects
 
 | Parameter | Type | Required | Meaning, default and constraints |
 |---|---|---|---|
@@ -90,7 +99,7 @@ Unknown parameters are rejected.
 }
 ```
 
-## Response
+## Response and field meanings
 
 `forgotten`: the name; `path`: the deleted file.
 
@@ -102,7 +111,58 @@ Unknown parameters are rejected.
 | `-32002` / principal | The folder is outside the caller's roots | Use an authorized caller or a folder inside its roots |
 | `-32004` / `fact_not_found` | No live fact of this name | Read the names with `workspace.memory` |
 
-## Limits and related operations
+## cURL
+
+Save one valid request above as `request.json`:
+
+```bash
+curl --fail-with-body http://127.0.0.1:8000/v1/cep \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $CLUAIZ_TOKEN" \
+  --data-binary @request.json
+```
+
+## Python
+
+Install `requests` in your client environment. This sends the first request above.
+
+```python
+import json
+import os
+import requests
+
+payload = {"jsonrpc": "2.0", "id": 1, "method": "workspace.forget", "params": {"name": "test-command"}}
+response = requests.post(
+    "http://127.0.0.1:8000/v1/cep",
+    headers={"Authorization": "Bearer " + os.environ["CLUAIZ_TOKEN"]},
+    json=payload, timeout=60,
+)
+response.raise_for_status()
+reply = response.json()
+if "error" in reply:
+    raise RuntimeError(json.dumps(reply["error"], ensure_ascii=False))
+print(reply["result"])
+```
+
+## JavaScript / Node.js
+
+Use an owner token only in a trusted client. Do not ship it inside a public web page.
+
+```javascript
+const payload = { jsonrpc: "2.0", id: 1, method: "workspace.forget", params: { name: "test-command" } };
+const response = await fetch("http://127.0.0.1:8000/v1/cep", {
+  method: "POST",
+  headers: { "content-type": "application/json", authorization: `Bearer ${process.env.CLUAIZ_TOKEN}` },
+  body: JSON.stringify(payload),
+});
+const raw = await response.text();
+if (!response.ok) throw new Error(`HTTP ${response.status}: ${raw}`);
+const reply = JSON.parse(raw);
+if (reply.error) throw new Error(JSON.stringify(reply.error));
+console.log(reply.result);
+```
+
+## Limits, state and related operations
 
 There is no undo in the Engine; in a git project the file's history is in git.
 
