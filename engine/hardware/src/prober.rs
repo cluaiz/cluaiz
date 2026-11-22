@@ -17,6 +17,13 @@ static BACKEND_GPUS: std::sync::OnceLock<fn() -> Vec<GpuSubsystem>> = std::sync:
 
 pub struct HardwareProber;
 
+/// One NVIDIA GPU's live reading (`live_snapshot`); `None` = the query failed
+struct LiveGpu {
+    index: u32,
+    vram_free: Option<u64>,
+    only_cluaiz: Option<bool>,
+}
+
 struct QuickFacts {
     ram_total_bytes: u64,
     logical_threads: usize,
@@ -147,57 +154,61 @@ impl HardwareProber {
     }
 
     fn apply_live_memory(info: &mut SystemInfo) {
-        let (ram_free, vram_free, only_cluaiz) = Self::live_snapshot();
-        Self::apply_memory_snapshot(info, (ram_free, vram_free));
-        if let Some(gpu) = info.gpus.first_mut() {
-            gpu.used_only_by_cluaiz = only_cluaiz;
-        }
+        let (ram_free, gpus) = Self::live_snapshot();
+        Self::apply_memory_snapshot(info, ram_free, &gpus);
     }
 
-    fn apply_memory_snapshot(info: &mut SystemInfo, snapshot: (Option<u64>, Option<u64>)) {
-        let (ram_free, vram_free) = snapshot;
+    /// Writes the live numbers into the snapshot: free RAM, and for each NVIDIA GPU (matched by its
+    /// NVML index) its free VRAM and whether only this process uses it.
+    fn apply_memory_snapshot(info: &mut SystemInfo, ram_free: Option<u64>, gpus: &[LiveGpu]) {
         if let Some(ram_free) = ram_free {
             info.memory.available_bytes = ram_free;
             info.memory.available_gb = cluaiz_core::bytes_to_gib(ram_free);
         }
-        // Zero is a valid exhausted-memory result. Only an unavailable query keeps the snapshot.
-        if let (Some(gpu), Some(vram_free)) = (info.gpus.first_mut(), vram_free) {
-            gpu.vram_free_bytes = vram_free;
-            gpu.vram_available_gb = cluaiz_core::bytes_to_gib(vram_free);
+        for live in gpus {
+            let Some(gpu) = info.gpus.iter_mut().find(|gpu| gpu.vendor == "NVIDIA" && gpu.index == live.index) else {
+                continue;
+            };
+            // Zero is a valid exhausted-memory result. Only an unavailable query keeps the snapshot.
+            if let Some(vram_free) = live.vram_free {
+                gpu.vram_free_bytes = vram_free;
+                gpu.vram_available_gb = cluaiz_core::bytes_to_gib(vram_free);
+            }
+            gpu.used_only_by_cluaiz = live.only_cluaiz;
         }
     }
 
-    /// Live query of available RAM and VRAM (fast <5ms path).
+    /// Live query of available RAM and of GPU 0's free VRAM (fast <5ms path).
     pub fn probe_live_memory() -> (u64, u64) {
-        let (ram, vram) = Self::live_memory_snapshot();
+        let (ram, gpus) = Self::live_snapshot();
+        let vram = gpus.iter().find(|gpu| gpu.index == 0).and_then(|gpu| gpu.vram_free);
         (ram.unwrap_or(0), vram.unwrap_or(0))
     }
 
-    fn live_memory_snapshot() -> (Option<u64>, Option<u64>) {
-        let (ram_free, vram_free, _) = Self::live_snapshot();
-        (ram_free, vram_free)
-    }
-
-    /// Free RAM, free VRAM of the first GPU and whether only this process uses that GPU, in one NVML session
-    fn live_snapshot() -> (Option<u64>, Option<u64>, Option<bool>) {
+    /// Free RAM, and for every NVIDIA GPU its free VRAM and whether only this process uses it, in one
+    /// NVML session
+    fn live_snapshot() -> (Option<u64>, Vec<LiveGpu>) {
         let mut sys = System::new();
         sys.refresh_memory();
         let ram_free = (sys.total_memory() > 0).then(|| Self::available_ram(&sys));
 
-        let mut vram_free = None;
-        let mut only_cluaiz = None;
+        #[allow(unused_mut)]
+        let mut gpus = Vec::new();
         #[cfg(not(target_os = "macos"))]
         {
             if let Ok(nvml) = nvml_wrapper::Nvml::init() {
-                if let Ok(device) = nvml.device_by_index(0) {
-                    if let Ok(mem) = device.memory_info() {
-                        vram_free = Some(mem.free);
+                for index in 0..nvml.device_count().unwrap_or(0) {
+                    if let Ok(device) = nvml.device_by_index(index) {
+                        gpus.push(LiveGpu {
+                            index,
+                            vram_free: device.memory_info().ok().map(|mem| mem.free),
+                            only_cluaiz: Self::used_only_by_this_process(&device),
+                        });
                     }
-                    only_cluaiz = Self::used_only_by_this_process(&device);
                 }
             }
         }
-        (ram_free, vram_free, only_cluaiz)
+        (ram_free, gpus)
     }
 
     /// True when the GPU drives no display and runs no other process, so nothing else can take its
@@ -667,15 +678,37 @@ mod live_memory_tests {
         let mut info = SystemInfo::default();
         info.memory.available_bytes = cluaiz_core::GIB;
         info.memory.available_gb = 1.0;
-        info.gpus.push(crate::GpuSubsystem { vram_free_bytes: cluaiz_core::GIB, vram_available_gb: 1.0, ..Default::default() });
-        HardwareProber::apply_memory_snapshot(&mut info, (None, None));
+        info.gpus.push(crate::GpuSubsystem { vendor: "NVIDIA".into(), vram_free_bytes: cluaiz_core::GIB, vram_available_gb: 1.0, ..Default::default() });
+        let gpu0 = |vram_free| [LiveGpu { index: 0, vram_free, only_cluaiz: None }];
+        HardwareProber::apply_memory_snapshot(&mut info, None, &gpu0(None));
         assert_eq!(info.memory.available_gb, 1.0);
         assert_eq!(info.gpus[0].vram_available_gb, 1.0);
-        HardwareProber::apply_memory_snapshot(&mut info, (Some(0), Some(0)));
+        HardwareProber::apply_memory_snapshot(&mut info, Some(0), &gpu0(Some(0)));
         assert_eq!((info.memory.available_bytes, info.memory.available_gb), (0, 0.0));
         assert_eq!((info.gpus[0].vram_free_bytes, info.gpus[0].vram_available_gb), (0, 0.0));
-        HardwareProber::apply_memory_snapshot(&mut info, (Some(cluaiz_core::GIB), Some(cluaiz_core::GIB)));
+        HardwareProber::apply_memory_snapshot(&mut info, Some(cluaiz_core::GIB), &gpu0(Some(cluaiz_core::GIB)));
         assert_eq!((info.memory.available_gb, info.gpus[0].vram_available_gb), (1.0, 1.0));
+    }
+
+    #[test]
+    fn every_nvidia_gpu_gets_its_own_live_free_vram() {
+        let gib = cluaiz_core::GIB;
+        let mut info = SystemInfo::default();
+        for index in 0..2 {
+            info.gpus.push(crate::GpuSubsystem { index, vendor: "NVIDIA".into(), vram_free_bytes: 8 * gib, ..Default::default() });
+        }
+        let live = [
+            LiveGpu { index: 1, vram_free: Some(3 * gib), only_cluaiz: Some(true) },
+            LiveGpu { index: 0, vram_free: Some(5 * gib), only_cluaiz: Some(false) },
+        ];
+        HardwareProber::apply_memory_snapshot(&mut info, None, &live);
+        assert_eq!((info.gpus[0].vram_free_bytes, info.gpus[0].used_only_by_cluaiz), (5 * gib, Some(false)));
+        assert_eq!((info.gpus[1].vram_free_bytes, info.gpus[1].used_only_by_cluaiz), (3 * gib, Some(true)));
+        // A backend GPU (Metal, Vulkan) has no NVML reading and keeps its numbers
+        let mut metal = SystemInfo::default();
+        metal.gpus.push(crate::GpuSubsystem { vendor: "Apple".into(), vram_free_bytes: gib, ..Default::default() });
+        HardwareProber::apply_memory_snapshot(&mut metal, None, &live);
+        assert_eq!(metal.gpus[0].vram_free_bytes, gib);
     }
 
     #[test]

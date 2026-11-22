@@ -32,16 +32,16 @@ graph TD
     Save --> Ret
     Ret --> Backend{"NVML found no GPU?"}
     Backend -->|"yes"| BG["BACKEND_GPUS callback<br/>(llama.cpp Metal / Vulkan devices)"]
-    Live --> Snap["live_snapshot(): sysinfo RAM +<br/>NVML GPU 0 free VRAM + used_only_by_cluaiz"]
+    Live --> Snap["live_snapshot(): sysinfo RAM +<br/>NVML free VRAM + used_only_by_cluaiz per NVIDIA GPU"]
     Cal["cluaiz calibrate"] --> Deep
 ```
 
 ### What the quick facts are
 
 At each process start the saved profile is compared with facts read in milliseconds
-(`quick_facts`, `prober.rs:87`): total RAM, logical CPU threads, and each NVIDIA GPU's name and total
+(`quick_facts`, `prober.rs:94`): total RAM, logical CPU threads, and each NVIDIA GPU's name and total
 VRAM. Any of them changed (RAM by more than 1/32, to allow small differences between boots) means
-the deep probe runs again (`hardware_changed`, `prober.rs:107`). A fact that reads as zero is not a
+the deep probe runs again (`hardware_changed`, `prober.rs:114`). A fact that reads as zero is not a
 change.
 
 ## API contract
@@ -62,7 +62,7 @@ change.
 | Field | Used for a decision | Notes |
 |---|---|---|
 | `memory.total_bytes`, `available_bytes`, `is_unified_memory` | yes, the planner and load checks | macOS free RAM computed as Activity Monitor does (below) |
-| `gpus[*].vram_total_bytes`, `vram_free_bytes`, `integrated`, `used_only_by_cluaiz` | yes, the planner | only GPU 0 gets a live free-VRAM reading |
+| `gpus[*].vram_total_bytes`, `vram_free_bytes`, `integrated`, `used_only_by_cluaiz` | yes, the planner | every NVIDIA GPU gets a live free-VRAM reading (since 2026-11-22; before, only GPU 0); the planner itself still plans on `gpus[0]` (`engine/plan`) |
 | `cpu.physical_cores`, `logical_threads` | yes (thread counts, change detection) | |
 | `cpu.l1/l2/l3_cache_kb`, `isa_features`, `base/boost_clock_mhz`, `gflops_fp32` | no, reported in JSON only | `boost_clock_mhz` is `base x 1.25`, an estimate, and `gflops_fp32` is built on it |
 | `memory.bandwidth_gbps`, `memory_latency_ns`, `speed_mts` | no, reported only | bandwidth and latency from a 64 MB read loop and a pointer chase (`benchmark_memory`); `speed_mts` on Windows from `Win32_PhysicalMemory` (the slowest module's `ConfiguredClockSpeed`, else `Speed`), 0 on Linux and macOS |
@@ -76,8 +76,10 @@ change.
   - **Cache layers:** an in-process `RwLock<Option<SystemInfo>>`, then `hardware_profile.json` in the
     home's `config/`. The deep probe (memory benchmark, PowerShell/WMI calls) takes
     seconds, so it runs once per machine, not per process.
-  - **Live memory:** `live_snapshot` opens one NVML session and reads GPU 0's free memory and whether
-    any other process or a display uses it (`used_only_by_this_process`: no active display, not a
+  - **Live memory:** `live_snapshot` opens one NVML session and reads, for every NVIDIA GPU, its free
+    memory and whether any other process or a display uses it; `apply_memory_snapshot` writes each
+    reading into the GPU with the same NVML index (a Metal or Vulkan backend GPU has no NVML reading
+    and keeps its numbers) (`used_only_by_this_process`: no active display, not a
     Windows WDDM device, every compute and graphics process is this one).
   - **Zero is a real reading:** `apply_memory_snapshot` writes 0 free bytes when the OS says 0, and
     keeps the old number only when the query failed (test below). Before this, an exhausted GPU kept
@@ -85,7 +87,7 @@ change.
   - **macOS free RAM:** `macos_available_ram` = total minus app memory (internal pages not purgeable),
     wired and compressor pages, from `host_statistics64`. Why: sysinfo 0.30 reported 0.00 GB free on a
     16 GB M5 Mac once memory was compressed, and the planner refused a 2.9 GB model (comment at
-    `prober.rs:671`, test `macos_free_ram_is_total_minus_app_wired_and_compressed`).
+    `prober.rs:642`, test `macos_free_ram_is_total_minus_app_wired_and_compressed`).
   - **Windows Server names:** sysinfo calls every build from 22000 "Windows 11"; for a server the long
     product name and kernel build are used instead (`os_name_and_version`).
 - `src/types.rs`: the serde types. `used_only_by_cluaiz` is `#[serde(skip)]` (changes all the time);
@@ -112,6 +114,7 @@ numbers come from CEP `system.live`.
 | Test (`cargo test -p cluaiz-hw`) | What it proves |
 |---|---|
 | `test_zero_free_memory_is_not_replaced_by_stale_startup_values` | a failed query keeps the old number; a reading of 0 is written as 0 |
+| `every_nvidia_gpu_gets_its_own_live_free_vram` | two NVIDIA GPUs each get their own free VRAM and `used_only_by_cluaiz`, matched by index, in any order; a non-NVIDIA GPU keeps its numbers |
 | `saved_profile_is_stale_after_ram_cpu_or_gpu_changes` | same facts (RAM 100 MB less) = not stale; zeros = not stale; RAM, threads or GPU list changed = stale |
 | `macos_free_ram_is_total_minus_app_wired_and_compressed` | the Activity Monitor formula on the M5 numbers; more in use than the total gives 0, not an overflow |
 | `drive_type_is_read_per_disk` | each sysinfo disk kind maps to its own label (a unit check; which kind sysinfo reports for a disk is sysinfo's) |
@@ -120,7 +123,7 @@ numbers come from CEP `system.live`.
 | `integrated_backend_gpu_shares_the_ram` | an integrated GPU marks the memory as unified |
 | `this_machine_matches_a_fresh_probe` (ignored) | a fresh deep probe on this machine is not seen as a change; run with `--ignored` |
 
-Result on 2026-11-22 (Windows 11): 7 passed, 1 ignored. On that machine `Get-CimInstance Win32_PhysicalMemory` gave two modules with `Speed` 4800 and `ConfiguredClockSpeed` 4800.
+Result on 2026-11-22 (Windows 11): 8 passed, 1 ignored. On that machine `Get-CimInstance Win32_PhysicalMemory` gave two modules with `Speed` 4800 and `ConfiguredClockSpeed` 4800.
 
 Real machines: every run in [`test/cloud/BENCHMARKS.md`](../../test/cloud/BENCHMARKS.md) loads models
 through these numbers. The macOS RAM formula and the backend GPUs come from the M5 Mac run
@@ -150,6 +153,6 @@ through Vulkan on Windows.
 
 | Item | Why it matters | Needs |
 |---|---|---|
-| Only GPU 0 gets a live free-VRAM reading | a second NVIDIA GPU is planned from its start-up number | read every device in `live_snapshot` |
+| The multi-GPU reading is checked by a unit test only | the dev machine has one GPU; two real NVIDIA GPUs were not tested | a run on a machine with two NVIDIA GPUs |
 | `drive_type` does not say NVMe or SATA | a reader cannot tell the bus | `Get-PhysicalDisk` `BusType` per volume |
 | Reported-only estimates (`boost_clock_mhz`, `gflops_fp32`, `estimated_vram_bandwidth_gbps`) | they are marked as estimates in the code (`types.rs`) and here, but the JSON field names do not say so | rename them in a versioned API change, or remove them (the App may read them) |
