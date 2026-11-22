@@ -51,7 +51,7 @@ params:
     type: "Integer"
     req: false
     default: "null"
-    allowed: "$\ge 1$"
+    allowed: "$\\ge 1$"
     desc: "OpenAI's newer name for max_tokens; used when max_tokens is not sent."
   - name: "think_mode"
     type: "String / Integer"
