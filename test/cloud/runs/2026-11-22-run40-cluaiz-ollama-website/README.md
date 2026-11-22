@@ -115,9 +115,11 @@ Reading:
   Which part of Cluaiz's request is still inside the slot (request parsing, the chat template, tokenizing,
   or the work after the last token) is not measured; the next step is to log when the slot is taken and
   released for one request.
-- The same 23 characters were counted as 10 completion tokens by Cluaiz and 15 by Ollama (and 15 by
-  llama.cpp in the Hostinger data) while taking the same time, so Cluaiz's `completion_tokens` for this
-  answer looks low; not checked against the tokenizer yet.
+- The same 23 characters were 10 completion tokens in Cluaiz and 15 in Ollama (and 15 in llama.cpp in the
+  Hostinger data) while taking the same time. Cluaiz's count is not a reporting slip: its engine log
+  agrees (`prompt 66 tokens ... context 76`, so 10 tokens were generated). The engines produced different
+  token sequences for the same text; both constrain the answer with a JSON grammar, which can pick
+  shorter or longer tokens for the same characters. Not checked token by token.
 - The 4 GB machine was slower than the 8 GB one for both engines (same CPU type), which points at memory
   pressure or the 20-user website taking a larger share; not separated.
 
