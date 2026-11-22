@@ -22,6 +22,11 @@ tokio = { version = "1", features = ["macros", "rt-multi-thread", "sync"] }
 tracing = "0.1"
 uuid = { version = "1", features = ["v4"] }
 
+# Same as api/Cargo.toml: rfd's Linux dialog needs libwayland-client; with dlopen it is loaded only when a
+# dialog opens, so this crate builds on CI runners and servers without desktop libraries
+[target.'cfg(target_os = "linux")'.dependencies]
+wayland-sys = { version = "0.31", features = ["dlopen"] }
+
 [[test]]
 name = "roots_contract"
 path = "roots_contract.rs"

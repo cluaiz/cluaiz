@@ -68,5 +68,5 @@ The live journeys were not run on 2026-11-21.
 
 | Item | Why it matters | Needs |
 |---|---|---|
-| These contracts are not in any workflow | they ran only by hand | a CI job (they need no CUDA build) |
+| No passing CI run yet | `.github/workflows/rust-tests.yml` runs these contracts since 2026-11-21; its first three runs failed here because `rfd` pulled in `wayland-sys`, which needs libwayland-client on the Ubuntu runner. `Cargo.toml` now turns on `wayland-sys`'s `dlopen` feature, as `api/Cargo.toml` does | one green run of the workflow after the push |
 | Live journeys have no recorded run | the HTTP path of these methods has no checked-in result | one run saved under `test/cloud/runs/` |
