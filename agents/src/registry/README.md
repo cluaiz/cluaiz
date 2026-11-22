@@ -73,7 +73,10 @@ flowchart LR
     3. `strict`: asked unless the tool is set to `always_allow`.
     4. `sandboxed` (any other value): the tool's own `always_allow` / `require_approval` first;
        then an MCP server is asked (privilege boundary); `manual` or `confirm_destructive`
-       execution is asked; a tool that declares no capabilities is asked; otherwise asked when a
+       execution is asked; a tool that declares no capabilities is asked, except a WebAssembly plugin
+       (it runs closed in and reaches only what its permissions allow, so a math plugin with none runs
+       without asking; tested by `an_undeclared_webassembly_plugin_runs_without_asking_in_sandboxed_mode`);
+       otherwise asked when a
        capability looks like exec, write, net, shell, cmd or terminal.
   - **`read_only_trusted`:** an MCP call may skip that approval only when the user trusts this
     server's annotations, the tool is on `inherit`, the mode is not `strict`, the function is

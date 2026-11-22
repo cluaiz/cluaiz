@@ -220,9 +220,11 @@ impl ToolEntry {
                 } else {
                     &self.permissions
                 };
-                // Undeclared tools = approval by default
+                // Undeclared tools = approval by default. Not a WebAssembly plugin: it runs closed in
+                // and gets only what its package's permissions allow (the network only when that
+                // permission is on), so with nothing declared it can reach nothing to ask about
                 if caps.is_empty() {
-                    return true;
+                    return !self.is_wasm_plugin();
                 }
                 // Sensitive capabilities require approval
                 caps.iter().any(|c| {
@@ -314,6 +316,17 @@ mod tests {
         let plain = ToolEntry { category: "skill".into(), ..Default::default() };
         assert!(!plain.requires_approval("full_access"));
         std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn an_undeclared_webassembly_plugin_runs_without_asking_in_sandboxed_mode() {
+        let wasm = ToolEntry { id: "math".into(), category: "plugin".into(), binary_path: Some("math.wasm".into()), ..Default::default() };
+        assert!(!wasm.requires_approval("sandboxed"), "it can reach nothing it did not declare");
+        assert!(wasm.requires_approval("strict"), "strict still asks");
+        let native = ToolEntry { binary_path: Some("math.exe".into()), ..wasm.clone() };
+        assert!(native.requires_approval("sandboxed"), "a native plugin is a normal program");
+        let manual = ToolEntry { execution_mode: ExecutionMode::Manual, ..wasm };
+        assert!(manual.requires_approval("sandboxed"), "the tool's own manual mode still asks");
     }
 
     #[test]

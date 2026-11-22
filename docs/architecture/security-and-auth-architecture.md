@@ -126,7 +126,7 @@ Tools declare capabilities explicitly in their metadata:
 * `fs_write`: Mutating, writing, or deleting files on disk.
 * `network`: Inbound or outbound network socket operations.
 
-**Default-Deny Rule:** Any tool with undeclared capabilities (`capabilities.is_empty()`) requires explicit user approval by default under `sandboxed` and `strict` modes. All MCP (Model Context Protocol) external tools require approval under `sandboxed` and `strict` modes.
+**Default-Deny Rule:** Any tool with undeclared capabilities (`capabilities.is_empty()`) requires explicit user approval by default under `sandboxed` and `strict` modes, except a WebAssembly plugin in `sandboxed` mode: it runs closed in and reaches only what its declared permissions allow, so with none declared it can reach nothing (the clock and the OS name only). All MCP (Model Context Protocol) external tools require approval under `sandboxed` and `strict` modes.
 
 ### 4.2 What is approved is what runs
 
