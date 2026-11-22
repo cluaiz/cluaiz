@@ -166,7 +166,8 @@ profile; stock 24.04 blocks bubblewrap and the probe falls back). macOS and Ubun
 and 19 unit tests pass (sandbox-exec, with cargo, node and python3); `ubuntu-24.04` failed every
 command with `bwrap: Can't find source path /home/runner/.local/bin`: that folder is on the runner's
 `PATH` but does not exist, and a missing bind source fails bubblewrap. `for_agent` now keeps only the
-toolchain roots that exist (same rule as the secret masks).
+toolchain roots that exist (same rule as the secret masks). Second run with that fix (run 44975252052):
+9 / 9 checks and 19 unit tests on both `macos-15` and `ubuntu-24.04`.
 
 ## Tested
 
