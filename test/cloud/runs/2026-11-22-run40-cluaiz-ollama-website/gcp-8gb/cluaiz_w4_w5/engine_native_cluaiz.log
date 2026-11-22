@@ -1,0 +1,62 @@
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+2026-11-22T01:45:18.111097Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-22T01:45:18.112627Z  INFO 🚀 [cluaiz] Unified Core Binary verified: "/root/vps26-cluaiz-home/bin/cluaiz"
+Starting the Cluaiz API server on http://localhost:8011 ...
+2026-11-22T01:45:18.112956Z  INFO 🔒 [Auth] Initialized local session secret at /root/vps26-cluaiz-home/session.token
+2026-11-22T01:45:18.133710Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload not available, models run on the CPU
+2026-11-22T01:45:18.140688Z  INFO 🌐 Cluaiz API Server running on http://127.0.0.1:8011
+2026-11-22T01:45:18.919304Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = 0, load_mode = 1, n_threads = 2, n_threads_batch = 2
+2026-11-22T01:45:18.919318Z  INFO 🧬 [Native-Llama] Loading model: /root/.cluaiz/models/embedding/embeddinggemma-300m-gguf-Q8_0/embeddinggemma-300M-Q8_0.gguf | ctx: 2048 tokens
+2026-11-22T01:45:19.410662Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/root/.cluaiz/models/embedding/embeddinggemma-300m-gguf-Q8_0"
+2026-11-22T01:45:19.415146Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 2048 tokens
+2026-11-22T01:45:19.415182Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-22T01:45:19.415190Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 2/2
+2026-11-22T01:45:19.427559Z  WARN [llama.cpp] init: embeddings required but some input tokens were not marked as outputs -> overriding
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+2026-11-22T01:52:23.890903Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-22T01:52:23.891993Z  INFO 🚀 [cluaiz] Unified Core Binary verified: "/root/vps26-cluaiz-home/bin/cluaiz"
+Starting the Cluaiz API server on http://localhost:8011 ...
+2026-11-22T01:52:23.892186Z  INFO 🔒 [Auth] Initialized local session secret at /root/vps26-cluaiz-home/session.token
+2026-11-22T01:52:23.906002Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload not available, models run on the CPU
+2026-11-22T01:52:23.913753Z  INFO 🌐 Cluaiz API Server running on http://127.0.0.1:8011
+2026-11-22T01:52:25.014227Z  INFO TTS package load admission (estimates, not a reservation) model=kokoro-82m-v1.0-onnx-UINT8 gpu=false host_estimate_bytes=1251206456 device_estimate_bytes=0
+2026-11-22T01:52:25.053234Z  INFO 📦 [ONNX Engine] Loading primary model from: /root/.cluaiz/models/tts/kokoro-82m-v1.0-onnx-UINT8/model_uint8.onnx (pool_size: 1)
+2026-11-22T01:52:25.055905Z  INFO ⚙️ [ONNX Config] Force CPU mode requested by user config.
+2026-11-22T01:52:27.840440Z  INFO ⚙️ [Sovereign-Cascade] ONNX Session [0] committed on Tier 3 (CPU Thread Pool).
+2026-11-22T01:52:27.840732Z  INFO ✅ [ONNX Pool] 1 session(s) loaded and ready.
+2026-11-22T01:52:27.847698Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:52:27.852148Z  INFO 📖 [Lexicon] Downloading en_US.txt (3180267 bytes)
+2026-11-22T01:52:28.543705Z  INFO 📖 [Lexicon] Saved 125927 words to "/root/vps26-cluaiz-home/data/lexicons/en_US-2af6f154.bin"
+2026-11-22T01:52:28.617010Z  INFO 📖 [Lexicon] Loaded 125927 words for 'en-us' from en_US.txt
+2026-11-22T01:52:29.118682Z  INFO 🔤 [G2P Router] Dictionary rewritten into the model's 'misaki' phoneme symbols
+2026-11-22T01:52:34.356044Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:52:43.357673Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:52:56.453861Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:53:03.246239Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:53:15.590883Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:53:30.367386Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:53:37.388961Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:53:47.774191Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:54:03.438893Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:54:09.733619Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:54:21.056990Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:54:34.069374Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:54:40.276888Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:54:51.545749Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:55:06.329656Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:55:13.357331Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:55:23.687337Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:55:39.517482Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:55:45.887344Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:55:57.273811Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:56:11.977480Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:56:24.660453Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:56:30.468748Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:56:45.534068Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:56:52.213792Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:57:03.911193Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:57:18.243034Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:57:25.713299Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:57:36.243637Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:57:51.219654Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-22T01:57:56.270640Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'

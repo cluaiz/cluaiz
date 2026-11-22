@@ -1,0 +1,827 @@
+=== Write manifest (no IP/hostname/secrets) ===
+{
+  "created_at": "2026-11-22T01:09:43+0000",
+  "machine": {
+    "cpu_model": "Intel(R) Xeon(R) CPU @ 2.20GHz",
+    "vcpus": 2,
+    "mem_total_mb": 3908,
+    "kernel": "7.0.0-1017-gcp",
+    "os": "Ubuntu 24.04.5 LTS"
+  },
+  "params": {
+    "modes": [
+      "native"
+    ],
+    "engines": [
+      "cluaiz"
+    ],
+    "models": [
+      "qwen3-0.6b",
+      "qwen3-1.7b"
+    ],
+    "w6_model": "qwen3-0.6b",
+    "workloads": [
+      "W1"
+    ],
+    "mem_max_mb": 3508,
+    "threads": 2,
+    "ctx": 4096,
+    "kv": "q8_0",
+    "slots": 1,
+    "levels": [
+      1,
+      4
+    ],
+    "step_secs": 90,
+    "soak_secs": 0,
+    "w4_limit": 2000
+  },
+  "engines": {
+    "cluaiz_version": "cluaiz 0.1.0 (pre-release)",
+    "cluaiz_sha256": "18c120a3f88a0c69d5929a795d451243e7b78297f32a6b0fc96fcb2afc599f7a",
+    "cluaiz_commit": "b8ef5f64a0a3ec53281d39b80fa52d0879ae9891",
+    "ollama_version": "Warning: client version is 0.40.16",
+    "ollama_sha256": "a0c1e355537b0c037f2190edd339197fe3eb00387a46d6e26be695250262a790",
+    "llama_version": "/root/llama-official/llama-b12428/llama-server: error while loading shared libraries: libgomp.so.1: cannot open shared object file: No such file or directory",
+    "llama_sha256": "75e593229831bea182e9b6b2fd63231673c85be3e52cb5ebc8daf27253daf192",
+    "ollama_image": "ollama/ollama:0.40.16",
+    "docker_images": "err: Command 'docker images --digests --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.Digest}} {{.Size}}'' returned non-zero exit status 127."
+  }
+}
+=== Sync engine configs ===
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠇ gathering model components ⠏ gathering model components ⠏ gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components 
+parsing GGUF ⠋ gathering model components 
+parsing GGUF ⠙ gathering model components 
+parsing GGUF ⠹ gathering model components 
+parsing GGUF ⠸ gathering model components 
+parsing GGUF ⠼ gathering model components 
+parsing GGUF ⠴ gathering model components 
+parsing GGUF 
+using existing layer sha256:ac2d97712095a558e31573f62f466a3f9d93990898b0ec79d7c974c1780d524a 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠋ gathering model components 
+parsing GGUF 
+using existing layer sha256:ac2d97712095a558e31573f62f466a3f9d93990898b0ec79d7c974c1780d524a 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠙ gathering model components 
+parsing GGUF 
+using existing layer sha256:ac2d97712095a558e31573f62f466a3f9d93990898b0ec79d7c974c1780d524a 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest 
+success 
+gathering model components ⠋ gathering model components ⠹ gathering model components ⠸ gathering model components ⠸ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠇ gathering model components ⠇ gathering model components ⠋ gathering model components ⠋ gathering model components ⠹ gathering model components ⠸ gathering model components ⠸ gathering model components ⠼ gathering model components ⠦ gathering model components ⠧ gathering model components ⠧ gathering model components ⠏ gathering model components ⠋ gathering model components ⠋ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠴ gathering model components ⠧ gathering model components ⠇ gathering model components ⠏ gathering model components ⠋ gathering model components ⠙ gathering model components ⠙ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠧ gathering model components ⠏ gathering model components ⠋ gathering model components ⠋ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠴ gathering model components ⠧ gathering model components ⠇ gathering model components ⠏ gathering model components ⠏ gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠼ gathering model components ⠦ gathering model components ⠧ gathering model components 
+parsing GGUF ⠋ gathering model components 
+parsing GGUF ⠙ gathering model components 
+parsing GGUF ⠹ gathering model components 
+parsing GGUF ⠸ gathering model components 
+parsing GGUF ⠼ gathering model components 
+parsing GGUF ⠴ gathering model components 
+parsing GGUF ⠦ gathering model components 
+parsing GGUF 
+using existing layer sha256:b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠋ gathering model components 
+parsing GGUF 
+using existing layer sha256:b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠙ gathering model components 
+parsing GGUF 
+using existing layer sha256:b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest 
+success 
+Ollama sync: skip llama3.2-3b, no GGUF at /root/.cluaiz/models/chat/llama-3.2-3b-instruct-gguf-Q4_K_M/Llama-3.2-3B-Instruct-Q4_K_M.gguf
+gathering model components ⠙ gathering model components ⠹ gathering model components ⠹ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠇ gathering model components ⠏ gathering model components ⠋ gathering model components ⠋ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠧ gathering model components ⠏ gathering model components 
+parsing GGUF ⠋ gathering model components 
+parsing GGUF ⠙ gathering model components 
+parsing GGUF 
+using existing layer sha256:b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 gathering model components 
+parsing GGUF 
+using existing layer sha256:b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠙ gathering model components 
+parsing GGUF 
+using existing layer sha256:b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest 
+success 
+=== Start neighbour app (port 3100) and per-second sampler ===
+== START native / cluaiz / W1 / qwen3-0.6b ==
+{"ts": "2026-11-22T01:11:44", "mode": "native", "engine": "cluaiz", "model": "qwen3-0.6b", "workload": "W1", "phase_kind": "ramp", "level": 1, "wall_s": 90.3, "total": 55, "ok": 55, "failed": 0, "error_rate": 0.0, "p50_s": 1.582, "p95_s": 1.855, "p99_s": 3.096, "ttft_p50_s": 0.781, "ttft_p95_s": 1.039, "agg_tps": 6.06, "req_tps_mean": 12.61, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": true, "break_reason": "", "valid_json_rate": 1.0, "label_accuracy": 0.3091}
+{"ts": "2026-11-22T01:13:19", "mode": "native", "engine": "cluaiz", "model": "qwen3-0.6b", "workload": "W1", "phase_kind": "ramp", "level": 4, "wall_s": 95.19, "total": 60, "ok": 60, "failed": 0, "error_rate": 0.0, "p50_s": 6.244, "p95_s": 7.045, "p99_s": 7.111, "ttft_p50_s": 5.471, "ttft_p95_s": 6.212, "agg_tps": 6.27, "req_tps_mean": 12.66, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": true, "break_reason": "", "valid_json_rate": 1.0, "label_accuracy": 0.3}
+== START native / cluaiz / W1 / qwen3-1.7b ==
+{"ts": "2026-11-22T01:14:56", "mode": "native", "engine": "cluaiz", "model": "qwen3-1.7b", "workload": "W1", "phase_kind": "ramp", "level": 1, "wall_s": 92.93, "total": 26, "ok": 26, "failed": 0, "error_rate": 0.0, "p50_s": 3.278, "p95_s": 4.045, "p99_s": 7.971, "ttft_p50_s": 2.11, "ttft_p95_s": 2.856, "agg_tps": 1.76, "req_tps_mean": 5.22, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": true, "break_reason": "", "valid_json_rate": 1.0, "label_accuracy": 0.8462}
+{"ts": "2026-11-22T01:16:39", "mode": "native", "engine": "cluaiz", "model": "qwen3-1.7b", "workload": "W1", "phase_kind": "ramp", "level": 4, "wall_s": 102.49, "total": 31, "ok": 31, "failed": 0, "error_rate": 0.0, "p50_s": 13.249, "p95_s": 14.231, "p99_s": 14.503, "ttft_p50_s": 11.959, "ttft_p95_s": 13.093, "agg_tps": 1.89, "req_tps_mean": 5.31, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": true, "break_reason": "", "valid_json_rate": 1.0, "label_accuracy": 0.8387}
+Wrote /root/results-run40/r1_cluaiz_w1/analysis.md and /root/results-run40/r1_cluaiz_w1/summary.json
+ALL DONE: /root/results-run40/r1_cluaiz_w1
+=== Write manifest (no IP/hostname/secrets) ===
+{
+  "created_at": "2026-11-22T01:16:48+0000",
+  "machine": {
+    "cpu_model": "Intel(R) Xeon(R) CPU @ 2.20GHz",
+    "vcpus": 2,
+    "mem_total_mb": 3908,
+    "kernel": "7.0.0-1017-gcp",
+    "os": "Ubuntu 24.04.5 LTS"
+  },
+  "params": {
+    "modes": [
+      "native"
+    ],
+    "engines": [
+      "llama"
+    ],
+    "models": [
+      "qwen3-0.6b",
+      "qwen3-1.7b"
+    ],
+    "w6_model": "qwen3-0.6b",
+    "workloads": [
+      "W1"
+    ],
+    "mem_max_mb": 3508,
+    "threads": 2,
+    "ctx": 4096,
+    "kv": "q8_0",
+    "slots": 1,
+    "levels": [
+      1,
+      4
+    ],
+    "step_secs": 90,
+    "soak_secs": 0,
+    "w4_limit": 2000
+  },
+  "engines": {
+    "cluaiz_version": "cluaiz 0.1.0 (pre-release)",
+    "cluaiz_sha256": "18c120a3f88a0c69d5929a795d451243e7b78297f32a6b0fc96fcb2afc599f7a",
+    "cluaiz_commit": "b8ef5f64a0a3ec53281d39b80fa52d0879ae9891",
+    "ollama_version": "Warning: client version is 0.40.16",
+    "ollama_sha256": "a0c1e355537b0c037f2190edd339197fe3eb00387a46d6e26be695250262a790",
+    "llama_version": "/root/llama-official/llama-b12428/llama-server: error while loading shared libraries: libgomp.so.1: cannot open shared object file: No such file or directory",
+    "llama_sha256": "75e593229831bea182e9b6b2fd63231673c85be3e52cb5ebc8daf27253daf192",
+    "ollama_image": "ollama/ollama:0.40.16",
+    "docker_images": "err: Command 'docker images --digests --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.Digest}} {{.Size}}'' returned non-zero exit status 127."
+  }
+}
+=== Sync engine configs ===
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+gathering model components ⠙ gathering model components ⠙ gathering model components ⠹ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠧ gathering model components ⠏ gathering model components ⠋ gathering model components ⠋ gathering model components ⠹ gathering model components ⠸ gathering model components ⠸ gathering model components ⠴ gathering model components ⠦ gathering model components ⠦ gathering model components 
+parsing GGUF ⠋ gathering model components 
+parsing GGUF ⠙ gathering model components 
+parsing GGUF ⠹ gathering model components 
+parsing GGUF ⠸ gathering model components 
+parsing GGUF ⠼ gathering model components 
+parsing GGUF 
+using existing layer sha256:ac2d97712095a558e31573f62f466a3f9d93990898b0ec79d7c974c1780d524a 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠋ gathering model components 
+parsing GGUF 
+using existing layer sha256:ac2d97712095a558e31573f62f466a3f9d93990898b0ec79d7c974c1780d524a 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠙ gathering model components 
+parsing GGUF 
+using existing layer sha256:ac2d97712095a558e31573f62f466a3f9d93990898b0ec79d7c974c1780d524a 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest 
+success 
+gathering model components ⠙ gathering model components ⠹ gathering model components ⠹ gathering model components ⠼ gathering model components ⠴ gathering model components ⠴ gathering model components ⠧ gathering model components ⠧ gathering model components ⠏ gathering model components ⠋ gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠸ gathering model components ⠴ gathering model components ⠴ gathering model components ⠦ gathering model components ⠇ gathering model components ⠏ gathering model components ⠏ gathering model components ⠙ gathering model components ⠙ gathering model components ⠹ gathering model components ⠼ gathering model components ⠴ gathering model components ⠴ gathering model components ⠧ gathering model components ⠇ gathering model components ⠇ gathering model components ⠋ gathering model components ⠙ gathering model components ⠹ gathering model components ⠹ gathering model components ⠸ gathering model components ⠴ gathering model components ⠦ gathering model components ⠦ gathering model components ⠧ gathering model components ⠏ gathering model components ⠋ gathering model components ⠋ gathering model components ⠹ gathering model components ⠹ gathering model components ⠼ gathering model components ⠼ gathering model components 
+parsing GGUF ⠋ gathering model components 
+parsing GGUF ⠙ gathering model components 
+parsing GGUF ⠹ gathering model components 
+parsing GGUF ⠸ gathering model components 
+parsing GGUF ⠼ gathering model components 
+parsing GGUF ⠴ gathering model components 
+parsing GGUF 
+using existing layer sha256:b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠋ gathering model components 
+parsing GGUF 
+using existing layer sha256:b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest 
+success 
+Ollama sync: skip llama3.2-3b, no GGUF at /root/.cluaiz/models/chat/llama-3.2-3b-instruct-gguf-Q4_K_M/Llama-3.2-3B-Instruct-Q4_K_M.gguf
+gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠇ gathering model components ⠏ gathering model components ⠋ gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠦ gathering model components ⠇ gathering model components ⠏ gathering model components ⠋ gathering model components ⠙ gathering model components 
+parsing GGUF ⠋ gathering model components 
+parsing GGUF ⠙ gathering model components 
+parsing GGUF ⠹ gathering model components 
+parsing GGUF 
+using existing layer sha256:b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠋ gathering model components 
+parsing GGUF 
+using existing layer sha256:b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest 
+success 
+=== Start neighbour app (port 3100) and per-second sampler ===
+== START native / llama / W1 / qwen3-0.6b ==
+FAILED TO START native llama W1 qwen3-0.6b
+== START native / llama / W1 / qwen3-1.7b ==
+FAILED TO START native llama W1 qwen3-1.7b
+Wrote /root/results-run40/r1_llama_w1/analysis.md and /root/results-run40/r1_llama_w1/summary.json
+ALL DONE: /root/results-run40/r1_llama_w1
+=== Write manifest (no IP/hostname/secrets) ===
+{
+  "created_at": "2026-11-22T01:20:34+0000",
+  "machine": {
+    "cpu_model": "Intel(R) Xeon(R) CPU @ 2.20GHz",
+    "vcpus": 2,
+    "mem_total_mb": 3908,
+    "kernel": "7.0.0-1017-gcp",
+    "os": "Ubuntu 24.04.5 LTS"
+  },
+  "params": {
+    "modes": [
+      "native"
+    ],
+    "engines": [
+      "ollama"
+    ],
+    "models": [
+      "qwen3-0.6b",
+      "qwen3-1.7b"
+    ],
+    "w6_model": "qwen3-0.6b",
+    "workloads": [
+      "W1"
+    ],
+    "mem_max_mb": 3508,
+    "threads": 2,
+    "ctx": 4096,
+    "kv": "q8_0",
+    "slots": 1,
+    "levels": [
+      1,
+      4
+    ],
+    "step_secs": 90,
+    "soak_secs": 0,
+    "w4_limit": 2000
+  },
+  "engines": {
+    "cluaiz_version": "cluaiz 0.1.0 (pre-release)",
+    "cluaiz_sha256": "18c120a3f88a0c69d5929a795d451243e7b78297f32a6b0fc96fcb2afc599f7a",
+    "cluaiz_commit": "b8ef5f64a0a3ec53281d39b80fa52d0879ae9891",
+    "ollama_version": "Warning: client version is 0.40.16",
+    "ollama_sha256": "a0c1e355537b0c037f2190edd339197fe3eb00387a46d6e26be695250262a790",
+    "llama_version": "/root/llama-official/llama-b12428/llama-server: error while loading shared libraries: libgomp.so.1: cannot open shared object file: No such file or directory",
+    "llama_sha256": "75e593229831bea182e9b6b2fd63231673c85be3e52cb5ebc8daf27253daf192",
+    "ollama_image": "ollama/ollama:0.40.16",
+    "docker_images": "err: Command 'docker images --digests --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.Digest}} {{.Size}}'' returned non-zero exit status 127."
+  }
+}
+=== Sync engine configs ===
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠴ gathering model components ⠧ gathering model components ⠇ gathering model components ⠇ gathering model components ⠏ gathering model components ⠙ gathering model components ⠙ gathering model components ⠹ gathering model components ⠼ gathering model components ⠴ gathering model components ⠴ gathering model components 
+parsing GGUF ⠋ gathering model components 
+parsing GGUF ⠙ gathering model components 
+parsing GGUF ⠹ gathering model components 
+parsing GGUF ⠸ gathering model components 
+parsing GGUF ⠼ gathering model components 
+parsing GGUF 
+using existing layer sha256:ac2d97712095a558e31573f62f466a3f9d93990898b0ec79d7c974c1780d524a 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠋ gathering model components 
+parsing GGUF 
+using existing layer sha256:ac2d97712095a558e31573f62f466a3f9d93990898b0ec79d7c974c1780d524a 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠙ gathering model components 
+parsing GGUF 
+using existing layer sha256:ac2d97712095a558e31573f62f466a3f9d93990898b0ec79d7c974c1780d524a 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest 
+success 
+gathering model components ⠋ gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠇ gathering model components ⠏ gathering model components ⠋ gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠧ gathering model components ⠧ gathering model components ⠇ gathering model components ⠏ gathering model components ⠋ gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠇ gathering model components ⠏ gathering model components ⠋ gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠇ gathering model components ⠏ gathering model components ⠋ gathering model components ⠙ gathering model components ⠹ gathering model components ⠼ gathering model components ⠼ gathering model components ⠴ gathering model components 
+parsing GGUF ⠋ gathering model components 
+parsing GGUF ⠙ gathering model components 
+parsing GGUF ⠹ gathering model components 
+parsing GGUF ⠸ gathering model components 
+parsing GGUF ⠼ gathering model components 
+parsing GGUF ⠴ gathering model components 
+parsing GGUF 
+using existing layer sha256:b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠋ gathering model components 
+parsing GGUF 
+using existing layer sha256:b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest 
+success 
+Ollama sync: skip llama3.2-3b, no GGUF at /root/.cluaiz/models/chat/llama-3.2-3b-instruct-gguf-Q4_K_M/Llama-3.2-3B-Instruct-Q4_K_M.gguf
+gathering model components ⠋ gathering model components ⠹ gathering model components ⠹ gathering model components ⠼ gathering model components ⠼ gathering model components ⠴ gathering model components ⠧ gathering model components ⠧ gathering model components ⠏ gathering model components ⠋ gathering model components ⠙ gathering model components ⠙ gathering model components ⠸ gathering model components 
+parsing GGUF ⠋ gathering model components 
+parsing GGUF ⠙ gathering model components 
+parsing GGUF ⠹ gathering model components 
+parsing GGUF 
+using existing layer sha256:b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠋ gathering model components 
+parsing GGUF 
+using existing layer sha256:b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠙ gathering model components 
+parsing GGUF 
+using existing layer sha256:b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest 
+success 
+=== Start neighbour app (port 3100) and per-second sampler ===
+== START native / ollama / W1 / qwen3-0.6b ==
+{"ts": "2026-11-22T01:22:33", "mode": "native", "engine": "ollama", "model": "qwen3-0.6b", "workload": "W1", "phase_kind": "ramp", "level": 1, "wall_s": 91.28, "total": 56, "ok": 56, "failed": 0, "error_rate": 0.0, "p50_s": 1.635, "p95_s": 1.982, "p99_s": 4.378, "ttft_p50_s": 0.867, "ttft_p95_s": 1.197, "agg_tps": 8.61, "req_tps_mean": 18.0, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": true, "break_reason": "", "valid_json_rate": 1.0, "label_accuracy": 0.3036}
+{"ts": "2026-11-22T01:24:08", "mode": "native", "engine": "ollama", "model": "qwen3-0.6b", "workload": "W1", "phase_kind": "ramp", "level": 4, "wall_s": 95.3, "total": 69, "ok": 69, "failed": 0, "error_rate": 0.0, "p50_s": 5.434, "p95_s": 6.44, "p99_s": 6.85, "ttft_p50_s": 4.643, "ttft_p95_s": 5.739, "agg_tps": 10.36, "req_tps_mean": 18.13, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": true, "break_reason": "", "valid_json_rate": 1.0, "label_accuracy": 0.2899}
+== START native / ollama / W1 / qwen3-1.7b ==
+{"ts": "2026-11-22T01:25:43", "mode": "native", "engine": "ollama", "model": "qwen3-1.7b", "workload": "W1", "phase_kind": "ramp", "level": 1, "wall_s": 90.66, "total": 19, "ok": 19, "failed": 0, "error_rate": 0.0, "p50_s": 4.515, "p95_s": 6.398, "p99_s": 13.355, "ttft_p50_s": 2.539, "ttft_p95_s": 4.398, "agg_tps": 2.77, "req_tps_mean": 6.98, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": true, "break_reason": "", "valid_json_rate": 1.0, "label_accuracy": 0.7895}
+{"ts": "2026-11-22T01:27:24", "mode": "native", "engine": "ollama", "model": "qwen3-1.7b", "workload": "W1", "phase_kind": "ramp", "level": 4, "wall_s": 101.31, "total": 33, "ok": 33, "failed": 0, "error_rate": 0.0, "p50_s": 12.443, "p95_s": 15.259, "p99_s": 16.443, "ttft_p50_s": 10.421, "ttft_p95_s": 13.38, "agg_tps": 4.18, "req_tps_mean": 7.0, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": true, "break_reason": "", "valid_json_rate": 1.0, "label_accuracy": 0.8485}
+Wrote /root/results-run40/r1_ollama_w1/analysis.md and /root/results-run40/r1_ollama_w1/summary.json
+ALL DONE: /root/results-run40/r1_ollama_w1
+=== Write manifest (no IP/hostname/secrets) ===
+{
+  "created_at": "2026-11-22T01:27:33+0000",
+  "machine": {
+    "cpu_model": "Intel(R) Xeon(R) CPU @ 2.20GHz",
+    "vcpus": 2,
+    "mem_total_mb": 3908,
+    "kernel": "7.0.0-1017-gcp",
+    "os": "Ubuntu 24.04.5 LTS"
+  },
+  "params": {
+    "modes": [
+      "native"
+    ],
+    "engines": [
+      "cluaiz"
+    ],
+    "models": [
+      "qwen3-0.6b",
+      "qwen3-1.7b"
+    ],
+    "w6_model": "qwen3-0.6b",
+    "workloads": [
+      "W1"
+    ],
+    "mem_max_mb": 3508,
+    "threads": 2,
+    "ctx": 4096,
+    "kv": "q8_0",
+    "slots": 1,
+    "levels": [
+      1,
+      4
+    ],
+    "step_secs": 90,
+    "soak_secs": 0,
+    "w4_limit": 2000
+  },
+  "engines": {
+    "cluaiz_version": "cluaiz 0.1.0 (pre-release)",
+    "cluaiz_sha256": "18c120a3f88a0c69d5929a795d451243e7b78297f32a6b0fc96fcb2afc599f7a",
+    "cluaiz_commit": "b8ef5f64a0a3ec53281d39b80fa52d0879ae9891",
+    "ollama_version": "Warning: client version is 0.40.16",
+    "ollama_sha256": "a0c1e355537b0c037f2190edd339197fe3eb00387a46d6e26be695250262a790",
+    "llama_version": "/root/llama-official/llama-b12428/llama-server: error while loading shared libraries: libgomp.so.1: cannot open shared object file: No such file or directory",
+    "llama_sha256": "75e593229831bea182e9b6b2fd63231673c85be3e52cb5ebc8daf27253daf192",
+    "ollama_image": "ollama/ollama:0.40.16",
+    "docker_images": "err: Command 'docker images --digests --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.Digest}} {{.Size}}'' returned non-zero exit status 127."
+  }
+}
+=== Sync engine configs ===
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠸ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠧ gathering model components ⠏ gathering model components ⠋ gathering model components ⠙ gathering model components ⠹ gathering model components ⠹ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠦ gathering model components ⠇ gathering model components ⠏ gathering model components ⠏ gathering model components ⠙ gathering model components ⠙ gathering model components ⠸ gathering model components 
+parsing GGUF ⠋ gathering model components 
+parsing GGUF ⠙ gathering model components 
+parsing GGUF ⠹ gathering model components 
+parsing GGUF ⠸ gathering model components 
+parsing GGUF ⠼ gathering model components 
+parsing GGUF ⠴ gathering model components 
+parsing GGUF 
+using existing layer sha256:ac2d97712095a558e31573f62f466a3f9d93990898b0ec79d7c974c1780d524a 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠋ gathering model components 
+parsing GGUF 
+using existing layer sha256:ac2d97712095a558e31573f62f466a3f9d93990898b0ec79d7c974c1780d524a 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest 
+success 
+gathering model components ⠋ gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠇ gathering model components ⠏ gathering model components ⠙ gathering model components ⠙ gathering model components ⠸ gathering model components ⠸ gathering model components ⠴ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠇ gathering model components ⠏ gathering model components ⠋ gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠇ gathering model components ⠏ gathering model components ⠙ gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠏ gathering model components ⠏ gathering model components ⠋ gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠧ gathering model components ⠧ gathering model components ⠇ gathering model components ⠏ gathering model components ⠋ gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠇ gathering model components ⠏ gathering model components ⠋ gathering model components ⠙ gathering model components 
+parsing GGUF ⠋ gathering model components 
+parsing GGUF ⠙ gathering model components 
+parsing GGUF ⠙ gathering model components 
+parsing GGUF ⠹ gathering model components 
+parsing GGUF ⠸ gathering model components 
+parsing GGUF ⠴ gathering model components 
+parsing GGUF 
+using existing layer sha256:b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠋ gathering model components 
+parsing GGUF 
+using existing layer sha256:b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest gathering model components 
+parsing GGUF 
+using existing layer sha256:b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest 
+success 
+Ollama sync: skip llama3.2-3b, no GGUF at /root/.cluaiz/models/chat/llama-3.2-3b-instruct-gguf-Q4_K_M/Llama-3.2-3B-Instruct-Q4_K_M.gguf
+gathering model components ⠙ gathering model components ⠙ gathering model components ⠸ gathering model components ⠼ gathering model components ⠼ gathering model components ⠦ gathering model components ⠧ gathering model components ⠧ gathering model components ⠏ gathering model components ⠋ gathering model components ⠋ gathering model components ⠹ gathering model components ⠸ gathering model components ⠸ gathering model components 
+parsing GGUF ⠋ gathering model components 
+parsing GGUF ⠙ gathering model components 
+parsing GGUF ⠹ gathering model components 
+parsing GGUF 
+using existing layer sha256:b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠋ gathering model components 
+parsing GGUF 
+using existing layer sha256:b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest 
+success 
+=== Start neighbour app (port 3100) and per-second sampler ===
+== START native / cluaiz / W1 / qwen3-0.6b ==
+{"ts": "2026-11-22T01:29:33", "mode": "native", "engine": "cluaiz", "model": "qwen3-0.6b", "workload": "W1", "phase_kind": "ramp", "level": 1, "wall_s": 90.88, "total": 57, "ok": 57, "failed": 0, "error_rate": 0.0, "p50_s": 1.542, "p95_s": 1.803, "p99_s": 2.831, "ttft_p50_s": 0.787, "ttft_p95_s": 1.003, "agg_tps": 6.24, "req_tps_mean": 12.98, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": true, "break_reason": "", "valid_json_rate": 1.0, "label_accuracy": 0.2982}
+{"ts": "2026-11-22T01:31:09", "mode": "native", "engine": "cluaiz", "model": "qwen3-0.6b", "workload": "W1", "phase_kind": "ramp", "level": 4, "wall_s": 95.96, "total": 62, "ok": 62, "failed": 0, "error_rate": 0.0, "p50_s": 6.122, "p95_s": 6.982, "p99_s": 7.089, "ttft_p50_s": 5.363, "ttft_p95_s": 5.897, "agg_tps": 6.43, "req_tps_mean": 13.05, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": true, "break_reason": "", "valid_json_rate": 1.0, "label_accuracy": 0.2903}
+== START native / cluaiz / W1 / qwen3-1.7b ==
+{"ts": "2026-11-22T01:32:44", "mode": "native", "engine": "cluaiz", "model": "qwen3-1.7b", "workload": "W1", "phase_kind": "ramp", "level": 1, "wall_s": 90.87, "total": 26, "ok": 26, "failed": 0, "error_rate": 0.0, "p50_s": 3.218, "p95_s": 3.933, "p99_s": 7.439, "ttft_p50_s": 2.101, "ttft_p95_s": 2.844, "agg_tps": 1.8, "req_tps_mean": 5.43, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": true, "break_reason": "", "valid_json_rate": 1.0, "label_accuracy": 0.8462}
+{"ts": "2026-11-22T01:34:26", "mode": "native", "engine": "cluaiz", "model": "qwen3-1.7b", "workload": "W1", "phase_kind": "ramp", "level": 4, "wall_s": 101.5, "total": 31, "ok": 31, "failed": 0, "error_rate": 0.0, "p50_s": 13.166, "p95_s": 14.228, "p99_s": 14.384, "ttft_p50_s": 11.92, "ttft_p95_s": 13.107, "agg_tps": 1.91, "req_tps_mean": 5.42, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": true, "break_reason": "", "valid_json_rate": 1.0, "label_accuracy": 0.8387}
+Wrote /root/results-run40/r2_cluaiz_w1/analysis.md and /root/results-run40/r2_cluaiz_w1/summary.json
+ALL DONE: /root/results-run40/r2_cluaiz_w1
+=== Write manifest (no IP/hostname/secrets) ===
+{
+  "created_at": "2026-11-22T01:34:36+0000",
+  "machine": {
+    "cpu_model": "Intel(R) Xeon(R) CPU @ 2.20GHz",
+    "vcpus": 2,
+    "mem_total_mb": 3908,
+    "kernel": "7.0.0-1017-gcp",
+    "os": "Ubuntu 24.04.5 LTS"
+  },
+  "params": {
+    "modes": [
+      "native"
+    ],
+    "engines": [
+      "llama"
+    ],
+    "models": [
+      "qwen3-0.6b",
+      "qwen3-1.7b"
+    ],
+    "w6_model": "qwen3-0.6b",
+    "workloads": [
+      "W1"
+    ],
+    "mem_max_mb": 3508,
+    "threads": 2,
+    "ctx": 4096,
+    "kv": "q8_0",
+    "slots": 1,
+    "levels": [
+      1,
+      4
+    ],
+    "step_secs": 90,
+    "soak_secs": 0,
+    "w4_limit": 2000
+  },
+  "engines": {
+    "cluaiz_version": "cluaiz 0.1.0 (pre-release)",
+    "cluaiz_sha256": "18c120a3f88a0c69d5929a795d451243e7b78297f32a6b0fc96fcb2afc599f7a",
+    "cluaiz_commit": "b8ef5f64a0a3ec53281d39b80fa52d0879ae9891",
+    "ollama_version": "Warning: client version is 0.40.16",
+    "ollama_sha256": "a0c1e355537b0c037f2190edd339197fe3eb00387a46d6e26be695250262a790",
+    "llama_version": "/root/llama-official/llama-b12428/llama-server: error while loading shared libraries: libgomp.so.1: cannot open shared object file: No such file or directory",
+    "llama_sha256": "75e593229831bea182e9b6b2fd63231673c85be3e52cb5ebc8daf27253daf192",
+    "ollama_image": "ollama/ollama:0.40.16",
+    "docker_images": "err: Command 'docker images --digests --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.Digest}} {{.Size}}'' returned non-zero exit status 127."
+  }
+}
+=== Sync engine configs ===
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠦ gathering model components ⠇ gathering model components ⠏ gathering model components ⠋ gathering model components ⠋ gathering model components ⠹ gathering model components ⠸ gathering model components ⠸ gathering model components ⠴ gathering model components ⠦ gathering model components 
+parsing GGUF ⠋ gathering model components 
+parsing GGUF ⠙ gathering model components 
+parsing GGUF ⠹ gathering model components 
+parsing GGUF ⠸ gathering model components 
+parsing GGUF ⠼ gathering model components 
+parsing GGUF 
+using existing layer sha256:ac2d97712095a558e31573f62f466a3f9d93990898b0ec79d7c974c1780d524a 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠋ gathering model components 
+parsing GGUF 
+using existing layer sha256:ac2d97712095a558e31573f62f466a3f9d93990898b0ec79d7c974c1780d524a 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest 
+success 
+gathering model components ⠋ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠧ gathering model components ⠏ gathering model components ⠏ gathering model components ⠋ gathering model components ⠹ gathering model components ⠸ gathering model components ⠸ gathering model components ⠴ gathering model components ⠦ gathering model components ⠦ gathering model components ⠇ gathering model components ⠏ gathering model components ⠋ gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠼ gathering model components ⠦ gathering model components ⠧ gathering model components ⠇ gathering model components ⠏ gathering model components ⠋ gathering model components ⠙ gathering model components ⠹ gathering model components ⠹ gathering model components ⠼ gathering model components ⠴ gathering model components ⠴ gathering model components ⠧ gathering model components ⠇ gathering model components ⠇ gathering model components ⠋ gathering model components ⠋ gathering model components ⠹ gathering model components ⠸ gathering model components ⠸ gathering model components ⠴ gathering model components 
+parsing GGUF ⠋ gathering model components 
+parsing GGUF ⠙ gathering model components 
+parsing GGUF ⠹ gathering model components 
+parsing GGUF ⠸ gathering model components 
+parsing GGUF ⠼ gathering model components 
+parsing GGUF ⠴ gathering model components 
+parsing GGUF 
+using existing layer sha256:b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠋ gathering model components 
+parsing GGUF 
+using existing layer sha256:b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest 
+success 
+Ollama sync: skip llama3.2-3b, no GGUF at /root/.cluaiz/models/chat/llama-3.2-3b-instruct-gguf-Q4_K_M/Llama-3.2-3B-Instruct-Q4_K_M.gguf
+gathering model components ⠙ gathering model components ⠙ gathering model components ⠸ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠇ gathering model components ⠏ gathering model components ⠋ gathering model components ⠙ gathering model components ⠹ gathering model components gathering model components 
+parsing GGUF ⠋ gathering model components 
+parsing GGUF ⠙ gathering model components 
+parsing GGUF 
+using existing layer sha256:b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠋ gathering model components 
+parsing GGUF 
+using existing layer sha256:b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest 
+success 
+=== Start neighbour app (port 3100) and per-second sampler ===
+== START native / llama / W1 / qwen3-0.6b ==
+FAILED TO START native llama W1 qwen3-0.6b
+== START native / llama / W1 / qwen3-1.7b ==
+FAILED TO START native llama W1 qwen3-1.7b
+Wrote /root/results-run40/r2_llama_w1/analysis.md and /root/results-run40/r2_llama_w1/summary.json
+ALL DONE: /root/results-run40/r2_llama_w1
+=== Write manifest (no IP/hostname/secrets) ===
+{
+  "created_at": "2026-11-22T01:38:20+0000",
+  "machine": {
+    "cpu_model": "Intel(R) Xeon(R) CPU @ 2.20GHz",
+    "vcpus": 2,
+    "mem_total_mb": 3908,
+    "kernel": "7.0.0-1017-gcp",
+    "os": "Ubuntu 24.04.5 LTS"
+  },
+  "params": {
+    "modes": [
+      "native"
+    ],
+    "engines": [
+      "ollama"
+    ],
+    "models": [
+      "qwen3-0.6b",
+      "qwen3-1.7b"
+    ],
+    "w6_model": "qwen3-0.6b",
+    "workloads": [
+      "W1"
+    ],
+    "mem_max_mb": 3508,
+    "threads": 2,
+    "ctx": 4096,
+    "kv": "q8_0",
+    "slots": 1,
+    "levels": [
+      1,
+      4
+    ],
+    "step_secs": 90,
+    "soak_secs": 0,
+    "w4_limit": 2000
+  },
+  "engines": {
+    "cluaiz_version": "cluaiz 0.1.0 (pre-release)",
+    "cluaiz_sha256": "18c120a3f88a0c69d5929a795d451243e7b78297f32a6b0fc96fcb2afc599f7a",
+    "cluaiz_commit": "b8ef5f64a0a3ec53281d39b80fa52d0879ae9891",
+    "ollama_version": "Warning: client version is 0.40.16",
+    "ollama_sha256": "a0c1e355537b0c037f2190edd339197fe3eb00387a46d6e26be695250262a790",
+    "llama_version": "/root/llama-official/llama-b12428/llama-server: error while loading shared libraries: libgomp.so.1: cannot open shared object file: No such file or directory",
+    "llama_sha256": "75e593229831bea182e9b6b2fd63231673c85be3e52cb5ebc8daf27253daf192",
+    "ollama_image": "ollama/ollama:0.40.16",
+    "docker_images": "err: Command 'docker images --digests --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.Digest}} {{.Size}}'' returned non-zero exit status 127."
+  }
+}
+=== Sync engine configs ===
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+gathering model components ⠋ gathering model components ⠹ gathering model components ⠹ gathering model components ⠼ gathering model components ⠴ gathering model components ⠴ gathering model components ⠧ gathering model components ⠇ gathering model components ⠇ gathering model components ⠋ gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components 
+parsing GGUF ⠋ gathering model components 
+parsing GGUF ⠙ gathering model components 
+parsing GGUF ⠹ gathering model components 
+parsing GGUF ⠸ gathering model components 
+parsing GGUF ⠼ gathering model components 
+parsing GGUF ⠴ gathering model components 
+parsing GGUF 
+using existing layer sha256:ac2d97712095a558e31573f62f466a3f9d93990898b0ec79d7c974c1780d524a 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠋ gathering model components 
+parsing GGUF 
+using existing layer sha256:ac2d97712095a558e31573f62f466a3f9d93990898b0ec79d7c974c1780d524a 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠙ gathering model components 
+parsing GGUF 
+using existing layer sha256:ac2d97712095a558e31573f62f466a3f9d93990898b0ec79d7c974c1780d524a 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest 
+success 
+gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠸ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠇ gathering model components ⠏ gathering model components ⠋ gathering model components ⠋ gathering model components ⠙ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠇ gathering model components ⠏ gathering model components ⠏ gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠸ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠧ gathering model components ⠏ gathering model components ⠏ gathering model components ⠙ gathering model components ⠹ gathering model components ⠹ gathering model components ⠼ gathering model components ⠴ gathering model components ⠴ gathering model components ⠧ gathering model components ⠇ gathering model components ⠇ gathering model components ⠋ gathering model components ⠙ gathering model components ⠙ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components 
+parsing GGUF ⠋ gathering model components 
+parsing GGUF ⠙ gathering model components 
+parsing GGUF ⠹ gathering model components 
+parsing GGUF ⠸ gathering model components 
+parsing GGUF ⠼ gathering model components 
+parsing GGUF ⠴ gathering model components 
+parsing GGUF 
+using existing layer sha256:b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠋ gathering model components 
+parsing GGUF 
+using existing layer sha256:b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest 
+success 
+Ollama sync: skip llama3.2-3b, no GGUF at /root/.cluaiz/models/chat/llama-3.2-3b-instruct-gguf-Q4_K_M/Llama-3.2-3B-Instruct-Q4_K_M.gguf
+gathering model components ⠙ gathering model components ⠹ gathering model components ⠹ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠧ gathering model components ⠏ gathering model components ⠋ gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components gathering model components 
+parsing GGUF ⠋ gathering model components 
+parsing GGUF ⠙ gathering model components 
+parsing GGUF ⠹ gathering model components 
+parsing GGUF 
+using existing layer sha256:b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠋ gathering model components 
+parsing GGUF 
+using existing layer sha256:b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest 
+success 
+=== Start neighbour app (port 3100) and per-second sampler ===
+== START native / ollama / W1 / qwen3-0.6b ==
+{"ts": "2026-11-22T01:40:19", "mode": "native", "engine": "ollama", "model": "qwen3-0.6b", "workload": "W1", "phase_kind": "ramp", "level": 1, "wall_s": 91.5, "total": 56, "ok": 56, "failed": 0, "error_rate": 0.0, "p50_s": 1.587, "p95_s": 2.135, "p99_s": 4.437, "ttft_p50_s": 0.887, "ttft_p95_s": 1.196, "agg_tps": 8.59, "req_tps_mean": 18.04, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": true, "break_reason": "", "valid_json_rate": 1.0, "label_accuracy": 0.3036}
+{"ts": "2026-11-22T01:41:55", "mode": "native", "engine": "ollama", "model": "qwen3-0.6b", "workload": "W1", "phase_kind": "ramp", "level": 4, "wall_s": 95.68, "total": 64, "ok": 64, "failed": 0, "error_rate": 0.0, "p50_s": 5.823, "p95_s": 7.509, "p99_s": 8.335, "ttft_p50_s": 4.993, "ttft_p95_s": 6.386, "agg_tps": 9.53, "req_tps_mean": 16.58, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": true, "break_reason": "", "valid_json_rate": 1.0, "label_accuracy": 0.2812}
+== START native / ollama / W1 / qwen3-1.7b ==
+{"ts": "2026-11-22T01:43:34", "mode": "native", "engine": "ollama", "model": "qwen3-1.7b", "workload": "W1", "phase_kind": "ramp", "level": 1, "wall_s": 95.06, "total": 14, "ok": 14, "failed": 0, "error_rate": 0.0, "p50_s": 5.854, "p95_s": 12.202, "p99_s": 18.28, "ttft_p50_s": 3.337, "ttft_p95_s": 9.077, "agg_tps": 1.97, "req_tps_mean": 5.29, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": true, "break_reason": "", "valid_json_rate": 1.0, "label_accuracy": 0.8571}
+{"ts": "2026-11-22T01:45:18", "mode": "native", "engine": "ollama", "model": "qwen3-1.7b", "workload": "W1", "phase_kind": "ramp", "level": 4, "wall_s": 103.64, "total": 29, "ok": 29, "failed": 0, "error_rate": 0.0, "p50_s": 13.417, "p95_s": 17.686, "p99_s": 18.196, "ttft_p50_s": 11.881, "ttft_p95_s": 15.585, "agg_tps": 3.52, "req_tps_mean": 6.26, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": true, "break_reason": "", "valid_json_rate": 1.0, "label_accuracy": 0.8276}
+Wrote /root/results-run40/r2_ollama_w1/analysis.md and /root/results-run40/r2_ollama_w1/summary.json
+ALL DONE: /root/results-run40/r2_ollama_w1
+=== Write manifest (no IP/hostname/secrets) ===
+{
+  "created_at": "2026-11-22T01:45:28+0000",
+  "machine": {
+    "cpu_model": "Intel(R) Xeon(R) CPU @ 2.20GHz",
+    "vcpus": 2,
+    "mem_total_mb": 3908,
+    "kernel": "7.0.0-1017-gcp",
+    "os": "Ubuntu 24.04.5 LTS"
+  },
+  "params": {
+    "modes": [
+      "native"
+    ],
+    "engines": [
+      "cluaiz"
+    ],
+    "models": [
+      "qwen3-0.6b",
+      "qwen3-1.7b",
+      "llama3.2-3b"
+    ],
+    "w6_model": "qwen3-0.6b",
+    "workloads": [
+      "W4",
+      "W5"
+    ],
+    "mem_max_mb": 3508,
+    "threads": 2,
+    "ctx": 4096,
+    "kv": "q8_0",
+    "slots": 1,
+    "levels": [
+      1,
+      2,
+      4
+    ],
+    "step_secs": 90,
+    "soak_secs": 0,
+    "w4_limit": 200
+  },
+  "engines": {
+    "cluaiz_version": "cluaiz 0.1.0 (pre-release)",
+    "cluaiz_sha256": "18c120a3f88a0c69d5929a795d451243e7b78297f32a6b0fc96fcb2afc599f7a",
+    "cluaiz_commit": "b8ef5f64a0a3ec53281d39b80fa52d0879ae9891",
+    "ollama_version": "Warning: client version is 0.40.16",
+    "ollama_sha256": "a0c1e355537b0c037f2190edd339197fe3eb00387a46d6e26be695250262a790",
+    "llama_version": "/root/llama-official/llama-b12428/llama-server: error while loading shared libraries: libgomp.so.1: cannot open shared object file: No such file or directory",
+    "llama_sha256": "75e593229831bea182e9b6b2fd63231673c85be3e52cb5ebc8daf27253daf192",
+    "ollama_image": "ollama/ollama:0.40.16",
+    "docker_images": "err: Command 'docker images --digests --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.Digest}} {{.Size}}'' returned non-zero exit status 127."
+  }
+}
+=== Sync engine configs ===
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠸ gathering model components ⠴ gathering model components ⠴ gathering model components ⠧ gathering model components ⠧ gathering model components ⠏ gathering model components ⠏ gathering model components ⠙ gathering model components ⠙ gathering model components ⠸ gathering model components ⠸ gathering model components ⠼ gathering model components ⠦ gathering model components ⠧ gathering model components ⠧ gathering model components ⠏ gathering model components ⠏ gathering model components ⠋ gathering model components 
+parsing GGUF ⠋ gathering model components 
+parsing GGUF ⠙ gathering model components 
+parsing GGUF ⠹ gathering model components 
+parsing GGUF ⠸ gathering model components 
+parsing GGUF ⠼ gathering model components 
+parsing GGUF ⠴ gathering model components 
+parsing GGUF 
+using existing layer sha256:ac2d97712095a558e31573f62f466a3f9d93990898b0ec79d7c974c1780d524a 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠋ gathering model components 
+parsing GGUF 
+using existing layer sha256:ac2d97712095a558e31573f62f466a3f9d93990898b0ec79d7c974c1780d524a 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest 
+success 
+gathering model components ⠋ gathering model components ⠹ gathering model components ⠹ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠇ gathering model components ⠇ gathering model components ⠋ gathering model components ⠋ gathering model components ⠹ gathering model components ⠸ gathering model components ⠸ gathering model components ⠴ gathering model components ⠦ gathering model components ⠦ gathering model components ⠇ gathering model components ⠏ gathering model components ⠋ gathering model components ⠋ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠴ gathering model components ⠧ gathering model components ⠇ gathering model components ⠇ gathering model components ⠋ gathering model components ⠙ gathering model components ⠙ gathering model components ⠸ gathering model components ⠸ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠇ gathering model components ⠏ gathering model components ⠋ gathering model components ⠋ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠴ gathering model components ⠦ gathering model components ⠧ gathering model components ⠧ gathering model components ⠏ gathering model components ⠋ gathering model components ⠋ gathering model components 
+parsing GGUF ⠋ gathering model components 
+parsing GGUF ⠙ gathering model components 
+parsing GGUF ⠹ gathering model components 
+parsing GGUF ⠸ gathering model components 
+parsing GGUF ⠼ gathering model components 
+parsing GGUF 
+using existing layer sha256:b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠋ gathering model components 
+parsing GGUF 
+using existing layer sha256:b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest 
+success 
+Ollama sync: skip llama3.2-3b, no GGUF at /root/.cluaiz/models/chat/llama-3.2-3b-instruct-gguf-Q4_K_M/Llama-3.2-3B-Instruct-Q4_K_M.gguf
+gathering model components ⠋ gathering model components ⠙ gathering model components ⠸ gathering model components ⠼ gathering model components ⠼ gathering model components ⠦ gathering model components ⠧ gathering model components ⠇ gathering model components ⠏ gathering model components ⠏ gathering model components ⠙ gathering model components ⠹ gathering model components ⠸ gathering model components ⠼ gathering model components ⠼ gathering model components ⠦ gathering model components ⠦ gathering model components 
+parsing GGUF ⠋ gathering model components 
+parsing GGUF ⠙ gathering model components 
+parsing GGUF ⠹ gathering model components 
+parsing GGUF 
+using existing layer sha256:b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest ⠋ gathering model components 
+parsing GGUF 
+using existing layer sha256:b5ce9d77a3fc4b3b39ccb5643c36777911cc4eb46a66962eadfa3f5f60490d63 
+using existing layer sha256:1b387c8d58112e4a96579153b129e9ab4dd85f8c8a9e99ef496dae79b3830e43 
+writing manifest 
+success 
+=== Start neighbour app (port 3100) and per-second sampler ===
+== START native / cluaiz / W4 ==
+{"ts": "2026-11-22T01:47:46", "mode": "native", "engine": "cluaiz", "model": "embed-gemma", "workload": "W4", "phase_kind": "index_and_search", "level": 1, "chunks_ok": 200, "chunks_total": 200, "index_s": 106.15, "chunks_per_s": 1.88, "queries_scored": 17, "query_s": 3.16, "top1_hit_rate": 0.6471, "top5_hit_rate": 0.7647, "oom_delta": 0, "passed": true, "errors": []}
+{"ts": "2026-11-22T01:49:20", "mode": "native", "engine": "cluaiz", "model": "embed-gemma", "workload": "W4", "phase_kind": "ramp", "level": 1, "wall_s": 94.06, "total": 9, "ok": 9, "failed": 0, "error_rate": 0.0, "p50_s": 10.247, "p95_s": 11.385, "p99_s": 11.841, "ttft_p50_s": null, "ttft_p95_s": null, "agg_tps": null, "req_tps_mean": null, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": true, "break_reason": "", "chunks_per_s": 1.91}
+{"ts": "2026-11-22T01:51:09", "mode": "native", "engine": "cluaiz", "model": "embed-gemma", "workload": "W4", "phase_kind": "ramp", "level": 2, "wall_s": 108.7, "total": 11, "ok": 11, "failed": 0, "error_rate": 0.0, "p50_s": 19.51, "p95_s": 20.457, "p99_s": 20.533, "ttft_p50_s": null, "ttft_p95_s": null, "agg_tps": null, "req_tps_mean": null, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": true, "break_reason": "", "chunks_per_s": 2.02}
+{"ts": "2026-11-22T01:53:14", "mode": "native", "engine": "cluaiz", "model": "embed-gemma", "workload": "W4", "phase_kind": "ramp", "level": 4, "wall_s": 125.41, "total": 13, "ok": 13, "failed": 0, "error_rate": 0.0, "p50_s": 38.386, "p95_s": 38.773, "p99_s": 38.824, "ttft_p50_s": null, "ttft_p95_s": null, "agg_tps": null, "req_tps_mean": null, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": true, "break_reason": "", "chunks_per_s": 2.07}
+== START native / cluaiz / W5 ==
+{"ts": "2026-11-22T01:55:35", "mode": "native", "engine": "cluaiz", "model": "speech", "workload": "W5", "phase_kind": "ramp", "level": 1, "wall_s": 99.22, "total": 15, "ok": 15, "failed": 0, "error_rate": 0.0, "p50_s": 6.033, "p95_s": 15.422, "p99_s": 15.615, "ttft_p50_s": null, "ttft_p95_s": null, "agg_tps": null, "req_tps_mean": null, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": true, "break_reason": ""}
+{"ts": "2026-11-22T01:57:14", "mode": "native", "engine": "cluaiz", "model": "speech", "workload": "W5", "phase_kind": "ramp", "level": 2, "wall_s": 99.39, "total": 16, "ok": 16, "failed": 0, "error_rate": 0.0, "p50_s": 12.234, "p95_s": 18.81, "p99_s": 18.9, "ttft_p50_s": null, "ttft_p95_s": null, "agg_tps": null, "req_tps_mean": null, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": true, "break_reason": ""}
+{"ts": "2026-11-22T01:59:18", "mode": "native", "engine": "cluaiz", "model": "speech", "workload": "W5", "phase_kind": "ramp", "level": 4, "wall_s": 123.35, "total": 19, "ok": 19, "failed": 0, "error_rate": 0.0, "p50_s": 21.357, "p95_s": 37.23, "p99_s": 37.293, "ttft_p50_s": null, "ttft_p95_s": null, "agg_tps": null, "req_tps_mean": null, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": true, "break_reason": ""}
+Wrote /root/results-run40/cluaiz_w4_w5/analysis.md and /root/results-run40/cluaiz_w4_w5/summary.json
+ALL DONE: /root/results-run40/cluaiz_w4_w5
+ALL_DONE

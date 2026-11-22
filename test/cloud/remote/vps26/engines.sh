@@ -125,7 +125,9 @@ sync_ollama_modelfiles() {
   if [ -f "$stamp" ] && [ "$(cat "$stamp")" = "${threads}_${ctx}" ] && [ -d "$OLLAMA_MODELS_DIR/manifests" ]; then
     local count
     count=$(find "$OLLAMA_MODELS_DIR/manifests" -type d -name 'vps26-*' 2>/dev/null | wc -l)
-    if [ "$count" -ge 4 ]; then
+    local want=0 m
+    for m in qwen3-0.6b qwen3-1.7b llama3.2-3b embed-gemma; do [ -f "$(model_gguf_host "$m")" ] && want=$((want + 1)); done
+    if [ "$count" -ge "$want" ]; then
       echo "Ollama models already synced for threads=$threads ctx=$ctx"
       return 0
     fi
@@ -141,6 +143,8 @@ sync_ollama_modelfiles() {
   for mkey in qwen3-0.6b qwen3-1.7b llama3.2-3b embed-gemma; do
     local gguf mname mf
     gguf=$(model_gguf_host "$mkey")
+    # A machine set up for fewer models (gcp_setup.sh has no Llama 3.2 3B) skips the missing ones
+    [ -f "$gguf" ] || { echo "Ollama sync: skip $mkey, no GGUF at $gguf"; continue; }
     mname=$(model_ollama_id "$mkey")
     mf="/tmp/${mname}.Modelfile"
     printf 'FROM %s\nPARAMETER num_ctx %s\nPARAMETER num_gpu 0\nPARAMETER num_thread %s\nPARAMETER temperature 0\n' "$gguf" "$ctx" "$threads" > "$mf"

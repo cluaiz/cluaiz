@@ -25,6 +25,8 @@ INPUTS_DIR=""
 PHASE_KIND="ramp"
 SKIP_INPUTS=0
 CHECK_RECOVERY=0
+# 1: a website already answers on port 3100 (started by the caller); do not start or stop neighbour_app.py
+EXTERNAL_NEIGHBOUR=0
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -48,6 +50,7 @@ while [ "$#" -gt 0 ]; do
     --phase-kind) PHASE_KIND="$2"; shift 2 ;;
     --skip-inputs) SKIP_INPUTS=1; shift ;;
     --check-recovery) CHECK_RECOVERY=1; shift ;;
+    --external-neighbour) EXTERNAL_NEIGHBOUR=1; shift ;;
     *) echo "Unknown arg: $1" >&2; exit 2 ;;
   esac
 done
@@ -74,7 +77,7 @@ SAMPLER_PID=""
 cleanup() {
   stop_all_engines "$OUT_DIR" || true
   [ -n "$NEIGHBOUR_PID" ] && kill "$NEIGHBOUR_PID" 2>/dev/null || true
-  kill_port_pid 3100 || true
+  [ "$EXTERNAL_NEIGHBOUR" -eq 1 ] || kill_port_pid 3100 || true
   touch "$OUT_DIR/stop"
   [ -n "$SAMPLER_PID" ] && wait "$SAMPLER_PID" 2>/dev/null || true
   rm -f /tmp/vps26_cluaiz.token
@@ -151,9 +154,11 @@ configure_cluaiz_home "$THREADS" "$CTX" "$KV"
 sync_ollama_modelfiles "$THREADS" "$CTX"
 
 echo "=== Start neighbour app (port 3100) and per-second sampler ==="
-kill_port_pid 3100 || true
-python3 -u "$HERE/neighbour_app.py" --port 3100 --dbname neighbour_app > "$OUT_DIR/neighbour_app.log" 2>&1 &
-NEIGHBOUR_PID=$!
+if [ "$EXTERNAL_NEIGHBOUR" -eq 0 ]; then
+  kill_port_pid 3100 || true
+  python3 -u "$HERE/neighbour_app.py" --port 3100 --dbname neighbour_app > "$OUT_DIR/neighbour_app.log" 2>&1 &
+  NEIGHBOUR_PID=$!
+fi
 wait_http "http://127.0.0.1:3100/health" 20
 
 python3 -u "$HERE/sampler.py" --out-dir "$OUT_DIR" > "$OUT_DIR/sampler.log" 2>&1 &

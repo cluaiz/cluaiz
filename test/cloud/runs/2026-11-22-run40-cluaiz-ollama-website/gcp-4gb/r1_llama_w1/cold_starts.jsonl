@@ -1,0 +1,2 @@
+{"ts": "2026-11-22T01:18:48", "mode": "native", "engine": "llama", "model": "qwen3-0.6b", "server_ready_s": 92.894, "ok": false}
+{"ts": "2026-11-22T01:20:25", "mode": "native", "engine": "llama", "model": "qwen3-1.7b", "server_ready_s": 93.065, "ok": false}

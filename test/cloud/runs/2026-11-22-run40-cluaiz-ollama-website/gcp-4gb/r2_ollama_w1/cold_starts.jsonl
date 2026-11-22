@@ -1,0 +1,2 @@
+{"ts": "2026-11-22T01:38:47", "mode": "native", "engine": "ollama", "model": "qwen3-0.6b", "server_ready_s": 0.578, "ok": true}
+{"ts": "2026-11-22T01:41:59", "mode": "native", "engine": "ollama", "model": "qwen3-1.7b", "server_ready_s": 0.586, "ok": true}

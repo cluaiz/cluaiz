@@ -48,7 +48,7 @@ keeps its disk with the build and the models, so `start` continues; `delete` rem
 | `remote/ssd_test.sh`, `ssd_same_settings.sh` | a model bigger than RAM + VRAM; Cluaiz against official llama.cpp with the same settings |
 | `remote/vps_cpu_same_settings.sh`, `vps_run16_ollama.sh`, `vps_run18_features.sh`, `vps19/` | runs 15-19 on a 1 vCPU / 4 GB VPS without a GPU |
 | `remote/mtp23/` | runs 23-24: MTP off, on and Auto in every placement |
-| `remote/vps26/` | run 26: Cluaiz, llama.cpp and Ollama next to a web app and PostgreSQL on the 1 vCPU VPS, native and Docker (`run26.sh`, `workloads.py`, `analyze.py`); `run40.sh` reruns its checks with the engines interleaved, the answer texts saved and the Cluaiz commit recorded |
+| `remote/vps26/` | run 26: Cluaiz, llama.cpp and Ollama next to a web app and PostgreSQL on the 1 vCPU VPS, native and Docker (`run26.sh`, `workloads.py`, `analyze.py`); `run40.sh` reruns its checks with the engines interleaved, the answer texts saved and the Cluaiz commit recorded; `gcp_setup.sh` prepares a fresh Ubuntu VM, `webapp/` is a Node.js + PostgreSQL website with simulated users (`WEB_USERS`), `compare40.py` writes the tables |
 | `remote/models*.txt` | model lists the scripts pull |
 
 ## Rules for a run
@@ -75,7 +75,7 @@ keeps its disk with the build and the models, so `start` continues; `delete` rem
 | Item | Why it matters | Needs |
 |---|---|---|
 | Runs 2, 6 and 14 have no row in `BENCHMARKS.md` | run 6 has a folder (`2026-11-09-run6-cpu-os-matrix/RESULTS.md`), run 14 a script (`ssd_same_settings.sh`) but no folder, run 2 nothing | rows, or a note that the run was dropped |
-| Run 26 was a smoke pass (25 s steps, 1 and 2 requests at once) with an older Cluaiz build | the soak and the speed rows with the current build are still to run on the VPS | rerun `remote/vps26/run26.sh` with a build at or after `fe21984c` and save the answer texts |
+| llama.cpp has no row in run 40's GCP results | `llama-server` needed `libgomp1`, which the fresh image lacked (now in `gcp_setup.sh`); Docker was not run | rerun `remote/vps26/run40.sh` on a fresh VM after `gcp_setup.sh` |
 | `remote/vram_hog.py` and `remote/mtp23/vram_hog.py` are identical | two copies drift | keep one; `mtp23/run23.sh` and `run24.sh` call `$HERE/vram_hog.py`, so first check how `mtp23/` is copied to the VM |
 | The Mac run is in `test/mac/runs/`, not here | runs are in two places | move it, or link it from `BENCHMARKS.md` |
 | A CPU-only run on an 8 GB VM for the Auto thinking ceiling | the slow-machine path is unit-tested only (runs 30-31 were on a GPU) | the planned VM run |

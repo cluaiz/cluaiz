@@ -1,0 +1,49 @@
+{
+  "created_at": "2026-11-22T01:27:33+0000",
+  "machine": {
+    "cpu_model": "Intel(R) Xeon(R) CPU @ 2.20GHz",
+    "vcpus": 2,
+    "mem_total_mb": 3908,
+    "kernel": "7.0.0-1017-gcp",
+    "os": "Ubuntu 24.04.5 LTS"
+  },
+  "params": {
+    "modes": [
+      "native"
+    ],
+    "engines": [
+      "cluaiz"
+    ],
+    "models": [
+      "qwen3-0.6b",
+      "qwen3-1.7b"
+    ],
+    "w6_model": "qwen3-0.6b",
+    "workloads": [
+      "W1"
+    ],
+    "mem_max_mb": 3508,
+    "threads": 2,
+    "ctx": 4096,
+    "kv": "q8_0",
+    "slots": 1,
+    "levels": [
+      1,
+      4
+    ],
+    "step_secs": 90,
+    "soak_secs": 0,
+    "w4_limit": 2000
+  },
+  "engines": {
+    "cluaiz_version": "cluaiz 0.1.0 (pre-release)",
+    "cluaiz_sha256": "18c120a3f88a0c69d5929a795d451243e7b78297f32a6b0fc96fcb2afc599f7a",
+    "cluaiz_commit": "b8ef5f64a0a3ec53281d39b80fa52d0879ae9891",
+    "ollama_version": "Warning: client version is 0.40.16",
+    "ollama_sha256": "a0c1e355537b0c037f2190edd339197fe3eb00387a46d6e26be695250262a790",
+    "llama_version": "/root/llama-official/llama-b12428/llama-server: error while loading shared libraries: libgomp.so.1: cannot open shared object file: No such file or directory",
+    "llama_sha256": "75e593229831bea182e9b6b2fd63231673c85be3e52cb5ebc8daf27253daf192",
+    "ollama_image": "ollama/ollama:0.40.16",
+    "docker_images": "err: Command 'docker images --digests --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.Digest}} {{.Size}}'' returned non-zero exit status 127."
+  }
+}
