@@ -145,6 +145,15 @@ folder or above it is not confined (auto runs it unconfined with the warning, re
 granting it would rewrite the ACL of every file in the profile; secret folders inside a granted root get a
 deny ACE.
 
+A workspace that is the Cluaiz home or a folder above it is never confined, on every backend: auto runs
+the command unconfined with a warning on every such command, required refuses (`exposes_engine_home`).
+The reason: the workspace is bound back writable after the masks, so it reopens the Cluaiz home, and the
+re-mask of hidden paths (`reopened`) only covers paths strictly inside a root. When the workspace is the
+Cluaiz home itself (`h == r`), `session.token` and the config with provider keys stayed open. Both paths
+are compared resolved, so another spelling of the same folder counts. The Engine's own default workspace,
+`<Cluaiz home>/workspace` (`EnvironmentManager::default_workspace_dir`), sits inside the home and is
+confined as usual: it comes back writable and the rest of the Cluaiz home stays hidden.
+
 Mode: `os_sandbox` in permission.json (`cluaiz permission os-sandbox <mode>`, CEP `config.set` section
 `engine`), or `CLUAIZ_OS_SANDBOX` for one run; read on every command. A value that is not one of the three
 counts as `required`, so a typo never turns confinement down. `auto` (default: confine when a backend exists, else run and warn once),
@@ -157,7 +166,7 @@ containers access) and a Python installed under AppData did not start inside a c
 default would break common agent commands. `os_sandbox = required` confines. Inside a container
 PowerShell's progress bar cannot read the console; `$ProgressPreference='SilentlyContinue'` avoids it.
 
-Tested: argument and profile unit tests (`cargo test -p cluaiz-agents --lib os_sandbox`, 17 pass). Windows
+Tested: argument and profile unit tests (`cargo test -p cluaiz-agents --lib os_sandbox`, 20 pass on 2026-11-22, Windows 11, including `a_workspace_at_or_above_the_engine_home_runs_plain_in_auto_and_is_refused_in_required`). Windows
 on a real machine: `test/cloud/runs/2026-11-20-run27-windows-os-sandbox/` (home, `.ssh`, `.cluaiz` and
 Documents denied, workspace writable, network only when allowed, exit codes pass through). Linux on a real
 machine: `test/cloud/runs/2026-11-21-run28-linux-os-sandbox/` (Ubuntu 24.04: 8 / 8 checks after the AppArmor
@@ -171,14 +180,14 @@ toolchain roots that exist (same rule as the secret masks). Second run with that
 
 ## Tested
 
-42 unit tests in this folder. Part of `cargo test -p cluaiz-agents`: 161 passed, 1 ignored on 2026-11-21 (Windows 11).
+43 unit tests in this folder. Part of `cargo test -p cluaiz-agents`: 161 passed, 1 ignored on 2026-11-21 (Windows 11).
 
 | Area | Tests |
 |---|---|
 | Approval policy (`policy.rs`) | `test_hard_denied_destructive_commands_all_os`, `test_cross_platform_sensitive_paths_blocked_in_sandbox`, `test_non_existent_cwd_denied`, `test_strict_mode_confirmation_and_read_only_allowed`, `test_sandboxed_safe_commands_allowed`, `a_read_only_start_does_not_cover_a_chained_line`, `test_dangerous_command_blocked` |
 | Environment | `test_secret_scrubbing`, `a_tool_gets_only_the_system_basics_and_its_own_values`, `test_venv_path_injection`, `test_clean_shell_and_stdin` |
 | Terminal runner and PTY | `terminal_output_becomes_plain_lines`, `a_command_asks_and_the_keyboard_answers`, `stopping_and_the_timeout_end_a_waiting_command`, `a_timeout_also_ends_what_the_command_started`, `a_program_left_in_the_background_does_not_hold_the_answer`, `output_that_is_not_utf8_is_kept`, `test_truncate_small_output`, `test_truncate_large_output`, `test_signal_explanation`, `test_sandbox_runner_basic_echo`, `test_streaming_sends_each_line_while_keeping_the_output`, `test_cancel_handle` |
-| OS sandbox (all backends, built as text on every OS) | `bubblewrap_hides_home_and_binds_the_workspace_last`, `network_is_cut_unless_allowed`, `a_root_that_is_also_writable_is_bound_once_writable`, `without_a_backend_auto_runs_plain_and_required_refuses`, `a_workspace_at_home_masks_the_secret_folders_again`, `seatbelt_profile_hides_home_and_keeps_the_workspace`, `seatbelt_reopens_a_home_workspace_but_not_its_secrets`, `appcontainer_reruns_this_binary_as_the_helper`, `appcontainer_refuses_the_home_folder_as_workspace`, `a_mistyped_mode_confines_instead_of_turning_confinement_down`, `toolchains_on_path_under_home_come_back_but_secrets_do_not`, `a_secret_inside_a_read_root_is_masked_after_the_root`, `off_never_wraps_even_with_a_backend`, `secrets_inside_a_granted_root_are_denied`, `one_container_per_workspace`, `quoting_follows_the_c_runtime_rules`, `cmd_gets_its_command_in_its_own_form`, `helper_args_round_trip`, `a_normal_launch_is_not_a_helper_run` |
+| OS sandbox (all backends, built as text on every OS) | `bubblewrap_hides_home_and_binds_the_workspace_last`, `network_is_cut_unless_allowed`, `a_root_that_is_also_writable_is_bound_once_writable`, `without_a_backend_auto_runs_plain_and_required_refuses`, `a_workspace_at_home_masks_the_secret_folders_again`, `seatbelt_profile_hides_home_and_keeps_the_workspace`, `seatbelt_reopens_a_home_workspace_but_not_its_secrets`, `appcontainer_reruns_this_binary_as_the_helper`, `appcontainer_refuses_the_home_folder_as_workspace`, `a_mistyped_mode_confines_instead_of_turning_confinement_down`, `toolchains_on_path_under_home_come_back_but_secrets_do_not`, `a_secret_inside_a_read_root_is_masked_after_the_root`, `a_workspace_at_or_above_the_engine_home_runs_plain_in_auto_and_is_refused_in_required`, `off_never_wraps_even_with_a_backend`, `secrets_inside_a_granted_root_are_denied`, `one_container_per_workspace`, `quoting_follows_the_c_runtime_rules`, `cmd_gets_its_command_in_its_own_form`, `helper_args_round_trip`, `a_normal_launch_is_not_a_helper_run` |
 
 Real machines: `agents/tests/os_sandbox_real.rs` (ignored by default) passed on Windows (run 27) and
 Linux (run 28, 8 of 8 checks); see `test/cloud/runs/`. macOS on a GitHub `macos-15` runner: 9 of 9

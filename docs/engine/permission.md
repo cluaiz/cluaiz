@@ -89,6 +89,11 @@ Two separate checks guard every command an agent or a tool runs:
 
 ![The agent wants to run a command; the approval policy decides whether it runs, then the OS sandbox decides what it can touch: the project folder, not the home folder, ~/.ssh, ~/.aws or Cluaiz's files](../assets/engine/two-walls.png)
 
+A workspace that is the Cluaiz home or a folder above it would show Cluaiz's own files (the session
+token, the config with provider keys) to the command, so it is never confined: `auto` runs the command
+unconfined with a warning, `required` refuses it. With no project open, the Engine's workspace is the
+empty folder `~/.cluaiz/workspace`, which is confined as usual.
+
 An approval says "yes, run it"; the sandbox still applies after that. Platform details, tests and
 limits: [agents/src/execution/README.md](../../agents/src/execution/README.md#os-sandbox-os_sandboxrs-2026-11-20).
 Messages and fixes: [Troubleshooting](../get-started/troubleshooting.md#agent-commands-and-tools).

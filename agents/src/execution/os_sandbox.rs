@@ -131,6 +131,11 @@ pub fn confine(program: &str, args: &[String], policy: &SandboxPolicy, mode: San
         }
         Ok(plain())
     };
+    // A workspace that is the Cluaiz home or holds it binds the home back writable, after its mask:
+    // `session.token` and the config with provider keys would be open to the command
+    if exposes_engine_home(&policy.workspace, cluaiz_home().as_deref()) {
+        return unconfined(ENGINE_HOME_WORKSPACE);
+    }
     match backend {
         Backend::Bubblewrap(bwrap) => {
             let mut wrapped = bwrap_args(policy);
@@ -320,8 +325,22 @@ const NO_BACKEND: &str = if cfg!(target_os = "linux") {
     "no OS sandbox exists for this platform"
 };
 
-/// Why auto mode left commands unconfined with this backend
-fn unconfined_reason(backend: &Backend) -> &'static str {
+/// Why a workspace at or above the Cluaiz home is never confined
+const ENGINE_HOME_WORKSPACE: &str = "the workspace is the Cluaiz home or a folder above it, which would expose its session token and config; open a project folder instead";
+
+/// Whether `workspace` is the Cluaiz home or a folder above it. Folders that exist are compared
+/// resolved, so another spelling of the same folder (letter case on Windows, `..`, a link) still counts.
+fn exposes_engine_home(workspace: &Path, engine_home: Option<&Path>) -> bool {
+    let Some(engine_home) = engine_home else { return false };
+    let resolved = |path: &Path| std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+    resolved(engine_home).starts_with(resolved(workspace))
+}
+
+/// Why auto mode left commands unconfined with this backend and policy
+fn unconfined_reason(backend: &Backend, policy: &SandboxPolicy) -> &'static str {
+    if exposes_engine_home(&policy.workspace, cluaiz_home().as_deref()) {
+        return ENGINE_HOME_WORKSPACE;
+    }
     match backend {
         Backend::None => NO_BACKEND,
         Backend::AppContainer(_) => WINDOWS_AUTO,
@@ -413,7 +432,13 @@ pub fn confine_here(program: &str, args: &[String], policy: &SandboxPolicy) -> R
     let mode = current_mode();
     let confined = confine(program, args, policy, mode, backend)?;
     if mode == SandboxMode::Auto && confined.backend == "none" {
-        NOTICE.call_once(|| tracing::warn!("Commands are not OS-confined here ({}); the allow/ask/deny policy still applies", unconfined_reason(backend)));
+        let reason = unconfined_reason(backend, policy);
+        if reason == ENGINE_HOME_WORKSPACE {
+            // Said on every command: it is a setup to change, not a fact of this machine
+            tracing::warn!("This command is not OS-confined ({reason}); the allow/ask/deny policy still applies");
+        } else {
+            NOTICE.call_once(|| tracing::warn!("Commands are not OS-confined here ({reason}); the allow/ask/deny policy still applies"));
+        }
     }
     Ok(confined)
 }
@@ -574,6 +599,28 @@ mod tests {
         let back = profile.rfind("(allow file-read* (subpath \"/home/u/.cargo\")").unwrap();
         let deny = profile.rfind("/home/u/.cargo/credentials.toml").unwrap();
         assert!(deny > back);
+    }
+
+    #[test]
+    fn a_workspace_at_or_above_the_engine_home_runs_plain_in_auto_and_is_refused_in_required() {
+        let engine = Path::new("/home/u/.cluaiz");
+        assert!(exposes_engine_home(engine, Some(engine)), "the Cluaiz home itself");
+        assert!(exposes_engine_home(Path::new("/home/u"), Some(engine)), "a folder above it");
+        assert!(!exposes_engine_home(Path::new("/home/u/.cluaiz/workspace"), Some(engine)), "its own workspace folder inside it");
+        assert!(!exposes_engine_home(Path::new("/home/u/project"), Some(engine)));
+        assert!(!exposes_engine_home(engine, None));
+
+        let Some(engine) = cluaiz_home() else { return };
+        for workspace in [engine.clone(), engine.parent().map(Path::to_path_buf).unwrap_or_else(|| engine.clone())] {
+            let mut p = policy();
+            p.workspace = workspace;
+            for backend in [bwrap(), Backend::Seatbelt, Backend::AppContainer(PathBuf::from("cluaiz.exe"))] {
+                let auto = confine("sh", &[], &p, SandboxMode::Auto, &backend).unwrap();
+                assert_eq!((auto.program.as_str(), auto.backend), ("sh", "none"), "{}", backend.name());
+                let refused = confine("sh", &[], &p, SandboxMode::Required, &backend).err().map(|e| e.to_string()).unwrap_or_default();
+                assert!(refused.contains(ENGINE_HOME_WORKSPACE), "{}: {refused}", backend.name());
+            }
+        }
     }
 
     #[test]
