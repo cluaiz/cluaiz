@@ -83,10 +83,12 @@ flowchart TD
     `session_id`, `think_mode`, `reasoning_effort`, `temporary_chat`, `max_steps`,
     `return_progress`, `history`, `storage`…), and the live stream registry
     (`ACTIVE_STREAMS`, keyed by `chatcmpl-…`, holding cancel and skip-reasoning flags).
+    `unsupported_on_installed_model` names the first OpenAI field an installed model cannot
+    honour: `n` above 1, `logprobs: true`, `top_logprobs` above 0, a non-empty `logit_bias`.
 - `processing.rs`:
   - **Logic:** With `stream` and `return_progress`, progress events start before preflight so
     file decoding and model load are visible; token strings never carry events.
-- `preflight.rs` (1,586 lines, above the 800-line limit; a split is due):
+- `preflight.rs` (1,667 lines, above the 800-line limit; a split is due):
   - **Logic:** `PreparedChatContext::prepare` does everything before the first token, in order:
     stop idle jobs; check the model (a provider's model loads nothing); load or reuse the
     installed model so budgets use the context llama.cpp really created; read the chat template
@@ -164,6 +166,14 @@ flowchart TD
 
 - **Empty `messages`:** 400 `invalid_request_error`.
 - **Unknown model:** 400 from preflight, also while another request is busy.
+- **OpenAI field an installed model cannot honour** (`n` > 1, `logprobs: true`, `top_logprobs` > 0,
+  non-empty `logit_bias`): 400 `invalid_request_error`, code `unsupported_parameter`, `param` = the
+  field, before any model load (as an SSE error chunk + `[DONE]` when streaming). `n: 1`,
+  `logprobs: false`, `{}` and absent fields work as before. A provider's model is not checked:
+  `logit_bias` is forwarded to the provider; `n` and `logprobs` are not forwarded (they were not
+  before either). Checked live on 2026-11-22 with OLMoE-1B-7B on an isolated server (port 8013):
+  each refused field returned HTTP 400 naming it; `n:1,logprobs:false,top_logprobs:0,logit_bias:{}`
+  returned HTTP 200 with an answer.
 - **Model load fails / does not fit:** `error_response` with the planner's reason; nothing is
   generated.
 - **Provider error:** the provider's own message (see `api/src/providers/errors.rs`); stream
@@ -179,7 +189,7 @@ flowchart TD
 
 ## Tests
 
-20 unit tests in this folder; route-level tests in `api/tests/` (`reasoning_contract.rs`,
+23 unit tests in this folder; route-level tests in `api/tests/` (`reasoning_contract.rs`,
 `media_contract.rs`, `processing_contract.rs`, `mtp_contract.rs`). `api` builds both native backends, so none of these tests were run on 2026-11-21 (see `api/README.md`, Tests). Thinking budget
 behaviour was checked live in runs 30 and 31 (`test/cloud/runs/`).
 
@@ -188,3 +198,6 @@ behaviour was checked live in runs 30 and 31 (`test/cloud/runs/`).
 | Item | Why it matters | Needs |
 |---|---|---|
 | Route tests not run since October and not in CI | see `api/README.md` | a CI job with the CPU backend |
+| `logit_bias` on installed models (refused with 400 today) | OpenAI clients use it to ban or favour tokens | bind `llama_sampler_init_logit_bias` (`llama.cpp/include/llama.h:1607`, not in `engine/llama/src/ffi/llama_cpp.rs` yet), add it to the chain in `engine/llama/src/native/sampler.rs`, keys parsed as token ids |
+| `logprobs` / `top_logprobs` and `n` > 1 on installed models (refused with 400 today) | evaluation clients ask for token probabilities; `n` asks for several answers | logprobs: read `llama_get_logits_ith` after each sample and add them to the chunk; `n`: one sequence per answer |
+| `n` and `logprobs` not forwarded to providers | a provider could answer them | forward in `preflight.rs` provider `extra` and handle several `choices` in the reply |

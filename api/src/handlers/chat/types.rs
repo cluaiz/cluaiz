@@ -94,6 +94,12 @@ pub struct ExternalChatRequest {
     pub chat_template_kwargs: Option<serde_json::Value>,
     pub grammar: Option<String>,
     pub logit_bias: Option<std::collections::HashMap<String, f32>>,
+    /// OpenAI `n`: answers per request. An installed model gives one; `n` above 1 is refused there
+    pub n: Option<u64>,
+    /// OpenAI `logprobs` / `top_logprobs`: an installed model returns no token probabilities, so
+    /// asking for them is refused there
+    pub logprobs: Option<bool>,
+    pub top_logprobs: Option<u64>,
     pub tools: Option<Vec<serde_json::Value>>,
     pub tool_choice: Option<serde_json::Value>,
     /// Maximum tool-call generations in one turn (`0` = unlimited; default `100`). A value that is
@@ -381,6 +387,24 @@ impl ExternalChatRequest {
     pub fn answer_limit(&self) -> Option<usize> {
         self.max_tokens.or(self.max_completion_tokens)
     }
+
+    /// The first OpenAI field an installed model cannot honour (field name, message), so the
+    /// caller gets a 400 instead of an answer that silently ignored it. Providers are not checked.
+    pub fn unsupported_on_installed_model(&self) -> Option<(&'static str, String)> {
+        if let Some(n) = self.n.filter(|n| *n > 1) {
+            return Some(("n", format!("n={n} is not supported on installed models: one answer per request (send n=1 or leave it out)")));
+        }
+        if self.logprobs == Some(true) {
+            return Some(("logprobs", "logprobs is not supported on installed models yet (send logprobs=false or leave it out)".into()));
+        }
+        if self.top_logprobs.is_some_and(|k| k > 0) {
+            return Some(("top_logprobs", "top_logprobs is not supported on installed models yet (leave it out)".into()));
+        }
+        if self.logit_bias.as_ref().is_some_and(|bias| !bias.is_empty()) {
+            return Some(("logit_bias", "logit_bias is not supported on installed models yet (send an empty object or leave it out)".into()));
+        }
+        None
+    }
 }
 
 #[cfg(test)]
@@ -403,5 +427,16 @@ mod openai_field_tests {
         assert_eq!(parse(r#","max_completion_tokens":5"#).answer_limit(), Some(5));
         assert_eq!(parse(r#","max_completion_tokens":5,"max_tokens":9"#).answer_limit(), Some(9));
         assert_eq!(parse("").answer_limit(), None);
+    }
+
+    #[test]
+    fn fields_an_installed_model_cannot_honour_are_named() {
+        let field = |extra: &str| parse(extra).unsupported_on_installed_model().map(|(f, _)| f);
+        assert_eq!(field(""), None);
+        assert_eq!(field(r#","n":1,"logprobs":false,"top_logprobs":0,"logit_bias":{}"#), None);
+        assert_eq!(field(r#","n":2"#), Some("n"));
+        assert_eq!(field(r#","logprobs":true"#), Some("logprobs"));
+        assert_eq!(field(r#","top_logprobs":3"#), Some("top_logprobs"));
+        assert_eq!(field(r#","logit_bias":{"50256":-100}"#), Some("logit_bias"));
     }
 }

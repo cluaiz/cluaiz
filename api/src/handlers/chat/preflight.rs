@@ -108,6 +108,18 @@ pub(super) fn error_response(
     error_type: &str,
     code: Option<&str>,
 ) -> axum::response::Response {
+    error_response_with_param(request, request_id, message, error_type, code, None)
+}
+
+/// `error_response` with OpenAI's `param`: the request field the error is about
+pub(super) fn error_response_with_param(
+    request: &ExternalChatRequest,
+    request_id: &str,
+    message: String,
+    error_type: &str,
+    code: Option<&str>,
+    param: Option<&str>,
+) -> axum::response::Response {
     let details = if error_type == "permission_error" {
         serde_json::from_str::<serde_json::Value>(&message).ok()
     } else {
@@ -120,6 +132,9 @@ pub(super) fn error_response(
         .unwrap_or(&message)
         .to_owned();
     let mut error = json!({ "message": message, "type": error_type, "code": code });
+    if let Some(param) = param {
+        error["param"] = json!(param);
+    }
     if let Some(details) = details {
         error["details"] = details;
     }
@@ -206,6 +221,12 @@ impl PreparedChatContext {
         if let Some(run) = &provider {
             if let Err(message) = run.target.check_kind("chat") {
                 return Err(error_response(request, request_id, message, "invalid_request_error", Some("model_kind")));
+            }
+        }
+        // An installed model: fields it cannot honour are refused, not silently ignored
+        if provider.is_none() {
+            if let Some((field, message)) = request.unsupported_on_installed_model() {
+                return Err(error_response_with_param(request, request_id, message, "invalid_request_error", Some("unsupported_parameter"), Some(field)));
             }
         }
         let mut active_model_path = if provider.is_some() { None } else { crate::utils::slots::resolve_model_path(&schema, target_slot) };

@@ -214,7 +214,7 @@ params:
     req: false
     default: "null"
     allowed: "Map of token ID to bias"
-    desc: "Token ID probability bias adjustments (-100 to +100). Applied only to provider models today; an installed model ignores it."
+    desc: "Token ID probability bias adjustments (-100 to +100). Applied only to provider models today; an installed model refuses a non-empty map with HTTP 400 (`unsupported_parameter`)."
 request_payload: |
   {
     "model": "llama_3.2_instruct-3b-gguf-q4_k_m",
@@ -402,7 +402,7 @@ flowchart LR
 | **`kv_reuse`** | String | No | auto | `"prefix"`, `"chunk"` | How the KV cache is matched to the new prompt. `prefix`: only the common prefix is kept. `chunk`: shared chunks after it are moved too (llama-server `--cache-reuse`), which keeps the context they were computed with. Auto: `chunk` only when the Engine dropped old turns to fit, otherwise `prefix`, so an edit such as unloading a tool is computed again from the change. |
 | **`grammar`** | String | No | `null` | GBNF string | llama.cpp GBNF grammar the answer must follow (after thinking); takes precedence over `response_format`. A grammar llama.cpp cannot parse is logged and the answer is not constrained. As in llama-server, the sampler picks a token first and the grammar checks only that token; only a rejected token makes the grammar go over the whole vocabulary, so a grammar costs almost no speed (Gemma 4: 14.6 tokens/s with a grammar, 7.5 before this). The same holds for `response_format`; the grammar of native tool calls still masks every candidate, as before. |
 | **`chat_template_kwargs`** | Object | No | `null` | Object | Additional keyword arguments passed directly to the Jinja chat tokenizer template. |
-| **`logit_bias`** | Object | No | `null` | Map of token ID to bias | Token ID probability bias adjustments (-100 to +100). **Applied only to provider models today;** an installed model ignores it. |
+| **`logit_bias`** | Object | No | `null` | Map of token ID to bias | Token ID probability bias adjustments (-100 to +100). **Applied only to provider models today;** an installed model refuses a non-empty map with HTTP 400 (`unsupported_parameter`). |
 
 > [!NOTE]
 > **BitNet (1-bit / 1.58-bit) Models**:

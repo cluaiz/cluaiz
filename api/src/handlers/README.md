@@ -45,4 +45,4 @@ Rules for this folder:
 |---|---|---|
 | `/api/show` is not there | Ollama tools that call it get 404 | map it to `models.inspect` |
 | `/api/tags` `parameter_size: Unknown` when the registry has no count | an empty size class in Ollama clients | the GGUF parameter count in the registry |
-| OpenAI fields ignored on installed models (`n`, `logprobs`, `logit_bias`) | clients get a different result without an error (run 32) | read them in `chat/types.rs` and pass them to llama.cpp |
+| OpenAI fields not supported on installed models (`n` > 1, `logprobs`, `logit_bias`): refused with HTTP 400 since 2026-11-22, no longer ignored | clients that need them get an error | pass them to llama.cpp (`chat/README.md`, Pending) |

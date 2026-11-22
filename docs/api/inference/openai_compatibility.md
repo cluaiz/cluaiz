@@ -35,8 +35,6 @@ Python example above was not run in run 32 (the requests there used `curl`).
 
 ## Chat request fields on an installed model
 
-![OpenAI chat fields an installed model honours, including stop and max_completion_tokens, and the ones it ignores today: n, logprobs, logit_bias](../../assets/api/openai-fields.png)
-
 | Field | Honoured | Notes |
 |---|---|---|
 | `model`, `messages`, `stream` | yes | |
@@ -48,9 +46,9 @@ Python example above was not run in run 32 (the requests there used `curl`).
 | `reasoning_effort` | yes | `low`, `medium`, `high`, plus `auto`, `max` or a number of tokens |
 | `stop` | yes (recorded) | a string or an array; the answer ends before the first match, `finish_reason: "stop"` (run 34) |
 | `max_completion_tokens` | yes (recorded) | the answer limit when `max_tokens` is not sent; `max_tokens` wins when both are (run 34) |
-| `n` | **no** (recorded) | always one choice |
-| `logprobs`, `top_logprobs` | no | ignored |
-| `logit_bias` | no | only provider models get it |
+| `n` | **no** | `n: 1` works; above 1 the request is refused with HTTP 400 (one choice per request) |
+| `logprobs`, `top_logprobs` | **no** | `logprobs: false` and `top_logprobs: 0` work; asking for them is refused with HTTP 400 |
+| `logit_bias` | **no** | `{}` works; a non-empty map is refused with HTTP 400 (provider models get it) |
 | unknown fields | ignored | no error is returned |
 
 ## What Cluaiz adds
@@ -84,6 +82,14 @@ request with different load settings reloads the model. (The `extra_body` exampl
 
 ## Known differences
 
-The fields marked **no** above are recorded gaps in the Engine, not choices. Until they are fixed:
+The fields marked **no** above are recorded gaps in the Engine, not choices. Until they are fixed,
+an installed model refuses them instead of answering without them: HTTP 400 with OpenAI's error
+shape, `code: "unsupported_parameter"` and `param` naming the field (when streaming: one SSE error
+chunk, then `[DONE]`). Nothing is loaded for a refused request.
 
-- do not rely on `n`, `logprobs` or `logit_bias` with an installed model.
+```json
+{"error":{"code":"unsupported_parameter","message":"n=2 is not supported on installed models: one answer per request (send n=1 or leave it out)","param":"n","type":"invalid_request_error"}}
+```
+
+That reply was recorded on 2026-11-22 (OLMoE-1B-7B, `"n":2`). A provider model is not checked:
+`logit_bias` is forwarded to the provider; `n` and `logprobs` are not forwarded.

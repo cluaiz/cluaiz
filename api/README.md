@@ -443,7 +443,7 @@ Route behaviour is also exercised by every cloud run (`test/cloud/BENCHMARKS.md`
 
 | Item | Why it matters | Needs |
 |---|---|---|
-| `n`, `logprobs`, `logit_bias` are ignored on an installed model (`stop` and `max_completion_tokens` work since run 34) | OpenAI clients send them and get a different result without an error (run 32) | read them in `handlers/chat` and pass them to llama.cpp |
+| `n` > 1, `logprobs`, `logit_bias` are not supported on an installed model; since 2026-11-22 they are refused with HTTP 400 naming the field instead of being ignored (`stop` and `max_completion_tokens` work since run 34) | OpenAI clients that need them get an error, not the result they asked for | pass them to llama.cpp (see `handlers/chat/README.md`, Pending) |
 | `/api/show` and Ollama's model-management routes are not there | tools that show model details through Ollama's API get 404 | map `/api/show` to `models.inspect` |
 | `/api/tags` sends `parameter_size: Unknown` when the registry has no parameter count | Ollama clients show an empty size class | the GGUF parameter count in the registry |
 | `api` tests not in CI and not rerun since the October acceptance sections | the dated results may not hold for the current code | a CI job with the CPU backend, or a recorded run |
