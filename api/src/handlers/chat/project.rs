@@ -62,8 +62,9 @@ impl Project {
     }
 }
 
-/// The project a workspace note belongs to: the note's workspace when the user picked it (not
-/// the Cluaiz home, the workspace nobody chose) and project files are on
+/// The project a workspace note belongs to: the note's workspace when it is a real folder (not the
+/// Cluaiz home itself) and project files are on. The default workspace counts: what is remembered
+/// with no project open goes to its `.agents/memory/`, the agent's own memory
 pub fn note_project(note: &cluaiz_agents::memory::notes::Note) -> Option<std::path::PathBuf> {
     project_for(&note.scope, note.owner.as_deref())
 }

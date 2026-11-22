@@ -192,6 +192,18 @@ impl EnvironmentManager {
     pub fn reports_dir(&self) -> PathBuf {
         self.local_dir.join("reports")
     }
+    /// The open folder before a client opens a project: an empty folder of its own, so tools that
+    /// work in the open folder (files, git, terminal) never see the session token, config or memory
+    /// beside it in the Cluaiz home
+    pub fn default_workspace_dir(&self) -> PathBuf {
+        self.local_dir.join("workspace")
+    }
+    /// Whether `dir` is a folder nobody chose as a project: the default workspace or the Cluaiz home
+    pub fn is_unchosen_workspace(&self, dir: &Path) -> bool {
+        let resolved = |path: &Path| std::fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+        let dir = resolved(dir);
+        dir == resolved(&self.default_workspace_dir()) || dir == resolved(&self.local_dir)
+    }
 
     pub fn ensure_config_dir(&self) -> std::io::Result<PathBuf> {
         let dir = self.config_dir();
@@ -328,6 +340,21 @@ fn retire_bins(dir: &Path, backup: &Path) -> Vec<PathBuf> {
 #[cfg(test)]
 mod bin_tests {
     use super::*;
+
+    #[test]
+    fn the_default_workspace_and_the_home_are_not_projects() {
+        let home = std::env::temp_dir().join(format!("cluaiz-workspace-{}", std::process::id()));
+        let env = EnvironmentManager { mode: EnvironmentMode::Testing, local_dir: home.clone(), global_dir: home.clone() };
+        let project = home.join("project");
+        std::fs::create_dir_all(env.default_workspace_dir()).unwrap();
+        std::fs::create_dir_all(&project).unwrap();
+        assert_eq!(env.default_workspace_dir(), home.join("workspace"));
+        assert!(env.is_unchosen_workspace(&env.default_workspace_dir()));
+        assert!(env.is_unchosen_workspace(&home));
+        assert!(env.is_unchosen_workspace(&home.join("workspace").join("..").join("workspace")), "another spelling of the same folder");
+        assert!(!env.is_unchosen_workspace(&project));
+        let _ = std::fs::remove_dir_all(&home);
+    }
 
     #[test]
     fn the_engine_folder_moves_to_config_and_bin_once() {

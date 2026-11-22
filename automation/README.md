@@ -126,12 +126,15 @@ Not built yet (read and checked, and a run says so): flow templates as a registr
 `tool_search`/`attachments`/`session` on `agent`, `settings` on `tool`, `call` to Engine routes,
 registry suggestions in `flows.draft`'s `missing`, `step.output_delta` streaming, multipart and
 binary webhook bodies, and WebAssembly components (WIT). Project flows listen for the workspace
-that was current when the server started.
+that was current when the server started. The default workspace (`<Cluaiz home>/workspace`, open when no
+project is) and the Cluaiz home are not projects: only the user's flows apply there
+(`Service::store`, `EnvironmentManager::is_unchosen_workspace`).
 
 ## Tested
 
-`cargo test -p cluaiz-automation` (crate `automation/core`) on 2026-11-21 (Windows 11): unit 70 passed;
-integration 1, 6, 19 and 20 passed. `automation/host` depends on `cluaiz-api` and was not run (native
+`cargo test -p cluaiz-automation` (crate `automation/core`) on 2026-11-22 (Windows 11): unit 71 passed
+(with `a_step_that_has_not_finished_keeps_its_id_and_kind`: `flows.run_get` gives a running step its id
+and kind, which the App's canvas needs to show it); integration 1, 6, 19 and 20 passed. `automation/host` depends on `cluaiz-api` and was not run (native
 backend build).
 
 Flow tools with the lazy snapshot, live on an isolated server (2026-11-21, Windows 11, debug build): with no

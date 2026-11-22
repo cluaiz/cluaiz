@@ -19,7 +19,10 @@ pub struct AppState {
 impl AppState {
     /// `session_token`: what local clients must present (written to the home by the daemon)
     pub fn new(host: Arc<EngineHost>, session_token: String) -> Self {
-        let workspace = cluaiz_core::EnvironmentManager::current().local_dir.clone();
+        let workspace = cluaiz_core::EnvironmentManager::current().default_workspace_dir();
+        if let Err(error) = std::fs::create_dir_all(&workspace) {
+            tracing::warn!("Cannot create the default workspace {}: {error}", workspace.display());
+        }
         cluaiz_agents::ToolsEngine::set_workspace_dir(workspace.clone());
         Self {
             host,

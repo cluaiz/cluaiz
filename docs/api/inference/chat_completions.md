@@ -677,7 +677,7 @@ folders and of `~/.agents/`.
   waits for the user, since it is written into the user's project. In a project chat the model is
   also shown the project's facts that a new note may repeat (`[fact:deploy-port] …`); with
   `replaces: "fact:deploy-port"` (or `forget` with that id) it proposes to rewrite (or delete) that
-  fact's file, which happens when the user confirms. Chat and global notes stay in the Cluaiz home. A workspace that nobody picked (the Cluaiz home itself) is not a project.
+  fact's file, which happens when the user confirms. Chat and global notes stay in the Cluaiz home. A workspace that nobody picked (the Cluaiz home itself) is not a project. With no project open the workspace is `~/.cluaiz/workspace`, so its workspace notes become facts of `~/.cluaiz/workspace/.agents/memory/`.
 - **Off.** `context_policy: {"project_files": "off"}` for one request, or the setting
   `context.project_files`. A strict private chat (`temporary_chat: "strict"`) gets none of them.
 

@@ -94,12 +94,11 @@ impl Service {
         self.flows.lock().unwrap_or_else(|e| e.into_inner())
     }
 
-    /// The flow files, with the current project's when there is one (the Cluaiz folder itself is
-    /// not a project)
+    /// The flow files, with the current project's when there is one (the default workspace and the
+    /// Cluaiz folder itself are not projects)
     pub async fn store(&self) -> Store {
         let workspace = self.state.current_workspace_dir.read().await.clone();
-        let home = cluaiz_core::EnvironmentManager::current().local_dir;
-        let project = (workspace != home).then_some(workspace);
+        let project = (!cluaiz_core::EnvironmentManager::current().is_unchosen_workspace(&workspace)).then_some(workspace);
         Store::new(self.paths.clone(), project.as_deref())
     }
 
