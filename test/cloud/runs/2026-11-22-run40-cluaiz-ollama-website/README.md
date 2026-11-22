@@ -124,11 +124,18 @@ Reading:
 
   Prompt speed per token is the same (about 48 tokens a second on 0.6B), and the slot is never idle in
   Cluaiz's log (the next request starts about 6 ms after the previous one ends). Ollama computes fewer
-  prompt tokens because it reuses about 15 more tokens of the previous prompt: Cluaiz reuses exactly 34
-  in every request, which looks like a fixed point where the prompts stop matching, while llama-server
-  reuses a varying 41 to 50. One request at a time Cluaiz's shorter answers make up for it; in a queue
-  every request pays the extra prompt work. Why Cluaiz's match stops at 34 tokens is the next thing to
-  check (compare the rendered prompts of two requests token by token).
+  prompt tokens because llama-server keeps earlier prompts in a RAM prompt cache (on by default; its log
+  says "prompt cache is enabled, size limit: 8192 MiB") and the test sends its 200 tickets again in every
+  step. When a ticket comes back, the whole prompt is already computed: Ollama reused the whole prompt in
+  94 of 219 requests on the 8 GB machine, official llama.cpp in 3,019 of 6,350 on the Hostinger VPS
+  ("need to evaluate at least 1 token ... n_past was set to"). Cluaiz compares a new prompt only with the
+  last one, so it reuses the shared instruction (34 tokens in 173 of 200 requests) and never a whole
+  earlier prompt. One request at a time Cluaiz's shorter answers make up for it; in a queue every request
+  pays the extra prompt work.
+
+  So part of Ollama's lead comes from the test repeating its prompts, which real traffic does less, and
+  part is a feature Cluaiz lacks: a cache of several earlier prompts, which helps whenever a request shares
+  a long prefix with any recent request (several users with the same system prompt, retries).
 - The same 23 characters were 10 completion tokens in Cluaiz and 15 in Ollama (and 15 in llama.cpp in the
   Hostinger data) while taking the same time. Cluaiz's count is not a reporting slip: its engine log
   agrees (`prompt 66 tokens ... context 76`, so 10 tokens were generated). The engines produced different
