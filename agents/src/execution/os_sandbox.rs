@@ -361,9 +361,12 @@ impl SandboxPolicy {
         let mut hidden: Vec<PathBuf> = home().into_iter().collect();
         hidden.extend(secrets());
         // Toolchains under `$HOME` come back read-only on Linux and macOS. Not on Windows: there a read
-        // root is an ACL grant written on the user's folders, and auto mode does not confine anyway
+        // root is an ACL grant written on the user's folders, and auto mode does not confine anyway.
+        // Only roots that exist: a `PATH` entry may name a missing folder (the GitHub Ubuntu runner has
+        // `~/.local/bin` on `PATH` but no such folder), and bubblewrap fails the whole command when a
+        // bind source is missing (`Can't find source path`), as with the secret masks above
         let read_roots = match (cfg!(unix), home(), std::env::var_os("PATH")) {
-            (true, Some(home), Some(path)) => toolchain_roots(&home, &path, cluaiz_home().as_deref()),
+            (true, Some(home), Some(path)) => toolchain_roots(&home, &path, cluaiz_home().as_deref()).into_iter().filter(|r| r.exists()).collect(),
             _ => Vec::new(),
         };
         Self { workspace: workspace.to_path_buf(), hidden, read_roots, allow_network: true, ..Default::default() }

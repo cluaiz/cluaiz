@@ -161,7 +161,12 @@ Tested: argument and profile unit tests (`cargo test -p cluaiz-agents --lib os_s
 on a real machine: `test/cloud/runs/2026-11-20-run27-windows-os-sandbox/` (home, `.ssh`, `.cluaiz` and
 Documents denied, workspace writable, network only when allowed, exit codes pass through). Linux on a real
 machine: `test/cloud/runs/2026-11-21-run28-linux-os-sandbox/` (Ubuntu 24.04: 8 / 8 checks after the AppArmor
-profile; stock 24.04 blocks bubblewrap and the probe falls back). Not tested yet: macOS.
+profile; stock 24.04 blocks bubblewrap and the probe falls back). macOS and Ubuntu on GitHub runners:
+`.github/workflows/os-sandbox.yml`. Its first run (2026-11-22, run 44973794679): `macos-15` 9 / 9 checks
+and 19 unit tests pass (sandbox-exec, with cargo, node and python3); `ubuntu-24.04` failed every
+command with `bwrap: Can't find source path /home/runner/.local/bin`: that folder is on the runner's
+`PATH` but does not exist, and a missing bind source fails bubblewrap. `for_agent` now keeps only the
+toolchain roots that exist (same rule as the secret masks).
 
 ## Tested
 
@@ -175,7 +180,8 @@ profile; stock 24.04 blocks bubblewrap and the probe falls back). Not tested yet
 | OS sandbox (all backends, built as text on every OS) | `bubblewrap_hides_home_and_binds_the_workspace_last`, `network_is_cut_unless_allowed`, `a_root_that_is_also_writable_is_bound_once_writable`, `without_a_backend_auto_runs_plain_and_required_refuses`, `a_workspace_at_home_masks_the_secret_folders_again`, `seatbelt_profile_hides_home_and_keeps_the_workspace`, `seatbelt_reopens_a_home_workspace_but_not_its_secrets`, `appcontainer_reruns_this_binary_as_the_helper`, `appcontainer_refuses_the_home_folder_as_workspace`, `a_mistyped_mode_confines_instead_of_turning_confinement_down`, `toolchains_on_path_under_home_come_back_but_secrets_do_not`, `a_secret_inside_a_read_root_is_masked_after_the_root`, `off_never_wraps_even_with_a_backend`, `secrets_inside_a_granted_root_are_denied`, `one_container_per_workspace`, `quoting_follows_the_c_runtime_rules`, `cmd_gets_its_command_in_its_own_form`, `helper_args_round_trip`, `a_normal_launch_is_not_a_helper_run` |
 
 Real machines: `agents/tests/os_sandbox_real.rs` (ignored by default) passed on Windows (run 27) and
-Linux (run 28, 8 of 8 checks); see `test/cloud/runs/`. macOS: not run on hardware.
+Linux (run 28, 8 of 8 checks); see `test/cloud/runs/`. macOS on a GitHub `macos-15` runner: 9 of 9
+(`.github/workflows/os-sandbox.yml`, 2026-11-22).
 
 ## Pending
 
