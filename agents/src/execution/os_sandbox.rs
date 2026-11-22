@@ -151,7 +151,10 @@ pub fn confine(program: &str, args: &[String], policy: &SandboxPolicy, mode: San
             Ok(Confined { program: bwrap.to_string_lossy().into_owned(), args: wrapped, backend: backend.name() })
         }
         Backend::Seatbelt => {
-            let mut wrapped = vec!["-p".to_string(), seatbelt_profile(policy)];
+            // The home folder is unreadable, so git stopped on `~/.gitconfig` ("Operation not
+            // permitted", GitHub macos-15 runner, 2026-11-22). bubblewrap's empty home has no global
+            // git config; the same here: git reads none
+            let mut wrapped = vec!["-p".to_string(), seatbelt_profile(policy), "/usr/bin/env".into(), "GIT_CONFIG_GLOBAL=/dev/null".into()];
             wrapped.push(program.to_string());
             wrapped.extend(args.iter().cloned());
             Ok(Confined { program: SEATBELT.to_string(), args: wrapped, backend: backend.name() })
@@ -175,7 +178,21 @@ pub fn confine(program: &str, args: &[String], policy: &SandboxPolicy, mode: San
 /// wins, so the order matches bubblewrap's: everything readable, writes only to the workspace, write
 /// roots and temp, hidden paths unreadable, read roots and the workspace readable again.
 fn seatbelt_profile(policy: &SandboxPolicy) -> String {
-    let q = |path: &Path| format!("(subpath \"{}\")", path.to_string_lossy().replace('\\', "\\\\").replace('"', "\\\""));
+    // Seatbelt matches the resolved path: `/var/folders/..` is `/private/var/folders/..`, `/tmp` is
+    // `/private/tmp`. A rule on the spelled path alone never matched there, so the deny on `.git/hooks`
+    // of a workspace under the temp folder let writes through (GitHub macos-15 runner, 2026-11-22).
+    // Every rule names both spellings.
+    let spellings = |path: &Path| -> Vec<String> {
+        let mut out = vec![path.to_string_lossy().into_owned()];
+        if let Ok(real) = std::fs::canonicalize(path) {
+            let real = real.to_string_lossy().into_owned();
+            if !out.contains(&real) {
+                out.push(real);
+            }
+        }
+        out.into_iter().map(|p| p.replace('\\', "\\\\").replace('"', "\\\"")).collect()
+    };
+    let q = |path: &Path| spellings(path).iter().map(|p| format!("(subpath \"{p}\")")).collect::<Vec<_>>().join(" ");
     let mut writable = vec![q(&policy.workspace), "(subpath \"/private/tmp\")".into(), "(subpath \"/private/var/folders\")".into(), "(subpath \"/dev\")".into()];
     writable.extend(policy.write_roots.iter().map(|r| q(r)));
     let mut profile = String::from("(version 1)
@@ -196,7 +213,7 @@ fn seatbelt_profile(policy: &SandboxPolicy) -> String {
     profile += &format!("(allow file-write* {})
 ", writable_back.join(" "));
     // Git hooks and config stay read-only, and the `.git` folder's own entry cannot be renamed or removed
-    let lit = |path: &Path| format!("(literal \"{}\")", path.to_string_lossy().replace('\\', "\\\\").replace('"', "\\\""));
+    let lit = |path: &Path| spellings(path).iter().map(|p| format!("(literal \"{p}\")")).collect::<Vec<_>>().join(" ");
     let locked: Vec<String> = policy.read_only.iter().map(|p| q(p)).chain(policy.git_dir.iter().map(|d| lit(d))).collect();
     if !locked.is_empty() {
         profile += &format!("(deny file-write* {})
@@ -556,7 +573,7 @@ mod tests {
         let back = profile.rfind("(allow file-read* (subpath \"/home/u/.cargo\")").unwrap();
         assert!(deny < back, "read roots come back after the home is hidden");
         assert!(profile.contains("(deny network*)"));
-        assert_eq!(&c.args[2..], ["sh", "-c", "ls"]);
+        assert_eq!(&c.args[2..], ["/usr/bin/env", "GIT_CONFIG_GLOBAL=/dev/null", "sh", "-c", "ls"]);
     }
 
     #[test]
@@ -672,6 +689,23 @@ mod tests {
         let allow = profile.rfind("(allow file-write* (subpath \"/home/u/project\")").unwrap();
         let deny = profile.find("(deny file-write* (subpath \"/home/u/project/.git/hooks\") (subpath \"/home/u/project/.git/config\") (literal \"/home/u/project/.git\"))").unwrap();
         assert!(deny > allow, "the later rule wins in a profile");
+    }
+
+    #[test]
+    fn seatbelt_rules_name_the_resolved_path_too() {
+        // Seatbelt matches resolved paths; a workspace reached through a link (macOS `/var` is
+        // `/private/var`) needs its rules under the real path as well
+        let real = std::env::temp_dir().join(format!("cluaiz-sbx-real-{}", std::process::id()));
+        std::fs::create_dir_all(real.join(".git/hooks")).unwrap();
+        let resolved = std::fs::canonicalize(&real).unwrap();
+        let mut p = git_policy();
+        p.workspace = real.clone();
+        p.read_only = vec![real.join(".git/hooks")];
+        p.git_dir = Some(real.join(".git"));
+        let profile = seatbelt_profile(&p);
+        let hooks = resolved.join(".git").join("hooks").to_string_lossy().replace('\\', "\\\\");
+        assert!(profile.contains(&format!("(subpath \"{hooks}\")")), "{profile}");
+        let _ = std::fs::remove_dir_all(&real);
     }
 
     #[test]

@@ -125,7 +125,7 @@ plugins (`plugins/executor.rs`). Plan and reasons: `.agent/plans/security/os-san
 | Platform | Backend | What a confined process gets |
 |---|---|---|
 | Linux | bubblewrap at `/usr/bin/bwrap` or `/bin/bwrap` (never through `PATH`), used only when a probe run with the same namespace flags succeeds (WSL1, containers and kernels without unprivileged user namespaces count as no backend) | whole filesystem read-only; fresh `/proc`, `/dev`, `/tmp`; agent: `$HOME` and the Cluaiz home hidden, the toolchains on `PATH` under `$HOME` back read-only (`~/.cargo` with `~/.rustup`, `~/.nvm`, `~/.pyenv`, `~/.local/bin`, ...); tool: `$HOME` secret folders (`.ssh`, `.gnupg`, `.aws`, `.config/gh`, `.docker`), cargo's credential files and the Cluaiz home hidden, its package folder read-only; a secret inside any root that comes back is hidden again after it; the workspace writable (secret folders masked again when the workspace is `$HOME`), except its git hooks and config, read-only, and its `.git` folder bound onto itself so it cannot be moved or removed; own PID namespace; no network unless allowed |
-| macOS | `/usr/bin/sandbox-exec` with a generated profile | the same rules as a Seatbelt profile; git hooks and config get `(deny file-write*)` after the workspace's allow, and the `.git` entry itself a literal deny, so it cannot be renamed |
+| macOS | `/usr/bin/sandbox-exec` with a generated profile, the command run through `/usr/bin/env GIT_CONFIG_GLOBAL=/dev/null` | the same rules as a Seatbelt profile; git hooks and config get `(deny file-write*)` after the workspace's allow, and the `.git` entry itself a literal deny, so it cannot be renamed. Every rule names the path as given and as resolved, because Seatbelt matches the resolved path (`/var/folders` is `/private/var/folders`). git reads no global config: the home is unreadable and git stopped on `~/.gitconfig`, while bubblewrap's empty home simply has none |
 | Windows | AppContainer (`os_sandbox/appcontainer.rs`), one container per workspace | only what an ACL grants the container: the workspace (full access, except its git hooks and config: read and execute) and the read roots; Windows and Program Files stay readable (Windows grants them to all app containers); the user's home is not readable; no network unless allowed, and never `localhost` |
 
 How the Windows backend starts a command: an AppContainer is a token attribute passed to `CreateProcessW`,
@@ -198,6 +198,13 @@ command with `bwrap: Can't find source path /home/runner/.local/bin`: that folde
 `PATH` but does not exist, and a missing bind source fails bubblewrap. `for_agent` now keeps only the
 toolchain roots that exist (same rule as the secret masks). Second run with that fix (run 44975252052):
 9 / 9 checks and 19 unit tests on both `macos-15` and `ubuntu-24.04`. Logs and table: `test/cloud/runs/2026-11-22-run41-os-sandbox-github-ci/`.
+With `git_hooks_are_read_only` added (run 45007317477, after giving each real check its own folder:
+the two tests had shared one and removed it under each other): `ubuntu-24.04` 2 / 2 tests and every
+check pass; on `macos-15` the git checks failed: a write to `.git/hooks` went through, because the
+workspace sat under `/var/folders` and the deny named that spelling while Seatbelt matched
+`/private/var/folders`, and `git add` stopped on the unreadable `~/.gitconfig`. Both fixed above (both
+spellings in every rule, no global git config); `seatbelt_rules_name_the_resolved_path_too` checks the
+first, 27 unit tests pass on Windows 11. The macOS rerun is the proof still to come.
 
 ## Tested
 
