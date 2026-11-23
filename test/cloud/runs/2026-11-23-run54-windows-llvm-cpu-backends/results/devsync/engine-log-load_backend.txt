@@ -1,0 +1,2 @@
+2026-11-23T13:56:25.619242Z DEBUG llama_engine::native::core: [llama.cpp] load_backend: loaded CUDA backend from C:\Users\<user>\AppData\Local\cluaiz-test\devsync-check\home\bin\ggml-cuda.dll
+2026-11-23T13:56:26.054196Z DEBUG llama_engine::native::core: [llama.cpp] load_backend: loaded CPU backend from C:\Users\<user>\AppData\Local\cluaiz-test\devsync-check\home\bin\ggml-cpu-haswell.dll

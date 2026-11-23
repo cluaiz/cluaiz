@@ -1,0 +1,30 @@
+== 2026-11-23T19:27:15 configs: L = C:\Users\<user>\AppData\Local\cluaiz-test\llama-official-b12428\llama-bench.exe; C-llvm = C:\Users\<user>\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\target-llvm\release\cluaiz.exe; C-msvc = C:\Users\<user>\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\target\release\cluaiz.exe
+== 2026-11-23T19:27:16 available RAM MiB: 5327
+== 2026-11-23T19:27:53 r1_L: pp512=133.27 tg128=26.47 t/s, exit 0 31s avail 5407->5431 MiB (min 4110), disk read 0.97 GB
+== 2026-11-23T19:28:30 r1_C-llvm: pp512=132.52 tg128=27.17 t/s, exit 0 32s avail 5438->5225 MiB (min 3956), disk read 0.15 GB
+== 2026-11-23T19:29:11 r1_C-msvc: pp512=114.08 tg128=25.08 t/s, exit 0 36s avail 5266->5674 MiB (min 3204), disk read 0.59 GB
+== 2026-11-23T19:29:51 r2_C-llvm: pp512=129.94 tg128=23.76 t/s, exit 0 35s avail 5685->5641 MiB (min 4203), disk read 0.02 GB
+== 2026-11-23T19:30:32 r2_C-msvc: pp512=118.24 tg128=24.48 t/s, exit 0 36s avail 5640->5658 MiB (min 4290), disk read 0.05 GB
+== 2026-11-23T19:31:21 r2_L: pp512=132.76 tg128=17.63 t/s, exit 0 44s avail 5693->3672 MiB (min 2299), disk read 0.62 GB
+== 2026-11-23T19:32:08 r3_C-msvc: pp512=102.23 tg128=22.86 t/s, exit 0 42s avail 3709->5642 MiB (min 2394), disk read 0.16 GB
+== 2026-11-23T19:32:58 r3_L: pp512=124.66 tg128=19.06 t/s, exit 0 45s avail 5654->6734 MiB (min 4246), disk read 0.05 GB
+== 2026-11-23T19:33:35 r3_C-llvm: pp512=132.38 tg128=27.45 t/s, exit 0 32s avail 6732->6757 MiB (min 5257), disk read 0.03 GB
+== 2026-11-23T19:34:12 r4_L: pp512=131.6 tg128=26.15 t/s, exit 0 32s avail 6771->6795 MiB (min 5318), disk read 0.01 GB
+== 2026-11-23T19:34:59 r4_C-llvm: pp512=131.29 tg128=19.94 t/s, exit 0 42s avail 6796->6629 MiB (min 3493), disk read 0.03 GB
+== 2026-11-23T19:35:41 r4_C-msvc: pp512=114.06 tg128=24.31 t/s, exit 0 36s avail 6600->6706 MiB (min 5137), disk read 0.01 GB
+== 2026-11-23T19:36:23 r5_C-llvm: pp512=129.45 tg128=22.34 t/s, exit 0 37s avail 6745->5497 MiB (min 4550), disk read 0.08 GB
+== 2026-11-23T19:37:03 r5_C-msvc: pp512=120.85 tg128=25.76 t/s, exit 0 34s avail 5005->6636 MiB (min 4683), disk read 0.1 GB
+== 2026-11-23T19:37:37 r5_L: pp512=138.47 tg128=28.72 t/s, exit 0 30s avail 6632->7030 MiB (min 5210), disk read 0.02 GB
+== 2026-11-23T19:38:17 r6_C-msvc: pp512=118.75 tg128=24.54 t/s, exit 0 35s avail 7010->7045 MiB (min 5539), disk read 0.05 GB
+== 2026-11-23T19:38:54 r6_L: pp512=136.57 tg128=26.23 t/s, exit 0 31s avail 7059->7092 MiB (min 5702), disk read 0.01 GB
+== 2026-11-23T19:39:33 r6_C-llvm: pp512=119.83 tg128=26.49 t/s, exit 0 34s avail 7085->7691 MiB (min 5537), disk read 0.03 GB
+== 2026-11-23T19:40:09 r7_L: pp512=136.16 tg128=26.32 t/s, exit 0 31s avail 7714->7719 MiB (min 6364), disk read 0.31 GB
+== 2026-11-23T19:40:49 r7_C-llvm: pp512=119.61 tg128=25.03 t/s, exit 0 35s avail 7721->7556 MiB (min 6023), disk read 0.03 GB
+== 2026-11-23T19:41:29 r7_C-msvc: pp512=115.96 tg128=25.46 t/s, exit 0 35s avail 7579->7569 MiB (min 6044), disk read 0.01 GB
+== 2026-11-23T19:42:08 r8_C-llvm: pp512=125.33 tg128=25.05 t/s, exit 0 34s avail 7566->7606 MiB (min 6091), disk read 0.04 GB
+== 2026-11-23T19:42:47 r8_C-msvc: pp512=117.39 tg128=27 t/s, exit 0 34s avail 7621->7944 MiB (min 6211), disk read 0.02 GB
+== 2026-11-23T19:43:25 r8_L: pp512=139.62 tg128=24.52 t/s, exit 0 32s avail 7962->7666 MiB (min 6329), disk read 0.01 GB
+== 2026-11-23T19:43:25 | config | pp512 median, rounds 2+ (all rounds) | tg128 median, rounds 2+ (all rounds) | |---|---|---|
+== 2026-11-23T19:43:25 | L | 136.16 (133.27, 132.76, 124.66, 131.6, 138.47, 136.57, 136.16, 139.62) | 26.15 (26.47, 17.63, 19.06, 26.15, 28.72, 26.23, 26.32, 24.52) |
+== 2026-11-23T19:43:25 | C-llvm | 129.45 (132.52, 129.94, 132.38, 131.29, 129.45, 119.83, 119.61, 125.33) | 25.03 (27.17, 23.76, 27.45, 19.94, 22.34, 26.49, 25.03, 25.05) |
+== 2026-11-23T19:43:25 | C-msvc | 117.39 (114.08, 118.24, 102.23, 114.06, 120.85, 118.75, 115.96, 117.39) | 24.54 (25.08, 24.48, 22.86, 24.31, 25.76, 24.54, 25.46, 27) |
