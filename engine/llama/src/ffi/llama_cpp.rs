@@ -313,6 +313,13 @@ extern "C" {
         penalty_freq: f32,
         penalty_present: f32,
     ) -> *mut std::ffi::c_void;
+    /// Adds `bias` to each listed token's logit (llama.h `llama_sampler_init_logit_bias`); the
+    /// sampler copies the list, so `logit_bias` only has to live for this call
+    pub fn llama_sampler_init_logit_bias(
+        n_vocab: i32,
+        n_logit_bias: i32,
+        logit_bias: *const LlamaLogitBias,
+    ) -> *mut std::ffi::c_void;
     pub fn llama_sampler_sample(sampler: *mut std::ffi::c_void, ctx: *mut std::ffi::c_void, idx: i32) -> i32;
     pub fn llama_sampler_accept(sampler: *mut std::ffi::c_void, token: i32);
     pub fn llama_sampler_apply(sampler: *mut std::ffi::c_void, cur_p: *mut LlamaTokenDataArray);
@@ -474,6 +481,14 @@ pub struct LlamaTokenData {
     pub id: i32,
     pub logit: f32,
     pub p: f32,
+}
+
+/// Matches `llama_logit_bias` in llama.h
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct LlamaLogitBias {
+    pub token: i32,
+    pub bias: f32,
 }
 
 /// Matches `llama_token_data_array` in llama.h (samplers may move `data`)

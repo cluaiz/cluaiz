@@ -45,4 +45,4 @@ Rules for this folder:
 |---|---|---|
 | `/api/show` sends no tensor list (`verbose`) and no `capabilities` | Ollama clients that read capabilities (tools, vision) see none | ggml tensor type names; a mapping from the package capabilities |
 | ONNX models still show `parameter_size: Unknown` | no size class for speech models in Ollama clients | a count from the ONNX initializers |
-| OpenAI fields not supported on installed models (`n` > 1, `logprobs`, `logit_bias`): refused with HTTP 400 since 2026-11-22, no longer ignored | clients that need them get an error | pass them to llama.cpp (`chat/README.md`, Pending) |
+| OpenAI fields not supported on installed models (`n` > 1, `logprobs`): refused with HTTP 400 since 2026-11-22, no longer ignored (`logit_bias` works on GGUF models since 2026-11-23) | clients that need them get an error | pass them to llama.cpp (`chat/README.md`, Pending) |

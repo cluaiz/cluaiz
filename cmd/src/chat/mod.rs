@@ -338,6 +338,7 @@ impl Session {
             response_format: None,
             tools: tools.cloned(),
             stop: Vec::new(),
+            logit_bias: Vec::new(),
         };
 
         // Tags from llama.cpp's template engine (read at load); no tags = the model has no thinking format

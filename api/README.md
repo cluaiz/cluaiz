@@ -443,7 +443,7 @@ Route behaviour is also exercised by every cloud run (`test/cloud/BENCHMARKS.md`
 
 | Item | Why it matters | Needs |
 |---|---|---|
-| `n` > 1, `logprobs`, `logit_bias` are not supported on an installed model; since 2026-11-22 they are refused with HTTP 400 naming the field instead of being ignored (`stop` and `max_completion_tokens` work since run 34) | OpenAI clients that need them get an error, not the result they asked for | pass them to llama.cpp (see `handlers/chat/README.md`, Pending) |
+| `n` > 1 and `logprobs` are not supported on an installed model; since 2026-11-22 they are refused with HTTP 400 naming the field instead of being ignored (`stop` and `max_completion_tokens` work since run 34, `logit_bias` on GGUF models since 2026-11-23) | OpenAI clients that need them get an error, not the result they asked for | pass them to llama.cpp (see `handlers/chat/README.md`, Pending) |
 | Ollama's model-management routes (`/api/create`, `/api/copy`, `/api/delete`, `/api/push`) are not there; `/api/show` sends no tensor list (`verbose`) and no `capabilities` | tools that manage models through Ollama's API get 404; clients that read `capabilities` see none | CEP `models.remove` covers delete; tensor type names need the ggml type table; capabilities need a mapping from the package capabilities |
 | ONNX models show `parameter_size: Unknown` in `/api/tags`, `/api/show`, `/api/ps` (GGUF models get the counted size since 2026-11-22) | Ollama clients show no size class for speech models | a parameter count from the ONNX initializers |
 | `api` tests not in CI and not rerun since the October acceptance sections | the dated results may not hold for the current code | a CI job with the CPU backend, or a recorded run |

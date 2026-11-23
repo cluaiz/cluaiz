@@ -97,6 +97,7 @@ pub(crate) async fn prepare_authorized_audio(
         response_format: None,
         tools: None,
         stop: Vec::new(),
+        logit_bias: Vec::new(),
     };
     let prepared =
         prepare_authorized_media(state, request, settings, false, cancellation, None)

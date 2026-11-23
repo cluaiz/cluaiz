@@ -471,6 +471,7 @@ impl MediaInput {
                 response_format: request.response_format,
                 tools: request.tools,
                 stop: request.stop,
+                logit_bias: request.logit_bias,
             },
             input,
         ))

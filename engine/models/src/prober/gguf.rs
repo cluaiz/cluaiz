@@ -58,7 +58,19 @@ impl GgufHeader {
             .map(|tensor| tensor.dims.iter().map(|&dim| dim as u64).product::<u64>())
             .sum()
     }
+
+    /// Tokens in the vocabulary: the length of `tokenizer.ggml.tokens`, which is the size llama.cpp
+    /// gives its vocabulary (llama.cpp `src/llama-vocab.cpp:2822,2859`, `id_to_token.resize(n_tokens)`). None when the
+    /// file has no token list
+    pub fn token_count(&self) -> Option<u64> {
+        let summary = self.metadata.get("tokenizer.ggml.tokens")?;
+        let rest = summary.strip_prefix(STRING_ARRAY_SUMMARY)?;
+        rest[..rest.find(|c: char| !c.is_ascii_digit())?].parse().ok()
+    }
 }
+
+/// Start of the summary a string array is stored as (`read_array`), followed by its length
+const STRING_ARRAY_SUMMARY: &str = "[StringArray: len=";
 
 /// Per-layer arrays are tiny; vocab-sized arrays (token types, scores) are skipped, not stored.
 const MAX_STORED_ARRAY_LEN: u64 = 4096;
@@ -382,7 +394,7 @@ impl GgufProber {
                     }
                 }
                 Ok((
-                    format!("[StringArray: len={}, first_few={:?}]", len, first),
+                    format!("{STRING_ARRAY_SUMMARY}{}, first_few={:?}]", len, first),
                     None,
                 ))
             }
@@ -763,6 +775,7 @@ mod tests {
         std::fs::write(&path, &bytes)?;
         let header = GgufProber::read_header(&path)?;
         assert!(header.metadata[key].contains("len=20"));
+        assert_eq!(header.token_count(), Some(20));
         assert!(header.metadata[key].contains("token-9"));
         assert!(!header.metadata[key].contains("token-19"));
         assert_eq!(header.speech_languages, ["english"]);

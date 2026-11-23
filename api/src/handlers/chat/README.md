@@ -84,11 +84,15 @@ flowchart TD
     `return_progress`, `history`, `storage`…), and the live stream registry
     (`ACTIVE_STREAMS`, keyed by `chatcmpl-…`, holding cancel and skip-reasoning flags).
     `unsupported_on_installed_model` names the first OpenAI field an installed model cannot
-    honour: `n` above 1, `logprobs: true`, `top_logprobs` above 0, a non-empty `logit_bias`.
+    honour: `n` above 1, `logprobs: true`, `top_logprobs` above 0. `logit_bias_pairs` turns
+    OpenAI `logit_bias` (token id string -> bias) into sorted (id, bias) pairs and refuses a key
+    that is not a token id or a value outside -100..100; `check_vocabulary` refuses an id the
+    model does not have. Values are kept as raw JSON so a wrong one is a 400 naming the field, not
+    a body parse error.
 - `processing.rs`:
   - **Logic:** With `stream` and `return_progress`, progress events start before preflight so
     file decoding and model load are visible; token strings never carry events.
-- `preflight.rs` (1,667 lines, above the 800-line limit; a split is due):
+- `preflight.rs` (1,696 lines, above the 800-line limit; a split is due):
   - **Logic:** `PreparedChatContext::prepare` does everything before the first token, in order:
     stop idle jobs; check the model (a provider's model loads nothing); load or reuse the
     installed model so budgets use the context llama.cpp really created; read the chat template
@@ -166,14 +170,28 @@ flowchart TD
 
 - **Empty `messages`:** 400 `invalid_request_error`.
 - **Unknown model:** 400 from preflight, also while another request is busy.
-- **OpenAI field an installed model cannot honour** (`n` > 1, `logprobs: true`, `top_logprobs` > 0,
-  non-empty `logit_bias`): 400 `invalid_request_error`, code `unsupported_parameter`, `param` = the
-  field, before any model load (as an SSE error chunk + `[DONE]` when streaming). `n: 1`,
-  `logprobs: false`, `{}` and absent fields work as before. A provider's model is not checked:
-  `logit_bias` is forwarded to the provider; `n` and `logprobs` are not forwarded (they were not
-  before either). Checked live on 2026-11-22 with OLMoE-1B-7B on an isolated server (port 8013):
-  each refused field returned HTTP 400 naming it; `n:1,logprobs:false,top_logprobs:0,logit_bias:{}`
-  returned HTTP 200 with an answer.
+- **OpenAI field an installed model cannot honour** (`n` > 1, `logprobs: true`, `top_logprobs` > 0):
+  400 `invalid_request_error`, code `unsupported_parameter`, `param` = the field, before any model
+  load (as an SSE error chunk + `[DONE]` when streaming). `n: 1`, `logprobs: false` and absent
+  fields work as before. A provider's model is not checked; `n` and `logprobs` are not forwarded
+  to it (they were not before either). Checked live on 2026-11-22 with OLMoE-1B-7B on an isolated
+  server (port 8013): each refused field returned HTTP 400 naming it.
+- **`logit_bias` on an installed model** (since 2026-11-23): the pairs go into the envelope
+  (`ChatEnvelope::logit_bias`, also into a media turn's tool steps) and llama.cpp's own logit-bias
+  sampler applies them (`engine/llama/src/native/sampler.rs`). Refused with 400
+  `invalid_request_error`, code `invalid_value`, `param: "logit_bias"`: a key that is not a token
+  id (`"Paris"`, `"-1"`, `"1.5"`), a value that is not a number or is outside -100..100, an id at
+  or past the model's vocabulary (`tokenizer.ggml.tokens` length, read from the cached GGUF
+  header), and any non-empty map on a model that is not GGUF. `{}` or no field: no bias, as before.
+  If the header cannot be read, the request goes on and the sampler drops ids past the vocabulary.
+  A provider's model gets the request's own map unchanged (`preflight.rs`, provider `extra`).
+  Checked live on 2026-11-23 with Qwen3.5-0.8B Q4_K_M on an isolated server (port 8013,
+  `temperature: 0`, "What is the capital of France? Answer with one word."): no bias -> `Paris`;
+  `{"57590":-100}` -> still `Paris` (the model then picks token 11751, the same word with a
+  leading space, so a word can need more than one id); `{"57590":-100,"11751":-100}` -> `Lyon`
+  (also with `temperature: 0.7`, and as `L`,`yon` chunks when streaming); `{"10025":100}` -> `Blue`
+  12 times (the whole answer limit); `{"Paris":-100}`, `{"248320":5}` (vocabulary 248,320),
+  `{"57590":-150}`, `{"57590":"x"}` -> HTTP 400 naming `logit_bias`; `{}` -> `Paris`, HTTP 200.
 - **Model load fails / does not fit:** `error_response` with the planner's reason; nothing is
   generated.
 - **Provider error:** the provider's own message (see `api/src/providers/errors.rs`); stream
@@ -189,7 +207,7 @@ flowchart TD
 
 ## Tests
 
-23 unit tests in this folder; route-level tests in `api/tests/` (`reasoning_contract.rs`,
+24 unit tests in this folder; route-level tests in `api/tests/` (`reasoning_contract.rs`,
 `media_contract.rs`, `processing_contract.rs`, `mtp_contract.rs`). `api` builds both native backends, so none of these tests were run on 2026-11-21 (see `api/README.md`, Tests). Thinking budget
 behaviour was checked live in runs 30 and 31 (`test/cloud/runs/`).
 
@@ -198,6 +216,7 @@ behaviour was checked live in runs 30 and 31 (`test/cloud/runs/`).
 | Item | Why it matters | Needs |
 |---|---|---|
 | Route tests not run since October and not in CI | see `api/README.md` | a CI job with the CPU backend |
-| `logit_bias` on installed models (refused with 400 today) | OpenAI clients use it to ban or favour tokens | bind `llama_sampler_init_logit_bias` (`llama.cpp/include/llama.h:1607`, not in `engine/llama/src/ffi/llama_cpp.rs` yet), add it to the chain in `engine/llama/src/native/sampler.rs`, keys parsed as token ids |
+| `logit_bias` unit tests (`logit_bias_takes_token_ids_and_openai_range`) not run | the api suite builds both native backends | a CI job with the CPU backend |
+| `logit_bias` on an ONNX chat model is refused | no ONNX chat sampler takes a bias | an ONNX logit hook |
 | `logprobs` / `top_logprobs` and `n` > 1 on installed models (refused with 400 today) | evaluation clients ask for token probabilities; `n` asks for several answers | logprobs: read `llama_get_logits_ith` after each sample and add them to the chunk; `n`: one sequence per answer |
 | `n` and `logprobs` not forwarded to providers | a provider could answer them | forward in `preflight.rs` provider `extra` and handle several `choices` in the reply |

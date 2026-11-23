@@ -122,6 +122,7 @@ impl ToolTurns {
                 ctx.initial_user_query, history
             ),
             "samplers": ctx.samplers,
+            "logit_bias": ctx.logit_bias,
             "think_mode": &ctx.active_think_mode,
             "reasoning_effort": &ctx.active_reasoning_effort,
             "reasoning_budget_message": &ctx.reasoning_budget_message

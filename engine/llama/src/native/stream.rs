@@ -101,7 +101,7 @@ pub(crate) fn stream_tokens_with_media(
         let mut return_prompt = false;
         // An idle-time job (card, summary): its prompt goes in small chunks, so it stops quickly
         let mut background = false;
-        let (req_samplers, req_think_mode, req_reasoning_effort, req_output, req_budget_message, req_kv_reuse, req_tools, keep_prefix, req_stops) =
+        let (req_samplers, req_think_mode, req_reasoning_effort, req_output, req_budget_message, req_kv_reuse, req_tools, keep_prefix, req_stops, req_logit_bias) =
             if let Ok(envelope) = serde_json::from_str::<serde_json::Value>(&actual_prompt) {
                 if envelope.is_object()
                     && (envelope.get("messages").is_some()
@@ -166,6 +166,11 @@ pub(crate) fn stream_tokens_with_media(
                         .and_then(|s| s.as_array())
                         .map(|s| s.iter().filter_map(|v| v.as_str()).filter(|v| !v.is_empty()).map(str::to_string).collect())
                         .unwrap_or_default();
+                    // OpenAI `logit_bias` as [token, bias] pairs (`ChatEnvelope::logit_bias`)
+                    let logit_bias: Vec<(i32, f32)> = envelope
+                        .get("logit_bias")
+                        .and_then(|b| serde_json::from_value(b.clone()).ok())
+                        .unwrap_or_default();
                     (
                         samplers,
                         think_mode,
@@ -176,12 +181,13 @@ pub(crate) fn stream_tokens_with_media(
                         tools,
                         keep_prefix,
                         stops,
+                        logit_bias,
                     )
                 } else {
-                    (None, None, None, None, None, None, None, false, Vec::new())
+                    (None, None, None, None, None, None, None, false, Vec::new(), Vec::new())
                 }
             } else {
-                (None, None, None, None, None, None, None, false, Vec::new())
+                (None, None, None, None, None, None, None, false, Vec::new(), Vec::new())
             };
 
         let mem = llama_cpp::llama_get_memory(llama.ctx_ptr);
@@ -875,6 +881,7 @@ pub(crate) fn stream_tokens_with_media(
             dna,
             &full_prompt_tokens,
             req_samplers.as_ref(),
+            &req_logit_bias,
             n_vocab,
             if grammar_lazy { tool_grammar } else { std::ptr::null_mut() },
         )?;

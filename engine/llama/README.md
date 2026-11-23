@@ -36,9 +36,9 @@ graph TD
 |---|---|
 | [`native/core.rs`](src/native/core.rs) | Safe model instantiation, parameter loading, and memory envelope binding. |
 | [`native/stream.rs`](src/native/stream.rs) | Token generation loop, chunked prefill, and reasoning control emission. |
-| [`native/sampler.rs`](src/native/sampler.rs) | Llama.cpp native sampler chain (temp, top_p, min_p, penalties). |
+| [`native/sampler.rs`](src/native/sampler.rs) | Llama.cpp native sampler chain (temp, top_p, min_p, penalties). The request's `logit_bias` (`ChatEnvelope.logit_bias`) is llama.cpp's own logit-bias sampler, added after a tool-call grammar and before the penalties and cuts, the place `common_sampler_init` gives it (`llama.cpp/common/sampling.cpp:330-343`, ahead of the default list that starts with penalties, `common/common.h:268`). Why there: a ban or a push has to change the scores before top-k/top-p/min-p cut the list, else a -100 token could already be the only one left, or a +100 token already cut. Ids outside the vocabulary are dropped, as llama-server does (`tools/server/server-schema.cpp:433`); the API refuses them earlier. Empty: no sampler is added. Checked live on 2026-11-23 (Qwen3.5-0.8B, greedy and `temperature: 0.7`; see `api/src/handlers/chat/README.md`). |
 | [`native/templater.rs`](src/native/templater.rs) | Direct C-ABI Jinja chat templating from the custom fork. |
-| [`ffi/llama_cpp.rs`](src/ffi/llama_cpp.rs) | Raw `extern "C"` bindings to compiled `llama.cpp`. |
+| [`ffi/llama_cpp.rs`](src/ffi/llama_cpp.rs) | Raw `extern "C"` bindings to compiled `llama.cpp` (including `llama_sampler_init_logit_bias` and the `LlamaLogitBias` mirror of `llama_logit_bias`). |
 | [`ffi/mtmd.rs`](src/ffi/mtmd.rs) | Header-generated multimodal bindings, typed parts, token/position queries and evaluation helpers. |
 | [`native/session.rs`](src/native/session.rs) | Paired model/projector lifetime, memory preflight, prepared media/text generation and pointer-free model telemetry used by EngineHost. |
 | [`native/media.rs`](src/native/media.rs) | Private projector/bitmap/chunk owners, queried audio preparation, template association and native encoder prefill. |

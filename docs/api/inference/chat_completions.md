@@ -214,7 +214,7 @@ params:
     req: false
     default: "null"
     allowed: "Map of token ID to bias"
-    desc: "Token ID probability bias adjustments (-100 to +100). Applied only to provider models today; an installed model refuses a non-empty map with HTTP 400 (`unsupported_parameter`)."
+    desc: "OpenAI's token bias: keys are token ids as strings, values from -100 (the token is never picked) to 100 (it is always picked), for example `{\"57590\": -100}`. On an installed GGUF model llama.cpp's logit-bias sampler adds each value to that token's score before the other samplers. The ids belong to the model's own tokenizer, and one word can have several ids (with and without a leading space). A key that is not a token id, an id past the model's vocabulary, a value outside -100..100, or a non-empty map on a non-GGUF model returns HTTP 400 with `param: \"logit_bias\"`. `{}` means no bias. Provider models get the map unchanged."
 request_payload: |
   {
     "model": "llama_3.2_instruct-3b-gguf-q4_k_m",
@@ -402,7 +402,7 @@ flowchart LR
 | **`kv_reuse`** | String | No | auto | `"prefix"`, `"chunk"` | How the KV cache is matched to the new prompt. `prefix`: only the common prefix is kept. `chunk`: shared chunks after it are moved too (llama-server `--cache-reuse`), which keeps the context they were computed with. Auto: `chunk` only when the Engine dropped old turns to fit, otherwise `prefix`, so an edit such as unloading a tool is computed again from the change. |
 | **`grammar`** | String | No | `null` | GBNF string | llama.cpp GBNF grammar the answer must follow (after thinking); takes precedence over `response_format`. A grammar llama.cpp cannot parse is logged and the answer is not constrained. As in llama-server, the sampler picks a token first and the grammar checks only that token; only a rejected token makes the grammar go over the whole vocabulary, so a grammar costs almost no speed (Gemma 4: 14.6 tokens/s with a grammar, 7.5 before this). The same holds for `response_format`; the grammar of native tool calls still masks every candidate, as before. |
 | **`chat_template_kwargs`** | Object | No | `null` | Object | Additional keyword arguments passed directly to the Jinja chat tokenizer template. |
-| **`logit_bias`** | Object | No | `null` | Map of token ID to bias | Token ID probability bias adjustments (-100 to +100). **Applied only to provider models today;** an installed model refuses a non-empty map with HTTP 400 (`unsupported_parameter`). |
+| **`logit_bias`** | Object | No | `null` | Map of token ID to bias | OpenAI's token bias: keys are token ids as strings, values from -100 (the token is never picked) to 100 (it is always picked), for example `{"57590": -100}`. On an installed GGUF model llama.cpp's logit-bias sampler adds each value to that token's score before the other samplers. The ids belong to the model's own tokenizer, and one word can have several ids (with and without a leading space). A key that is not a token id, an id past the model's vocabulary, a value outside -100..100, or a non-empty map on a non-GGUF model returns HTTP 400 with `param: "logit_bias"`. `{}` means no bias. Provider models get the map unchanged. |
 
 > [!NOTE]
 > **BitNet (1-bit / 1.58-bit) Models**:

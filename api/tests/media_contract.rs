@@ -58,6 +58,7 @@ fn envelope(parts: Vec<PreparedPart>) -> ChatEnvelope<Vec<PreparedPart>> {
         response_format: None,
         tools: None,
         stop: Vec::new(),
+        logit_bias: Vec::new(),
     }
 }
 

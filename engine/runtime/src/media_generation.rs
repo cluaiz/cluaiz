@@ -168,6 +168,7 @@ mod tests {
                 response_format: None,
                 tools: None,
                 stop: Vec::new(),
+                logit_bias: Vec::new(),
             };
             let response = host
                 .dispatch_prepared_with_progress(

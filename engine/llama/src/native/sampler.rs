@@ -68,6 +68,7 @@ pub unsafe fn build_sampler_chain(
     dna: &StructuralDNA,
     tokens: &[i32],
     req_samplers: Option<&serde_json::Value>,
+    logit_bias: &[(i32, f32)],
     n_vocab: i32,
     grammar: *mut std::ffi::c_void,
 ) -> anyhow::Result<*mut std::ffi::c_void> {
@@ -83,6 +84,22 @@ pub unsafe fn build_sampler_chain(
     // A tool-call grammar (null = none) masks the candidates first; the chain owns it from here
     if !grammar.is_null() {
         llama_cpp::llama_sampler_chain_add(sampler_chain, grammar);
+    }
+    // OpenAI `logit_bias`: before the penalties and every cut, where llama.cpp's
+    // `common_sampler_init` puts it (common/sampling.cpp:330-343, ahead of its sampler list).
+    // Ids outside the vocabulary are dropped, as llama-server does (tools/server/server-schema.cpp:433);
+    // the API refuses them earlier with a 400
+    let biases: Vec<llama_cpp::LlamaLogitBias> = logit_bias
+        .iter()
+        .filter(|(token, _)| (0..n_vocab).contains(token))
+        .map(|&(token, bias)| llama_cpp::LlamaLogitBias { token, bias })
+        .collect();
+    if !biases.is_empty() {
+        llama_cpp::llama_sampler_chain_add(
+            sampler_chain,
+            llama_cpp::llama_sampler_init_logit_bias(n_vocab, biases.len() as i32, biases.as_ptr()),
+        );
+        info!("🎲 [Native-Llama] Logit bias on {} token(s)", biases.len());
     }
 
     // Order: chat request value -> user default (settings) -> model DNA -> llama.cpp default

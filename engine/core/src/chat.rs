@@ -39,6 +39,9 @@ pub struct ChatEnvelope<Content = String> {
     /// OpenAI `stop`: the answer ends before the first of these strings; empty = none
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub stop: Vec<String>,
+    /// OpenAI `logit_bias` as (token id, bias) pairs, checked by the API; empty = none
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub logit_bias: Vec<(i32, f32)>,
 }
 
 impl ChatEnvelope {
@@ -69,6 +72,7 @@ impl<Content> ChatEnvelope<Content> {
             response_format: self.response_format,
             tools: self.tools,
             stop: self.stop,
+            logit_bias: self.logit_bias,
         })
     }
 }
@@ -501,6 +505,7 @@ mod tests {
             response_format: None,
             tools: None,
             stop: Vec::new(),
+            logit_bias: Vec::new(),
         };
         let v: serde_json::Value = serde_json::from_str(&env.to_prompt()).unwrap();
         assert_eq!(v["messages"][0]["content"], "hi");

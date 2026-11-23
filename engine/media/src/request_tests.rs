@@ -31,6 +31,7 @@ fn request(parts: Vec<InputPart>) -> ChatEnvelope<Vec<InputPart>> {
         response_format: Some(serde_json::json!({"type": "json_object"})),
         tools: Some(serde_json::json!([])),
         stop: Vec::new(),
+        logit_bias: Vec::new(),
     }
 }
 

@@ -93,7 +93,9 @@ pub struct ExternalChatRequest {
     pub response_format: Option<serde_json::Value>,
     pub chat_template_kwargs: Option<serde_json::Value>,
     pub grammar: Option<String>,
-    pub logit_bias: Option<std::collections::HashMap<String, f32>>,
+    /// OpenAI `logit_bias`: token id (as a string) -> bias from -100 to 100. Values stay raw JSON so
+    /// a wrong one is a 400 naming the field (`logit_bias_pairs`), not a body parse error
+    pub logit_bias: Option<std::collections::HashMap<String, serde_json::Value>>,
     /// OpenAI `n`: answers per request. An installed model gives one; `n` above 1 is refused there
     pub n: Option<u64>,
     /// OpenAI `logprobs` / `top_logprobs`: an installed model returns no token probabilities, so
@@ -400,10 +402,38 @@ impl ExternalChatRequest {
         if self.top_logprobs.is_some_and(|k| k > 0) {
             return Some(("top_logprobs", "top_logprobs is not supported on installed models yet (leave it out)".into()));
         }
-        if self.logit_bias.as_ref().is_some_and(|bias| !bias.is_empty()) {
-            return Some(("logit_bias", "logit_bias is not supported on installed models yet (send an empty object or leave it out)".into()));
-        }
         None
+    }
+
+    /// `logit_bias` as (token id, bias) pairs, sorted by id; missing or `{}` = none. A key that is
+    /// not a token id or a value outside -100..100 (OpenAI's range) is an error message for a 400.
+    /// Ids past the model's vocabulary are checked once the model is known (`check_vocabulary`)
+    pub fn logit_bias_pairs(&self) -> Result<Vec<(i32, f32)>, String> {
+        let Some(map) = &self.logit_bias else { return Ok(Vec::new()) };
+        let mut pairs = Vec::with_capacity(map.len());
+        for (key, value) in map {
+            let token = key.trim().parse::<i32>().ok().filter(|id| *id >= 0).ok_or_else(|| {
+                format!("logit_bias key '{key}' is not a token id (send token ids as strings, like {{\"1234\": -100}})")
+            })?;
+            let bias = value
+                .as_f64()
+                .filter(|b| (-LOGIT_BIAS_LIMIT..=LOGIT_BIAS_LIMIT).contains(b))
+                .ok_or_else(|| format!("logit_bias value for token {token} must be a number from -100 to 100, got {value}"))?;
+            pairs.push((token, bias as f32));
+        }
+        pairs.sort_by_key(|(token, _)| *token);
+        Ok(pairs)
+    }
+}
+
+/// OpenAI's `logit_bias` range: -100 bans a token, 100 makes it the only choice
+const LOGIT_BIAS_LIMIT: f64 = 100.0;
+
+/// The first `logit_bias` id the model's vocabulary does not have, as a message for a 400
+pub fn check_vocabulary(pairs: &[(i32, f32)], vocabulary: u64) -> Result<(), String> {
+    match pairs.iter().find(|(token, _)| *token as u64 >= vocabulary) {
+        Some((token, _)) => Err(format!("logit_bias token {token} is not in this model's vocabulary ({vocabulary} tokens, ids 0 to {})", vocabulary.saturating_sub(1))),
+        None => Ok(()),
     }
 }
 
@@ -437,6 +467,18 @@ mod openai_field_tests {
         assert_eq!(field(r#","n":2"#), Some("n"));
         assert_eq!(field(r#","logprobs":true"#), Some("logprobs"));
         assert_eq!(field(r#","top_logprobs":3"#), Some("top_logprobs"));
-        assert_eq!(field(r#","logit_bias":{"50256":-100}"#), Some("logit_bias"));
+        assert_eq!(field(r#","logit_bias":{"50256":-100}"#), None);
+    }
+
+    #[test]
+    fn logit_bias_takes_token_ids_and_openai_range() {
+        assert_eq!(parse("").logit_bias_pairs(), Ok(vec![]));
+        assert_eq!(parse(r#","logit_bias":{}"#).logit_bias_pairs(), Ok(vec![]));
+        assert_eq!(parse(r#","logit_bias":{"9":100,"3":-100,"5":0.5}"#).logit_bias_pairs(), Ok(vec![(3, -100.0), (5, 0.5), (9, 100.0)]));
+        for bad in [r#"{"abc":1}"#, r#"{"-1":1}"#, r#"{"1.5":1}"#, r#"{"5":101}"#, r#"{"5":-100.5}"#, r#"{"5":"x"}"#, r#"{"5":null}"#] {
+            assert!(parse(&format!(r#","logit_bias":{bad}"#)).logit_bias_pairs().is_err(), "{bad}");
+        }
+        assert_eq!(check_vocabulary(&[(3, 1.0), (9, 1.0)], 10), Ok(()));
+        assert!(check_vocabulary(&[(3, 1.0), (10, 1.0)], 10).is_err());
     }
 }

@@ -2,7 +2,7 @@
 
 Cluaiz serves OpenAI's chat, models, embeddings and audio routes, so an OpenAI client library works by
 pointing its base URL at the Engine. This page lists which request fields an installed (llama.cpp) model
-honours, which it ignores, and what Cluaiz adds. Everything marked "recorded" was checked in run 32
+honours, which it refuses, and what Cluaiz adds. Everything marked "recorded" was checked in run 32
 (`test/cloud/runs/2026-11-21-run32-openai-compat-probe/`, Engine 0.1.0, Windows, Qwen3-0.6B) or, after the fix, run 34
 (`test/cloud/runs/2026-11-21-run34-openai-stop-and-limit/`).
 
@@ -35,6 +35,8 @@ Python example above was not run in run 32 (the requests there used `curl`).
 
 ## Chat request fields on an installed model
 
+![OpenAI chat fields an installed model honours, including logit_bias, and the ones it refuses with HTTP 400: n above 1, logprobs and top_logprobs](../../assets/api/openai-fields.png)
+
 | Field | Honoured | Notes |
 |---|---|---|
 | `model`, `messages`, `stream` | yes | |
@@ -48,7 +50,7 @@ Python example above was not run in run 32 (the requests there used `curl`).
 | `max_completion_tokens` | yes (recorded) | the answer limit when `max_tokens` is not sent; `max_tokens` wins when both are (run 34) |
 | `n` | **no** | `n: 1` works; above 1 the request is refused with HTTP 400 (one choice per request) |
 | `logprobs`, `top_logprobs` | **no** | `logprobs: false` and `top_logprobs: 0` work; asking for them is refused with HTTP 400 |
-| `logit_bias` | **no** | `{}` works; a non-empty map is refused with HTTP 400 (provider models get it) |
+| `logit_bias` | yes (GGUF) | token ids as strings, -100 to 100; llama.cpp's logit-bias sampler applies them. A wrong key or value, an id past the vocabulary, or a non-GGUF model: HTTP 400 naming `logit_bias`. `{}` works |
 | unknown fields | ignored | no error is returned |
 
 ## What Cluaiz adds
@@ -93,3 +95,23 @@ chunk, then `[DONE]`). Nothing is loaded for a refused request.
 
 That reply was recorded on 2026-11-22 (OLMoE-1B-7B, `"n":2`). A provider model is not checked:
 `logit_bias` is forwarded to the provider; `n` and `logprobs` are not forwarded.
+
+### logit_bias
+
+The keys are token ids of the model's own tokenizer, so the same word has different ids on different
+models, and one word can have more than one id (with and without a leading space). Recorded on
+2026-11-23 with Qwen3.5-0.8B Q4_K_M, `temperature: 0`, "What is the capital of France? Answer with
+one word.":
+
+| `logit_bias` | Answer |
+|---|---|
+| none | `Paris` |
+| `{"57590": -100}` (`Paris`) | `Paris` (the model picks id 11751, the same word with a space) |
+| `{"57590": -100, "11751": -100}` | `Lyon` |
+| `{"10025": 100}` (`Blue`) | `Blue` repeated up to `max_tokens` |
+| `{"Paris": -100}`, `{"248320": 5}`, `{"57590": -150}` | HTTP 400, `param: "logit_bias"` |
+| `{}` | `Paris` |
+
+```json
+{"error":{"code":"invalid_value","message":"logit_bias token 248320 is not in this model's vocabulary (248320 tokens, ids 0 to 248319)","param":"logit_bias","type":"invalid_request_error"}}
+```

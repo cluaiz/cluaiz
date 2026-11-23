@@ -35,6 +35,8 @@ pub struct PreparedChatContext {
     /// Request sampler values (llama.cpp names, null = not sent): the engine falls back to
     /// user settings, then model defaults, then llama.cpp defaults
     pub samplers: cluaiz_core::SamplerDefaults,
+    /// OpenAI `logit_bias` (token id, bias), checked; also sent with a media turn's tool steps
+    pub logit_bias: Vec<(i32, f32)>,
     pub system_prompt_chars: usize,
     pub history_chars: usize,
     pub user_prompt_chars: usize,
@@ -229,6 +231,14 @@ impl PreparedChatContext {
                 return Err(error_response_with_param(request, request_id, message, "invalid_request_error", Some("unsupported_parameter"), Some(field)));
             }
         }
+        // OpenAI `logit_bias` for an installed model (a provider gets the request's own map)
+        let logit_bias = if provider.is_none() {
+            request.logit_bias_pairs().map_err(|message| {
+                error_response_with_param(request, request_id, message, "invalid_request_error", Some("invalid_value"), Some("logit_bias"))
+            })?
+        } else {
+            Vec::new()
+        };
         let mut active_model_path = if provider.is_some() { None } else { crate::utils::slots::resolve_model_path(&schema, target_slot) };
         let mut resolved_model_name = "default-system-model".to_string();
 
@@ -324,6 +334,23 @@ impl PreparedChatContext {
             .and_then(|e| e.to_str())
             .map(|e| e.eq_ignore_ascii_case("gguf"))
             .unwrap_or(false);
+        // A bias needs the model's token ids: llama.cpp's vocabulary is `tokenizer.ggml.tokens`
+        if !logit_bias.is_empty() {
+            if let Some(path) = &active_model_path {
+                let checked = if is_gguf {
+                    match cluaiz_models::GgufProber::read_header(path).ok().and_then(|header| header.token_count()) {
+                        Some(vocabulary) => super::types::check_vocabulary(&logit_bias, vocabulary),
+                        // Unreadable here: the sampler still drops ids past the vocabulary
+                        None => Ok(()),
+                    }
+                } else {
+                    Err("logit_bias works on GGUF models only (send an empty object or leave it out)".to_string())
+                };
+                if let Err(message) = checked {
+                    return Err(error_response_with_param(request, request_id, message, "invalid_request_error", Some("invalid_value"), Some("logit_bias")));
+                }
+            }
+        }
         // A provider's model reads what the provider supports (it says when it does not); files
         // arrive as their text
         let document_images = if has_media && provider.is_none() {
@@ -1215,6 +1242,7 @@ impl PreparedChatContext {
             response_format: request.response_format.clone(),
             tools: None,
             stop: request.stop.clone().map(|s| s.into_vec()).unwrap_or_default(),
+            logit_bias: logit_bias.clone(),
         };
         let cancel_signal = progress
             .as_ref()
@@ -1365,6 +1393,7 @@ impl PreparedChatContext {
             validated_max_tokens,
             skip_brain,
             samplers,
+            logit_bias,
             system_prompt_chars,
             history_chars,
             user_prompt_chars,
