@@ -232,7 +232,7 @@ ticket was 1.0-1.3 s with the cache off, 0.18-0.23 s with 256 MB (3 restores; on
 three runs. Log line: `🗂️ [PromptCache] Restored an earlier prompt: ...`. Rerun: `CLUAIZ_PROMPT_CACHE_MB=1024`
 on `cluaiz serve`, then send the same prompts twice in a different order.
 
-## MoE expert prefetch (llama.cpp fork, off by default)
+## MoE expert prefetch (llama.cpp fork, off unless the plan sets a cap)
 
 **What it does:** with llama.cpp's MoE GPU cache on, each layer's selected experts that are not in the
 cache are uploaded from the host experts, which are mmap'd from the model file
@@ -272,6 +272,7 @@ re-apply steps is [`llama.cpp/CLUAIZ_PATCHES.md`](llama.cpp/CLUAIZ_PATCHES.md). 
 | Linux window steps in the fork file, `llama_prefetch` not edited | upstream PR #32515 (open on 2026-11-22): one `MADV_WILLNEED` reads at most one readahead window | editing `llama_prefetch` (a third upstream file to carry) |
 | The build fails when the call is gone | a merge that drops the call would otherwise turn the feature off without a sign | a runtime check |
 | Advisory, off by default | `llama_prefetch` only logs a warning on failure and the upload then reads as before | treating a failed prefetch as an error |
+| The fork only obeys the cap; when to prefetch is decided by the planner | one owner per rule: Auto's rule (cache share and platform, runs 43 and 44) lives in `engine/plan/src/expert_prefetch.rs`, so changing it needs no llama.cpp rebuild | a run-time guard in the fork (hit rate or bytes per token); not needed while the plan-time rule separates the measured runs |
 
 **Tested** (2026-11-22, Windows 11, debug build `cargo build -p cmd`, RTX 3050 Laptop 4 GB, CUDA,
 OLMoE-1B-7B-0125-Instruct Q4_K_M 4.2 GB, isolated home on port 8014, the planner's own MoE split: every expert
