@@ -142,6 +142,10 @@ jobs:
             # layout there until Cargo fixes it (the switch is temporary: when Cargo drops it, a
             # Windows build fails here again and this needs a new look)
             export __CARGO_TEMPORARY_BUILD_DIR_NEW_LAYOUT_OPT_OUT=1
+            # The CPU backends are built with the runner's LLVM, as llama.cpp's release does (MSVC's are
+            # slower, test/cloud/runs/2026-11-23-run47-laptop-warm-tg-gap); stop instead of shipping those
+            export CLUAIZ_REQUIRE_LLVM_CPU=1
+            command -v ninja >/dev/null || choco install ninja -y --no-progress
           fi
           features=()
           [ -n "${{ matrix.features }}" ] && features=(--features "${{ matrix.features }}")

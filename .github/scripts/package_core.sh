@@ -23,7 +23,8 @@ for file in "$src"/*; do
   base=$(basename "$file")
   case "$base" in *.dll | *.so | *.so.* | *.dylib) ;; *) continue ;; esac
   stem=${base#lib}
-  case "$stem" in ggml* | llama* | mtmd* | DirectML* | onnxruntime*) ;; *) continue ;; esac
+  # omp.dll: LLVM's libomp.dll, which the clang-built ggml-base and CPU backends on Windows load
+  case "$stem" in ggml* | llama* | mtmd* | DirectML* | onnxruntime* | omp.dll) ;; *) continue ;; esac
   # GPU drivers ship as their own packs, never inside the core
   case "$stem" in ggml-cuda* | ggml-vulkan* | ggml-hip* | ggml-sycl* | ggml-opencl* | onnxruntime_providers_*) continue ;; esac
 

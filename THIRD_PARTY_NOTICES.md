@@ -33,6 +33,12 @@ These runtime shared libraries are proprietary software of NVIDIA Corporation an
 
 Copyright (c) NVIDIA Corporation. All rights reserved.
 
+## LLVM OpenMP runtime (Windows packages)
+
+`libomp.dll`, the OpenMP runtime of the LLVM project, loaded by the ggml libraries that are built with clang on
+Windows (as in llama.cpp's own Windows release). Apache License, Version 2.0 with LLVM Exceptions.
+Copyright (c) LLVM Project contributors. Source: https://github.com/llvm/llvm-project/tree/main/openmp
+
 ## libgomp (Linux packages)
 
 The GNU Offloading and Multi Processing Runtime Library from GCC, under the GNU GPL version 3 with the

@@ -75,20 +75,37 @@ rounds 2 and later). Swap tests: the same exe, only the CPU backend files change
 The CPU-only prompt gap is settled; split-mode generation lost 3% to 20% in different runs on a machine shared
 with other programs. The fork's `ggml-cuda.dll` inside official llama-bench lost nothing.
 
-**Fix: not in the build yet (owner decision).** Two ways, measured in run 47:
-- Upstream's exact setup, clang + LLVM OpenMP: as fast as llama-bench in every test. It needs `libomp.dll`
-  beside the exe: release packaging (`.github/scripts/package_core.sh`), a license notice, and the dev sync in
-  `cmd/src/core/bootstrapper.rs`, which copies only ggml / llama / mtmd files.
-- clang without OpenMP (`GGML_OPENMP=OFF`, no new file): tried and reverted. MoE split generation fell to 9.31
-  t/s against 39.43, because ggml's own thread pool is then used and Cluaiz attaches none to its context
-  (llama-bench and llama.cpp's common code do, `llama_attach_threadpool`). It would need that Rust change too.
-- Met on the way, for whoever builds with clang: clang 22 stops on `_mm_prefetch(&x[ib] + ...)` in
-  `ggml-cpu/arch/x86/quants.c` (`-Wno-error=incompatible-pointer-types`; upstream CI pins clang 20), and clang
-  22 did not finish `amx/mmq.cpp` of the sapphirerapids variant in 30 minutes.
+After the fix (run 54, `test/cloud/runs/2026-11-23-run54-windows-llvm-cpu-backends/`, 8 rounds, the quieter of two
+parts): CPU only pp512 llama-bench 136.16, Cluaiz with this build 129.45, Cluaiz MSVC 117.39 (tg128 26.15 /
+25.03 / 24.54); MoE split tg128 37.14 / 34.95 / 32.43. The gap went from 14% to 5% on CPU-only prompts; it is
+not closed: llama.cpp's own clang 20 DLLs reached 137.34 inside Cluaiz in run 47, this clang 22 build 129.45
+(compiler or OpenMP version, not measured).
 
-**What happens if LLVM is missing.** Today nothing changes: the build uses MSVC only. A clang build of the CPU
-backends must fall back to the MSVC modules with a visible build warning, and a release build must stop instead
-(the reverted patch did this with `CLUAIZ_REQUIRE_LLVM_CPU=1`).
+**Fix (owner's choice, 2026-11-23): upstream's exact setup.** `build.rs` (`build_llvm_cpu_backends`): on
+Windows, after the MSVC build, a second CMake build of the same tree with upstream's toolchain file
+(`cmake/x64-windows-llvm.cmake`: clang, Ninja) and LLVM OpenMP builds `ggml-base` and the CPU variants; they
+replace the MSVC ones beside the exe, with LLVM's `libomp.dll`. `ggml-cuda` and the rest stay MSVC, as upstream.
+`libomp.dll` is required: `ggml-base.dll` imports it, so `cluaiz.exe` does not start without it (exit code
+0xC0000135, run 47). It ships in the core (`.github/scripts/package_core.sh`, notice in
+`THIRD_PARTY_NOTICES.md`) and the dev sync copies it (`cmd/src/core/bootstrapper.rs`, prefix `omp`, because the
+sync compares names without their `lib` prefix). Differences from upstream's release, each with its reason:
+- `OpenMP_libomp_LIBRARY` points at LLVM's `lib/libomp.lib`: CMake's own search took Visual Studio's
+  `libomp.lib`, whose `libomp140.x86_64.dll` is not a runtime to ship (upstream downloads LLVM 20's instead,
+  `GGML_OPENMP_FETCH`, which requires exactly clang 20).
+- `-Wno-error=incompatible-pointer-types`: clang 22 stops on `_mm_prefetch(&x[ib] + ...)` in
+  `ggml-cpu/arch/x86/quants.c`; upstream's CI uses clang 20, where it is a warning.
+- The CPU variants are the ones the MSVC build makes, not upstream's longer clang list (that adds ivybridge,
+  piledriver, cooperlake, zen4, sapphirerapids): clang 22 did not finish `amx/mmq.cpp` of the sapphirerapids
+  variant in 30 minutes. Machines that would pick one of those get the same variant as before this change.
+- Rejected: clang without OpenMP (`GGML_OPENMP=OFF`, no `libomp.dll`). MoE split generation fell to 9.31 t/s
+  against 39.43, because ggml's own thread pool is then used and Cluaiz attaches none to its contexts
+  (llama-bench and llama.cpp's common code do, `llama_attach_threadpool`).
+
+**What happens if LLVM is missing.** clang is looked up in `CLUAIZ_LLVM_DIR`, then `PATH`, then
+`C:\Program Files\LLVM\bin`; LLVM's `libomp.dll` / `lib/libomp.lib` and Ninja must be there too. Missing, or the
+LLVM build fails: the build goes on with the MSVC libraries (today's speed) and prints
+`CPU backends built with MSVC, slower than llama.cpp's release: <reason>`. `CLUAIZ_REQUIRE_LLVM_CPU=1` (set by
+the release workflow) makes that a build error, so a release never ships the slow modules.
 
 **Rule from now on.** Build each backend with the toolchain upstream's release uses for it. On every llama.cpp
 upgrade, read upstream's `.github/workflows/release.yml` (toolchains and CMake options per backend) against this

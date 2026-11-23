@@ -236,7 +236,7 @@ impl Bootstrapper {
                 let name = entry.file_name().to_string_lossy().into_owned();
                 let stem = name.strip_prefix("lib").unwrap_or(&name);
                 let library = name.ends_with(".dll") || name.ends_with(".so") || name.contains(".so.");
-                if library && ["ggml", "llama", "mtmd"].iter().any(|p| stem.starts_with(p)) {
+                if library && ["ggml", "llama", "mtmd", "omp"].iter().any(|p| stem.starts_with(p)) {
                     if let Err(e) = copy_with_rename(&entry.path(), &bin_dir.join(&name)) {
                         tracing::warn!("⚠️ [DevSync] {} Sync Failed (File might be in use): {}.", name, e);
                     }
