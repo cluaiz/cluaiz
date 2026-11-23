@@ -8372,7 +8372,7 @@
           "data": {
             "type": "invalid_params"
           },
-          "message": "The path is not a folder, or is drive-relative / root-relative"
+          "message": "The path is not a folder, is drive-relative / root-relative, or is the Cluaiz home (it holds the session token)"
         },
         {
           "code": -32004,

@@ -37,7 +37,7 @@ response: |
 errors:
   - code: -32602
     type: "invalid_params"
-    when: "The path is not a folder, or is drive-relative / root-relative"
+    when: "The path is not a folder, is drive-relative / root-relative, or is the Cluaiz home (it holds the session token)"
   - code: -32004
     type: "file_not_found"
     when: "The folder does not exist"
@@ -142,7 +142,7 @@ The following response is an illustrative shape. IDs, byte counts, timings and a
 | HTTP 401 | Missing/invalid token while authentication is enabled | Supply the configured token; a CEP params change cannot repair authentication |
 | `-32602` / typed params | Missing required fields, wrong JSON types or unknown fields | Correct the request against this page; do not retry the same invalid payload |
 | `-32002` / principal | Required scope/owner/root authorization is absent | Inspect `error.data.needs`; use an authorized caller or permitted target |
-| `-32602` / `invalid_params` | The path is not a folder, or is drive-relative / root-relative | Correct the option/value combination; install required assets where relevant |
+| `-32602` / `invalid_params` | The path is not a folder, is drive-relative / root-relative, or is the Cluaiz home (it holds the session token) | Correct the option/value combination; install required assets where relevant |
 | `-32004` / `file_not_found` | The folder does not exist | Refresh the relevant inventory/IDs and check whether the resource expired |
 | `-32002` / `forbidden` | The folder is outside the caller's roots (`data.needs: "roots"`) | Read the error message, correct the backend/filesystem/configuration condition, then retry deliberately |
 

@@ -406,7 +406,7 @@ flowchart LR
 | File | What it does |
 |---|---|
 | [`src/boot.rs`](src/boot.rs) | One start for every way the Engine runs: the HTTP / native-pipe daemon (`boot`) and the in-process C library (`boot_in_process`, for `cep_call`) |
-| [`src/state.rs`](src/state.rs) | `AppState`: the `EngineHost`, the open workspace folder (at start the empty `<Cluaiz home>/workspace`, made on first start; not the home itself, whose token and config the file tools would see; a client sends its project folder again with `workspace.set` after a restart), the session token for local clients, `permission.json` in RAM, and the CEP engine |
+| [`src/state.rs`](src/state.rs) | `AppState`: the `EngineHost`, the open workspace folder (at start the empty `<Cluaiz home>/workspace`, made on first start; not the home itself, whose token and config the file tools would see; a client sends its project folder again with `workspace.set` after a restart; `workspace.set` refuses the Cluaiz home itself), the session token for local clients, `permission.json` in RAM, and the CEP engine |
 | [`src/routes.rs`](src/routes.rs) | The HTTP routes: the OpenAI routes, Ollama's routes (`handlers/ollama.rs`, `/api/tags`, `/api/show`, `/api/pull`), `/health`, `/v1/ingest`, and CEP (`/v1/cep`, `/mcp`); request body limits (`inline_body_bytes`) |
 | [`src/update.rs`](src/update.rs) | Is a newer release out: one request to the GitHub releases list of `cluaiz/cluaiz` (pre-releases included), the same source the installers read; used by `cluaiz self update` and `system.update_check` |
 | [`src/url_resolver.rs`](src/url_resolver.rs) | A URL (http, `data:` base64, or file) as a local temporary file for attachments |

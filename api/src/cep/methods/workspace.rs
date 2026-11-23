@@ -248,7 +248,7 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             "Changes the workspace to an existing directory",
         )
         .no_mcp()
-        .error(-32602, "invalid_params", "The path is not a folder, or is drive-relative / root-relative")
+        .error(-32602, "invalid_params", "The path is not a folder, is drive-relative / root-relative, or is the Cluaiz home (it holds the session token)")
         .error(-32004, "file_not_found", "The folder does not exist")
         .error(-32002, "forbidden", "The folder is outside the caller's roots (`data.needs: \"roots\"`)")
         .example(json!({"path": "/project"}), json!({"path": "/project"})),
@@ -258,6 +258,12 @@ pub fn register(registry: &mut Registry<CallCtx>) {
             call.check_path(&path)?;
             if !path.is_dir() {
                 return Err(roots::invalid("path", "Workspace must be a directory"));
+            }
+            // The Cluaiz home holds the session token, settings and memory: tools that work in the
+            // open folder (files, git, terminal) must not see it, so it is never opened as a project
+            let home = &cluaiz_core::EnvironmentManager::current().local_dir;
+            if cluaiz_agents::workspace::same_file(&path, home) {
+                return Err(roots::invalid("path", "The Cluaiz home cannot be the workspace: it holds the session token and settings. Open a project folder"));
             }
             assign(&ctx, &path).await;
             Ok(json!({"path": roots::display(&path)}))
