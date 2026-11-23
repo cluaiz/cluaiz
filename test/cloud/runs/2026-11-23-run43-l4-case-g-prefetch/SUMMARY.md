@@ -97,7 +97,7 @@ The other three prompts are equal or faster. Treat the run 23 row as context, no
 |---|---|
 | Same prompts with one Cluaiz load (server, 4 requests) | removes the load-per-prompt difference against llama-server |
 | Why code is slower than run 23 G | not explained; would need a run 23 build next to this one |
-| llama.cpp `--load-mode none` and the fork's `--moe-cache-mib` on llama-server | a fairer llama.cpp baseline |
+| llama.cpp `--load-mode none` and upstream `--moe-cache-mib 3600 --moe-cache-cpu-share 0.9` on llama-server (the cache is upstream llama.cpp, PR #29887) | the llama.cpp side ran without its MoE cache, so the 1.37-2.20x is against llama.cpp without its cache; prefetch over cache alone (1.27-1.43x) is Cluaiz's own gain |
 | `cluaiz bench` (pp512 / tg128 / tg400) configs of `run_case_g.sh` | not run, to keep VM time short |
 | Text equality check across configs | not done |
 | Auto mode for the prefetch | owner decision; this is one positive result on one setup |

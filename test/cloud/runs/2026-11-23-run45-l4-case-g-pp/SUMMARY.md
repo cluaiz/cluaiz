@@ -33,7 +33,7 @@ command: one load, one warm-up, then the measured repetitions (llama-bench's def
 ## Caveats
 
 - One machine, one model. Standard deviations within a run reach 14 t/s on llama.cpp pp512 round 2.
-- Plain mmap on both sides; llama.cpp's `--moe-cache-mib` (fork) was not used on the llama.cpp side.
+- Plain mmap on both sides. The MoE cache is upstream llama.cpp code (`--moe-cache-mib`, PR #29887, merged 2026-10-07); the llama.cpp side ran without it, so this is not llama.cpp's best setting. The cache adds graph splits per token, which may explain the pp512 / pp2048 gap (?).
 - The VM booted kernel 6.12.118 without the NVIDIA module; it was booted once into 6.12.117
   (`grub-reboot`) where the driver is installed.
 
