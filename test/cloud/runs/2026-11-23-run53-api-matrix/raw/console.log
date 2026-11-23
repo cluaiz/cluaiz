@@ -1,0 +1,45 @@
+PASS health                                 HTTP 200
+PASS auth_required                          api_auth.required=False (default, not changed); HTTP 200 without a token
+PASS v1_models                              HTTP 200, 4 models, chat model listed: True
+PASS chat_basic                             HTTP 200, content '4', usage {'completion_tokens': 1, 'completion_tokens_details': {'reasoning_tokens': 0}, 'model_load_ms': 19, 'prompt_tokens': 3762, 'time_to_first_token_ms': 581, 'tokens_per_second': 1.65, 'total_time_ms': 605, 'total_tokens': 3763}
+PASS chat_stream_usage                      HTTP 200, 7 chunks, text 'Hello!', usage chunk True, ends [DONE] True
+PASS chat_stop_string                       HTTP 200, content '1,2,3,4,', finish stop
+PASS chat_stop_list                         HTTP 200, content '1,2,3,4,5,6,'
+PASS chat_max_completion_tokens             HTTP 200, completion_tokens 5, finish length
+PASS chat_refuses_n2_logprobs               n=2 HTTP 400, logprobs HTTP 400
+PASS chat_logit_bias                        'Yes'=9175 'No'=2665; plain 'No'; Yes +100 'YesYesYesYesYesYesYesYes'; No -100 'Yes'; unknown id HTTP 400
+PASS chat_tools                             HTTP 200, call get_weather {"city":"Paris"}
+PASS chat_approval_mode                     strict HTTP 200, bogus HTTP 400, global mode after: sandboxed
+PASS chat_vision                            red 448x448 PNG: {'text_first': (200, 'Red'), 'image_first': (200, 'red')}
+PASS chat_multiturn_cache                   turn 1 prompt 4619 TTFT 763 ms; turn 2 prompt 4664 TTFT 182 ms (the serve log line '[Context] prompt N tokens (M from the cache)' is the proof)
+PASS embeddings                             HTTP 200, dims [768, 768]
+PASS tts_speech                             HTTP 200, WAV 171644 bytes in audio_data (documented JSON reply)
+PASS stt_transcription                      HTTP 200, text 'The quick brown fox jumps over the lazy dog.'
+PASS ingest_text                            HTTP 200
+PASS ollama_version                         HTTP 200 {'version': '0.1.0'}
+PASS ollama_tags                            HTTP 200, 4 models, chat parameter_size 752.39M
+PASS ollama_show                            known HTTP 200 details {'families': ['qwen35'], 'family': 'qwen35', 'format': 'gguf', 'parameter_size': '752.39M', 'parent_model': '', 'quantization_level': 'Q4_K_M'}; unknown HTTP 404
+PASS ollama_chat                            HTTP 200, content '3+3 = 6', done True
+PASS ollama_chat_stream                     HTTP 200, 16 NDJSON lines, last done True
+FAIL ollama_generate                        HTTP 200, response '**Cluaiz** is a Rust-based AI engine built on llama.cpp and'
+PASS ollama_embed                           HTTP 200, 1 x 768
+PASS ollama_ps                              HTTP 200, [('qwen3.5-0.8b-gguf-Q4_K_M', 1178981423, 16384)]
+PASS cep_system_reads                       18/18 answered; errors: {}
+PASS cep_live_port                          engine.api_port 8013, saved 8000, live 8013
+PASS cep_system_events                      51 events, latest_seq 51; empty long poll waited 1.5 s; a poll during activity returned 1 new events after 1.0 s: ['task.done']
+PASS cep_config_roundtrip                   cleanup_policy 'Immediate' written back unchanged
+== 29/30 passed
+FAIL ollama_generate                        HTTP 200, response '**Cluaiz** is a Rust-based AI engine built on llama.cpp and'
+== 0/1 passed
+FAIL ollama_generate                        HTTP 200, response '**Cluaiz** is a Rust-based AI engine built on llama.cpp and'
+== 0/1 passed
+FAIL ollama_generate                        HTTP 200, response '**Cluaiz** is a Rust-based AI engine built on llama.cpp and'
+== 0/1 passed
+PASS A4_math_cep_no_approval                mode sandboxed; asked False; result {"expression": "2^10+sqrt(16)", "formatted": "1028", "result": 1028.0, "status":
+PASS A4_math_chat_no_approval               HTTP 200; permission_request False; math result 1028 seen True; 56 lines
+PASS A2_files_tool_default_workspace        workspace {"path": "<engine-home>\\workspace"}; listing leaks home: False; listing {"content": [{"text": "", "type": "text"}], "structuredContent": {"content": ""}}
+PASS A2_files_tool_parent_refused           '..' listing leaks session.token: False; null
+PASS A2_files_tool_token_unreadable         read ../session.token leaked the token: False
+PASS A2_workspace_set_home                  workspace.set <home>: refused {"code": -32602, "data": {"errors": [{"message": "The Cluaiz home cannot be the workspace: it holds the session token and settings. Open a project folder", "pat
+PASS A1_flows_run_get_running_step          run run_42e091a443d5; running steps seen [('pause', 'wait', 'running')]; snapshots [[('pause', 'wait', 'running')]]
+PASS A1_flow_run_completes                  final status succeeded
