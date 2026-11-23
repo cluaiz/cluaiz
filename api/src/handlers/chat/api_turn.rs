@@ -366,13 +366,14 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
 
         // Human-in-the-loop approval gate; searching other chats asks first (policy cross_chat: ask)
         let assessment = if let Some(flow) = &extension {
-            super::authorize::Assessment { requires_approval: flow.confirm, capabilities: vec!["flow:run".to_string()] }
+            // A strict chat asks before every flow; other modes keep the flow's own confirm rule
+            super::authorize::Assessment { requires_approval: flow.confirm || ctx.approval_mode == "strict", capabilities: vec!["flow:run".to_string()] }
         } else if is_meta_tool
             && super::recall::needs_cross_chat_approval(meta_name, &meta_payload, ctx.chat_id.as_deref())
         {
             super::authorize::Assessment { requires_approval: true, capabilities: vec!["memory:other_chats".to_string()] }
         } else {
-            super::authorize::assess(&comp_type, &comp_name, tool_sub_func.as_deref(), is_meta_tool, ctx.chat_id.as_deref())
+            super::authorize::assess(&comp_type, &comp_name, tool_sub_func.as_deref(), is_meta_tool, ctx.chat_id.as_deref(), ctx.approval_mode)
         };
         let mut denial: Option<String> = None;
         if assessment.requires_approval && self.nobody_answered {

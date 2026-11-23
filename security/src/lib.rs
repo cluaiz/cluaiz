@@ -5,4 +5,4 @@
 pub mod permission_schema;
 pub mod audit;
 
-pub use permission_schema::{PermissionSchema, ApiAuth, ExecPolicy, SlotConfig, ModelSelection, SecurityModeInfo, OS_SANDBOX_MODES, SECURITY_MODES, UNUSED_FIELDS};
+pub use permission_schema::{PermissionSchema, ApiAuth, ExecPolicy, SlotConfig, ModelSelection, SecurityModeInfo, OS_SANDBOX_MODES, SECURITY_MODES, UNUSED_FIELDS, chat_security_mode};

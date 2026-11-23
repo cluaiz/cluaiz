@@ -127,7 +127,9 @@ flowchart TD
     result); the conversation is rendered again through the template. The unchanged beginning
     keeps its KV cache, so only the new step is processed.
 - `authorize.rs`:
-  - **Logic:** `assess` (does this call need approval), `request` (register it in the CEP
+  - **Logic:** `assess` (does this call need approval, under the request's approval mode:
+    `approval_mode`, never looser than the global mode, resolved once in preflight and kept only in
+    that request's context), `request` (register it in the CEP
     approval store; the SSE `permission_request` chunk when streaming), `wait` (until
     `approvals.approve` / `approvals.reject` or the time runs out).
 - `flows.rs`:
@@ -218,5 +220,8 @@ behaviour was checked live in runs 30 and 31 (`test/cloud/runs/`).
 | Route tests not run since October and not in CI | see `api/README.md` | a CI job with the CPU backend |
 | `logit_bias` unit tests (`logit_bias_takes_token_ids_and_openai_range`) not run | the api suite builds both native backends | a CI job with the CPU backend |
 | `logit_bias` on an ONNX chat model is refused | no ONNX chat sampler takes a bias | an ONNX logit hook |
+| `approval_mode` can only tighten the global mode | a chat cannot get more than the global setting; letting one loosen needs an owner decision on who may (auth on: one token is every caller) | owner decision, then a rule in `cluaiz_security::chat_security_mode` |
+| `approval_mode` `sandboxed` under a global `full_access` does not re-check flows | a chat reads only the flow's precomputed `confirm`; only `strict` makes every flow ask | the flow's `changes` in `OfferedTool` |
+| `approval_mode_tightens_and_names_the_field` unit test not run | the api suite builds both native backends | a CI job with the CPU backend |
 | `logprobs` / `top_logprobs` and `n` > 1 on installed models (refused with 400 today) | evaluation clients ask for token probabilities; `n` asks for several answers | logprobs: read `llama_get_logits_ith` after each sample and add them to the chunk; `n`: one sequence per answer |
 | `n` and `logprobs` not forwarded to providers | a provider could answer them | forward in `preflight.rs` provider `extra` and handle several `choices` in the reply |

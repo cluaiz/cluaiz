@@ -96,6 +96,10 @@ pub struct ExternalChatRequest {
     /// OpenAI `logit_bias`: token id (as a string) -> bias from -100 to 100. Values stay raw JSON so
     /// a wrong one is a 400 naming the field (`logit_bias_pairs`), not a body parse error
     pub logit_bias: Option<std::collections::HashMap<String, serde_json::Value>>,
+    /// This request's tool approval mode (`full_access`, `sandboxed`, `strict`); missing = the
+    /// global `agent_security_mode`. Only as strict or stricter than global (`approval_mode_id`).
+    /// Raw JSON, so a wrong value is a 400 naming the field, not a body parse error
+    pub approval_mode: Option<serde_json::Value>,
     /// OpenAI `n`: answers per request. An installed model gives one; `n` above 1 is refused there
     pub n: Option<u64>,
     /// OpenAI `logprobs` / `top_logprobs`: an installed model returns no token probabilities, so
@@ -405,6 +409,17 @@ impl ExternalChatRequest {
         None
     }
 
+    /// The approval mode this request's tool calls run in (`cluaiz_security::chat_security_mode`
+    /// with the global mode), or an error message for a 400 naming `approval_mode`
+    pub fn approval_mode_id(&self, global: &str) -> Result<&'static str, String> {
+        let requested = match &self.approval_mode {
+            None | Some(serde_json::Value::Null) => None,
+            Some(serde_json::Value::String(mode)) => Some(mode.as_str()),
+            Some(other) => return Err(format!("approval_mode must be a string, got {other}")),
+        };
+        cluaiz_security::chat_security_mode(global, requested)
+    }
+
     /// `logit_bias` as (token id, bias) pairs, sorted by id; missing or `{}` = none. A key that is
     /// not a token id or a value outside -100..100 (OpenAI's range) is an error message for a 400.
     /// Ids past the model's vocabulary are checked once the model is known (`check_vocabulary`)
@@ -468,6 +483,18 @@ mod openai_field_tests {
         assert_eq!(field(r#","logprobs":true"#), Some("logprobs"));
         assert_eq!(field(r#","top_logprobs":3"#), Some("top_logprobs"));
         assert_eq!(field(r#","logit_bias":{"50256":-100}"#), None);
+    }
+
+    #[test]
+    fn approval_mode_tightens_and_names_the_field() {
+        assert_eq!(parse("").approval_mode_id("full_access"), Ok("full_access"));
+        assert_eq!(parse(r#","approval_mode":null"#).approval_mode_id("sandboxed"), Ok("sandboxed"));
+        assert_eq!(parse(r#","approval_mode":"strict""#).approval_mode_id("full_access"), Ok("strict"));
+        assert_eq!(parse(r#","approval_mode":"full_access""#).approval_mode_id("strict"), Ok("strict"));
+        for bad in [r#""yolo""#, "1", "true", "[]"] {
+            let error = parse(&format!(r#","approval_mode":{bad}"#)).approval_mode_id("sandboxed").unwrap_err();
+            assert!(error.contains("approval_mode"), "{error}");
+        }
     }
 
     #[test]

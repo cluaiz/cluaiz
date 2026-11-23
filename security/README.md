@@ -61,6 +61,7 @@ Two copies of the settings exist at run time:
 | `ApiAuth` | struct | `required` (default `false`) and `tokens`; `generate_token`, `mask_token`, `remove_token`, `ensure_valid_token` |
 | `ExecPolicy` | struct | `allow_shell`, `without_approval` for CEP `system.exec`; both `false` by default |
 | `SECURITY_MODES` | const `[SecurityModeInfo; 3]` | `full_access`, `sandboxed` (default), `strict`, with the text a settings screen shows |
+| `chat_security_mode(global, requested)` | fn | The mode one chat request runs in: the stricter of the global mode and the request's `approval_mode` (a chat can only tighten, because any API caller can send the field); an unknown id is an error naming `approval_mode`. Never writes the setting |
 | `OS_SANDBOX_MODES` | const | `auto` (default), `required`, `off` |
 | `UNUSED_FIELDS` | const | Six fields kept only so old files and the App's screen keep working; nothing in the Engine acts on them |
 | `AuditFile` | struct, implements `cluaiz_cep::Audit` | Append-only JSON-lines log with rotation; `in_home()`, `recent(limit)` |
@@ -133,6 +134,7 @@ Automation webhooks write the same lines (`automation/host/src/webhook.rs:43`).
 | `merge_tests::os_sandbox_patch_takes_only_known_modes` | only `auto`/`required`/`off` are saved; a bad value saves nothing | `cargo test -p cluaiz-security` |
 | `merge_tests::the_security_mode_and_switches_are_saved_and_a_wrong_value_changes_nothing` | valid patch saved; a patch with one bad value changes nothing; `api_port` / `api_host` are not patched | same |
 | `merge_tests::the_listed_modes_are_the_saved_values_and_one_is_the_default` | `SECURITY_MODES` and the stored values agree; exactly one default | same |
+| `token_and_slot_tests::chat_mode_only_tightens` | a request mode never loosens the global one; absent = global; unknown global = sandboxed; a bad id is an error | same |
 | `merge_tests::a_broken_file_loads_as_defaults_and_is_kept_for_recovery` | an invalid file gives defaults and is copied to `.broken`; a missing file gives defaults | same |
 | `merge_tests::save_replaces_the_file_whole_and_leaves_no_temporary_file` | the saved values load back; no `.tmp` is left | same |
 | `token_and_slot_tests::remove_token_by_index_counts_from_one` | `" 2 "` removes the second key; `0` and a number past the end are refused and remove nothing | same |

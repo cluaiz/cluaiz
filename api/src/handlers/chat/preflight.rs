@@ -37,6 +37,9 @@ pub struct PreparedChatContext {
     pub samplers: cluaiz_core::SamplerDefaults,
     /// OpenAI `logit_bias` (token id, bias), checked; also sent with a media turn's tool steps
     pub logit_bias: Vec<(i32, f32)>,
+    /// The approval mode of this request's tool calls: the request's `approval_mode`, never looser
+    /// than the global mode. Lives only in this request, so no other chat or caller gets it
+    pub approval_mode: &'static str,
     pub system_prompt_chars: usize,
     pub history_chars: usize,
     pub user_prompt_chars: usize,
@@ -239,6 +242,10 @@ impl PreparedChatContext {
         } else {
             Vec::new()
         };
+        // The approval mode of this request only; the global setting is read, never written
+        let approval_mode = request.approval_mode_id(&cluaiz_security::PermissionSchema::load().agent_security_mode).map_err(|message| {
+            error_response_with_param(request, request_id, message, "invalid_request_error", Some("invalid_value"), Some("approval_mode"))
+        })?;
         let mut active_model_path = if provider.is_some() { None } else { crate::utils::slots::resolve_model_path(&schema, target_slot) };
         let mut resolved_model_name = "default-system-model".to_string();
 
@@ -1394,6 +1401,7 @@ impl PreparedChatContext {
             skip_brain,
             samplers,
             logit_bias,
+            approval_mode,
             system_prompt_chars,
             history_chars,
             user_prompt_chars,

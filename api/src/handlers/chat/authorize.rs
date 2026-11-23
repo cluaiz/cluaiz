@@ -94,20 +94,20 @@ pub struct Assessment {
 /// Engine-internal calls (tool loading) never ask. Registered tools follow their security and
 /// execution modes; an unregistered MCP or undeclared tool asks unless the agent has full access.
 /// A function of an MCP server whose annotations the user trusts runs without asking when the
-/// server marks it read-only (`function`: the MCP function called).
-pub fn assess(comp_type: &str, comp_name: &str, function: Option<&str>, engine_internal: bool, chat: Option<&str>) -> Assessment {
+/// server marks it read-only (`function`: the MCP function called). `master_mode` is the request's
+/// approval mode (`PreparedChatContext::approval_mode`), never looser than the global one.
+pub fn assess(comp_type: &str, comp_name: &str, function: Option<&str>, engine_internal: bool, chat: Option<&str>, master_mode: &str) -> Assessment {
     if engine_internal {
         return Assessment { requires_approval: false, capabilities: vec!["tools:load".to_string()] };
     }
     if granted(chat, comp_name) {
         return Assessment { requires_approval: false, capabilities: vec!["granted_for_chat".to_string()] };
     }
-    let master_mode = cluaiz_security::PermissionSchema::load().agent_security_mode.to_lowercase();
     let (requires_approval, capabilities) = match cluaiz_agents::ToolsEngine::get_tool(comp_name).ok().flatten() {
-        Some(entry) if entry.requires_approval(&master_mode) && read_only_trusted(&entry, &master_mode, function) => {
+        Some(entry) if entry.requires_approval(master_mode) && read_only_trusted(&entry, master_mode, function) => {
             (false, vec!["mcp:read_only_trusted".to_string()])
         }
-        Some(entry) => (entry.requires_approval(&master_mode), entry.effective_capabilities()),
+        Some(entry) => (entry.requires_approval(master_mode), entry.effective_capabilities()),
         None if comp_type == "mcp" => (true, vec!["mcp:external".to_string()]),
         None if master_mode == "full_access" => (false, vec!["full_access_override".to_string()]),
         None => (true, vec!["undeclared".to_string()]),

@@ -195,6 +195,21 @@ pub const SECURITY_MODES: [SecurityModeInfo; 3] = [
     },
 ];
 
+/// The mode one chat request runs in: the stricter of the global `agent_security_mode` and the
+/// request's `approval_mode` (absent = the global mode). Order: full_access < sandboxed < strict.
+/// A chat can only tighten: any caller of the API could send the field, so a looser value would let
+/// one caller give itself more than the owner set. Loosening is an open owner decision. A value that
+/// is not a mode id is an error naming `approval_mode`. Nothing here writes the global setting.
+pub fn chat_security_mode(global: &str, requested: Option<&str>) -> Result<&'static str, String> {
+    let rank = |id: &str| SECURITY_MODES.iter().position(|m| m.id == id);
+    // A global value the Engine does not know runs as sandboxed (as `requires_approval` does)
+    let global = rank(&global.to_lowercase()).unwrap_or_else(|| rank("sandboxed").unwrap_or(1));
+    let Some(requested) = requested else { return Ok(SECURITY_MODES[global].id) };
+    let ids: Vec<&str> = SECURITY_MODES.iter().map(|m| m.id).collect();
+    let requested = rank(requested).ok_or_else(|| format!("approval_mode must be one of: {} (got '{requested}')", ids.join(", ")))?;
+    Ok(SECURITY_MODES[global.max(requested)].id)
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PermissionSchema {
     #[serde(default)]
@@ -644,5 +659,19 @@ mod token_and_slot_tests {
         empty.active_slots.clear();
         empty.chat_models = ModelSelection::default();
         assert_eq!(empty.get_active_chat_model(), None);
+    }
+
+    #[test]
+    fn chat_mode_only_tightens() {
+        assert_eq!(chat_security_mode("full_access", None), Ok("full_access"));
+        assert_eq!(chat_security_mode("full_access", Some("strict")), Ok("strict"));
+        assert_eq!(chat_security_mode("full_access", Some("sandboxed")), Ok("sandboxed"));
+        assert_eq!(chat_security_mode("sandboxed", Some("full_access")), Ok("sandboxed"), "never looser than global");
+        assert_eq!(chat_security_mode("strict", Some("full_access")), Ok("strict"));
+        assert_eq!(chat_security_mode("STRICT", None), Ok("strict"));
+        assert_eq!(chat_security_mode("unknown", None), Ok("sandboxed"));
+        assert_eq!(chat_security_mode("unknown", Some("full_access")), Ok("sandboxed"));
+        let error = chat_security_mode("sandboxed", Some("yolo")).unwrap_err();
+        assert!(error.contains("approval_mode") && error.contains("strict"), "{error}");
     }
 }
