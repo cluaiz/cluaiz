@@ -102,15 +102,19 @@ pub async fn test(target: &Target, voice: Option<&str>) -> Result<String, String
             }
         }
         Some("tts") => {
-            let mut body =
-                json!({ "model": target.model, "input": "ready", "response_format": "wav" });
-            if let Some(voice) = voice {
-                body["voice"] = json!(voice);
+            let body = json!({ "input": "ready", "voice": voice });
+            let endpoint = super::media::gemini_speech_endpoint(target);
+            let result = tokio::time::timeout(Duration::from_secs(60), super::media::speech_bytes(target, &body, endpoint.as_ref()))
+                .await.map_err(|_| format!("{} did not finish the speech test in time", target.provider))?;
+            match result {
+                Ok((audio, _)) => Ok(format!("{} bytes of audio", audio.len())),
+                Err(response) => {
+                    let (_, body) = response.into_parts();
+                    let bytes = axum::body::to_bytes(body, 64 * 1024).await.map_err(|error| error.to_string())?;
+                    let error: Value = serde_json::from_slice(&bytes).map_err(|error| error.to_string())?;
+                    Err(error.pointer("/error/message").and_then(Value::as_str).unwrap_or("Speech request failed").into())
+                }
             }
-            test_other(target, "/audio/speech", body, |body| {
-                Some(format!("{} bytes of audio", body.len()))
-            })
-            .await
         }
         Some("stt") => Err(format!(
             "{} is a speech-to-text model: test it by sending audio to /v1/audio/transcriptions",

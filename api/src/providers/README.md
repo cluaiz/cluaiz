@@ -158,11 +158,20 @@ flowchart TD
     `providers.test`: chat, embedding (sent again with `input_type: "query"` when the model asks
     for it) or speech; a speech-to-text model is not sent anything, the answer says to test it with
     audio at `/v1/audio/transcriptions`.
-- `media/` (`mod.rs`, `embeddings.rs`, `speech.rs`, `transcription.rs`):
+- `media/` (`mod.rs`, `embeddings.rs`, `speech.rs`, `gemini_speech.rs`, `transcription.rs`):
   - **Logic:** `forward_embeddings`, `forward_speech`, `forward_transcription` send the OpenAI
     request to the provider and answer in the shape of the Engine's own route
     (`/v1/embeddings`, `/v1/audio/speech`, `/v1/audio/transcriptions`); streamed WAV gets its real
     sizes in the header.
+  - **Gemini speech:** Gemini's OpenAI-compatible base has no speech route, so `gemini_speech.rs`
+    sends a TTS model's request to the official `generateContent` endpoint instead. It does this only
+    for the exact `https://generativelanguage.googleapis.com/v1beta[/openai]` base; any other URL
+    (for example one from a catalogue) never receives the key this way.
+  - **Model records:** a listed model keeps its `kind` and catalogue `metadata` (inputs, outputs,
+    price and similar). Metadata cannot change the upstream URL or the key. A model with no saved
+    kind is returned with `kind: null`, not "chat", so a TTS model saved without a kind no longer
+    shows up as a chat model. Cloud defaults for embeddings, TTS and STT (`MEDIA_SLOTS` in
+    `engine/core/src/providers.rs`) must name a saved model whose kind matches.
 - `tests/`:
   - **Logic:** Recorded SSE streams (`tests/fixtures/*.sse`: OpenAI, Groq, Gemini, Mistral,
     DeepSeek, OpenRouter, Claude, errors, empty answers) replayed through `Decoder`, plus request

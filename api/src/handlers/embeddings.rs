@@ -128,11 +128,9 @@ fn validate(payload: &EmbeddingRequest) -> anyhow::Result<()> {
 /// POST /v1/embeddings: a provider's model (providers.json) goes to the provider; every other
 /// request is the Engine's own
 pub async fn embeddings_entry(state: State<Arc<AppState>>, body: axum::body::Bytes) -> Response {
-    if crate::providers_configured() {
-        if let Ok(raw) = serde_json::from_slice::<serde_json::Value>(&body) {
-            if let Some(target) = crate::providers::named_target(&raw) {
-                return crate::providers::forward_embeddings(target, raw).await;
-            }
+    if let Ok(raw) = serde_json::from_slice::<serde_json::Value>(&body) {
+        if let Some(target) = crate::providers::media_target(&state.0, &raw, "cloud_embed_slot", "embedding").await {
+            return crate::providers::forward_embeddings(target, raw).await;
         }
     }
     match Json::<EmbeddingRequest>::from_bytes(&body) {

@@ -103,6 +103,15 @@ pub async fn request(
     method: reqwest::Method,
     url: &str,
 ) -> Result<(reqwest::RequestBuilder, Option<String>), String> {
+    request_with_key_header(provider, method, url, None).await
+}
+
+pub(super) async fn request_with_key_header(
+    provider: &Provider,
+    method: reqwest::Method,
+    url: &str,
+    key_header: Option<&str>,
+) -> Result<(reqwest::RequestBuilder, Option<String>), String> {
     let auth = Auth::of(provider);
     let key = match auth {
         Auth::Google => Some(super::google::access_token().await?),
@@ -128,7 +137,11 @@ pub async fn request(
             Auth::ApiKey => builder.header("api-key", key),
             Auth::XApiKey => builder.header("x-api-key", key),
             Auth::None | Auth::Aws => builder,
-            Auth::Bearer | Auth::Google | Auth::Azure => builder.bearer_auth(key),
+            Auth::Bearer => match key_header {
+                Some(name) => builder.header(name, key),
+                None => builder.bearer_auth(key),
+            },
+            Auth::Google | Auth::Azure => builder.bearer_auth(key),
         };
     }
     let anthropic = Compat::wire_of(provider) == Wire::Anthropic && !Compat::is_vertex(provider);

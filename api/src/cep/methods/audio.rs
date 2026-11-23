@@ -90,6 +90,14 @@ fn contract_error(error: impl ToString) -> CepError {
 }
 
 async fn voices(ctx: CallCtx, call: Call, params: CatalogParams) -> Result<Value, CepError> {
+    if let Some(target) = cloud_catalogue_target(&ctx, &params, AudioTask::TextToSpeech, "tts").await {
+        let languages = catalogue_values(&target, "languages");
+        let language = (languages.len() == 1).then(|| &languages[0]);
+        let mut data = vec![json!({"id":"default","language":null,"default":true})];
+        data.extend(catalogue_values(&target, "voices").into_iter().map(|id| json!({"id":id,"language":language,"default":false})));
+        return Ok(json!({"object":"list","model":target.full_name(),"data":data,
+            "capabilities":{"languages":languages,"language_control":"auto","voice_mode":"preset","coherent_input":false}}));
+    }
     let entry =
         match audio::selected_model(&ctx.state, params.model.as_deref(), AudioTask::TextToSpeech)
             .await
@@ -119,6 +127,9 @@ async fn voices(ctx: CallCtx, call: Call, params: CatalogParams) -> Result<Value
 }
 
 async fn languages(ctx: CallCtx, call: Call, params: CatalogParams) -> Result<Value, CepError> {
+    if let Some(target) = cloud_catalogue_target(&ctx, &params, AudioTask::SpeechToText, "stt").await {
+        return Ok(json!({"object":"list","model":target.full_name(),"data":catalogue_values(&target, "languages")}));
+    }
     let entry =
         match audio::selected_model(&ctx.state, params.model.as_deref(), AudioTask::SpeechToText)
             .await
@@ -130,6 +141,16 @@ async fn languages(ctx: CallCtx, call: Call, params: CatalogParams) -> Result<Va
     let model =
         OnnxModel::from_registry(&entry, AudioTask::SpeechToText).map_err(contract_error)?;
     Ok(json!({"object":"list","model":model.id,"data":model.stt_languages()}))
+}
+
+async fn cloud_catalogue_target(ctx: &CallCtx, params: &CatalogParams, task: AudioTask, kind: &str) -> Option<cluaiz_core::providers::Target> {
+    crate::providers::media_target(&ctx.state, &json!({"model":params.model}), task.slot(), kind).await
+        .filter(|target| target.listed_kind() == Some(kind))
+}
+
+fn catalogue_values<'a>(target: &'a cluaiz_core::providers::Target, field: &str) -> Vec<&'a str> {
+    target.config.models.get(&target.model).and_then(|entry| entry.metadata.get(field)).and_then(Value::as_array)
+        .into_iter().flatten().filter_map(Value::as_str).filter(|value| !value.trim().is_empty()).collect()
 }
 
 struct CancelOnDrop(Arc<AtomicBool>);

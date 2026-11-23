@@ -11,39 +11,12 @@ pub async fn forward_speech(target: Target, request: Value) -> axum::response::R
     if let Err(message) = target.check_kind("tts") {
         return provider_error(&target, 400, message);
     }
-    let ignored = ignored_of(&request, &["model", "input", "voice", "speed", "stream"]);
-    let mut body = json!({ "model": target.model, "input": request.get("input").cloned().unwrap_or(Value::Null), "response_format": "wav" });
-    for field in ["voice", "speed"] {
-        if let Some(value) = request.get(field).filter(|v| !v.is_null()) {
-            body[field] = value.clone();
-        }
-    }
-    let response = match send_to(
-        &target,
-        "/audio/speech",
-        body.to_string().into(),
-        "application/json",
-    )
-    .await
-    {
-        Ok(response) => response,
-        Err(reply) => return reply,
-    };
-    let media_type = response
-        .headers()
-        .get(reqwest::header::CONTENT_TYPE)
-        .and_then(|v| v.to_str().ok())
-        .map(|v| v.split(';').next().unwrap_or(v).trim().to_string())
-        .unwrap_or_default();
-    let audio = match response.bytes().await {
+    let gemini = super::gemini_speech::endpoint(&target);
+    let known: &[&str] = if gemini.is_some() { &["model", "input", "voice", "stream"] } else { &["model", "input", "voice", "speed", "stream"] };
+    let ignored = ignored_of(&request, known);
+    let (audio, media_type) = match speech_bytes(&target, &request, gemini.as_ref()).await {
         Ok(audio) => audio,
-        Err(error) => {
-            return provider_error(
-                &target,
-                502,
-                format!("{}: the audio did not arrive: {error}", target.provider),
-            )
-        }
+        Err(reply) => return reply,
     };
     use base64::Engine as _;
     let (audio, media_type) = if audio.starts_with(b"RIFF") {
@@ -108,6 +81,29 @@ pub async fn forward_speech(target: Target, request: Value) -> axum::response::R
             "the provider's answer could not be passed on".into(),
         )
     })
+}
+
+pub(in crate::providers) async fn speech_bytes(target: &Target, request: &Value, gemini: Option<&reqwest::Url>) -> Result<(Vec<u8>, String), axum::response::Response> {
+    let input = request.get("input").and_then(Value::as_str).filter(|text| !text.trim().is_empty())
+        .ok_or_else(|| provider_error(target, 400, "Speech input must be non-empty text".into()))?;
+    let voice = request.get("voice").and_then(Value::as_str).filter(|voice| !voice.trim().is_empty() && *voice != "default")
+        .or_else(|| target.config.models.get(&target.model)?.metadata.get("defaultVoice")?.as_str());
+    if let Some(endpoint) = gemini {
+        let audio = super::gemini_speech::generate(target, endpoint, input, voice).await?;
+        return Ok((audio, "audio/wav".into()));
+    }
+    let mut body = json!({ "model": target.model, "input": input, "response_format": "wav" });
+    if let Some(voice) = voice {
+        body["voice"] = json!(voice);
+    }
+    if let Some(speed) = request.get("speed").filter(|value| !value.is_null()) {
+        body["speed"] = speed.clone();
+    }
+    let response = send_to(target, "/audio/speech", body.to_string().into(), "application/json").await?;
+    let media_type = response.headers().get(reqwest::header::CONTENT_TYPE).and_then(|value| value.to_str().ok())
+        .map(|value| value.split(';').next().unwrap_or(value).trim().to_string()).unwrap_or_default();
+    let audio = response.bytes().await.map_err(|error| provider_error(target, 502, format!("{}: the audio did not arrive: {error}", target.provider)))?;
+    Ok((audio.to_vec(), media_type))
 }
 
 /// A WAV with its RIFF and `data` sizes set from its real length. Providers that stream audio

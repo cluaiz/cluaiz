@@ -54,6 +54,28 @@ pub use stream::{
 use cluaiz_core::providers::Target;
 use serde_json::{json, Value};
 
+/// The configured upstream request, as used by the Engine's handlers.
+pub(crate) fn model_api(target: &Target, kind: &str) -> Option<(&'static str, String)> {
+    match kind {
+        "chat" => Some((match Compat::wire_of(&target.config) {
+            Wire::Anthropic => "Anthropic Messages",
+            _ => "OpenAI-compatible Chat Completions",
+        }, chat_url(target, false))),
+        "tts" if media::gemini_speech_endpoint(target).is_some() => {
+            media::gemini_speech_endpoint(target).map(|url| ("Gemini generateContent (audio)", url.to_string()))
+        }
+        "tts" | "stt" | "embedding" => {
+            let (format, path) = match kind {
+                "tts" => ("OpenAI-compatible speech", "/audio/speech"),
+                "stt" => ("OpenAI-compatible transcription", "/audio/transcriptions"),
+                _ => ("OpenAI-compatible embeddings", "/embeddings"),
+            };
+            Some((format, format!("{}{path}", target.config.base_url.trim_end_matches('/'))))
+        }
+        _ => None,
+    }
+}
+
 /// One sentence when providers are set up but API authentication is off: anyone who can reach the
 /// server can then use the providers' keys. The user decides; the Engine only says so.
 pub fn open_server_warning(auth_required: bool) -> Option<String> {
@@ -98,6 +120,20 @@ pub fn named_target(request: &Value) -> Option<Target> {
         return None;
     }
     target_of(request)
+}
+
+/// An explicit model takes precedence over a cloud default saved in Settings.
+pub(crate) async fn media_target(state: &crate::AppState, request: &Value, slot: &str, kind: &str) -> Option<Target> {
+    match request.get("model") {
+        None | Some(Value::Null) => {}
+        Some(Value::String(name)) if name.trim().is_empty() || name.eq_ignore_ascii_case("auto") => {}
+        Some(_) => return named_target(request),
+    }
+    let name = state.permission_schema.read().await.active_slots.get(slot)?.model_id.clone()?;
+    if !name.contains('/') {
+        return None;
+    }
+    cluaiz_core::providers::Providers::load_or_empty().media_default(&name, kind)
 }
 
 /// The provider's model a chat names: `model`, or for no model or "auto" the default chat model

@@ -149,11 +149,19 @@ async fn section_value(ctx: &CallCtx, section: Section) -> Value {
         Section::Storage => json!({ "cleanup_policy": settings.storage_cleanup_policy }),
         Section::Kv => json!(settings.chat_memory),
         Section::Engine => {
-            let schema = clear_missing_slots(ctx).await;
+            let providers = cluaiz_core::providers::Providers::load().ok();
+            let schema = clear_missing_slots(ctx, providers.as_ref()).await;
             // The port this server listens on: CLUAIZ_PORT wins over the saved value for one run, and a
             // client connects to the port in this reply. The saved value is never changed here.
             let live_port = crate::api_port(&schema);
             let mut engine = json!(schema);
+            if let Some(providers) = providers {
+                let models = providers.listed_models();
+                for (_, kind, field) in cluaiz_core::providers::MEDIA_SLOTS {
+                    engine[field] = json!(models.iter().filter(|(_, _, model_kind)| model_kind == kind)
+                        .map(|(id, _, _)| id).collect::<Vec<_>>());
+                }
+            }
             engine["api_port"] = json!(live_port);
             engine["saved_api_port"] = json!(schema.api_port);
             // What a settings screen should not offer as working switches
@@ -167,12 +175,17 @@ async fn section_value(ctx: &CallCtx, section: Section) -> Value {
 
 /// Model slots that point at a model no longer installed (deleted by hand or unregistered) are
 /// emptied and saved, so the settings never name a model that is gone
-async fn clear_missing_slots(ctx: &CallCtx) -> cluaiz_security::PermissionSchema {
+async fn clear_missing_slots(ctx: &CallCtx, providers: Option<&cluaiz_core::providers::Providers>) -> cluaiz_security::PermissionSchema {
     let installed = cluaiz_models::registry::InstalledStateRegistry::load().installed_models;
     let mut schema = ctx.state.permission_schema.write().await;
     let mut changed = false;
-    for slot in schema.active_slots.values_mut() {
-        if slot.model_id.as_ref().is_some_and(|id| !installed.contains_key(id)) {
+    for (name, slot) in &mut schema.active_slots {
+        let cloud_kind = cluaiz_core::providers::MEDIA_SLOTS.iter().find(|(key, _, _)| name.as_str() == *key).map(|(_, kind, _)| *kind);
+        if slot.model_id.as_ref().is_some_and(|id| {
+            !installed.contains_key(id) && !cloud_kind.is_some_and(|kind| {
+                providers.map_or_else(|| id.contains('/'), |providers| providers.media_default(id, kind).is_some())
+            })
+        }) {
             *slot = cluaiz_security::SlotConfig::default();
             changed = true;
         }
@@ -296,10 +309,18 @@ async fn set(ctx: &CallCtx, section: Section, patch: Value) -> Result<(), CepErr
         }
         Section::Kv => set_kv(patch),
         Section::Engine => {
-            let mut schema = ctx.state.permission_schema.read().await.clone();
+            let mut patch = patch;
+            let slot_updates = patch.as_object_mut().and_then(|patch| patch.remove("active_slot_updates"))
+                .map(serde_json::from_value::<std::collections::HashMap<String, cluaiz_security::SlotConfig>>)
+                .transpose().map_err(|error| bad_patch(section, error))?;
+            let mut current = ctx.state.permission_schema.write().await;
+            let mut schema = current.clone();
             schema.merge_patch(&patch).map_err(|message| bad_patch(section, message))?;
+            if let Some(updates) = slot_updates {
+                schema.active_slots.extend(updates);
+            }
             schema.save().map_err(save_error)?;
-            *ctx.state.permission_schema.write().await = schema;
+            *current = schema;
             Ok(())
         }
     }

@@ -643,7 +643,7 @@ pub async fn speech(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<Value>,
 ) -> Response {
-    if let Some(target) = crate::providers::named_target(&payload) {
+    if let Some(target) = crate::providers::media_target(&state, &payload, AudioTask::TextToSpeech.slot(), "tts").await {
         return crate::providers::forward_speech(target, payload).await;
     }
     let payload: SpeechRequest = match serde_json::from_value(payload) {
@@ -673,7 +673,7 @@ pub async fn transcriptions(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<Value>,
 ) -> Response {
-    if let Some(target) = crate::providers::named_target(&payload) {
+    if let Some(target) = crate::providers::media_target(&state, &payload, AudioTask::SpeechToText.slot(), "stt").await {
         return crate::providers::forward_transcription(state, target, payload).await;
     }
     let payload: TranscriptionRequest = match serde_json::from_value(payload) {

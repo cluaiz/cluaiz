@@ -71,6 +71,10 @@ curl http://localhost:8000/v1/chat/completions \
 
 `/v1/models` lists the models in providers.json too, with `provider` and `context_window`.
 
+`providers.list` returns the saved model kind and metadata, plus the upstream API format and endpoint used by the Engine. Older entries may have no saved kind. In the App, open the matching model in Toolkit and choose **Save model details** to update the entry.
+
+Settings can select a saved cloud text-to-speech, transcription or Embeddings API default. A request with an explicit `model` takes precedence over the default. The cloud embedding default applies to `/v1/embeddings`. Local memory continues to use its installed embedding model. The Gemini Developer API speech route uses `generateContent` with audio output. Other compatible speech providers use `/audio/speech`.
+
 ## The file
 
 `providers.json` in the Cluaiz config folder (`cluaiz provider list` prints its path):
@@ -82,7 +86,7 @@ curl http://localhost:8000/v1/chat/completions \
       "type": "openai",
       "base_url": "https://api.example.com/v1",
       "api_key_env": "MYAPI_KEY",
-      "models": { "model-name": { "context": 32768 } }
+      "models": { "model-name": { "context": 32768, "kind": "chat", "metadata": { "inputs": ["text"], "outputs": ["text"] } } }
     },
     "ollama": {
       "type": "openai",

@@ -6,7 +6,9 @@
 //! `config/.env`), or from `api_key` in the file. Keys are never logged or shown in full.
 
 use std::collections::BTreeMap;
+use std::io::Write;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
 
@@ -102,6 +104,9 @@ pub struct ProviderModel {
     /// "tts" (text to speech) or "stt" (speech to text)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub kind: Option<String>,
+    /// Catalogue data and model defaults. It cannot change the upstream destination or credentials.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub metadata: BTreeMap<String, serde_json::Value>,
 }
 
 /// The kinds a provider's model can have, as the Engine's model categories, with the route each uses
@@ -110,6 +115,13 @@ pub const KINDS: [(&str, &str); 4] = [
     ("embedding", "/v1/embeddings"),
     ("tts", "/v1/audio/speech"),
     ("stt", "/v1/audio/transcriptions"),
+];
+
+/// Cloud defaults for explicit media API calls. The embedding slot used by local memory is separate.
+pub const MEDIA_SLOTS: [(&str, &str, &str); 3] = [
+    ("cloud_embed_slot", "embedding", "available_cloud_embedding_models"),
+    ("tts_slot", "tts", "available_cloud_tts_models"),
+    ("stt_slot", "stt", "available_cloud_stt_models"),
 ];
 
 /// `kind` when it is one of `KINDS`
@@ -161,6 +173,10 @@ impl Target {
 }
 
 impl Providers {
+    /// Defaults must refer to a saved model with an explicit matching kind.
+    pub fn media_default(&self, name: &str, kind: &str) -> Option<Target> {
+        self.find(name).filter(|target| target.listed_kind() == Some(kind))
+    }
     pub fn path() -> PathBuf {
         crate::EnvironmentManager::current().config_dir().join("providers.json")
     }
@@ -185,29 +201,31 @@ impl Providers {
     }
 
     pub fn save(&self) -> Result<(), String> {
-        let path = Self::path();
+        self.save_at(&Self::path())
+    }
+
+    fn save_at(&self, path: &std::path::Path) -> Result<(), String> {
+        static NEXT_TEMP: AtomicU64 = AtomicU64::new(0);
         if let Some(parent) = path.parent() {
-            let _ = std::fs::create_dir_all(parent);
+            std::fs::create_dir_all(parent).map_err(|error| format!("{}: {error}", parent.display()))?;
         }
         let text = serde_json::to_string_pretty(self).map_err(|e| e.to_string())?;
-        // A key may be in the file: only its owner reads it, from the moment it is created
+        let suffix = NEXT_TEMP.fetch_add(1, Ordering::Relaxed);
+        let temporary = path.with_extension(format!("json.{}.{suffix}.tmp", std::process::id()));
+        let mut options = std::fs::OpenOptions::new();
+        options.write(true).create_new(true);
+        // A key may be in the file. Keep the temporary file private from creation on Unix.
         #[cfg(unix)]
         {
-            use std::io::Write;
-            use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
-            let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
-            let mut file = std::fs::OpenOptions::new()
-                .write(true)
-                .create(true)
-                .truncate(true)
-                .mode(0o600)
-                .open(&path)
-                .map_err(|e| format!("{}: {e}", path.display()))?;
-            file.write_all(text.as_bytes()).map_err(|e| format!("{}: {e}", path.display()))?;
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
         }
-        #[cfg(not(unix))]
-        {
-            std::fs::write(&path, text).map_err(|e| format!("{}: {e}", path.display()))?;
+        let mut file = options.open(&temporary).map_err(|error| format!("{}: {error}", path.display()))?;
+        let write = file.write_all(text.as_bytes()).and_then(|_| file.sync_all());
+        drop(file);
+        if let Err(error) = write.and_then(|_| std::fs::rename(&temporary, path)) {
+            let _ = std::fs::remove_file(temporary);
+            return Err(format!("{}: {error}", path.display()));
         }
         Ok(())
     }
@@ -340,11 +358,43 @@ pub fn redact(text: &str, key: Option<&str>) -> String {
 mod tests {
     use super::*;
 
+    #[test]
+    fn test_provider_save_replaces_existing_file() -> anyhow::Result<()> {
+        let dir = std::env::temp_dir().join(format!("cluaiz-provider-save-{}", std::process::id()));
+        std::fs::create_dir(&dir)?;
+        let file = dir.join("providers.json");
+        let result = (|| {
+            let mut providers = Providers::default();
+            providers.save_at(&file).map_err(anyhow::Error::msg)?;
+            providers.providers.insert("demo".into(), Provider::new("https://example.com/v1"));
+            providers.save_at(&file).map_err(anyhow::Error::msg)?;
+            let saved: Providers = serde_json::from_slice(&std::fs::read(&file)?)?;
+            assert!(saved.providers.contains_key("demo"));
+            assert_eq!(std::fs::read_dir(&dir)?.count(), 1);
+            Ok(())
+        })();
+        let _ = std::fs::remove_file(file);
+        let _ = std::fs::remove_dir(dir);
+        result
+    }
+
+    #[test]
+    fn test_provider_media_default_requires_saved_matching_kind() -> Result<(), serde_json::Error> {
+        let providers: Providers = serde_json::from_str(r#"{"providers":{"demo":{"base_url":"https://example.com/v1","models":{"speech":{"kind":"tts","metadata":{"inputs":["text"],"outputs":["audio"]}},"older":{"context":8192}}}}}"#)?;
+        assert!(providers.media_default("demo/speech", "tts").is_some());
+        assert!(providers.media_default("demo/speech", "chat").is_none());
+        assert!(providers.media_default("demo/older", "tts").is_none());
+        assert!(providers.media_default("demo/missing", "tts").is_none());
+        let encoded = serde_json::to_value(providers)?;
+        assert_eq!(encoded.pointer("/providers/demo/models/speech/metadata/outputs/0").and_then(serde_json::Value::as_str), Some("audio"));
+        Ok(())
+    }
+
     fn sample() -> Providers {
         let mut providers = Providers::default();
         let mut groq = Provider::new("https://api.groq.com/openai/v1/");
         groq.api_key_env = Some("CLUAIZ_TEST_NO_SUCH_KEY".into());
-        groq.models.insert("qwen/qwen3-32b".into(), ProviderModel { context: Some(131_072), kind: None });
+        groq.models.insert("qwen/qwen3-32b".into(), ProviderModel { context: Some(131_072), ..ProviderModel::default() });
         providers.providers.insert("groq".into(), groq);
         providers.providers.insert("ollama".into(), Provider::new("http://localhost:11434/v1"));
         providers
@@ -363,7 +413,7 @@ mod tests {
         // A kind is checked only when the file gives one
         assert!(target.check_kind("embedding").is_ok());
         let mut whisper = providers.find("groq/whisper-large-v3").unwrap();
-        whisper.config.models.insert("whisper-large-v3".into(), ProviderModel { context: None, kind: Some("stt".into()) });
+        whisper.config.models.insert("whisper-large-v3".into(), ProviderModel { kind: Some("stt".into()), ..ProviderModel::default() });
         assert!(whisper.check_kind("stt").is_ok());
         assert!(whisper.check_kind("chat").unwrap_err().contains("/v1/audio/transcriptions"));
         assert!(valid_kind("tts") && !valid_kind("speech"));

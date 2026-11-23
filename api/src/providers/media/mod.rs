@@ -2,11 +2,14 @@
 //! provider, and the answer comes back in the shape of the Engine's own route.
 
 mod embeddings;
+mod gemini_speech;
 mod speech;
 mod transcription;
 
 pub use embeddings::forward_embeddings;
 pub use speech::forward_speech;
+pub(super) use speech::speech_bytes;
+pub(super) use gemini_speech::endpoint as gemini_speech_endpoint;
 pub use transcription::forward_transcription;
 
 use std::time::Duration;
@@ -15,7 +18,7 @@ use cluaiz_core::providers::Target;
 use serde_json::{json, Value};
 
 use super::errors::{error_message, send_error};
-use super::http::request;
+use super::http::request_with_key_header;
 
 /// A JSON error in the shape of the route's own errors
 pub(super) fn provider_error(
@@ -37,7 +40,17 @@ pub(super) async fn send_to(
     content_type: &str,
 ) -> Result<reqwest::Response, axum::response::Response> {
     let url = format!("{}{path}", target.config.base_url.trim_end_matches('/'));
-    let (builder, key) = request(&target.config, reqwest::Method::POST, &url)
+    send_to_url(target, &url, body, content_type, None).await
+}
+
+async fn send_to_url(
+    target: &Target,
+    url: &str,
+    body: reqwest::Body,
+    content_type: &str,
+    key_header: Option<&str>,
+) -> Result<reqwest::Response, axum::response::Response> {
+    let (builder, key) = request_with_key_header(&target.config, reqwest::Method::POST, url, key_header)
         .await
         .map_err(|message| provider_error(target, 400, message))?;
     let response = super::http::send(
