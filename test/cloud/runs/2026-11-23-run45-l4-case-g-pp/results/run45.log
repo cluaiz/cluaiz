@@ -1,0 +1,47 @@
+== 2026-11-23T06:16:57Z machine
+== 2026-11-23T06:16:57Z official llama.cpp
+official llama.cpp b54752d 2026-11-15 ggml-cpu: add x86 VNNI Q2_0 dot product (#26348)
+version: 1.0.0-dev (build 1, commit b54752d)
+cluaiz 0.1.0 (pre-release)
+== 2026-11-23T06:16:59Z model and homes
+model ~/ch-run23/models/chat/qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf on nvme0n1p1
+1.2M	~/ch-run42/base
+== 2026-11-23T06:16:59Z VRAM hog
+0 MiB
+06:16:59 free 21.90 GB, took 13.90 GB, rc 0
+== 2026-11-23T06:17:19Z plans
+default plan:
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+2026-11-23T06:19:03.691375Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+forced-cache plan:
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+2026-11-23T06:21:06.868603Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+KV f16, n_ctx 16384, default placement: n_gpu_layers = -1 | n_cpu_moe = 41
+== 2026-11-23T06:21:25Z configs: L-bench C-plan C-cache C-pf
+== 2026-11-23T06:21:25Z r1_L-bench
+rc 0, major faults 1264644, read 50201 MiB from disk, 653 s
+== 2026-11-23T06:32:19Z r1_C-plan
+rc 0, major faults 577748, read 53826 MiB from disk, 503 s
+== 2026-11-23T06:40:43Z r1_C-cache
+rc 0, major faults 582988, read 54199 MiB from disk, 505 s
+== 2026-11-23T06:49:10Z r1_C-pf
+rc 0, major faults 561434, read 51419 MiB from disk, 491 s
+== 2026-11-23T06:57:23Z r2_C-plan
+rc 0, major faults 577898, read 53101 MiB from disk, 501 s
+== 2026-11-23T07:05:45Z r2_C-cache
+rc 0, major faults 547888, read 50923 MiB from disk, 489 s
+== 2026-11-23T07:13:55Z r2_C-pf
+rc 0, major faults 583208, read 53885 MiB from disk, 505 s
+== 2026-11-23T07:22:21Z r2_L-bench
+rc 0, major faults 1267530, read 49709 MiB from disk, 653 s
+== 2026-11-23T07:33:15Z r3_C-cache
+rc 0, major faults 589480, read 54380 MiB from disk, 509 s
+== 2026-11-23T07:41:45Z r3_C-pf
+rc 0, major faults 558388, read 51562 MiB from disk, 491 s
+== 2026-11-23T07:49:58Z r3_L-bench
+rc 0, major faults 1259918, read 49013 MiB from disk, 650 s
+== 2026-11-23T08:00:49Z r3_C-plan
+rc 0, major faults 524704, read 49413 MiB from disk, 477 s
+== 2026-11-23T08:08:48Z all done

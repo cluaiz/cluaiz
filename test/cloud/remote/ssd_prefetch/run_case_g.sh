@@ -115,7 +115,7 @@ run() {
   touch "$OUT/$tag.done"
 }
 
-COMMON=(-t "$THREADS" -p 512 -n 128,400 -r 1)
+COMMON=(-t "$THREADS" -p "${PP:-512}" -n "${TG:-128,400}" -r "${REPS:-1}")   # PP=512,2048,4096 TG=0: prompt processing only
 BARGS=("${COMMON[@]}")   # cluaiz bench arguments (the plan reads below use a short test)
 
 l_bench() {
