@@ -1,0 +1,34 @@
+flow: cluaiz.flow/1
+name: weekly-report
+description: Collect sample project updates and return a weekly report after review.
+on:
+  - manual: {}
+steps:
+  - id: first
+    set:
+      started: true
+      updates:
+        - Drafted the release notes.
+        - Checked the build.
+        - Opened the documentation review.
+  - id: readiness
+    if: { var: vars.started }
+    then:
+      - id: ready
+        set: { heading: Weekly project report }
+    else:
+      - id: missing_updates
+        fail: Updates are missing.
+  - id: collect_updates
+    each: "${{ vars.updates }}"
+    as: update
+    do:
+      - id: copy_update
+        set: { line: "${{ update }}" }
+  - id: review
+    approve: Save the weekly report?
+    timeout: 2m
+  - id: report
+    return:
+      heading: Weekly project report
+      updates: "${{ vars.updates }}"

@@ -1,0 +1,61 @@
+[
+  {
+    "label": "call, switch, parallel, repeat, wait, run, return and rerun_from",
+    "status": "FAIL",
+    "error": "[{\"code\":\"invalid_id\",\"message\":\"`repeat-body`: an id is 1–64 letters, digits and _, starting with a letter\",\"path\":\"/steps/4/repeat/0/id\",\"severity\":\"error\"},{\"code\":\"unused_output\",\"message\":\"nothing reads steps.info and the step changes nothing\",\"path\":\"/steps/1\",\"severity\":\"warning\"}]\n\nfalse !== true\n"
+  },
+  {
+    "label": "fail step yields an explicit error",
+    "status": "PASS",
+    "evidence": {
+      "status": "failed",
+      "error": "Expected acceptance failure"
+    }
+  },
+  {
+    "label": "emit step, event trigger, Engine event trigger",
+    "status": "PASS",
+    "evidence": {
+      "emit": "succeeded",
+      "event": "event",
+      "value": 42,
+      "engineEvent": "engine"
+    }
+  },
+  {
+    "label": "poll trigger",
+    "status": "PASS",
+    "evidence": {
+      "kind": "poll",
+      "status": "succeeded",
+      "runId": "run_44c2b394c443"
+    }
+  },
+  {
+    "label": "file trigger sees a new matching file",
+    "status": "PASS",
+    "evidence": {
+      "kind": "file",
+      "status": "succeeded",
+      "runId": "run_a7f978913275"
+    }
+  },
+  {
+    "label": "schedule trigger",
+    "status": "PASS",
+    "evidence": {
+      "kind": "schedule",
+      "status": "succeeded",
+      "runId": "run_80c62171094e"
+    }
+  },
+  {
+    "label": "every trigger",
+    "status": "PASS",
+    "evidence": {
+      "kind": "every",
+      "status": "succeeded",
+      "runId": "run_efcf8b228ed3"
+    }
+  }
+]

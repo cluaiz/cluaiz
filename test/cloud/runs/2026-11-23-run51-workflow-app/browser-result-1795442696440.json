@@ -1,0 +1,23 @@
+{
+  "checks": [],
+  "browserCalls": [
+    "fs.read http://127.0.0.2:8011/v1/cep",
+    "flows.list http://127.0.0.2:8011/v1/cep",
+    "flows.runs http://127.0.0.2:8011/v1/cep",
+    "config.get http://127.0.0.2:8011/v1/cep",
+    "system.info http://127.0.0.2:8011/v1/cep",
+    "models.list http://127.0.0.2:8011/v1/cep",
+    "flows.get http://127.0.0.2:8011/v1/cep",
+    "tools.list http://127.0.0.2:8011/v1/cep",
+    "providers.list http://127.0.0.2:8011/v1/cep",
+    "chat.telemetry http://127.0.0.2:8011/v1/cep",
+    "flows.nodes http://127.0.0.2:8011/v1/cep",
+    "flows.schema http://127.0.0.2:8011/v1/cep",
+    "flows.run http://127.0.0.2:8011/v1/cep",
+    "flows.validate http://127.0.0.2:8011/v1/cep",
+    "flows.run_get http://127.0.0.2:8011/v1/cep"
+  ],
+  "status": "FAIL",
+  "error": "{\"details\":{\"needs\":\"roots\",\"type\":\"forbidden\"},\"kind\":\"permission\",\"message\":\"Not allowed: needs roots\",\"step\":\"save_report\"}\n+ actual - expected\n\n+ 'failed'\n- 'succeeded'\n",
+  "visible": "Chats\nAll\nProject\nOld\nArchive\nNO ACTIVE CHATS FOUND\nSelect model\nGood evening\nAsk AI...\nAs in Settings\nAuto\n0:00\nweekly-report-ai\nValid\nTRIGGER\nBy hand\nSET VALUES\nfirst\nstarted\nMETHOD\nnotes\nfs.read\nASK A MODEL\ndraft\nWrite a short weekly project update from the notes. Include the build…\nAPPROVE\nreview\nSave this weekly report?\ntimeout 2m\nMETHOD\nsave_report\nfs.write\nRETURN\nreport\n{\"text\":\"${{ steps.draft.output }}\",\"file\":\"${{ steps.save_report.out…"
+}

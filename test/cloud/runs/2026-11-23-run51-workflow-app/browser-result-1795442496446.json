@@ -1,0 +1,21 @@
+{
+  "checks": [],
+  "browserCalls": [
+    "fs.read http://127.0.0.2:8011/v1/cep",
+    "tools.list http://127.0.0.2:8011/v1/cep",
+    "models.list http://127.0.0.2:8011/v1/cep",
+    "providers.list http://127.0.0.2:8011/v1/cep",
+    "chat.telemetry http://127.0.0.2:8011/v1/cep",
+    "flows.list http://127.0.0.2:8011/v1/cep",
+    "flows.runs http://127.0.0.2:8011/v1/cep",
+    "config.get http://127.0.0.2:8011/v1/cep",
+    "system.info http://127.0.0.2:8011/v1/cep",
+    "flows.get http://127.0.0.2:8011/v1/cep",
+    "flows.schema http://127.0.0.2:8011/v1/cep",
+    "flows.nodes http://127.0.0.2:8011/v1/cep",
+    "flows.validate http://127.0.0.2:8011/v1/cep"
+  ],
+  "status": "FAIL",
+  "error": "Timed out waiting for button Add a step or trigger",
+  "visible": "Chats\nAll\nProject\nOld\nArchive\nNO ACTIVE CHATS FOUND\nSelect model\nHello there\nAsk AI...\nAs in Settings\nAuto\n0:00\nnew-flow\nUser\nProject\nValid\nTRIGGER\nBy hand\nSET VALUES\nfirst\nstarted"
+}

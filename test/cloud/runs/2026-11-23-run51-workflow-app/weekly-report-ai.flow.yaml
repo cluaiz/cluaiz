@@ -1,0 +1,31 @@
+flow: cluaiz.flow/1
+name: weekly-report-ai
+description: Read project notes, draft a weekly report with the selected model, and write it after approval.
+on:
+  - manual: {}
+permissions:
+  folders: ['./weekly-report']
+steps:
+  - id: first
+    set: { started: true }
+  - id: notes
+    call: fs.read
+    with: { path: weekly-report/notes.txt }
+  - id: draft
+    ask: "Write a short weekly project update from the notes. Include the build result and the pending review. Use plain English."
+    with: { notes: "${{ steps.notes.output.text }}" }
+    think: off
+    max_tokens: 150
+  - id: review
+    approve: Save this weekly report?
+    with: { draft: "${{ steps.draft.output }}" }
+    timeout: 2m
+  - id: save_report
+    call: fs.write
+    with:
+      path: weekly-report/report.md
+      text: "${{ steps.draft.output }}"
+  - id: report
+    return:
+      text: "${{ steps.draft.output }}"
+      file: "${{ steps.save_report.output.path }}"

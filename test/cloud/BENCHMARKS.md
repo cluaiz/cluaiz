@@ -83,3 +83,8 @@ Each run has its folder in `runs/` with a `SUMMARY.md` and the raw logs. Models 
 | Whisper turbo STT | 3.4; 2.8–4.6 run 7 | | 3.6 | | 6.6–7.3 (CPU beside the chat) |
 | bge-m3 embedding | 0.05–1.0; 0.05 run 7 | | 0.01 | | 0.1 |
 | Qwen3-TTS 1.7B | 16–25; 13.4–13.7 run 7 | | 2.5–3.6 | | 17–19 |
+
+## Workflow App acceptance (non-performance)
+
+- [Run 51, 2026-11-23](runs/2026-11-23-run51-workflow-app/SUMMARY.md): Windows App web mode with isolated Engine. Live paths exercised all 17 step kinds and 10 trigger kinds, plus approval, restart, webhook rejection and local model. App gaps: approval action absent on its page, Save re-enables a disabled flow, and inferred file permissions can fail at write time. No speed claim from this run.
+

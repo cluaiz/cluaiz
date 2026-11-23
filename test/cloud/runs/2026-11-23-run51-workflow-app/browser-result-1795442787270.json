@@ -1,0 +1,28 @@
+{
+  "checks": [],
+  "browserCalls": [
+    "fs.read http://127.0.0.2:8011/v1/cep",
+    "flows.list http://127.0.0.2:8011/v1/cep",
+    "flows.runs http://127.0.0.2:8011/v1/cep",
+    "config.get http://127.0.0.2:8011/v1/cep",
+    "system.info http://127.0.0.2:8011/v1/cep",
+    "models.list http://127.0.0.2:8011/v1/cep",
+    "flows.get http://127.0.0.2:8011/v1/cep",
+    "tools.list http://127.0.0.2:8011/v1/cep",
+    "providers.list http://127.0.0.2:8011/v1/cep",
+    "chat.telemetry http://127.0.0.2:8011/v1/cep",
+    "flows.nodes http://127.0.0.2:8011/v1/cep",
+    "flows.schema http://127.0.0.2:8011/v1/cep",
+    "flows.run http://127.0.0.2:8011/v1/cep",
+    "flows.run_get http://127.0.0.2:8011/v1/cep",
+    "flows.validate http://127.0.0.2:8011/v1/cep"
+  ],
+  "aiReport": {
+    "runId": "run_cb580e6491a4",
+    "status": "succeeded",
+    "writtenAfterApproval": true,
+    "modelOutput": "**Project Update: Windows Build & Documentation**\n\n**Status:** Windows Build Passed ✅\n\n**Pending Review:** Documentation review (pending by team).\n\n**Next Steps:**\n1. Review documentation after the team finishes.\n2. Schedule review meeting with team.\n3. Build a simple test to verify that the Windows build works correctly for the team.",
+    "path": "C:\\Users\\Aryan\\my\\Cluaiz-workspace\\output\\workflow-acceptance-1123\\engine-home\\workspace\\weekly-report\\report.md"
+  },
+  "status": "PASS"
+}

@@ -1,0 +1,69 @@
+[
+  {
+    "label": "call, switch, parallel, repeat, wait, run, return and rerun_from",
+    "status": "PASS",
+    "evidence": {
+      "status": "succeeded",
+      "rerun": "succeeded",
+      "outputs": {
+        "child": {
+          "ok": true
+        }
+      }
+    }
+  },
+  {
+    "label": "fail step yields an explicit error",
+    "status": "PASS",
+    "evidence": {
+      "status": "failed",
+      "error": "Expected acceptance failure"
+    }
+  },
+  {
+    "label": "emit step, event trigger, Engine event trigger",
+    "status": "PASS",
+    "evidence": {
+      "emit": "succeeded",
+      "event": "event",
+      "value": 42,
+      "engineEvent": "engine"
+    }
+  },
+  {
+    "label": "poll trigger",
+    "status": "PASS",
+    "evidence": {
+      "kind": "poll",
+      "status": "succeeded",
+      "runId": "run_746331d68528"
+    }
+  },
+  {
+    "label": "file trigger sees a new matching file",
+    "status": "PASS",
+    "evidence": {
+      "kind": "file",
+      "status": "succeeded",
+      "runId": "run_d7c2566215f4"
+    }
+  },
+  {
+    "label": "schedule trigger",
+    "status": "PASS",
+    "evidence": {
+      "kind": "schedule",
+      "status": "succeeded",
+      "runId": "run_4cabf280470f"
+    }
+  },
+  {
+    "label": "every trigger",
+    "status": "PASS",
+    "evidence": {
+      "kind": "every",
+      "status": "succeeded",
+      "runId": "run_d6e3d616e34a"
+    }
+  }
+]

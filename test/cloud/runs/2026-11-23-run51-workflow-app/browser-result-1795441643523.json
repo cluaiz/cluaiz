@@ -1,0 +1,15 @@
+{
+  "checks": [],
+  "browserCalls": [
+    "fs.read http://127.0.0.2:8011/v1/cep",
+    "flows.list http://127.0.0.2:8011/v1/cep",
+    "flows.runs http://127.0.0.2:8011/v1/cep",
+    "config.get http://127.0.0.2:8011/v1/cep",
+    "system.info http://127.0.0.2:8011/v1/cep",
+    "models.list http://127.0.0.2:8011/v1/cep",
+    "flows.save http://127.0.0.2:8011/v1/cep"
+  ],
+  "status": "FAIL",
+  "error": "Timed out waiting for workflow imported",
+  "visible": "Chats\nAll\nProject\nOld\nArchive\nNO ACTIVE CHATS FOUND\nAutomation\nOverview\nWorkflows\n0\nAgents\n0\nRuns\n0\nApprovals\nWorkflows\n\nEvery workflow, in folders\n\nAll workflows\n0\nNo folder\n0\nFOLDERS\n\nNo folders yet. Select workflows and choose Move to folder.\n\nAll statuses\nAll triggers\nRecently updated\nImport\nNew workflow\nWORKFLOW · 0\nTRIGGER\nLAST RUN\nRUNS 24H\nSTATUS\n\nNo workflows yet."
+}

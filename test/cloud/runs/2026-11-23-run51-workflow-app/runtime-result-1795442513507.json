@@ -1,0 +1,82 @@
+[
+  {
+    "label": "startup trigger",
+    "status": "PASS",
+    "evidence": {
+      "kind": "startup",
+      "status": "succeeded",
+      "runId": "run_4662b0b998ee"
+    }
+  },
+  {
+    "label": "restart recovery keeps the completed first step",
+    "status": "PASS",
+    "evidence": {
+      "status": "succeeded",
+      "resumed": "run_f999da208116",
+      "output": {
+        "survived": true
+      }
+    }
+  },
+  {
+    "label": "webhook rejects missing secret and processes valid body",
+    "status": "PASS",
+    "evidence": {
+      "rejected": 401,
+      "accepted": 202,
+      "output": 84
+    }
+  },
+  {
+    "label": "tool trigger is listed and callable through MCP",
+    "status": "PASS",
+    "evidence": {
+      "listed": true,
+      "kind": "tool",
+      "outputs": {
+        "ok": true
+      }
+    }
+  },
+  {
+    "label": "Code runs real WebAssembly",
+    "status": "PASS",
+    "evidence": {
+      "answer": {
+        "expression": "7 * 6",
+        "formatted": "42",
+        "result": 42,
+        "status": "success"
+      }
+    }
+  },
+  {
+    "label": "Tool runs installed math plugin",
+    "status": "PASS",
+    "evidence": {
+      "answer": {
+        "expression": "7 * 6",
+        "formatted": "42",
+        "result": 42,
+        "status": "success"
+      }
+    }
+  },
+  {
+    "label": "Ask gets an answer from the local model",
+    "status": "PASS",
+    "evidence": {
+      "model": "qwen3.5-0.8b-gguf-Q4_K_M",
+      "answer": "READY"
+    }
+  },
+  {
+    "label": "Agent calls the math tool and answers",
+    "status": "PASS",
+    "evidence": {
+      "model": "qwen3.5-0.8b-gguf-Q4_K_M",
+      "answer": "743 * 9 = 6687"
+    }
+  }
+]

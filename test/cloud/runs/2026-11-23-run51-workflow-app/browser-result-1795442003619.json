@@ -1,0 +1,47 @@
+{
+  "checks": [
+    "App Run reached approval with a valid live step record",
+    "Approval through the Engine produced the report; rejection stopped the run"
+  ],
+  "browserCalls": [
+    "fs.read http://127.0.0.2:8011/v1/cep",
+    "flows.list http://127.0.0.2:8011/v1/cep",
+    "flows.runs http://127.0.0.2:8011/v1/cep",
+    "config.get http://127.0.0.2:8011/v1/cep",
+    "system.info http://127.0.0.2:8011/v1/cep",
+    "models.list http://127.0.0.2:8011/v1/cep",
+    "flows.get http://127.0.0.2:8011/v1/cep",
+    "tools.list http://127.0.0.2:8011/v1/cep",
+    "providers.list http://127.0.0.2:8011/v1/cep",
+    "chat.telemetry http://127.0.0.2:8011/v1/cep",
+    "flows.nodes http://127.0.0.2:8011/v1/cep",
+    "flows.schema http://127.0.0.2:8011/v1/cep",
+    "flows.run http://127.0.0.2:8011/v1/cep",
+    "flows.validate http://127.0.0.2:8011/v1/cep",
+    "flows.run_get http://127.0.0.2:8011/v1/cep"
+  ],
+  "waiting": {
+    "runStatus": "waiting",
+    "stepStatus": "running",
+    "kind": "approve"
+  },
+  "approvalButtons": [],
+  "approved": {
+    "runId": "run_f05e4119872e",
+    "status": "succeeded",
+    "outputs": {
+      "heading": "Weekly project report",
+      "updates": [
+        "Drafted the release notes.",
+        "Checked the build.",
+        "Opened the documentation review."
+      ]
+    }
+  },
+  "rejected": {
+    "runId": "run_d7c255bec207",
+    "status": "failed",
+    "kind": "approval_rejected"
+  },
+  "status": "PASS"
+}

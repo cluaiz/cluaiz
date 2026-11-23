@@ -1,0 +1,41 @@
+{
+  "checks": [
+    "New App canvas: selected Return, used Undo and Redo, and saved the resulting YAML"
+  ],
+  "browserCalls": [
+    "fs.read http://127.0.0.2:8011/v1/cep",
+    "tools.list http://127.0.0.2:8011/v1/cep",
+    "models.list http://127.0.0.2:8011/v1/cep",
+    "providers.list http://127.0.0.2:8011/v1/cep",
+    "chat.telemetry http://127.0.0.2:8011/v1/cep",
+    "flows.list http://127.0.0.2:8011/v1/cep",
+    "flows.runs http://127.0.0.2:8011/v1/cep",
+    "config.get http://127.0.0.2:8011/v1/cep",
+    "system.info http://127.0.0.2:8011/v1/cep",
+    "flows.get http://127.0.0.2:8011/v1/cep",
+    "flows.schema http://127.0.0.2:8011/v1/cep",
+    "flows.nodes http://127.0.0.2:8011/v1/cep",
+    "flows.validate http://127.0.0.2:8011/v1/cep",
+    "flows.save http://127.0.0.2:8011/v1/cep",
+    "flows.run http://127.0.0.2:8011/v1/cep",
+    "flows.run_get http://127.0.0.2:8011/v1/cep"
+  ],
+  "palette": {
+    "triggers": 10,
+    "stepTypes": 15,
+    "separateGroups": [
+      "Installed tools",
+      "Engine methods"
+    ]
+  },
+  "created": {
+    "name": "new-flow",
+    "runId": "run_5e919e59a94e",
+    "status": "succeeded"
+  },
+  "saveDisabled": {
+    "before": false,
+    "after": true
+  },
+  "status": "PASS"
+}

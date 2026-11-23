@@ -1,0 +1,15 @@
+{
+  "checks": [],
+  "browserCalls": [
+    "fs.read http://127.0.0.2:8011/v1/cep",
+    "flows.list http://127.0.0.2:8011/v1/cep",
+    "flows.runs http://127.0.0.2:8011/v1/cep",
+    "config.get http://127.0.0.2:8011/v1/cep",
+    "system.info http://127.0.0.2:8011/v1/cep",
+    "models.list http://127.0.0.2:8011/v1/cep",
+    "flows.get http://127.0.0.2:8011/v1/cep"
+  ],
+  "status": "FAIL",
+  "error": "approvals.reject: {\"code\":-32602,\"data\":{\"errors\":[{\"message\":\"missing field `approval_id`\",\"path\":\"\"}],\"example\":{\"approval_id\":\"ap_41c2…\",\"feedback\":\"Not this site\"},\"type\":\"invalid_params\"},\"message\":\"Invalid params: missing field `approval_id`\"}",
+  "visible": "Chats\nAll\nProject\nOld\nArchive\nNO ACTIVE CHATS FOUND\nAutomation\nOverview\nWorkflows\n20\nAgents\n0\nRuns\n20\nApprovals\n1\nWorkflows\n\nEvery workflow, in folders\n\nAll workflows\n20\nNo folder\n20\nFOLDERS\n\nReading folders…\n\nAll statuses\nAll triggers\nRecently updated\nImport\nNew workflow\nWORKFLOW · 20\nTRIGGER\nLAST RUN\nRUNS 24H\nSTATUS\nweekly-report\nCollect sample project updates and return a weekly report after review.\nBy hand\nWaiting\n1\nqa-1795441794499-every\nNo description\nEvery\nWorked just now\n1\nqa-1795441794499-file\nNo description\nFile\nNever run\n0\nqa-1795441794499-poll\nNo description\nPoll\nWorked 2 minutes ago\n1\nqa-1795441794499-schedule\nNo description\nSchedule\nWorked 2 minutes ago\n1\nqa-1795441794499-engine-event\nNo description\nEngine event\nWorked 2 minutes ago\n1\nqa-1795441794499-event\nNo description\nFlow event\nWorked 2 minutes ago\n1\nqa-1795441794499-sender\nNo description\nNot set\nWorked 2 minutes ago\n1\nqa-1795441794499-negative\nNo description\nNot set\nFailed 2 minutes ago\n1\nqa-1795441794499-child\nNo description\nNot set\nWorked 2 minutes ago\n2\nqa-1795441794499-logic\nNo description\nNot set\nWorked 2 minutes ago\n2\nqa-1795441729562-every\nNo description\nEvery\nWorked 2 minutes ago\n1\nqa-1795441729562-file\nNo description\nFile\nWorked 3 minutes ago\n1\nqa-1795441729562-poll\nNo description\nPoll\nWorked 3 minutes ago\n1\nqa-1795441729562-schedule\nNo description\nSchedule\nWorked 3 minutes ago\n1\nqa-1795441729562-engine-event\nNo description\nEngine event\nWorked 3 minutes ago\n1\nqa-1795441729562-event\nNo description\nFlow event\nWorked 3 minutes ago\n1\nqa-1795441729562-sender\nNo description\nNot set\nWorked 3 minutes ago\n1\nqa-1795441729562-child\nNo description\nNot set\nNever run\n0\nqa-1795441729562-negative\nNo description\nNot set\nFailed 3 minutes ago\n1"
+}

@@ -1,0 +1,67 @@
+[
+  {
+    "label": "startup trigger and restart recovery",
+    "status": "FAIL",
+    "error": "Timed out waiting for finished run"
+  },
+  {
+    "label": "webhook rejects missing secret and processes valid body",
+    "status": "PASS",
+    "evidence": {
+      "rejected": 401,
+      "accepted": 202,
+      "output": 84
+    }
+  },
+  {
+    "label": "tool trigger is listed and callable through MCP",
+    "status": "PASS",
+    "evidence": {
+      "listed": true,
+      "kind": "tool",
+      "outputs": {
+        "ok": true
+      }
+    }
+  },
+  {
+    "label": "Code runs real WebAssembly",
+    "status": "PASS",
+    "evidence": {
+      "answer": {
+        "expression": "7 * 6",
+        "formatted": "42",
+        "result": 42,
+        "status": "success"
+      }
+    }
+  },
+  {
+    "label": "Tool runs installed math plugin",
+    "status": "PASS",
+    "evidence": {
+      "answer": {
+        "expression": "7 * 6",
+        "formatted": "42",
+        "result": 42,
+        "status": "success"
+      }
+    }
+  },
+  {
+    "label": "Ask gets an answer from the local model",
+    "status": "PASS",
+    "evidence": {
+      "model": "qwen3.5-0.8b-gguf-Q4_K_M",
+      "answer": "READY"
+    }
+  },
+  {
+    "label": "Agent calls the math tool and answers",
+    "status": "PASS",
+    "evidence": {
+      "model": "qwen3.5-0.8b-gguf-Q4_K_M",
+      "answer": "743 * 9 = 6687"
+    }
+  }
+]
