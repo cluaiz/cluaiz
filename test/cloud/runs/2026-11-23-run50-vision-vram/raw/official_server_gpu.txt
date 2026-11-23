@@ -1,0 +1,9 @@
+command: llama-server.exe -m Qwen3.5-0.8B-Q4_K_M.gguf --mmproj mmproj-F16.gguf --port 8013 --host 127.0.0.1 -c 16384 --jinja
+engine_prompt text_first 0 200 '<tool_call>\n<function=read_item>\n<parameter=name>\nimage\n</parameter>\n<parameter=kind>\nrule\n</parameter>\n</function>\n</to' prompt_tokens=1081
+engine_prompt text_first 1 200 '<tool_call>\n<function=read_item>\n<parameter=name>\nimage\n</parameter>\n<parameter=kind>\nrule\n</parameter>\n</function>\n</to' prompt_tokens=1081
+engine_prompt image_first 0 200 '<tool_call>\n<function=read_tool_file>\n<parameter=id>\n.\n</parameter>\n<parameter=path>\n.\n</parameter>\n</function>\n</tool_c' prompt_tokens=1080
+engine_prompt image_first 1 200 '<tool_call>\n<function=read_tool_file>\n<parameter=id>\n.\n</parameter>\n<parameter=path>\n.\n</parameter>\n</function>\n</tool_c' prompt_tokens=1080
+plain text_first 0 200 'red' prompt_tokens=219
+plain text_first 1 200 'red' prompt_tokens=219
+plain image_first 0 200 'red' prompt_tokens=219
+plain image_first 1 200 'red' prompt_tokens=219

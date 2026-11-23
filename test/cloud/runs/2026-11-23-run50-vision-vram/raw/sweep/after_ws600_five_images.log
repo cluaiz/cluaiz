@@ -1,0 +1,115 @@
+2026-11-23T13:38:36.069537Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-23T13:38:36.928042Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-23T13:38:36.934933Z  INFO ⚡ NVIDIA CUDA + cuDNN 9 runtime libraries verified.
+Starting the Cluaiz API server on http://localhost:8014 ...
+2026-11-23T13:38:36.936992Z  INFO 🔒 [Auth] Initialized local session secret at C:/Users/<user>/AppData/Local/cluaiz-test/run49-e2e\session.token
+2026-11-23T13:38:37.335470Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-23T13:38:37.373442Z  INFO 🌐 Cluaiz API Server running on http://0.0.0.0:8014
+2026-11-23T13:38:39.651039Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-23T13:38:39.662767Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-0.8b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\cluaiz-test\\run49-e2e\\models\\chat\\qwen3.5-0.8b-gguf-Q4_K_M\\Qwen3.5-0.8B-Q4_K_M.gguf"
+2026-11-23T13:38:39.776984Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3.5-0.8b-gguf-Q4_K_M
+║   • Architecture    : qwen35 | 24 layers | heads 8 | KV heads 2 | head size K 256 / V 256 | dense | hybrid: 6 attention layers with a KV cache, 18 linear-attention layers with a 1.1 MB state
+║   • Weights         : file 0.53 GB (as Hugging Face counts it) | input embeddings 0.19 GB (always CPU) | output head 0.19 GB | vocab 248320
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 16384 tokens, KV Kv16 (Auto: 16384 tokens, KV Kv16, buffer 0.62 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA GeForce RTX 3050 A Laptop GPU | free 2.63 of 4.00 GB | buffer kept free 0.62 GB (measured: GPU pool +0.42 GB + 0.20 GB reserve; estimate corrected by llama.cpp's dry run +0.01 GB)
+║   • RAM             : free 4.84 of 23.69 GB | Cluaiz may use 3.65 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 24 on GPU, 0 in RAM (of 24)
+║   • VRAM            : 1.18 GB (weights + KV 0.21 + logits)
+║   • RAM             : 0.19 GB (incl. KV 0.00)
+║   • Reason         : Full GPU: weights 0.49 + KV 0.21 + buffers 0.49 = 1.18 GB vs usable VRAM 2.01 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  1.18 GB | RAM  0.19 GB | weights 0.49 + KV 0.21 + buffers 0.49 = 1.18 GB vs usable VRAM 2.01 GB
+║   • GPU + RAM split  [FITS]     VRAM  1.16 GB | RAM  0.21 GB | 23 / 24 blocks + output head on GPU (1.16 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  1.17 GB | weights 0.49 + KV 0.21 + logits 0.47 = 1.17 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 8 / batch 8 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-23T13:38:39.778381Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-23T13:38:39.779295Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 8, n_threads_batch = 8
+2026-11-23T13:38:39.779343Z  INFO 🧬 [Native-Llama] Loading model: C:\Users\<user>\AppData\Local\cluaiz-test\run49-e2e\models\chat\qwen3.5-0.8b-gguf-Q4_K_M\Qwen3.5-0.8B-Q4_K_M.gguf | ctx: 16384 tokens
+2026-11-23T13:38:40.927520Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "C:\\Users\\<user>\\AppData\\Local\\cluaiz-test\\run49-e2e\\models\\chat\\qwen3.5-0.8b-gguf-Q4_K_M"
+2026-11-23T13:38:40.932452Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-11-23T13:38:40.932501Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-11-23T13:38:40.932530Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16384 tokens
+2026-11-23T13:38:40.932575Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-23T13:38:40.932603Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-23T13:38:40.932633Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-23T13:38:40.932661Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 8/8
+2026-11-23T13:38:40.932694Z  INFO 🔮 [MTP] MTP asked for, but this model has no multi-token-prediction layers: decoding without it
+2026-11-23T13:38:41.163669Z  INFO 🔍 [EngineHost] VRAM planned 1.18 GB, taken 1.26 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-23T13:38:41.165291Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: C:\Users\<user>\AppData\Local\cluaiz-test\run49-e2e\models\chat\qwen3.5-0.8b-gguf-Q4_K_M\Qwen3.5-0.8B-Q4_K_M.gguf
+2026-11-23T13:38:41.219727Z  INFO 🧮 [Tokens] Conversation 128 tokens (2 messages) counted in 0.82 ms
+2026-11-23T13:38:41.246762Z  INFO ⏱️ [Preflight] 1596 ms total | model load 1455 ms | registry + template + tags 23 ms | skills + tools 7 ms | rest 20 ms
+2026-11-23T13:38:41.276950Z  WARN [llama.cpp] load_hparams: Qwen-VL models require at minimum 1024 image tokens to function correctly on grounding tasks
+2026-11-23T13:38:41.277016Z  WARN [llama.cpp] load_hparams: if you encounter problems with accuracy, try adding --image-min-tokens 1024
+2026-11-23T13:38:41.277053Z  WARN [llama.cpp] load_hparams: more info: https://github.com/ggml-org/llama.cpp/issues/16842
+2026-11-23T13:38:41.666372Z  INFO Projector loaded placement=Gpu free_vram_before_mib=1401 taken_by_load_mib=196 weights_mib=195 workspace_mib=600 buffer_mib=512
+2026-11-23T13:38:41.700074Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (993 bytes) in 1 ms
+2026-11-23T13:38:41.701866Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (993 bytes) in 1 ms
+2026-11-23T13:38:41.985009Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-23T13:38:42.385964Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-23T13:38:42.386084Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 422 tokens in 278 ms (1518.33 t/s) | generation 45 tokens in 360 ms (124.94 t/s)
+2026-11-23T13:38:42.386166Z  INFO 🧠 [Context] prompt 240 tokens (0 from the cache) | context 285 of 16384 | stop eos
+2026-11-23T13:38:42.399013Z  INFO Media request on the GPU projector free_vram_before_mib=1205 grown_mib=41 held_by_projector_mib=237
+2026-11-23T13:38:42.476033Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-23T13:38:42.487505Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-0.8b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\cluaiz-test\\run49-e2e\\models\\chat\\qwen3.5-0.8b-gguf-Q4_K_M\\Qwen3.5-0.8B-Q4_K_M.gguf"
+2026-11-23T13:38:42.521707Z  INFO 🧮 [Tokens] Conversation 128 tokens (2 messages) counted in 0.04 ms
+2026-11-23T13:38:42.545777Z  INFO ⏱️ [Preflight] 70 ms total | model load 18 ms | registry + template + tags 13 ms | skills + tools 3 ms | rest 21 ms
+2026-11-23T13:38:42.603465Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (992 bytes) in 1 ms
+2026-11-23T13:38:42.605016Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (992 bytes) in 1 ms
+2026-11-23T13:38:42.703851Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-23T13:38:42.723521Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-23T13:38:42.723579Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 421 tokens in 94 ms (4492.39 t/s) | generation 1 tokens in 15 ms (64.73 t/s)
+2026-11-23T13:38:42.723616Z  INFO 🧠 [Context] prompt 239 tokens (0 from the cache) | context 240 of 16384 | stop eos
+2026-11-23T13:38:42.740990Z  INFO Media request on the GPU projector free_vram_before_mib=1163 grown_mib=4 held_by_projector_mib=241
+2026-11-23T13:38:42.832460Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-23T13:38:42.842415Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-0.8b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\cluaiz-test\\run49-e2e\\models\\chat\\qwen3.5-0.8b-gguf-Q4_K_M\\Qwen3.5-0.8B-Q4_K_M.gguf"
+2026-11-23T13:38:42.876619Z  INFO 🧮 [Tokens] Conversation 128 tokens (2 messages) counted in 0.04 ms
+2026-11-23T13:38:42.898564Z  INFO ⏱️ [Preflight] 66 ms total | model load 20 ms | registry + template + tags 11 ms | skills + tools 3 ms | rest 18 ms
+2026-11-23T13:38:42.957341Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (993 bytes) in 1 ms
+2026-11-23T13:38:42.958519Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (993 bytes) in 0 ms
+2026-11-23T13:38:43.057863Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-23T13:38:43.455236Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-23T13:38:43.455296Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 422 tokens in 94 ms (4492.37 t/s) | generation 45 tokens in 352 ms (127.81 t/s)
+2026-11-23T13:38:43.455328Z  INFO 🧠 [Context] prompt 240 tokens (0 from the cache) | context 285 of 16384 | stop eos
+2026-11-23T13:38:43.468284Z  INFO Media request on the GPU projector free_vram_before_mib=1159 grown_mib=0 held_by_projector_mib=241
+2026-11-23T13:38:43.576227Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-23T13:38:43.586582Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-0.8b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\cluaiz-test\\run49-e2e\\models\\chat\\qwen3.5-0.8b-gguf-Q4_K_M\\Qwen3.5-0.8B-Q4_K_M.gguf"
+2026-11-23T13:38:43.625811Z  INFO 🧮 [Tokens] Conversation 128 tokens (2 messages) counted in 0.04 ms
+2026-11-23T13:38:43.648659Z  INFO ⏱️ [Preflight] 73 ms total | model load 20 ms | registry + template + tags 16 ms | skills + tools 2 ms | rest 20 ms
+2026-11-23T13:38:43.704581Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (992 bytes) in 1 ms
+2026-11-23T13:38:43.706608Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (992 bytes) in 1 ms
+2026-11-23T13:38:43.807885Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-23T13:38:43.828311Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-23T13:38:43.828368Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 421 tokens in 96 ms (4370.03 t/s) | generation 1 tokens in 16 ms (61.40 t/s)
+2026-11-23T13:38:43.828445Z  INFO 🧠 [Context] prompt 239 tokens (0 from the cache) | context 240 of 16384 | stop eos
+2026-11-23T13:38:43.856810Z  INFO Media request on the GPU projector free_vram_before_mib=1159 grown_mib=0 held_by_projector_mib=241
+2026-11-23T13:38:43.951951Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-23T13:38:43.966526Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-0.8b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\cluaiz-test\\run49-e2e\\models\\chat\\qwen3.5-0.8b-gguf-Q4_K_M\\Qwen3.5-0.8B-Q4_K_M.gguf"
+2026-11-23T13:38:44.014629Z  INFO 🧮 [Tokens] Conversation 128 tokens (2 messages) counted in 0.04 ms
+2026-11-23T13:38:44.038222Z  INFO ⏱️ [Preflight] 86 ms total | model load 27 ms | registry + template + tags 18 ms | skills + tools 4 ms | rest 19 ms
+2026-11-23T13:38:44.091882Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (993 bytes) in 0 ms
+2026-11-23T13:38:44.093334Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (993 bytes) in 1 ms
+2026-11-23T13:38:44.198099Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-23T13:38:44.576909Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-23T13:38:44.576987Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 422 tokens in 99 ms (4276.62 t/s) | generation 45 tokens in 328 ms (137.18 t/s)
+2026-11-23T13:38:44.577033Z  INFO 🧠 [Context] prompt 240 tokens (0 from the cache) | context 285 of 16384 | stop eos
+2026-11-23T13:38:44.591818Z  INFO Media request on the GPU projector free_vram_before_mib=1163 grown_mib=0 held_by_projector_mib=241

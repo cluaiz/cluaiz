@@ -1,0 +1,3 @@
+<tools_hint>
+Before a task that fits a rule, workflow or skill of the project's index, call read_item with its name and follow it.
+</tools_hint>

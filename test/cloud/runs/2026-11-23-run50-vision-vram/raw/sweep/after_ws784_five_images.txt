@@ -1,0 +1,11 @@
+server started, nothing loaded: GPU used/free 1532 MiB, 2361 MiB
+1 text_first 503 'Model could not be loaded: Does not fit: closest placement (Full GPU) is 0.19 GB short (weights 0.49 + KV 0.21 + buffers' prompt_tokens=None
+  after 1: GPU used/free 1532 MiB, 2361 MiB
+2 image_first 503 'Model could not be loaded: Does not fit: closest placement (Full GPU) is 0.19 GB short (weights 0.49 + KV 0.21 + buffers' prompt_tokens=None
+  after 2: GPU used/free 1532 MiB, 2361 MiB
+3 text_first 503 'Model could not be loaded: Does not fit: closest placement (Full GPU) is 0.19 GB short (weights 0.49 + KV 0.21 + buffers' prompt_tokens=None
+  after 3: GPU used/free 1528 MiB, 2365 MiB
+4 image_first 503 'Model could not be loaded: Does not fit: closest placement (Full GPU) is 0.19 GB short (weights 0.49 + KV 0.21 + buffers' prompt_tokens=None
+  after 4: GPU used/free 1532 MiB, 2361 MiB
+5 text_first 503 'Model could not be loaded: Does not fit: closest placement (Full GPU) is 0.19 GB short (weights 0.49 + KV 0.21 + buffers' prompt_tokens=None
+  after 5: GPU used/free 1532 MiB, 2361 MiB

@@ -1,0 +1,7 @@
+server started, nothing loaded: GPU used/free 1071 MiB, 2822 MiB
+1 image_first 200 'red' prompt_tokens=239
+  after 1: GPU used/free 2698 MiB, 1195 MiB
+2 text_first 200 'I cannot identify the color of an image. I am an AI assistant designed to help with tasks like writing code, solving mat' prompt_tokens=239
+  after 2: GPU used/free 2706 MiB, 1187 MiB
+3 text_first 200 'I cannot identify the color of an image. I am an AI assistant designed to help with tasks like writing code, solving mat' prompt_tokens=239
+  after 3: GPU used/free 2704 MiB, 1189 MiB

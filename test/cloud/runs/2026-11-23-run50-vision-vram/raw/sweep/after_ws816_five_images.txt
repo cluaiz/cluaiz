@@ -1,0 +1,11 @@
+server started, nothing loaded: GPU used/free 1467 MiB, 2426 MiB
+1 text_first 500 'Media needs 1061228235 host bytes; live RAM budget is 0' prompt_tokens=None
+  after 1: GPU used/free 2670 MiB, 1223 MiB
+2 image_first 500 'Media needs 1061228235 host bytes; live RAM budget is 0' prompt_tokens=None
+  after 2: GPU used/free 2670 MiB, 1223 MiB
+3 text_first 500 'Media needs 1061228235 host bytes; live RAM budget is 0' prompt_tokens=None
+  after 3: GPU used/free 2671 MiB, 1222 MiB
+4 image_first 500 'Media needs 1061228235 host bytes; live RAM budget is 0' prompt_tokens=None
+  after 4: GPU used/free 2663 MiB, 1230 MiB
+5 text_first 500 'Media needs 1061228235 host bytes; live RAM budget is 0' prompt_tokens=None
+  after 5: GPU used/free 2663 MiB, 1230 MiB

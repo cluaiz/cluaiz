@@ -1,0 +1,7 @@
+server started, nothing loaded: GPU used/free 1173 MiB, 2720 MiB
+1 image_first 200 'red' prompt_tokens=239
+  after 1: GPU used/free 2483 MiB, 1410 MiB
+2 text_first 200 'The image is red.' prompt_tokens=240
+  after 2: GPU used/free 2496 MiB, 1397 MiB
+3 text_first 200 'The image is red.' prompt_tokens=240
+  after 3: GPU used/free 2485 MiB, 1408 MiB
