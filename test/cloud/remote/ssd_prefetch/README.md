@@ -1,4 +1,4 @@
-# Component: `test/cloud/remote/ssd_prefetch/` (expert prefetch speed proof, written, not run)
+# Component: `test/cloud/remote/ssd_prefetch/` (expert prefetch speed proof, written, not run on the real models)
 
 ## Technical specification
 
@@ -7,9 +7,10 @@
   `engine/plan/README.md`) makes generation faster for a model larger than RAM, against official
   ggml-org llama.cpp on the same machine, file and placement. Method: section 5 of
   `.agent/plans/engine/ssd-streaming/01-research-and-architecture.md` (git-ignored plan folder).
-- **Status:** the script has not been run. Nothing in this folder is a measurement.
-- **Platform:** the L4 VM of runs 11, 13 and 14 (GCP `g2-standard-8`: L4 22.5 GB, 4 cores / 8 threads,
-  31 GB RAM), Ubuntu or Debian with CUDA. Linux only (`/proc/diskstats`, `drop_caches`).
+- **Status:** neither script has been run on its real model. Nothing in this folder is a measurement.
+- **Platform:** `run_prefetch.sh`: the L4 VM of runs 11, 13 and 14 (GCP `g2-standard-8`: L4 22.5 GB,
+  4 cores / 8 threads, 31 GB RAM), Ubuntu or Debian with CUDA, Linux only (`/proc/diskstats`,
+  `drop_caches`). `run_prefetch_laptop.ps1`: the Windows laptop of run 20 (see its section below).
 
 ## Flow
 
@@ -98,6 +99,68 @@ Not checked: the build, the pull, `drop_caches`, the sampler, iostat, llama-serv
 build, `-lm dio` on the official build, the time the whole run takes (expected to fit in `vm.sh`'s 3 h
 `MAX_RUN`; not measured).
 
+## Windows laptop script (`run_prefetch_laptop.ps1`): run 20 repeated with the prefetch
+
+Repeats the alternated comparison of `test/cloud/runs/2026-11-16-run20-laptop-moe-disk/` (Gemma 4 26B A4B
+IQ4_XS, 14,205,004,928 bytes, official llama.cpp `b12428`, 4 GB laptop GPU) and adds the MoE cache and the
+prefetch. PowerShell 5.1, no extra tools.
+
+| Config | Command |
+|---|---|
+| `L` | `llama-bench -m <gguf> -p 512 -n 128 -r 3 -t 8 -ngl 99 -ncmoe 30 -fa 1` (run 20's command; KV f16 is llama-bench's default) |
+| `C` | `cluaiz bench <gguf> -p 512 -n 128 -r 3 -t 8 -c 1024 --flash-attn on --cache-type-k f16 --cache-type-v f16 --n-gpu-layers all --n-cpu-moe 30`, `CLUAIZ_EXPERT_PREFETCH=off` (run 20's command) |
+| `C-plan` | the same without `--n-gpu-layers` / `--n-cpu-moe` (the planner's placement), `-vv` |
+| `C-cache` | as `C-plan`, `CLUAIZ_MOE_CACHE=on CLUAIZ_EXPERT_PREFETCH=off` |
+| `C-pf` | as `C-plan`, `CLUAIZ_MOE_CACHE=on CLUAIZ_EXPERT_PREFETCH=on` |
+
+Why the cache rows cannot use `--n-cpu-moe 30`: a placement given by the user is the planner's
+"User setting" candidate, which never gets a MoE cache (`engine/plan/src/planner.rs`), and the prefetch
+runs only in the cache's upload path. Checked on OLMoE with `CLUAIZ_MOE_CACHE=on CLUAIZ_EXPERT_PREFETCH=on
+--n-gpu-layers all --n-cpu-moe 16 -vv` (2026-11-23): the plan was `User setting: planner bypassed`, with no
+MoE cache line and no prefetch line. So `C-cache` and `C-pf` use the planner's placement, and `C-plan` is
+their baseline with the same placement. Which placement the planner picks for Gemma on this laptop is
+not known before the run; the `placement` column of `results.md` shows it for every run.
+
+`-vv` on the planner rows: llama.cpp's info lines (the `MoE cache size` line and the fork's
+`llama_cluaiz_moe_prefetch` counters) reach the log only at debug level. `C` keeps run 20's command
+without `-v`.
+
+Before round 1, a warm-up load with run 20's placement (`-p 0 -n 8 -r 1`) lets the new isolated home
+learn the VRAM the model takes, as the first forced load did in run 20 (without it the planner keeps its
+fixed 1 GB VRAM gap and chose CPU only there). Then 3 rounds, the order rotated each round; the file
+cache is not emptied (that needs a tool such as RAMMap), so rotation is the control, as in run 20.
+
+Per run, in the output folder: `<tag>.md` (stdout, the speed table), `<tag>.log` (stderr), `<tag>.engine.log`
+(the part of `cluaiz_Core.log` the run wrote), `<tag>.perf.csv` (`typeperf` every second: free RAM, disk
+read bytes/s and read queue of `_Total`, GPU dedicated memory), `<tag>.info.txt` (free RAM before and
+after, exit code, seconds). `results.md` has one row per run, the median per config, and run 20's
+numbers (llama.cpp 15.9, Cluaiz 14.9 t/s generation) beside them. It warns when a `C-cache` / `C-pf` run
+shows no MoE cache or a `C-pf` run no prefetch line. The user and machine names in the raw files are
+replaced by `<user>` and `<machine>` at the end.
+
+The model must be complete: the script stops before any run when the file size is not
+14,205,004,928 bytes (`-ExpectedSize` changes it).
+
+```powershell
+# Engine root, after `cargo build -p cmd` (the script uses target\debug\cluaiz.exe; -Cluaiz changes it)
+powershell -ExecutionPolicy Bypass -File test\cloud\remote\ssd_prefetch\run_prefetch_laptop.ps1
+```
+
+Output goes to `%LOCALAPPDATA%\cluaiz-test\prefetch-laptop-<time>\` (`-Out` changes it), the isolated home
+to `%LOCALAPPDATA%\cluaiz-test\prefetch-home-<same name>\` (`-CluaizHome`). No server is started, so no
+port is used. Copy the output folder to `test/cloud/runs/<date>-runN-*/results/` and write its
+`SUMMARY.md`.
+
+Checked (2026-11-23, format only, not speed numbers): with OLMoE-1B-7B Q4_K_M (`-Rounds 1 -Reps 1
+-Prompt 64 -Gen 16 -NCpuMoe 16`) every config ran with exit 0, every file above was written, and
+`results.md` filled every row and median; `C-pf` showed `191 calls, 2245 MiB` prefetched. A wrong file size
+stopped the script with no output folder.
+
+Not checked: the Gemma run itself and its total time; whether the planner gives Gemma a MoE split with a
+cache on this laptop; the release build (run 20 used `target\release`; this script defaults to the debug
+build `cargo build -p cmd` makes, whose llama.cpp is built with CMake's Release flags, while the Rust code
+is not optimized); cold-cache runs.
+
 ## Failure and recovery
 
 - No plan read, or the forced plan has no cache (less than 256 MiB of VRAM left): the script stops with a
@@ -111,6 +174,6 @@ build, `-lm dio` on the official build, the time the whole run takes (expected t
 | Item | Why it matters | Needs |
 |---|---|---|
 | The run itself | no number exists yet | the owner's yes and the VM cost |
-| Windows laptop run (run 20 case) | the reported 52 MB/s was on Windows; this script is Linux only | a Windows version with `typeperf` and an owner-approved standby-list tool |
+| Windows laptop run (run 20 case) | the reported 52 MB/s was on Windows | the run of `run_prefetch_laptop.ps1` once the Gemma file is complete; cold runs need an owner-approved standby-list tool |
 | Final pass numbers | the bar above is proposed | the owner |
 | `L-cache` through llama-bench | a different method from the other rows when llama-server is used | a llama-bench with `--moe-cache-mib`, if upstream adds one |

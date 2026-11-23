@@ -49,7 +49,7 @@ keeps its disk with the build and the models, so `start` continues; `delete` rem
 | `remote/vps_cpu_same_settings.sh`, `vps_run16_ollama.sh`, `vps_run18_features.sh`, `vps19/` | runs 15-19 on a 1 vCPU / 4 GB VPS without a GPU |
 | `remote/mtp23/` | runs 23-24: MTP off, on and Auto in every placement |
 | `remote/vps26/` | run 26: Cluaiz, llama.cpp and Ollama next to a web app and PostgreSQL on the 1 vCPU VPS, native and Docker (`run26.sh`, `workloads.py`, `analyze.py`); `run40.sh` reruns its checks with the engines interleaved, the answer texts saved and the Cluaiz commit recorded; `gcp_setup.sh` prepares a fresh Ubuntu VM, `webapp/` is a Node.js + PostgreSQL website with simulated users (`WEB_USERS`), `compare40.py` writes the tables |
-| `remote/ssd_prefetch/` | written, not run: the expert prefetch speed proof on the L4 (gpt-oss-120b, official llama-bench baselines, Cluaiz with the MoE cache forced on and the prefetch off / on, page cache dropped before each run, 3 rounds); its README has the commands and the proposed pass bar |
+| `remote/ssd_prefetch/` | written, not run: the expert prefetch speed proof on the L4 (gpt-oss-120b, official llama-bench baselines, Cluaiz with the MoE cache forced on and the prefetch off / on, page cache dropped before each run, 3 rounds), and `run_prefetch_laptop.ps1`, run 20 repeated on the Windows laptop with the MoE cache and the prefetch (format-checked on OLMoE only); its README has the commands and the proposed pass bar |
 | `remote/models*.txt` | model lists the scripts pull |
 
 ## Rules for a run
