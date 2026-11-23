@@ -55,6 +55,72 @@ graph TD
 | [`native/speculative.rs`](src/native/speculative.rs), [`ffi/speculative_bridge.cpp`](src/ffi/speculative_bridge.cpp) | MTP speculative decoding, experimental. Settings `optimization.mtp`: `auto` (default: the runtime's load rules, then a guard in each answer that stops guessing where it is slower), `on`, `off` (load flag `--mtp`; `CLUAIZ_MTP=on` forces it for tests; `CLUAIZ_MTP_DRAFT` = guesses per step, default 3 as llama-server; `CLUAIZ_MTP_PMIN` = least drafter probability, default 0). A model with NextN layers (Qwen3.5 / 3.6, GLM-4.5+, DeepSeek-V3, ...) is loaded with `load_mtp`; llama.cpp's own `draft-mtp` drafter (`common_speculative`) guesses the next tokens on an MTP context; `stream.rs` decodes the token and its guesses in one batch and keeps a guess only when the target's sampler picks it, so the answer is the target's. The drafter sees every target decode (prompt chunks too). Media prompts do not draft; a context shift stops drafting for that answer. Its memory is not in the load plan yet (Auto turns MTP off when it would not fit next to the plan). |
 | [`moe_override.rs`](src/moe_override.rs) | `--n-cpu-moe N`: the routed experts of the first N blocks stay in RAM (a CPU buffer), everything else of those blocks (attention, shared weights, KV) on the GPU; the same tensor overrides llama.cpp builds (`CpuMoeOverrides`). |
 
+## Why Cluaiz was slower than llama.cpp on Windows (2026-11-23)
+
+**Cause.** llama.cpp's own Windows release builds the CPU backends (`ggml-cpu-*.dll`) and `ggml-base.dll`
+with clang (`cmake/x64-windows-llvm.cmake`, the windows-cpu job of the fork's `.github/workflows/release.yml`,
+with LLVM OpenMP `libomp.dll`); only `ggml-cuda.dll` is built with MSVC. Cluaiz builds all of llama.cpp with
+MSVC (Visual Studio generator, `build.rs`), so its CPU backends are MSVC code using MSVC OpenMP
+(`VCOMP140.DLL`). Same source, slower code.
+
+**Proof** (run 47, `test/cloud/runs/2026-11-23-run47-laptop-warm-tg-gap/`, Ryzen 7 7435HS, 8 threads, medians of
+rounds 2 and later). Swap tests: the same exe, only the CPU backend files changed.
+
+| Test | llama-bench | llama-bench + Cluaiz's MSVC CPU DLLs | `cluaiz bench` (MSVC CPU) | `cluaiz bench` + llama.cpp's clang CPU DLLs and libomp.dll |
+|---|---|---|---|---|
+| CPU only, Qwen3-1.7B IQ4_XS, pp512 | 139.24 | 121.18 | 120.99 | 137.34 |
+| CPU only, same, tg128 | 27.20 | 28.09 | 25.73 | 27.64 |
+| MoE split, granite-3.1-3b-a800m IQ4_XS, all experts on the CPU, tg128 (cleanest of three runs) | 39.43 | | 38.43 | 39.70 |
+
+The CPU-only prompt gap is settled; split-mode generation lost 3% to 20% in different runs on a machine shared
+with other programs. The fork's `ggml-cuda.dll` inside official llama-bench lost nothing.
+
+**Fix: not in the build yet (owner decision).** Two ways, measured in run 47:
+- Upstream's exact setup, clang + LLVM OpenMP: as fast as llama-bench in every test. It needs `libomp.dll`
+  beside the exe: release packaging (`.github/scripts/package_core.sh`), a license notice, and the dev sync in
+  `cmd/src/core/bootstrapper.rs`, which copies only ggml / llama / mtmd files.
+- clang without OpenMP (`GGML_OPENMP=OFF`, no new file): tried and reverted. MoE split generation fell to 9.31
+  t/s against 39.43, because ggml's own thread pool is then used and Cluaiz attaches none to its context
+  (llama-bench and llama.cpp's common code do, `llama_attach_threadpool`). It would need that Rust change too.
+- Met on the way, for whoever builds with clang: clang 22 stops on `_mm_prefetch(&x[ib] + ...)` in
+  `ggml-cpu/arch/x86/quants.c` (`-Wno-error=incompatible-pointer-types`; upstream CI pins clang 20), and clang
+  22 did not finish `amx/mmq.cpp` of the sapphirerapids variant in 30 minutes.
+
+**What happens if LLVM is missing.** Today nothing changes: the build uses MSVC only. A clang build of the CPU
+backends must fall back to the MSVC modules with a visible build warning, and a release build must stop instead
+(the reverted patch did this with `CLUAIZ_REQUIRE_LLVM_CPU=1`).
+
+**Rule from now on.** Build each backend with the toolchain upstream's release uses for it. On every llama.cpp
+upgrade, read upstream's `.github/workflows/release.yml` (toolchains and CMake options per backend) against this
+`build.rs`.
+
+**How to verify** (PowerShell, Engine root; a small model so RAM never limits the run; official llama-bench
+unpacked in `%LOCALAPPDATA%\cluaiz-test\llama-official-b12428`):
+
+```
+powershell -ExecutionPolicy Bypass -File test\cloud\remote\warm_tg_gap\run_warm_tg_gap.ps1 `
+  -Model <small IQ4_XS .gguf> -ExpectedSize 0 -LlamaPlacement '-ngl 0 -dev none' `
+  -CluaizPlacement '--n-gpu-layers 0' -Cluaiz 'C|target\release\cluaiz.exe' -Rounds 4
+```
+
+`results.md` in the output folder lists pp512 and tg128 per config; `cluaiz bench` should be within the
+round-to-round spread of llama-bench. A `target\release\ggml-cpu-haswell.dll` that names `VCOMP140.DLL` is an
+MSVC module.
+
+## Boundary with llama.cpp
+
+- The only crate that depends on `llama-engine` is `engine/runtime` (`engine/runtime/Cargo.toml`); 9 of its
+  files use `llama_engine` (`chat_memory.rs`, `embedding_host.rs`, `host.rs`, `lib.rs`, `load_events.rs`,
+  `media_generation.rs`, `native_load.rs`, `speech_host.rs`, `speech_plan.rs`). `engine/models` names it only in
+  a doc comment (`src/taxonomy/quantization.rs:343`). Checked with
+  `grep -rl "llama_engine" --include=*.rs . | grep -v "^./target\|^./engine/llama/"` on 2026-11-23.
+- The fork's own changes, with their re-apply steps: [`llama.cpp/CLUAIZ_PATCHES.md`](llama.cpp/CLUAIZ_PATCHES.md).
+- A lost hook fails the build: the fork's `src/CMakeLists.txt` stops the configure step when the MoE prefetch
+  call is missing from `llama-moe-cache.cpp` (patch 1 in `CLUAIZ_PATCHES.md`).
+- Upgrade checklist: re-apply the patches in `CLUAIZ_PATCHES.md`; compare the build toolchains and CMake options
+  with upstream's `.github/workflows/release.yml` (section above); before a release, run the same-machine speed
+  check against official llama-bench (command above, and a GPU placement).
+
 ## Native text embedding boundary
 
 `native::embedding::EmbeddingModel` takes an embedding-enabled `NativeLlama`, retaining its existing model/context destructor. It queries native pooling and output width rather than selecting a model by name. Mean, CLS and last-token sequence pooling are accepted; no-pooling, reranking and encoder-decoder models return an error. Whole-sequence evaluation uses the existing RAII batch and tokenizer; inputs beyond the active sequence limit are rejected without truncation. Sequence output is copied before the next native operation and normalized through `cluaiz_core::contracts::normalize_embedding`. This boundary alone does not wire the HTTP endpoint or certify arbitrary GGUF exports.
