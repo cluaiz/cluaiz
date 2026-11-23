@@ -1,0 +1,31 @@
+== 2026-11-23T16:28:54 configs: L = C:\Users\<user>\AppData\Local\cluaiz-test\llama-official-b12428\llama-bench.exe; C-fix = C:\Users\<user>\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\target\release\cluaiz.exe; C-msvc = C:\Users\<user>\AppData\Local\cluaiz-test\cluaiz-release-msvccpu\cluaiz.exe; C-clang-omp = C:\Users\<user>\AppData\Local\cluaiz-test\cluaiz-release-clangcpu\cluaiz.exe
+== 2026-11-23T16:28:56 available RAM MiB: 7561
+== 2026-11-23T16:29:20 r1_L: pp512=1565.53 pp2048=1863.1 tg128=43.02 t/s, exit 0 19s avail 7568->7616 MiB (min 5392), disk read 0.93 GB
+== 2026-11-23T16:30:15 r1_C-fix: pp512=1783.22 pp2048=1675.64 tg128=9.7 t/s, exit 0 50s avail 7592->7492 MiB (min 5184), disk read 0.04 GB
+== 2026-11-23T16:30:41 r1_C-msvc: pp512=1623.23 pp2048=1592.78 tg128=33.78 t/s, exit 0 22s avail 7475->7492 MiB (min 5250), disk read 0 GB
+== 2026-11-23T16:31:08 r1_C-clang-omp: pp512=1578.49 pp2048=1548.36 tg128=36.17 t/s, exit 0 21s avail 7493->7447 MiB (min 5196), disk read 0.07 GB
+== 2026-11-23T16:32:06 r2_C-fix: pp512=1525.91 pp2048=1573.69 tg128=8.92 t/s, exit 0 54s avail 7459->7633 MiB (min 5338), disk read 0 GB
+== 2026-11-23T16:32:33 r2_C-msvc: pp512=1452.56 pp2048=1596.16 tg128=34.15 t/s, exit 0 21s avail 7645->7650 MiB (min 5392), disk read 0 GB
+== 2026-11-23T16:32:58 r2_C-clang-omp: pp512=1612.42 pp2048=1586.47 tg128=38.71 t/s, exit 0 20s avail 7659->7672 MiB (min 5433), disk read 0 GB
+== 2026-11-23T16:33:22 r2_L: pp512=1620.7 pp2048=1728.48 tg128=39.43 t/s, exit 0 18s avail 7666->7669 MiB (min 5452), disk read 0 GB
+== 2026-11-23T16:33:48 r3_C-msvc: pp512=1625.99 pp2048=1614.61 tg128=35.51 t/s, exit 0 21s avail 7672->7673 MiB (min 5434), disk read 0 GB
+== 2026-11-23T16:34:12 r3_C-clang-omp: pp512=1615.16 pp2048=1586.43 tg128=39.7 t/s, exit 0 20s avail 7684->7676 MiB (min 5446), disk read 0 GB
+== 2026-11-23T16:34:37 r3_L: pp512=1654.6 pp2048=1603.61 tg128=38.48 t/s, exit 0 19s avail 7687->7662 MiB (min 5448), disk read 0 GB
+== 2026-11-23T16:35:35 r3_C-fix: pp512=1632.24 pp2048=1594.14 tg128=8.97 t/s, exit 0 53s avail 7651->7721 MiB (min 5348), disk read 0.01 GB
+== 2026-11-23T16:36:00 r4_C-clang-omp: pp512=1572.8 pp2048=1611.27 tg128=39.46 t/s, exit 0 20s avail 7719->7739 MiB (min 5502), disk read 0 GB
+== 2026-11-23T16:36:25 r4_L: pp512=1601.8 pp2048=1572.75 tg128=37.25 t/s, exit 0 19s avail 7735->8222 MiB (min 5558), disk read 0 GB
+== 2026-11-23T16:37:22 r4_C-fix: pp512=1581.09 pp2048=1614.47 tg128=9.31 t/s, exit 0 52s avail 8223->8124 MiB (min 5880), disk read 0.03 GB
+== 2026-11-23T16:37:46 r4_C-msvc: pp512=1624.3 pp2048=1841.66 tg128=38.66 t/s, exit 0 19s avail 8134->8109 MiB (min 5870), disk read 0 GB
+== 2026-11-23T16:38:08 r5_L: pp512=1805.71 pp2048=1811.7 tg128=43.35 t/s, exit 0 17s avail 8096->7998 MiB (min 5782), disk read 0 GB
+== 2026-11-23T16:39:00 r5_C-fix: pp512=1658.62 pp2048=1808.93 tg128=10.39 t/s, exit 0 47s avail 7997->8103 MiB (min 5858), disk read 0 GB
+== 2026-11-23T16:39:24 r5_C-msvc: pp512=1848.56 pp2048=1854.82 tg128=38.43 t/s, exit 0 19s avail 8104->8096 MiB (min 5855), disk read 0 GB
+== 2026-11-23T16:39:47 r5_C-clang-omp: pp512=1813.52 pp2048=1813.56 tg128=44.17 t/s, exit 0 18s avail 8091->8032 MiB (min 5789), disk read 0 GB
+== 2026-11-23T16:40:39 r6_C-fix: pp512=1834.62 pp2048=1842.44 tg128=10.43 t/s, exit 0 46s avail 8021->8065 MiB (min 5793), disk read 0 GB
+== 2026-11-23T16:41:03 r6_C-msvc: pp512=1900.56 pp2048=1835.88 tg128=38.74 t/s, exit 0 19s avail 8055->8045 MiB (min 5817), disk read 0 GB
+== 2026-11-23T16:41:26 r6_C-clang-omp: pp512=1835.52 pp2048=1833.96 tg128=41.14 t/s, exit 0 18s avail 8065->8486 MiB (min 5830), disk read 0 GB
+== 2026-11-23T16:41:48 r6_L: pp512=1630.65 pp2048=1816.96 tg128=44.2 t/s, exit 0 17s avail 8490->8619 MiB (min 6287), disk read 0 GB
+== 2026-11-23T16:41:49 | config | pp512 median, rounds 2+ (all rounds) | pp2048 median, rounds 2+ (all rounds) | tg128 median, rounds 2+ (all rounds) | |---|---|---|---|
+== 2026-11-23T16:41:49 | L | 1630.65 (1565.53, 1620.7, 1654.6, 1601.8, 1805.71, 1630.65) | 1728.48 (1863.1, 1728.48, 1603.61, 1572.75, 1811.7, 1816.96) | 39.43 (43.02, 39.43, 38.48, 37.25, 43.35, 44.2) |
+== 2026-11-23T16:41:49 | C-fix | 1632.24 (1783.22, 1525.91, 1632.24, 1581.09, 1658.62, 1834.62) | 1614.47 (1675.64, 1573.69, 1594.14, 1614.47, 1808.93, 1842.44) | 9.31 (9.7, 8.92, 8.97, 9.31, 10.39, 10.43) |
+== 2026-11-23T16:41:49 | C-msvc | 1625.99 (1623.23, 1452.56, 1625.99, 1624.3, 1848.56, 1900.56) | 1835.88 (1592.78, 1596.16, 1614.61, 1841.66, 1854.82, 1835.88) | 38.43 (33.78, 34.15, 35.51, 38.66, 38.43, 38.74) |
+== 2026-11-23T16:41:49 | C-clang-omp | 1615.16 (1578.49, 1612.42, 1615.16, 1572.8, 1813.52, 1835.52) | 1611.27 (1548.36, 1586.47, 1586.43, 1611.27, 1813.56, 1833.96) | 39.7 (36.17, 38.71, 39.7, 39.46, 44.17, 41.14) |

@@ -1,0 +1,9 @@
+13:38:27 read_GB 0.00 ops 1 ws_MB 177 private_MB 265
+13:38:28 read_GB 0.03 ops 3869 ws_MB 416 private_MB 589
+13:38:29 read_GB 0.03 ops 3869 ws_MB 416 private_MB 589
+13:38:32 read_GB 0.03 ops 3869 ws_MB 416 private_MB 589
+13:38:34 read_GB 0.03 ops 3869 ws_MB 1,415 private_MB 2,328
+13:38:35 read_GB 0.03 ops 3869 ws_MB 2,968 private_MB 2,909
+13:38:36 read_GB 0.03 ops 3869 ws_MB 5,789 private_MB 2,910
+13:38:38 read_GB 0.03 ops 3869 ws_MB 7,030 private_MB 2,910
+13:38:39 read_GB 0.03 ops 3869 ws_MB 4,139 private_MB 911

@@ -1,0 +1,2 @@
+name, memory.total [MiB], memory.used [MiB], utilization.gpu [%]
+NVIDIA GeForce RTX 3050 A Laptop GPU, 4094 MiB, 1373 MiB, 14 %

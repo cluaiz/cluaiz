@@ -1,0 +1,19 @@
+== 2026-11-23T13:19:03 configs: L = C:\Users\<user>\AppData\Local\cluaiz-test\llama-official-b12428\llama-bench.exe; C-debug = C:\Users\<user>\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\target\debug\cluaiz.exe; L-forkcpu = C:\Users\<user>\AppData\Local\cluaiz-test\llama-b12428-forkcpu\llama-bench.exe
+== 2026-11-23T13:19:04 available RAM MiB: 10228
+== 2026-11-23T13:22:17 r1_L: pp 0 tg 0 exit 0 186s avail 10176->11372 MiB (min 106), disk read 20.76 GB
+== 2026-11-23T13:24:37 r1_C-debug: pp 0 tg 0 exit 0 135s avail 11374->12978 MiB (min 21), disk read 10.55 GB
+== 2026-11-23T13:26:24 r1_L-forkcpu: pp 0 tg 0 exit 0 102s avail 13005->13557 MiB (min 526), disk read 12.62 GB
+== 2026-11-23T13:27:45 r2_C-debug: pp 0 tg 0 exit 0 77s avail 13565->13594 MiB (min 412), disk read 8.87 GB
+== 2026-11-23T13:29:36 r2_L-forkcpu: pp 0 tg 0 exit 0 106s avail 13605->13656 MiB (min 723), disk read 13.35 GB
+== 2026-11-23T13:30:48 r2_L: pp 0 tg 0 exit 0 66s avail 13659->14355 MiB (min 1325), disk read 7.07 GB
+== 2026-11-23T13:31:35 r3_L-forkcpu: pp 0 tg 0 exit 0 42s avail 14355->14376 MiB (min 1406), disk read 0.64 GB
+== 2026-11-23T13:32:22 r3_L: pp 0 tg 0 exit 0 42s avail 14376->14213 MiB (min 1287), disk read 2.02 GB
+== 2026-11-23T13:33:47 r3_C-debug: pp 0 tg 0 exit 0 79s avail 14215->13827 MiB (min 999), disk read 8.37 GB
+== 2026-11-23T13:35:19 r4_L: pp 0 tg 0 exit 0 87s avail 13819->13830 MiB (min 650), disk read 13.06 GB
+== 2026-11-23T13:36:28 r4_C-debug: pp 0 tg 0 exit 0 64s avail 13836->14103 MiB (min 1366), disk read 7 GB
+== 2026-11-23T13:37:13 r4_L-forkcpu: pp 0 tg 0 exit 0 40s avail 14134->14125 MiB (min 1105), disk read 0.76 GB
+== 2026-11-23T13:37:13 | config | tg128 median, rounds 2+ | tg128 per round | pp512 median, rounds 2+ |
+== 2026-11-23T13:37:13 |---|---|---|---|
+== 2026-11-23T13:37:13 | L | 0 | 0, 0, 0, 0 | 0 |
+== 2026-11-23T13:37:13 | C-debug | 0 | 0, 0, 0, 0 | 0 |
+== 2026-11-23T13:37:13 | L-forkcpu | 0 | 0, 0, 0, 0 | 0 |

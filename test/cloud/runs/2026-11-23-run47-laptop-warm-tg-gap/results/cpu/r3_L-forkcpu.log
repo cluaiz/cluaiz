@@ -1,0 +1,5 @@
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 4093 MiB):
+  Device 0: NVIDIA GeForce RTX 3050 A Laptop GPU, compute capability 8.9, VMM: yes, VRAM: 4093 MiB
+load_backend: loaded CUDA backend from C:\Users\<user>\AppData\Local\cluaiz-test\llama-b12428-forkcpu\ggml-cuda.dll
+load_backend: loaded RPC backend from C:\Users\<user>\AppData\Local\cluaiz-test\llama-b12428-forkcpu\ggml-rpc.dll
+load_backend: loaded CPU backend from C:\Users\<user>\AppData\Local\cluaiz-test\llama-b12428-forkcpu\ggml-cpu-haswell.dll

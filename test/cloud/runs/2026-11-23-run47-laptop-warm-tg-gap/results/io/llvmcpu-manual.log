@@ -1,0 +1,1368 @@
+'vswhere.exe' is not recognized as an internal or external command,
+operable program or batch file.
+CMAKE_BUILD_TYPE=Release
+[1/239] Building C object ggml/src/CMakeFiles/ggml-base.dir/ggml-alloc.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[2/239] Building C object ggml/src/CMakeFiles/ggml-cpu-x64.dir/ggml-cpu/arch/x86/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/arch/x86/quants.c:3:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:79:9: warning: keyword is hidden by macro definition [-Wkeyword-macro]
+   79 | #define static_assert(cond, msg) _Static_assert(cond, msg)
+      |         ^
+2 warnings generated.
+[3/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sandybridge.dir/ggml-cpu/amx/mmq.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/amx/mmq.cpp:11:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu\quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[4/239] Building C object ggml/src/CMakeFiles/ggml-cpu-sse42.dir/ggml-cpu/arch/x86/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/arch/x86/quants.c:3:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:79:9: warning: keyword is hidden by macro definition [-Wkeyword-macro]
+   79 | #define static_assert(cond, msg) _Static_assert(cond, msg)
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/arch/x86/quants.c:846:22: warning: incompatible pointer types passing 'const block_q4_0 *' to parameter of type 'const char *' [-Wincompatible-pointer-types]
+  846 |         _mm_prefetch(&x[ib] + sizeof(block_q4_0), _MM_HINT_T0);
+      |                      ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/arch/x86/quants.c:847:22: warning: incompatible pointer types passing 'const block_q8_0 *' to parameter of type 'const char *' [-Wincompatible-pointer-types]
+  847 |         _mm_prefetch(&y[ib] + sizeof(block_q8_0), _MM_HINT_T0);
+      |                      ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/arch/x86/quants.c:864:22: warning: incompatible pointer types passing 'const block_q4_0 *' to parameter of type 'const char *' [-Wincompatible-pointer-types]
+  864 |         _mm_prefetch(&x[ib] + 2 * sizeof(block_q4_0), _MM_HINT_T0);
+      |                      ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/arch/x86/quants.c:865:22: warning: incompatible pointer types passing 'const block_q8_0 *' to parameter of type 'const char *' [-Wincompatible-pointer-types]
+  865 |         _mm_prefetch(&y[ib] + 2 * sizeof(block_q8_0), _MM_HINT_T0);
+      |                      ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+6 warnings generated.
+[5/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sandybridge.dir/ggml-cpu/tiled/tiled-kernel.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[6/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sandybridge.dir/ggml-cpu/vec.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[7/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sandybridge.dir/ggml-cpu/amx/amx.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[8/239] Building C object ggml/src/CMakeFiles/ggml-cpu-sandybridge.dir/ggml-cpu/ggml-cpu.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[9/239] Building C object ggml/src/CMakeFiles/ggml-cpu-sse42.dir/ggml-cpu/ggml-cpu.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[10/239] Building C object ggml/src/CMakeFiles/ggml-cpu-x64.dir/ggml-cpu/ggml-cpu.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[11/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-ivybridge.dir/ggml-cpu/hbm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[12/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sandybridge.dir/ggml-cpu/arch/x86/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[13/239] Building C object ggml/src/CMakeFiles/ggml-base.dir/ggml.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[14/239] Building C object ggml/src/CMakeFiles/ggml-cpu-sandybridge.dir/ggml-cpu/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[15/239] Building C object ggml/src/CMakeFiles/ggml-cpu-sse42.dir/ggml-cpu/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[16/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sandybridge-feats.dir/ggml-cpu/arch/x86/cpu-feats.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[17/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sandybridge.dir/ggml-cpu/binary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[18/239] Building C object ggml/src/CMakeFiles/ggml-cpu-sandybridge.dir/ggml-cpu/arch/x86/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/arch/x86/quants.c:3:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:79:9: warning: keyword is hidden by macro definition [-Wkeyword-macro]
+   79 | #define static_assert(cond, msg) _Static_assert(cond, msg)
+      |         ^
+2 warnings generated.
+[19/239] Building C object ggml/src/CMakeFiles/ggml-cpu-x64.dir/ggml-cpu/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[20/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-ivybridge.dir/ggml-cpu/traits.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[21/239] Building C object ggml/src/CMakeFiles/ggml-cpu-ivybridge.dir/ggml-cpu/ggml-cpu.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[22/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-ivybridge.dir/ggml-cpu/amx/mmq.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/amx/mmq.cpp:11:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu\quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[23/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-ivybridge.dir/ggml-cpu/amx/amx.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[24/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-ivybridge.dir/ggml-cpu/ggml-cpu.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[25/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-ivybridge.dir/ggml-cpu/tiled/tiled-kernel.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[26/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-ivybridge.dir/ggml-cpu/vec.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[27/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sandybridge.dir/ggml-cpu/llamafile/sgemm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.cpp:54:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[28/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sandybridge.dir/ggml-cpu/unary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[29/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-piledriver.dir/ggml-cpu/hbm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[30/239] Building C object ggml/src/CMakeFiles/ggml-cpu-ivybridge.dir/ggml-cpu/arch/x86/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/arch/x86/quants.c:3:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:79:9: warning: keyword is hidden by macro definition [-Wkeyword-macro]
+   79 | #define static_assert(cond, msg) _Static_assert(cond, msg)
+      |         ^
+2 warnings generated.
+[31/239] Building C object ggml/src/CMakeFiles/ggml-cpu-ivybridge.dir/ggml-cpu/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[32/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-ivybridge.dir/ggml-cpu/arch/x86/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[33/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-ivybridge-feats.dir/ggml-cpu/arch/x86/cpu-feats.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[34/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-piledriver.dir/ggml-cpu/traits.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[35/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-ivybridge.dir/ggml-cpu/binary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[36/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-piledriver.dir/ggml-cpu/ggml-cpu.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[37/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-piledriver.dir/ggml-cpu/tiled/tiled-kernel.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[38/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-piledriver.dir/ggml-cpu/amx/amx.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[39/239] Building C object ggml/src/CMakeFiles/ggml-cpu-piledriver.dir/ggml-cpu/ggml-cpu.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[40/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-piledriver.dir/ggml-cpu/amx/mmq.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/amx/mmq.cpp:11:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu\quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[41/239] Building C object ggml/src/CMakeFiles/ggml-base.dir/ggml-quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-quants.c:4:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src\ggml-common.h:79:9: warning: keyword is hidden by macro definition [-Wkeyword-macro]
+   79 | #define static_assert(cond, msg) _Static_assert(cond, msg)
+      |         ^
+2 warnings generated.
+[42/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-ivybridge.dir/ggml-cpu/unary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[43/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sandybridge.dir/ggml-cpu/tiled/tiled.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[44/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-piledriver.dir/ggml-cpu/vec.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[45/239] Building C object ggml/src/CMakeFiles/ggml-cpu-piledriver.dir/ggml-cpu/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[46/239] Linking CXX shared library bin\ggml-base.dll
+[47/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-piledriver.dir/ggml-cpu/arch/x86/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[48/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-ivybridge.dir/ggml-cpu/llamafile/sgemm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.cpp:54:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[49/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-haswell.dir/ggml-cpu/hbm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[50/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-piledriver-feats.dir/ggml-cpu/arch/x86/cpu-feats.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[51/239] Building C object ggml/src/CMakeFiles/ggml-cpu-piledriver.dir/ggml-cpu/arch/x86/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/arch/x86/quants.c:3:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:79:9: warning: keyword is hidden by macro definition [-Wkeyword-macro]
+   79 | #define static_assert(cond, msg) _Static_assert(cond, msg)
+      |         ^
+2 warnings generated.
+[52/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-ivybridge.dir/ggml-cpu/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[53/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-piledriver.dir/ggml-cpu/binary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[54/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-ivybridge.dir/ggml-cpu/tiled/tiled.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[55/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-haswell.dir/ggml-cpu/traits.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[56/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-haswell.dir/ggml-cpu/amx/amx.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[57/239] Building C object ggml/src/CMakeFiles/ggml-cpu-haswell.dir/ggml-cpu/ggml-cpu.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[58/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-haswell.dir/ggml-cpu/amx/mmq.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/amx/mmq.cpp:11:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu\quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[59/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-haswell.dir/ggml-cpu/ggml-cpu.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[60/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-haswell.dir/ggml-cpu/tiled/tiled-kernel.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[61/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-haswell.dir/ggml-cpu/vec.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[62/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-piledriver.dir/ggml-cpu/unary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[63/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-piledriver.dir/ggml-cpu/llamafile/sgemm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.cpp:54:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[64/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-piledriver.dir/ggml-cpu/tiled/tiled.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[65/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-skylakex.dir/ggml-cpu/hbm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[66/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-piledriver.dir/ggml-cpu/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[67/239] Building C object ggml/src/CMakeFiles/ggml-cpu-haswell.dir/ggml-cpu/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[68/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-haswell.dir/ggml-cpu/binary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[69/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-haswell-feats.dir/ggml-cpu/arch/x86/cpu-feats.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[70/239] Building C object ggml/src/CMakeFiles/ggml-cpu-haswell.dir/ggml-cpu/arch/x86/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/arch/x86/quants.c:3:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:79:9: warning: keyword is hidden by macro definition [-Wkeyword-macro]
+   79 | #define static_assert(cond, msg) _Static_assert(cond, msg)
+      |         ^
+2 warnings generated.
+[71/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-skylakex.dir/ggml-cpu/traits.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[72/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-skylakex.dir/ggml-cpu/amx/amx.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[73/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-haswell.dir/ggml-cpu/arch/x86/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[74/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sandybridge.dir/ggml-cpu/ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[75/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-skylakex.dir/ggml-cpu/ggml-cpu.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[76/239] Building C object ggml/src/CMakeFiles/ggml-cpu-skylakex.dir/ggml-cpu/ggml-cpu.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[77/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-skylakex.dir/ggml-cpu/amx/mmq.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/amx/mmq.cpp:11:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu\quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[78/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-haswell.dir/ggml-cpu/llamafile/sgemm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.cpp:54:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[79/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-haswell.dir/ggml-cpu/unary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[80/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-skylakex.dir/ggml-cpu/tiled/tiled-kernel.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[81/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-skylakex.dir/ggml-cpu/vec.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[82/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-ivybridge.dir/ggml-cpu/ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[83/239] Building C object ggml/src/CMakeFiles/ggml-cpu-skylakex.dir/ggml-cpu/arch/x86/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/arch/x86/quants.c:3:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:79:9: warning: keyword is hidden by macro definition [-Wkeyword-macro]
+   79 | #define static_assert(cond, msg) _Static_assert(cond, msg)
+      |         ^
+2 warnings generated.
+[84/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cannonlake.dir/ggml-cpu/hbm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[85/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-skylakex-feats.dir/ggml-cpu/arch/x86/cpu-feats.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[86/239] Building C object ggml/src/CMakeFiles/ggml-cpu-skylakex.dir/ggml-cpu/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[87/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cannonlake.dir/ggml-cpu/traits.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[88/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cannonlake.dir/ggml-cpu/amx/amx.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[89/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-skylakex.dir/ggml-cpu/binary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[90/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-haswell.dir/ggml-cpu/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[91/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cannonlake.dir/ggml-cpu/ggml-cpu.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[92/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-haswell.dir/ggml-cpu/tiled/tiled.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[93/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cannonlake.dir/ggml-cpu/amx/mmq.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/amx/mmq.cpp:11:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu\quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[94/239] Building C object ggml/src/CMakeFiles/ggml-cpu-cannonlake.dir/ggml-cpu/ggml-cpu.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[95/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-skylakex.dir/ggml-cpu/unary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[96/239] Building C object ggml/src/CMakeFiles/ggml-cpu-cannonlake.dir/ggml-cpu/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[97/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cannonlake.dir/ggml-cpu/tiled/tiled-kernel.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[98/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-piledriver.dir/ggml-cpu/ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[99/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cannonlake.dir/ggml-cpu/vec.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[100/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-skylakex.dir/ggml-cpu/arch/x86/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[101/239] Building C object ggml/src/CMakeFiles/ggml-cpu-cannonlake.dir/ggml-cpu/arch/x86/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/arch/x86/quants.c:3:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:79:9: warning: keyword is hidden by macro definition [-Wkeyword-macro]
+   79 | #define static_assert(cond, msg) _Static_assert(cond, msg)
+      |         ^
+2 warnings generated.
+[102/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cascadelake.dir/ggml-cpu/hbm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[103/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cannonlake.dir/ggml-cpu/binary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[104/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cannonlake-feats.dir/ggml-cpu/arch/x86/cpu-feats.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[105/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-skylakex.dir/ggml-cpu/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[106/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-skylakex.dir/ggml-cpu/llamafile/sgemm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.cpp:54:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[107/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cascadelake.dir/ggml-cpu/amx/amx.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[108/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cascadelake.dir/ggml-cpu/traits.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[109/239] Building C object ggml/src/CMakeFiles/ggml-cpu-cascadelake.dir/ggml-cpu/ggml-cpu.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[110/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cascadelake.dir/ggml-cpu/amx/mmq.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/amx/mmq.cpp:11:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu\quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[111/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-haswell.dir/ggml-cpu/ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[112/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cannonlake.dir/ggml-cpu/unary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[113/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cascadelake.dir/ggml-cpu/vec.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[114/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cannonlake.dir/ggml-cpu/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[115/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cascadelake.dir/ggml-cpu/tiled/tiled-kernel.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[116/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-skylakex.dir/ggml-cpu/tiled/tiled.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[117/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cannonlake.dir/ggml-cpu/arch/x86/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[118/239] Building C object ggml/src/CMakeFiles/ggml-cpu-cascadelake.dir/ggml-cpu/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[119/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cascadelake.dir/ggml-cpu/ggml-cpu.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[120/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-icelake.dir/ggml-cpu/hbm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[121/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cascadelake-feats.dir/ggml-cpu/arch/x86/cpu-feats.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[122/239] Building C object ggml/src/CMakeFiles/ggml-cpu-cascadelake.dir/ggml-cpu/arch/x86/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/arch/x86/quants.c:3:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:79:9: warning: keyword is hidden by macro definition [-Wkeyword-macro]
+   79 | #define static_assert(cond, msg) _Static_assert(cond, msg)
+      |         ^
+2 warnings generated.
+[123/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cascadelake.dir/ggml-cpu/binary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[124/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-icelake.dir/ggml-cpu/traits.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[125/239] Building C object ggml/src/CMakeFiles/ggml-cpu-icelake.dir/ggml-cpu/ggml-cpu.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[126/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-icelake.dir/ggml-cpu/amx/amx.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[127/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-icelake.dir/ggml-cpu/amx/mmq.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/amx/mmq.cpp:11:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu\quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[128/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-icelake.dir/ggml-cpu/ggml-cpu.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[129/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cannonlake.dir/ggml-cpu/llamafile/sgemm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.cpp:54:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[130/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cascadelake.dir/ggml-cpu/unary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[131/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cannonlake.dir/ggml-cpu/tiled/tiled.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[132/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cascadelake.dir/ggml-cpu/arch/x86/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[133/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-icelake.dir/ggml-cpu/tiled/tiled-kernel.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[134/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-icelake.dir/ggml-cpu/vec.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[135/239] Building C object ggml/src/CMakeFiles/ggml-cpu-icelake.dir/ggml-cpu/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[136/239] Building C object ggml/src/CMakeFiles/ggml-cpu-icelake.dir/ggml-cpu/arch/x86/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/arch/x86/quants.c:3:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:79:9: warning: keyword is hidden by macro definition [-Wkeyword-macro]
+   79 | #define static_assert(cond, msg) _Static_assert(cond, msg)
+      |         ^
+2 warnings generated.
+[137/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cooperlake.dir/ggml-cpu/hbm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[138/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-icelake-feats.dir/ggml-cpu/arch/x86/cpu-feats.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[139/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-icelake.dir/ggml-cpu/binary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[140/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cascadelake.dir/ggml-cpu/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[141/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-skylakex.dir/ggml-cpu/ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[142/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cooperlake.dir/ggml-cpu/ggml-cpu.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[143/239] Building C object ggml/src/CMakeFiles/ggml-cpu-cooperlake.dir/ggml-cpu/ggml-cpu.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[144/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cooperlake.dir/ggml-cpu/traits.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[145/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cooperlake.dir/ggml-cpu/amx/amx.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[146/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cooperlake.dir/ggml-cpu/amx/mmq.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/amx/mmq.cpp:11:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu\quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[147/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cascadelake.dir/ggml-cpu/llamafile/sgemm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.cpp:54:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[148/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cascadelake.dir/ggml-cpu/tiled/tiled.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[149/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-icelake.dir/ggml-cpu/unary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[150/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-icelake.dir/ggml-cpu/arch/x86/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[151/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cooperlake.dir/ggml-cpu/tiled/tiled-kernel.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[152/239] Building C object ggml/src/CMakeFiles/ggml-cpu-cooperlake.dir/ggml-cpu/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[153/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cannonlake.dir/ggml-cpu/ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[154/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cooperlake.dir/ggml-cpu/vec.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[155/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-zen4.dir/ggml-cpu/hbm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[156/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-icelake.dir/ggml-cpu/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[157/239] Building C object ggml/src/CMakeFiles/ggml-cpu-cooperlake.dir/ggml-cpu/arch/x86/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/arch/x86/quants.c:3:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:79:9: warning: keyword is hidden by macro definition [-Wkeyword-macro]
+   79 | #define static_assert(cond, msg) _Static_assert(cond, msg)
+      |         ^
+2 warnings generated.
+[158/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cooperlake-feats.dir/ggml-cpu/arch/x86/cpu-feats.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[159/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cooperlake.dir/ggml-cpu/binary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[160/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-icelake.dir/ggml-cpu/llamafile/sgemm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.cpp:54:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[161/239] Building C object ggml/src/CMakeFiles/ggml-cpu-zen4.dir/ggml-cpu/ggml-cpu.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[162/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cooperlake.dir/ggml-cpu/unary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[163/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-zen4.dir/ggml-cpu/traits.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[164/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-zen4.dir/ggml-cpu/ggml-cpu.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[165/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-zen4.dir/ggml-cpu/amx/amx.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[166/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-icelake.dir/ggml-cpu/tiled/tiled.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[167/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-zen4.dir/ggml-cpu/amx/mmq.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/amx/mmq.cpp:11:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu\quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[168/239] Building C object ggml/src/CMakeFiles/ggml-cpu-zen4.dir/ggml-cpu/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[169/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cooperlake.dir/ggml-cpu/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[170/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cascadelake.dir/ggml-cpu/ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[171/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-zen4.dir/ggml-cpu/tiled/tiled-kernel.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[172/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-zen4.dir/ggml-cpu/vec.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[173/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-alderlake.dir/ggml-cpu/hbm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[174/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cooperlake.dir/ggml-cpu/arch/x86/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[175/239] Building C object ggml/src/CMakeFiles/ggml-cpu-zen4.dir/ggml-cpu/arch/x86/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/arch/x86/quants.c:3:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:79:9: warning: keyword is hidden by macro definition [-Wkeyword-macro]
+   79 | #define static_assert(cond, msg) _Static_assert(cond, msg)
+      |         ^
+2 warnings generated.
+[176/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-zen4.dir/ggml-cpu/binary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[177/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cooperlake.dir/ggml-cpu/llamafile/sgemm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.cpp:54:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[178/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-zen4-feats.dir/ggml-cpu/arch/x86/cpu-feats.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[179/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-alderlake.dir/ggml-cpu/traits.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[180/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cooperlake.dir/ggml-cpu/tiled/tiled.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[181/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-alderlake.dir/ggml-cpu/ggml-cpu.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[182/239] Building C object ggml/src/CMakeFiles/ggml-cpu-alderlake.dir/ggml-cpu/ggml-cpu.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[183/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-zen4.dir/ggml-cpu/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[184/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-alderlake.dir/ggml-cpu/amx/amx.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[185/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-zen4.dir/ggml-cpu/unary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[186/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-icelake.dir/ggml-cpu/ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[187/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-alderlake.dir/ggml-cpu/amx/mmq.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/amx/mmq.cpp:11:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu\quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[188/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-zen4.dir/ggml-cpu/arch/x86/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[189/239] Building C object ggml/src/CMakeFiles/ggml-cpu-alderlake.dir/ggml-cpu/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[190/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-alderlake.dir/ggml-cpu/tiled/tiled-kernel.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[191/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/hbm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[192/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-alderlake.dir/ggml-cpu/vec.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[193/239] Building C object ggml/src/CMakeFiles/ggml-cpu-alderlake.dir/ggml-cpu/arch/x86/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/arch/x86/quants.c:3:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:79:9: warning: keyword is hidden by macro definition [-Wkeyword-macro]
+   79 | #define static_assert(cond, msg) _Static_assert(cond, msg)
+      |         ^
+2 warnings generated.
+[194/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-alderlake-feats.dir/ggml-cpu/arch/x86/cpu-feats.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[195/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-alderlake.dir/ggml-cpu/binary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[196/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-zen4.dir/ggml-cpu/tiled/tiled.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[197/239] Building C object ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/ggml-cpu.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[198/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-alderlake.dir/ggml-cpu/arch/x86/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[199/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-zen4.dir/ggml-cpu/llamafile/sgemm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.cpp:54:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[200/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/traits.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[201/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/amx/amx.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[202/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-alderlake.dir/ggml-cpu/unary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[203/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-cooperlake.dir/ggml-cpu/ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[204/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/ggml-cpu.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[205/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-alderlake.dir/ggml-cpu/llamafile/sgemm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.cpp:54:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[206/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/vec.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[207/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/tiled/tiled-kernel.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[208/239] Building C object ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[209/239] Building C object ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/arch/x86/quants.c.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/arch/x86/quants.c:3:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:79:9: warning: keyword is hidden by macro definition [-Wkeyword-macro]
+   79 | #define static_assert(cond, msg) _Static_assert(cond, msg)
+      |         ^
+2 warnings generated.
+[210/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-alderlake.dir/ggml-cpu/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[211/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sapphirerapids-feats.dir/ggml-cpu/arch/x86/cpu-feats.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[212/239] Linking CXX shared module bin\ggml-cpu-sse42.dll
+[213/239] Linking CXX shared module bin\ggml-cpu-x64.dll
+[214/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/binary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[215/239] Linking CXX shared module bin\ggml-cpu-sandybridge.dll
+[216/239] Linking CXX shared module bin\ggml-cpu-ivybridge.dll
+[217/239] Linking CXX shared module bin\ggml-cpu-skylakex.dll
+[218/239] Linking CXX shared module bin\ggml-cpu-piledriver.dll
+[219/239] Linking CXX shared module bin\ggml-cpu-haswell.dll
+[220/239] Linking CXX shared module bin\ggml-cpu-cannonlake.dll
+[221/239] Linking CXX shared module bin\ggml-cpu-cascadelake.dll
+[222/239] Linking CXX shared module bin\ggml-cpu-icelake.dll
+[223/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-alderlake.dir/ggml-cpu/tiled/tiled.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[224/239] Linking CXX shared module bin\ggml-cpu-cooperlake.dll
+[225/239] Building CXX object ggml/src/CMakeFiles/ggml.dir/ggml-backend-dl.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[226/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/unary-ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[227/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-zen4.dir/ggml-cpu/ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[228/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/arch/x86/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[229/239] Building CXX object ggml/src/CMakeFiles/ggml.dir/ggml-backend-reg.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[230/239] Linking CXX shared module bin\ggml-cpu-zen4.dll
+[231/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/repack.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[232/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/llamafile/sgemm.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/ggml-cpu/llamafile/sgemm.cpp:54:
+In file included from C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-quants.h:4:
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  204 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:204:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  240 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:240:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  261 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:261:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  302 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:302:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  329 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:329:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous structs are a GNU extension [-Wgnu-anonymous-struct]
+  346 |         struct {
+      |         ^
+C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/engine/llama/llama.cpp/ggml/src/.\ggml-common.h:346:9: warning: anonymous types declared in an anonymous union are an extension [-Wnested-anon-types]
+13 warnings generated.
+[233/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/tiled/tiled.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[234/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-alderlake.dir/ggml-cpu/ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
+[235/239] Linking CXX shared module bin\ggml-cpu-alderlake.dll
+[236/239] Building CXX object ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/ops.cpp.obj
+warning: unknown warning option '-W0' [-Wunknown-warning-option]
+1 warning generated.
