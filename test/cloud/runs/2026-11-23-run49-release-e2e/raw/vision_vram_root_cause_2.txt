@@ -1,0 +1,9 @@
+server started, nothing loaded: GPU used/free 870 MiB, 3023 MiB
+vision 1 text_first 200 The image is red.
+after vision 1: GPU used/free 2390 MiB, 1503 MiB
+vision 2 image_first 500 Insufficient live VRAM for media request workspace
+after vision 2: GPU used/free 2399 MiB, 1494 MiB
+vision 3 image_first 500 Insufficient live VRAM for media request workspace
+after vision 3: GPU used/free 2399 MiB, 1494 MiB
+vision 4 text_first 500 Insufficient live VRAM for media request workspace
+after vision 4: GPU used/free 2399 MiB, 1494 MiB

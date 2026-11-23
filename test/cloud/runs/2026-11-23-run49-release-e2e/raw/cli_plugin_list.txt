@@ -1,0 +1,7 @@
+$ cluaiz plugin list
+
+  📦 [Cluaiz Tools] Installed PLUGIN:
+    🔹 math (v1.0.0) [ENABLED] | Mode: AUTO | Lifespan: Permanent (-1)
+       ↳ Triggers: ["calculate", "solve this expression", "math expression", "trigonometry", "square root", "percentage"]
+
+exit=0

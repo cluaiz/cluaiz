@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "c:\Users\<user>\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\test\cep\wave_b\system_http_journey.py", line 144, in <module>
+    main()
+    ~~~~^^
+  File "c:\Users\<user>\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\test\cep\wave_b\system_http_journey.py", line 29, in main
+    validate_paths(exe, seed, home, args.port)
+    ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "c:\Users\<user>\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\test\cep\wave_b\journey_home.py", line 40, in validate_paths
+    raise ValueError("Seed must be an existing isolated test home, not ~/.cluaiz")
+ValueError: Seed must be an existing isolated test home, not ~/.cluaiz

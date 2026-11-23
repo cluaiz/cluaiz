@@ -1,0 +1,52 @@
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+version                exit=0 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+list                   exit=0 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+show                   exit=0 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+status                 exit=0 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+config_path            exit=0 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+permission             exit=0 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+token_list             exit=0 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+provider_list          exit=0 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+set_chat               exit=0 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+set_vector             exit=0 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+run_prompt             exit=0 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+bench                  exit=0 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+ps                     exit=0 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+plugin_install         exit=0 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+plugin_list            exit=0 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+mcp_install            exit=0 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+mcp_list               exit=0 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+flow_validate          exit=0 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+flow_save              exit=1 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+flow_list              exit=0 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+flow_run               exit=1 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+flow_logs              exit=1 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+storage                exit=0 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+config_list            exit=0 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+ingest                 exit=1 0.0s
+/c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/cli_checks.sh: line 8: bc: command not found
+agent_headless         exit=0 0.0s

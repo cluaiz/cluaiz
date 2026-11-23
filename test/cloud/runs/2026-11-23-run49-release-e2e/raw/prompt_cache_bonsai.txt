@@ -1,0 +1,3 @@
+A 200 TTFT ms 2231 prompt 1201
+B 200 TTFT ms 773 prompt 1361
+A again 200 TTFT ms 2184 prompt 1201

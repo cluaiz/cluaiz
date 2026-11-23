@@ -1,0 +1,12 @@
+   Compiling llama-engine v0.1.0 (C:\Users\<user>\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\engine\llama)
+warning: llama-engine@0.1.0: 🔩 Found local cached llama.cpp at "c:\\Users\\<user>\\my\\Cluaiz-workspace\\Cluaiz-Technologies\\cluaiz\\engine\\llama\\llama.cpp"
+warning: llama-engine@0.1.0: 🧿 [Llama-Engine] Industrial CMake Build Complete.
+   Compiling cluaiz-runtime v0.1.0 (C:\Users\<user>\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\engine\runtime)
+   Compiling cluaiz-api v0.1.0 (C:\Users\<user>\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\api)
+   Compiling cluaiz-automation-host v0.1.0 (C:\Users\<user>\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\automation\host)
+   Compiling cmd v0.1.0 (C:\Users\<user>\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\cmd)
+error: failed to remove file `c:\Users\<user>\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\target\debug\cluaiz.exe`
+
+Caused by:
+  Access is denied. (os error 5)
+exit=101 secs=80

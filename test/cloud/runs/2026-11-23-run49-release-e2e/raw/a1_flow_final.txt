@@ -1,0 +1,1 @@
+status succeeded running_ms 84660 [('pause', 'succeeded', 8010), ('answer', 'succeeded', 84619)] answer [{"waited_ms": 8010}, "10"]

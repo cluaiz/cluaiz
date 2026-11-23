@@ -1,0 +1,3 @@
+$ cluaiz flow logs run49-check
+error: flow: flows.runs: there is no flow named run49-check (code -32004)
+exit=1

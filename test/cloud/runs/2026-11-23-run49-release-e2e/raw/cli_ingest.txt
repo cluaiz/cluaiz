@@ -1,0 +1,8 @@
+$ cluaiz ingest C:\Users\<user>\AppData\Local\cluaiz-test\run49-e2e/ingest-sample.md
+C:\Users\<user>\AppData\Local\cluaiz-test\run49-e2e/ingest-sample.md: 2 extracted chunks
+Chunk 1:
+# Notes
+Chunk 2:
+The release check number is 4917.
+error: ingest: This ONNX task owner requires an ONNX package
+exit=1

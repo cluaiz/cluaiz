@@ -1,0 +1,5 @@
+$ cluaiz storage temp-status
+Temporary Media Storage Status:
+Total Files: 0
+Total Size: 0.00 MB
+exit=0

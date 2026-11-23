@@ -1,0 +1,12 @@
+$ cluaiz rm qwen3-1.7b-iq4xs
+  🗑️ Removed 'qwen3-1.7b-iq4xs' (C:\Users\<user>\AppData\Local\cluaiz-test\run49-e2e\models\chat\qwen3-1.7b-iq4xs)
+exit=0
+$ cluaiz list
+ID                               CATEGORY    FORMAT        SIZE
+qwen3.5-0.8b-gguf-Q4_K_M *       chat        gguf       0.74 GB
+ternary-bonsai-2-4b-gguf         chat        gguf       1.89 GB
+embeddinggemma-300m-gguf-Q8_0    embedding   gguf       0.33 GB
+moonshine-tiny-onnx-INT8         stt         onnx       0.05 GB
+kokoro-82m-v1.0-onnx-UINT8       tts         onnx       0.18 GB
+* active chat model (used by `cluaiz run` without a model)
+exit=0

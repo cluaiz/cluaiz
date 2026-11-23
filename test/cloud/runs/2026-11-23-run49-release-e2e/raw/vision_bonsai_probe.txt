@@ -1,0 +1,4 @@
+ternary-bonsai-2-4b-gguf nosys 200 'red'
+ternary-bonsai-2-4b-gguf system 200 'red'
+qwen3.5-0.8b-gguf-Q4_K_M nosys 200 'red'
+qwen3.5-0.8b-gguf-Q4_K_M system 200 'red'

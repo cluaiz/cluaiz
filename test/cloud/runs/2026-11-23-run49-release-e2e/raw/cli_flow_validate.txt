@@ -1,0 +1,4 @@
+$ cluaiz flow validate /c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/run49-check.flow.yaml
+valid C:/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/run49-check.flow.yaml
+  permissions it needs: {"models":["*"]}
+exit=0

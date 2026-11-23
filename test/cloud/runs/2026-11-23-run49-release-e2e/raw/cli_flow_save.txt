@@ -1,0 +1,9 @@
+$ cluaiz flow save /c/Users/<user>/my/Cluaiz-workspace/Cluaiz-Technologies/cluaiz/test/cloud/runs/2026-11-23-run49-release-e2e/run49-check.flow.yaml
+This flow needs these permissions:
+  {
+  "models": [
+    "*"
+  ]
+}
+Allow them? [y/N] error: flow: not saved: the permissions were not allowed
+exit=1

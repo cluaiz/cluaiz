@@ -1,0 +1,13 @@
+PASS auth_required                          api_auth.required=False (default, not changed); HTTP 200 without a token
+PASS chat_logit_bias                        'Yes'=9175 'No'=2665; plain 'No'; Yes +100 'YesYesYesYesYesYesYesYes'; No -100 'Yes'; unknown id HTTP 400
+FAIL chat_vision                            red 448x448 PNG: {'text_first': (200, 'I cannot identify the color of an image. I am an AI assistant designed to help with tasks like writing code, solving math problems, and analyzing text. I do not have the capability to analyze images or determine their color.'), 'image_first': (200, 'red')}
+PASS chat_multiturn_cache                   turn 1 prompt 1473 TTFT 1882 ms; turn 2 prompt 1527 TTFT 244 ms (the serve log line '[Context] prompt N tokens (M from the cache)' is the proof)
+FAIL tts_speech                             HTTP 200, WAV 0 bytes in audio_data (documented JSON reply)
+FAIL stt_transcription                      HTTP 400, text ''
+PASS cep_system_reads                       18/18 answered; errors: {}
+PASS cep_system_events                      100 events, latest_seq 476; empty long poll waited 1.5 s; a poll during activity returned 0 new events after 10.0 s: []
+== 5/8 passed
+PASS tts_speech                             HTTP 200, WAV 171644 bytes in audio_data (documented JSON reply)
+PASS stt_transcription                      HTTP 200, text 'The quick brown fox jumps over the lazy dog.'
+PASS cep_system_events                      100 events, latest_seq 476; empty long poll waited 1.5 s; a poll during activity returned 1 new events after 1.0 s: ['task.done']
+== 3/3 passed

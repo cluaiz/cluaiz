@@ -1,0 +1,19 @@
+19c77783
+ M api/src/cep/methods/config.rs
+ M docs/api/cep/system/config/config.get.md
+ M engine/llama/llama.cpp
+ M test/cloud/remote/ssd_prefetch/README.md
+ M test/cloud/remote/ssd_prefetch/run_case_g.sh
+ M test/cloud/runs/2026-11-21-run33-ollama-client-probe/SUMMARY.md
+?? test/cloud/remote/ssd_prefetch/fair_client.py
+?? test/cloud/remote/ssd_prefetch/summarize_fair.py
+?? test/cloud/runs/2026-11-23-run49-release-e2e/
+diff --git a/engine/llama/llama.cpp b/engine/llama/llama.cpp
+index a2d0fbed..8676a916 160000
+--- a/engine/llama/llama.cpp
++++ b/engine/llama/llama.cpp
+@@ -1 +1 @@
+-Subproject commit a2d0fbed9659499ec8440c2bc1e2fdce855bfb99
++Subproject commit 8676a916e206d26b9cabb51c9895877212501980
+name, memory.total [MiB], memory.used [MiB]
+NVIDIA GeForce RTX 3050 A Laptop GPU, 4094 MiB, 1066 MiB

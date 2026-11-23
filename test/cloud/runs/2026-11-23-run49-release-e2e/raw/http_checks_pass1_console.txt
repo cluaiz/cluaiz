@@ -1,0 +1,31 @@
+PASS health                                 HTTP 200
+FAIL auth_required                          HTTP 200 without a token
+PASS v1_models                              HTTP 200, 4 models, chat model listed: True
+PASS chat_basic                             HTTP 200, content '4', usage {'completion_tokens': 1, 'completion_tokens_details': {'reasoning_tokens': 0}, 'model_load_ms': 24, 'prompt_tokens': 889, 'time_to_first_token_ms': 153, 'tokens_per_second': 5.88, 'total_time_ms': 170, 'total_tokens': 890}
+PASS chat_stream_usage                      HTTP 200, 7 chunks, text 'Hello!', usage chunk True, ends [DONE] True
+PASS chat_stop_string                       HTTP 200, content '1,2,3,4,', finish stop
+PASS chat_stop_list                         HTTP 200, content '1,2,3,4,5,6,'
+PASS chat_max_completion_tokens             HTTP 200, completion_tokens 5, finish length
+PASS chat_refuses_n2_logprobs               n=2 HTTP 400, logprobs HTTP 400
+FAIL chat_logit_bias                        token 'Yes'=9175; plain 'No'; with -100 'No'; unknown id HTTP 400
+PASS chat_tools                             HTTP 200, call get_weather {"city":"Paris"}
+PASS chat_approval_mode                     strict HTTP 200, bogus HTTP 400, global mode after: sandboxed
+FAIL chat_vision                            HTTP 200, content 'I cannot identify the color of an image. I am an AI assistant designed to help with tasks like writing code, solving math problems, and analyzing text. I do not have the capability to analyze images or determine their colors.'
+FAIL chat_multiturn_cache                   turn 2 prompt 1527, cached None
+PASS embeddings                             HTTP 200, dims [768, 768]
+FAIL tts_speech                             HTTP 200, 229030 bytes, application/json
+FAIL stt_transcription                      HTTP 400, text ''
+PASS ingest_text                            HTTP 200
+PASS ollama_version                         HTTP 200 {'version': '0.1.0'}
+PASS ollama_tags                            HTTP 200, 4 models, chat parameter_size 752.39M
+PASS ollama_show                            known HTTP 200 details {'families': ['qwen35'], 'family': 'qwen35', 'format': 'gguf', 'parameter_size': '752.39M', 'parent_model': '', 'quantization_level': 'Q4_K_M'}; unknown HTTP 404
+PASS ollama_chat                            HTTP 200, content '3+3 = 6', done True
+PASS ollama_chat_stream                     HTTP 200, 17 NDJSON lines, last done True
+PASS ollama_generate                        HTTP 200, response 'The capital of France is **Paris**.'
+PASS ollama_embed                           HTTP 200, 1 x 768
+PASS ollama_ps                              HTTP 200, [('qwen3.5-0.8b-gguf-Q4_K_M', 1178981423, 16384)]
+FAIL cep_system_reads                       16/18 answered; errors: {'memory.search': {'code': -32602, 'data': {'errors': [{'message': 'missing field `chat_id`', 'path': ''}], 'example': {'chat_id': 'c1', 'query': 'deploy port'}, 'type': 'invalid_params'}, 'message': 'Invalid params: missing field `chat_id`'}, 'context.reports': {'code': -32602, 'data': {'errors': [{'message': 'missing field `chat_id`', 'path': ''}], 'example': {'chat_id': 'c1'}, 'type': 'invalid_params'}, 'message': 'Invalid params: missing field `chat_id`'}}
+PASS cep_live_port                          engine.api_port 8013, saved 8000, live 8013
+FAIL cep_system_events                      100 events, cursor None, long poll with nothing new waited 0.0 s
+PASS cep_config_roundtrip                   cleanup_policy 'Immediate' written back unchanged
+== 22/30 passed

@@ -1,0 +1,8 @@
+PASS A4_math_cep_no_approval                mode sandboxed; asked False; result {"expression": "2^10+sqrt(16)", "formatted": "1028", "result": 1028.0, "status":
+PASS A4_math_chat_no_approval               HTTP 200; permission_request False; math result 1028 seen True; 69 lines
+PASS A2_files_tool_default_workspace        workspace {"path": "C:\\Users\\<user>\\AppData\\Local\\cluaiz-test\\run49-e2e\\workspace"}; listing leaks home: False; listing {"content": [{"text": "", "type": "text"}], "structuredContent": {"content": ""}}
+PASS A2_files_tool_parent_refused           '..' listing leaks session.token: False; null
+PASS A2_files_tool_token_unreadable         read ../session.token leaked the token: False
+PASS A2_workspace_set_home                  workspace.set <home>: refused {"code": -32602, "data": {"errors": [{"message": "The Cluaiz home cannot be the workspace: it holds the session token and settings. Open a project folder", "pat
+PASS A1_flows_run_get_running_step          run run_84a466183638; running steps seen [('pause', 'wait', 'running')]; snapshots [[('pause', 'wait', 'running')]]
+FAIL A1_flow_run_completes                  final status running
