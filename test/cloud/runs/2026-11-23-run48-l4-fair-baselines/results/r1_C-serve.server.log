@@ -1,0 +1,412 @@
+2026-11-23T13:47:33.149790Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-23T13:47:33.201761Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-23T13:47:33.960644Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+2026-11-23T13:47:33.960695Z DEBUG ℹ️ [cluaiz] Running from workspace binary; global deployment available via dev-sync.
+Starting the Cluaiz API server on http://localhost:8011 ...
+2026-11-23T13:47:33.965969Z  INFO 🔒 [Auth] Initialized local session secret at /home/<user>/ch-run48/r1_C-serve/session.token
+2026-11-23T13:47:34.520827Z DEBUG [llama.cpp] ggml_cuda_init: found 1 CUDA devices (Total VRAM: 22614 MiB):
+2026-11-23T13:47:34.520841Z DEBUG [llama.cpp] Device 0: NVIDIA L4, compute capability 8.9, VMM: yes, VRAM: 22614 MiB
+2026-11-23T13:47:34.521695Z DEBUG [llama.cpp] load_backend: loaded CUDA backend from /home/<user>/cluaiz-pf/target/release/libggml-cuda.so
+2026-11-23T13:47:34.574441Z DEBUG [llama.cpp] load_backend: loaded CPU backend from /home/<user>/cluaiz-pf/target/release/libggml-cpu-cascadelake.so
+2026-11-23T13:47:34.575501Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-23T13:47:34.611762Z  INFO 🌐 Cluaiz API Server running on http://127.0.0.1:8011
+2026-11-23T13:47:35.137555Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS' to "/home/<user>/ch-run23/models/chat/qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf"
+2026-11-23T13:47:35.222421Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS
+║   • Architecture    : qwen35moe | 41 layers | heads 16 | KV heads 2 | head size K 256 / V 256 | 256 experts, 8 active | experts 14.53 GB | hybrid: 11 attention layers with a KV cache, 30 linear-attention layers with a 2.2 MB state
+║   • Weights         : file 18.21 GB (as Hugging Face counts it) | input embeddings 0.50 GB (always CPU) | output head 0.39 GB | vocab 248320
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 16384 tokens, KV Kv16 (Auto: 16384 tokens, KV Kv16, buffer 1.73 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 8.00 of 22.49 GB | buffer kept free 1.73 GB (measured: GPU pool +0.73 GB + 1.00 GB reserve; estimate corrected by llama.cpp's dry run -0.38 GB)
+║   • RAM             : free 30.16 of 31.35 GB | Cluaiz may use 28.61 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : MoE split (attention on GPU, experts in RAM)
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 41 on GPU, 0 in RAM (of 41)
+║   • VRAM            : 6.27 GB (weights + KV 0.41 + logits)
+║   • RAM             : 15.03 GB (incl. KV 0.00)
+║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+║   • Reason         : MoE split: attention/shared 1.92 + KV 0.41 + buffers 0.43 on GPU, experts of 41 / 41 layers in RAM (14.53 GB), MoE cache 3.52 GB in VRAM (CPU share 0.9)
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [NO]       VRAM 16.95 GB | RAM  0.50 GB | does not fit in VRAM: weights 16.45 + KV 0.41 + buffers 0.10 = 16.95 GB vs usable VRAM 6.27 GB
+║   • MoE split        [FITS]     VRAM  6.27 GB | RAM 15.03 GB | attention/shared 1.92 + KV 0.41 + buffers 0.43 on GPU, experts of 41 / 41 layers in RAM (14.53 GB), MoE cache 3.52 GB in VRAM (CPU share 0.9)
+║   • GPU + RAM split  [FITS]     VRAM  6.16 GB | RAM 11.54 GB | 13 / 41 blocks + output head on GPU (6.16 GB), 28 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM 17.83 GB | weights 16.95 + KV 0.41 + logits 0.47 = 17.83 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-23T13:47:35.222672Z  INFO 🔮 [MTP] Auto: off (its memory would not fit next to this placement)
+2026-11-23T13:47:35.222848Z DEBUG 🆘 [MEMORY TRACE: 1. BEFORE MODEL LOAD] Free RAM: 30.16 GB / 31.35 GB
+2026-11-23T13:47:35.222862Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 4, n_threads_batch = 4
+2026-11-23T13:47:35.222867Z  INFO 🧬 [Native-Llama] Loading model: /home/<user>/ch-run23/models/chat/qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf | ctx: 16384 tokens
+2026-11-23T13:47:35.316842Z DEBUG [llama.cpp] llama_model_loader: loaded meta data with 55 key-value pairs and 753 tensors from /home/<user>/ch-run23/models/chat/qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf (version GGUF V3 (latest))
+2026-11-23T13:47:35.316894Z DEBUG [llama.cpp] llama_model_loader: Dumping metadata keys/values. Note: KV overrides do not apply in this output.
+2026-11-23T13:47:35.318019Z DEBUG [llama.cpp] llama_model_loader: - type  f32:  368 tensors
+2026-11-23T13:47:35.318024Z DEBUG [llama.cpp] llama_model_loader: - type q8_0:  259 tensors
+2026-11-23T13:47:35.318028Z DEBUG [llama.cpp] llama_model_loader: - type q3_K:    2 tensors
+2026-11-23T13:47:35.318039Z DEBUG [llama.cpp] llama_model_loader: - type q4_K:    1 tensors
+2026-11-23T13:47:35.318043Z DEBUG [llama.cpp] llama_model_loader: - type q6_K:    4 tensors
+2026-11-23T13:47:35.318047Z DEBUG [llama.cpp] llama_model_loader: - type iq3_s:   78 tensors
+2026-11-23T13:47:35.318051Z DEBUG [llama.cpp] llama_model_loader: - type iq4_xs:   39 tensors
+2026-11-23T13:47:35.318055Z DEBUG [llama.cpp] llama_model_loader: - type bf16:    2 tensors
+2026-11-23T13:47:35.318062Z DEBUG [llama.cpp] print_info: file format = GGUF V3 (latest)
+2026-11-23T13:47:35.318070Z DEBUG [llama.cpp] print_info: file type   = IQ4_XS - 4.25 bpw
+2026-11-23T13:47:35.318076Z DEBUG [llama.cpp] print_info: file size   = 16.95 GiB (4.10 BPW)
+2026-11-23T13:47:35.414932Z DEBUG [llama.cpp] llama_prepare_model_devices: using device CUDA0 (NVIDIA L4) (0000:00:03.0) - 8001 MiB free
+2026-11-23T13:47:35.578073Z DEBUG [llama.cpp] init_tokenizer: initializing tokenizer for type 2
+2026-11-23T13:47:35.613660Z DEBUG [llama.cpp] load: 0 unused tokens
+2026-11-23T13:47:35.613711Z DEBUG [llama.cpp] load: control token: 248075 '<tts_text_bos_single>' is not marked as EOG
+2026-11-23T13:47:35.613716Z DEBUG [llama.cpp] load: control token: 248074 '<tts_text_eod>' is not marked as EOG
+2026-11-23T13:47:35.613721Z DEBUG [llama.cpp] load: control token: 248070 '<|audio_start|>' is not marked as EOG
+2026-11-23T13:47:35.613726Z DEBUG [llama.cpp] load: control token: 248062 '<|fim_suffix|>' is not marked as EOG
+2026-11-23T13:47:35.613730Z DEBUG [llama.cpp] load: control token: 248056 '<|image_pad|>' is not marked as EOG
+2026-11-23T13:47:35.613735Z DEBUG [llama.cpp] load: control token: 248054 '<|vision_end|>' is not marked as EOG
+2026-11-23T13:47:35.613740Z DEBUG [llama.cpp] load: control token: 248053 '<|vision_start|>' is not marked as EOG
+2026-11-23T13:47:35.613745Z DEBUG [llama.cpp] load: control token: 248045 '<|im_start|>' is not marked as EOG
+2026-11-23T13:47:35.614597Z DEBUG [llama.cpp] load: control token: 248073 '<tts_text_bos>' is not marked as EOG
+2026-11-23T13:47:35.614620Z DEBUG [llama.cpp] load: control token: 248055 '<|vision_pad|>' is not marked as EOG
+2026-11-23T13:47:35.615067Z DEBUG [llama.cpp] load: control token: 248049 '<|box_start|>' is not marked as EOG
+2026-11-23T13:47:35.622537Z DEBUG [llama.cpp] load: control token: 248052 '<|quad_end|>' is not marked as EOG
+2026-11-23T13:47:35.625018Z DEBUG [llama.cpp] load: control token: 248076 '<|audio_pad|>' is not marked as EOG
+2026-11-23T13:47:35.627684Z DEBUG [llama.cpp] load: control token: 248060 '<|fim_prefix|>' is not marked as EOG
+2026-11-23T13:47:35.630172Z DEBUG [llama.cpp] load: control token: 248051 '<|quad_start|>' is not marked as EOG
+2026-11-23T13:47:35.633433Z DEBUG [llama.cpp] load: control token: 248072 '<tts_pad>' is not marked as EOG
+2026-11-23T13:47:35.639255Z DEBUG [llama.cpp] load: control token: 248071 '<|audio_end|>' is not marked as EOG
+2026-11-23T13:47:35.640482Z DEBUG [llama.cpp] load: control token: 248050 '<|box_end|>' is not marked as EOG
+2026-11-23T13:47:35.649339Z DEBUG [llama.cpp] load: control token: 248061 '<|fim_middle|>' is not marked as EOG
+2026-11-23T13:47:35.650777Z DEBUG [llama.cpp] load: control token: 248057 '<|video_pad|>' is not marked as EOG
+2026-11-23T13:47:35.653477Z DEBUG [llama.cpp] load: control token: 248048 '<|object_ref_end|>' is not marked as EOG
+2026-11-23T13:47:35.653851Z DEBUG [llama.cpp] load: control token: 248047 '<|object_ref_start|>' is not marked as EOG
+2026-11-23T13:47:35.662684Z DEBUG [llama.cpp] load: printing all EOG tokens:
+2026-11-23T13:47:35.662693Z DEBUG [llama.cpp] load:   - 248044 ('<|endoftext|>')
+2026-11-23T13:47:35.662699Z DEBUG [llama.cpp] load:   - 248046 ('<|im_end|>')
+2026-11-23T13:47:35.662704Z DEBUG [llama.cpp] load:   - 248063 ('<|fim_pad|>')
+2026-11-23T13:47:35.662726Z DEBUG [llama.cpp] load:   - 248064 ('<|repo_name|>')
+2026-11-23T13:47:35.662732Z DEBUG [llama.cpp] load:   - 248065 ('<|file_sep|>')
+2026-11-23T13:47:35.663547Z DEBUG [llama.cpp] load: special tokens cache size = 33
+2026-11-23T13:47:35.713214Z DEBUG [llama.cpp] load: token to piece cache size = 1.7581 MB
+2026-11-23T13:47:35.713251Z DEBUG [llama.cpp] print_info: arch                  = qwen35moe
+2026-11-23T13:47:35.713256Z DEBUG [llama.cpp] print_info: vocab_only            = 0
+2026-11-23T13:47:35.713262Z DEBUG [llama.cpp] print_info: no_alloc              = 0
+2026-11-23T13:47:35.713266Z DEBUG [llama.cpp] print_info: n_ctx_train           = 262144
+2026-11-23T13:47:35.713272Z DEBUG [llama.cpp] print_info: n_embd_inp            = 2048
+2026-11-23T13:47:35.713276Z DEBUG [llama.cpp] print_info: n_embd                = 2048
+2026-11-23T13:47:35.713281Z DEBUG [llama.cpp] print_info: n_embd_out            = 2048
+2026-11-23T13:47:35.713286Z DEBUG [llama.cpp] print_info: n_layer               = 40
+2026-11-23T13:47:35.713290Z DEBUG [llama.cpp] print_info: n_layer_all           = 41
+2026-11-23T13:47:35.714371Z DEBUG [llama.cpp] print_info: n_head                = 16
+2026-11-23T13:47:35.714390Z DEBUG [llama.cpp] print_info: n_head_kv             = 2
+2026-11-23T13:47:35.714395Z DEBUG [llama.cpp] print_info: n_rot                 = 64
+2026-11-23T13:47:35.714399Z DEBUG [llama.cpp] print_info: n_swa                 = 0
+2026-11-23T13:47:35.714405Z DEBUG [llama.cpp] print_info: is_swa_any            = 0
+2026-11-23T13:47:35.714409Z DEBUG [llama.cpp] print_info: non_causal_type       = 0
+2026-11-23T13:47:35.714413Z DEBUG [llama.cpp] print_info: n_embd_head_k         = 256
+2026-11-23T13:47:35.714417Z DEBUG [llama.cpp] print_info: n_embd_head_v         = 256
+2026-11-23T13:47:35.714424Z DEBUG [llama.cpp] print_info: n_gqa                 = 8
+2026-11-23T13:47:35.714434Z DEBUG [llama.cpp] print_info: n_embd_k_gqa          = 512
+2026-11-23T13:47:35.714441Z DEBUG [llama.cpp] print_info: n_embd_v_gqa          = 512
+2026-11-23T13:47:35.714447Z DEBUG [llama.cpp] print_info: f_norm_eps            = 0.0e+00
+2026-11-23T13:47:35.714452Z DEBUG [llama.cpp] print_info: f_norm_rms_eps        = 1.0e-06
+2026-11-23T13:47:35.714457Z DEBUG [llama.cpp] print_info: f_clamp_kqv           = 0.0e+00
+2026-11-23T13:47:35.714461Z DEBUG [llama.cpp] print_info: f_max_alibi_bias      = 0.0e+00
+2026-11-23T13:47:35.714465Z DEBUG [llama.cpp] print_info: f_logit_scale         = 0.0e+00
+2026-11-23T13:47:35.714469Z DEBUG [llama.cpp] print_info: f_attn_scale          = 0.0e+00
+2026-11-23T13:47:35.714473Z DEBUG [llama.cpp] print_info: f_attn_value_scale    = 0.0000
+2026-11-23T13:47:35.714479Z DEBUG [llama.cpp] print_info: n_ff                  = 0
+2026-11-23T13:47:35.714483Z DEBUG [llama.cpp] print_info: n_expert              = 256
+2026-11-23T13:47:35.714488Z DEBUG [llama.cpp] print_info: n_expert_used         = 8
+2026-11-23T13:47:35.714492Z DEBUG [llama.cpp] print_info: n_expert_groups       = 0
+2026-11-23T13:47:35.714496Z DEBUG [llama.cpp] print_info: n_group_used          = 0
+2026-11-23T13:47:35.714506Z DEBUG [llama.cpp] print_info: causal attn           = 1
+2026-11-23T13:47:35.714511Z DEBUG [llama.cpp] print_info: pooling type          = -1
+2026-11-23T13:47:35.714515Z DEBUG [llama.cpp] print_info: rope type             = 40
+2026-11-23T13:47:35.714519Z DEBUG [llama.cpp] print_info: rope scaling          = linear
+2026-11-23T13:47:35.714523Z DEBUG [llama.cpp] print_info: freq_base_train       = 10000000.0
+2026-11-23T13:47:35.714528Z DEBUG [llama.cpp] print_info: freq_scale_train      = 1
+2026-11-23T13:47:35.714532Z DEBUG [llama.cpp] print_info: n_ctx_orig_yarn       = 262144
+2026-11-23T13:47:35.714536Z DEBUG [llama.cpp] print_info: rope_yarn_log_mul     = 0.0000
+2026-11-23T13:47:35.714540Z DEBUG [llama.cpp] print_info: rope_finetuned        = unknown
+2026-11-23T13:47:35.714544Z DEBUG [llama.cpp] print_info: mrope sections        = [11, 11, 10, 0]
+2026-11-23T13:47:35.714548Z DEBUG [llama.cpp] print_info: ssm_d_conv            = 4
+2026-11-23T13:47:35.714552Z DEBUG [llama.cpp] print_info: ssm_d_inner           = 4096
+2026-11-23T13:47:35.714556Z DEBUG [llama.cpp] print_info: ssm_d_state           = 128
+2026-11-23T13:47:35.714560Z DEBUG [llama.cpp] print_info: ssm_dt_rank           = 32
+2026-11-23T13:47:35.714567Z DEBUG [llama.cpp] print_info: ssm_n_group           = 16
+2026-11-23T13:47:35.714571Z DEBUG [llama.cpp] print_info: ssm_dt_b_c_rms        = 0
+2026-11-23T13:47:35.714576Z DEBUG [llama.cpp] print_info: model type            = 35B.A3B
+2026-11-23T13:47:35.714589Z DEBUG [llama.cpp] print_info: model params          = 35.51 B
+2026-11-23T13:47:35.714593Z DEBUG [llama.cpp] print_info: general.name          = Qwen3.6-35B-A3B
+2026-11-23T13:47:35.714601Z DEBUG [llama.cpp] print_info: vocab type            = BPE
+2026-11-23T13:47:35.714606Z DEBUG [llama.cpp] print_info: n_vocab               = 248320
+2026-11-23T13:47:35.714610Z DEBUG [llama.cpp] print_info: n_merges              = 247587
+2026-11-23T13:47:35.714615Z DEBUG [llama.cpp] print_info: BOS token             = 248044 '<|endoftext|>'
+2026-11-23T13:47:35.714619Z DEBUG [llama.cpp] print_info: EOS token             = 248046 '<|im_end|>'
+2026-11-23T13:47:35.714623Z DEBUG [llama.cpp] print_info: EOT token             = 248046 '<|im_end|>'
+2026-11-23T13:47:35.714627Z DEBUG [llama.cpp] print_info: PAD token             = 248055 '<|vision_pad|>'
+2026-11-23T13:47:35.714631Z DEBUG [llama.cpp] print_info: LF token              = 198 'Ċ'
+2026-11-23T13:47:35.714635Z DEBUG [llama.cpp] print_info: FIM PRE token         = 248060 '<|fim_prefix|>'
+2026-11-23T13:47:35.714639Z DEBUG [llama.cpp] print_info: FIM SUF token         = 248062 '<|fim_suffix|>'
+2026-11-23T13:47:35.714643Z DEBUG [llama.cpp] print_info: FIM MID token         = 248061 '<|fim_middle|>'
+2026-11-23T13:47:35.714647Z DEBUG [llama.cpp] print_info: FIM PAD token         = 248063 '<|fim_pad|>'
+2026-11-23T13:47:35.714651Z DEBUG [llama.cpp] print_info: FIM REP token         = 248064 '<|repo_name|>'
+2026-11-23T13:47:35.714655Z DEBUG [llama.cpp] print_info: FIM SEP token         = 248065 '<|file_sep|>'
+2026-11-23T13:47:35.714659Z DEBUG [llama.cpp] print_info: EOG token             = 248044 '<|endoftext|>'
+2026-11-23T13:47:35.714666Z DEBUG [llama.cpp] print_info: EOG token             = 248046 '<|im_end|>'
+2026-11-23T13:47:35.714671Z DEBUG [llama.cpp] print_info: EOG token             = 248063 '<|fim_pad|>'
+2026-11-23T13:47:35.714675Z DEBUG [llama.cpp] print_info: EOG token             = 248064 '<|repo_name|>'
+2026-11-23T13:47:35.714679Z DEBUG [llama.cpp] print_info: EOG token             = 248065 '<|file_sep|>'
+2026-11-23T13:47:35.714683Z DEBUG [llama.cpp] print_info: max token length      = 256
+2026-11-23T13:47:35.714691Z DEBUG [llama.cpp] load_tensors: loading model tensors, this can take a while... (load_mode = mmap)
+2026-11-23T13:47:35.721547Z  WARN [llama.cpp] llama_model_loader: tensor overrides to CPU are used with mmap enabled - consider using --load-mode none for better performance
+2026-11-23T13:47:35.837128Z  WARN [llama.cpp] model has unused tensor blk.40.attn_norm.weight (size = 8192 bytes) -- ignoring
+2026-11-23T13:47:35.837144Z  WARN [llama.cpp] model has unused tensor blk.40.post_attention_norm.weight (size = 8192 bytes) -- ignoring
+2026-11-23T13:47:35.837162Z  WARN [llama.cpp] model has unused tensor blk.40.attn_q.weight (size = 17825792 bytes) -- ignoring
+2026-11-23T13:47:35.837171Z  WARN [llama.cpp] model has unused tensor blk.40.attn_k.weight (size = 1114112 bytes) -- ignoring
+2026-11-23T13:47:35.837180Z  WARN [llama.cpp] model has unused tensor blk.40.attn_v.weight (size = 1114112 bytes) -- ignoring
+2026-11-23T13:47:35.837201Z  WARN [llama.cpp] model has unused tensor blk.40.attn_output.weight (size = 8912896 bytes) -- ignoring
+2026-11-23T13:47:35.837210Z  WARN [llama.cpp] model has unused tensor blk.40.attn_q_norm.weight (size = 1024 bytes) -- ignoring
+2026-11-23T13:47:35.837220Z  WARN [llama.cpp] model has unused tensor blk.40.attn_k_norm.weight (size = 1024 bytes) -- ignoring
+2026-11-23T13:47:35.837229Z  WARN [llama.cpp] model has unused tensor blk.40.ffn_gate_inp.weight (size = 1048576 bytes) -- ignoring
+2026-11-23T13:47:35.837239Z  WARN [llama.cpp] model has unused tensor blk.40.ffn_down_exps.weight (size = 150994944 bytes) -- ignoring
+2026-11-23T13:47:35.837253Z  WARN [llama.cpp] model has unused tensor blk.40.ffn_gate_exps.weight (size = 115343360 bytes) -- ignoring
+2026-11-23T13:47:35.837271Z  WARN [llama.cpp] model has unused tensor blk.40.ffn_up_exps.weight (size = 115343360 bytes) -- ignoring
+2026-11-23T13:47:35.837285Z  WARN [llama.cpp] model has unused tensor blk.40.ffn_gate_inp_shexp.weight (size = 4096 bytes) -- ignoring
+2026-11-23T13:47:35.837295Z  WARN [llama.cpp] model has unused tensor blk.40.ffn_gate_shexp.weight (size = 1114112 bytes) -- ignoring
+2026-11-23T13:47:35.837304Z  WARN [llama.cpp] model has unused tensor blk.40.ffn_up_shexp.weight (size = 1114112 bytes) -- ignoring
+2026-11-23T13:47:35.837313Z  WARN [llama.cpp] model has unused tensor blk.40.ffn_down_shexp.weight (size = 1114112 bytes) -- ignoring
+2026-11-23T13:47:35.837324Z  WARN [llama.cpp] model has unused tensor blk.40.nextn.eh_proj.weight (size = 8912896 bytes) -- ignoring
+2026-11-23T13:47:35.837334Z  WARN [llama.cpp] model has unused tensor blk.40.nextn.enorm.weight (size = 8192 bytes) -- ignoring
+2026-11-23T13:47:35.837344Z  WARN [llama.cpp] model has unused tensor blk.40.nextn.hnorm.weight (size = 8192 bytes) -- ignoring
+2026-11-23T13:47:35.837368Z  WARN [llama.cpp] model has unused tensor blk.40.nextn.shared_head_norm.weight (size = 8192 bytes) -- ignoring
+2026-11-23T13:47:35.840606Z DEBUG [llama.cpp] done_getting_tensors: tensor 'token_embd.weight' (q8_0) (and 120 others) cannot be used with preferred buffer type CUDA_Host, using CPU instead
+2026-11-23T13:49:11.178255Z DEBUG [llama.cpp] load_tensors: offloading output layer to GPU
+2026-11-23T13:49:11.179536Z DEBUG [llama.cpp] load_tensors: offloading 40 repeating layers to GPU
+2026-11-23T13:49:11.179543Z DEBUG [llama.cpp] load_tensors: offloaded 42/42 layers to GPU
+2026-11-23T13:49:11.180510Z DEBUG [llama.cpp] load_tensors:        CUDA0 model buffer size =  1921.34 MiB
+2026-11-23T13:49:16.670034Z DEBUG 🆘 [MEMORY TRACE: 2. AFTER MODEL LOAD] Free RAM: 29.95 GB / 31.35 GB
+2026-11-23T13:49:16.670870Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/home/<user>/ch-run23/models/chat/qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS"
+2026-11-23T13:49:16.702126Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-11-23T13:49:16.702136Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-11-23T13:49:16.703043Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16384 tokens
+2026-11-23T13:49:16.703058Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-23T13:49:16.703064Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-23T13:49:16.703070Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-23T13:49:16.703076Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 4/4
+2026-11-23T13:49:16.703213Z DEBUG 🆘 [MEMORY TRACE: 4. BEFORE CONTEXT CREATION] Free RAM: 29.96 GB / 31.35 GB
+2026-11-23T13:49:16.705632Z DEBUG [llama.cpp] llama_context: constructing llama_context
+2026-11-23T13:49:16.705647Z DEBUG [llama.cpp] llama_context: n_seq_max             = 1
+2026-11-23T13:49:16.705653Z DEBUG [llama.cpp] llama_context: n_ctx                 = 16384
+2026-11-23T13:49:16.705658Z DEBUG [llama.cpp] llama_context: n_ctx_seq             = 16384
+2026-11-23T13:49:16.705665Z DEBUG [llama.cpp] llama_context: n_batch               = 512
+2026-11-23T13:49:16.705670Z DEBUG [llama.cpp] llama_context: n_ubatch              = 512
+2026-11-23T13:49:16.705676Z DEBUG [llama.cpp] llama_context: causal_attn           = 1
+2026-11-23T13:49:16.705683Z DEBUG [llama.cpp] llama_context: flash_attn            = auto
+2026-11-23T13:49:16.705688Z DEBUG [llama.cpp] llama_context: kv_unified            = false
+2026-11-23T13:49:16.705696Z DEBUG [llama.cpp] llama_context: freq_base             = 10000000.0
+2026-11-23T13:49:16.705702Z DEBUG [llama.cpp] llama_context: freq_scale            = 1
+2026-11-23T13:49:16.705708Z DEBUG [llama.cpp] llama_context: n_rs_seq              = 0
+2026-11-23T13:49:16.705713Z DEBUG [llama.cpp] llama_context: n_outputs_max         = 512
+2026-11-23T13:49:16.705727Z DEBUG [llama.cpp] llama_context: n_outputs_max_per_seq = 1
+2026-11-23T13:49:16.705732Z DEBUG [llama.cpp] llama_context: n_ctx_seq (16384) < n_ctx_train (262144) -- the full capacity of the model will not be utilized
+2026-11-23T13:49:16.708343Z DEBUG [llama.cpp] set_abort_callback: call
+2026-11-23T13:49:16.710595Z DEBUG [llama.cpp] llama_context:  CUDA_Host  output buffer size =     0.95 MiB
+2026-11-23T13:49:16.715935Z DEBUG [llama.cpp] llama_kv_cache:      CUDA0 KV buffer size =   320.00 MiB
+2026-11-23T13:49:16.715949Z DEBUG [llama.cpp] llama_kv_cache: size =  320.00 MiB ( 16384 cells,  10 layers,  1/1 seqs), K (f16):  160.00 MiB, V (f16):  160.00 MiB
+2026-11-23T13:49:16.715954Z DEBUG [llama.cpp] llama_kv_cache: n_rot_k = 0, n_embd_head_k_all = 256
+2026-11-23T13:49:16.715959Z DEBUG [llama.cpp] llama_kv_cache: n_rot_v = 0, n_embd_head_k_all = 256
+2026-11-23T13:49:16.715970Z DEBUG [llama.cpp] llama_memory_recurrent, layer   0: dev = CUDA0
+2026-11-23T13:49:16.715982Z DEBUG [llama.cpp] llama_memory_recurrent, layer   1: dev = CUDA0
+2026-11-23T13:49:16.715987Z DEBUG [llama.cpp] llama_memory_recurrent, layer   2: dev = CUDA0
+2026-11-23T13:49:16.715991Z DEBUG [llama.cpp] llama_memory_recurrent: layer   3: skipped
+2026-11-23T13:49:16.715996Z DEBUG [llama.cpp] llama_memory_recurrent, layer   4: dev = CUDA0
+2026-11-23T13:49:16.716001Z DEBUG [llama.cpp] llama_memory_recurrent, layer   5: dev = CUDA0
+2026-11-23T13:49:16.716005Z DEBUG [llama.cpp] llama_memory_recurrent, layer   6: dev = CUDA0
+2026-11-23T13:49:16.716016Z DEBUG [llama.cpp] llama_memory_recurrent: layer   7: skipped
+2026-11-23T13:49:16.716020Z DEBUG [llama.cpp] llama_memory_recurrent, layer   8: dev = CUDA0
+2026-11-23T13:49:16.716024Z DEBUG [llama.cpp] llama_memory_recurrent, layer   9: dev = CUDA0
+2026-11-23T13:49:16.716029Z DEBUG [llama.cpp] llama_memory_recurrent, layer  10: dev = CUDA0
+2026-11-23T13:49:16.716034Z DEBUG [llama.cpp] llama_memory_recurrent: layer  11: skipped
+2026-11-23T13:49:16.716038Z DEBUG [llama.cpp] llama_memory_recurrent, layer  12: dev = CUDA0
+2026-11-23T13:49:16.716042Z DEBUG [llama.cpp] llama_memory_recurrent, layer  13: dev = CUDA0
+2026-11-23T13:49:16.716047Z DEBUG [llama.cpp] llama_memory_recurrent, layer  14: dev = CUDA0
+2026-11-23T13:49:16.716051Z DEBUG [llama.cpp] llama_memory_recurrent: layer  15: skipped
+2026-11-23T13:49:16.716055Z DEBUG [llama.cpp] llama_memory_recurrent, layer  16: dev = CUDA0
+2026-11-23T13:49:16.716060Z DEBUG [llama.cpp] llama_memory_recurrent, layer  17: dev = CUDA0
+2026-11-23T13:49:16.716064Z DEBUG [llama.cpp] llama_memory_recurrent, layer  18: dev = CUDA0
+2026-11-23T13:49:16.716069Z DEBUG [llama.cpp] llama_memory_recurrent: layer  19: skipped
+2026-11-23T13:49:16.716073Z DEBUG [llama.cpp] llama_memory_recurrent, layer  20: dev = CUDA0
+2026-11-23T13:49:16.716077Z DEBUG [llama.cpp] llama_memory_recurrent, layer  21: dev = CUDA0
+2026-11-23T13:49:16.716081Z DEBUG [llama.cpp] llama_memory_recurrent, layer  22: dev = CUDA0
+2026-11-23T13:49:16.716085Z DEBUG [llama.cpp] llama_memory_recurrent: layer  23: skipped
+2026-11-23T13:49:16.716089Z DEBUG [llama.cpp] llama_memory_recurrent, layer  24: dev = CUDA0
+2026-11-23T13:49:16.716094Z DEBUG [llama.cpp] llama_memory_recurrent, layer  25: dev = CUDA0
+2026-11-23T13:49:16.716098Z DEBUG [llama.cpp] llama_memory_recurrent, layer  26: dev = CUDA0
+2026-11-23T13:49:16.716103Z DEBUG [llama.cpp] llama_memory_recurrent: layer  27: skipped
+2026-11-23T13:49:16.716114Z DEBUG [llama.cpp] llama_memory_recurrent, layer  28: dev = CUDA0
+2026-11-23T13:49:16.716119Z DEBUG [llama.cpp] llama_memory_recurrent, layer  29: dev = CUDA0
+2026-11-23T13:49:16.716123Z DEBUG [llama.cpp] llama_memory_recurrent, layer  30: dev = CUDA0
+2026-11-23T13:49:16.716128Z DEBUG [llama.cpp] llama_memory_recurrent: layer  31: skipped
+2026-11-23T13:49:16.716132Z DEBUG [llama.cpp] llama_memory_recurrent, layer  32: dev = CUDA0
+2026-11-23T13:49:16.716136Z DEBUG [llama.cpp] llama_memory_recurrent, layer  33: dev = CUDA0
+2026-11-23T13:49:16.716141Z DEBUG [llama.cpp] llama_memory_recurrent, layer  34: dev = CUDA0
+2026-11-23T13:49:16.716148Z DEBUG [llama.cpp] llama_memory_recurrent: layer  35: skipped
+2026-11-23T13:49:16.716153Z DEBUG [llama.cpp] llama_memory_recurrent, layer  36: dev = CUDA0
+2026-11-23T13:49:16.716157Z DEBUG [llama.cpp] llama_memory_recurrent, layer  37: dev = CUDA0
+2026-11-23T13:49:16.716161Z DEBUG [llama.cpp] llama_memory_recurrent, layer  38: dev = CUDA0
+2026-11-23T13:49:16.716166Z DEBUG [llama.cpp] llama_memory_recurrent: layer  39: skipped
+2026-11-23T13:49:16.716645Z DEBUG [llama.cpp] llama_memory_recurrent:      CUDA0 RS buffer size =    62.81 MiB
+2026-11-23T13:49:16.716661Z DEBUG [llama.cpp] llama_memory_recurrent: size =   62.81 MiB (     1 cells,  40 layers,  1 seqs  0 rs_seq), R (f32):    2.81 MiB, S (f32):   60.00 MiB, P (f32):    0.00 MiB
+2026-11-23T13:49:16.716667Z DEBUG [llama.cpp] llama_context: enumerating backends
+2026-11-23T13:49:16.716679Z DEBUG [llama.cpp] llama_context: backend_ptrs.size() = 2
+2026-11-23T13:49:16.736152Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+2026-11-23T13:49:16.736162Z DEBUG [llama.cpp] impl: 37 layers, iq4_xs:  2343 slots (24.7%, 7.9 tokens worth)
+2026-11-23T13:49:16.736167Z DEBUG [llama.cpp] impl:  2 layers, q6_K:   118 slots (23.0%, 7.4 tokens worth)
+2026-11-23T13:49:16.736173Z DEBUG [llama.cpp] impl:  1 layers, q6_K:    54 slots (21.1%, 6.8 tokens worth)
+2026-11-23T13:49:16.736192Z DEBUG [llama.cpp] sched_reserve: reserving ...
+2026-11-23T13:49:16.736200Z DEBUG [llama.cpp] sched_reserve: max_nodes = 23456
+2026-11-23T13:49:16.737751Z DEBUG [llama.cpp] sched_reserve: reserving full memory module
+2026-11-23T13:49:16.737780Z DEBUG [llama.cpp] sched_reserve: worst-case: n_tokens = 512, n_seqs = 1, n_outputs = 1
+2026-11-23T13:49:16.737788Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2026-11-23T13:49:16.750305Z DEBUG [llama.cpp] resolve_fused_ops: Flash Attention enabled
+2026-11-23T13:49:16.750314Z DEBUG [llama.cpp] resolve_fused_ops: resolving fused DeepSeek V4 HC support:
+2026-11-23T13:49:16.750320Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2026-11-23T13:49:16.753096Z DEBUG [llama.cpp] resolve_fused_ops: fused DeepSeek V4 HC pre enabled
+2026-11-23T13:49:16.753103Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2026-11-23T13:49:16.755943Z DEBUG [llama.cpp] resolve_fused_ops: fused DeepSeek V4 HC comb enabled
+2026-11-23T13:49:16.755961Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2026-11-23T13:49:16.758705Z DEBUG [llama.cpp] resolve_fused_ops: fused DeepSeek V4 HC post enabled
+2026-11-23T13:49:16.758714Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =  512, n_seqs =  1, n_outputs =  512
+2026-11-23T13:49:16.789982Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2026-11-23T13:49:16.794996Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =  512, n_seqs =  1, n_outputs =  512
+2026-11-23T13:49:16.798915Z DEBUG [llama.cpp] sched_reserve:      CUDA0 compute buffer size =   537.00 MiB
+2026-11-23T13:49:16.798923Z DEBUG [llama.cpp] sched_reserve:  CUDA_Host compute buffer size =    32.03 MiB
+2026-11-23T13:49:16.798932Z DEBUG [llama.cpp] sched_reserve: graph (pp bs=512, tg bs=1): nodes = 3819 / 4339, splits = 122 / 122, input objects = 4 / 4, input tensors = 10 / 10
+2026-11-23T13:49:16.798939Z DEBUG [llama.cpp] sched_reserve: reserve took 62.74 ms, sched copies = 1
+2026-11-23T13:49:16.799236Z DEBUG 🆘 [MEMORY TRACE: 5. AFTER CONTEXT CREATION] Free RAM: 29.88 GB / 31.35 GB
+2026-11-23T13:49:25.169137Z  INFO 🔍 [EngineHost] VRAM planned 6.27 GB, taken 6.53 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 41
+2026-11-23T13:49:25.174833Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /home/<user>/ch-run23/models/chat/qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf
+2026-11-23T13:49:25.240130Z  INFO 🧮 [Tokens] Conversation 19 tokens (1 messages) counted in 4.48 ms
+2026-11-23T13:49:25.252884Z  INFO ⏱️ [Preflight] 110116 ms total | model load 110064 ms | registry + template + tags 33 ms | skills + tools 13 ms | rest 4 ms
+2026-11-23T13:49:25.259031Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=430
+2026-11-23T13:49:25.263231Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (167 bytes) in 0 ms
+2026-11-23T13:49:25.264503Z DEBUG 📝 [NativeTemplate] Answer parser: format "peg-native" | same prompt true
+2026-11-23T13:49:25.264781Z DEBUG 🔍 [KV-Debug] context 31 tokens, 0 from the cache, 31 to process
+2026-11-23T13:49:47.442472Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-23T13:49:47.443905Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-23T13:49:47.451186Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 71093
+2026-11-23T13:50:17.606694Z DEBUG [llama.cpp] sched_graph_realloc: graph reallocation: nodes = 4839 (changed = 0), splits = 122, n_same = 1, n_diff = 0
+2026-11-23T13:50:18.341246Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-23T13:50:18.342677Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-23T13:50:18.345250Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 31 tokens in 22183 ms (1.40 t/s) | generation 235 tokens in 30641 ms (7.67 t/s)
+2026-11-23T13:50:18.345259Z  INFO 🧠 [Context] prompt 31 tokens (0 from the cache) | context 266 of 16384 | stop eos
+2026-11-23T13:50:18.387896Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS' to "/home/<user>/ch-run23/models/chat/qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf"
+2026-11-23T13:50:18.449548Z  INFO 🧮 [Tokens] Conversation 21 tokens (1 messages) counted in 4.91 ms
+2026-11-23T13:50:18.450355Z  INFO ⏱️ [Preflight] 73 ms total | model load 53 ms | registry + template + tags 3 ms | skills + tools 5 ms | rest 0 ms
+2026-11-23T13:50:18.451194Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=411
+2026-11-23T13:50:18.466606Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (148 bytes) in 12 ms
+2026-11-23T13:50:18.467195Z DEBUG 📝 [NativeTemplate] Answer parser: format "peg-native" | same prompt true
+2026-11-23T13:50:18.467464Z DEBUG 🔍 [KV-Debug] context 33 tokens, 0 from the cache, 33 to process
+2026-11-23T13:50:23.488847Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-23T13:50:23.488877Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-23T13:50:23.493792Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 32
+2026-11-23T13:50:33.311633Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-23T13:50:33.311983Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-23T13:50:33.311998Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 32 tokens in 4825 ms (6.63 t/s) | generation 208 tokens in 9749 ms (21.34 t/s)
+2026-11-23T13:50:33.312007Z  INFO 🧠 [Context] prompt 33 tokens (0 from the cache) | context 240 of 16384 | stop eos
+2026-11-23T13:50:33.317996Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS' to "/home/<user>/ch-run23/models/chat/qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf"
+2026-11-23T13:50:33.350656Z  INFO 🧮 [Tokens] Conversation 22 tokens (1 messages) counted in 0.30 ms
+2026-11-23T13:50:33.350787Z  INFO ⏱️ [Preflight] 36 ms total | model load 31 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-23T13:50:33.350904Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=448
+2026-11-23T13:50:33.351535Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (185 bytes) in 0 ms
+2026-11-23T13:50:33.351986Z DEBUG 📝 [NativeTemplate] Answer parser: format "peg-native" | same prompt true
+2026-11-23T13:50:33.368848Z  INFO 🧠 [Context] Restarted from the checkpoint at 1 tokens (sliding window or recurrent state)
+2026-11-23T13:50:33.368929Z DEBUG 🔍 [KV-Debug] context 34 tokens, 1 from the cache, 33 to process
+2026-11-23T13:50:39.197698Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-23T13:50:39.197734Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-23T13:50:39.200474Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 71093
+2026-11-23T13:50:55.904759Z DEBUG [llama.cpp] sched_graph_realloc: graph reallocation: nodes = 4839 (changed = 0), splits = 122, n_same = 2, n_diff = 0
+2026-11-23T13:50:57.197481Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-23T13:50:57.197598Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-23T13:50:57.197619Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 32 tokens in 5560 ms (5.76 t/s) | generation 242 tokens in 17975 ms (13.46 t/s)
+2026-11-23T13:50:57.197627Z  INFO 🧠 [Context] prompt 34 tokens (1 from the cache) | context 275 of 16384 | stop eos
+2026-11-23T13:50:57.203680Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS' to "/home/<user>/ch-run23/models/chat/qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf"
+2026-11-23T13:50:57.241521Z  INFO 🧮 [Tokens] Conversation 792 tokens (1 messages) counted in 3.29 ms
+2026-11-23T13:50:57.241703Z  INFO ⏱️ [Preflight] 40 ms total | model load 33 ms | registry + template + tags 0 ms | skills + tools 3 ms | rest 0 ms
+2026-11-23T13:50:57.241818Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=4256
+2026-11-23T13:50:57.242588Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (3977 bytes) in 0 ms
+2026-11-23T13:50:57.243255Z DEBUG 📝 [NativeTemplate] Answer parser: format "peg-native" | same prompt true
+2026-11-23T13:50:57.260506Z  INFO 🧠 [Context] Restarted from the checkpoint at 2 tokens (sliding window or recurrent state)
+2026-11-23T13:50:57.260615Z DEBUG 🔍 [KV-Debug] context 804 tokens, 2 from the cache, 802 to process
+2026-11-23T13:51:20.066709Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-23T13:51:20.068064Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-23T13:51:20.072750Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 8160
+2026-11-23T13:51:28.015634Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-23T13:51:28.016447Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 802 tokens in 22753 ms (35.25 t/s) | generation 128 tokens in 7816 ms (16.38 t/s)
+2026-11-23T13:51:28.016466Z  INFO 🧠 [Context] prompt 804 tokens (2 from the cache) | context 932 of 16384 | stop limit
+2026-11-23T13:51:28.021611Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS' to "/home/<user>/ch-run23/models/chat/qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf"
+2026-11-23T13:51:28.058438Z  INFO 🧮 [Tokens] Conversation 515 tokens (1 messages) counted in 0.88 ms
+2026-11-23T13:51:28.058596Z  INFO ⏱️ [Preflight] 39 ms total | model load 35 ms | registry + template + tags 0 ms | skills + tools 1 ms | rest 0 ms
+2026-11-23T13:51:28.058713Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=1765
+2026-11-23T13:51:28.059386Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1502 bytes) in 0 ms
+2026-11-23T13:51:28.059911Z DEBUG 📝 [NativeTemplate] Answer parser: format "peg-native" | same prompt true
+2026-11-23T13:51:28.075006Z  INFO 🧠 [Context] Restarted from the checkpoint at 2 tokens (sliding window or recurrent state)
+2026-11-23T13:51:28.078477Z DEBUG 🔍 [KV-Debug] context 527 tokens, 2 from the cache, 525 to process
+2026-11-23T13:51:46.135000Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-23T13:51:46.137844Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-23T13:51:46.145684Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 760
+2026-11-23T13:51:47.634513Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-23T13:51:47.634591Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-23T13:51:47.635662Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 525 tokens in 18017 ms (29.14 t/s) | generation 12 tokens in 1472 ms (8.15 t/s)
+2026-11-23T13:51:47.635675Z  INFO 🧠 [Context] prompt 527 tokens (2 from the cache) | context 539 of 16384 | stop eos
+2026-11-23T13:51:47.657125Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS' to "/home/<user>/ch-run23/models/chat/qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf"
+2026-11-23T13:51:47.717979Z  INFO 🧮 [Tokens] Conversation 2153 tokens (1 messages) counted in 2.79 ms
+2026-11-23T13:51:47.722867Z  INFO ⏱️ [Preflight] 69 ms total | model load 49 ms | registry + template + tags 8 ms | skills + tools 5 ms | rest 1 ms
+2026-11-23T13:51:47.723020Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=6048
+2026-11-23T13:51:47.724717Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (5785 bytes) in 0 ms
+2026-11-23T13:51:47.725502Z DEBUG 📝 [NativeTemplate] Answer parser: format "peg-native" | same prompt true
+2026-11-23T13:51:47.742424Z  INFO 🧠 [Context] Restarted from the checkpoint at 2 tokens (sliding window or recurrent state)
+2026-11-23T13:51:47.745875Z DEBUG 🔍 [KV-Debug] context 2165 tokens, 2 from the cache, 2163 to process
+2026-11-23T13:51:54.430786Z DEBUG [llama.cpp] sched_graph_realloc: graph reallocation: nodes = 4239 (changed = 0), splits = 121, n_same = 3, n_diff = 0
+2026-11-23T13:51:59.955790Z DEBUG [llama.cpp] sched_graph_realloc: graph reallocation: nodes = 4239 (changed = 0), splits = 121, n_same = 4, n_diff = 0
+2026-11-23T13:52:03.428770Z DEBUG [llama.cpp] sched_graph_realloc: graph reallocation: nodes = 4239 (changed = 0), splits = 121, n_same = 5, n_diff = 0
+2026-11-23T13:52:10.242583Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-23T13:52:10.244168Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-23T13:52:10.247970Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 760
+2026-11-23T13:52:12.618347Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-23T13:52:12.618375Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 2163 tokens in 22437 ms (96.40 t/s) | generation 16 tokens in 2353 ms (6.80 t/s)
+2026-11-23T13:52:12.618389Z  INFO 🧠 [Context] prompt 2165 tokens (2 from the cache) | context 2181 of 16384 | stop limit
+2026-11-23T13:52:12.624024Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS' to "/home/<user>/ch-run23/models/chat/qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf"
+2026-11-23T13:52:12.670550Z  INFO 🧮 [Tokens] Conversation 4392 tokens (1 messages) counted in 5.86 ms
+2026-11-23T13:52:12.670777Z  INFO ⏱️ [Preflight] 49 ms total | model load 39 ms | registry + template + tags 0 ms | skills + tools 6 ms | rest 0 ms
+2026-11-23T13:52:12.670929Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=11804
+2026-11-23T13:52:12.676058Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (11541 bytes) in 4 ms
+2026-11-23T13:52:12.677022Z DEBUG 📝 [NativeTemplate] Answer parser: format "peg-native" | same prompt true
+2026-11-23T13:52:12.697171Z  INFO 🧠 [Context] Restarted from the checkpoint at 2 tokens (sliding window or recurrent state)
+2026-11-23T13:52:12.701169Z DEBUG 🔍 [KV-Debug] context 4404 tokens, 2 from the cache, 4402 to process
+2026-11-23T13:52:17.584715Z DEBUG [llama.cpp] sched_graph_realloc: graph reallocation: nodes = 4239 (changed = 0), splits = 121, n_same = 6, n_diff = 0
+2026-11-23T13:52:19.828224Z DEBUG [llama.cpp] sched_graph_realloc: graph reallocation: nodes = 4239 (changed = 0), splits = 121, n_same = 7, n_diff = 0
+2026-11-23T13:52:22.152501Z DEBUG [llama.cpp] sched_graph_realloc: graph reallocation: nodes = 4239 (changed = 0), splits = 121, n_same = 8, n_diff = 0
+2026-11-23T13:52:24.443853Z DEBUG [llama.cpp] sched_graph_realloc: graph reallocation: nodes = 4239 (changed = 0), splits = 121, n_same = 9, n_diff = 0
+2026-11-23T13:52:26.583865Z DEBUG [llama.cpp] sched_graph_realloc: graph reallocation: nodes = 4239 (changed = 0), splits = 121, n_same = 10, n_diff = 0
+2026-11-23T13:52:29.201303Z DEBUG [llama.cpp] sched_graph_realloc: graph reallocation: nodes = 4239 (changed = 0), splits = 121, n_same = 11, n_diff = 0
+2026-11-23T13:52:32.089492Z DEBUG [llama.cpp] sched_graph_realloc: graph reallocation: nodes = 4239 (changed = 0), splits = 121, n_same = 12, n_diff = 0
+2026-11-23T13:52:43.365538Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-23T13:52:43.365985Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-23T13:52:43.369578Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 760
+2026-11-23T13:52:45.971624Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-23T13:52:45.972078Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 4402 tokens in 30613 ms (143.79 t/s) | generation 16 tokens in 2585 ms (6.19 t/s)
+2026-11-23T13:52:45.972092Z  INFO 🧠 [Context] prompt 4404 tokens (2 from the cache) | context 4420 of 16384 | stop limit
+Terminated

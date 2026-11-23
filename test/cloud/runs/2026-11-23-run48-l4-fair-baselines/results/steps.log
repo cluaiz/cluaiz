@@ -1,0 +1,234 @@
+== 2026-11-23T13:28:30Z machine
+== 2026-11-23T13:28:30Z official llama.cpp
+official llama.cpp b54752d 2026-11-15 ggml-cpu: add x86 VNNI Q2_0 dot product (#26348)
+version: 1.0.0-dev (build 1, commit b54752d)
+cluaiz 0.1.0 (pre-release)
+== 2026-11-23T13:28:30Z model and homes
+model /home/<user>/ch-run23/models/chat/qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf on nvme0n1p1
+1.2M	/home/<user>/ch-run48/base
+== 2026-11-23T13:28:30Z VRAM hog
+0 MiB
+13:28:30 free 21.90 GB, took 13.90 GB, rc 0
+== 2026-11-23T13:28:50Z plans
+default plan:
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+2026-11-23T13:30:35.257100Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+forced-cache plan:
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+2026-11-23T13:32:38.645417Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+KV f16, n_ctx 16384, default placement: n_gpu_layers = -1 | n_cpu_moe = 41
+== 2026-11-23T13:32:57Z configs: L-serve L-serve-mc C-serve C-pf-serve B-serve
+== 2026-11-23T13:32:57Z r1_L-serve
+rc 0, major faults 277802, read 90797 MiB from disk, 577 s
+== 2026-11-23T13:42:35Z r1_L-serve-mc
+rc 0, major faults 108327, read 44921 MiB from disk, 294 s
+== 2026-11-23T13:47:31Z r1_C-serve
+rc 0, major faults 113003, read 48006 MiB from disk, 313 s
+== 2026-11-23T13:52:46Z r1_C-pf-serve
+rc 0, major faults 32306, read 43855 MiB from disk, 280 s
+== 2026-11-23T13:57:27Z r1_B-serve
+rc 0, major faults 5212, read 74675 MiB from disk, 481 s
+== 2026-11-23T14:05:30Z r2_L-serve-mc
+rc 0, major faults 104085, read 44840 MiB from disk, 293 s
+== 2026-11-23T14:10:23Z r2_C-serve
+rc 0, major faults 109766, read 47737 MiB from disk, 310 s
+== 2026-11-23T14:15:35Z r2_C-pf-serve
+rc 0, major faults 33235, read 44069 MiB from disk, 280 s
+== 2026-11-23T14:20:16Z r2_B-serve
+rc 0, major faults 5138, read 74908 MiB from disk, 483 s
+== 2026-11-23T14:28:21Z r2_L-serve
+rc 0, major faults 276250, read 126095 MiB from disk, 750 s
+== 2026-11-23T14:40:52Z r3_C-serve
+rc 0, major faults 104107, read 47023 MiB from disk, 307 s
+== 2026-11-23T14:46:01Z r3_C-pf-serve
+rc 0, major faults 32668, read 43842 MiB from disk, 280 s
+== 2026-11-23T14:50:42Z r3_B-serve
+rc 0, major faults 5201, read 74989 MiB from disk, 484 s
+== 2026-11-23T14:58:48Z r3_L-serve
+rc 0, major faults 278131, read 116755 MiB from disk, 703 s
+== 2026-11-23T15:10:31Z r3_L-serve-mc
+rc 0, major faults 107824, read 45234 MiB from disk, 297 s
+== 2026-11-23T15:15:30Z all done
+== 2026-11-23T15:24:43Z machine
+== 2026-11-23T15:24:43Z official llama.cpp
+official llama.cpp b54752d 2026-11-15 ggml-cpu: add x86 VNNI Q2_0 dot product (#26348)
+version: 1.0.0-dev (build 1, commit b54752d)
+cluaiz 0.1.0 (pre-release)
+== 2026-11-23T15:24:44Z model and homes
+model /home/<user>/ch-run23/models/chat/qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf on nvme0n1p1
+1.2M	/home/<user>/ch-run48/base
+== 2026-11-23T15:24:44Z VRAM hog
+0 MiB
+15:24:45 free 21.90 GB, took 13.90 GB, rc 0
+== 2026-11-23T15:25:04Z plans
+default plan:
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+2026-11-23T13:30:35.257100Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+forced-cache plan:
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+2026-11-23T13:32:38.645417Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+KV f16, n_ctx 16384, default placement: n_gpu_layers = -1 | n_cpu_moe = 41
+== 2026-11-23T15:25:05Z configs: L-bench C-plan C-pf C-off C-b2048 B-cli
+== 2026-11-23T15:25:05Z r1_L-bench
+rc 0, major faults 1284422, read 51260 MiB from disk, 715 s
+== 2026-11-23T15:37:01Z r1_C-plan
+rc 0, major faults 576757, read 54261 MiB from disk, 536 s
+== 2026-11-23T15:45:58Z r1_C-pf
+rc 0, major faults 559468, read 52647 MiB from disk, 529 s
+== 2026-11-23T15:54:49Z r1_C-off
+rc 0, major faults 465560, read 29368 MiB from disk, 372 s
+== 2026-11-23T16:01:03Z r1_C-b2048
+rc 0, major faults 563431, read 53598 MiB from disk, 530 s
+== 2026-11-23T16:09:54Z r1_B-cli
+rc 0, major faults 4442, read 37489 MiB from disk, 241 s
+== 2026-11-23T16:13:57Z r2_C-plan
+rc 0, major faults 600811, read 56292 MiB from disk, 548 s
+== 2026-11-23T16:23:05Z r2_C-pf
+rc 0, major faults 562168, read 52407 MiB from disk, 526 s
+== 2026-11-23T16:31:53Z r2_C-off
+rc 0, major faults 463948, read 29244 MiB from disk, 374 s
+== 2026-11-23T16:38:08Z r2_C-b2048
+rc 0, major faults 582791, read 55595 MiB from disk, 542 s
+== 2026-11-23T16:47:11Z r2_B-cli
+rc 0, major faults 4425, read 37469 MiB from disk, 241 s
+== 2026-11-23T16:51:13Z r2_L-bench
+rc 0, major faults 1257849, read 49775 MiB from disk, 706 s
+== 2026-11-23T17:03:01Z r3_C-pf
+rc 0, major faults 580056, read 53861 MiB from disk, 535 s
+== 2026-11-23T17:11:58Z r3_C-off
+rc 0, major faults 465479, read 29271 MiB from disk, 372 s
+== 2026-11-23T17:18:11Z r3_C-b2048
+rc 0, major faults 576862, read 54297 MiB from disk, 531 s
+== 2026-11-23T17:27:04Z r3_B-cli
+rc 0, major faults 4431, read 37495 MiB from disk, 242 s
+== 2026-11-23T17:31:07Z r3_L-bench
+rc 0, major faults 1280780, read 50938 MiB from disk, 710 s
+== 2026-11-23T17:42:58Z r3_C-plan
+rc 0, major faults 572639, read 52869 MiB from disk, 527 s
+== 2026-11-23T17:51:47Z all done
+== 2026-11-23T17:54:05Z machine
+== 2026-11-23T17:54:06Z official llama.cpp
+official llama.cpp b54752d 2026-11-15 ggml-cpu: add x86 VNNI Q2_0 dot product (#26348)
+version: 1.0.0-dev (build 1, commit b54752d)
+cluaiz 0.1.0 (pre-release)
+== 2026-11-23T17:54:07Z model and homes
+model /home/<user>/ch-run23/models/chat/qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf on nvme0n1p1
+1.2M	/home/<user>/ch-run48/base
+== 2026-11-23T17:54:07Z VRAM hog
+0 MiB
+17:54:07 free 21.90 GB, took 13.90 GB, rc 0
+== 2026-11-23T17:54:27Z plans
+default plan:
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+2026-11-23T13:30:35.257100Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+forced-cache plan:
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+2026-11-23T13:32:38.645417Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+KV f16, n_ctx 16384, default placement: n_gpu_layers = -1 | n_cpu_moe = 41
+== 2026-11-23T17:54:27Z configs: C-pin B-serve-pin
+== 2026-11-23T17:54:27Z r1_C-pin
+rc 0, major faults 581857, read 54641 MiB from disk, 548 s
+== 2026-11-23T18:03:37Z r1_B-serve-pin
+rc 0, major faults 957, read 235 MiB from disk, 1820 s
+== 2026-11-23T18:33:58Z r2_B-serve-pin
+rc 0, major faults 964, read 236 MiB from disk, 1820 s
+== 2026-11-23T19:04:19Z r2_C-pin
+rc 0, major faults 598406, read 56339 MiB from disk, 558 s
+== 2026-11-23T19:13:36Z r3_C-pin
+rc 0, major faults 571001, read 53843 MiB from disk, 535 s
+== 2026-11-23T19:22:33Z r3_B-serve-pin
+rc 0, major faults 965, read 243 MiB from disk, 1820 s
+== 2026-11-23T19:52:55Z all done
+== 2026-11-23T20:09:27Z machine
+== 2026-11-23T20:09:27Z official llama.cpp
+official llama.cpp b54752d 2026-11-15 ggml-cpu: add x86 VNNI Q2_0 dot product (#26348)
+version: 1.0.0-dev (build 1, commit b54752d)
+cluaiz 0.1.0 (pre-release)
+== 2026-11-23T20:09:28Z model and homes
+model /home/<user>/ch-run23/models/chat/qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf on nvme0n1p1
+1.2M	/home/<user>/ch-run48/base
+== 2026-11-23T20:09:28Z VRAM hog
+0 MiB
+20:09:28 free 21.90 GB, took 13.90 GB, rc 0
+== 2026-11-23T20:09:48Z plans
+default plan:
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+2026-11-23T13:30:35.257100Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+forced-cache plan:
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+2026-11-23T13:32:38.645417Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+KV f16, n_ctx 16384, default placement: n_gpu_layers = -1 | n_cpu_moe = 41
+== 2026-11-23T20:09:48Z configs: LF-bench B-serve-pin0
+== 2026-11-23T20:09:48Z r1_LF-bench
+rc 0, major faults 1267051, read 51237 MiB from disk, 711 s
+== 2026-11-23T20:21:40Z r1_B-serve-pin0
+rc 0, major faults 1040, read 17599 MiB from disk, 1820 s
+== 2026-11-23T20:52:02Z r2_B-serve-pin0
+rc 0, major faults 1083, read 17614 MiB from disk, 1820 s
+== 2026-11-23T21:22:23Z r2_LF-bench
+rc 0, major faults 1255440, read 50036 MiB from disk, 706 s
+== 2026-11-23T21:34:11Z r3_LF-bench
+rc 0, major faults 1277786, read 51198 MiB from disk, 708 s
+== 2026-11-23T21:46:00Z r3_B-serve-pin0
+rc 0, major faults 1044, read 17599 MiB from disk, 1820 s
+== 2026-11-23T22:16:22Z all done
+== 2026-11-23T22:16:22Z machine
+== 2026-11-23T22:16:22Z official llama.cpp
+official llama.cpp b54752d 2026-11-15 ggml-cpu: add x86 VNNI Q2_0 dot product (#26348)
+version: 1.0.0-dev (build 1, commit b54752d)
+cluaiz 0.1.0 (pre-release)
+== 2026-11-23T22:16:24Z model and homes
+model /home/<user>/ch-run23/models/chat/qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf on nvme0n1p1
+1.2M	/home/<user>/ch-run48/base
+== 2026-11-23T22:16:24Z VRAM hog
+0 MiB
+22:16:24 free 21.90 GB, took 13.90 GB, rc 0
+== 2026-11-23T22:16:44Z plans
+default plan:
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+2026-11-23T13:30:35.257100Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+forced-cache plan:
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+2026-11-23T13:32:38.645417Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+KV f16, n_ctx 16384, default placement: n_gpu_layers = -1 | n_cpu_moe = 41
+== 2026-11-23T22:16:44Z configs: C-auto
+== 2026-11-23T22:16:44Z r1_C-auto
+rc 0, major faults 574343, read 53750 MiB from disk, 528 s
+== 2026-11-23T22:25:33Z all done
+== 2026-11-23T22:29:21Z machine
+== 2026-11-23T22:29:21Z official llama.cpp
+official llama.cpp b54752d 2026-11-15 ggml-cpu: add x86 VNNI Q2_0 dot product (#26348)
+version: 1.0.0-dev (build 1, commit b54752d)
+cluaiz 0.1.0 (pre-release)
+== 2026-11-23T22:29:22Z model and homes
+model /home/<user>/ch-run23/models/chat/qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf on nvme0n1p1
+1.2M	/home/<user>/ch-run48/base
+== 2026-11-23T22:29:22Z VRAM hog
+0 MiB
+22:29:22 free 21.90 GB, took 13.90 GB, rc 0
+== 2026-11-23T22:29:42Z plans
+default plan:
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+2026-11-23T13:30:35.257100Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+forced-cache plan:
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+2026-11-23T13:32:38.645417Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+KV f16, n_ctx 16384, default placement: n_gpu_layers = -1 | n_cpu_moe = 41
+== 2026-11-23T22:29:42Z configs: C-pin-c4608
+== 2026-11-23T22:29:42Z r1_C-pin-c4608
+rc 0, major faults 623917, read 65745 MiB from disk, 601 s
+== 2026-11-23T22:39:44Z r2_C-pin-c4608
+rc 0, major faults 623683, read 66392 MiB from disk, 605 s
+== 2026-11-23T22:49:51Z all done

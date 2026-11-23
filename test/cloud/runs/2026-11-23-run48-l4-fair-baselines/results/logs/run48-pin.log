@@ -1,0 +1,35 @@
+== 2026-11-23T17:54:05Z machine
+== 2026-11-23T17:54:06Z official llama.cpp
+official llama.cpp b54752d 2026-11-15 ggml-cpu: add x86 VNNI Q2_0 dot product (#26348)
+version: 1.0.0-dev (build 1, commit b54752d)
+cluaiz 0.1.0 (pre-release)
+== 2026-11-23T17:54:07Z model and homes
+model /home/<user>/ch-run23/models/chat/qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf on nvme0n1p1
+1.2M	/home/<user>/ch-run48/base
+== 2026-11-23T17:54:07Z VRAM hog
+0 MiB
+17:54:07 free 21.90 GB, took 13.90 GB, rc 0
+== 2026-11-23T17:54:27Z plans
+default plan:
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+2026-11-23T13:30:35.257100Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+forced-cache plan:
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+2026-11-23T13:32:38.645417Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+KV f16, n_ctx 16384, default placement: n_gpu_layers = -1 | n_cpu_moe = 41
+== 2026-11-23T17:54:27Z configs: C-pin B-serve-pin
+== 2026-11-23T17:54:27Z r1_C-pin
+rc 0, major faults 581857, read 54641 MiB from disk, 548 s
+== 2026-11-23T18:03:37Z r1_B-serve-pin
+rc 0, major faults 957, read 235 MiB from disk, 1820 s
+== 2026-11-23T18:33:58Z r2_B-serve-pin
+rc 0, major faults 964, read 236 MiB from disk, 1820 s
+== 2026-11-23T19:04:19Z r2_C-pin
+rc 0, major faults 598406, read 56339 MiB from disk, 558 s
+== 2026-11-23T19:13:36Z r3_C-pin
+rc 0, major faults 571001, read 53843 MiB from disk, 535 s
+== 2026-11-23T19:22:33Z r3_B-serve-pin
+rc 0, major faults 965, read 243 MiB from disk, 1820 s
+== 2026-11-23T19:52:55Z all done

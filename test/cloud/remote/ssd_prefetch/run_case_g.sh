@@ -12,6 +12,14 @@
 #   C-pf          cluaiz bench, CLUAIZ_MOE_CACHE=on, CLUAIZ_EXPERT_PREFETCH=on
 #   *-text        the same five on case G's four prompts (code, chat, list, long; greedy, thinking off):
 #                 llama-server /v1/chat/completions for L, `cluaiz run` (one load per prompt) for C
+# Run 48 (fair baselines) adds:
+#   L-bench-mc    llama-bench with upstream llama.cpp's MoE cache (--moe-cache-mib MC_MIB --moe-cache-cpu-share MC_SHARE)
+#   C-off         cluaiz bench, CLUAIZ_MOE_CACHE=off (no MoE cache), prefetch off
+#   C-b2048       cluaiz bench as C-plan with llama-bench's batch sizes (-b 2048, -ub 512)
+#   L-serve, L-serve-mc, C-serve, C-pf-serve, B-serve: one server load each (llama-server, llama-server with
+#                 the MoE cache, `cluaiz serve`, the same with the prefetch, bmoe-server --auto), case G's four
+#                 prompts then three long prompts (fair_client.py)
+#   B-cli         bmoe-cli --auto -n 128 on a short prompt (BigMoeOnEdge's own generation figure)
 # C-pin is skipped when the default plan is already case G's placement without a cache.
 # bench runs: -t 4 -p 512 -n 128,400 -r 1. Per run: /usr/bin/time -v (peak RSS, major faults), a 1 s
 # sampler (free RAM, page cache, cgroup memory, VRAM, disk sectors), pgmajfault and disk MiB deltas.
@@ -28,8 +36,11 @@ SERVER="$SRC/build/bin/llama-server"
 CLUAIZ="${CLUAIZ:-$HOME/cluaiz-pf/target/release/cluaiz}"
 PROMPTS="${PROMPTS:-$HOME/cluaiz-pf/cmd/src/cli/data/bench_mtp_prompts.json}"
 HOG="${HOG:-$HERE/vram_hog.py}"
+CLIENT="$HERE/fair_client.py"
+BMOE="${BMOE:-$HOME/BigMoeOnEdge/build/bin}"
+MC=(--moe-cache-mib "${MC_MIB:-3600}" --moe-cache-cpu-share "${MC_SHARE:-0.9}")
 BASE_HOME="$HOME/ch-run23"
-HOMES="$HOME/ch-run42"
+HOMES="${HOMES:-$HOME/ch-run42}"   # run 48: HOMES=~/ch-run48 (new homes, no speed records of earlier runs)
 ID=qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS
 ROUNDS="${ROUNDS:-3}"
 THREADS=4
@@ -118,9 +129,11 @@ run() {
 COMMON=(-t "$THREADS" -p "${PP:-512}" -n "${TG:-128,400}" -r "${REPS:-1}")   # PP=512,2048,4096 TG=0: prompt processing only
 BARGS=("${COMMON[@]}")   # cluaiz bench arguments (the plan reads below use a short test)
 
+# l_bench <extra args...> <tag>
 l_bench() {
-  capped "r42-$1" -- /usr/bin/time -v -o "$OUT/$1.time" "$BENCH" -m "$GGUF" -ngl 99 -ncmoe 41 -ctk "$KV" -ctv "$KV" \
-    -fa auto "${COMMON[@]}" -o md > "$OUT/$1.md" 2> "$OUT/$1.log"
+  local tag="${*: -1}"; local extra=("${@:1:$#-1}")
+  capped "r42-$tag" -- /usr/bin/time -v -o "$OUT/$tag.time" "$BENCH" -m "$GGUF" -ngl 99 -ncmoe 41 -ctk "$KV" -ctv "$KV" \
+    -fa auto "${COMMON[@]}" "${extra[@]}" -o md > "$OUT/$tag.md" 2> "$OUT/$tag.log"
 }
 # c_bench <env...> -- <extra args...> <tag>
 c_bench() {
@@ -176,6 +189,55 @@ EOF
   return 0
 }
 
+# wait_up <port> <pid>: until the server answers /health (30 min at most, or the process ends)
+wait_up() {
+  for _ in $(seq 1 1800); do
+    curl -sf -m 2 -o /dev/null "http://127.0.0.1:$1/health" && return 0   # HTTP 200 (llama-server: 503 while loading)
+    kill -0 "$2" 2> /dev/null || return 1
+    sleep 1
+  done
+  return 1
+}
+# l_serve <extra args...> <tag>: llama-server, one load, fair_client.py
+l_serve() {
+  local tag="${*: -1}"; local extra=("${@:1:$#-1}")
+  capped "r42-$tag" -- /usr/bin/time -v -o "$OUT/$tag.time" "$SERVER" -m "$GGUF" --host 127.0.0.1 --port 8091 -t "$THREADS" -np 1 \
+    -c 16384 -ngl 99 -ncmoe 41 -ctk "$KV" -ctv "$KV" -fa auto "${extra[@]}" > "$OUT/$tag.server.log" 2>&1 &
+  local spid=$!
+  wait_up 8091 "$spid" && python3 "$CLIENT" "$PROMPTS" 8091 llama "${TEXT_PP-512,2048,4096}" > "$OUT/$tag.md" 2> "$OUT/$tag.log"
+  pkill -TERM -x llama-server; wait "$spid" 2> /dev/null
+  return 0
+}
+# c_serve <env...> -- <tag>: one `cluaiz serve` process (port 8011) for every request
+c_serve() {
+  local envs=(); while [ "$1" != "--" ]; do envs+=("$1"); shift; done; shift
+  local tag="$1"
+  local home; home=$(home_for "$tag")
+  capped "r42-$tag" CLUAIZ_HOME="$home" "${envs[@]}" -- /usr/bin/time -v -o "$OUT/$tag.time" \
+    "$CLUAIZ" -vv serve > "$OUT/$tag.server.log" 2>&1 &
+  local spid=$!
+  wait_up 8011 "$spid" && python3 "$CLIENT" "$PROMPTS" 8011 cluaiz "${TEXT_PP-512,2048,4096}" > "$OUT/$tag.md" 2> "$OUT/$tag.log"
+  pkill -TERM -f "cluaiz -vv serve"; wait "$spid" 2> /dev/null
+  grep -rh "llama_cluaiz_moe_prefetch\|MoE cache size\|llama.cpp timings\|n_threads = \|n_gpu_layers = " "$home/logs" "$OUT/$tag.server.log" 2> /dev/null > "$OUT/$tag.homelog.txt"
+  return 0
+}
+# b_serve <extra args...> <tag>: bmoe-server (BigMoeOnEdge), one load, fair_client.py
+b_serve() {
+  local tag="${*: -1}"; local extra=("${@:1:$#-1}")
+  capped "r42-$tag" -- /usr/bin/time -v -o "$OUT/$tag.time" "$BMOE/bmoe-server" -m "$GGUF" --host 127.0.0.1 --port 8765 \
+    --threads "$THREADS" -c 16384 "${extra[@]}" > "$OUT/$tag.server.log" 2>&1 &
+  local spid=$!
+  wait_up 8765 "$spid" && python3 "$CLIENT" "$PROMPTS" 8765 llama "${TEXT_PP-512,2048,4096}" > "$OUT/$tag.md" 2> "$OUT/$tag.log"
+  pkill -TERM -x bmoe-server; wait "$spid" 2> /dev/null
+  return 0
+}
+# b_cli <extra args...> <tag>: bmoe-cli, one load, 128 tokens after a short prompt
+b_cli() {
+  local tag="${*: -1}"; local extra=("${@:1:$#-1}")
+  capped "r42-$tag" -- /usr/bin/time -v -o "$OUT/$tag.time" "$BMOE/bmoe-cli" -m "$GGUF" --threads "$THREADS" -c 16384 \
+    -n 128 -p "Write a long detailed essay about the history of computing." "${extra[@]}" > "$OUT/$tag.md" 2> "$OUT/$tag.log"
+}
+
 step "plans"
 # The plans Cluaiz makes in the capped cgroup with the hog running (bench -p 0 -n 8 -vv)
 plan_line() {
@@ -210,6 +272,30 @@ for round in $(seq 1 "$ROUNDS"); do
     tag="r${round}_${cfg}"
     case $cfg in
       L-bench) run "$tag" l_bench ;;
+      L-bench-mc) run "$tag" l_bench "${MC[@]}" ;;
+      C-off) run "$tag" c_bench CLUAIZ_MOE_CACHE=off CLUAIZ_EXPERT_PREFETCH=off -- ;;
+      C-b2048) run "$tag" c_bench CLUAIZ_EXPERT_PREFETCH=off -- --batch-size 2048 --ubatch-size 512 ;;
+      L-serve) run "$tag" l_serve ;;
+      L-serve-mc) run "$tag" l_serve "${MC[@]}" ;;
+      C-serve) run "$tag" c_serve CLUAIZ_EXPERT_PREFETCH=off -- ;;
+      C-pf-serve) run "$tag" c_serve CLUAIZ_EXPERT_PREFETCH=on -- ;;
+      B-serve) run "$tag" b_serve ${BMOE_ARGS:---auto} ;;
+      # BigMoeOnEdge on Cluaiz's placement: every layer on the GPU, experts streamed from the file,
+      # a 3600 MiB device expert cache with 90% of the misses on the CPU, f16 KV, its planner off
+      # Run 48: bmoe-server 0.48.0 refuses this one ("Device cache misses on the CPU ... needs Expert
+      # streaming off") and never loads the model; B-serve-pin0 is the same with the misses on the GPU
+      B-serve-pin) run "$tag" b_serve --no-auto --moe-stream --gpu-layers 99 --device-cache-mb 3600 \
+                     --device-cache-cpu-share 0.9 --cache-type-k f16 --cache-type-v f16 ;;
+      B-serve-pin0) run "$tag" b_serve --no-auto --moe-stream --gpu-layers 99 --device-cache-mb 3600 \
+                     --cache-type-k f16 --cache-type-v f16 ;;
+      # llama-bench built from the Cluaiz llama.cpp fork (same CMake flags as the official build), same command
+      LF-bench) local_bench="$BENCH"; BENCH="${FORK_BENCH:-$HOME/fork-bench-build/bin/llama-bench}"; run "$tag" l_bench; BENCH="$local_bench" ;;
+      # C-pin with a context just above pp4096 + tg128 (llama-bench sizes its context to each test)
+      C-pin-c4608) run "$tag" c_bench CLUAIZ_EXPERT_PREFETCH=off -- --n-gpu-layers all --n-cpu-moe 41 -c 4608 \
+                     --cache-type-k "$KV" --cache-type-v "$KV" ;;
+      # Today's default: no CLUAIZ_EXPERT_PREFETCH, so the planner's Auto rule decides
+      C-auto) run "$tag" c_bench -- ;;
+      B-cli) run "$tag" b_cli ${BMOE_ARGS:---auto} ;;
       C-pin) run "$tag" c_bench CLUAIZ_EXPERT_PREFETCH=off -- "${PIN[@]}" ;;
       C-plan) run "$tag" c_bench CLUAIZ_EXPERT_PREFETCH=off -- ;;
       C-cache) run "$tag" c_bench CLUAIZ_MOE_CACHE=on CLUAIZ_EXPERT_PREFETCH=off -- ;;

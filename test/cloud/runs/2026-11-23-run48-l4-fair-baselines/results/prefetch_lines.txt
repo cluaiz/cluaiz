@@ -1,0 +1,6 @@
+2026-11-23T13:54:39.625240Z DEBUG [llama.cpp] llama_cluaiz_moe_prefetch: on, at most 3605 MiB per MoE cache upload
+2026-11-23T13:54:40.017975Z DEBUG [llama.cpp] llama_cluaiz_moe_prefetch: first prefetch: 420 ranges, 199360 KiB
+2026-11-23T14:17:28.917576Z DEBUG [llama.cpp] llama_cluaiz_moe_prefetch: on, at most 3605 MiB per MoE cache upload
+2026-11-23T14:17:29.327386Z DEBUG [llama.cpp] llama_cluaiz_moe_prefetch: first prefetch: 420 ranges, 199360 KiB
+2026-11-23T14:47:55.050281Z DEBUG [llama.cpp] llama_cluaiz_moe_prefetch: on, at most 3605 MiB per MoE cache upload
+2026-11-23T14:47:55.469180Z DEBUG [llama.cpp] llama_cluaiz_moe_prefetch: first prefetch: 420 ranges, 199360 KiB

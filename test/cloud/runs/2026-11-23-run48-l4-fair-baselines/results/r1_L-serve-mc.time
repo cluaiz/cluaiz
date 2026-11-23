@@ -1,0 +1,23 @@
+	Command being timed: "/home/<user>/llama.cpp-official/build/bin/llama-server -m /home/<user>/ch-run23/models/chat/qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf --host 127.0.0.1 --port 8091 -t 4 -np 1 -c 16384 -ngl 99 -ncmoe 41 -ctk f16 -ctv f16 -fa auto --moe-cache-mib 3600 --moe-cache-cpu-share 0.9"
+	User time (seconds): 219.11
+	System time (seconds): 39.63
+	Percent of CPU this job got: 87%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 4:54.25
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 12635800
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 108329
+	Minor (reclaiming a frame) page faults: 1384654
+	Voluntary context switches: 380490
+	Involuntary context switches: 18161
+	Swaps: 0
+	File system inputs: 91955200
+	File system outputs: 160
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

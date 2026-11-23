@@ -1,0 +1,713 @@
+[  0%] Built target ggml-cpu-x64-feats
+[  0%] Built target ggml-cpu-sse42-feats
+[  0%] Built target ggml-cpu-sandybridge-feats
+[  0%] Built target ggml-cpu-piledriver-feats
+[  0%] Built target ggml-cpu-haswell-feats
+[  1%] Built target vendor-hash
+[  1%] Built target ggml-cpu-ivybridge-feats
+[  2%] Built target ggml-base
+[  2%] Built target ggml-cpu-cascadelake-feats
+[  3%] Built target ggml-cpu-cannonlake-feats
+[  4%] Built target ggml-cpu-skylakex-feats
+[  4%] Built target ggml-cpu-cooperlake-feats
+[  4%] Built target ggml-cpu-icelake-feats
+[  4%] Built target ggml-cpu-alderlake-feats
+[  4%] Built target ggml-cpu-zen4-feats
+[  4%] Built target ggml-cpu-sapphirerapids-feats
+[  5%] Built target llama-common-base
+[  6%] Built target bmoe_monocypher
+[  6%] Built target bmoe_frontend
+[  6%] Built target cpp-httplib
+[  9%] Built target ggml-cpu-x64
+[ 11%] Built target ggml-cpu-sse42
+[ 14%] Built target ggml-cpu-sandybridge
+[ 17%] Built target ggml-cpu-piledriver
+[ 19%] Built target ggml-cpu-ivybridge
+[ 22%] Built target ggml-cpu-haswell
+[ 24%] Built target ggml-cpu-skylakex
+[ 26%] Built target ggml-cpu-cascadelake
+[ 29%] Built target ggml-cpu-icelake
+[ 31%] Built target ggml-cpu-cannonlake
+[ 31%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/convert.cu.o
+[ 31%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/count-equal.cu.o
+[ 32%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/cpy.cu.o
+[ 32%] Building CXX object third_party/llama.cpp/ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/amx/mmq.cpp.o
+[ 33%] Building CXX object third_party/llama.cpp/ggml/src/CMakeFiles/ggml-cpu-zen4.dir/ggml-cpu/arch/x86/repack.cpp.o
+[ 33%] Building CXX object third_party/llama.cpp/ggml/src/CMakeFiles/ggml-cpu-cooperlake.dir/ggml-cpu/arch/x86/repack.cpp.o
+[ 33%] Building CXX object third_party/llama.cpp/ggml/src/CMakeFiles/ggml-cpu-alderlake.dir/ggml-cpu/ops.cpp.o
+[ 34%] Built target bmoe_server_platform
+[ 35%] Building CXX object third_party/llama.cpp/ggml/src/CMakeFiles/ggml-cpu-alderlake.dir/ggml-cpu/arch/x86/repack.cpp.o
+[ 35%] Building CXX object third_party/llama.cpp/ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/tiled/tiled.cpp.o
+[ 35%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/cross-entropy-loss.cu.o
+[ 35%] Linking CXX shared module ../../../../bin/libggml-cpu-zen4.so
+[ 37%] Built target ggml-cpu-zen4
+[ 37%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/cumsum.cu.o
+[ 37%] Linking CXX shared module ../../../../bin/libggml-cpu-cooperlake.so
+[ 40%] Built target ggml-cpu-cooperlake
+[ 40%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/diag.cu.o
+[ 40%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/dsv4-hc.cu.o
+[ 40%] Building CXX object third_party/llama.cpp/ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/tiled/tiled-kernel.cpp.o
+[ 41%] Building CXX object third_party/llama.cpp/ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/binary-ops.cpp.o
+[ 41%] Building CXX object third_party/llama.cpp/ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/unary-ops.cpp.o
+[ 41%] Building CXX object third_party/llama.cpp/ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/vec.cpp.o
+[ 41%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/fattn-tile.cu.o
+[ 41%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/fattn.cu.o
+[ 42%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/fill.cu.o
+[ 42%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/fp8.cu.o
+[ 42%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/fwht.cu.o
+[ 42%] Building CXX object third_party/llama.cpp/ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/ops.cpp.o
+[ 42%] Linking CXX shared module ../../../../bin/libggml-cpu-alderlake.so
+[ 44%] Built target ggml-cpu-alderlake
+[ 44%] Building CXX object third_party/llama.cpp/ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/llamafile/sgemm.cpp.o
+[ 44%] Building C object third_party/llama.cpp/ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/arch/x86/quants.c.o
+[ 44%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/gated-delta-net-mma.cu.o
+[ 44%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/gated_delta_net.cu.o
+[ 44%] Building CXX object third_party/llama.cpp/ggml/src/CMakeFiles/ggml-cpu-sapphirerapids.dir/ggml-cpu/arch/x86/repack.cpp.o
+[ 44%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/getrows.cu.o
+[ 44%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/ggml-cuda.cu.o
+[ 45%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/gla.cu.o
+[ 45%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/im2col.cu.o
+[ 45%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/lightning-indexer.cu.o
+[ 45%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/mean.cu.o
+[ 45%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/mmf.cu.o
+[ 45%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/mmid.cu.o
+[ 46%] Linking CXX shared module ../../../../bin/libggml-cpu-sapphirerapids.so
+[ 47%] Built target ggml-cpu-sapphirerapids
+[ 48%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/mmq-few.cu.o
+[ 48%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/mmq.cu.o
+[ 48%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/mmvf.cu.o
+[ 48%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/mmvq.cu.o
+[ 48%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/moe-weighted-reduction.cu.o
+[ 48%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/norm.cu.o
+[ 48%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/opt-step-adamw.cu.o
+[ 49%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/opt-step-sgd.cu.o
+[ 49%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/out-prod.cu.o
+[ 49%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/pad.cu.o
+[ 49%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/pad_reflect_1d.cu.o
+[ 49%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/pool1d.cu.o
+[ 49%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/pool2d.cu.o
+[ 49%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/quantize.cu.o
+[ 50%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/roll.cu.o
+[ 50%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/rope.cu.o
+[ 50%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/scale.cu.o
+[ 50%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/set-rows.cu.o
+[ 50%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/set.cu.o
+[ 50%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/sleep.cu.o
+[ 50%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/snake.cu.o
+[ 51%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/softcap.cu.o
+[ 51%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/softmax.cu.o
+[ 51%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/solve_tri.cu.o
+[ 51%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/ssm-conv.cu.o
+[ 51%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/ssm-scan.cu.o
+[ 51%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/sum.cu.o
+[ 51%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/sumrows.cu.o
+[ 52%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/top-k-mask.cu.o
+[ 52%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/top-k.cu.o
+[ 52%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/topk-moe.cu.o
+[ 52%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/tri.cu.o
+[ 52%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/tsembd.cu.o
+[ 52%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/unary.cu.o
+[ 52%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/upscale.cu.o
+[ 53%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/wkv.cu.o
+[ 53%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq112-dv112.cu.o
+[ 53%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq128-dv128.cu.o
+[ 53%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq192-dv128.cu.o
+[ 53%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq256-dv256.cu.o
+[ 53%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq320-dv256.cu.o
+[ 53%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq40-dv40.cu.o
+[ 54%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq512-dv512.cu.o
+[ 54%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq576-dv512.cu.o
+[ 54%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq64-dv64.cu.o
+[ 54%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq72-dv72.cu.o
+[ 54%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq80-dv80.cu.o
+[ 54%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-tile-instance-dkq96-dv96.cu.o
+[ 55%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_1-ncols2_16.cu.o
+[ 55%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_1-ncols2_32.cu.o
+[ 55%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_1-ncols2_8.cu.o
+[ 55%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_16-ncols2_1.cu.o
+[ 55%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_16-ncols2_2.cu.o
+[ 55%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_16-ncols2_4.cu.o
+[ 55%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_2-ncols2_16.cu.o
+[ 56%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_2-ncols2_32.cu.o
+[ 56%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_2-ncols2_4.cu.o
+[ 56%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_2-ncols2_8.cu.o
+[ 56%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_32-ncols2_1.cu.o
+[ 56%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_32-ncols2_2.cu.o
+[ 56%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_4-ncols2_16.cu.o
+[ 56%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_4-ncols2_2.cu.o
+[ 57%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_4-ncols2_4.cu.o
+[ 57%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_4-ncols2_8.cu.o
+[ 57%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_8-ncols2_1.cu.o
+[ 57%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_64-ncols2_1.cu.o
+[ 57%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_8-ncols2_2.cu.o
+[ 57%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_8-ncols2_4.cu.o
+[ 57%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-mma-f16-instance-ncols1_8-ncols2_8.cu.o
+[ 58%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-iq1_s.cu.o
+[ 58%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-iq2_s.cu.o
+[ 58%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-iq2_xs.cu.o
+[ 58%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-iq2_xxs.cu.o
+[ 58%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-iq3_s.cu.o
+[ 58%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-iq3_xxs.cu.o
+[ 58%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-iq4_nl.cu.o
+[ 59%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-iq4_xs.cu.o
+[ 59%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-mxfp4.cu.o
+[ 59%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-nvfp4.cu.o
+[ 59%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q1_0.cu.o
+[ 59%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q2_0.cu.o
+[ 59%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q2_k.cu.o
+[ 59%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q3_k.cu.o
+[ 60%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q4_0.cu.o
+[ 60%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q4_1.cu.o
+[ 60%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q4_k.cu.o
+[ 60%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q5_0.cu.o
+[ 60%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q5_1.cu.o
+[ 60%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q5_k.cu.o
+[ 60%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q6_k.cu.o
+[ 61%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmq-instance-q8_0.cu.o
+[ 61%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_1.cu.o
+[ 61%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_10.cu.o
+[ 61%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_11.cu.o
+[ 61%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_12.cu.o
+[ 61%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_13.cu.o
+[ 62%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_14.cu.o
+[ 62%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_15.cu.o
+[ 62%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_16.cu.o
+[ 62%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_2.cu.o
+[ 62%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_3.cu.o
+[ 62%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_4.cu.o
+[ 62%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_5.cu.o
+[ 63%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_6.cu.o
+[ 63%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_7.cu.o
+[ 63%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_8.cu.o
+[ 63%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/mmf-instance-ncols_9.cu.o
+[ 63%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-vec-instance-f16-f16.cu.o
+[ 63%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-vec-instance-q4_0-q4_0.cu.o
+[ 63%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-vec-instance-q8_0-q8_0.cu.o
+[ 64%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-vec-instance-bf16-bf16.cu.o
+[ 64%] Building CUDA object third_party/llama.cpp/ggml/src/ggml-cuda/CMakeFiles/ggml-cuda.dir/template-instances/fattn-vec-instance-f8_e4m3-f8_e4m3.cu.o
+[ 64%] Linking CUDA shared module ../../../../../bin/libggml-cuda.so
+[ 66%] Built target ggml-cuda
+[ 66%] Building CXX object third_party/llama.cpp/ggml/src/CMakeFiles/ggml.dir/ggml-backend-dl.cpp.o
+[ 66%] Building CXX object third_party/llama.cpp/ggml/src/CMakeFiles/ggml.dir/ggml-backend-reg.cpp.o
+[ 67%] Linking CXX shared library ../../../../bin/libggml.so
+[ 67%] Built target ggml
+[ 67%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/Unity/unity_9_cxx.cxx.o
+[ 67%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/Unity/unity_10_cxx.cxx.o
+[ 67%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/Unity/unity_11_cxx.cxx.o
+[ 67%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/Unity/unity_8_cxx.cxx.o
+[ 67%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/Unity/unity_6_cxx.cxx.o
+[ 67%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/Unity/unity_5_cxx.cxx.o
+[ 68%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/Unity/unity_7_cxx.cxx.o
+[ 68%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/Unity/unity_4_cxx.cxx.o
+[ 68%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/Unity/unity_3_cxx.cxx.o
+[ 68%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/Unity/unity_2_cxx.cxx.o
+[ 68%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/Unity/unity_1_cxx.cxx.o
+[ 69%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/Unity/unity_0_cxx.cxx.o
+[ 69%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama.cpp.o
+[ 69%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-adapter.cpp.o
+[ 69%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-arch.cpp.o
+[ 69%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-batch.cpp.o
+[ 69%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-chat.cpp.o
+[ 69%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-context.cpp.o
+[ 70%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-cparams.cpp.o
+[ 70%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-grammar.cpp.o
+[ 70%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-graph.cpp.o
+[ 70%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-hparams.cpp.o
+[ 70%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-impl.cpp.o
+[ 70%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-io.cpp.o
+[ 70%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-kv-cache.cpp.o
+[ 71%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-kv-cache-iswa.cpp.o
+[ 71%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-kv-cache-dsa.cpp.o
+[ 71%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-kv-cache-dsa-iswa.cpp.o
+[ 71%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-kv-cache-msa.cpp.o
+[ 71%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-kv-cache-dsv4.cpp.o
+[ 71%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-memory.cpp.o
+[ 72%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-moe-cache.cpp.o
+[ 72%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-memory-hybrid.cpp.o
+[ 72%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-memory-hybrid-iswa.cpp.o
+[ 72%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-memory-hybrid-idx.cpp.o
+[ 72%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-memory-recurrent.cpp.o
+[ 72%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-mmap.cpp.o
+[ 72%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-model-loader.cpp.o
+[ 73%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-model-saver.cpp.o
+[ 73%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-model.cpp.o
+[ 73%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-quant.cpp.o
+[ 73%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-sampler.cpp.o
+[ 73%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/llama-vocab.cpp.o
+[ 73%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/unicode-data.cpp.o
+[ 73%] Building CXX object third_party/llama.cpp/src/CMakeFiles/llama.dir/unicode.cpp.o
+[ 74%] Linking CXX shared library ../../../bin/libllama.so
+[ 74%] Built target llama
+[ 74%] Building CXX object third_party/llama.cpp/tools/mtmd/CMakeFiles/mtmd.dir/Unity/unity_4_cxx.cxx.o
+[ 74%] Building CXX object third_party/llama.cpp/tools/mtmd/CMakeFiles/mtmd.dir/Unity/unity_3_cxx.cxx.o
+[ 74%] Building CXX object third_party/llama.cpp/tools/mtmd/CMakeFiles/mtmd.dir/Unity/unity_2_cxx.cxx.o
+[ 74%] Building CXX object third_party/llama.cpp/tools/mtmd/CMakeFiles/mtmd.dir/Unity/unity_1_cxx.cxx.o
+[ 74%] Building CXX object third_party/llama.cpp/tools/mtmd/CMakeFiles/mtmd.dir/Unity/unity_0_cxx.cxx.o
+[ 74%] Building CXX object third_party/llama.cpp/tools/mtmd/CMakeFiles/mtmd.dir/mtmd.cpp.o
+[ 74%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/parsers/parsers.cpp.o
+[ 75%] Building CXX object third_party/llama.cpp/tools/mtmd/CMakeFiles/mtmd.dir/mtmd-audio.cpp.o
+[ 75%] Building CXX object third_party/llama.cpp/tools/mtmd/CMakeFiles/mtmd.dir/mtmd-image.cpp.o
+[ 75%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/parsers/cohere2moe.cpp.o
+[ 75%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/parsers/deepseek.cpp.o
+[ 75%] Building CXX object third_party/llama.cpp/tools/mtmd/CMakeFiles/mtmd.dir/mtmd-helper.cpp.o
+[ 75%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/parsers/functionary-v3-2.cpp.o
+[ 75%] Building CXX object third_party/llama.cpp/tools/mtmd/CMakeFiles/mtmd.dir/mtmd-helper-gen.cpp.o
+[ 75%] Building CXX object third_party/llama.cpp/tools/mtmd/CMakeFiles/mtmd.dir/mtmd-model.cpp.o
+[ 75%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/parsers/gemma4.cpp.o
+[ 75%] Building CXX object third_party/llama.cpp/tools/mtmd/CMakeFiles/mtmd.dir/mtmd-subcontext.cpp.o
+[ 75%] Building CXX object third_party/llama.cpp/tools/mtmd/CMakeFiles/mtmd.dir/mtmd-graph.cpp.o
+[ 76%] Building CXX object third_party/llama.cpp/tools/mtmd/CMakeFiles/mtmd.dir/mtmd-helper-video-ffmpeg.cpp.o
+[ 76%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/parsers/gigachat-v3.cpp.o
+[ 77%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/parsers/gpt-oss.cpp.o
+[ 77%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/parsers/harmony-xml.cpp.o
+[ 77%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/parsers/inkling.cpp.o
+[ 77%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/parsers/k2-horizon.cpp.o
+[ 77%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/parsers/kimi-k2.cpp.o
+[ 77%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/parsers/kimi-k3.cpp.o
+[ 77%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/parsers/ling3.cpp.o
+[ 78%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/parsers/lfm2.cpp.o
+[ 78%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/parsers/llm-jp-harmony.cpp.o
+[ 78%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/parsers/minicpm5.cpp.o
+[ 78%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/parsers/minimax-m3.cpp.o
+[ 78%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/parsers/ministral3.cpp.o
+[ 78%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/parsers/muse-glimmer.cpp.o
+[ 78%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/parsers/muse-spark.cpp.o
+[ 79%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/parsers/qwen3-coder.cpp.o
+[ 79%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/parsers/translate-gemma.cpp.o
+[ 79%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/arg.cpp.o
+[ 79%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/chat-auto-parser-generator.cpp.o
+[ 79%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/chat-auto-parser-helpers.cpp.o
+[ 79%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/chat-diff-analyzer.cpp.o
+[ 79%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/chat-peg-parser.cpp.o
+[ 80%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/chat-tts-norm.cpp.o
+[ 80%] Linking CXX shared library ../../../../bin/libmtmd.so
+[ 80%] Built target mtmd
+[ 80%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/chat.cpp.o
+[ 80%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/common.cpp.o
+[ 80%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/console.cpp.o
+[ 80%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/debug.cpp.o
+[ 80%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/download.cpp.o
+[ 81%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/fit.cpp.o
+[ 81%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/file-lock.cpp.o
+[ 81%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/hf-cache.cpp.o
+[ 81%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/imatrix-loader.cpp.o
+[ 81%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/json-schema-to-grammar.cpp.o
+[ 81%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/json-schema.cpp.o
+[ 81%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/json.cpp.o
+[ 82%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/llguidance.cpp.o
+[ 82%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/log.cpp.o
+[ 82%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/ngram-cache.cpp.o
+[ 82%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/ngram-map.cpp.o
+[ 82%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/ngram-mod.cpp.o
+[ 82%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/peg-parser.cpp.o
+[ 82%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/preset.cpp.o
+[ 83%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/reasoning-budget.cpp.o
+[ 83%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/sampling.cpp.o
+[ 83%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/speculative.cpp.o
+[ 83%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/subproc.cpp.o
+[ 83%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/trie.cpp.o
+[ 83%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/unicode.cpp.o
+[ 83%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/jinja/lexer.cpp.o
+[ 84%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/jinja/parser.cpp.o
+[ 84%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/jinja/runtime.cpp.o
+[ 84%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/jinja/value.cpp.o
+[ 84%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/jinja/string.cpp.o
+[ 84%] Building CXX object third_party/llama.cpp/common/CMakeFiles/llama-common.dir/jinja/caps.cpp.o
+[ 84%] Linking CXX shared library ../../../bin/libllama-common.so
+[ 84%] Built target llama-common
+[ 84%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/config.cpp.o
+[ 85%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/params.cpp.o
+[ 85%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/log.cpp.o
+[ 85%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/moe/expert_layout.cpp.o
+[ 85%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/moe/tensor_names.cpp.o
+[ 85%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/ngram_draft.cpp.o
+[ 85%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/plan/plan.cpp.o
+[ 85%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/plan/allocate.cpp.o
+[ 86%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/plan/planner.cpp.o
+[ 86%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/plan/backend_choice.cpp.o
+[ 86%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/plan/routing.cpp.o
+[ 86%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/logits.cpp.o
+[ 86%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/logit_agreement.cpp.o
+[ 86%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/cache_brake.cpp.o
+[ 86%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/knob_trial.cpp.o
+[ 87%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/plan/measured_knobs.cpp.o
+[ 87%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/plan/model_records.cpp.o
+[ 87%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/decide/prompt_split.cpp.o
+[ 87%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/decide/choice_scorer.cpp.o
+[ 87%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/decide/prefix_cache.cpp.o
+[ 87%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/decide/decider.cpp.o
+[ 87%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/io/platform_io.cpp.o
+[ 88%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/io/file_reader.cpp.o
+[ 88%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/io/mapping_release.cpp.o
+[ 88%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/io/parallel_copy.cpp.o
+[ 88%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/moe/dense_weights.cpp.o
+[ 88%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/moe/row_stream.cpp.o
+[ 88%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/moe/gguf_offsets.cpp.o
+[ 88%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/plan/hardware_probe.cpp.o
+[ 89%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/plan/headroom_probe.cpp.o
+[ 89%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/plan/bandwidth_probe.cpp.o
+[ 89%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/plan/layer_probe.cpp.o
+[ 89%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/plan/gate_probe.cpp.o
+[ 89%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/plan/device_probe.cpp.o
+[ 89%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/plan/isolated_probe.cpp.o
+[ 89%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/plan/storage_probe.cpp.o
+[ 90%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/plan/placement_probe.cpp.o
+[ 90%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/plan/model_probe.cpp.o
+[ 90%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/plan/auto_plan.cpp.o
+[ 90%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/moe/discardable_entries.cpp.o
+[ 90%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/moe/expert_stream_source.cpp.o
+[ 90%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/moe/gate_gemv.cpp.o
+[ 90%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/moe/router_hook.cpp.o
+[ 91%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/moe/decide_probe.cpp.o
+[ 91%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/moe/device_arena.cpp.o
+[ 91%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/session.cpp.o
+[ 91%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/context_checkpoints.cpp.o
+[ 91%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/prompt_stream.cpp.o
+[ 91%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/media_input.cpp.o
+[ 92%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/image_probe.cpp.o
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp: In member function ‘int bmoe::Session::Impl::decode_placed(llama_context*, const llama_batch&)’:
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp:407:62: warning: ‘int32_t llama_decode(llama_context*, llama_batch)’ is deprecated: use llama_process with LLAMA_PROCESS_TYPE_DECODE instead [-Wdeprecated-declarations]
+  407 |         return prefill ? prefill->decode(c, b) : llama_decode(c, b);
+      |                                                  ~~~~~~~~~~~~^~~~~~
+In file included from /home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama-cpp.h:9,
+                 from /home/<user>/BigMoeOnEdge/third_party/llama.cpp/common/common.h:5,
+                 from /home/<user>/BigMoeOnEdge/third_party/llama.cpp/common/chat.h:5,
+                 from /home/<user>/BigMoeOnEdge/core/src/engine/chat_messages.h:11,
+                 from /home/<user>/BigMoeOnEdge/core/src/engine/session.cpp:9:
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:1005:5: note: declared here
+ 1005 |     DEPRECATED(LLAMA_API int32_t llama_decode(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp: In destructor ‘bmoe::Session::Impl::~Impl()’:
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp:641:46: warning: ‘void llama_batch_free(llama_batch)’ is deprecated: use llama_batch_ext_free instead [-Wdeprecated-declarations]
+  641 |         if (mtp_batch_owned) llama_batch_free(mtp_batch);
+      |                              ~~~~~~~~~~~~~~~~^~~~~~~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:979:5: note: declared here
+  979 |     DEPRECATED(LLAMA_API void llama_batch_free(struct llama_batch batch),
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp:642:48: warning: ‘void llama_batch_free(llama_batch)’ is deprecated: use llama_batch_ext_free instead [-Wdeprecated-declarations]
+  642 |         if (media_batch_owned) llama_batch_free(media_batch);
+      |                                ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:979:5: note: declared here
+  979 |     DEPRECATED(LLAMA_API void llama_batch_free(struct llama_batch batch),
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp: In member function ‘bmoe::PplResult bmoe::Session::perplexity(const bmoe::PplRequest&)’:
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp:775:44: warning: ‘llama_batch llama_batch_init(int32_t, int32_t, int32_t)’ is deprecated: use llama_batch_ext_init instead [-Wdeprecated-declarations]
+  775 |         llama_batch warm = llama_batch_init(1, 0, 1);
+      |                            ~~~~~~~~~~~~~~~~^~~~~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:972:5: note: declared here
+  972 |     DEPRECATED(LLAMA_API struct llama_batch llama_batch_init(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp:778:36: warning: ‘int32_t llama_decode(llama_context*, llama_batch)’ is deprecated: use llama_process with LLAMA_PROCESS_TYPE_DECODE instead [-Wdeprecated-declarations]
+  778 |         const int rc = llama_decode(ctx, warm);
+      |                        ~~~~~~~~~~~~^~~~~~~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:1005:5: note: declared here
+ 1005 |     DEPRECATED(LLAMA_API int32_t llama_decode(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp:779:25: warning: ‘void llama_batch_free(llama_batch)’ is deprecated: use llama_batch_ext_free instead [-Wdeprecated-declarations]
+  779 |         llama_batch_free(warm);
+      |         ~~~~~~~~~~~~~~~~^~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:979:5: note: declared here
+  979 |     DEPRECATED(LLAMA_API void llama_batch_free(struct llama_batch batch),
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp:793:37: warning: ‘llama_batch llama_batch_init(int32_t, int32_t, int32_t)’ is deprecated: use llama_batch_ext_init instead [-Wdeprecated-declarations]
+  793 |     llama_batch b = llama_batch_init(im.cfg.n_batch, /*embd*/ 0, /*n_seq_max*/ 1);
+      |                     ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:972:5: note: declared here
+  972 |     DEPRECATED(LLAMA_API struct llama_batch llama_batch_init(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp: In destructor ‘bmoe::Session::perplexity(const bmoe::PplRequest&)::BatchGuard::~BatchGuard()’:
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp:796:41: warning: ‘void llama_batch_free(llama_batch)’ is deprecated: use llama_batch_ext_free instead [-Wdeprecated-declarations]
+  796 |         ~BatchGuard() { llama_batch_free(b); }
+      |                         ~~~~~~~~~~~~~~~~^~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:979:5: note: declared here
+  979 |     DEPRECATED(LLAMA_API void llama_batch_free(struct llama_batch batch),
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp: In member function ‘bmoe::PplResult bmoe::Session::perplexity(const bmoe::PplRequest&)’:
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp:824:25: warning: ‘int32_t llama_decode(llama_context*, llama_batch)’ is deprecated: use llama_process with LLAMA_PROCESS_TYPE_DECODE instead [-Wdeprecated-declarations]
+  824 |         if (llama_decode(ctx, b) != 0) {
+      |             ~~~~~~~~~~~~^~~~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:1005:5: note: declared here
+ 1005 |     DEPRECATED(LLAMA_API int32_t llama_decode(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp:833:29: warning: ‘int32_t llama_decode(llama_context*, llama_batch)’ is deprecated: use llama_process with LLAMA_PROCESS_TYPE_DECODE instead [-Wdeprecated-declarations]
+  833 |             if (llama_decode(ctx, b) != 0) {
+      |                 ~~~~~~~~~~~~^~~~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:1005:5: note: declared here
+ 1005 |     DEPRECATED(LLAMA_API int32_t llama_decode(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp: In member function ‘bool bmoe::Session::Impl::init_speculation(Opening&)’:
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp:1611:37: warning: ‘llama_batch llama_batch_init(int32_t, int32_t, int32_t)’ is deprecated: use llama_batch_ext_init instead [-Wdeprecated-declarations]
+ 1611 |         mtp_batch = llama_batch_init(std::max(cfg.n_batch, cfg.spec.draft_max + 1), /*embd*/ 0, /*n_seq_max*/ 1);
+      |                     ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:972:5: note: declared here
+  972 |     DEPRECATED(LLAMA_API struct llama_batch llama_batch_init(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp:1624:39: warning: ‘llama_batch llama_batch_init(int32_t, int32_t, int32_t)’ is deprecated: use llama_batch_ext_init instead [-Wdeprecated-declarations]
+ 1624 |         media_batch = llama_batch_init(cfg.n_batch, /*embd*/ 0, /*n_seq_max*/ 1);
+      |                       ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:972:5: note: declared here
+  972 |     DEPRECATED(LLAMA_API struct llama_batch llama_batch_init(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp: In member function ‘bool bmoe::Session::Impl::capture_warmup(Opening&)’:
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp:1640:25: warning: ‘int32_t llama_decode(llama_context*, llama_batch)’ is deprecated: use llama_process with LLAMA_PROCESS_TYPE_DECODE instead [-Wdeprecated-declarations]
+ 1640 |         if (llama_decode(c, mtp_batch) != 0) return o.fail("capture warm-up decode failed");
+      |             ~~~~~~~~~~~~^~~~~~~~~~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:1005:5: note: declared here
+ 1005 |     DEPRECATED(LLAMA_API int32_t llama_decode(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp:1648:47: warning: ‘llama_batch llama_batch_get_one(llama_token*, int32_t)’ is deprecated: use llama_batch_ext_init and llama_batch_ext_add_token instead [-Wdeprecated-declarations]
+ 1648 |         llama_batch warm = llama_batch_get_one(&warm_tok, 1);
+      |                            ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:960:5: note: declared here
+  960 |     DEPRECATED(LLAMA_API struct llama_batch llama_batch_get_one(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp:1649:25: warning: ‘int32_t llama_decode(llama_context*, llama_batch)’ is deprecated: use llama_process with LLAMA_PROCESS_TYPE_DECODE instead [-Wdeprecated-declarations]
+ 1649 |         if (llama_decode(c, warm) != 0) return o.fail("capture warm-up decode failed");
+      |             ~~~~~~~~~~~~^~~~~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:1005:5: note: declared here
+ 1005 |     DEPRECATED(LLAMA_API int32_t llama_decode(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp: In member function ‘bool bmoe::Session::Impl::confirm_prefill_device(Opening&)’:
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp:2207:41: warning: ‘llama_batch llama_batch_init(int32_t, int32_t, int32_t)’ is deprecated: use llama_batch_ext_init instead [-Wdeprecated-declarations]
+ 2207 |         llama_batch b = llama_batch_init(want, 0, 1);
+      |                         ~~~~~~~~~~~~~~~~^~~~~~~~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:972:5: note: declared here
+  972 |     DEPRECATED(LLAMA_API struct llama_batch llama_batch_init(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp:2262:25: warning: ‘void llama_batch_free(llama_batch)’ is deprecated: use llama_batch_ext_free instead [-Wdeprecated-declarations]
+ 2262 |         llama_batch_free(b);
+      |         ~~~~~~~~~~~~~~~~^~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:979:5: note: declared here
+  979 |     DEPRECATED(LLAMA_API void llama_batch_free(struct llama_batch batch),
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp: In member function ‘bool bmoe::Session::Impl::Turn::prefill()’:
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp:3529:45: warning: ‘llama_batch llama_batch_get_one(llama_token*, int32_t)’ is deprecated: use llama_batch_ext_init and llama_batch_ext_add_token instead [-Wdeprecated-declarations]
+ 3529 |                     pf = llama_batch_get_one(tokens.data() + i, chunk);
+      |                          ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:960:5: note: declared here
+  960 |     DEPRECATED(LLAMA_API struct llama_batch llama_batch_get_one(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp: In member function ‘int bmoe::Session::Impl::Turn::verify_decode(Step&)’:
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp:3760:39: warning: ‘llama_batch llama_batch_get_one(llama_token*, int32_t)’ is deprecated: use llama_batch_ext_init and llama_batch_ext_add_token instead [-Wdeprecated-declarations]
+ 3760 |             step = llama_batch_get_one(&tok, 1);
+      |                    ~~~~~~~~~~~~~~~~~~~^~~~~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:960:5: note: declared here
+  960 |     DEPRECATED(LLAMA_API struct llama_batch llama_batch_get_one(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/session.cpp:3771:37: warning: ‘int32_t llama_decode(llama_context*, llama_batch)’ is deprecated: use llama_process with LLAMA_PROCESS_TYPE_DECODE instead [-Wdeprecated-declarations]
+ 3771 |         const int dec = llama_decode(ctx, step);
+      |                         ~~~~~~~~~~~~^~~~~~~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:1005:5: note: declared here
+ 1005 |     DEPRECATED(LLAMA_API int32_t llama_decode(
+      |     ^~~~~~~~~~
+[ 92%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/llama_log.cpp.o
+[ 92%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/device_answer.cpp.o
+[ 92%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/prefill_device.cpp.o
+[ 92%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/prefill_path.cpp.o
+/home/<user>/BigMoeOnEdge/core/src/engine/device_answer.cpp: In function ‘bool bmoe::detail::{anonymous}::decode_probe(llama_context*, const std::vector<int>&, const std::vector<int>&, int, std::vector<float>&, double&)’:
+/home/<user>/BigMoeOnEdge/core/src/engine/device_answer.cpp:41:37: warning: ‘llama_batch llama_batch_init(int32_t, int32_t, int32_t)’ is deprecated: use llama_batch_ext_init instead [-Wdeprecated-declarations]
+   41 |     llama_batch b = llama_batch_init(widest, 0, 1);
+      |                     ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~
+In file included from /home/<user>/BigMoeOnEdge/core/src/engine/device_answer.h:23,
+                 from /home/<user>/BigMoeOnEdge/core/src/engine/device_answer.cpp:1:
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:972:5: note: declared here
+  972 |     DEPRECATED(LLAMA_API struct llama_batch llama_batch_init(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/device_answer.cpp:59:26: warning: ‘int32_t llama_decode(llama_context*, llama_batch)’ is deprecated: use llama_process with LLAMA_PROCESS_TYPE_DECODE instead [-Wdeprecated-declarations]
+   59 |         ok = llama_decode(c, b) == 0;
+      |              ~~~~~~~~~~~~^~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:1005:5: note: declared here
+ 1005 |     DEPRECATED(LLAMA_API int32_t llama_decode(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/device_answer.cpp:72:21: warning: ‘void llama_batch_free(llama_batch)’ is deprecated: use llama_batch_ext_free instead [-Wdeprecated-declarations]
+   72 |     llama_batch_free(b);
+      |     ~~~~~~~~~~~~~~~~^~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:979:5: note: declared here
+  979 |     DEPRECATED(LLAMA_API void llama_batch_free(struct llama_batch batch),
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/device_answer.cpp: In function ‘double bmoe::detail::{anonymous}::time_tokens(llama_context*, const std::vector<int>&)’:
+/home/<user>/BigMoeOnEdge/core/src/engine/device_answer.cpp:85:37: warning: ‘llama_batch llama_batch_init(int32_t, int32_t, int32_t)’ is deprecated: use llama_batch_ext_init instead [-Wdeprecated-declarations]
+   85 |     llama_batch b = llama_batch_init(prefix, 0, 1);
+      |                     ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:972:5: note: declared here
+  972 |     DEPRECATED(LLAMA_API struct llama_batch llama_batch_init(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/device_answer.cpp:87:27: warning: ‘int32_t llama_decode(llama_context*, llama_batch)’ is deprecated: use llama_process with LLAMA_PROCESS_TYPE_DECODE instead [-Wdeprecated-declarations]
+   87 |     bool ok = llama_decode(c, b) == 0;
+      |               ~~~~~~~~~~~~^~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:1005:5: note: declared here
+ 1005 |     DEPRECATED(LLAMA_API int32_t llama_decode(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/device_answer.cpp:93:26: warning: ‘int32_t llama_decode(llama_context*, llama_batch)’ is deprecated: use llama_process with LLAMA_PROCESS_TYPE_DECODE instead [-Wdeprecated-declarations]
+   93 |         ok = llama_decode(c, b) == 0;
+      |              ~~~~~~~~~~~~^~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:1005:5: note: declared here
+ 1005 |     DEPRECATED(LLAMA_API int32_t llama_decode(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/device_answer.cpp:97:21: warning: ‘void llama_batch_free(llama_batch)’ is deprecated: use llama_batch_ext_free instead [-Wdeprecated-declarations]
+   97 |     llama_batch_free(b);
+      |     ~~~~~~~~~~~~~~~~^~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:979:5: note: declared here
+  979 |     DEPRECATED(LLAMA_API void llama_batch_free(struct llama_batch batch),
+      |     ^~~~~~~~~~
+[ 92%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/compute_reservation.cpp.o
+[ 92%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/decide/llama_backend.cpp.o
+[ 93%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/chat_parse.cpp.o
+/home/<user>/BigMoeOnEdge/core/src/engine/prefill_path.cpp: In member function ‘bool bmoe::detail::PrefillPath::open(llama_context*, const llama_vocab*, bmoe::RouterHook&, const bmoe::PrefillDeviceConfig&, const bmoe::MoeStreamConfig&, int, std::string&)’:
+/home/<user>/BigMoeOnEdge/core/src/engine/prefill_path.cpp:103:50: warning: ‘llama_batch llama_batch_get_one(llama_token*, int32_t)’ is deprecated: use llama_batch_ext_init and llama_batch_ext_add_token instead [-Wdeprecated-declarations]
+  103 |         if (llama_decode(ctx, llama_batch_get_one(&tok, 1)) != 0) return fail(": capture decode failed");
+      |                               ~~~~~~~~~~~~~~~~~~~^~~~~~~~~
+In file included from /home/<user>/BigMoeOnEdge/core/src/engine/prefill_path.h:19,
+                 from /home/<user>/BigMoeOnEdge/core/src/engine/prefill_path.cpp:1:
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:960:5: note: declared here
+  960 |     DEPRECATED(LLAMA_API struct llama_batch llama_batch_get_one(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/prefill_path.cpp:103:25: warning: ‘int32_t llama_decode(llama_context*, llama_batch)’ is deprecated: use llama_process with LLAMA_PROCESS_TYPE_DECODE instead [-Wdeprecated-declarations]
+  103 |         if (llama_decode(ctx, llama_batch_get_one(&tok, 1)) != 0) return fail(": capture decode failed");
+      |             ~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:1005:5: note: declared here
+ 1005 |     DEPRECATED(LLAMA_API int32_t llama_decode(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/prefill_path.cpp: In member function ‘bool bmoe::detail::PrefillPath::reserve_on_device(llama_context*, const llama_vocab*, int)’:
+/home/<user>/BigMoeOnEdge/core/src/engine/prefill_path.cpp:203:51: warning: ‘llama_batch llama_batch_get_one(llama_token*, int32_t)’ is deprecated: use llama_batch_ext_init and llama_batch_ext_add_token instead [-Wdeprecated-declarations]
+  203 |     const int rc = decode(ctx, llama_batch_get_one(toks.data(), n_tokens));
+      |                                ~~~~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:960:5: note: declared here
+  960 |     DEPRECATED(LLAMA_API struct llama_batch llama_batch_get_one(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/prefill_path.cpp: In member function ‘int bmoe::detail::PrefillPath::decode(llama_context*, const llama_batch&)’:
+/home/<user>/BigMoeOnEdge/core/src/engine/prefill_path.cpp:255:26: warning: ‘int32_t llama_decode(llama_context*, llama_batch)’ is deprecated: use llama_process with LLAMA_PROCESS_TYPE_DECODE instead [-Wdeprecated-declarations]
+  255 |     int rc = llama_decode(ctx, b);
+      |              ~~~~~~~~~~~~^~~~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:1005:5: note: declared here
+ 1005 |     DEPRECATED(LLAMA_API int32_t llama_decode(
+      |     ^~~~~~~~~~
+[ 93%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/chat_messages.cpp.o
+[ 93%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/thinking_control.cpp.o
+[ 93%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/engine/runtime.cpp.o
+[ 93%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/metrics/csv_metrics_sink.cpp.o
+[ 93%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/metrics/memory_snapshot.cpp.o
+[ 93%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/metrics/route_trace_sink.cpp.o
+/home/<user>/BigMoeOnEdge/core/src/engine/decide/llama_backend.cpp: In constructor ‘bmoe::detail::LlamaDecideBackend::LlamaDecideBackend(const bmoe::detail::LlamaDecideDeps&)’:
+/home/<user>/BigMoeOnEdge/core/src/engine/decide/llama_backend.cpp:13:37: warning: ‘llama_batch llama_batch_init(int32_t, int32_t, int32_t)’ is deprecated: use llama_batch_ext_init instead [-Wdeprecated-declarations]
+   13 |     : d_(d), batch_(llama_batch_init(d.n_batch, /*embd*/ 0, /*n_seq_max*/ 1)) {}
+      |                     ~~~~~~~~~~~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+In file included from /home/<user>/BigMoeOnEdge/core/src/engine/decide/../prefill_support.h:10,
+                 from /home/<user>/BigMoeOnEdge/core/src/engine/decide/llama_backend.h:7,
+                 from /home/<user>/BigMoeOnEdge/core/src/engine/decide/llama_backend.cpp:1:
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:972:5: note: declared here
+  972 |     DEPRECATED(LLAMA_API struct llama_batch llama_batch_init(
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/decide/llama_backend.cpp: In destructor ‘virtual bmoe::detail::LlamaDecideBackend::~LlamaDecideBackend()’:
+/home/<user>/BigMoeOnEdge/core/src/engine/decide/llama_backend.cpp:16:21: warning: ‘void llama_batch_free(llama_batch)’ is deprecated: use llama_batch_ext_free instead [-Wdeprecated-declarations]
+   16 |     llama_batch_free(batch_);
+      |     ~~~~~~~~~~~~~~~~^~~~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:979:5: note: declared here
+  979 |     DEPRECATED(LLAMA_API void llama_batch_free(struct llama_batch batch),
+      |     ^~~~~~~~~~
+/home/<user>/BigMoeOnEdge/core/src/engine/decide/llama_backend.cpp: In member function ‘virtual bool bmoe::detail::LlamaDecideBackend::prefill(const std::vector<int>&, int, int)’:
+/home/<user>/BigMoeOnEdge/core/src/engine/decide/llama_backend.cpp:85:32: warning: ‘int32_t llama_decode(llama_context*, llama_batch)’ is deprecated: use llama_process with LLAMA_PROCESS_TYPE_DECODE instead [-Wdeprecated-declarations]
+   85 |         } else if (llama_decode(d_.ctx, batch_) != 0) {
+      |                    ~~~~~~~~~~~~^~~~~~~~~~~~~~~~
+/home/<user>/BigMoeOnEdge/third_party/llama.cpp/include/llama.h:1005:5: note: declared here
+ 1005 |     DEPRECATED(LLAMA_API int32_t llama_decode(
+      |     ^~~~~~~~~~
+[ 94%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/metrics/decode_trace_sink.cpp.o
+[ 94%] Building CXX object core/CMakeFiles/bmoe_core.dir/src/plan/native_memory_probe.cpp.o
+[ 94%] Linking CXX static library libbmoe_core.a
+[ 94%] Built target bmoe_core
+[ 94%] Building CXX object cli/CMakeFiles/bmoe-cli.dir/main.cpp.o
+[ 94%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/access.cpp.o
+[ 95%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/cpu_thermal.cpp.o
+[ 95%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/anthropic_messages.cpp.o
+[ 95%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/decide_protocol.cpp.o
+[ 95%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/llama_compat.cpp.o
+[ 95%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/openai_chat.cpp.o
+[ 95%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/agent_protocol.cpp.o
+[ 95%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/request_sampling.cpp.o
+[ 95%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/openai_responses.cpp.o
+[ 96%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/image_part.cpp.o
+[ 96%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/turn_queue.cpp.o
+[ 96%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/event_bus.cpp.o
+[ 96%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/json_util.cpp.o
+[ 96%] Linking CXX executable ../bin/bmoe-cli
+[ 96%] Built target bmoe-cli
+[ 96%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/model_files.cpp.o
+[ 96%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/download_policy.cpp.o
+[ 97%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/sha256.cpp.o
+[ 97%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/hf_repo.cpp.o
+[ 97%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/url_entry.cpp.o
+[ 97%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/curl_fetch.cpp.o
+[ 97%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/model_delete.cpp.o
+[ 97%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/settings_store.cpp.o
+[ 97%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/plan_view.cpp.o
+[ 98%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/agent_tools.cpp.o
+[ 98%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/agent_skills.cpp.o
+[ 98%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/agent_schedule.cpp.o
+[ 98%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/agent_store.cpp.o
+[ 98%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/provider_protocol.cpp.o
+[ 98%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/connect.cpp.o
+[ 98%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/json_rpc.cpp.o
+[ 99%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/mcp.cpp.o
+[ 99%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/feed.cpp.o
+[ 99%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/backend_packs.cpp.o
+[ 99%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/update_service.cpp.o
+[ 99%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/service_spec.cpp.o
+[ 99%] Building CXX object server/CMakeFiles/bmoe_server_core.dir/log_file.cpp.o
+[ 99%] Linking CXX static library libbmoe_server_core.a
+[ 99%] Built target bmoe_server_core
+[ 99%] Building CXX object server/CMakeFiles/bmoe_server.dir/http_server.cpp.o
+[ 99%] Building CXX object server/CMakeFiles/bmoe_server.dir/engine_host.cpp.o
+[ 99%] Building CXX object server/CMakeFiles/bmoe_server.dir/model_library.cpp.o
+[ 99%] Building CXX object server/CMakeFiles/bmoe_server.dir/model_inspect.cpp.o
+[ 99%] Building CXX object server/CMakeFiles/bmoe_server.dir/planner_adapter.cpp.o
+[100%] Building CXX object server/CMakeFiles/bmoe_server.dir/service_manager.cpp.o
+[100%] Building CXX object server/CMakeFiles/bmoe_server.dir/agent.cpp.o
+[100%] Building CXX object server/CMakeFiles/bmoe_server.dir/agent_external.cpp.o
+[100%] Building CXX object server/CMakeFiles/bmoe_server.dir/agent_routes.cpp.o
+[100%] Linking CXX static library libbmoe_server.a
+[100%] Built target bmoe_server
+[100%] Building CXX object server/CMakeFiles/bmoe-server.dir/main.cpp.o
+[100%] Linking CXX executable ../bin/bmoe-server
+[100%] Built target bmoe-server
+[100%] Staging the web UI and model catalog beside bmoe-server
+-- bmoe-server: ui/dist not built; the server will say so at / (cd ui && npm ci && npm run build)
+[100%] Built target bmoe-server-assets
+== bmoe build exit 0 after 1129 s
+total 124812
+drwxrwxr-x 4 <user> <user>     4096 Nov 23 13:21 .
+drwxrwxr-x 9 <user> <user>     4096 Nov 23 10:48 ..
+-rwxrwxr-x 1 <user> <user>  2602464 Nov 23 13:20 bmoe-cli
+-rwxrwxr-x 1 <user> <user>  6513376 Nov 23 13:21 bmoe-server
+drwxrwxr-x 2 <user> <user>     4096 Nov 23 13:21 catalog
+lrwxrwxrwx 1 <user> <user>       17 Nov 23 10:49 libggml-base.so -> libggml-base.so.1
+lrwxrwxrwx 1 <user> <user>       21 Nov 23 10:49 libggml-base.so.1 -> libggml-base.so.1.0.0
+-rwxrwxr-x 1 <user> <user>   937240 Nov 23 10:49 libggml-base.so.1.0.0
+-rwxrwxr-x 1 <user> <user>  1462728 Nov 23 13:02 libggml-cpu-alderlake.so
+-rwxrwxr-x 1 <user> <user>  1662608 Nov 23 10:51 libggml-cpu-cannonlake.so
+-rwxrwxr-x 1 <user> <user>  1674600 Nov 23 10:51 libggml-cpu-cascadelake.so
+-rwxrwxr-x 1 <user> <user>  1674768 Nov 23 13:02 libggml-cpu-cooperlake.so
+-rwxrwxr-x 1 <user> <user>  1466824 Nov 23 10:50 libggml-cpu-haswell.so
+-rwxrwxr-x 1 <user> <user>  1674600 Nov 23 10:51 libggml-cpu-icelake.so
+-rwxrwxr-x 1 <user> <user>  1402408 Nov 23 10:50 libggml-cpu-ivybridge.so
+-rwxrwxr-x 1 <user> <user>  1398312 Nov 23 10:50 libggml-cpu-piledriver.so
+-rwxrwxr-x 1 <user> <user>  1379760 Nov 23 10:50 libggml-cpu-sandybridge.so
+-rwxrwxr-x 1 <user> <user>  1944744 Nov 23 13:03 libggml-cpu-sapphirerapids.so
+-rwxrwxr-x 1 <user> <user>  1662608 Nov 23 10:50 libggml-cpu-skylakex.so
+-rwxrwxr-x 1 <user> <user>  1052936 Nov 23 10:50 libggml-cpu-sse42.so
+-rwxrwxr-x 1 <user> <user>  1032576 Nov 23 10:50 libggml-cpu-x64.so
+-rwxrwxr-x 1 <user> <user>  1674768 Nov 23 13:02 libggml-cpu-zen4.so
+-rwxrwxr-x 1 <user> <user> 81389432 Nov 23 13:17 libggml-cuda.so
+lrwxrwxrwx 1 <user> <user>       12 Nov 23 13:17 libggml.so -> libggml.so.1
+lrwxrwxrwx 1 <user> <user>       16 Nov 23 13:17 libggml.so.1 -> libggml.so.1.0.0
+-rwxrwxr-x 1 <user> <user>    51320 Nov 23 13:17 libggml.so.1.0.0
+lrwxrwxrwx 1 <user> <user>       20 Nov 23 13:19 libllama-common.so -> libllama-common.so.1
+lrwxrwxrwx 1 <user> <user>       24 Nov 23 13:19 libllama-common.so.1 -> libllama-common.so.1.0.0
+-rwxrwxr-x 1 <user> <user>  6543744 Nov 23 13:19 libllama-common.so.1.0.0
+lrwxrwxrwx 1 <user> <user>       13 Nov 23 13:18 libllama.so -> libllama.so.1
+lrwxrwxrwx 1 <user> <user>       17 Nov 23 13:18 libllama.so.1 -> libllama.so.1.0.0
+-rwxrwxr-x 1 <user> <user>  5622808 Nov 23 13:18 libllama.so.1.0.0
+lrwxrwxrwx 1 <user> <user>       12 Nov 23 13:19 libmtmd.so -> libmtmd.so.1
+lrwxrwxrwx 1 <user> <user>       16 Nov 23 13:19 libmtmd.so.1 -> libmtmd.so.1.0.0
+-rwxrwxr-x 1 <user> <user>  2927616 Nov 23 13:19 libmtmd.so.1.0.0
+drwxrwxr-x 6 <user> <user>     4096 Nov 23 13:21 skills

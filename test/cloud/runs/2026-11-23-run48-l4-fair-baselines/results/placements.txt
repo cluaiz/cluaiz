@@ -1,0 +1,56 @@
+/home/<user>/results-run48/r1_C-auto.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r1_C-auto.log:║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+/home/<user>/results-run48/r1_C-auto.log:2026-11-23T22:18:28.835724Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+/home/<user>/results-run48/r1_C-b2048.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r1_C-b2048.log:║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+/home/<user>/results-run48/r1_C-b2048.log:2026-11-23T16:02:47.813126Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+/home/<user>/results-run48/r1_C-off.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 32 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r1_C-pf-serve.server.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r1_C-pf-serve.server.log:║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+/home/<user>/results-run48/r1_C-pf-serve.server.log:2026-11-23T13:54:31.271763Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+/home/<user>/results-run48/r1_C-pf.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r1_C-pf.log:║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+/home/<user>/results-run48/r1_C-pf.log:2026-11-23T15:47:43.463010Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+/home/<user>/results-run48/r1_C-pin-c4608.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 4608 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r1_C-pin.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r1_C-plan.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r1_C-plan.log:║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+/home/<user>/results-run48/r1_C-plan.log:2026-11-23T15:38:46.073825Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+/home/<user>/results-run48/r1_C-serve.server.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r1_C-serve.server.log:║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+/home/<user>/results-run48/r1_C-serve.server.log:2026-11-23T13:49:16.736152Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+/home/<user>/results-run48/r2_C-b2048.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r2_C-b2048.log:║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+/home/<user>/results-run48/r2_C-b2048.log:2026-11-23T16:39:53.137955Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+/home/<user>/results-run48/r2_C-off.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 32 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r2_C-pf-serve.server.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r2_C-pf-serve.server.log:║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+/home/<user>/results-run48/r2_C-pf-serve.server.log:2026-11-23T14:17:20.588985Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+/home/<user>/results-run48/r2_C-pf.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r2_C-pf.log:║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+/home/<user>/results-run48/r2_C-pf.log:2026-11-23T16:24:50.636673Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+/home/<user>/results-run48/r2_C-pin-c4608.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 4608 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r2_C-pin.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r2_C-plan.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r2_C-plan.log:║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+/home/<user>/results-run48/r2_C-plan.log:2026-11-23T16:15:41.541556Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+/home/<user>/results-run48/r2_C-serve.server.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r2_C-serve.server.log:║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+/home/<user>/results-run48/r2_C-serve.server.log:2026-11-23T14:12:09.088349Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+/home/<user>/results-run48/r3_C-b2048.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r3_C-b2048.log:║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+/home/<user>/results-run48/r3_C-b2048.log:2026-11-23T17:19:56.413572Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+/home/<user>/results-run48/r3_C-off.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 32 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r3_C-pf-serve.server.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r3_C-pf-serve.server.log:║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+/home/<user>/results-run48/r3_C-pf-serve.server.log:2026-11-23T14:47:46.700074Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+/home/<user>/results-run48/r3_C-pf.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r3_C-pf.log:║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+/home/<user>/results-run48/r3_C-pf.log:2026-11-23T17:04:46.062433Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+/home/<user>/results-run48/r3_C-pin.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r3_C-plan.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r3_C-plan.log:║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+/home/<user>/results-run48/r3_C-plan.log:2026-11-23T17:44:43.651369Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+/home/<user>/results-run48/r3_C-serve.server.log:║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+/home/<user>/results-run48/r3_C-serve.server.log:║   • MoE cache       : 3.52 GB in VRAM for the experts in RAM | CPU share of the misses 0.9 (moe_cache_size / moe_cache_cpu_share)
+/home/<user>/results-run48/r3_C-serve.server.log:2026-11-23T14:42:37.928928Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU

@@ -1,0 +1,7 @@
+| code | prompt 31 tok 1.46 t/s | gen 238 tok 7.63 t/s | wall 52.3 s |
+| chat | prompt 33 tok 6.43 t/s | gen 207 tok 20.81 t/s | wall 15.1 s |
+| list | prompt 34 tok 6.58 t/s | gen 242 tok 12.84 t/s | wall 24.0 s |
+| long | prompt 804 tok 36.43 t/s | gen 128 tok 15.93 t/s | wall 30.1 s |
+| pp512 | prompt 527 tok 33.73 t/s | gen 13 tok 12.40 t/s | wall 16.7 s |
+| pp2048 | prompt 2165 tok 130.96 t/s | gen 16 tok 10.91 t/s | wall 18.0 s |
+| pp4096 | prompt 4404 tok 188.17 t/s | gen 16 tok 16.06 t/s | wall 24.4 s |

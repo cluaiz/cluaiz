@@ -13,6 +13,8 @@
   Results so far decide the prefetch's Auto rule (`engine/plan/src/expert_prefetch.rs`): on only for a MoE
   cache of at least 20% of the experts on Linux (run 43 faster), off for small caches (run 44 slower).
   Run 46 (`test/cloud/runs/2026-11-23-run46-laptop-prefetch-auto/`) could not rebuild run 44's shape.
+  Run 48 (`test/cloud/runs/2026-11-23-run48-l4-fair-baselines/`) ran the serve and bench additions below,
+  tables by `summarize_fair.py`.
 - **Platform:** `run_prefetch.sh`: the L4 VM of runs 11, 13 and 14 (GCP `g2-standard-8`: L4 22.5 GB,
   4 cores / 8 threads, 31 GB RAM), Ubuntu or Debian with CUDA, Linux only (`/proc/diskstats`,
   `drop_caches`). `run_prefetch_laptop.ps1`: the Windows laptop of run 20 (see its section below).
@@ -166,6 +168,34 @@ cache on this laptop; the release build (run 20 used `target\release`; this scri
 build `cargo build -p cmd` makes, whose llama.cpp is built with CMake's Release flags, while the Rust code
 is not optimized); cold-cache runs.
 
+## Run 48 additions to `run_case_g.sh` (fair baselines and the prompt-speed gap)
+
+Run 43 compared Cluaiz with the MoE cache and the prefetch against llama.cpp without its cache, and loaded
+Cluaiz once per prompt while llama-server loaded once. Run 45 found Cluaiz 9-11% behind at pp512 / pp2048.
+These configurations close both gaps on the same VM shape (`CONFIGS` picks them):
+
+| Config | Tool and flags | Why |
+|---|---|---|
+| `L-serve` | `llama-server -ngl 99 -ncmoe 41 -c 16384 -t 4 -fa auto`, one load | llama.cpp without its MoE cache (run 43's L-text) on the same client as the rows below |
+| `L-serve-mc` | the same with `--moe-cache-mib 3600 --moe-cache-cpu-share 0.9` (`MC_MIB`, `MC_SHARE`) | llama.cpp with its own upstream MoE cache, the size the Cluaiz planner picks here (3602.69 MiB, 0.9) |
+| `C-serve` | one `cluaiz -vv serve` process (port 8011), prefetch off, planner default | one load for every request, like llama-server |
+| `C-pf-serve` | the same with `CLUAIZ_EXPERT_PREFETCH=on` | the prefetch on one load |
+| `B-serve` | `bmoe-server --auto --threads 4 -c 16384` (BigMoeOnEdge; `BMOE_ARGS` replaces `--auto`) | the closest competitor on SSD streaming, with its own planner |
+| `B-cli` | `bmoe-cli --auto -n 128` on a short prompt | BigMoeOnEdge's own generation figure (it has no llama-bench style command) |
+| `C-off` | `cluaiz bench`, `CLUAIZ_MOE_CACHE=off` | whether the MoE cache causes the prompt gap |
+| `C-b2048` | `cluaiz bench --batch-size 2048 --ubatch-size 512` | llama-bench's batch sizes; Cluaiz's default is 512 / 512 (`engine/core/src/settings.rs`) |
+| `C-pin-c4608` | `C-pin` with `-c 4608` | whether Cluaiz's 16384-token context slows the prompt (llama-bench sizes its context to each test) |
+| `LF-bench` | llama-bench built from the Cluaiz fork (`FORK_BENCH`, default `~/fork-bench-build/bin/llama-bench`), same command as `L-bench` | whether the llama.cpp version causes the prompt gap |
+| `C-auto` | `cluaiz bench` with no `CLUAIZ_EXPERT_PREFETCH` | today's default: the planner's Auto rule decides the prefetch |
+| `B-serve-pin`, `B-serve-pin0` | bmoe-server `--no-auto --moe-stream --gpu-layers 99 --device-cache-mb 3600`, with and without `--device-cache-cpu-share 0.9`, f16 KV | BigMoeOnEdge on Cluaiz's placement. In run 48 neither loaded the model: the first is refused while streaming, the second puts the experts on the GPU too (out of memory) |
+| `L-bench-mc` | llama-bench with the cache flags | **not usable**: llama-bench has no `--moe-cache-mib`, neither in `b54752d` (`llama-bench --help`) nor in upstream master `a8f8294` (2026-11-23). llama.cpp's cache is measured through `L-serve-mc` instead |
+
+The serve rows use `fair_client.py`: case G's four prompts (greedy, thinking off, the same body for every
+server), then three long prompts for prompt speed (`TEXT_PP`, default `512,2048,4096` approximate tokens;
+the real counts are in each answer's `prompt_n`). llama-server and bmoe-server return llama-server's
+`timings`; `cluaiz serve` does not, so its speeds come from the `llama.cpp timings:` lines of its log
+(`<tag>.homelog.txt`). The serve rows wait for an HTTP 200 on `/health` (llama-server answers 503 while it loads).
+
 ## Failure and recovery
 
 - No plan read, or the forced plan has no cache (less than 256 MiB of VRAM left): the script stops with a
@@ -181,4 +211,4 @@ is not optimized); cold-cache runs.
 | The run itself | no number exists yet | the owner's yes and the VM cost |
 | Windows laptop run with a big MoE cache | runs 42, 44 and 46 had at most 452 MiB of cache on the 4 GB GPU, so Windows has no measurement of the shape where Auto turns the prefetch on (Auto stays off on Windows) | a GPU with more free VRAM, or the 4 GB GPU with nothing else on it |
 | Final pass numbers | the bar above is proposed | the owner |
-| `L-cache` through llama-bench | a different method from the other rows when llama-server is used | a llama-bench with `--moe-cache-mib`, if upstream adds one |
+| `L-cache` / `L-bench-mc` through llama-bench | a different method from the other rows when llama-server is used | a llama-bench with `--moe-cache-mib`; upstream master `a8f8294` (2026-11-23) has none |

@@ -1,0 +1,10 @@
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 41 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+2026-11-23T14:10:27.543888Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 4, n_threads_batch = 4
+2026-11-23T14:12:09.088349Z DEBUG [llama.cpp] impl:      CUDA0 MoE cache size =  3602.69 MiB for 14514.00 MiB of host experts, 90% of the misses on the CPU
+2026-11-23T14:13:10.445519Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 31 tokens in 22188 ms (1.40 t/s) | generation 235 tokens in 30380 ms (7.74 t/s)
+2026-11-23T14:13:24.490263Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 32 tokens in 4131 ms (7.75 t/s) | generation 208 tokens in 9559 ms (21.76 t/s)
+2026-11-23T14:13:48.329783Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 32 tokens in 4856 ms (6.59 t/s) | generation 242 tokens in 18624 ms (12.99 t/s)
+2026-11-23T14:14:20.771728Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 802 tokens in 24223 ms (33.11 t/s) | generation 128 tokens in 7974 ms (16.05 t/s)
+2026-11-23T14:14:39.655998Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 525 tokens in 17425 ms (30.13 t/s) | generation 12 tokens in 1307 ms (9.18 t/s)
+2026-11-23T14:15:03.385760Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 2163 tokens in 21266 ms (101.71 t/s) | generation 16 tokens in 2291 ms (6.99 t/s)
+2026-11-23T14:15:35.311350Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 4402 tokens in 29169 ms (150.91 t/s) | generation 16 tokens in 2569 ms (6.23 t/s)

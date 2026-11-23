@@ -1,0 +1,23 @@
+	Command being timed: "/home/<user>/BigMoeOnEdge/build/bin/bmoe-cli -m /home/<user>/ch-run23/models/chat/qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf --threads 4 -c 16384 -n 128 -p Write a long detailed essay about the history of computing. --auto"
+	User time (seconds): 63.63
+	System time (seconds): 29.48
+	Percent of CPU this job got: 38%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 4:01.70
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 12572020
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 4239
+	Minor (reclaiming a frame) page faults: 4517265
+	Voluntary context switches: 134871
+	Involuntary context switches: 8113
+	Swaps: 0
+	File system inputs: 76542736
+	File system outputs: 424
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0

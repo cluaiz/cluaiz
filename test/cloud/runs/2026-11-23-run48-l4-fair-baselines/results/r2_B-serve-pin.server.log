@@ -1,0 +1,9 @@
+ggml_cuda_init: found 1 CUDA devices (Total VRAM: 22614 MiB):
+  Device 0: NVIDIA L4, compute capability 8.9, VMM: yes, VRAM: 22614 MiB
+load_backend: loaded CUDA backend from /home/<user>/BigMoeOnEdge/build/bin/libggml-cuda.so
+load_backend: loaded CPU backend from /home/<user>/BigMoeOnEdge/build/bin/libggml-cpu-cascadelake.so
+bmoe-server 0.48.0 listening on http://127.0.0.1:8765/
+  data: /home/<user>/.local/share/bigmoeonedge
+  models: /home/<user>/.local/share/bigmoeonedge/models
+  ui: (not built)
+warning: not loading the model at start: "Device cache misses on the CPU" computes misses from the experts' resident copy: it needs "Expert streaming" off
