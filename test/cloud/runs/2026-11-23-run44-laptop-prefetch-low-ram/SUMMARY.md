@@ -20,8 +20,11 @@ free RAM during the runs was 0.06-1.9 GB and every run read 0.7-18 GB from disk.
 2. With little free RAM the planner did give a small MoE cache (258-452 MiB of VRAM) in 4 of 6 cache runs.
 3. **The expert prefetch made generation slower.** In the two runs where it ran: 10.23 and 8.68 t/s, against
    20.09 and 17.48 t/s for the cache alone in the same rounds. It asked the OS to read 173-215 GB for
-   about 128+ generated tokens and the prompt runs, far more than the 11.5 GB of experts: it prefetches too much and
-   competes with the reads that are really needed. In round 3, with no cache and no prefetch, C-pf gave 14.98.
+   about 128+ generated tokens and the prompt runs, far more than the 11.5 GB of experts (bytes asked = cache
+   misses x expert size). It was not disk thrashing: round 1 C-pf read only 0.74 GB from disk against 7.16 GB
+   for C-cache. The cost is about 48 ms per token spent asking for mostly resident pages; whether the Windows
+   `PrefetchVirtualMemory` call or the smaller working set causes it is not known (?). Analysis:
+   `.agent/plans/engine/ssd-streaming/03-prefetch-auto.md`. In round 3, with no cache and no prefetch, C-pf gave 14.98.
 4. The cache alone was the fastest median (17.48), but its range overlaps C-plan (17.39); not a proven gain.
 
 ## Caveats
