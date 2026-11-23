@@ -9,7 +9,13 @@ use cluaiz_runtime::{
 use color_eyre::eyre::{eyre, Result};
 use colored::Colorize;
 
-/// User-facing ingestion reuses the document service and the configured ONNX owner.
+/// What one ingest embeds: the chunks of a document, or one image
+enum Inputs {
+    Text(Vec<String>),
+    Image(Vec<EmbeddingInput>),
+}
+
+/// User-facing ingestion reuses the document service and the configured embedding owner (GGUF or ONNX).
 pub async fn execute(file_path: &str) -> Result<()> {
     let settings = cluaiz_core::Settings::current();
     let resolver =
@@ -30,10 +36,10 @@ pub async fn execute(file_path: &str) -> Result<()> {
     let inputs = if is_image {
         let image = cluaiz_media::image::decode_image(&bytes, limits)
             .map_err(|error| eyre!("{error:#}"))?;
-        vec![EmbeddingInput::Image {
+        Inputs::Image(vec![EmbeddingInput::Image {
             image,
             text: String::new(),
-        }]
+        }])
     } else {
         let document = tokio::task::spawn_blocking(move || {
             let result = documents::extract(&bytes, &format, limits);
@@ -60,7 +66,7 @@ pub async fn execute(file_path: &str) -> Result<()> {
         for (index, chunk) in chunks.iter().enumerate().take(5) {
             println!("Chunk {}:\n{}", index + 1, chunk);
         }
-        chunks.into_iter().map(EmbeddingInput::Text).collect()
+        Inputs::Text(chunks)
     };
     let schema = cluaiz_security::PermissionSchema::load();
     // The model `cluaiz model set-vector` chose (`embed_slot`, then `vector_models.text`)
@@ -88,17 +94,22 @@ pub async fn execute(file_path: &str) -> Result<()> {
         .installed_models
         .get(&id)
         .ok_or_else(|| eyre!("Configured embedding model is not installed: {id}"))?;
-    let model = OnnxModel::from_package(entry).map_err(|error| eyre!("{error:#}"))?;
     let host = EngineHost::new();
-    let results = host
-        .onnx
-        .embed(model, inputs, settings, Some(0))
-        .await
-        .map_err(|error| eyre!("{error:#}"))?;
-    println!(
-        "Generated {} real embedding vectors using {}",
-        results.len(),
-        id
-    );
+    // Text chunks go through the same GGUF / ONNX owners as `/v1/embeddings`; image vectors are ONNX only
+    let count = match inputs {
+        Inputs::Text(texts) => cluaiz_api::handlers::embeddings::embed_texts(&host, entry, texts)
+            .await
+            .map_err(|error| eyre!("{error:#}"))?
+            .len(),
+        Inputs::Image(inputs) => {
+            let model = OnnxModel::from_package(entry).map_err(|error| eyre!("{error:#}"))?;
+            host.onnx
+                .embed(model, inputs, settings, Some(0))
+                .await
+                .map_err(|error| eyre!("{error:#}"))?
+                .len()
+        }
+    };
+    println!("Generated {} real embedding vectors using {}", count, id);
     Ok(())
 }
