@@ -40,6 +40,10 @@ pub struct NativeSession {
     llama: NativeLlama,
     key: Option<ProjectorKey>,
     budget: Option<MediaBudget>,
+    /// VRAM a GPU projector took since it was loaded: its weights at load, then what each encode
+    /// added (compute buffers stay allocated after the first encode, warmup is off). The request
+    /// check subtracts it from the load estimate, so the projector's own memory is not charged twice.
+    projector_vram_held: u64,
     skip_reasoning: Option<Arc<AtomicBool>>,
     /// The running request's stop flag (see `StreamOptions::cancel`)
     cancel: Option<Arc<AtomicBool>>,
@@ -248,6 +252,7 @@ impl NativeSession {
             llama,
             key: None,
             budget: None,
+            projector_vram_held: 0,
             skip_reasoning: None,
             cancel: None,
             progress: None,
@@ -300,15 +305,26 @@ impl NativeSession {
         };
         if self.key.as_ref() == Some(&key) {
             if let Some(projector) = &self.projector {
-                let (ram, _) = HardwareProber::probe_live_memory();
+                let (ram, vram) = HardwareProber::probe_live_memory();
                 hw.memory.available_gb = bytes_to_gib(ram);
-                if cluaiz_plan::media_budget::check_request_ram(
-                    needs.workspace_bytes,
-                    needs.decoded_bytes,
-                    &hw,
-                    settings,
-                )
-                .is_ok()
+                let vram_ok = match self.check_request_vram(vram) {
+                    Ok(()) => true,
+                    Err(error) => {
+                        // Free VRAM fell below what the resident encoder may still need (another
+                        // model or app took it): plan the projector again, as for RAM below, so it
+                        // can move to the CPU instead of refusing every later request.
+                        tracing::info!("Reclaiming idle GPU projector before media admission: {error}");
+                        false
+                    }
+                };
+                if vram_ok
+                    && cluaiz_plan::media_budget::check_request_ram(
+                        needs.workspace_bytes,
+                        needs.decoded_bytes,
+                        &hw,
+                        settings,
+                    )
+                    .is_ok()
                 {
                     if let Some(p) = &self.progress {
                         p.emit(
@@ -346,6 +362,21 @@ impl NativeSession {
             );
         }
         let projector = Projector::load(&self.llama, &c_path, budget.placement(), threads)?;
+        let gpu = budget.placement() == cluaiz_plan::media_budget::ProjectorPlacement::Gpu;
+        let held = if gpu {
+            vram.saturating_sub(HardwareProber::probe_live_memory().1)
+        } else {
+            0
+        };
+        tracing::info!(
+            placement = ?budget.placement(),
+            free_vram_before_mib = vram / cluaiz_core::MIB,
+            taken_by_load_mib = held / cluaiz_core::MIB,
+            weights_mib = needs.weights_bytes / cluaiz_core::MIB,
+            workspace_mib = needs.workspace_bytes / cluaiz_core::MIB,
+            buffer_mib = budget.device_buffer_bytes() / cluaiz_core::MIB,
+            "Projector loaded"
+        );
         if let Some(p) = &self.progress {
             p.emit(
                 cluaiz_core::processing::ProcessingStage::ProjectorLoading,
@@ -362,6 +393,7 @@ impl NativeSession {
         self.projector = Some(projector);
         self.key = Some(key);
         self.budget = Some(budget);
+        self.projector_vram_held = held;
         Ok(support)
     }
 
@@ -370,6 +402,37 @@ impl NativeSession {
         self.projector = None;
         self.key = None;
         self.budget = None;
+        self.projector_vram_held = 0;
+    }
+
+    /// Live VRAM check for a request on a GPU projector (a CPU projector passes). The load plan
+    /// asked for weights + workspace + buffer free; what the projector already took since then
+    /// (`projector_vram_held`) is out of the live free VRAM and is not asked for again.
+    fn check_request_vram(&self, vram: u64) -> Result<()> {
+        let (Some(key), Some(budget)) = (&self.key, self.budget) else {
+            bail!("Media projector is not loaded");
+        };
+        if budget.placement() != cluaiz_plan::media_budget::ProjectorPlacement::Gpu {
+            return Ok(());
+        }
+        let estimate = key
+            .weights_bytes
+            .checked_add(key.workspace_bytes)
+            .context("Media weight/workspace estimate overflow")?;
+        let needed = estimate
+            .saturating_sub(self.projector_vram_held)
+            .checked_add(budget.device_buffer_bytes())
+            .context("Media VRAM estimate overflow")?;
+        if needed > vram {
+            bail!(
+                "Insufficient live VRAM for media request workspace: needed_mib={}, free_mib={}, held_by_projector_mib={}, buffer_mib={}",
+                needed / cluaiz_core::MIB,
+                vram / cluaiz_core::MIB,
+                self.projector_vram_held / cluaiz_core::MIB,
+                budget.device_buffer_bytes() / cluaiz_core::MIB
+            );
+        }
+        Ok(())
     }
 
     /// Queries captured from the loaded encoder; does not imply a wired API route.
@@ -417,23 +480,10 @@ impl NativeSession {
         let (ram, vram) = HardwareProber::probe_live_memory();
         live.memory.available_gb = bytes_to_gib(ram);
         cluaiz_plan::media_budget::check_request_ram(workspace, additional, &live, settings)?;
-        if self
+        self.check_request_vram(vram)?;
+        let gpu = self
             .budget
-            .context("Media budget is unavailable")?
-            .placement()
-            == cluaiz_plan::media_budget::ProjectorPlacement::Gpu
-        {
-            let buffer = self
-                .budget
-                .context("Media budget is unavailable")?
-                .device_buffer_bytes();
-            if workspace
-                .checked_add(buffer)
-                .is_none_or(|needed| needed > vram)
-            {
-                bail!("Insufficient live VRAM for media request workspace");
-            }
-        }
+            .is_some_and(|b| b.placement() == cluaiz_plan::media_budget::ProjectorPlacement::Gpu);
         self.llama.interrupt_signal.store(false, Ordering::Release);
         let projector = self
             .projector
@@ -464,6 +514,21 @@ impl NativeSession {
                 cancel: self.cancel.as_deref(),
             },
         );
+        if gpu {
+            // What this request left allocated: compute buffers grow with the image size and stay
+            let grown = vram.saturating_sub(HardwareProber::probe_live_memory().1);
+            let cap = self
+                .key
+                .as_ref()
+                .map_or(0, |k| k.weights_bytes.saturating_add(k.workspace_bytes));
+            self.projector_vram_held = self.projector_vram_held.saturating_add(grown).min(cap);
+            tracing::info!(
+                free_vram_before_mib = vram / cluaiz_core::MIB,
+                grown_mib = grown / cluaiz_core::MIB,
+                held_by_projector_mib = self.projector_vram_held / cluaiz_core::MIB,
+                "Media request on the GPU projector"
+            );
+        }
         let too_large = result
             .as_ref()
             .err()

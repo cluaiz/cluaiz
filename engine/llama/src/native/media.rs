@@ -371,6 +371,9 @@ impl MediaInput {
                 bail!("Message role contains NUL");
             }
             let mut content = String::new();
+            // Text parts are joined with a newline, none next to a media marker, as llama-server's
+            // chat parser joins content parts: glued text ran the Engine's tool hint into the question
+            let mut after_media = false;
             for (part_index, part) in message.content.into_iter().enumerate() {
                 let part_bytes = u64::try_from(part.retained_bytes())?;
                 let other = retained
@@ -390,6 +393,10 @@ impl MediaInput {
                         if text.contains('\0') {
                             bail!("Message text contains NUL");
                         }
+                        if !content.is_empty() && !after_media {
+                            content.push('\n');
+                        }
+                        after_media = false;
                         content.push_str(&text);
                         continue;
                     }
@@ -446,6 +453,7 @@ impl MediaInput {
                     mtmd::mtmd_bitmap_set_id(bitmap.0.as_ptr(), id.as_ptr());
                 }
                 content.push_str(&marker);
+                after_media = true;
                 input.markers.push(marker);
                 input.targets.push((message_index, part_index));
                 input.bitmaps.push(bitmap);
