@@ -1,0 +1,4 @@
+cmd: cluaiz bench <model> -p 0 -n 32 -r 1 -t 8 -c 1024 --flash-attn on --cache-type-k f16 --cache-type-v f16 -vv; binary target/debug/deps/cluaiz.exe (debug, working tree on 00a20745 + this change)
+A-auto exit 0 27s
+B-auto-cache exit 0 64s
+C-env-on-cache exit 0 42s

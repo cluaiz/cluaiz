@@ -10,6 +10,9 @@
 - **Status:** `run_prefetch.sh` has not been run on its real model. `run_prefetch_laptop.ps1` ran in runs 42
   and 44. `run_case_g.sh` (run 23 case G with the cache and the prefetch; `CONFIGS` picks configurations,
   tables by `summarize_case_g.py`) ran in run 43 (`test/cloud/runs/2026-11-23-run43-l4-case-g-prefetch/`).
+  Results so far decide the prefetch's Auto rule (`engine/plan/src/expert_prefetch.rs`): on only for a MoE
+  cache of at least 20% of the experts on Linux (run 43 faster), off for small caches (run 44 slower).
+  Run 46 (`test/cloud/runs/2026-11-23-run46-laptop-prefetch-auto/`) could not rebuild run 44's shape.
 - **Platform:** `run_prefetch.sh`: the L4 VM of runs 11, 13 and 14 (GCP `g2-standard-8`: L4 22.5 GB,
   4 cores / 8 threads, 31 GB RAM), Ubuntu or Debian with CUDA, Linux only (`/proc/diskstats`,
   `drop_caches`). `run_prefetch_laptop.ps1`: the Windows laptop of run 20 (see its section below).
@@ -176,6 +179,6 @@ is not optimized); cold-cache runs.
 | Item | Why it matters | Needs |
 |---|---|---|
 | The run itself | no number exists yet | the owner's yes and the VM cost |
-| Windows laptop run (run 20 case) | the reported 52 MB/s was on Windows | the run of `run_prefetch_laptop.ps1` once the Gemma file is complete; cold runs need an owner-approved standby-list tool |
+| Windows laptop run with a big MoE cache | runs 42, 44 and 46 had at most 452 MiB of cache on the 4 GB GPU, so Windows has no measurement of the shape where Auto turns the prefetch on (Auto stays off on Windows) | a GPU with more free VRAM, or the 4 GB GPU with nothing else on it |
 | Final pass numbers | the bar above is proposed | the owner |
 | `L-cache` through llama-bench | a different method from the other rows when llama-server is used | a llama-bench with `--moe-cache-mib`, if upstream adds one |
