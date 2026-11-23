@@ -7,7 +7,9 @@
   `engine/plan/README.md`) makes generation faster for a model larger than RAM, against official
   ggml-org llama.cpp on the same machine, file and placement. Method: section 5 of
   `.agent/plans/engine/ssd-streaming/01-research-and-architecture.md` (git-ignored plan folder).
-- **Status:** neither script has been run on its real model. Nothing in this folder is a measurement.
+- **Status:** `run_prefetch.sh` has not been run on its real model. `run_prefetch_laptop.ps1` ran in runs 42
+  and 44. `run_case_g.sh` (run 23 case G with the cache and the prefetch; `CONFIGS` picks configurations,
+  tables by `summarize_case_g.py`) ran in run 43 (`test/cloud/runs/2026-11-23-run43-l4-case-g-prefetch/`).
 - **Platform:** `run_prefetch.sh`: the L4 VM of runs 11, 13 and 14 (GCP `g2-standard-8`: L4 22.5 GB,
   4 cores / 8 threads, 31 GB RAM), Ubuntu or Debian with CUDA, Linux only (`/proc/diskstats`,
   `drop_caches`). `run_prefetch_laptop.ps1`: the Windows laptop of run 20 (see its section below).

@@ -1,0 +1,6 @@
+total 18660492
+drwxrwxr-x 2 <user> <user>        4096 Nov 20 04:05 .
+drwxrwxr-x 7 <user> <user>        4096 Nov 20 04:18 ..
+-rw-rw-r-- 1 <user> <user> 18209036576 Nov 20 04:05 Qwen3.6-35B-A3B-UD-IQ4_XS.gguf
+-rw-rw-r-- 1 <user> <user>   899283584 Nov 20 04:05 mmproj-F16.gguf
+-rw-rw-r-- 1 <user> <user>         954 Nov 20 04:05 model_manifest.json
