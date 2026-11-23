@@ -82,7 +82,7 @@ flowchart LR
   | `approvals.rs` | `approvals.list`, `approve`, `reject` | The owner's answers for every approval: a chat tool call, `system.exec`, a call outside its caller's roots |
   | `audio.rs` | `audio.voices`, `languages`, `run` | Voices and languages of installed speech models; speech and transcription as a task (shares the `/v1/audio/*` dispatch) |
   | `audit.rs` | `system.audit` | Newest lines of the CEP audit log (write, exec, admin calls and denials; params only as a hash) |
-  | `config.rs` | `config.get`, `config.set` | `settings.json` by section; `set` changes only the given fields and answers the section as saved |
+  | `config.rs` | `config.get`, `config.set` | `settings.json` by section; `set` changes only the given fields and answers the section as saved; the `engine` section's `api_port` is the port this server listens on (`CLUAIZ_PORT` wins), `saved_api_port` the saved one |
   | `context.rs` | `context.preview`, `report`, `reports`, `jobs` | Dry-run plan of a chat request, a chat's context reports, the idle-time job queue |
   | `fs.rs`, `fs_picker.rs` | `fs.list`, `read`, `write`, `copy`, `rename`, `mkdir`, `delete`, `pick_folder` | Files inside the caller's roots; the native folder picker in the foreground |
   | `kv.rs` | `kv.status`, `delete`, `clear` | Saved KV cache per chat (`session_id`) |

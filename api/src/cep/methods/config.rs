@@ -149,7 +149,13 @@ async fn section_value(ctx: &CallCtx, section: Section) -> Value {
         Section::Storage => json!({ "cleanup_policy": settings.storage_cleanup_policy }),
         Section::Kv => json!(settings.chat_memory),
         Section::Engine => {
-            let mut engine = json!(clear_missing_slots(ctx).await);
+            let schema = clear_missing_slots(ctx).await;
+            // The port this server listens on: CLUAIZ_PORT wins over the saved value for one run, and a
+            // client connects to the port in this reply. The saved value is never changed here.
+            let live_port = crate::api_port(&schema);
+            let mut engine = json!(schema);
+            engine["api_port"] = json!(live_port);
+            engine["saved_api_port"] = json!(schema.api_port);
             // What a settings screen should not offer as working switches
             engine["unused_fields"] = json!(cluaiz_security::UNUSED_FIELDS);
             // The values of agent_security_mode and what each does, so a settings screen shows these rules
