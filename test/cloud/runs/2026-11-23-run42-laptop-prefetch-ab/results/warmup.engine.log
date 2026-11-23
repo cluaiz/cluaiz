@@ -1,0 +1,63 @@
+2026-11-23T01:44:52.333554Z  INFO cluaiz::core::bootstrapper: 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-23T01:44:54.361872Z  INFO cluaiz::core::bootstrapper: ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-23T01:44:56.558063Z  INFO cluaiz::core::bootstrapper: NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+2026-11-23T01:44:58.132092Z  INFO llama_engine::native::core: 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-23T01:44:59.946773Z  INFO cluaiz_runtime::host: 📐 [EngineHost] llama.cpp dry run, full GPU at 4096 tokens: model 13.21 + context 0.21 + compute 0.53 = 13.95 GB vs estimate 13.91 GB (+0.04) in 1593 ms
+2026-11-23T01:44:59.977598Z  INFO cluaiz_runtime::host: 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : google_gemma-4-26B-A4B-it-IQ4_XS.gguf
+║   • Architecture    : gemma4 | 30 layers | heads 16 | KV heads 8 | head size K 512 / V 512, sliding window 1024 on 25 layers | 128 experts, 8 active | experts 11.52 GB
+║   • Weights         : file 14.21 GB (as Hugging Face counts it) | input embeddings 0.56 GB (always CPU) | output head 0.56 GB | vocab 262144
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 1024 tokens, KV Kv16 (Custom 1024 tokens kept (never cut), KV Kv16; does not fit on one device)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA GeForce RTX 3050 A Laptop GPU | free 2.26 of 4.00 GB | buffer kept free 0.50 GB (card-sized gap: 0.20 GB reserve + 0.30 GB for the GPU pool, model not measured on this machine yet; estimate corrected by llama.cpp's dry run +0.04 GB)
+║   • RAM             : free 7.00 of 23.69 GB | Cluaiz may use 5.91 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : MoE split (attention on GPU, experts in RAM)
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 30 | n_ctx = 1024 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 30 on GPU, 0 in RAM (of 30)
+║   • VRAM            : 2.41 GB (weights + KV 0.21 + logits)
+║   • RAM             : 12.08 GB (incl. KV 0.00)
+║   • Disk (mmap)     : 6.18 GB of experts read from disk when used
+║   • Reason         : User setting: planner bypassed: n_gpu_layers -1 n_cpu_moe 30 offload_kqv 1 -> estimate VRAM 2.41 of usable 1.63 GB; 6.18 GB over the RAM limit is read from disk when used (mmap); 0.79 GB over usable VRAM (llama.cpp may fail, or Windows moves the rest to shared GPU memory)
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM  2.41 GB | RAM 12.08 GB | planner bypassed: n_gpu_layers -1 n_cpu_moe 30 offload_kqv 1 -> estimate VRAM 2.41 of usable 1.63 GB; 6.18 GB over the RAM limit is read from disk when used (mmap); 0.79 GB over usable VRAM (llama.cpp may fail, or Windows moves the rest to shared GPU memory)
+║   • Full GPU         [NO]       VRAM 13.97 GB | RAM  0.56 GB | does not fit in VRAM: weights 13.21 + KV 0.21 + buffers 0.54 = 13.97 GB vs usable VRAM 1.63 GB
+║   • MoE split        [NO]       VRAM  2.41 GB | RAM 12.08 GB | does not fit in VRAM: attention/shared 1.69 + KV 0.21 + buffers 0.50 on GPU, experts of 30 / 30 layers in RAM (11.52 GB)
+║   • MoE partial split [FITS]     VRAM  1.61 GB | RAM 12.89 GB | output head + attention/shared and KV of 12 / 30 blocks on GPU (1.61 GB), every expert in RAM (11.52 GB); 6.98 GB over the RAM limit is read from disk when used (mmap)
+║   • Weights GPU, KV RAM [NO]       VRAM 13.75 GB | RAM  0.78 GB | does not fit in VRAM: weights 13.21 + buffers 0.54 on GPU, KV 0.21 GB in RAM (attention on CPU, slower as the chat grows)
+║   • GPU + RAM split  [FITS]     VRAM  1.50 GB | RAM 13.00 GB | 1 / 30 blocks + output head on GPU (1.50 GB), 29 blocks in RAM; 7.09 GB over the RAM limit is read from disk when used (mmap)
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM 13.93 GB | weights 13.21 + KV 0.21 + logits 0.50 = 13.93 GB in RAM; 8.02 GB over the RAM limit is read from disk when used (mmap)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 8 / batch 8 | flash attention On | KV setting Kv16 -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-23T01:44:59.982992Z  INFO cluaiz_runtime::host::native_load: 🔮 [MTP] Auto: off (weights are read from the disk, where MTP was slower on every prompt)
+2026-11-23T01:44:59.984485Z  INFO llama_engine::native::core: 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 8, n_threads_batch = 8
+2026-11-23T01:44:59.984831Z  INFO llama_engine::native::core: 🧬 [Native-Llama] Loading model: C:\Users\<user>\AppData\Local\cluaiz-test\models\gemma4-26b-a4b-iq4xs\google_gemma-4-26B-A4B-it-IQ4_XS.gguf | ctx: 1024 tokens
+2026-11-23T01:45:00.927643Z  WARN llama_engine::native::core: [llama.cpp] load: control-looking token:     50 '<|tool_response>' was not control-type; this is probably a bug in the model. its type will be overridden
+2026-11-23T01:45:00.927935Z  WARN llama_engine::native::core: [llama.cpp] load: control-looking token:    212 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+2026-11-23T01:45:01.041853Z  WARN llama_engine::native::core: [llama.cpp] load: '</s>' is a normal token here, removing it from EOG list
+2026-11-23T01:45:01.120844Z  WARN llama_engine::native::core: [llama.cpp] llama_model_loader: tensor overrides to CPU are used with mmap enabled - consider using --load-mode none for better performance
+2026-11-23T01:45:10.210222Z  INFO llama_engine::native::core: 🧬 [Native-Llama] Starting DNA Discovery for: "C:\\Users\\<user>\\AppData\\Local\\cluaiz-test\\models\\gemma4-26b-a4b-iq4xs"
+2026-11-23T01:45:10.244355Z  INFO llama_engine::native::core: 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<|channel>thought"
+2026-11-23T01:45:10.244435Z  INFO llama_engine::native::core: 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "<channel|>"
+2026-11-23T01:45:10.244464Z  INFO llama_engine::native::core: 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 1024 tokens
+2026-11-23T01:45:10.245328Z  INFO llama_engine::native::core: 🧠 [Native-Llama] op_offload = 1
+2026-11-23T01:45:10.245371Z  INFO llama_engine::native::core: 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-23T01:45:10.245642Z  INFO llama_engine::native::core: 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-23T01:45:10.245685Z  INFO llama_engine::native::core: ⚡ [Native-Llama] flash_attn_type=1 (-1 auto, 0 off, 1 on), threads 8/8
+2026-11-23T01:45:15.939103Z  INFO cluaiz_runtime::host: 🔍 [EngineHost] VRAM planned 2.41 GB, taken 2.10 GB | n_ctx planned 1024 created 1024 | n_gpu_layers -1 n_cpu_moe 30
+2026-11-23T01:45:15.939489Z  WARN cluaiz_runtime::host: ⚠️ [EngineHost] The GPU is full after the load (0.16 GB free, plan 2.41 GB, 2.26 GB was free): it may be using shared system memory; kept as needing all that was free
+2026-11-23T01:45:15.942244Z  INFO cluaiz_runtime::host: ✅ [EngineHost] Model successfully loaded into unified process space: C:\Users\<user>\AppData\Local\cluaiz-test\models\gemma4-26b-a4b-iq4xs\google_gemma-4-26B-A4B-it-IQ4_XS.gguf
