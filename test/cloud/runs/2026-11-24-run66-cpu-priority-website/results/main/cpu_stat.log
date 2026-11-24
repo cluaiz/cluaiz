@@ -1,0 +1,60 @@
+2026-11-24T11:10:35Z baseline_start
+cpu2 80740 12916 7138 788536 11818 0 864 0 0 0
+root subtree_control: cpuset cpu memory pids
+system.slice subtree_control: cpuset memory pids
+harness cgroup: 0::/system.slice/run66.service affinity: 2
+postgres AllowedCPUs: 2
+2026-11-24T11:12:38Z baseline_end
+cpu2 80862 12916 7240 800592 11830 0 866 0 0 0
+root subtree_control: cpuset cpu memory pids
+system.slice subtree_control: cpuset memory pids
+harness cgroup: 0::/system.slice/run66.service affinity: 2
+postgres AllowedCPUs: 2
+2026-11-24T11:12:38Z A1_start
+cpu2 80863 12916 7241 800592 11830 0 866 0 0 0
+root subtree_control: cpuset cpu memory pids
+system.slice subtree_control: cpuset memory pids
+harness cgroup: 0::/system.slice/run66.service affinity: 2
+postgres AllowedCPUs: 2
+2026-11-24T11:34:24Z A1_end
+cpu2 207854 12916 8358 803012 11832 0 882 0 0 0
+root subtree_control: cpuset cpu memory pids
+system.slice subtree_control: cpuset memory pids
+harness cgroup: 0::/system.slice/run66.service affinity: 2
+postgres AllowedCPUs: 2
+2026-11-24T11:34:34Z B_start
+cpu2 207857 12916 8360 804010 11832 0 882 0 0 0
+root subtree_control: cpuset cpu memory pids
+system.slice subtree_control: cpuset memory pids
+harness cgroup: 0::/system.slice/run66.service affinity: 2
+postgres AllowedCPUs: 2
+2026-11-24T11:56:19Z B_end
+cpu2 209650 137926 9684 806371 11835 0 907 0 0 0
+root subtree_control: cpuset cpu memory pids
+system.slice subtree_control: cpuset memory pids
+harness cgroup: 0::/system.slice/run66.service affinity: 2
+postgres AllowedCPUs: 2
+2026-11-24T11:56:29Z C_start
+cpu2 209651 137926 9686 807370 11835 0 907 0 0 0
+root subtree_control: cpuset cpu memory pids
+system.slice subtree_control: cpuset memory pids
+harness cgroup: 0::/system.slice/run66.service affinity: 2
+postgres AllowedCPUs: 2
+2026-11-24T12:18:14Z C_end
+cpu2 336334 137926 11038 809826 11837 0 930 0 0 0
+root subtree_control: cpuset cpu memory pids
+system.slice subtree_control: cpuset memory pids
+harness cgroup: 0::/system.slice/run66.service affinity: 2
+postgres AllowedCPUs: 2
+2026-11-24T12:18:24Z A2_start
+cpu2 336334 137926 11040 810826 11837 0 930 0 0 0
+root subtree_control: cpuset cpu memory pids
+system.slice subtree_control: cpuset memory pids
+harness cgroup: 0::/system.slice/run66.service affinity: 2
+postgres AllowedCPUs: 2
+2026-11-24T12:40:09Z A2_end
+cpu2 463219 137926 12170 813249 11840 0 951 0 0 0
+root subtree_control: cpuset cpu memory pids
+system.slice subtree_control: cpuset memory pids
+harness cgroup: 0::/system.slice/run66.service affinity: 2
+postgres AllowedCPUs: 2

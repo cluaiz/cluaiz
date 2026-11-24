@@ -51,6 +51,9 @@ while [ "$#" -gt 0 ]; do
     --skip-inputs) SKIP_INPUTS=1; shift ;;
     --check-recovery) CHECK_RECOVERY=1; shift ;;
     --external-neighbour) EXTERNAL_NEIGHBOUR=1; shift ;;
+    # CPU priority and cpuset of the native engine (engines.sh); defaults: none and no cpuset
+    --priority) ENGINE_PRIORITY="$2"; shift 2 ;;
+    --engine-cpus) ENGINE_CPUS="$2"; shift 2 ;;
     *) echo "Unknown arg: $1" >&2; exit 2 ;;
   esac
 done
@@ -85,7 +88,7 @@ cleanup() {
 trap cleanup EXIT
 
 echo "=== Write manifest (no IP/hostname/secrets) ==="
-python3 - "$OUT_DIR/manifest.json" "$MODES" "$ENGINES" "$MODELS" "$W6_MODEL" "$WORKLOADS" "$TOTAL_MEM_MB" "$MEM_MAX_MB" "$THREADS" "$CTX" "$KV" "$SLOTS" "$LEVELS" "$STEP_SECS" "$SOAK_SECS" "$W4_LIMIT" "$OLLAMA_IMAGE" <<'PY'
+python3 - "$OUT_DIR/manifest.json" "$MODES" "$ENGINES" "$MODELS" "$W6_MODEL" "$WORKLOADS" "$TOTAL_MEM_MB" "$MEM_MAX_MB" "$THREADS" "$CTX" "$KV" "$SLOTS" "$LEVELS" "$STEP_SECS" "$SOAK_SECS" "$W4_LIMIT" "$OLLAMA_IMAGE" "$ENGINE_PRIORITY" "$ENGINE_CPUS" <<'PY'
 import hashlib, json, os, platform, subprocess, sys, time
 out = sys.argv[1]
 def cmd(c):
@@ -126,6 +129,8 @@ manifest = {
         "step_secs": int(sys.argv[14]),
         "soak_secs": int(sys.argv[15]),
         "w4_limit": int(sys.argv[16]),
+        "engine_priority": sys.argv[18],
+        "engine_cpus": sys.argv[19],
     },
     "engines": {
         "cluaiz_version": cmd("CLUAIZ_HOME=/root/vps26-cluaiz-home /root/.cluaiz/bin/cluaiz --version | head -1"),

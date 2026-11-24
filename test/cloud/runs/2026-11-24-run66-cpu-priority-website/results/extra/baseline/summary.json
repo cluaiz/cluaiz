@@ -1,0 +1,33 @@
+{
+  "docker_baseline": null,
+  "cold_starts": [],
+  "steps": [],
+  "speech": [],
+  "recoveries": [],
+  "phases": [
+    {
+      "phase": "baseline_website_alone",
+      "seconds": 119,
+      "cpu_avg_pct": 0.452,
+      "cpu_peak_pct": 4.1,
+      "mem_used_peak_mb": 1218.9,
+      "mem_avail_min_mb": 30880.8,
+      "swap_peak_mb": 0.0,
+      "disk_read_avg_kb_s": 0.0,
+      "docker_cpu_avg_pct": 0.0,
+      "docker_anon_peak_mb": 0.0,
+      "docker_file_peak_mb": 0.0,
+      "engine_cpu_avg_pct": 0.0,
+      "engine_anon_peak_mb": 0.0,
+      "engine_file_peak_mb": 0.0,
+      "pg_rss_peak_mb": 70.2,
+      "neighbour_checks": 119,
+      "neighbour_errors": 0,
+      "neighbour_p50_ms": 6.62,
+      "neighbour_p95_ms": 6.912,
+      "neighbour_max_ms": 24.88,
+      "neighbour_db_p95_ms": 5.651,
+      "oom_kills_max": 0
+    }
+  ]
+}

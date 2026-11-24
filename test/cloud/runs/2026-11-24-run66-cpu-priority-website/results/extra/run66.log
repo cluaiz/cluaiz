@@ -1,0 +1,6 @@
+2026-11-24T12:40:25Z postgres pid 126076 on cpus 2; sched_autogroup_enabled=1
+2026-11-24T12:42:28Z == arm L engine=llama priority=nice secs=1200
+2026-11-24T13:04:21Z == arm L exit 0
+2026-11-24T13:04:31Z == arm O engine=ollama priority=nice secs=1200
+2026-11-24T13:26:22Z == arm O exit 0
+2026-11-24T13:26:32Z ALL_DONE

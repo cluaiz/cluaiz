@@ -1,0 +1,24 @@
+2026-11-24T11:03:11Z baseline_start
+cpu2 79543 48 6547 758829 11757 0 844 0 0 0
+root subtree_control: cpuset cpu memory pids
+system.slice subtree_control: cpuset memory pids
+harness cgroup: 0::/system.slice/run66smoke.service affinity: 2
+postgres AllowedCPUs: 2
+2026-11-24T11:05:15Z baseline_end
+cpu2 79669 48 6650 770982 11768 0 847 0 0 0
+root subtree_control: cpuset memory pids
+system.slice subtree_control: cpuset memory pids
+harness cgroup: 0::/system.slice/run66smoke.service affinity: 2
+postgres AllowedCPUs: 2
+2026-11-24T11:05:15Z S_start
+cpu2 79670 48 6651 770982 11768 0 847 0 0 0
+root subtree_control: cpuset memory pids
+system.slice subtree_control: cpuset memory pids
+harness cgroup: 0::/system.slice/run66smoke.service affinity: 2
+postgres AllowedCPUs: 2
+2026-11-24T11:08:03Z S_end
+cpu2 80701 12916 7105 773383 11815 0 849 0 0 0
+root subtree_control: cpuset cpu memory pids
+system.slice subtree_control: cpuset memory pids
+harness cgroup: 0::/system.slice/run66smoke.service affinity: 2
+postgres AllowedCPUs: 2

@@ -1,0 +1,81 @@
+=== Write manifest (no IP/hostname/secrets) ===
+{
+  "created_at": "2026-11-24T12:42:28+0000",
+  "machine": {
+    "cpu_model": "Intel(R) Xeon(R) CPU @ 2.20GHz",
+    "vcpus": 8,
+    "mem_total_mb": 32099,
+    "kernel": "6.12.117+deb13-cloud-amd64",
+    "os": "Debian GNU/Linux 13 (trixie)"
+  },
+  "params": {
+    "modes": [
+      "native"
+    ],
+    "engines": [
+      "llama"
+    ],
+    "models": [
+      "qwen3-1.7b"
+    ],
+    "w6_model": "qwen3-0.6b",
+    "workloads": [
+      "W1"
+    ],
+    "mem_max_mb": 3515,
+    "threads": 1,
+    "ctx": 4096,
+    "kv": "q8_0",
+    "slots": 1,
+    "levels": [
+      32
+    ],
+    "step_secs": 1200,
+    "soak_secs": 0,
+    "w4_limit": 2000,
+    "engine_priority": "nice",
+    "engine_cpus": "2"
+  },
+  "engines": {
+    "cluaiz_version": "cluaiz 0.1.0 (pre-release)",
+    "cluaiz_sha256": "de29e2e77be720fa2c6ba04b2798a2691b25b25865dc21e9a6d834106c476905",
+    "cluaiz_commit": "961a673f",
+    "ollama_version": "ollama version is 0.40.16",
+    "ollama_sha256": "a0c1e355537b0c037f2190edd339197fe3eb00387a46d6e26be695250262a790",
+    "llama_version": "version: 1.0.0-dev (build 12428, commit b4c0e00a4)\nbuilt with GNU 11.4.0 for Linux x86_64",
+    "llama_sha256": "75e593229831bea182e9b6b2fd63231673c85be3e52cb5ebc8daf27253daf192",
+    "ollama_image": "ollama/ollama:0.40.16",
+    "docker_images": "err: Command 'docker images --digests --format '{{.Repository}}:{{.Tag}} {{.ID}} {{.Digest}} {{.Size}}'' returned non-zero exit status 127."
+  }
+}
+=== Sync engine configs ===
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Running the build at /root/.cluaiz/bin/cluaiz; the installed `cluaiz` is in /root/vps26-cluaiz-home/bin
+Ollama sync: skip qwen3-0.6b, no GGUF at /root/.cluaiz/models/chat/qwen3-0.6b-gguf-Q4_K_M/Qwen3-0.6B-Q4_K_M.gguf
+[?2026h[?25l[1Ggathering model components ⠙ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠹ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠸ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠼ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠴ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠦ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠧ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠇ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠏ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠋ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠙ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠹ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠸ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠼ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠴ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠦ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠧ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠇ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠏ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠋ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠙ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠹ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠸ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠼ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠴ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠦ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠧ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠇ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠏ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠋ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠙ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠹ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠸ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠼ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components ⠴ [K[?25h[?2026l[?2026h[?25l[1Ggathering model components [K
+parsing GGUF ⠋ [K[?25h[?2026l[?2026h[?25l[A[1Ggathering model components [K
+parsing GGUF ⠙ [K[?25h[?2026l[?2026h[?25l[A[1Ggathering model components [K
+parsing GGUF ⠹ [K[?25h[?2026l[?2026h[?25l[A[1Ggathering model components [K
+parsing GGUF ⠸ [K[?25h[?2026l[?2026h[?25l[A[1Ggathering model components [K
+parsing GGUF [K
+using existing layer sha256:b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897 [K
+using existing layer sha256:2c051824134c762fd11eb10f816cb268fbbea885606420758b03858db45b2793 [K
+writing manifest ⠋ [K[?25h[?2026l[?2026h[?25l[A[A[A[A[1Ggathering model components [K
+parsing GGUF [K
+using existing layer sha256:b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897 [K
+using existing layer sha256:2c051824134c762fd11eb10f816cb268fbbea885606420758b03858db45b2793 [K
+writing manifest [K
+success [K[?25h[?2026l
+Ollama sync: skip llama3.2-3b, no GGUF at /root/.cluaiz/models/chat/llama-3.2-3b-instruct-gguf-Q4_K_M/Llama-3.2-3B-Instruct-Q4_K_M.gguf
+Ollama sync: skip embed-gemma, no GGUF at /root/.cluaiz/models/embedding/embeddinggemma-300m-gguf-Q8_0/embeddinggemma-300M-Q8_0.gguf
+=== Start neighbour app (port 3100) and per-second sampler ===
+== START native / llama / W1 / qwen3-1.7b ==
+{"ts": "2026-11-24T13:04:12", "mode": "native", "engine": "llama", "model": "qwen3-1.7b", "workload": "W1", "phase_kind": "soak", "level": 32, "wall_s": 1279.52, "total": 498, "ok": 498, "failed": 0, "error_rate": 0.0, "p50_s": 81.41, "p95_s": 87.375, "p99_s": 89.25, "ttft_p50_s": 79.959, "ttft_p95_s": 85.855, "agg_tps": 5.0, "req_tps_mean": 8.67, "think_leaks": 0, "oom_delta": 0, "alive": true, "passed": false, "break_reason": "p95=87.375s > 60s", "valid_json_rate": 1.0, "label_accuracy": 0.8193}
+Wrote /root/results-run66-extra/L_llama_nice/analysis.md and /root/results-run66-extra/L_llama_nice/summary.json
+ALL DONE: /root/results-run66-extra/L_llama_nice

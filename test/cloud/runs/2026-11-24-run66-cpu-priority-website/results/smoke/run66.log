@@ -1,0 +1,4 @@
+2026-11-24T11:03:11Z postgres pid 105342 on cpus 2; sched_autogroup_enabled=1
+2026-11-24T11:05:15Z == arm S engine=cluaiz priority=nice secs=60
+2026-11-24T11:08:03Z == arm S exit 0
+2026-11-24T11:08:13Z ALL_DONE

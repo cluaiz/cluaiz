@@ -15,6 +15,31 @@ OLLAMA_MODELS_DIR="/root/ollama-models"
 LLAMA_DIR="/root/llama-official/llama-b12428"
 LLAMA_BIN="$LLAMA_DIR/llama-server"
 
+# CPU priority of a native engine (run26.sh --priority). Default "none" starts it as before.
+#   nice:      the engine runs under `nice -n 19`
+#   cpuweight: its systemd scope gets CPUWeight=10 (systemd's default weight is 100)
+# Docker mode ignores both.
+ENGINE_PRIORITY="${ENGINE_PRIORITY:-none}"
+# Optional cpuset for the native engine scope (run26.sh --engine-cpus, systemd AllowedCPUs, e.g. "2").
+# Empty: no CPU limit, as before.
+ENGINE_CPUS="${ENGINE_CPUS:-}"
+
+# Sets SCOPE_EXTRA (extra systemd-run properties) and NICE_PFX (command prefix) for the native engines
+engine_priority_args() {
+  SCOPE_EXTRA=()
+  NICE_PFX=()
+  case "$ENGINE_PRIORITY" in
+    none) ;;
+    nice) NICE_PFX=(nice -n 19) ;;
+    cpuweight) SCOPE_EXTRA=(-p CPUWeight=10) ;;
+    *) echo "Unknown engine priority: $ENGINE_PRIORITY (none, nice, cpuweight)" >&2; return 1 ;;
+  esac
+  if [ -n "$ENGINE_CPUS" ]; then
+    SCOPE_EXTRA+=(-p "AllowedCPUs=$ENGINE_CPUS")
+  fi
+  return 0
+}
+
 model_gguf_host() {
   case "$1" in
     qwen3-0.6b) echo "/root/.cluaiz/models/chat/qwen3-0.6b-gguf-Q4_K_M/Qwen3-0.6B-Q4_K_M.gguf" ;;
@@ -210,6 +235,7 @@ PY
 start_engine() {
   local mode="$1" engine="$2" out_dir="$3" mem_max_mb="$4" threads="$5" ctx="$6" kv="$7" slots="$8" chat_key="$9" embed_key="${10:-none}" ollama_image="${11:-ollama/ollama:0.40.16}"
   stop_all_engines "$out_dir"
+  engine_priority_args || return 1
   echo "$engine" > "$out_dir/target"
   local t0 t1 ready_s logf
   logf="$out_dir/engine_${mode}_${engine}.log"
@@ -218,8 +244,8 @@ start_engine() {
   if [ "$engine" = "cluaiz" ]; then
     if [ "$mode" = "native" ]; then
       rm -f "$CLUAIZ_HOME_NATIVE/session.token"
-      systemd-run --scope --quiet --unit=vps26-cluaiz -p "MemoryMax=${mem_max_mb}M" -p MemorySwapMax=0 \
-        env CLUAIZ_HOME="$CLUAIZ_HOME_NATIVE" CLUAIZ_HOST=127.0.0.1 CLUAIZ_PORT="$PORT_CLUAIZ" CLUAIZ_NONINTERACTIVE=1 \
+      systemd-run --scope --quiet --unit=vps26-cluaiz -p "MemoryMax=${mem_max_mb}M" -p MemorySwapMax=0 "${SCOPE_EXTRA[@]}" \
+        "${NICE_PFX[@]}" env CLUAIZ_HOME="$CLUAIZ_HOME_NATIVE" CLUAIZ_HOST=127.0.0.1 CLUAIZ_PORT="$PORT_CLUAIZ" CLUAIZ_NONINTERACTIVE=1 \
         "$CLUAIZ_BIN" serve >> "$logf" 2>&1 &
       if wait_http "http://127.0.0.1:$PORT_CLUAIZ/health" 120; then
         t1=$(python3 -c 'import time; print(time.monotonic())')
@@ -253,8 +279,8 @@ start_engine() {
   elif [ "$engine" = "ollama" ]; then
     local max_loaded="${OLLAMA_MAX_LOADED:-1}"
     if [ "$mode" = "native" ]; then
-      systemd-run --scope --quiet --unit=vps26-ollama -p "MemoryMax=${mem_max_mb}M" -p MemorySwapMax=0 \
-        env OLLAMA_HOST="127.0.0.1:$PORT_OLLAMA" OLLAMA_MODELS="$OLLAMA_MODELS_DIR" \
+      systemd-run --scope --quiet --unit=vps26-ollama -p "MemoryMax=${mem_max_mb}M" -p MemorySwapMax=0 "${SCOPE_EXTRA[@]}" \
+        "${NICE_PFX[@]}" env OLLAMA_HOST="127.0.0.1:$PORT_OLLAMA" OLLAMA_MODELS="$OLLAMA_MODELS_DIR" \
         OLLAMA_FLASH_ATTENTION=1 OLLAMA_KV_CACHE_TYPE="$kv" OLLAMA_NUM_PARALLEL="$slots" \
         OLLAMA_MAX_LOADED_MODELS="$max_loaded" OLLAMA_KEEP_ALIVE=60m \
         "$OLLAMA_BIN" serve >> "$logf" 2>&1 &
@@ -290,8 +316,8 @@ start_engine() {
       if [ "$chat_key" != "none" ] && [ "$embed_key" != "none" ]; then
         chat_gguf=$(model_gguf_host "$chat_key")
         embed_gguf=$(model_gguf_host "$embed_key")
-        systemd-run --scope --quiet --unit=vps26-llama -p "MemoryMax=${mem_max_mb}M" -p MemorySwapMax=0 \
-          env LD_LIBRARY_PATH="$LLAMA_DIR" bash -c \
+        systemd-run --scope --quiet --unit=vps26-llama -p "MemoryMax=${mem_max_mb}M" -p MemorySwapMax=0 "${SCOPE_EXTRA[@]}" \
+          "${NICE_PFX[@]}" env LD_LIBRARY_PATH="$LLAMA_DIR" bash -c \
           "'$LLAMA_BIN' -m '$chat_gguf' --host 127.0.0.1 --port $PORT_LLAMA_CHAT -ngl 0 -t $threads -tb $threads -np $slots -c $total_ctx -ctk $kv -ctv $kv -fa auto --reasoning off --reasoning-budget 0 >> '$logf' 2>&1 & '$LLAMA_BIN' -m '$embed_gguf' --embedding --host 127.0.0.1 --port $PORT_LLAMA_EMBED -ngl 0 -t $threads -tb $threads -np $slots -c $total_ctx -b 2048 -ub 2048 >> '${logf}.embed' 2>&1 & wait" &
         if wait_http "http://127.0.0.1:$PORT_LLAMA_CHAT/health" 180 && wait_http "http://127.0.0.1:$PORT_LLAMA_EMBED/health" 180; then
           t1=$(python3 -c 'import time; print(time.monotonic())')
@@ -302,8 +328,8 @@ start_engine() {
         fi
       elif [ "$embed_key" != "none" ]; then
         embed_gguf=$(model_gguf_host "$embed_key")
-        systemd-run --scope --quiet --unit=vps26-llama -p "MemoryMax=${mem_max_mb}M" -p MemorySwapMax=0 \
-          env LD_LIBRARY_PATH="$LLAMA_DIR" \
+        systemd-run --scope --quiet --unit=vps26-llama -p "MemoryMax=${mem_max_mb}M" -p MemorySwapMax=0 "${SCOPE_EXTRA[@]}" \
+          "${NICE_PFX[@]}" env LD_LIBRARY_PATH="$LLAMA_DIR" \
           "$LLAMA_BIN" -m "$embed_gguf" --embedding --host 127.0.0.1 --port "$PORT_LLAMA_EMBED" \
           -ngl 0 -t "$threads" -tb "$threads" -np "$slots" -c "$total_ctx" -b 2048 -ub 2048 >> "${logf}.embed" 2>&1 &
         if wait_http "http://127.0.0.1:$PORT_LLAMA_EMBED/health" 180; then
@@ -315,8 +341,8 @@ start_engine() {
         fi
       else
         chat_gguf=$(model_gguf_host "$chat_key")
-        systemd-run --scope --quiet --unit=vps26-llama -p "MemoryMax=${mem_max_mb}M" -p MemorySwapMax=0 \
-          env LD_LIBRARY_PATH="$LLAMA_DIR" \
+        systemd-run --scope --quiet --unit=vps26-llama -p "MemoryMax=${mem_max_mb}M" -p MemorySwapMax=0 "${SCOPE_EXTRA[@]}" \
+          "${NICE_PFX[@]}" env LD_LIBRARY_PATH="$LLAMA_DIR" \
           "$LLAMA_BIN" -m "$chat_gguf" --host 127.0.0.1 --port "$PORT_LLAMA_CHAT" \
           -ngl 0 -t "$threads" -tb "$threads" -np "$slots" -c "$total_ctx" -ctk "$kv" -ctv "$kv" -fa auto \
           --reasoning off --reasoning-budget 0 >> "$logf" 2>&1 &

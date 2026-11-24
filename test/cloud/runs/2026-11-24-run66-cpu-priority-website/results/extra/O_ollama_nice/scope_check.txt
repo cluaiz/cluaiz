@@ -1,0 +1,27 @@
+2026-11-24T13:06:05Z
+ControlGroup=/system.slice/vps26-ollama.scope
+CPUWeight=[not set]
+AllowedCPUs=2
+MemoryMax=3685744640
+cpuset.cpus.effective: 2  cpu.weight: no cpu controller
+system.slice subtree_control: cpuset memory pids
+    PID     TID  NI PSR COMMAND
+ 131376  131376  19   2 ollama
+ 131376  131380  19   2 ollama
+ 131376  131381  19   2 ollama
+    PID     TID  NI PSR COMMAND
+ 131483  131483  19   2 llama-server
+ 131483  131485  19   2 llama-server
+ 131483  131486  19   2 llama-server
+    823   0   0 0::/system.slice/ollama.service                              ollama
+ 126076   0   2 0::/system.slice/system-postgresql.slice/postgresql@17-main. postgres
+ 126077   0   2 0::/system.slice/system-postgresql.slice/postgresql@17-main. postgres
+ 126078   0   2 0::/system.slice/system-postgresql.slice/postgresql@17-main. postgres
+ 126080   0   2 0::/system.slice/system-postgresql.slice/postgresql@17-main. postgres
+ 126081   0   2 0::/system.slice/system-postgresql.slice/postgresql@17-main. postgres
+ 126082   0   2 0::/system.slice/system-postgresql.slice/postgresql@17-main. postgres
+ 131289   0   2 0::/system.slice/run66x.service                              python3
+ 131296   0   2 0::/system.slice/run66x.service                              python3
+ 131376  19   2 0::/system.slice/vps26-ollama.scope                          ollama
+ 131446   0   2 0::/system.slice/run66x.service                              python3
+ 131483  19   2 0::/system.slice/vps26-ollama.scope                          llama-server

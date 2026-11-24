@@ -1,0 +1,10 @@
+2026-11-24T11:10:35Z postgres pid 107015 on cpus 2; sched_autogroup_enabled=1
+2026-11-24T11:12:38Z == arm A1 engine=cluaiz priority=none secs=1200
+2026-11-24T11:34:24Z == arm A1 exit 0
+2026-11-24T11:34:34Z == arm B engine=cluaiz priority=nice secs=1200
+2026-11-24T11:56:19Z == arm B exit 0
+2026-11-24T11:56:29Z == arm C engine=cluaiz priority=cpuweight secs=1200
+2026-11-24T12:18:14Z == arm C exit 0
+2026-11-24T12:18:24Z == arm A2 engine=cluaiz priority=none secs=1200
+2026-11-24T12:40:09Z == arm A2 exit 0
+2026-11-24T12:40:19Z ALL_DONE

@@ -1,0 +1,21 @@
+2026-11-24T11:13:39Z
+ControlGroup=/system.slice/vps26-cluaiz.scope
+CPUWeight=[not set]
+AllowedCPUs=2
+MemoryMax=3685744640
+cpuset.cpus.effective: 2  cpu.weight: no cpu controller
+system.slice subtree_control: cpuset memory pids
+    PID     TID  NI PSR COMMAND
+ 107667  107667   0   2 cluaiz
+ 107667  107671   0   2 tokio-rt-worker
+ 107667  107672   0   2 cuda0000340000e
+    823   0   0 0::/system.slice/ollama.service                              ollama
+ 107015   0   2 0::/system.slice/system-postgresql.slice/postgresql@17-main. postgres
+ 107016   0   2 0::/system.slice/system-postgresql.slice/postgresql@17-main. postgres
+ 107017   0   2 0::/system.slice/system-postgresql.slice/postgresql@17-main. postgres
+ 107019   0   2 0::/system.slice/system-postgresql.slice/postgresql@17-main. postgres
+ 107020   0   2 0::/system.slice/system-postgresql.slice/postgresql@17-main. postgres
+ 107021   0   2 0::/system.slice/system-postgresql.slice/postgresql@17-main. postgres
+ 107590   0   2 0::/system.slice/run66.service                               python3
+ 107597   0   2 0::/system.slice/run66.service                               python3
+ 107680   0   2 0::/system.slice/run66.service                               python3
