@@ -293,13 +293,6 @@ pub(crate) fn stream_tokens_with_media(
             Some((tools, parse, choice)) => (Some(tools), parse, choice),
             None => (None, false, None),
         };
-        // The answer's JSON schema goes into the same template call, so llama.cpp builds one strict
-        // grammar for the answer and the calls (llama-server's response_format with tools,
-        // common/chat-auto-parser-generator.cpp). A GBNF grammar with tools is refused by the API.
-        let tools_schema = match &req_output {
-            Some(cluaiz_core::OutputConstraint::JsonSchema(schema)) if native_tools.is_some() => Some(schema.clone()),
-            _ => None,
-        };
         if native_tools.is_some() && llama.chat_tools_for(dna.chat_template.as_deref()).is_none() {
             tracing::warn!("⚠️ [NativeTools] llama.cpp could not parse the template for tool use; tools go inline");
         }
@@ -307,6 +300,16 @@ pub(crate) fn stream_tokens_with_media(
         // answer: a format with more than thinking tags (gpt-oss channels) leaves only the text
         let parse_answer = native_tools.is_none() && !is_media && !is_pivot
             && llama.chat_tools_for(dna.chat_template.as_deref()).is_some();
+        // The answer's JSON schema goes into the template call, with or without tools, as llama-server
+        // passes response_format (server-common.cpp `inputs.json_schema`): llama.cpp then builds one
+        // strict grammar for the thinking block, the answer and any calls
+        // (common/chat-auto-parser-generator.cpp). Without it, a model that opens thinking itself
+        // (Qwen3: the prompt does not hold the start tag) had the schema grammar from its first token
+        // and could not think. A GBNF grammar with tools is refused by the API.
+        let template_schema = match &req_output {
+            Some(cluaiz_core::OutputConstraint::JsonSchema(schema)) if native_tools.is_some() || parse_answer => Some(schema.clone()),
+            _ => None,
+        };
         // What llama.cpp returned for the last native render (grammar, triggers, parser)
         let native_apply = std::cell::RefCell::new(None::<serde_json::Value>);
         let render = |llama: &NativeLlama, messages: &[(String, String)]| {
@@ -320,7 +323,7 @@ pub(crate) fn stream_tokens_with_media(
                     if let Some(choice) = &tool_choice {
                         request["tool_choice"] = serde_json::json!(choice);
                     }
-                    if let Some(schema) = &tools_schema {
+                    if let Some(schema) = &template_schema {
                         request["json_schema"] = schema.clone();
                     }
                     match chat_tools.apply(&request) {
@@ -362,10 +365,13 @@ pub(crate) fn stream_tokens_with_media(
                 .then(|| llama.chat_tools(dna.chat_template.as_deref()))
                 .flatten()
                 .and_then(|chat_tools| {
-                    let request = serde_json::json!({
+                    let mut request = serde_json::json!({
                         "messages": cluaiz_core::tool_calls::openai_messages(messages),
                         "enable_thinking": enable_thinking,
                     });
+                    if let Some(schema) = &template_schema {
+                        request["json_schema"] = schema.clone();
+                    }
                     chat_tools.apply(&request).map_err(|e| tracing::debug!("📝 [NativeTemplate] No answer parser: {}", e)).ok()
                 })
                 // Content-only: the answer is the text; a render unlike the prompt: its parser
@@ -860,8 +866,12 @@ pub(crate) fn stream_tokens_with_media(
         let template_strict = !tool_grammar.is_null()
             && native_apply.as_ref().is_some_and(|apply| apply["grammar_lazy"].as_bool() == Some(false));
         let mut grammar_lazy = !template_strict;
-        if template_strict && tools_schema.is_some() {
-            info!("📐 [NativeStream] Answer constrained by a JSON schema grammar, in one grammar with the tool calls (llama.cpp)");
+        if template_strict && template_schema.is_some() {
+            if native_tools.is_some() {
+                info!("📐 [NativeStream] Answer constrained by a JSON schema grammar, in one grammar with the tool calls (llama.cpp)");
+            } else {
+                info!("📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)");
+            }
         } else if !tool_grammar.is_null() && req_output.is_some() {
             tracing::warn!("⚠️ [NativeStream] This template's tool-call grammar did not take the request's grammar or JSON schema; the answer is not constrained");
         }
