@@ -1,0 +1,9 @@
+{"case": "f2_schema_tool_weather_question", "exe": "before", "valid": 10, "n": 10, "constrained_log": 10, "median_s": 0.679, "prompt_n": [1, 155]}
+{"case": "f_json_schema_with_tool", "exe": "before", "valid": 10, "n": 10, "constrained_log": 10, "median_s": 0.377, "prompt_n": [1, 159]}
+{"case": "c_json_schema", "exe": "before", "valid": 10, "n": 10, "constrained_log": 10, "median_s": 0.322, "prompt_n": [1, 22]}
+{"case": "b_json_object", "exe": "before", "valid": 10, "n": 10, "constrained_log": 10, "median_s": 0.311, "prompt_n": [1, 22]}
+{"case": "d_grammar", "exe": "before", "valid": 10, "n": 10, "constrained_log": 10, "median_s": 0.303, "prompt_n": [1, 29]}
+{"case": "e_tool_required", "exe": "before", "valid": 10, "n": 10, "constrained_log": 10, "median_s": 0.342, "prompt_n": [1, 155]}
+{"case": "h_required_unrelated", "exe": "before", "valid": 0, "n": 10, "constrained_log": 10, "median_s": 5.181, "prompt_n": [1, 4, 52, 155]}
+{"case": "g_grammar_with_tool", "exe": "before", "valid": 10, "n": 10, "constrained_log": 0, "median_s": 0.063, "prompt_n": []}
+{"case": "g2_grammar_engine_functions", "exe": "before", "valid": 10, "n": 10, "constrained_log": 10, "median_s": 1.036, "prompt_n": [4, 29]}

@@ -1,0 +1,6 @@
+before unset exit=0 | [MTP] Auto: off (its memory would not fit next to this placement); | nextn: 8
+before off exit=0 | [MTP] Auto: on with the per-answer guard (no measurement for this placement); | nextn: 4
+before on exit=0 | [MTP] Auto: on with the per-answer guard (no measurement for this placement);[MTP] Drafting up to 3 tokens per step with the model's 1 NextN layer(s); | nextn: 5
+t3after unset exit=0 | [MTP] Auto: on with the per-answer guard (no measurement for this placement);[MTP] Drafting up to 3 tokens per step with the model's 1 NextN layer(s); | nextn: 5
+t3after off exit=0 | [MTP] off by CLUAIZ_MTP (Auto alone: off, its memory would not fit next to this placement); | nextn: 4
+t3after on exit=0 | [MTP] on by CLUAIZ_MTP (Auto alone: off, its memory would not fit next to this placement);[MTP] Drafting up to 3 tokens per step with the model's 1 NextN layer(s); | nextn: 5

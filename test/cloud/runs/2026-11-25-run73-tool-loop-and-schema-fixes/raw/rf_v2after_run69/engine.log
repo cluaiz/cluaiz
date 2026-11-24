@@ -1,0 +1,890 @@
+<engine-start>
+2026-11-24T22:16:16.523674Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-24T22:16:17.170642Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-24T22:16:17.175236Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+Starting the Cluaiz API server on http://localhost:8013 ...
+2026-11-24T22:16:17.179106Z  INFO 🔒 [Auth] Initialized local session secret at <engine-home>\session.token
+2026-11-24T22:16:17.360728Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-24T22:16:17.393222Z  INFO 🌐 Cluaiz API Server running on http://<ip>:8013
+2026-11-24T22:16:17.563567Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:16:17.680959Z  INFO
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3-0.6b-gguf-Q4_K_M
+║   • Architecture    : qwen3 | 28 layers | heads 16 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 0.40 GB (as Hugging Face counts it) | input embeddings 0.12 GB (always CPU) | output head 0.12 GB | vocab 151936
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 40960 tokens
+║   • Active context  : 16384 tokens, KV Kv8 (Auto: 16384 tokens with KV Kv8 + buffer 0.57 GB, to stay on the GPU (16384 tokens with KV Kv16 did not fit))
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA GeForce RTX 3050 A Laptop GPU | free 2.42 of 4.00 GB | buffer kept free 0.57 GB (measured: GPU pool +0.37 GB + 0.20 GB reserve; estimate corrected by llama.cpp's dry run +0.01 GB)
+║   • RAM             : free 8.35 of 23.69 GB | Cluaiz may use 7.17 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 16384 | KV Kv8 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 28 on GPU, 0 in RAM (of 28)
+║   • VRAM            : 1.60 GB (weights + KV 0.93 + logits)
+║   • RAM             : 0.12 GB (incl. KV 0.00)
+║   • Reason         : Full GPU: weights 0.36 + KV 0.93 + buffers 0.30 = 1.60 GB vs usable VRAM 1.86 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  1.60 GB | RAM  0.12 GB | weights 0.36 + KV 0.93 + buffers 0.30 = 1.60 GB vs usable VRAM 1.86 GB
+║   • GPU + RAM split  [FITS]     VRAM  1.55 GB | RAM  0.16 GB | 27 / 28 blocks + output head on GPU (1.55 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  1.58 GB | weights 0.36 + KV 0.93 + logits 0.29 = 1.58 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 8 / batch 8 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-24T22:16:17.683394Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-24T22:16:17.685276Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 8, n_threads_batch = 8
+2026-11-24T22:16:17.685363Z  INFO 🧬 [Native-Llama] Loading model: C:\Users\<user>\AppData\Local\Temp\claude\6c30a0ef6fee852f\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\scratchpad\api-home\models\chat\qwen3-0.6b-gguf-Q4_K_M\Qwen3-0.6B-Q4_K_M.gguf | ctx: 16384 tokens
+2026-11-24T22:16:18.081610Z  WARN [llama.cpp] load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+2026-11-24T22:16:18.484735Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M"
+2026-11-24T22:16:18.496511Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-11-24T22:16:18.496599Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-11-24T22:16:18.496657Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16384 tokens
+2026-11-24T22:16:18.496728Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-24T22:16:18.496777Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-24T22:16:18.496817Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-24T22:16:18.496861Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 8/8
+2026-11-24T22:16:18.496920Z  INFO 🔮 [MTP] MTP asked for, but this model has no multi-token-prediction layers: decoding without it
+2026-11-24T22:16:18.771115Z  INFO 🔍 [EngineHost] VRAM planned 1.60 GB, taken 1.68 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-24T22:16:18.772625Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: C:\Users\<user>\AppData\Local\Temp\claude\6c30a0ef6fee852f\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\scratchpad\api-home\models\chat\qwen3-0.6b-gguf-Q4_K_M\Qwen3-0.6B-Q4_K_M.gguf
+2026-11-24T22:16:18.843722Z  INFO 🧮 [Tokens] Conversation 119 tokens (2 messages) counted in 0.78 ms
+2026-11-24T22:16:18.853590Z  INFO ⏱️ [Preflight] 1293 ms total | model load 1254 ms | registry + template + tags 24 ms | skills + tools 9 ms | rest 1 ms
+2026-11-24T22:16:18.947743Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:16:18.947902Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558578
+2026-11-24T22:16:19.019746Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:16:19.019873Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 794 tokens in 95 ms (8376.68 t/s) | generation 4 tokens in 49 ms (82.21 t/s)
+2026-11-24T22:16:19.019915Z  INFO 🧠 [Context] prompt 794 tokens (0 from the cache) | context 798 of 16384 | stop limit
+2026-11-24T22:16:19.329190Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:16:19.360258Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:16:19.360565Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.18 ms
+2026-11-24T22:16:19.361811Z  INFO ⏱️ [Preflight] 36 ms total | model load 18 ms | registry + template + tags 12 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:16:19.363910Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (687 bytes) in 1 ms
+2026-11-24T22:16:19.403831Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:16:19.403902Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:16:19.403977Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558579
+2026-11-24T22:16:19.404020Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10644 tokens (High's share of room 14192; no speed measured yet)
+2026-11-24T22:16:21.465171Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:16:21.465407Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:16:21.465446Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 24 tokens in 37 ms (644.90 t/s) | generation 209 tokens in 1263 ms (165.50 t/s)
+2026-11-24T22:16:21.465474Z  INFO 🧠 [Context] prompt 144 tokens (120 from the cache) | context 353 of 16384 | stop eos
+2026-11-24T22:16:22.313232Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:16:22.354618Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:16:22.354719Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:16:22.355963Z  INFO ⏱️ [Preflight] 46 ms total | model load 28 ms | registry + template + tags 12 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:16:22.357359Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (687 bytes) in 0 ms
+2026-11-24T22:16:22.376788Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:16:22.376855Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:16:22.376913Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558582
+2026-11-24T22:16:22.376982Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10644 tokens (165.5 t/s for up to 180 s, room 14192)
+2026-11-24T22:16:24.748596Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:16:24.748957Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:16:24.749027Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 242 tokens in 1461 ms (165.64 t/s)
+2026-11-24T22:16:24.749074Z  INFO 🧠 [Context] prompt 144 tokens (143 from the cache) | context 385 of 16384 | stop eos
+2026-11-24T22:16:25.590532Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:16:25.616171Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:16:25.616310Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:16:25.617868Z  INFO ⏱️ [Preflight] 31 ms total | model load 13 ms | registry + template + tags 11 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:16:25.619590Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (687 bytes) in 0 ms
+2026-11-24T22:16:25.637944Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:16:25.638055Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:16:25.638147Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558585
+2026-11-24T22:16:25.638216Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10644 tokens (165.6 t/s for up to 180 s, room 14192)
+2026-11-24T22:16:27.719401Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:16:27.719658Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:16:27.719704Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 212 tokens in 1287 ms (164.74 t/s)
+2026-11-24T22:16:27.719733Z  INFO 🧠 [Context] prompt 144 tokens (143 from the cache) | context 355 of 16384 | stop eos
+2026-11-24T22:16:28.574077Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:16:28.614514Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:16:28.614656Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:16:28.616215Z  INFO ⏱️ [Preflight] 46 ms total | model load 27 ms | registry + template + tags 12 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:16:28.617638Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (687 bytes) in 0 ms
+2026-11-24T22:16:28.636848Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:16:28.636924Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:16:28.636991Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558588
+2026-11-24T22:16:28.637039Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10644 tokens (164.7 t/s for up to 180 s, room 14192)
+2026-11-24T22:16:30.512143Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:16:30.512380Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:16:30.512419Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 189 tokens in 1156 ms (163.45 t/s)
+2026-11-24T22:16:30.512446Z  INFO 🧠 [Context] prompt 144 tokens (143 from the cache) | context 332 of 16384 | stop eos
+2026-11-24T22:16:31.339300Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:16:31.371858Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:16:31.372010Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:16:31.373650Z  INFO ⏱️ [Preflight] 38 ms total | model load 19 ms | registry + template + tags 12 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:16:31.375332Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (687 bytes) in 0 ms
+2026-11-24T22:16:31.396658Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:16:31.396733Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:16:31.396817Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558591
+2026-11-24T22:16:31.396871Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10644 tokens (163.5 t/s for up to 180 s, room 14192)
+2026-11-24T22:16:33.276103Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:16:33.276363Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:16:33.276405Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 192 tokens in 1169 ms (164.19 t/s)
+2026-11-24T22:16:33.276433Z  INFO 🧠 [Context] prompt 144 tokens (143 from the cache) | context 335 of 16384 | stop eos
+2026-11-24T22:16:33.806849Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:16:33.851071Z  INFO 🧮 [Tokens] Conversation 119 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:16:33.853863Z  INFO ⏱️ [Preflight] 51 ms total | model load 28 ms | registry + template + tags 15 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:16:33.936598Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:16:33.936735Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558593
+2026-11-24T22:16:33.983879Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:16:33.983975Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 674 tokens in 80 ms (8421.53 t/s) | generation 4 tokens in 37 ms (108.27 t/s)
+2026-11-24T22:16:33.984009Z  INFO 🧠 [Context] prompt 794 tokens (120 from the cache) | context 798 of 16384 | stop limit
+2026-11-24T22:16:34.293396Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:16:34.330235Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:16:34.335099Z  INFO ⏱️ [Preflight] 45 ms total | model load 26 ms | registry + template + tags 10 ms | skills + tools 4 ms | rest 0 ms
+2026-11-24T22:16:34.367022Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:16:34.367095Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:16:34.367194Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558594
+2026-11-24T22:16:34.367269Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10109 tokens (164.2 t/s for up to 180 s, room 13479)
+2026-11-24T22:16:35.456751Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:16:35.457029Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:16:35.457088Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 155 tokens in 26 ms (5903.41 t/s) | generation 154 tokens in 970 ms (158.75 t/s)
+2026-11-24T22:16:35.457132Z  INFO 🧠 [Context] prompt 857 tokens (702 from the cache) | context 1011 of 16384 | stop eos
+2026-11-24T22:16:36.282010Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:16:36.313822Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:16:36.316308Z  INFO ⏱️ [Preflight] 37 ms total | model load 17 ms | registry + template + tags 14 ms | skills + tools 1 ms | rest 0 ms
+2026-11-24T22:16:36.329111Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:16:36.329178Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:16:36.329236Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558596
+2026-11-24T22:16:36.329297Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10109 tokens (158.8 t/s for up to 180 s, room 13479)
+2026-11-24T22:16:37.729525Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:16:37.729810Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:16:37.729856Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 196 tokens in 1263 ms (155.24 t/s)
+2026-11-24T22:16:37.729884Z  INFO 🧠 [Context] prompt 857 tokens (856 from the cache) | context 1052 of 16384 | stop eos
+2026-11-24T22:16:38.560041Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:16:38.590124Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:16:38.593555Z  INFO ⏱️ [Preflight] 37 ms total | model load 17 ms | registry + template + tags 12 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:16:38.619532Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:16:38.619600Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:16:38.619658Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558598
+2026-11-24T22:16:38.619768Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10109 tokens (155.2 t/s for up to 180 s, room 13479)
+2026-11-24T22:16:39.736171Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:16:39.736634Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:16:39.736717Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 155 tokens in 1035 ms (149.78 t/s)
+2026-11-24T22:16:39.736760Z  INFO 🧠 [Context] prompt 857 tokens (856 from the cache) | context 1011 of 16384 | stop eos
+2026-11-24T22:16:40.563799Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:16:40.595400Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:16:40.598643Z  INFO ⏱️ [Preflight] 38 ms total | model load 18 ms | registry + template + tags 13 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:16:40.609955Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:16:40.610043Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:16:40.610187Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558600
+2026-11-24T22:16:40.610369Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10109 tokens (149.8 t/s for up to 180 s, room 13479)
+2026-11-24T22:16:42.502034Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:16:42.502362Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:16:42.502411Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 265 tokens in 1722 ms (153.85 t/s)
+2026-11-24T22:16:42.502439Z  INFO 🧠 [Context] prompt 857 tokens (856 from the cache) | context 1121 of 16384 | stop eos
+2026-11-24T22:16:43.352752Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:16:43.378865Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:16:43.382491Z  INFO ⏱️ [Preflight] 33 ms total | model load 13 ms | registry + template + tags 12 ms | skills + tools 2 ms | rest 1 ms
+2026-11-24T22:16:43.408447Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:16:43.408522Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:16:43.408584Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558603
+2026-11-24T22:16:43.408670Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10109 tokens (153.9 t/s for up to 180 s, room 13479)
+2026-11-24T22:16:48.167761Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:16:48.168176Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-24T22:16:48.168219Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 447 tokens in 2915 ms (153.36 t/s)
+2026-11-24T22:16:48.168246Z  INFO 🧠 [Context] prompt 857 tokens (856 from the cache) | context 1303 of 16384 | stop eos
+2026-11-24T22:16:48.170413Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"name":"fictional_person_details"}
+2026-11-24T22:16:48.170785Z  INFO 📚 [Project] read_item({"name":"fictional_person_details"}) -> 85 chars
+2026-11-24T22:16:48.170883Z  INFO ✅ [API] Tool 'read_item' done (85 chars)
+2026-11-24T22:16:48.170979Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-24T22:16:48.207542Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:16:48.207609Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:16:48.207743Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558608
+2026-11-24T22:16:48.207815Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10068 tokens (153.4 t/s for up to 180 s, room 13425)
+2026-11-24T22:16:51.952013Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:16:51.952446Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:16:51.952500Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 54 tokens in 26 ms (2091.32 t/s) | generation 519 tokens in 3427 ms (151.43 t/s)
+2026-11-24T22:16:51.952527Z  INFO 🧠 [Context] prompt 911 tokens (857 from the cache) | context 1430 of 16384 | stop eos
+2026-11-24T22:16:52.478772Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:16:52.514179Z  INFO 🧮 [Tokens] Conversation 119 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:16:52.517108Z  INFO ⏱️ [Preflight] 42 ms total | model load 23 ms | registry + template + tags 11 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:16:52.549031Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:16:52.549124Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558612
+2026-11-24T22:16:52.591208Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:16:52.591319Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 92 tokens in 23 ms (3958.86 t/s) | generation 4 tokens in 37 ms (107.54 t/s)
+2026-11-24T22:16:52.591379Z  INFO 🧠 [Context] prompt 794 tokens (702 from the cache) | context 798 of 16384 | stop limit
+2026-11-24T22:16:52.900325Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:16:52.934457Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.12 ms
+2026-11-24T22:16:52.937742Z  INFO ⏱️ [Preflight] 40 ms total | model load 22 ms | registry + template + tags 11 ms | skills + tools 2 ms | rest 1 ms
+2026-11-24T22:16:52.969759Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:16:52.969830Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:16:52.969892Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558612
+2026-11-24T22:16:52.969968Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10112 tokens (151.4 t/s for up to 180 s, room 13483)
+2026-11-24T22:16:55.125419Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:16:55.125937Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-24T22:16:55.126021Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 151 tokens in 25 ms (5981.62 t/s) | generation 111 tokens in 742 ms (149.61 t/s)
+2026-11-24T22:16:55.126063Z  INFO 🧠 [Context] prompt 853 tokens (702 from the cache) | context 964 of 16384 | stop eos
+2026-11-24T22:16:55.956718Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:16:55.998633Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:16:56.001696Z  INFO ⏱️ [Preflight] 48 ms total | model load 26 ms | registry + template + tags 15 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:16:56.014702Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:16:56.014789Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:16:56.014901Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558616
+2026-11-24T22:16:56.015024Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10112 tokens (149.6 t/s for up to 180 s, room 13483)
+2026-11-24T22:16:58.209175Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:16:58.209669Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-24T22:16:58.209745Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 111 tokens in 830 ms (133.80 t/s)
+2026-11-24T22:16:58.209801Z  INFO 🧠 [Context] prompt 853 tokens (852 from the cache) | context 963 of 16384 | stop eos
+2026-11-24T22:16:59.041438Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:16:59.075761Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:16:59.078551Z  INFO ⏱️ [Preflight] 41 ms total | model load 21 ms | registry + template + tags 12 ms | skills + tools 1 ms | rest 0 ms
+2026-11-24T22:16:59.090880Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:16:59.090982Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:16:59.091070Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558619
+2026-11-24T22:16:59.091139Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10112 tokens (133.8 t/s for up to 180 s, room 13483)
+2026-11-24T22:17:01.141156Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:01.141560Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-24T22:17:01.141639Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 93 tokens in 656 ms (141.78 t/s)
+2026-11-24T22:17:01.141690Z  INFO 🧠 [Context] prompt 853 tokens (852 from the cache) | context 945 of 16384 | stop eos
+2026-11-24T22:17:01.967195Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:01.999805Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:17:02.002412Z  INFO ⏱️ [Preflight] 38 ms total | model load 20 ms | registry + template + tags 11 ms | skills + tools 1 ms | rest 0 ms
+2026-11-24T22:17:02.014786Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:17:02.014853Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:17:02.014910Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558622
+2026-11-24T22:17:02.014972Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10112 tokens (141.8 t/s for up to 180 s, room 13483)
+2026-11-24T22:17:03.945658Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:03.946004Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-24T22:17:03.946061Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 95 tokens in 726 ms (130.90 t/s)
+2026-11-24T22:17:03.946090Z  INFO 🧠 [Context] prompt 853 tokens (852 from the cache) | context 947 of 16384 | stop eos
+2026-11-24T22:17:04.773885Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:04.805097Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:17:04.808019Z  INFO ⏱️ [Preflight] 38 ms total | model load 19 ms | registry + template + tags 11 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:17:04.819485Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:17:04.819557Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:17:04.819614Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558624
+2026-11-24T22:17:04.819683Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10112 tokens (130.9 t/s for up to 180 s, room 13483)
+2026-11-24T22:17:06.676589Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:06.676934Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-24T22:17:06.676976Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 92 tokens in 652 ms (141.01 t/s)
+2026-11-24T22:17:06.677003Z  INFO 🧠 [Context] prompt 853 tokens (852 from the cache) | context 944 of 16384 | stop eos
+2026-11-24T22:17:07.220941Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:07.262475Z  INFO 🧮 [Tokens] Conversation 119 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:17:07.265341Z  INFO ⏱️ [Preflight] 48 ms total | model load 28 ms | registry + template + tags 12 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:17:07.298198Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:17:07.298318Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558627
+2026-11-24T22:17:07.351581Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:07.351646Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 92 tokens in 30 ms (3021.84 t/s) | generation 4 tokens in 44 ms (91.87 t/s)
+2026-11-24T22:17:07.351675Z  INFO 🧠 [Context] prompt 794 tokens (702 from the cache) | context 798 of 16384 | stop limit
+2026-11-24T22:17:07.661190Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:07.697844Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:17:07.697942Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:17:07.698908Z  INFO ⏱️ [Preflight] 41 ms total | model load 25 ms | registry + template + tags 11 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:17:07.700912Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (687 bytes) in 1 ms
+2026-11-24T22:17:07.728455Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:17:07.728526Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:17:07.728611Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558627
+2026-11-24T22:17:07.728690Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10644 tokens (141.0 t/s for up to 180 s, room 14192)
+2026-11-24T22:17:09.299613Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:09.300178Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:09.300241Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 24 tokens in 25 ms (957.97 t/s) | generation 160 tokens in 995 ms (160.81 t/s)
+2026-11-24T22:17:09.300281Z  INFO 🧠 [Context] prompt 144 tokens (120 from the cache) | context 304 of 16384 | stop eos
+2026-11-24T22:17:10.132549Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:10.167693Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:17:10.167826Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:17:10.169385Z  INFO ⏱️ [Preflight] 40 ms total | model load 22 ms | registry + template + tags 12 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:17:10.171536Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (687 bytes) in 1 ms
+2026-11-24T22:17:10.191741Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:17:10.191817Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:17:10.191880Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558630
+2026-11-24T22:17:10.191924Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10644 tokens (160.8 t/s for up to 180 s, room 14192)
+2026-11-24T22:17:11.674254Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:11.674477Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:11.674547Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 147 tokens in 905 ms (162.44 t/s)
+2026-11-24T22:17:11.674658Z  INFO 🧠 [Context] prompt 144 tokens (143 from the cache) | context 290 of 16384 | stop eos
+2026-11-24T22:17:12.525974Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:12.567496Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:17:12.567642Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:17:12.569033Z  INFO ⏱️ [Preflight] 47 ms total | model load 28 ms | registry + template + tags 13 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:17:12.570539Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (687 bytes) in 0 ms
+2026-11-24T22:17:12.589101Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:17:12.589187Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:17:12.589264Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558632
+2026-11-24T22:17:12.589326Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10644 tokens (162.4 t/s for up to 180 s, room 14192)
+2026-11-24T22:17:14.828220Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:14.828490Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:14.828550Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 235 tokens in 1411 ms (166.51 t/s)
+2026-11-24T22:17:14.828595Z  INFO 🧠 [Context] prompt 144 tokens (143 from the cache) | context 378 of 16384 | stop eos
+2026-11-24T22:17:15.677604Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:15.703023Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:17:15.703121Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:17:15.704281Z  INFO ⏱️ [Preflight] 30 ms total | model load 13 ms | registry + template + tags 12 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:17:15.706655Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (687 bytes) in 1 ms
+2026-11-24T22:17:15.725329Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:17:15.725429Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:17:15.725525Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558635
+2026-11-24T22:17:15.725589Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10644 tokens (166.5 t/s for up to 180 s, room 14192)
+2026-11-24T22:17:17.568064Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:17.568390Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:17.568463Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 196 tokens in 1162 ms (168.69 t/s)
+2026-11-24T22:17:17.568504Z  INFO 🧠 [Context] prompt 144 tokens (143 from the cache) | context 339 of 16384 | stop eos
+2026-11-24T22:17:18.397477Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:18.431402Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:17:18.431548Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:17:18.432778Z  INFO ⏱️ [Preflight] 40 ms total | model load 21 ms | registry + template + tags 12 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:17:18.434210Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (687 bytes) in 0 ms
+2026-11-24T22:17:18.454837Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:17:18.454906Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:17:18.454963Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558638
+2026-11-24T22:17:18.455005Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10644 tokens (168.7 t/s for up to 180 s, room 14192)
+2026-11-24T22:17:21.440681Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:21.440945Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:21.440985Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 317 tokens in 1869 ms (169.64 t/s)
+2026-11-24T22:17:21.441012Z  INFO 🧠 [Context] prompt 144 tokens (143 from the cache) | context 460 of 16384 | stop eos
+2026-11-24T22:17:21.972181Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:22.003427Z  INFO 🧮 [Tokens] Conversation 119 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:17:22.005692Z  INFO ⏱️ [Preflight] 37 ms total | model load 18 ms | registry + template + tags 12 ms | skills + tools 1 ms | rest 0 ms
+2026-11-24T22:17:22.089320Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:17:22.089406Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558642
+2026-11-24T22:17:22.136610Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:22.136675Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 674 tokens in 80 ms (8409.86 t/s) | generation 4 tokens in 36 ms (111.17 t/s)
+2026-11-24T22:17:22.136705Z  INFO 🧠 [Context] prompt 794 tokens (120 from the cache) | context 798 of 16384 | stop limit
+2026-11-24T22:17:22.463229Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:22.502347Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:17:22.502470Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:17:22.503628Z  INFO ⏱️ [Preflight] 44 ms total | model load 27 ms | registry + template + tags 11 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:17:22.505567Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (706 bytes) in 1 ms
+2026-11-24T22:17:22.536096Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:17:22.536189Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:17:22.536281Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558642
+2026-11-24T22:17:22.890990Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:22.891231Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:22.891277Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 28 tokens in 28 ms (1006.94 t/s) | generation 23 tokens in 161 ms (143.30 t/s)
+2026-11-24T22:17:22.891313Z  INFO 🧠 [Context] prompt 148 tokens (120 from the cache) | context 171 of 16384 | stop eos
+2026-11-24T22:17:23.721470Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:23.749568Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:17:23.749667Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:17:23.751389Z  INFO ⏱️ [Preflight] 33 ms total | model load 15 ms | registry + template + tags 12 ms | skills + tools 1 ms | rest 0 ms
+2026-11-24T22:17:23.753509Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (706 bytes) in 1 ms
+2026-11-24T22:17:23.758360Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:17:23.758459Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:17:23.758573Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558643
+2026-11-24T22:17:24.009886Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:24.010084Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:24.010125Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 23 tokens in 133 ms (173.57 t/s)
+2026-11-24T22:17:24.010160Z  INFO 🧠 [Context] prompt 148 tokens (147 from the cache) | context 170 of 16384 | stop eos
+2026-11-24T22:17:24.839886Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:24.876591Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:17:24.876729Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:17:24.878447Z  INFO ⏱️ [Preflight] 42 ms total | model load 24 ms | registry + template + tags 11 ms | skills + tools 1 ms | rest 0 ms
+2026-11-24T22:17:24.880203Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (706 bytes) in 0 ms
+2026-11-24T22:17:24.885475Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:17:24.885547Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:17:24.885655Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558644
+2026-11-24T22:17:25.168357Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:25.168581Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:25.168638Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 25 tokens in 155 ms (161.62 t/s)
+2026-11-24T22:17:25.168687Z  INFO 🧠 [Context] prompt 148 tokens (147 from the cache) | context 172 of 16384 | stop eos
+2026-11-24T22:17:25.996390Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:26.028472Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:17:26.028575Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:17:26.029913Z  INFO ⏱️ [Preflight] 37 ms total | model load 21 ms | registry + template + tags 10 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:17:26.032611Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (706 bytes) in 1 ms
+2026-11-24T22:17:26.038790Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:17:26.038871Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:17:26.038944Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558646
+2026-11-24T22:17:26.310595Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:26.310795Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:26.310839Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 25 tokens in 142 ms (176.20 t/s)
+2026-11-24T22:17:26.310867Z  INFO 🧠 [Context] prompt 148 tokens (147 from the cache) | context 172 of 16384 | stop eos
+2026-11-24T22:17:27.139333Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:27.164674Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:17:27.164774Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:17:27.165917Z  INFO ⏱️ [Preflight] 30 ms total | model load 12 ms | registry + template + tags 12 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:17:27.167292Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (706 bytes) in 0 ms
+2026-11-24T22:17:27.173588Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:17:27.173649Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:17:27.173704Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558647
+2026-11-24T22:17:27.451615Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:27.451812Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:27.451851Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 24 tokens in 153 ms (157.15 t/s)
+2026-11-24T22:17:27.451877Z  INFO 🧠 [Context] prompt 148 tokens (147 from the cache) | context 171 of 16384 | stop eos
+2026-11-24T22:17:27.978309Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:28.007254Z  INFO 🧮 [Tokens] Conversation 119 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:17:28.009459Z  INFO ⏱️ [Preflight] 35 ms total | model load 18 ms | registry + template + tags 10 ms | skills + tools 1 ms | rest 0 ms
+2026-11-24T22:17:28.096785Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:17:28.096874Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558648
+2026-11-24T22:17:28.142001Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:28.142078Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 674 tokens in 81 ms (8312.26 t/s) | generation 4 tokens in 37 ms (109.29 t/s)
+2026-11-24T22:17:28.142113Z  INFO 🧠 [Context] prompt 794 tokens (120 from the cache) | context 798 of 16384 | stop limit
+2026-11-24T22:17:28.451153Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:28.487725Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:17:28.490843Z  INFO ⏱️ [Preflight] 43 ms total | model load 26 ms | registry + template + tags 10 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:17:28.520858Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:17:28.520928Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:17:28.520987Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558648
+2026-11-24T22:17:28.720779Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:28.721066Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:28.721112Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 159 tokens in 26 ms (6178.84 t/s) | generation 25 tokens in 178 ms (140.52 t/s)
+2026-11-24T22:17:28.721140Z  INFO 🧠 [Context] prompt 861 tokens (702 from the cache) | context 886 of 16384 | stop eos
+2026-11-24T22:17:29.569204Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:29.610494Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:17:29.614222Z  INFO ⏱️ [Preflight] 49 ms total | model load 27 ms | registry + template + tags 13 ms | skills + tools 2 ms | rest 1 ms
+2026-11-24T22:17:29.630742Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:17:29.630817Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:17:29.630887Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558649
+2026-11-24T22:17:31.031818Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:31.032252Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-24T22:17:31.032319Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 20 tokens in 153 ms (131.10 t/s)
+2026-11-24T22:17:31.032358Z  INFO 🧠 [Context] prompt 861 tokens (860 from the cache) | context 880 of 16384 | stop eos
+2026-11-24T22:17:31.032556Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"name":"memory"}
+2026-11-24T22:17:31.033311Z  INFO 📚 [Project] read_item({"name":"memory"}) -> 67 chars
+2026-11-24T22:17:31.033454Z  INFO ✅ [API] Tool 'read_item' done (67 chars)
+2026-11-24T22:17:31.033846Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-24T22:17:31.071486Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:17:31.071557Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:17:31.071618Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558651
+2026-11-24T22:17:31.320960Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:31.321172Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:31.321214Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 52 tokens in 27 ms (1895.04 t/s) | generation 24 tokens in 230 ms (104.44 t/s)
+2026-11-24T22:17:31.321243Z  INFO 🧠 [Context] prompt 909 tokens (857 from the cache) | context 933 of 16384 | stop eos
+2026-11-24T22:17:32.170132Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:32.197722Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:17:32.202101Z  INFO ⏱️ [Preflight] 35 ms total | model load 13 ms | registry + template + tags 13 ms | skills + tools 3 ms | rest 1 ms
+2026-11-24T22:17:32.244957Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:17:32.245052Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:17:32.245149Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558652
+2026-11-24T22:17:32.492539Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:32.492885Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:32.492978Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 4 tokens in 35 ms (114.61 t/s) | generation 34 tokens in 218 ms (155.88 t/s)
+2026-11-24T22:17:32.493026Z  INFO 🧠 [Context] prompt 861 tokens (857 from the cache) | context 895 of 16384 | stop eos
+2026-11-24T22:17:33.319450Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:33.352980Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:17:33.356940Z  INFO ⏱️ [Preflight] 41 ms total | model load 20 ms | registry + template + tags 13 ms | skills + tools 3 ms | rest 0 ms
+2026-11-24T22:17:33.371230Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:17:33.371325Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:17:33.371411Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558653
+2026-11-24T22:17:35.149800Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:35.150153Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-24T22:17:35.150233Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 26 tokens in 208 ms (124.99 t/s)
+2026-11-24T22:17:35.150286Z  INFO 🧠 [Context] prompt 861 tokens (860 from the cache) | context 886 of 16384 | stop eos
+2026-11-24T22:17:35.152506Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"skill","name":"math"}
+2026-11-24T22:17:35.153889Z  INFO 📚 [Project] read_item({"kind":"skill","name":"math"}) -> 1366 chars
+2026-11-24T22:17:35.154043Z  INFO ✅ [API] Tool 'read_item' done (1366 chars)
+2026-11-24T22:17:35.154441Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-24T22:17:35.190476Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:17:35.190548Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:17:35.190609Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558655
+2026-11-24T22:17:37.047351Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:37.047688Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-24T22:17:37.047745Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 458 tokens in 97 ms (4741.40 t/s) | generation 25 tokens in 217 ms (115.08 t/s)
+2026-11-24T22:17:37.047774Z  INFO 🧠 [Context] prompt 1315 tokens (857 from the cache) | context 1340 of 16384 | stop eos
+2026-11-24T22:17:37.047991Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"skill","name":"math"}
+2026-11-24T22:17:37.051305Z  INFO 📚 [Project] read_item({"kind":"skill","name":"math"}) -> 1366 chars
+2026-11-24T22:17:37.051469Z  INFO ✅ [API] Tool 'read_item' done (1366 chars)
+2026-11-24T22:17:37.052017Z  INFO 🔄 [API] Step 2: generating again with the tool result
+2026-11-24T22:17:37.087855Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:17:37.087923Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:17:37.087982Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558657
+2026-11-24T22:17:37.425957Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:37.426256Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:37.426335Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 458 tokens in 106 ms (4326.71 t/s) | generation 26 tokens in 234 ms (110.94 t/s)
+2026-11-24T22:17:37.426401Z  INFO 🧠 [Context] prompt 1769 tokens (1311 from the cache) | context 1795 of 16384 | stop eos
+2026-11-24T22:17:38.255334Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:38.284464Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:17:38.287853Z  INFO ⏱️ [Preflight] 36 ms total | model load 16 ms | registry + template + tags 12 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:17:38.317712Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:17:38.317794Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:17:38.317852Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558658
+2026-11-24T22:17:40.069371Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:40.069714Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-24T22:17:40.069756Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 4 tokens in 22 ms (182.87 t/s) | generation 25 tokens in 210 ms (119.02 t/s)
+2026-11-24T22:17:40.069783Z  INFO 🧠 [Context] prompt 861 tokens (857 from the cache) | context 886 of 16384 | stop eos
+2026-11-24T22:17:40.070036Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"memory","name":"math"}
+2026-11-24T22:17:40.070598Z  INFO 📚 [Project] read_item({"kind":"memory","name":"math"}) -> 65 chars
+2026-11-24T22:17:40.070650Z  INFO ✅ [API] Tool 'read_item' done (65 chars)
+2026-11-24T22:17:40.070941Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-24T22:17:40.112784Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:17:40.112881Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:17:40.112950Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558660
+2026-11-24T22:17:40.317590Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:40.317870Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:40.317941Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 58 tokens in 29 ms (1976.22 t/s) | generation 21 tokens in 188 ms (111.84 t/s)
+2026-11-24T22:17:40.317992Z  INFO 🧠 [Context] prompt 915 tokens (857 from the cache) | context 936 of 16384 | stop eos
+2026-11-24T22:17:40.846958Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:40.885055Z  INFO 🧮 [Tokens] Conversation 119 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:17:40.887930Z  INFO ⏱️ [Preflight] 45 ms total | model load 25 ms | registry + template + tags 12 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:17:40.921048Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:17:40.921204Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558660
+2026-11-24T22:17:40.963162Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:40.963252Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 92 tokens in 26 ms (3566.31 t/s) | generation 4 tokens in 37 ms (107.74 t/s)
+2026-11-24T22:17:40.963296Z  INFO 🧠 [Context] prompt 794 tokens (702 from the cache) | context 798 of 16384 | stop limit
+2026-11-24T22:17:41.294885Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:41.319843Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:17:41.319941Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:17:41.321010Z  INFO ⏱️ [Preflight] 30 ms total | model load 13 ms | registry + template + tags 11 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:17:41.323536Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (687 bytes) in 1 ms
+2026-11-24T22:17:41.355343Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:17:41.355417Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:17:41.355490Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558661
+2026-11-24T22:17:41.355536Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10644 tokens (155.9 t/s for up to 180 s, room 14192)
+2026-11-24T22:17:42.963288Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:42.963619Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:42.963684Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 24 tokens in 29 ms (839.19 t/s) | generation 163 tokens in 973 ms (167.57 t/s)
+2026-11-24T22:17:42.963736Z  INFO 🧠 [Context] prompt 144 tokens (120 from the cache) | context 307 of 16384 | stop eos
+2026-11-24T22:17:43.795125Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:43.822092Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:17:43.822247Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:17:43.823702Z  INFO ⏱️ [Preflight] 32 ms total | model load 14 ms | registry + template + tags 12 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:17:43.826794Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (687 bytes) in 1 ms
+2026-11-24T22:17:43.848448Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:17:43.848615Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:17:43.848683Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558663
+2026-11-24T22:17:43.848748Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10644 tokens (167.6 t/s for up to 180 s, room 14192)
+2026-11-24T22:17:46.461533Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:46.461818Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:46.461861Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 268 tokens in 1592 ms (168.34 t/s)
+2026-11-24T22:17:46.461888Z  INFO 🧠 [Context] prompt 144 tokens (143 from the cache) | context 411 of 16384 | stop eos
+2026-11-24T22:17:47.309830Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:47.352390Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:17:47.352536Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:17:47.353979Z  INFO ⏱️ [Preflight] 47 ms total | model load 29 ms | registry + template + tags 12 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:17:47.355616Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (687 bytes) in 0 ms
+2026-11-24T22:17:47.371793Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:17:47.371878Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:17:47.371948Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558667
+2026-11-24T22:17:47.372036Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10644 tokens (168.3 t/s for up to 180 s, room 14192)
+2026-11-24T22:17:49.858719Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:49.859057Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:49.859119Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 252 tokens in 1522 ms (165.61 t/s)
+2026-11-24T22:17:49.859164Z  INFO 🧠 [Context] prompt 144 tokens (143 from the cache) | context 395 of 16384 | stop eos
+2026-11-24T22:17:51.097966Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:51.124106Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:17:51.124208Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:17:51.125456Z  INFO ⏱️ [Preflight] 31 ms total | model load 13 ms | registry + template + tags 12 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:17:51.127688Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (687 bytes) in 1 ms
+2026-11-24T22:17:51.145099Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:17:51.145234Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:17:51.145293Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558671
+2026-11-24T22:17:51.145336Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10644 tokens (165.6 t/s for up to 180 s, room 14192)
+2026-11-24T22:17:52.908486Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:52.908737Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:52.908791Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 180 tokens in 1065 ms (169.06 t/s)
+2026-11-24T22:17:52.908818Z  INFO 🧠 [Context] prompt 144 tokens (143 from the cache) | context 323 of 16384 | stop eos
+2026-11-24T22:17:53.738402Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:53.769307Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:17:53.769398Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:17:53.770503Z  INFO ⏱️ [Preflight] 36 ms total | model load 15 ms | registry + template + tags 15 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:17:53.771908Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (687 bytes) in 0 ms
+2026-11-24T22:17:53.792423Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:17:53.792483Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:17:53.792541Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558673
+2026-11-24T22:17:53.792584Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10644 tokens (169.1 t/s for up to 180 s, room 14192)
+2026-11-24T22:17:55.703507Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:55.703803Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:55.703879Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 192 tokens in 1174 ms (163.53 t/s)
+2026-11-24T22:17:55.703934Z  INFO 🧠 [Context] prompt 144 tokens (143 from the cache) | context 335 of 16384 | stop eos
+2026-11-24T22:17:56.233614Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:56.269574Z  INFO 🧮 [Tokens] Conversation 119 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:17:56.272196Z  INFO ⏱️ [Preflight] 42 ms total | model load 23 ms | registry + template + tags 12 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:17:56.355351Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:17:56.355442Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558676
+2026-11-24T22:17:56.404285Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:56.404346Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 674 tokens in 81 ms (8351.20 t/s) | generation 4 tokens in 37 ms (106.83 t/s)
+2026-11-24T22:17:56.404376Z  INFO 🧠 [Context] prompt 794 tokens (120 from the cache) | context 798 of 16384 | stop limit
+2026-11-24T22:17:56.714180Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:56.750456Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:17:56.753278Z  INFO ⏱️ [Preflight] 43 ms total | model load 25 ms | registry + template + tags 10 ms | skills + tools 1 ms | rest 1 ms
+2026-11-24T22:17:56.785861Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:17:56.785948Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:17:56.786007Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558676
+2026-11-24T22:17:56.786070Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10109 tokens (163.5 t/s for up to 180 s, room 13479)
+2026-11-24T22:17:58.604416Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:17:58.604729Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:17:58.604772Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 155 tokens in 27 ms (5845.31 t/s) | generation 257 tokens in 1641 ms (156.61 t/s)
+2026-11-24T22:17:58.604800Z  INFO 🧠 [Context] prompt 857 tokens (702 from the cache) | context 1114 of 16384 | stop eos
+2026-11-24T22:17:59.433759Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:17:59.471773Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:17:59.475065Z  INFO ⏱️ [Preflight] 44 ms total | model load 25 ms | registry + template + tags 12 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:17:59.500416Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:17:59.500503Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:17:59.500568Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558679
+2026-11-24T22:17:59.500630Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10109 tokens (156.6 t/s for up to 180 s, room 13479)
+2026-11-24T22:18:02.313806Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:02.314157Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:02.314206Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 400 tokens in 2565 ms (155.95 t/s)
+2026-11-24T22:18:02.314234Z  INFO 🧠 [Context] prompt 857 tokens (856 from the cache) | context 1256 of 16384 | stop eos
+2026-11-24T22:18:03.142614Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:03.183316Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:18:03.186270Z  INFO ⏱️ [Preflight] 47 ms total | model load 27 ms | registry + template + tags 12 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:18:03.210885Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:18:03.210988Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:18:03.211062Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558683
+2026-11-24T22:18:03.211129Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10109 tokens (156.0 t/s for up to 180 s, room 13479)
+2026-11-24T22:18:05.077857Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:05.078287Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:05.078372Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 260 tokens in 1715 ms (151.58 t/s)
+2026-11-24T22:18:05.078445Z  INFO 🧠 [Context] prompt 857 tokens (856 from the cache) | context 1116 of 16384 | stop eos
+2026-11-24T22:18:05.923759Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:05.951056Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:18:05.954676Z  INFO ⏱️ [Preflight] 34 ms total | model load 13 ms | registry + template + tags 13 ms | skills + tools 2 ms | rest 1 ms
+2026-11-24T22:18:05.984281Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:18:05.984350Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:18:05.984423Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558685
+2026-11-24T22:18:05.984496Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10109 tokens (151.6 t/s for up to 180 s, room 13479)
+2026-11-24T22:18:07.392211Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:07.392536Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:07.392623Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 196 tokens in 1299 ms (150.93 t/s)
+2026-11-24T22:18:07.392672Z  INFO 🧠 [Context] prompt 857 tokens (856 from the cache) | context 1052 of 16384 | stop eos
+2026-11-24T22:18:08.221255Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:08.255583Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:18:08.258092Z  INFO ⏱️ [Preflight] 41 ms total | model load 20 ms | registry + template + tags 13 ms | skills + tools 1 ms | rest 0 ms
+2026-11-24T22:18:08.283271Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-24T22:18:08.283341Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:18:08.283402Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558688
+2026-11-24T22:18:08.283465Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10109 tokens (150.9 t/s for up to 180 s, room 13479)
+2026-11-24T22:18:10.069341Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:10.069652Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:10.069696Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 252 tokens in 1627 ms (154.90 t/s)
+2026-11-24T22:18:10.069723Z  INFO 🧠 [Context] prompt 857 tokens (856 from the cache) | context 1108 of 16384 | stop eos
+2026-11-24T22:18:10.598825Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:10.637340Z  INFO 🧮 [Tokens] Conversation 119 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:18:10.639893Z  INFO ⏱️ [Preflight] 45 ms total | model load 26 ms | registry + template + tags 11 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:18:10.674582Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:18:10.674669Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558690
+2026-11-24T22:18:10.715695Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:10.715763Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 92 tokens in 27 ms (3407.41 t/s) | generation 4 tokens in 36 ms (110.21 t/s)
+2026-11-24T22:18:10.715800Z  INFO 🧠 [Context] prompt 794 tokens (702 from the cache) | context 798 of 16384 | stop limit
+2026-11-24T22:18:11.024353Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:11.053751Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.15 ms
+2026-11-24T22:18:11.056573Z  INFO ⏱️ [Preflight] 35 ms total | model load 18 ms | registry + template + tags 10 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:18:11.088416Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:18:11.088530Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558691
+2026-11-24T22:18:11.178408Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:11.178654Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:11.178716Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 18 tokens in 24 ms (741.69 t/s) | generation 10 tokens in 81 ms (124.03 t/s)
+2026-11-24T22:18:11.178746Z  INFO 🧠 [Context] prompt 802 tokens (784 from the cache) | context 812 of 16384 | stop eos
+2026-11-24T22:18:12.007234Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:12.034393Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:18:12.036928Z  INFO ⏱️ [Preflight] 33 ms total | model load 15 ms | registry + template + tags 11 ms | skills + tools 1 ms | rest 0 ms
+2026-11-24T22:18:12.049705Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:18:12.049790Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558692
+2026-11-24T22:18:12.123800Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:12.123992Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:12.124044Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 10 tokens in 69 ms (144.19 t/s)
+2026-11-24T22:18:12.124072Z  INFO 🧠 [Context] prompt 802 tokens (801 from the cache) | context 811 of 16384 | stop eos
+2026-11-24T22:18:12.949771Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:12.985191Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:18:12.988127Z  INFO ⏱️ [Preflight] 41 ms total | model load 23 ms | registry + template + tags 12 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:18:12.999994Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:18:13.000088Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558693
+2026-11-24T22:18:13.068104Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:13.068354Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:13.068418Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 10 tokens in 63 ms (159.43 t/s)
+2026-11-24T22:18:13.068464Z  INFO 🧠 [Context] prompt 802 tokens (801 from the cache) | context 811 of 16384 | stop eos
+2026-11-24T22:18:13.899125Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:13.928585Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:18:13.932253Z  INFO ⏱️ [Preflight] 37 ms total | model load 18 ms | registry + template + tags 10 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:18:13.944295Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:18:13.944410Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558693
+2026-11-24T22:18:14.024644Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:14.024825Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:14.024864Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 10 tokens in 76 ms (131.63 t/s)
+2026-11-24T22:18:14.024890Z  INFO 🧠 [Context] prompt 802 tokens (801 from the cache) | context 811 of 16384 | stop eos
+2026-11-24T22:18:14.854066Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:14.893396Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:18:14.897697Z  INFO ⏱️ [Preflight] 47 ms total | model load 28 ms | registry + template + tags 10 ms | skills + tools 3 ms | rest 1 ms
+2026-11-24T22:18:14.908848Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:18:14.908977Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558694
+2026-11-24T22:18:14.985202Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:14.985488Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:14.985570Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 10 tokens in 71 ms (140.95 t/s)
+2026-11-24T22:18:14.985616Z  INFO 🧠 [Context] prompt 802 tokens (801 from the cache) | context 811 of 16384 | stop eos
+2026-11-24T22:18:15.513332Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:15.540961Z  INFO 🧮 [Tokens] Conversation 119 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:18:15.544231Z  INFO ⏱️ [Preflight] 34 ms total | model load 14 ms | registry + template + tags 12 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:18:15.591557Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:18:15.591689Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558695
+2026-11-24T22:18:15.637219Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:15.637292Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 10 tokens in 39 ms (253.86 t/s) | generation 4 tokens in 40 ms (99.50 t/s)
+2026-11-24T22:18:15.637336Z  INFO 🧠 [Context] prompt 794 tokens (784 from the cache) | context 798 of 16384 | stop limit
+2026-11-24T22:18:15.947207Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:15.972920Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:18:15.975897Z  INFO ⏱️ [Preflight] 32 ms total | model load 14 ms | registry + template + tags 10 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:18:16.005080Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:18:16.005178Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558696
+2026-11-24T22:18:17.526350Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:17.526717Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-24T22:18:17.526767Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 155 tokens in 32 ms (4825.80 t/s) | generation 19 tokens in 164 ms (115.72 t/s)
+2026-11-24T22:18:17.526795Z  INFO 🧠 [Context] prompt 857 tokens (702 from the cache) | context 876 of 16384 | stop eos
+2026-11-24T22:18:18.355538Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:18.392611Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.05 ms
+2026-11-24T22:18:18.396130Z  INFO ⏱️ [Preflight] 44 ms total | model load 23 ms | registry + template + tags 13 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:18:18.412047Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:18:18.412160Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558698
+2026-11-24T22:18:19.976052Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:19.976499Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-24T22:18:19.976552Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 20 tokens in 251 ms (79.55 t/s)
+2026-11-24T22:18:19.976583Z  INFO 🧠 [Context] prompt 857 tokens (856 from the cache) | context 876 of 16384 | stop eos
+2026-11-24T22:18:20.806144Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:20.840398Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:18:20.843587Z  INFO ⏱️ [Preflight] 41 ms total | model load 21 ms | registry + template + tags 12 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:18:20.855955Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:18:20.856078Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558700
+2026-11-24T22:18:22.459597Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:22.459963Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-24T22:18:22.460012Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 20 tokens in 350 ms (57.08 t/s)
+2026-11-24T22:18:22.460040Z  INFO 🧠 [Context] prompt 857 tokens (856 from the cache) | context 876 of 16384 | stop eos
+2026-11-24T22:18:23.299325Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:23.341288Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:18:23.344153Z  INFO ⏱️ [Preflight] 48 ms total | model load 27 ms | registry + template + tags 14 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:18:23.358318Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:18:23.358421Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558703
+2026-11-24T22:18:24.869739Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:24.870165Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-24T22:18:24.870233Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 20 tokens in 321 ms (62.22 t/s)
+2026-11-24T22:18:24.870277Z  INFO 🧠 [Context] prompt 857 tokens (856 from the cache) | context 876 of 16384 | stop eos
+2026-11-24T22:18:25.697994Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:25.741287Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.05 ms
+2026-11-24T22:18:25.744683Z  INFO ⏱️ [Preflight] 49 ms total | model load 28 ms | registry + template + tags 14 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:18:25.758357Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:18:25.758445Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558705
+2026-11-24T22:18:27.197436Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:27.197778Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-24T22:18:27.197824Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 20 tokens in 219 ms (91.44 t/s)
+2026-11-24T22:18:27.197850Z  INFO 🧠 [Context] prompt 857 tokens (856 from the cache) | context 876 of 16384 | stop eos
+2026-11-24T22:18:27.744494Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:27.786206Z  INFO 🧮 [Tokens] Conversation 119 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:18:27.788749Z  INFO ⏱️ [Preflight] 48 ms total | model load 28 ms | registry + template + tags 12 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T22:18:27.821245Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:18:27.821334Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558707
+2026-11-24T22:18:27.908908Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:27.909002Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 92 tokens in 47 ms (1965.01 t/s) | generation 4 tokens in 60 ms (66.45 t/s)
+2026-11-24T22:18:27.909050Z  INFO 🧠 [Context] prompt 794 tokens (702 from the cache) | context 798 of 16384 | stop limit
+2026-11-24T22:18:28.218450Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:28.251098Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:18:28.251202Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:18:28.252181Z  INFO ⏱️ [Preflight] 37 ms total | model load 22 ms | registry + template + tags 10 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:18:28.253855Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (706 bytes) in 1 ms
+2026-11-24T22:18:28.279000Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:18:28.279074Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:18:28.279172Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558708
+2026-11-24T22:18:28.626693Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:28.626916Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:28.626957Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 28 tokens in 39 ms (716.64 t/s) | generation 22 tokens in 232 ms (94.73 t/s)
+2026-11-24T22:18:28.626985Z  INFO 🧠 [Context] prompt 148 tokens (120 from the cache) | context 170 of 16384 | stop eos
+2026-11-24T22:18:29.458746Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:29.487403Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:18:29.487539Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:18:29.489030Z  INFO ⏱️ [Preflight] 34 ms total | model load 16 ms | registry + template + tags 11 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:18:29.490498Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (706 bytes) in 0 ms
+2026-11-24T22:18:29.495721Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:18:29.495784Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:18:29.495843Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558709
+2026-11-24T22:18:29.709220Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:29.709480Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:29.709524Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 23 tokens in 130 ms (177.30 t/s)
+2026-11-24T22:18:29.709550Z  INFO 🧠 [Context] prompt 148 tokens (147 from the cache) | context 170 of 16384 | stop eos
+2026-11-24T22:18:30.552120Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:30.591704Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:18:30.591823Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:18:30.593100Z  INFO ⏱️ [Preflight] 45 ms total | model load 27 ms | registry + template + tags 11 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:18:30.594442Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (706 bytes) in 0 ms
+2026-11-24T22:18:30.599322Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:18:30.599403Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:18:30.599461Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558710
+2026-11-24T22:18:30.829308Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:30.829500Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:30.829542Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 23 tokens in 146 ms (157.26 t/s)
+2026-11-24T22:18:30.829569Z  INFO 🧠 [Context] prompt 148 tokens (147 from the cache) | context 170 of 16384 | stop eos
+2026-11-24T22:18:31.658811Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:31.697534Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:18:31.697677Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:18:31.699194Z  INFO ⏱️ [Preflight] 44 ms total | model load 27 ms | registry + template + tags 11 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:18:31.700734Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (706 bytes) in 0 ms
+2026-11-24T22:18:31.706923Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:18:31.706990Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:18:31.707048Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558711
+2026-11-24T22:18:31.952781Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:31.953064Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:31.953112Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 25 tokens in 158 ms (158.30 t/s)
+2026-11-24T22:18:31.953140Z  INFO 🧠 [Context] prompt 148 tokens (147 from the cache) | context 172 of 16384 | stop eos
+2026-11-24T22:18:32.797491Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:32.823079Z  INFO 📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies
+2026-11-24T22:18:32.823181Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:18:32.824570Z  INFO ⏱️ [Preflight] 30 ms total | model load 13 ms | registry + template + tags 12 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:18:32.826109Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (706 bytes) in 0 ms
+2026-11-24T22:18:32.830625Z  INFO 📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)
+2026-11-24T22:18:32.830691Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:18:32.830759Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558712
+2026-11-24T22:18:33.045832Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:33.046069Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:33.046107Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 23 tokens in 132 ms (174.71 t/s)
+2026-11-24T22:18:33.046135Z  INFO 🧠 [Context] prompt 148 tokens (147 from the cache) | context 170 of 16384 | stop eos
+2026-11-24T22:18:33.577057Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:33.601513Z  INFO 🧮 [Tokens] Conversation 119 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:18:33.603756Z  INFO ⏱️ [Preflight] 29 ms total | model load 13 ms | registry + template + tags 11 ms | skills + tools 1 ms | rest 0 ms
+2026-11-24T22:18:33.686459Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:18:33.686545Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558713
+2026-11-24T22:18:33.733681Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:33.733745Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 674 tokens in 80 ms (8411.54 t/s) | generation 4 tokens in 37 ms (107.20 t/s)
+2026-11-24T22:18:33.733774Z  INFO 🧠 [Context] prompt 794 tokens (120 from the cache) | context 798 of 16384 | stop limit
+2026-11-24T22:18:34.060853Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:34.083927Z  INFO 📐 [ChatHandler] A custom grammar: the Engine's own functions are left out of this request so the grammar applies
+2026-11-24T22:18:34.084128Z  INFO 🧮 [Tokens] Conversation 132 tokens (2 messages) counted in 0.13 ms
+2026-11-24T22:18:34.085639Z  INFO ⏱️ [Preflight] 28 ms total | model load 13 ms | registry + template + tags 9 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:18:34.087490Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (694 bytes) in 0 ms
+2026-11-24T22:18:34.114787Z  INFO 📐 [NativeStream] Answer constrained by a GBNF grammar
+2026-11-24T22:18:34.114873Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:18:34.114947Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558714
+2026-11-24T22:18:34.179684Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:34.179886Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:34.179927Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 29 tokens in 26 ms (1102.49 t/s) | generation 1 tokens in 15 ms (67.40 t/s)
+2026-11-24T22:18:34.179955Z  INFO 🧠 [Context] prompt 149 tokens (120 from the cache) | context 150 of 16384 | stop eos
+2026-11-24T22:18:35.025286Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:35.050901Z  INFO 📐 [ChatHandler] A custom grammar: the Engine's own functions are left out of this request so the grammar applies
+2026-11-24T22:18:35.051040Z  INFO 🧮 [Tokens] Conversation 132 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:18:35.052577Z  INFO ⏱️ [Preflight] 31 ms total | model load 13 ms | registry + template + tags 12 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:18:35.054209Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (694 bytes) in 0 ms
+2026-11-24T22:18:35.060693Z  INFO 📐 [NativeStream] Answer constrained by a GBNF grammar
+2026-11-24T22:18:35.060765Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:18:35.060825Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558715
+2026-11-24T22:18:35.120460Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:35.120685Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:35.120743Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 2 tokens in 14 ms (146.64 t/s)
+2026-11-24T22:18:35.120784Z  INFO 🧠 [Context] prompt 149 tokens (148 from the cache) | context 150 of 16384 | stop eos
+2026-11-24T22:18:35.961679Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:35.985374Z  INFO 📐 [ChatHandler] A custom grammar: the Engine's own functions are left out of this request so the grammar applies
+2026-11-24T22:18:35.985473Z  INFO 🧮 [Tokens] Conversation 132 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:18:35.986426Z  INFO ⏱️ [Preflight] 28 ms total | model load 13 ms | registry + template + tags 10 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:18:35.988106Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (694 bytes) in 1 ms
+2026-11-24T22:18:35.991964Z  INFO 📐 [NativeStream] Answer constrained by a GBNF grammar
+2026-11-24T22:18:35.992027Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:18:35.992090Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558715
+2026-11-24T22:18:36.055281Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:36.055439Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:36.055475Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 2 tokens in 19 ms (106.45 t/s)
+2026-11-24T22:18:36.055501Z  INFO 🧠 [Context] prompt 149 tokens (148 from the cache) | context 150 of 16384 | stop eos
+2026-11-24T22:18:36.884489Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:36.920789Z  INFO 📐 [ChatHandler] A custom grammar: the Engine's own functions are left out of this request so the grammar applies
+2026-11-24T22:18:36.920914Z  INFO 🧮 [Tokens] Conversation 132 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:18:36.922032Z  INFO ⏱️ [Preflight] 41 ms total | model load 25 ms | registry + template + tags 10 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:18:36.923552Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (694 bytes) in 0 ms
+2026-11-24T22:18:36.927551Z  INFO 📐 [NativeStream] Answer constrained by a GBNF grammar
+2026-11-24T22:18:36.927632Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:18:36.927709Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558716
+2026-11-24T22:18:36.997791Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:36.997960Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:36.998000Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 2 tokens in 25 ms (79.27 t/s)
+2026-11-24T22:18:36.998027Z  INFO 🧠 [Context] prompt 149 tokens (148 from the cache) | context 150 of 16384 | stop eos
+2026-11-24T22:18:37.828274Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:18:37.856907Z  INFO 📐 [ChatHandler] A custom grammar: the Engine's own functions are left out of this request so the grammar applies
+2026-11-24T22:18:37.857044Z  INFO 🧮 [Tokens] Conversation 132 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:18:37.858824Z  INFO ⏱️ [Preflight] 33 ms total | model load 17 ms | registry + template + tags 11 ms | skills + tools 0 ms | rest 1 ms
+2026-11-24T22:18:37.860343Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (694 bytes) in 0 ms
+2026-11-24T22:18:37.863530Z  INFO 📐 [NativeStream] Answer constrained by a GBNF grammar
+2026-11-24T22:18:37.863592Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:18:37.863654Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795558717
+2026-11-24T22:18:37.938190Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:18:37.938351Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:18:37.938388Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 2 tokens in 30 ms (66.06 t/s)
+2026-11-24T22:18:37.938414Z  INFO 🧠 [Context] prompt 149 tokens (148 from the cache) | context 150 of 16384 | stop eos

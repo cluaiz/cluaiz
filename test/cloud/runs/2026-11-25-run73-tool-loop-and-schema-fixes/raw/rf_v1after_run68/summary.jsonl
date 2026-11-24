@@ -1,0 +1,12 @@
+{"case": "f2_schema_tool_weather_question", "exe": "rfafter", "valid": 10, "n": 10, "constrained_log": 0, "median_s": 2.505, "prompt_n": [1, 155]}
+{"case": "f_json_schema_with_tool", "exe": "rfafter", "valid": 0, "n": 10, "constrained_log": 0, "median_s": 2.941, "prompt_n": [4, 52, 72, 458]}
+{"case": "c_json_schema", "exe": "rfafter", "valid": 0, "n": 10, "constrained_log": 0, "median_s": 0.426, "prompt_n": [1, 22]}
+{"case": "b_json_object", "exe": "rfafter", "valid": 9, "n": 10, "constrained_log": 0, "median_s": 0.369, "prompt_n": [1, 4, 52, 458]}
+{"case": "d_grammar", "exe": "rfafter", "valid": 10, "n": 10, "constrained_log": 10, "median_s": 0.152, "prompt_n": [1, 29]}
+{"case": "e_tool_required", "exe": "rfafter", "valid": 10, "n": 10, "constrained_log": 10, "median_s": 0.306, "prompt_n": [1, 155, 674]}
+{"case": "h_required_unrelated", "exe": "rfafter", "valid": 0, "n": 10, "constrained_log": 10, "median_s": 4.526, "prompt_n": [1, 56, 155]}
+{"case": "g_grammar_with_tool", "exe": "rfafter", "valid": 10, "n": 10, "constrained_log": 0, "median_s": 0.05, "prompt_n": []}
+{"case": "g2_grammar_engine_functions", "exe": "rfafter", "valid": 10, "n": 10, "constrained_log": 10, "median_s": 0.356, "prompt_n": [1, 4]}
+{"case": "j_schema_engine_functions", "exe": "rfafter", "valid": 2, "n": 10, "constrained_log": 1, "median_s": 1.105, "prompt_n": [1, 4, 56]}
+{"case": "i_named_get_time", "exe": "rfafter", "valid": 10, "n": 10, "constrained_log": 10, "median_s": 0.256, "prompt_n": [1, 92, 155]}
+{"case": "i2_named_unknown", "exe": "rfafter", "valid": 10, "n": 10, "constrained_log": 0, "median_s": 0.046, "prompt_n": []}

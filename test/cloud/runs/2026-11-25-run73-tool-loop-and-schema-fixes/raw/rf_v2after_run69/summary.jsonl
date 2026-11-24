@@ -1,0 +1,12 @@
+{"case": "k3_schema_think", "exe": "rfafter", "valid": 5, "n": 5, "constrained_log": 5, "reasoning_nonempty": 5, "finish_reasons": {"stop": 5}, "median_s": 2.145}
+{"case": "k3_schema_tool_think", "exe": "rfafter", "valid": 3, "n": 5, "constrained_log": 0, "reasoning_nonempty": 5, "finish_reasons": {"stop": 5}, "median_s": 1.456}
+{"case": "k3_schema_tool_think_weatherq", "exe": "rfafter", "valid": 5, "n": 5, "constrained_log": 0, "reasoning_nonempty": 5, "finish_reasons": {"tool_calls": 5}, "median_s": 2.11}
+{"case": "k3_json_object_think", "exe": "rfafter", "valid": 5, "n": 5, "constrained_log": 5, "reasoning_nonempty": 5, "finish_reasons": {"stop": 5}, "median_s": 1.919}
+{"case": "c4_schema_stream", "exe": "rfafter", "valid": 5, "n": 5, "constrained_log": 5, "reasoning_nonempty": 0, "finish_reasons": {"stop": 5}, "median_s": 0.322}
+{"case": "c4_schema_tool_stream", "exe": "rfafter", "valid": 0, "n": 5, "constrained_log": 0, "reasoning_nonempty": 0, "finish_reasons": {"stop": 5}, "median_s": 1.779}
+{"case": "c4_schema_think_stream", "exe": "rfafter", "valid": 5, "n": 5, "constrained_log": 5, "reasoning_nonempty": 5, "finish_reasons": {"stop": 5}, "median_s": 1.974}
+{"case": "c4_schema_tool_think_stream", "exe": "rfafter", "valid": 3, "n": 5, "constrained_log": 0, "reasoning_nonempty": 5, "finish_reasons": {"stop": 5}, "median_s": 1.899}
+{"case": "r6_plain", "exe": "rfafter", "valid": 5, "n": 5, "constrained_log": 0, "reasoning_nonempty": 0, "finish_reasons": {"stop": 5}, "median_s": 0.135}
+{"case": "r6_tool_auto", "exe": "rfafter", "valid": 5, "n": 5, "constrained_log": 0, "reasoning_nonempty": 0, "finish_reasons": {"tool_calls": 5}, "median_s": 1.592}
+{"case": "r6_json_object", "exe": "rfafter", "valid": 5, "n": 5, "constrained_log": 5, "reasoning_nonempty": 0, "finish_reasons": {"stop": 5}, "median_s": 0.297}
+{"case": "r6_gbnf_yes_no", "exe": "rfafter", "valid": 5, "n": 5, "constrained_log": 5, "reasoning_nonempty": 0, "finish_reasons": {"stop": 5}, "median_s": 0.122}

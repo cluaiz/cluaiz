@@ -1,0 +1,99 @@
+2026-11-24T22:34:05.057063Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-24T22:34:05.657275Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-24T22:34:07.318179Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+Starting the Cluaiz API server on http://localhost:8013 ...
+2026-11-24T22:34:07.322389Z  INFO 🔒 [Auth] Initialized local session secret at C:\Users\<user>\AppData\Local\Temp\claude\6c30a0ef6fee852f\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\scratchpad\r72\home\session.token
+2026-11-24T22:34:07.512960Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-24T22:34:07.546604Z  INFO 🌐 Cluaiz API Server running on http://127.0.0.1:8013
+2026-11-24T22:34:07.595039Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:34:07.681452Z  INFO
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3-0.6b-gguf-Q4_K_M
+║   • Architecture    : qwen3 | 28 layers | heads 16 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 0.40 GB (as Hugging Face counts it) | input embeddings 0.12 GB (always CPU) | output head 0.12 GB | vocab 151936
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 40960 tokens
+║   • Active context  : 16384 tokens, KV Kv8 (Auto: 16384 tokens with KV Kv8 + buffer 0.57 GB, to stay on the GPU (16384 tokens with KV Kv16 did not fit))
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA GeForce RTX 3050 A Laptop GPU | free 2.44 of 4.00 GB | buffer kept free 0.57 GB (measured: GPU pool +0.37 GB + 0.20 GB reserve; estimate corrected by llama.cpp's dry run +0.01 GB)
+║   • RAM             : free 8.70 of 23.69 GB | Cluaiz may use 7.52 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 16384 | KV Kv8 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 28 on GPU, 0 in RAM (of 28)
+║   • VRAM            : 1.60 GB (weights + KV 0.93 + logits)
+║   • RAM             : 0.12 GB (incl. KV 0.00)
+║   • Reason         : Full GPU: weights 0.36 + KV 0.93 + buffers 0.30 = 1.60 GB vs usable VRAM 1.87 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  1.60 GB | RAM  0.12 GB | weights 0.36 + KV 0.93 + buffers 0.30 = 1.60 GB vs usable VRAM 1.87 GB
+║   • GPU + RAM split  [FITS]     VRAM  1.55 GB | RAM  0.16 GB | 27 / 28 blocks + output head on GPU (1.55 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  1.58 GB | weights 0.36 + KV 0.93 + logits 0.29 = 1.58 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 8 / batch 8 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-24T22:34:07.683327Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-24T22:34:07.684680Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 8, n_threads_batch = 8
+2026-11-24T22:34:07.684748Z  INFO 🧬 [Native-Llama] Loading model: C:\Users\<user>\AppData\Local\Temp\claude\6c30a0ef6fee852f\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\scratchpad\api-home\models\chat\qwen3-0.6b-gguf-Q4_K_M\Qwen3-0.6B-Q4_K_M.gguf | ctx: 16384 tokens
+2026-11-24T22:34:08.074015Z  WARN [llama.cpp] load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+2026-11-24T22:34:08.466289Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M"
+2026-11-24T22:34:08.478042Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-11-24T22:34:08.478108Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-11-24T22:34:08.478136Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16384 tokens
+2026-11-24T22:34:08.478190Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-24T22:34:08.478220Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-24T22:34:08.478250Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-24T22:34:08.478279Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 8/8
+2026-11-24T22:34:08.478315Z  INFO 🔮 [MTP] MTP asked for, but this model has no multi-token-prediction layers: decoding without it
+2026-11-24T22:34:08.743338Z  INFO 🔍 [EngineHost] VRAM planned 1.60 GB, taken 1.68 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-24T22:34:08.745045Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: C:\Users\<user>\AppData\Local\Temp\claude\6c30a0ef6fee852f\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\scratchpad\api-home\models\chat\qwen3-0.6b-gguf-Q4_K_M\Qwen3-0.6B-Q4_K_M.gguf
+2026-11-24T22:34:08.803249Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.92 ms
+2026-11-24T22:34:08.804822Z  INFO ⏱️ [Preflight] 1213 ms total | model load 1179 ms | registry + template + tags 27 ms | skills + tools 1 ms | rest 0 ms
+2026-11-24T22:34:08.819036Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (684 bytes) in 1 ms
+2026-11-24T22:34:08.821609Z  WARN 📝 [NativeTemplate] The template did not take the JSON schema (Unable to generate parser for this template. Automatic parser generation failed: JSON schema error at #/properties/name: cannot resolve $ref #/definitions/missing, definitions not found); answer parser kept without it
+2026-11-24T22:34:08.849153Z  WARN ⚠️ [NativeStream] JSON schema not supported (JSON schema conversion failed:
+JSON schema error at #/properties/name: cannot resolve $ref #/definitions/missing, definitions not found); answer not constrained
+2026-11-24T22:34:08.849288Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-24T22:34:08.849462Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795559648
+2026-11-24T22:34:08.849580Z  INFO 🧠 [NativeStream] Auto thinking ceiling 11412 tokens (High's share of room 15216; no speed measured yet)
+2026-11-24T22:34:10.211083Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:34:10.211313Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:34:10.211481Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 144 tokens in 27 ms (5363.53 t/s) | generation 212 tokens in 1222 ms (173.43 t/s)
+2026-11-24T22:34:10.211522Z  INFO 🧠 [Context] prompt 144 tokens (0 from the cache) | context 356 of 16384 | stop eos
+2026-11-24T22:34:10.722159Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:34:10.751568Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.04 ms
+2026-11-24T22:34:10.753077Z  INFO ⏱️ [Preflight] 35 ms total | model load 19 ms | registry + template + tags 9 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:34:10.754765Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (684 bytes) in 1 ms
+2026-11-24T22:34:10.756025Z  WARN 📝 [NativeTemplate] The template did not take the JSON schema (Unable to generate parser for this template. Automatic parser generation failed: JSON schema error at #/properties/name: cannot resolve $ref #/definitions/missing, definitions not found); answer parser kept without it
+2026-11-24T22:34:10.771882Z  WARN ⚠️ [NativeStream] JSON schema not supported (JSON schema conversion failed:
+JSON schema error at #/properties/name: cannot resolve $ref #/definitions/missing, definitions not found); answer not constrained
+2026-11-24T22:34:10.771974Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-24T22:34:10.772054Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795559650
+2026-11-24T22:34:10.772146Z  INFO 🧠 [NativeStream] Auto thinking ceiling 11412 tokens (173.4 t/s for up to 180 s, room 15216)
+2026-11-24T22:34:12.283500Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:34:12.283707Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:34:12.283752Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 242 tokens in 1392 ms (173.79 t/s)
+2026-11-24T22:34:12.283780Z  INFO 🧠 [Context] prompt 144 tokens (143 from the cache) | context 385 of 16384 | stop eos
+2026-11-24T22:34:12.793759Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-24T22:34:12.828103Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-24T22:34:12.829179Z  INFO ⏱️ [Preflight] 39 ms total | model load 22 ms | registry + template + tags 11 ms | skills + tools 0 ms | rest 0 ms
+2026-11-24T22:34:12.831324Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (684 bytes) in 1 ms
+2026-11-24T22:34:12.833010Z  WARN 📝 [NativeTemplate] The template did not take the JSON schema (Unable to generate parser for this template. Automatic parser generation failed: JSON schema error at #/properties/name: cannot resolve $ref #/definitions/missing, definitions not found); answer parser kept without it
+2026-11-24T22:34:12.850734Z  WARN ⚠️ [NativeStream] JSON schema not supported (JSON schema conversion failed:
+JSON schema error at #/properties/name: cannot resolve $ref #/definitions/missing, definitions not found); answer not constrained
+2026-11-24T22:34:12.850806Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-24T22:34:12.850899Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795559652
+2026-11-24T22:34:12.850978Z  INFO 🧠 [NativeStream] Auto thinking ceiling 11412 tokens (173.8 t/s for up to 180 s, room 15216)
+2026-11-24T22:34:14.149625Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T22:34:14.149822Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T22:34:14.149867Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 209 tokens in 1206 ms (173.26 t/s)
+2026-11-24T22:34:14.149894Z  INFO 🧠 [Context] prompt 144 tokens (143 from the cache) | context 352 of 16384 | stop eos

@@ -1,0 +1,29 @@
+   Compiling cluaiz-core v0.1.0 (C:\Users\<user>\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\engine\core)
+   Compiling cluaiz-hw v0.1.0 (C:\Users\<user>\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\engine\hardware)
+   Compiling cluaiz-security v0.1.0 (C:\Users\<user>\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\security)
+   Compiling cluaiz-models v0.1.0 (C:\Users\<user>\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\engine\models)
+   Compiling cluaiz-agents v0.1.0 (C:\Users\<user>\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\agents)
+    Finished `test` profile [unoptimized] target(s) in 32.91s
+     Running unittests src\lib.rs (target\debug\deps\cluaiz_agents-323ed74e431fdffd.exe)
+
+running 13 tests
+test turn::tests::a_stopped_generation_ends_the_turn ... ok
+test turn::tests::the_step_limit_ends_a_turn_that_keeps_calling ... ok
+test turn::tests::a_client_function_ends_the_turn_with_the_call ... ok
+test turn::tests::consecutive_identical_calls_warn_on_third_and_stop_on_fourth ... ok
+test turn::tests::at_the_repeat_limit_too_and_a_call_in_the_final_answer_is_not_run ... ok
+test turn::tests::a_stop_during_a_call_ends_the_turn_and_skips_the_rest ... ok
+test turn::tests::distinct_calls_run_past_old_fifteen_step_limit_with_zero_unlimited ... ok
+test turn::tests::at_the_step_limit_one_answer_without_tools_ends_the_turn ... ok
+test turn::tests::calls_run_in_order_and_the_model_answers_again ... ok
+test turn::tests::a_front_end_without_corrections_ends_the_turn_at_once ... ok
+test turn::tests::the_note_quotes_a_long_unreadable_call_in_part ... ok
+test turn::tests::unusable_answers_end_the_turn_after_the_most_corrections ... ok
+test turn::tests::an_unusable_answer_is_corrected_and_the_turn_goes_on ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 161 filtered out; finished in 0.04s
+
+
+real	0m34.548s
+user	0m0.015s
+sys	0m0.016s

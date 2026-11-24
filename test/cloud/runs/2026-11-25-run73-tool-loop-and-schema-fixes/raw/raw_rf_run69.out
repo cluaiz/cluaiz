@@ -1,0 +1,364 @@
+k3_schema_think 0 200 VALID constrained=True reasoning=989 finish=stop {"content": "{\"age\": 25, \"name\": \"John Doe\"}", "reasoning_len": 989, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_think 1 200 VALID constrained=True reasoning=1570 finish=stop {"content": "{\"age\": 30, \"name\": \"Alice\"}", "reasoning_len": 1570, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_think 2 200 VALID constrained=True reasoning=1329 finish=stop {"content": "{\"age\": 25, \"name\": \"Alice\"}", "reasoning_len": 1329, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_think 3 200 VALID constrained=True reasoning=829 finish=stop {"content": "{\"age\": 10, \"name\": \"person\"}", "reasoning_len": 829, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_think 4 200 VALID constrained=True reasoning=730 finish=stop {"content": "{\"age\": 30, \"name\": \"Alice\"}", "reasoning_len": 730, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_tool_think 0 200 VALID constrained=True reasoning=527 finish=stop {"content": "{\"age\": 25, \"name\": \"Alice\"}", "reasoning_len": 527, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_tool_think 1 200 VALID constrained=True reasoning=672 finish=stop {"content": "{\"age\": 25, \"name\": \"Alice\"}", "reasoning_len": 672, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_tool_think 2 200 VALID constrained=True reasoning=711 finish=stop {"content": "{\n  \"age\": 28,\n  \"name\": \"Samuel\"\n}", "reasoning_len": 711, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_tool_think 3 200 VALID constrained=True reasoning=687 finish=stop {"content": "{\"age\": 30, \"name\": \"Alice\"}", "reasoning_len": 687, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_tool_think 4 200 VALID constrained=True reasoning=1185 finish=stop {"content": "{\"age\": 30, \"name\": \"Lila Marlowe\"}", "reasoning_len": 1185, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_tool_think_weatherq 0 200 VALID constrained=True reasoning=409 finish=stop {"content": "{\"age\": 23, \"name\": \"get_weather\"}", "tool_calls": [], "finish_reason": "stop", "reasoning_len": 409}
+k3_schema_tool_think_weatherq 1 200 VALID constrained=True reasoning=411 finish=stop {"content": "{\"age\": 0, \"name\": \"get_weather\"}", "tool_calls": [], "finish_reason": "stop", "reasoning_len": 411}
+k3_schema_tool_think_weatherq 2 200 VALID constrained=True reasoning=364 finish=stop {"content": "{\n  \"age\": 0,\n  \"name\": \"get_weather\"\n}", "tool_calls": [], "finish_reason": "stop", "reasoning_len": 364}
+k3_schema_tool_think_weatherq 3 200 VALID constrained=True reasoning=372 finish=stop {"content": "{\"age\": 25, \"name\": \"get_weather\"}", "tool_calls": [], "finish_reason": "stop", "reasoning_len": 372}
+k3_schema_tool_think_weatherq 4 200 VALID constrained=True reasoning=325 finish=stop {"content": "{\n  \"age\": 0,\n  \"name\": \"get_weather\"\n}", "tool_calls": [], "finish_reason": "stop", "reasoning_len": 325}
+k3_json_object_think 0 200 VALID constrained=True reasoning=523 finish=stop {"content": "{\"name\": \"<user>\", \"age\": 20}"}
+k3_json_object_think 1 200 VALID constrained=True reasoning=2156 finish=stop {"content": "{\n  \"name\": \"Alice\",\n  \"age\": 25\n}"}
+k3_json_object_think 2 200 VALID constrained=True reasoning=1036 finish=stop {"content": "{\"name\": \"Alice\", \"age\": 25}"}
+k3_json_object_think 3 200 VALID constrained=True reasoning=633 finish=stop {"content": "{\"name\": \"Alice\", \"age\": 25}"}
+k3_json_object_think 4 200 VALID constrained=True reasoning=1019 finish=stop {"content": "{\"name\": \"John Doe\", \"age\": 45}"}
+c4_schema_stream 0 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 12, \"name\": \"Alice\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_stream 1 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"age\": 25,\n  \"name\": \"Alice\"\n}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_stream 2 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 25, \"name\": \"Charlie\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_stream 3 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 25, \"name\": \"Alice\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_stream 4 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 20, \"name\": \"Lila\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_stream 0 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 25, \"name\": \"Juno\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_stream 1 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 25, \"name\": \"Luna\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_stream 2 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 30, \"name\": \"Alice\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_stream 3 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 35, \"name\": \"Alice\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_stream 4 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 20, \"name\": \"Alice\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_think_stream 0 200 VALID constrained=True reasoning=1012 finish=stop {"content": "{\"age\": 23, \"name\": \"Juno\"}", "reasoning_len": 1012, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_think_stream 1 200 VALID constrained=True reasoning=441 finish=stop {"content": "{\"age\": 25, \"name\": \"Mira\"}", "reasoning_len": 441, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_think_stream 2 200 VALID constrained=True reasoning=1700 finish=stop {"content": "{\"age\": 30, \"name\": \"Luna\"}", "reasoning_len": 1700, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_think_stream 3 200 VALID constrained=True reasoning=668 finish=stop {"content": "{\n  \"age\": 25,\n  \"name\": \"Alice\"\n}", "reasoning_len": 668, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_think_stream 4 200 VALID constrained=True reasoning=512 finish=stop {"content": "{\"age\": 40, \"name\": \"Alice Johnson\"}", "reasoning_len": 512, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_think_stream 0 200 VALID constrained=True reasoning=785 finish=stop {"content": "{\n  \"age\": 100,\n  \"name\": \"Ezra the Curious\"\n}", "reasoning_len": 785, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_think_stream 1 200 VALID constrained=True reasoning=1132 finish=stop {"content": "{\"age\": 25, \"name\": \"Alice\"}", "reasoning_len": 1132, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_think_stream 2 200 VALID constrained=True reasoning=1004 finish=stop {"content": "{\"age\": 30, \"name\": \"Juno\"}", "reasoning_len": 1004, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_think_stream 3 200 VALID constrained=True reasoning=1102 finish=stop {"content": "{\"age\": 30, \"name\": \"Alice\"}", "reasoning_len": 1102, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_think_stream 4 200 VALID constrained=True reasoning=628 finish=stop {"content": "{\"age\": 30, \"name\": \"Alice\"}", "reasoning_len": 628, "tool_calls": null, "finish_reason": "stop"}
+r6_plain 0 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_plain 1 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_plain 2 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_plain 3 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_plain 4 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_tool_auto 0 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558061978", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_tool_auto 1 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558064403", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_tool_auto 2 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558066877", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_tool_auto 3 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558069885", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_tool_auto 4 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558072855", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_json_object 0 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\"name\": \"read_item\", \"arguments\": {\"kind\": \"memory\", \"name\": \"math (skill): Evaluates math expressions and converts units, so results are computed rather than guessed.\"}}"}
+r6_json_object 1 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\"name\": \"read_item\", \"arguments\": {\"kind\": \"memory\", \"name\": \"math (skill): Evaluates math expressions and converts units, so results are computed rather than guessed.\"}}"}
+r6_json_object 2 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\"name\": \"name\", \"age\": 25}"}
+r6_json_object 3 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\"name\": \"math\", \"age\": \"25\"}"}
+r6_json_object 4 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\"name\": \"read_item\", \"arguments\": {\"kind\": \"memory\", \"name\": \"math (skill): Evaluates math expressions and converts units, so results are computed rather than guessed. Use whenever an answer ne
+r6_gbnf_yes_no 0 200 VALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+r6_gbnf_yes_no 1 200 VALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+r6_gbnf_yes_no 2 200 VALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+r6_gbnf_yes_no 3 200 VALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+r6_gbnf_yes_no 4 200 VALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+{
+ "k3_schema_think": {
+  "valid": 5,
+  "n": 5,
+  "constrained_log": 5,
+  "reasoning_nonempty": 5,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 2.492
+ },
+ "k3_schema_tool_think": {
+  "valid": 5,
+  "n": 5,
+  "constrained_log": 5,
+  "reasoning_nonempty": 5,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 1.76
+ },
+ "k3_schema_tool_think_weatherq": {
+  "valid": 5,
+  "n": 5,
+  "constrained_log": 5,
+  "reasoning_nonempty": 5,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 1.381
+ },
+ "k3_json_object_think": {
+  "valid": 5,
+  "n": 5,
+  "constrained_log": 5,
+  "reasoning_nonempty": 5,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 2.352
+ },
+ "c4_schema_stream": {
+  "valid": 5,
+  "n": 5,
+  "constrained_log": 5,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 0.275
+ },
+ "c4_schema_tool_stream": {
+  "valid": 5,
+  "n": 5,
+  "constrained_log": 5,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 0.347
+ },
+ "c4_schema_think_stream": {
+  "valid": 5,
+  "n": 5,
+  "constrained_log": 5,
+  "reasoning_nonempty": 5,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 2.192
+ },
+ "c4_schema_tool_think_stream": {
+  "valid": 5,
+  "n": 5,
+  "constrained_log": 5,
+  "reasoning_nonempty": 5,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 2.603
+ },
+ "r6_plain": {
+  "valid": 5,
+  "n": 5,
+  "constrained_log": 0,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 0.165
+ },
+ "r6_tool_auto": {
+  "valid": 5,
+  "n": 5,
+  "constrained_log": 0,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "tool_calls": 5
+  },
+  "median_s": 1.875
+ },
+ "r6_json_object": {
+  "valid": 5,
+  "n": 5,
+  "constrained_log": 5,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 0.541
+ },
+ "r6_gbnf_yes_no": {
+  "valid": 5,
+  "n": 5,
+  "constrained_log": 5,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 0.134
+ }
+}
+k3_schema_think 0 200 VALID constrained=False reasoning=1052 finish=stop {"content": "{\"name\": \"Alice\", \"age\": 25}", "reasoning_len": 1052, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_think 1 200 VALID constrained=False reasoning=653 finish=stop {"content": "{\"name\": \"John Doe\", \"age\": 30}", "reasoning_len": 653, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_think 2 200 VALID constrained=False reasoning=695 finish=stop {"content": "{\"name\": \"Alice\", \"age\": 25}", "reasoning_len": 695, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_think 3 200 INVALID constrained=False reasoning=572 finish=stop {"content": "I don't have access to personal information or the ability to retrieve a person's name and age. Let me know if there's something else I can assist you with!", "reasoning_len": 572, "tool_calls": null, "finis
+k3_schema_think 4 200 INVALID constrained=False reasoning=843 finish=stop {"content": "The requested information cannot be retrieved as no available tool or rule is provided to extract a person's name and age.", "reasoning_len": 843, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_tool_think 0 200 INVALID constrained=False reasoning=1197 finish=stop {"content": "The provided tools do not include any functions for generating fictional data or creating a JSON object with name and age. I cannot fulfill this request with the current toolset.", "reasoning_len": 1197, "to
+k3_schema_tool_think 1 200 VALID constrained=False reasoning=707 finish=stop {"content": "{\"name\": \"unknown\", \"age\": 0}", "reasoning_len": 707, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_tool_think 2 200 INVALID constrained=False reasoning=742 finish=stop {"content": "I don't have access to a tool that allows me to retrieve personal information like name and age. Could you please specify what kind of information you need?", "reasoning_len": 742, "tool_calls": null, "finis
+k3_schema_tool_think 3 200 INVALID constrained=False reasoning=747 finish=stop {"content": "I don't have access to fictional data or external databases to retrieve a JSON object with a fictional person's name and age. Let me know if you'd like help with other tasks!", "reasoning_len": 747, "tool_ca
+k3_schema_tool_think 4 200 INVALID constrained=False reasoning=740 finish=stop {"content": "I don't have access to a tool or function to retrieve fictional person's name and age. Could you please provide more context or clarify your request?", "reasoning_len": 740, "tool_calls": null, "finish_reaso
+k3_schema_tool_think_weatherq 0 200 VALID constrained=False reasoning=385 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558118822", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 385}
+k3_schema_tool_think_weatherq 1 200 VALID constrained=False reasoning=363 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558121599", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 363}
+k3_schema_tool_think_weatherq 2 200 VALID constrained=False reasoning=371 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558124508", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 371}
+k3_schema_tool_think_weatherq 3 200 VALID constrained=False reasoning=383 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558127356", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 383}
+k3_schema_tool_think_weatherq 4 200 VALID constrained=False reasoning=396 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558130133", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 396}
+k3_json_object_think 0 200 VALID constrained=False reasoning=1004 finish=stop {"content": "{\"name\": \"Alice\", \"age\": 25}"}
+k3_json_object_think 1 200 VALID constrained=False reasoning=892 finish=stop {"content": "{\"name\": \"Zara\", \"age\": 25}"}
+k3_json_object_think 2 200 VALID constrained=False reasoning=941 finish=stop {"content": "{\"name\": \"Alice\", \"age\": 30}"}
+k3_json_object_think 3 200 VALID constrained=False reasoning=1056 finish=stop {"content": "{\"name\": \"John Doe\", \"age\": 30}"}
+k3_json_object_think 4 200 VALID constrained=False reasoning=1424 finish=stop {"content": "{\"name\": \"Alice\", \"age\": 30}"}
+c4_schema_stream 0 200 INVALID constrained=False reasoning=0 finish=stop {"content": "{\"name\": \"read_item\", \"arguments\": {\"kind\": \"memory\", \"name\": \"memory line\"}}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_stream 1 200 INVALID constrained=False reasoning=0 finish=stop {"content": "{\"name\": \"read_item\", \"arguments\": {\"kind\": \"memory\", \"name\": \"Give me a JSON object with name and age of a fictional person\"}}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"
+c4_schema_stream 2 200 INVALID constrained=False reasoning=0 finish=stop {"content": "{\"name\": \"math\", \"arguments\": {\"kind\": \"memory\", \"name\": \"math\"}}", "reasoning_len": 0, "tool_calls": [{"id": "call_read_item", "type": "function", "function": {"name": "read_item", "arguments"
+c4_schema_stream 3 200 INVALID constrained=False reasoning=0 finish=stop {"content": "{\"name\": \"Give me a JSON object with name and age of a fictional person\", \"arguments\": {\"name\": \"John Doe\", \"age\": 25}}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_stream 4 200 VALID constrained=False reasoning=0 finish=stop {"content": "{\"name\": \"a\", \"age\": 4}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_stream 0 200 INVALID constrained=False reasoning=0 finish=stop {"content": "I cannot find a JSON object with name and age of a fictional person. Could you please provide more details?", "reasoning_len": 0, "tool_calls": [{"id": "call_read_item", "type": "function", "function": {"nam
+c4_schema_tool_stream 1 200 INVALID constrained=False reasoning=0 finish=stop {"content": "None of the rules, workflows, or skills have been provided to answer the question. I can't proceed to give a JSON object with name and age of a fictional person.", "reasoning_len": 0, "tool_calls": [{"id": "
+c4_schema_tool_stream 2 200 INVALID constrained=False reasoning=0 finish=stop {"content": "I cannot find a person's name and age. Could you please provide more information?", "reasoning_len": 0, "tool_calls": [{"id": "call_read_item", "type": "function", "function": {"name": "read_item", "argument
+c4_schema_tool_stream 3 200 INVALID constrained=False reasoning=0 finish=stop {"content": "{\"name\": \"read_item\", \"arguments\": {\"kind\": \"memory\", \"name\": \"Fictional person\"}}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_stream 4 200 INVALID constrained=False reasoning=0 finish=stop {"content": "{\"name\": \"read_item\", \"arguments\": {\"kind\": \"memory\", \"name\": \"Fictional Person\"}}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_think_stream 0 200 INVALID constrained=False reasoning=2623 finish=stop {"content": "None of the available tools or functions can be used to retrieve information about a fictional person's name and age. Let me know if there's another way to assist!", "reasoning_len": 2623, "tool_calls": [{"i
+c4_schema_think_stream 1 200 INVALID constrained=False reasoning=940 finish=stop {"content": "I don't have access to a JSON file or the ability to retrieve fictional person data. Could you please provide more details or clarify what information you'd like?", "reasoning_len": 940, "tool_calls": null, 
+c4_schema_think_stream 2 200 VALID constrained=False reasoning=1221 finish=stop {"content": "{\"name\": \"Alice\", \"age\": 30}", "reasoning_len": 1221, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_think_stream 3 200 VALID constrained=False reasoning=946 finish=stop {"content": "{\"name\": \"Alice\", \"age\": 25}", "reasoning_len": 946, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_think_stream 4 200 INVALID constrained=False reasoning=579 finish=stop {"content": "I don't have the capability to access personal information or interact with fictional characters. Could you please provide a different question or request that I can help with?", "reasoning_len": 579, "tool_
+c4_schema_tool_think_stream 0 200 INVALID constrained=False reasoning=786 finish=stop {"content": "{\"name\": \"Alice\", \"age\": \"30\"}", "reasoning_len": 786, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_think_stream 1 200 INVALID constrained=False reasoning=3118 finish=stop {"content": "The request to provide a JSON object with a fictional person's name and age cannot be fulfilled using the available tools. The system's current tool list does not include a function for retrieving such infor
+c4_schema_tool_think_stream 2 200 VALID constrained=False reasoning=749 finish=stop {"content": "{\"name\": \"Alice\", \"age\": 35}", "reasoning_len": 749, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_think_stream 3 200 VALID constrained=False reasoning=846 finish=stop {"content": "{\"name\": \"Alice\", \"age\": 30}", "reasoning_len": 846, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_think_stream 4 200 VALID constrained=False reasoning=1170 finish=stop {"content": "{\"name\": \"Lila\", \"age\": 35}", "reasoning_len": 1170, "tool_calls": null, "finish_reason": "stop"}
+r6_plain 0 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_plain 1 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_plain 2 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_plain 3 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_plain 4 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_tool_auto 0 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558201248", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_tool_auto 1 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558203429", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_tool_auto 2 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558206218", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_tool_auto 3 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558208901", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_tool_auto 4 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558211193", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_json_object 0 200 VALID constrained=False reasoning=0 finish=stop {"content": "{\"name\": \"read_item\", \"arguments\": {\"kind\": \"memory\", \"name\": \"Give me a JSON object with name and age of a fictional person\"}}"}
+r6_json_object 1 200 VALID constrained=False reasoning=0 finish=stop {"content": "{\"name\": \"a\", \"age\": 55}"}
+r6_json_object 2 200 VALID constrained=False reasoning=0 finish=stop {"content": "{\n  \"name\": \"<user>\",\n  \"age\": 25\n}"}
+r6_json_object 3 200 VALID constrained=False reasoning=0 finish=stop {"content": "{\"name\": \"<user>\", \"age\": 25}"}
+r6_json_object 4 200 VALID constrained=False reasoning=0 finish=stop {"content": "{\"name\": \"read_item\", \"arguments\": {\"kind\": \"memory\", \"name\": \"math (skill): Evaluates math expressions and converts units, so results are computed rather than guessed. Use whenever an answer ne
+r6_gbnf_yes_no 0 200 VALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+r6_gbnf_yes_no 1 200 VALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+r6_gbnf_yes_no 2 200 VALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+r6_gbnf_yes_no 3 200 VALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+r6_gbnf_yes_no 4 200 VALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+{
+ "k3_schema_think": {
+  "valid": 3,
+  "n": 5,
+  "constrained_log": 0,
+  "reasoning_nonempty": 5,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 1.232
+ },
+ "k3_schema_tool_think": {
+  "valid": 1,
+  "n": 5,
+  "constrained_log": 0,
+  "reasoning_nonempty": 5,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 1.384
+ },
+ "k3_schema_tool_think_weatherq": {
+  "valid": 5,
+  "n": 5,
+  "constrained_log": 0,
+  "reasoning_nonempty": 5,
+  "finish_reasons": {
+   "tool_calls": 5
+  },
+  "median_s": 1.959
+ },
+ "k3_json_object_think": {
+  "valid": 5,
+  "n": 5,
+  "constrained_log": 0,
+  "reasoning_nonempty": 5,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 1.704
+ },
+ "c4_schema_stream": {
+  "valid": 1,
+  "n": 5,
+  "constrained_log": 0,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 0.296
+ },
+ "c4_schema_tool_stream": {
+  "valid": 0,
+  "n": 5,
+  "constrained_log": 0,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 1.552
+ },
+ "c4_schema_think_stream": {
+  "valid": 2,
+  "n": 5,
+  "constrained_log": 0,
+  "reasoning_nonempty": 5,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 1.675
+ },
+ "c4_schema_tool_think_stream": {
+  "valid": 3,
+  "n": 5,
+  "constrained_log": 0,
+  "reasoning_nonempty": 5,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 1.41
+ },
+ "r6_plain": {
+  "valid": 5,
+  "n": 5,
+  "constrained_log": 0,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 0.138
+ },
+ "r6_tool_auto": {
+  "valid": 5,
+  "n": 5,
+  "constrained_log": 0,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "tool_calls": 5
+  },
+  "median_s": 1.471
+ },
+ "r6_json_object": {
+  "valid": 5,
+  "n": 5,
+  "constrained_log": 0,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 0.181
+ },
+ "r6_gbnf_yes_no": {
+  "valid": 5,
+  "n": 5,
+  "constrained_log": 5,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 0.149
+ }
+}

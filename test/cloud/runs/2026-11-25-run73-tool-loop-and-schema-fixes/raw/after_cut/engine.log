@@ -1,0 +1,113 @@
+2026-11-24T21:30:20.927035Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-24T21:30:21.552783Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-24T21:30:23.268812Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+Starting the Cluaiz API server on http://localhost:8013 ...
+2026-11-24T21:30:23.272454Z  INFO 🔒 [Auth] Initialized local session secret at C:\Users\<user>\AppData\Local\Temp\claude\6c30a0ef6fee852f\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\scratchpad\r72\home\session.token
+2026-11-24T21:30:23.522396Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-24T21:30:23.556715Z  INFO 🌐 Cluaiz API Server running on http://127.0.0.1:8013
+2026-11-24T21:30:23.987939Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-0.8b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\cluaiz-test\\run49-e2e\\models\\chat\\qwen3.5-0.8b-gguf-Q4_K_M\\Qwen3.5-0.8B-Q4_K_M.gguf"
+2026-11-24T21:30:24.119470Z  INFO
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3.5-0.8b-gguf-Q4_K_M
+║   • Architecture    : qwen35 | 24 layers | heads 8 | KV heads 2 | head size K 256 / V 256 | dense | hybrid: 6 attention layers with a KV cache, 18 linear-attention layers with a 1.1 MB state
+║   • Weights         : file 0.53 GB (as Hugging Face counts it) | input embeddings 0.19 GB (always CPU) | output head 0.19 GB | vocab 248320
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 16384 tokens, KV Kv16 (Auto: 16384 tokens, KV Kv16, buffer 0.76 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA GeForce RTX 3050 A Laptop GPU | free 2.72 of 4.00 GB | buffer kept free 0.76 GB (measured: GPU pool +0.56 GB + 0.20 GB reserve; estimate corrected by llama.cpp's dry run +0.01 GB)
+║   • RAM             : free 5.76 of 23.69 GB | Cluaiz may use 4.57 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 24 on GPU, 0 in RAM (of 24)
+║   • VRAM            : 1.18 GB (weights + KV 0.21 + logits)
+║   • RAM             : 0.19 GB (incl. KV 0.00)
+║   • Reason         : Full GPU: weights 0.49 + KV 0.21 + buffers 0.49 = 1.18 GB vs usable VRAM 1.96 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  1.18 GB | RAM  0.19 GB | weights 0.49 + KV 0.21 + buffers 0.49 = 1.18 GB vs usable VRAM 1.96 GB
+║   • GPU + RAM split  [FITS]     VRAM  1.16 GB | RAM  0.21 GB | 23 / 24 blocks + output head on GPU (1.16 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  1.17 GB | weights 0.49 + KV 0.21 + logits 0.47 = 1.17 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 8 / batch 8 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-24T21:30:24.121403Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-24T21:30:24.122476Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 8, n_threads_batch = 8
+2026-11-24T21:30:24.122536Z  INFO 🧬 [Native-Llama] Loading model: C:\Users\<user>\AppData\Local\cluaiz-test\run49-e2e\models\chat\qwen3.5-0.8b-gguf-Q4_K_M\Qwen3.5-0.8B-Q4_K_M.gguf | ctx: 16384 tokens
+2026-11-24T21:30:25.313714Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "C:\\Users\\<user>\\AppData\\Local\\cluaiz-test\\run49-e2e\\models\\chat\\qwen3.5-0.8b-gguf-Q4_K_M"
+2026-11-24T21:30:25.320836Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-11-24T21:30:25.321004Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-11-24T21:30:25.321143Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16384 tokens
+2026-11-24T21:30:25.321251Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-24T21:30:25.321332Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-24T21:30:25.321392Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-24T21:30:25.321465Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 8/8
+2026-11-24T21:30:25.321549Z  INFO 🔮 [MTP] MTP asked for, but this model has no multi-token-prediction layers: decoding without it
+2026-11-24T21:30:25.592873Z  INFO 🔍 [EngineHost] VRAM planned 1.18 GB, taken 1.27 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-24T21:30:25.595482Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: C:\Users\<user>\AppData\Local\cluaiz-test\run49-e2e\models\chat\qwen3.5-0.8b-gguf-Q4_K_M\Qwen3.5-0.8B-Q4_K_M.gguf
+2026-11-24T21:30:25.665879Z  INFO 🧮 [Tokens] Conversation 150 tokens (2 messages) counted in 0.99 ms
+2026-11-24T21:30:25.696177Z  INFO 🧰 [Tools] Suggested: filesystem Card ["the", "tool", "its", "text", "is", "a", "about", "write", "nothing"]
+2026-11-24T21:30:25.702931Z  INFO ⏱️ [Preflight] 1719 ms total | model load 1651 ms | registry + template + tags 25 ms | skills + tools 36 ms | rest 1 ms
+2026-11-24T21:30:25.704976Z  INFO 🔌 [McpClient] Starting MCP server 'filesystem' in "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\r72\\home\\workspace": npx ["-y", "@modelcontextprotocol/server-filesystem@2.2.0", "."]
+2026-11-24T21:30:25.729194Z  WARN Commands are not OS-confined here (on Windows auto mode does not confine, because tools such as Node.js and a per-user Python cannot start inside an AppContainer; confine with `cluaiz permission os-sandbox required`); the allow/ask/deny policy still applies
+2026-11-24T21:30:26.040529Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T21:30:26.040783Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T21:30:30.202969Z  WARN 🧰 [NativeTools] 1 call(s) cut by the token limit: not sent, nothing runs
+2026-11-24T21:30:30.203075Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T21:30:30.203153Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1038 tokens in 311 ms (3332.67 t/s) | generation 40 tokens in 369 ms (108.40 t/s)
+2026-11-24T21:30:30.203208Z  INFO 🧠 [Context] prompt 1038 tokens (0 from the cache) | context 1078 of 16384 | stop limit
+2026-11-24T21:30:30.204561Z  INFO 🔥 [Tools] Prewarmed MCP 'filesystem' (11 functions) in 4500 ms
+2026-11-24T21:30:31.218502Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-0.8b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\cluaiz-test\\run49-e2e\\models\\chat\\qwen3.5-0.8b-gguf-Q4_K_M\\Qwen3.5-0.8B-Q4_K_M.gguf"
+2026-11-24T21:30:31.261264Z  INFO 🧮 [Tokens] Conversation 149 tokens (2 messages) counted in 0.22 ms
+2026-11-24T21:30:31.267348Z  INFO 🧰 [Tools] Suggested: filesystem Card ["the", "tool", "its", "text", "is", "a", "about", "write", "nothing"]
+2026-11-24T21:30:31.270544Z  INFO ⏱️ [Preflight] 56 ms total | model load 26 ms | registry + template + tags 15 ms | skills + tools 7 ms | rest 1 ms
+2026-11-24T21:30:31.271070Z  INFO 🔥 [Tools] Prewarmed MCP 'filesystem' (11 functions) in 0 ms
+2026-11-24T21:30:31.566789Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T21:30:31.566868Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T21:30:35.674837Z  WARN 🧰 [NativeTools] 1 call(s) cut by the token limit: not sent, nothing runs
+2026-11-24T21:30:35.674898Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T21:30:35.674933Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1037 tokens in 277 ms (3743.90 t/s) | generation 40 tokens in 385 ms (103.80 t/s)
+2026-11-24T21:30:35.674960Z  INFO 🧠 [Context] prompt 1037 tokens (0 from the cache) | context 1077 of 16384 | stop limit
+2026-11-24T21:30:36.685911Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-0.8b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\cluaiz-test\\run49-e2e\\models\\chat\\qwen3.5-0.8b-gguf-Q4_K_M\\Qwen3.5-0.8B-Q4_K_M.gguf"
+2026-11-24T21:30:36.722485Z  INFO 🧮 [Tokens] Conversation 150 tokens (2 messages) counted in 0.26 ms
+2026-11-24T21:30:36.723688Z  INFO 🧰 [Tools] Suggested: filesystem Card ["the", "tool", "its", "text", "is", "a", "about", "write", "nothing"]
+2026-11-24T21:30:36.726598Z  INFO ⏱️ [Preflight] 44 ms total | model load 22 ms | registry + template + tags 13 ms | skills + tools 3 ms | rest 1 ms
+2026-11-24T21:30:36.726991Z  INFO 🔥 [Tools] Prewarmed MCP 'filesystem' (11 functions) in 0 ms
+2026-11-24T21:30:37.104486Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T21:30:37.104563Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T21:30:40.904064Z  WARN 🧰 [NativeTools] 1 call(s) cut by the token limit: not sent, nothing runs
+2026-11-24T21:30:40.904128Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T21:30:40.904163Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1038 tokens in 358 ms (2898.37 t/s) | generation 40 tokens in 390 ms (102.58 t/s)
+2026-11-24T21:30:40.904189Z  INFO 🧠 [Context] prompt 1038 tokens (0 from the cache) | context 1078 of 16384 | stop limit
+2026-11-24T21:30:41.919442Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-0.8b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\cluaiz-test\\run49-e2e\\models\\chat\\qwen3.5-0.8b-gguf-Q4_K_M\\Qwen3.5-0.8B-Q4_K_M.gguf"
+2026-11-24T21:30:41.954383Z  INFO 🧮 [Tokens] Conversation 150 tokens (2 messages) counted in 0.22 ms
+2026-11-24T21:30:41.955720Z  INFO 🧰 [Tools] Suggested: filesystem Card ["the", "tool", "its", "text", "is", "a", "about", "an", "old", "write", "nothing"]
+2026-11-24T21:30:41.958987Z  INFO ⏱️ [Preflight] 42 ms total | model load 21 ms | registry + template + tags 12 ms | skills + tools 3 ms | rest 1 ms
+2026-11-24T21:30:41.959399Z  INFO 🔥 [Tools] Prewarmed MCP 'filesystem' (11 functions) in 0 ms
+2026-11-24T21:30:42.341910Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T21:30:42.342092Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T21:30:46.276711Z  WARN 🧰 [NativeTools] 1 call(s) cut by the token limit: not sent, nothing runs
+2026-11-24T21:30:46.276816Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T21:30:46.276888Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1038 tokens in 363 ms (2858.47 t/s) | generation 40 tokens in 391 ms (102.21 t/s)
+2026-11-24T21:30:46.276952Z  INFO 🧠 [Context] prompt 1038 tokens (0 from the cache) | context 1078 of 16384 | stop limit
+2026-11-24T21:30:47.309063Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-0.8b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\cluaiz-test\\run49-e2e\\models\\chat\\qwen3.5-0.8b-gguf-Q4_K_M\\Qwen3.5-0.8B-Q4_K_M.gguf"
+2026-11-24T21:30:47.350920Z  INFO 🧮 [Tokens] Conversation 150 tokens (2 messages) counted in 0.22 ms
+2026-11-24T21:30:47.351766Z  INFO 🧰 [Tools] Suggested: filesystem Card ["the", "tool", "its", "text", "is", "a", "about", "first", "write", "nothing"]
+2026-11-24T21:30:47.354704Z  INFO ⏱️ [Preflight] 49 ms total | model load 28 ms | registry + template + tags 13 ms | skills + tools 2 ms | rest 1 ms
+2026-11-24T21:30:47.355247Z  INFO 🔥 [Tools] Prewarmed MCP 'filesystem' (11 functions) in 0 ms
+2026-11-24T21:30:47.759310Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T21:30:47.759392Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T21:30:51.602804Z  WARN 🧰 [NativeTools] 1 call(s) cut by the token limit: not sent, nothing runs
+2026-11-24T21:30:51.602865Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T21:30:51.602898Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1038 tokens in 385 ms (2695.28 t/s) | generation 40 tokens in 381 ms (105.07 t/s)
+2026-11-24T21:30:51.602923Z  INFO 🧠 [Context] prompt 1038 tokens (0 from the cache) | context 1078 of 16384 | stop limit

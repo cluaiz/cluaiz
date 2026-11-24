@@ -1,0 +1,2 @@
+{"label": "t2after_marker_cut", "case": "marker", "model": "qwen3.5-0.8b-gguf-Q4_K_M", "stream": false, "n": 1, "real_answers": 1, "with_expected": 1, "step_limit": 1, "final_no_tools_turn": 1, "final_still_called": 0, "steps_total": 5, "steps_max": 5, "median_s": 145.0, "total_s": 145.0}
+{"label": "t2after_marker_cut", "case": "marker", "model": "qwen3.5-0.8b-gguf-Q4_K_M", "stream": false, "n": 1, "real_answers": 1, "with_expected": 1, "step_limit": 1, "final_no_tools_turn": 1, "final_still_called": 0, "steps_total": 6, "steps_max": 6, "median_s": 149.6, "total_s": 149.6}

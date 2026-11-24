@@ -1,0 +1,62 @@
+r6_plain 0 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_plain 1 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_plain 2 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today? 😊", "finish_reason": "stop"}
+r6_plain 3 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_plain 4 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_tool_auto 0 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795559228937", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_tool_auto 1 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795559231161", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_tool_auto 2 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795559234049", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_tool_auto 3 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795559236282", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_tool_auto 4 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795559238506", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_json_object 0 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"name\": \"Lila\",\n  \"age\": 28\n}"}
+r6_json_object 1 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"name\": \"Zara\",\n  \"age\": 25\n}"}
+r6_json_object 2 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"name\": \"Lila\",\n  \"age\": 25\n}"}
+r6_json_object 3 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"name\": \"Lila\",\n  \"age\": 28\n}"}
+r6_json_object 4 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"name\": \"Lila\",\n  \"age\": 25\n}"}
+c4_schema_tool_stream 0 200 INVALID constrained=False reasoning=0 finish=stop {"content": "{\"result\": \"25\", \"formatted\": \"25.0000000000000000\"}", "reasoning_len": 0, "tool_calls": [{"id": "call_read_item", "type": "function", "function": {"name": "read_item", "arguments": "{\"kind\":\"skil
+c4_schema_tool_stream 1 200 INVALID constrained=False reasoning=0 finish=stop {"content": "I cannot give a JSON object with name and age of a fictional person. Let me know if there's another way to assist!", "reasoning_len": 0, "tool_calls": [{"id": "call_read_item", "type": "function", "function"
+c4_schema_tool_stream 2 200 INVALID constrained=False reasoning=0 finish=stop {"content": "{\"result\": \"25\", \"formatted\": \"25.0000000000000000\"}", "reasoning_len": 0, "tool_calls": [{"id": "call_read_item", "type": "function", "function": {"name": "read_item", "arguments": "{\"kind\":\"skil
+c4_schema_tool_stream 3 200 INVALID constrained=False reasoning=0 finish=stop {"content": "{\"name\": \"math_evaluate\", \"arguments\": {\"expression\": \"170 + 8\", \"precision\": \"2\"}}", "reasoning_len": 0, "tool_calls": [{"id": "call_read_item", "type": "function", "function": {"name": "read_
+c4_schema_tool_stream 4 200 INVALID constrained=False reasoning=0 finish=stop {"content": "I cannot find the information about a fictional person's name and age. Could you provide more details or clarify the request?", "reasoning_len": 0, "tool_calls": [{"id": "call_read_item", "type": "function",
+{
+ "r6_plain": {
+  "valid": 5,
+  "n": 5,
+  "constrained_log": 0,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 0.122
+ },
+ "r6_tool_auto": {
+  "valid": 5,
+  "n": 5,
+  "constrained_log": 0,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "tool_calls": 5
+  },
+  "median_s": 1.408
+ },
+ "r6_json_object": {
+  "valid": 5,
+  "n": 5,
+  "constrained_log": 5,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 0.271
+ },
+ "c4_schema_tool_stream": {
+  "valid": 0,
+  "n": 5,
+  "constrained_log": 0,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "stop": 5
+  },
+  "median_s": 2.002
+ }
+}

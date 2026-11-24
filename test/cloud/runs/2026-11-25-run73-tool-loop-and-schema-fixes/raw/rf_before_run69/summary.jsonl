@@ -1,0 +1,12 @@
+{"case": "k3_schema_think", "exe": "before", "valid": 5, "n": 5, "constrained_log": 5, "reasoning_nonempty": 5, "finish_reasons": {"stop": 5}, "median_s": 2.492}
+{"case": "k3_schema_tool_think", "exe": "before", "valid": 5, "n": 5, "constrained_log": 5, "reasoning_nonempty": 5, "finish_reasons": {"stop": 5}, "median_s": 1.76}
+{"case": "k3_schema_tool_think_weatherq", "exe": "before", "valid": 5, "n": 5, "constrained_log": 5, "reasoning_nonempty": 5, "finish_reasons": {"stop": 5}, "median_s": 1.381}
+{"case": "k3_json_object_think", "exe": "before", "valid": 5, "n": 5, "constrained_log": 5, "reasoning_nonempty": 5, "finish_reasons": {"stop": 5}, "median_s": 2.352}
+{"case": "c4_schema_stream", "exe": "before", "valid": 5, "n": 5, "constrained_log": 5, "reasoning_nonempty": 0, "finish_reasons": {"stop": 5}, "median_s": 0.275}
+{"case": "c4_schema_tool_stream", "exe": "before", "valid": 5, "n": 5, "constrained_log": 5, "reasoning_nonempty": 0, "finish_reasons": {"stop": 5}, "median_s": 0.347}
+{"case": "c4_schema_think_stream", "exe": "before", "valid": 5, "n": 5, "constrained_log": 5, "reasoning_nonempty": 5, "finish_reasons": {"stop": 5}, "median_s": 2.192}
+{"case": "c4_schema_tool_think_stream", "exe": "before", "valid": 5, "n": 5, "constrained_log": 5, "reasoning_nonempty": 5, "finish_reasons": {"stop": 5}, "median_s": 2.603}
+{"case": "r6_plain", "exe": "before", "valid": 5, "n": 5, "constrained_log": 0, "reasoning_nonempty": 0, "finish_reasons": {"stop": 5}, "median_s": 0.165}
+{"case": "r6_tool_auto", "exe": "before", "valid": 5, "n": 5, "constrained_log": 0, "reasoning_nonempty": 0, "finish_reasons": {"tool_calls": 5}, "median_s": 1.875}
+{"case": "r6_json_object", "exe": "before", "valid": 5, "n": 5, "constrained_log": 5, "reasoning_nonempty": 0, "finish_reasons": {"stop": 5}, "median_s": 0.541}
+{"case": "r6_gbnf_yes_no", "exe": "before", "valid": 5, "n": 5, "constrained_log": 5, "reasoning_nonempty": 0, "finish_reasons": {"stop": 5}, "median_s": 0.134}

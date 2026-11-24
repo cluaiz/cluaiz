@@ -1,0 +1,5 @@
+{"label": "t2after_cut_stream", "i": 0, "stream": true, "status": 200, "seconds": 6.21, "content": "", "half_call_in_content": false, "finish_reason": "length", "client_tool_calls": [], "reasoning_content": ""}
+{"label": "t2after_cut_stream", "i": 1, "stream": true, "status": 200, "seconds": 4.35, "content": "", "half_call_in_content": false, "finish_reason": "length", "client_tool_calls": [], "reasoning_content": ""}
+{"label": "t2after_cut_stream", "i": 2, "stream": true, "status": 200, "seconds": 4.33, "content": "", "half_call_in_content": false, "finish_reason": "length", "client_tool_calls": [], "reasoning_content": ""}
+{"label": "t2after_cut_stream", "i": 3, "stream": true, "status": 200, "seconds": 4.23, "content": "", "half_call_in_content": false, "finish_reason": "length", "client_tool_calls": [], "reasoning_content": ""}
+{"label": "t2after_cut_stream", "i": 4, "stream": true, "status": 200, "seconds": 4.38, "content": "", "half_call_in_content": false, "finish_reason": "length", "client_tool_calls": [], "reasoning_content": ""}

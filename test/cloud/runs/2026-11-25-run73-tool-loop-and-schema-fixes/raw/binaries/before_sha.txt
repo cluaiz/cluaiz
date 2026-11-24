@@ -1,0 +1,1 @@
+bdf2ee4ad70e86b78c64a930309dbb6a320ee6e51742beca01f72209664d3f0c *target/debug/cluaiz.exe

@@ -1,0 +1,4 @@
+{"case": "r6_plain", "exe": "f3after", "valid": 5, "n": 5, "constrained_log": 0, "reasoning_nonempty": 0, "finish_reasons": {"stop": 5}, "median_s": 0.122}
+{"case": "r6_tool_auto", "exe": "f3after", "valid": 5, "n": 5, "constrained_log": 0, "reasoning_nonempty": 0, "finish_reasons": {"tool_calls": 5}, "median_s": 1.408}
+{"case": "r6_json_object", "exe": "f3after", "valid": 5, "n": 5, "constrained_log": 5, "reasoning_nonempty": 0, "finish_reasons": {"stop": 5}, "median_s": 0.271}
+{"case": "c4_schema_tool_stream", "exe": "f3after", "valid": 0, "n": 5, "constrained_log": 0, "reasoning_nonempty": 0, "finish_reasons": {"stop": 5}, "median_s": 2.002}

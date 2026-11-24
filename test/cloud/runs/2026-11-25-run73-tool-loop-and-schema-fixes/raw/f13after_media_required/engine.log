@@ -1,0 +1,212 @@
+2026-11-24T22:21:51.710375Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-24T22:21:52.353835Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-24T22:21:54.014705Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+Starting the Cluaiz API server on http://localhost:8013 ...
+2026-11-24T22:21:54.032433Z  INFO 🔒 [Auth] Initialized local session secret at C:\Users\<user>\AppData\Local\Temp\claude\6c30a0ef6fee852f\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\scratchpad\r72\home\session.token
+2026-11-24T22:21:54.230786Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-24T22:21:54.368869Z  INFO 🌐 Cluaiz API Server running on http://127.0.0.1:8013
+2026-11-24T22:21:54.735964Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-2b-mtp-gguf-Q4_K_M' to "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M\\Qwen3.5-2B-Q4_K_M.gguf"
+2026-11-24T22:21:54.889659Z  INFO
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3.5-2b-mtp-gguf-Q4_K_M
+║   • Architecture    : qwen35 | 25 layers | heads 8 | KV heads 2 | head size K 256 / V 256 | dense | hybrid: 7 attention layers with a KV cache, 18 linear-attention layers with a 1.1 MB state
+║   • Weights         : file 1.33 GB (as Hugging Face counts it) | input embeddings 0.39 GB (always CPU) | output head 0.39 GB | vocab 248320
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 16384 tokens, KV Kv8 (Auto: 16384 tokens with KV Kv8 + buffer 0.53 GB, to stay on the GPU (16384 tokens with KV Kv16 did not fit))
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA GeForce RTX 3050 A Laptop GPU | free 2.41 of 4.00 GB | buffer kept free 0.53 GB (measured: GPU pool +0.33 GB + 0.20 GB reserve; estimate corrected by llama.cpp's dry run -0.02 GB)
+║   • RAM             : free 8.63 of 23.69 GB | Cluaiz may use 7.44 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 16384 | KV Kv8 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 25 on GPU, 0 in RAM (of 25)
+║   • VRAM            : 1.81 GB (weights + KV 0.14 + logits)
+║   • RAM             : 0.39 GB (incl. KV 0.00)
+║   • Reason         : Full GPU: weights 1.23 + KV 0.14 + buffers 0.45 = 1.81 GB vs usable VRAM 1.88 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  1.81 GB | RAM  0.39 GB | weights 1.23 + KV 0.14 + buffers 0.45 = 1.81 GB vs usable VRAM 1.88 GB
+║   • GPU + RAM split  [FITS]     VRAM  1.78 GB | RAM  0.43 GB | 24 / 25 blocks + output head on GPU (1.78 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  1.84 GB | weights 1.23 + KV 0.14 + logits 0.47 = 1.84 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 8 / batch 8 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-24T22:21:54.891626Z  INFO 🔮 [MTP] Auto: off (its memory would not fit next to this placement)
+2026-11-24T22:21:54.893338Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 8, n_threads_batch = 8
+2026-11-24T22:21:54.893677Z  INFO 🧬 [Native-Llama] Loading model: C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\models\chat\qwen3.5-2b-mtp-gguf-Q4_K_M\Qwen3.5-2B-Q4_K_M.gguf | ctx: 16384 tokens
+2026-11-24T22:21:55.657289Z  WARN [llama.cpp] model has unused tensor blk.24.attn_norm.weight (size = 8192 bytes) -- ignoring
+2026-11-24T22:21:55.657384Z  WARN [llama.cpp] model has unused tensor blk.24.post_attention_norm.weight (size = 8192 bytes) -- ignoring
+2026-11-24T22:21:55.657462Z  WARN [llama.cpp] model has unused tensor blk.24.attn_q.weight (size = 4718592 bytes) -- ignoring
+2026-11-24T22:21:55.657509Z  WARN [llama.cpp] model has unused tensor blk.24.attn_k.weight (size = 589824 bytes) -- ignoring
+2026-11-24T22:21:55.657563Z  WARN [llama.cpp] model has unused tensor blk.24.attn_v.weight (size = 860160 bytes) -- ignoring
+2026-11-24T22:21:55.657642Z  WARN [llama.cpp] model has unused tensor blk.24.attn_output.weight (size = 2359296 bytes) -- ignoring
+2026-11-24T22:21:55.657698Z  WARN [llama.cpp] model has unused tensor blk.24.attn_q_norm.weight (size = 1024 bytes) -- ignoring
+2026-11-24T22:21:55.657751Z  WARN [llama.cpp] model has unused tensor blk.24.attn_k_norm.weight (size = 1024 bytes) -- ignoring
+2026-11-24T22:21:55.657798Z  WARN [llama.cpp] model has unused tensor blk.24.ffn_gate.weight (size = 7077888 bytes) -- ignoring
+2026-11-24T22:21:55.657845Z  WARN [llama.cpp] model has unused tensor blk.24.ffn_down.weight (size = 10321920 bytes) -- ignoring
+2026-11-24T22:21:55.657895Z  WARN [llama.cpp] model has unused tensor blk.24.ffn_up.weight (size = 7077888 bytes) -- ignoring
+2026-11-24T22:21:55.657959Z  WARN [llama.cpp] model has unused tensor blk.24.nextn.eh_proj.weight (size = 8912896 bytes) -- ignoring
+2026-11-24T22:21:55.658007Z  WARN [llama.cpp] model has unused tensor blk.24.nextn.enorm.weight (size = 8192 bytes) -- ignoring
+2026-11-24T22:21:55.658055Z  WARN [llama.cpp] model has unused tensor blk.24.nextn.hnorm.weight (size = 8192 bytes) -- ignoring
+2026-11-24T22:21:55.658218Z  WARN [llama.cpp] model has unused tensor blk.24.nextn.shared_head_norm.weight (size = 8192 bytes) -- ignoring
+2026-11-24T22:21:56.672287Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M"
+2026-11-24T22:21:56.679535Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-11-24T22:21:56.679658Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-11-24T22:21:56.679716Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16384 tokens
+2026-11-24T22:21:56.679783Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-24T22:21:56.679824Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-24T22:21:56.680292Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-24T22:21:56.680363Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 8/8
+2026-11-24T22:21:57.083131Z  INFO 🔍 [EngineHost] VRAM planned 1.81 GB, taken 1.88 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-24T22:21:57.087261Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\models\chat\qwen3.5-2b-mtp-gguf-Q4_K_M\Qwen3.5-2B-Q4_K_M.gguf
+2026-11-24T22:21:57.180324Z  INFO 🧮 [Tokens] Conversation 134 tokens (2 messages) counted in 5.15 ms
+2026-11-24T22:21:57.191281Z  INFO 🧰 [Tools] Suggested: math Card ["is", "use", "the", "math"]
+2026-11-24T22:21:57.262278Z  INFO ⏱️ [Preflight] 2532 ms total | model load 2306 ms | registry + template + tags 45 ms | skills + tools 21 ms | rest 65 ms
+2026-11-24T22:21:57.293513Z  WARN [llama.cpp] load_hparams: Qwen-VL models require at minimum 1024 image tokens to function correctly on grounding tasks
+2026-11-24T22:21:57.293613Z  WARN [llama.cpp] load_hparams: if you encounter problems with accuracy, try adding --image-min-tokens 1024
+2026-11-24T22:21:57.293705Z  WARN [llama.cpp] load_hparams: more info: https://github.com/ggml-org/llama.cpp/issues/16842
+2026-11-24T22:21:58.694788Z  INFO Projector loaded placement=Cpu free_vram_before_mib=538 taken_by_load_mib=0 weights_mib=637 workspace_mib=1024 buffer_mib=0
+2026-11-24T22:22:02.255881Z  INFO 🧰 [NativeTools] tool_choice required: the answer must be a call
+2026-11-24T22:22:02.256333Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:22:02.257098Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T22:22:02.925108Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-24T22:22:02.925573Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["load_tool"]
+2026-11-24T22:22:02.925631Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1616 tokens in 3503 ms (461.32 t/s) | generation 25 tokens in 484 ms (51.61 t/s)
+2026-11-24T22:22:02.925705Z  INFO 🧠 [Context] prompt 1434 tokens (0 from the cache) | context 1459 of 16384 | stop eos
+2026-11-24T22:22:02.932666Z  INFO 🔍 [API] Tool call: tools 'load_tool' (sub_func: None) with payload: {"id":"math"}
+2026-11-24T22:22:02.942142Z  INFO 📦 [Tools] load_tool("math") -> Some("math")
+2026-11-24T22:22:02.943601Z  INFO ✅ [API] Tool 'load_tool' done (2841 chars)
+2026-11-24T22:22:02.944397Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-24T22:22:06.135643Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:22:06.135780Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T22:22:08.750345Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-24T22:22:08.750782Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["load_tool"]
+2026-11-24T22:22:08.750855Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 2554 tokens in 3210 ms (795.69 t/s) | generation 25 tokens in 447 ms (55.89 t/s)
+2026-11-24T22:22:08.750903Z  INFO 🧠 [Context] prompt 2372 tokens (0 from the cache) | context 2397 of 16384 | stop eos
+2026-11-24T22:22:08.751189Z  INFO 🔍 [API] Tool call: tools 'load_tool' (sub_func: None) with payload: {"id":"math"}
+2026-11-24T22:22:08.755567Z  INFO 📦 [Tools] load_tool("math") -> Some("math")
+2026-11-24T22:22:08.757018Z  INFO ✅ [API] Tool 'load_tool' done (2841 chars)
+2026-11-24T22:22:08.757096Z  INFO 🔄 [API] Step 2: generating again with the tool result
+2026-11-24T22:22:12.318364Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:22:12.318482Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T22:22:14.840845Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-24T22:22:14.841220Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["load_tool"]
+2026-11-24T22:22:14.841506Z  INFO 🔄 [API] Step 3: generating again with the tool result
+2026-11-24T22:22:14.841593Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 3428 tokens in 3536 ms (969.50 t/s) | generation 25 tokens in 434 ms (57.56 t/s)
+2026-11-24T22:22:14.841682Z  INFO 🧠 [Context] prompt 3246 tokens (0 from the cache) | context 3271 of 16384 | stop eos
+2026-11-24T22:22:18.361890Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:22:18.361971Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T22:22:20.826144Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-24T22:22:20.826603Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["load_tool"]
+2026-11-24T22:22:20.826683Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 3500 tokens in 3511 ms (996.96 t/s) | generation 25 tokens in 450 ms (55.56 t/s)
+2026-11-24T22:22:20.826732Z  INFO 🧠 [Context] prompt 3318 tokens (0 from the cache) | context 3343 of 16384 | stop eos
+2026-11-24T22:22:20.829744Z  INFO 🧾 [API] Turn 'chatcmpl-878a7a73d79243379c81d5fb49014765' stopped at step/repeat limit (max_steps=100): asking once more for a final answer without tools
+2026-11-24T22:22:24.341920Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:22:24.342013Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T22:22:27.557372Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-24T22:22:27.557857Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["load_tool"]
+2026-11-24T22:22:27.557944Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 3543 tokens in 3505 ms (1010.81 t/s) | generation 59 tokens in 984 ms (59.98 t/s)
+2026-11-24T22:22:27.557996Z  INFO 🧠 [Context] prompt 3361 tokens (0 from the cache) | context 3420 of 16384 | stop eos
+2026-11-24T22:22:27.558045Z  INFO 🔁 [Turn] The final answer without tools still made a call (or could not be used); only the text before it is the answer
+2026-11-24T22:22:28.577908Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-2b-mtp-gguf-Q4_K_M' to "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M\\Qwen3.5-2B-Q4_K_M.gguf"
+2026-11-24T22:22:28.615686Z  INFO 🧮 [Tokens] Conversation 134 tokens (2 messages) counted in 0.11 ms
+2026-11-24T22:22:28.616381Z  INFO 🧰 [Tools] Suggested: math Card ["is", "use", "the", "math"]
+2026-11-24T22:22:28.639540Z  INFO ⏱️ [Preflight] 66 ms total | model load 23 ms | registry + template + tags 11 ms | skills + tools 2 ms | rest 21 ms
+2026-11-24T22:22:31.806227Z  INFO 🧰 [NativeTools] tool_choice required: the answer must be a call
+2026-11-24T22:22:31.806315Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:22:31.806388Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T22:22:32.432304Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-24T22:22:32.432657Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["load_tool"]
+2026-11-24T22:22:32.432710Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1616 tokens in 3104 ms (520.55 t/s) | generation 25 tokens in 448 ms (55.78 t/s)
+2026-11-24T22:22:32.432740Z  INFO 🧠 [Context] prompt 1434 tokens (0 from the cache) | context 1459 of 16384 | stop eos
+2026-11-24T22:22:32.432914Z  INFO 🔍 [API] Tool call: tools 'load_tool' (sub_func: None) with payload: {"id":"math"}
+2026-11-24T22:22:32.437442Z  INFO 📦 [Tools] load_tool("math") -> Some("math")
+2026-11-24T22:22:32.438464Z  INFO ✅ [API] Tool 'load_tool' done (2841 chars)
+2026-11-24T22:22:32.438527Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-24T22:22:35.753022Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:22:35.753126Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T22:22:38.171730Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-24T22:22:38.172085Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["load_tool"]
+2026-11-24T22:22:38.172135Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 2554 tokens in 3324 ms (768.26 t/s) | generation 25 tokens in 439 ms (56.96 t/s)
+2026-11-24T22:22:38.172163Z  INFO 🧠 [Context] prompt 2372 tokens (0 from the cache) | context 2397 of 16384 | stop eos
+2026-11-24T22:22:38.172354Z  INFO 🔍 [API] Tool call: tools 'load_tool' (sub_func: None) with payload: {"id":"math"}
+2026-11-24T22:22:38.177253Z  INFO 📦 [Tools] load_tool("math") -> Some("math")
+2026-11-24T22:22:38.178245Z  INFO ✅ [API] Tool 'load_tool' done (2841 chars)
+2026-11-24T22:22:38.178301Z  INFO 🔄 [API] Step 2: generating again with the tool result
+2026-11-24T22:22:41.630503Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:22:41.630594Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T22:22:43.977913Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-24T22:22:43.978326Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["load_tool"]
+2026-11-24T22:22:43.978381Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 3428 tokens in 3426 ms (1000.51 t/s) | generation 25 tokens in 433 ms (57.71 t/s)
+2026-11-24T22:22:43.978415Z  INFO 🧠 [Context] prompt 3246 tokens (0 from the cache) | context 3271 of 16384 | stop eos
+2026-11-24T22:22:43.978541Z  INFO 🔄 [API] Step 3: generating again with the tool result
+2026-11-24T22:22:47.546128Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:22:47.546250Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T22:22:50.063130Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-24T22:22:50.063537Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["load_tool"]
+2026-11-24T22:22:50.063596Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 3500 tokens in 3559 ms (983.33 t/s) | generation 25 tokens in 470 ms (53.24 t/s)
+2026-11-24T22:22:50.063624Z  INFO 🧠 [Context] prompt 3318 tokens (0 from the cache) | context 3343 of 16384 | stop eos
+2026-11-24T22:22:50.063747Z  INFO 🧾 [API] Turn 'chatcmpl-04c7aacc3b6144f9aa7691eb922ae16d' stopped at step/repeat limit (max_steps=100): asking once more for a final answer without tools
+2026-11-24T22:22:53.616294Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:22:53.616372Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T22:22:56.665164Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-24T22:22:56.665527Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["load_tool"]
+2026-11-24T22:22:56.665607Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 3543 tokens in 3550 ms (997.95 t/s) | generation 59 tokens in 959 ms (61.53 t/s)
+2026-11-24T22:22:56.665662Z  INFO 🧠 [Context] prompt 3361 tokens (0 from the cache) | context 3420 of 16384 | stop eos
+2026-11-24T22:22:56.665763Z  INFO 🔁 [Turn] The final answer without tools still made a call (or could not be used); only the text before it is the answer
+2026-11-24T22:22:57.677471Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-2b-mtp-gguf-Q4_K_M' to "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M\\Qwen3.5-2B-Q4_K_M.gguf"
+2026-11-24T22:22:57.716099Z  INFO 🧮 [Tokens] Conversation 134 tokens (2 messages) counted in 0.12 ms
+2026-11-24T22:22:57.716906Z  INFO 🧰 [Tools] Suggested: math Card ["is", "use", "the", "math"]; filesystem Title ["is", "use", "the", "tool", "file"]
+2026-11-24T22:22:57.744398Z  INFO ⏱️ [Preflight] 71 ms total | model load 21 ms | registry + template + tags 13 ms | skills + tools 3 ms | rest 24 ms
+2026-11-24T22:23:00.847838Z  INFO 🧰 [NativeTools] tool_choice required: the answer must be a call
+2026-11-24T22:23:00.847916Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy false, 0 triggers)
+2026-11-24T22:23:00.848002Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T22:23:01.462921Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-24T22:23:01.463424Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["load_tool"]
+2026-11-24T22:23:01.463511Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1632 tokens in 3047 ms (535.57 t/s) | generation 25 tokens in 439 ms (56.94 t/s)
+2026-11-24T22:23:01.463555Z  INFO 🧠 [Context] prompt 1450 tokens (0 from the cache) | context 1475 of 16384 | stop eos
+2026-11-24T22:23:01.463658Z  INFO 🔍 [API] Tool call: tools 'load_tool' (sub_func: None) with payload: {"id":"math"}
+2026-11-24T22:23:01.467803Z  INFO 📦 [Tools] load_tool("math") -> Some("math")
+2026-11-24T22:23:01.468783Z  INFO ✅ [API] Tool 'load_tool' done (2841 chars)
+2026-11-24T22:23:01.468841Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-24T22:23:04.715994Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:23:04.716077Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T22:23:07.214299Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-24T22:23:07.214656Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["load_tool"]
+2026-11-24T22:23:07.214705Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 2570 tokens in 3268 ms (786.45 t/s) | generation 25 tokens in 438 ms (57.06 t/s)
+2026-11-24T22:23:07.214732Z  INFO 🧠 [Context] prompt 2388 tokens (0 from the cache) | context 2413 of 16384 | stop eos
+2026-11-24T22:23:07.214920Z  INFO 🔍 [API] Tool call: tools 'load_tool' (sub_func: None) with payload: {"id":"math"}
+2026-11-24T22:23:07.219715Z  INFO 📦 [Tools] load_tool("math") -> Some("math")
+2026-11-24T22:23:07.220668Z  INFO ✅ [API] Tool 'load_tool' done (2841 chars)
+2026-11-24T22:23:07.220738Z  INFO 🔄 [API] Step 2: generating again with the tool result
+2026-11-24T22:23:10.764139Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:23:10.764248Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T22:23:13.275241Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-24T22:23:13.275731Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["load_tool"]
+2026-11-24T22:23:13.275809Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 3444 tokens in 3522 ms (977.93 t/s) | generation 25 tokens in 469 ms (53.28 t/s)
+2026-11-24T22:23:13.275856Z  INFO 🧠 [Context] prompt 3262 tokens (0 from the cache) | context 3287 of 16384 | stop eos
+2026-11-24T22:23:13.276010Z  INFO 🔄 [API] Step 3: generating again with the tool result
+2026-11-24T22:23:16.801494Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:23:16.801574Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T22:23:19.431455Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-24T22:23:19.431960Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["load_tool"]
+2026-11-24T22:23:19.432063Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 3516 tokens in 3505 ms (1003.20 t/s) | generation 25 tokens in 474 ms (52.77 t/s)
+2026-11-24T22:23:19.432098Z  INFO 🧠 [Context] prompt 3334 tokens (0 from the cache) | context 3359 of 16384 | stop eos
+2026-11-24T22:23:19.432182Z  INFO 🧾 [API] Turn 'chatcmpl-8cfd991a45b74c8491471e97a93d3325' stopped at step/repeat limit (max_steps=100): asking once more for a final answer without tools
+2026-11-24T22:23:22.949752Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T22:23:22.949837Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T22:23:26.278874Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-24T22:23:26.279287Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["load_tool"]
+2026-11-24T22:23:26.279340Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 3559 tokens in 3516 ms (1012.27 t/s) | generation 59 tokens in 941 ms (62.70 t/s)
+2026-11-24T22:23:26.279387Z  INFO 🧠 [Context] prompt 3377 tokens (0 from the cache) | context 3436 of 16384 | stop eos
+2026-11-24T22:23:26.279554Z  INFO 🔁 [Turn] The final answer without tools still made a call (or could not be used); only the text before it is the answer

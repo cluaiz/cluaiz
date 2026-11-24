@@ -1,0 +1,243 @@
+f2_schema_tool_weather_question 0 200 VALID prompt_n=155 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558395339", "type": "function"}], "finish_reason": "tool_calls"}
+f2_schema_tool_weather_question 1 200 VALID prompt_n=155 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558397630", "type": "function"}], "finish_reason": "tool_calls"}
+f2_schema_tool_weather_question 2 200 VALID prompt_n=1 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558400043", "type": "function"}], "finish_reason": "tool_calls"}
+f2_schema_tool_weather_question 3 200 VALID prompt_n=1 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558402665", "type": "function"}], "finish_reason": "tool_calls"}
+f2_schema_tool_weather_question 4 200 VALID prompt_n=1 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558405064", "type": "function"}], "finish_reason": "tool_calls"}
+f2_schema_tool_weather_question 5 200 VALID prompt_n=1 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558407357", "type": "function"}], "finish_reason": "tool_calls"}
+f2_schema_tool_weather_question 6 200 VALID prompt_n=1 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558409882", "type": "function"}], "finish_reason": "tool_calls"}
+f2_schema_tool_weather_question 7 200 INVALID prompt_n=1 constrained=False {"content": "", "tool_calls": [], "finish_reason": "stop"}
+f2_schema_tool_weather_question 8 200 INVALID prompt_n=1 constrained=False {"content": "", "tool_calls": [], "finish_reason": "stop"}
+f2_schema_tool_weather_question 9 200 VALID prompt_n=1 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558414465", "type": "function"}], "finish_reason": "tool_calls"}
+f_json_schema_with_tool 0 200 INVALID prompt_n=458 constrained=False {"content": "{\"name\": \"math\", \"arguments\": {\"expression\": \"23 + 22\", \"precision\": \"2\"}}"}
+f_json_schema_with_tool 1 200 INVALID prompt_n=4 constrained=False {"content": "{\"name\": \"read_item\", \"arguments\": {\"kind\": \"memory\", \"name\": \"Give me a JSON object with name and age of a fictional person\"}}"}
+f_json_schema_with_tool 2 200 INVALID prompt_n=1 constrained=False {"content": "{\"name\": \"read_item\", \"arguments\": {\"kind\": \"memory\", \"name\": \"Give me a JSON object with name and age of a fictional person\"}}"}
+f_json_schema_with_tool 3 200 INVALID prompt_n=52 constrained=False {"content": "I don't have any information about a fictional person's name or age. Could you please provide more details?"}
+f_json_schema_with_tool 4 200 INVALID prompt_n=52 constrained=False {"content": "I don't have a JSON object with name and age of a fictional person. Could you provide more details or clarify the request?"}
+f_json_schema_with_tool 5 200 INVALID prompt_n=52 constrained=False {"content": "I don't have a fictional person's JSON object with name and age. Let me know if there's a specific person or context you'd like to include."}
+f_json_schema_with_tool 6 200 INVALID prompt_n=52 constrained=False {"content": "None of the items named 'memory' are available. Could you provide more details or clarify what information you need?"}
+f_json_schema_with_tool 7 200 INVALID prompt_n=58 constrained=False {"content": "I don't have a 'math' skill or rule. Could you provide more information or clarify the task?"}
+f_json_schema_with_tool 8 200 INVALID prompt_n=52 constrained=False {"content": "I cannot find a JSON object with the name and age of a fictional person. Could you please provide more details?"}
+f_json_schema_with_tool 9 200 INVALID prompt_n=52 constrained=False {"content": "I cannot find a 'memory' entry in the system prompt. Could you please provide the name of the rule, workflow, or skill you would like to use first?"}
+c_json_schema 0 200 VALID prompt_n=28 constrained=True {"content": "{\n  \"age\": 30,\n  \"name\": \"John Doe\"\n}"}
+c_json_schema 1 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"age\": 25,\n  \"name\": \"Sophie\"\n}"}
+c_json_schema 2 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"age\": 25,\n  \"name\": \"Avery Taylor\"\n}"}
+c_json_schema 3 200 VALID prompt_n=1 constrained=True {"content": "{\"age\": 25, \"name\": \"Lila Marlowe\"}"}
+c_json_schema 4 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"age\": 25,\n  \"name\": \"Alice\"\n}"}
+c_json_schema 5 200 VALID prompt_n=1 constrained=True {"content": "{\"age\": 28, \"name\": \"Tommy Johnson\"}"}
+c_json_schema 6 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"age\": 25,\n  \"name\": \"Alice\"\n}"}
+c_json_schema 7 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"age\": 30,\n  \"name\": \"Johndoe\"\n}"}
+c_json_schema 8 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"age\": 25,\n  \"name\": \"Lila Marlowe\"\n}"}
+c_json_schema 9 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"age\": 25,\n  \"name\": \"John Doe\"\n}"}
+b_json_object 0 200 VALID prompt_n=28 constrained=True {"content": "{\n  \"name\": \"Luna\",\n  \"age\": 25\n}"}
+b_json_object 1 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"name\": \"Ava\",\n  \"age\": 25\n}"}
+b_json_object 2 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"name\": \"Alice\",\n  \"age\": 25\n}"}
+b_json_object 3 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"name\": \"Evan\",\n  \"age\": 25\n}"}
+b_json_object 4 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"name\": \"Siri\",\n  \"age\": 25\n}"}
+b_json_object 5 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"name\": \"Sophia\",\n  \"age\": 24\n}"}
+b_json_object 6 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"name\": \"Lila\",\n  \"age\": 25\n}"}
+b_json_object 7 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"name\": \"Zara\",\n  \"age\": 25\n}"}
+b_json_object 8 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"name\": \"Jasmine Carter\",\n  \"age\": 27\n}"}
+b_json_object 9 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"name\": \"Alice\",\n  \"age\": 25\n}"}
+d_grammar 0 200 VALID prompt_n=29 constrained=True {"content": "yes"}
+d_grammar 1 200 VALID prompt_n=1 constrained=True {"content": "yes"}
+d_grammar 2 200 VALID prompt_n=1 constrained=True {"content": "yes"}
+d_grammar 3 200 VALID prompt_n=1 constrained=True {"content": "yes"}
+d_grammar 4 200 VALID prompt_n=1 constrained=True {"content": "yes"}
+d_grammar 5 200 VALID prompt_n=1 constrained=True {"content": "yes"}
+d_grammar 6 200 VALID prompt_n=1 constrained=True {"content": "yes"}
+d_grammar 7 200 VALID prompt_n=1 constrained=True {"content": "yes"}
+d_grammar 8 200 VALID prompt_n=1 constrained=True {"content": "yes"}
+d_grammar 9 200 VALID prompt_n=1 constrained=True {"content": "yes"}
+e_tool_required 0 200 VALID prompt_n=674 constrained=True {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558472419", "type": "function"}], "finish_reason": "tool_calls"}
+e_tool_required 1 200 VALID prompt_n=155 constrained=True {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558473521", "type": "function"}], "finish_reason": "tool_calls"}
+e_tool_required 2 200 VALID prompt_n=1 constrained=True {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558474596", "type": "function"}], "finish_reason": "tool_calls"}
+e_tool_required 3 200 VALID prompt_n=1 constrained=True {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558475673", "type": "function"}], "finish_reason": "tool_calls"}
+e_tool_required 4 200 VALID prompt_n=1 constrained=True {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558476750", "type": "function"}], "finish_reason": "tool_calls"}
+e_tool_required 5 200 VALID prompt_n=1 constrained=True {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558477838", "type": "function"}], "finish_reason": "tool_calls"}
+e_tool_required 6 200 VALID prompt_n=1 constrained=True {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558478907", "type": "function"}], "finish_reason": "tool_calls"}
+e_tool_required 7 200 VALID prompt_n=1 constrained=True {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558480001", "type": "function"}], "finish_reason": "tool_calls"}
+e_tool_required 8 200 VALID prompt_n=1 constrained=True {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558481081", "type": "function"}], "finish_reason": "tool_calls"}
+e_tool_required 9 200 VALID prompt_n=1 constrained=True {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795558482178", "type": "function"}], "finish_reason": "tool_calls"}
+h_required_unrelated 0 200 INVALID prompt_n=155 constrained=True {"content": "Hello! How can I assist you today? 😊. ✨. Let me know what can be done! 😊. ✨. Would you like help with something? Let me know. 🌟. 😊. 🌈. 🌌. 😊. 🌟. 😊. 🌟. 😊. 🌟. 😊. 🌟. 😊. 😊. 🌟. 😊. 🌟. 😊. 😊. 🌟. 😊. 😊. 🌟. 😊. 😊. 🌟. 😊. 
+h_required_unrelated 1 200 INVALID prompt_n=1 constrained=True {"content": "Hello! How can I assist you today? 😊. ✊. Let me know what can be done! 🚀. 🔍. 🧠. Let me know your request! 🌟. 🧠. 🧠. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊. 😊.
+h_required_unrelated 2 200 INVALID prompt_n=1 constrained=True {"content": "Hello! How can I assist you today? 😊. ✨. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . ", "tool_calls": [], "finish_reason": "lengt
+h_required_unrelated 3 200 INVALID prompt_n=1 constrained=True {"content": "Hello! 😊 How can I assist you today? 😊.‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍", "tool_calls": [], "finish_
+h_required_unrelated 4 200 INVALID prompt_n=1 constrained=True {"content": "Hello! Let me know what can I do for you. 😊. 🔍. 🔍. 🔍. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠. 🧠.", "tool_calls": [], "
+h_required_unrelated 5 200 INVALID prompt_n=56 constrained=True {"content": "I'm here to help! Let me know how I can assist you.", "tool_calls": [], "finish_reason": "stop"}
+h_required_unrelated 6 200 INVALID prompt_n=4 constrained=True {"content": "Hello! How can I assist you today? 😊. ✨. Let me know what I can do. 📱. 💬. Would you like help with anything? 😊. 💬. 🧠. 🧩. 📝. 📚. 📏. 📂. 📝. 📝. 📝. 📝. 📝. 📝. 📝. 📝. 📝. 📝. 📝. 📝. 📝. 📝. 📝. 📝. 📝. 📝. 📝. 📝. 📝. 📝. 📝. 📝. 📝.
+h_required_unrelated 7 200 INVALID prompt_n=1 constrained=True {"content": "Hello! I'm here to help with anything you need! 😊. Let me know how I can assist you. 🌟.‍♂️‍♀️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️‍♂️
+h_required_unrelated 8 200 INVALID prompt_n=1 constrained=True {"content": "Hello! How can I assist you today? 😊. McCarthy. What can I do for you? 🌟. Would you like help with something? Yes, that sounds good. Let me know. 🎉. Let me know what you need. 🌟. And if there's anything I ca
+h_required_unrelated 9 200 INVALID prompt_n=54 constrained=True {"content": "I'm here to help! What can I do for you?", "tool_calls": [], "finish_reason": "stop"}
+g_grammar_with_tool 0 400 VALID prompt_n=None constrained=False {"status": 400, "error": "Cannot use custom grammar constraints with tools."}
+g_grammar_with_tool 1 400 VALID prompt_n=None constrained=False {"status": 400, "error": "Cannot use custom grammar constraints with tools."}
+g_grammar_with_tool 2 400 VALID prompt_n=None constrained=False {"status": 400, "error": "Cannot use custom grammar constraints with tools."}
+g_grammar_with_tool 3 400 VALID prompt_n=None constrained=False {"status": 400, "error": "Cannot use custom grammar constraints with tools."}
+g_grammar_with_tool 4 400 VALID prompt_n=None constrained=False {"status": 400, "error": "Cannot use custom grammar constraints with tools."}
+g_grammar_with_tool 5 400 VALID prompt_n=None constrained=False {"status": 400, "error": "Cannot use custom grammar constraints with tools."}
+g_grammar_with_tool 6 400 VALID prompt_n=None constrained=False {"status": 400, "error": "Cannot use custom grammar constraints with tools."}
+g_grammar_with_tool 7 400 VALID prompt_n=None constrained=False {"status": 400, "error": "Cannot use custom grammar constraints with tools."}
+g_grammar_with_tool 8 400 VALID prompt_n=None constrained=False {"status": 400, "error": "Cannot use custom grammar constraints with tools."}
+g_grammar_with_tool 9 400 VALID prompt_n=None constrained=False {"status": 400, "error": "Cannot use custom grammar constraints with tools."}
+g2_grammar_engine_functions 0 200 VALID prompt_n=1 constrained=True {"content": "yes"}
+g2_grammar_engine_functions 1 200 VALID prompt_n=4 constrained=True {"content": "yes"}
+g2_grammar_engine_functions 2 200 VALID prompt_n=4 constrained=True {"content": "yes"}
+g2_grammar_engine_functions 3 200 VALID prompt_n=4 constrained=True {"content": "yes"}
+g2_grammar_engine_functions 4 200 VALID prompt_n=4 constrained=True {"content": "yes"}
+g2_grammar_engine_functions 5 200 VALID prompt_n=4 constrained=True {"content": "yes"}
+g2_grammar_engine_functions 6 200 VALID prompt_n=4 constrained=True {"content": "yes"}
+g2_grammar_engine_functions 7 200 VALID prompt_n=4 constrained=True {"content": "yes"}
+g2_grammar_engine_functions 8 200 VALID prompt_n=4 constrained=True {"content": "yes"}
+g2_grammar_engine_functions 9 200 VALID prompt_n=4 constrained=True {"content": "yes"}
+j_schema_engine_functions 0 200 VALID prompt_n=28 constrained=True {"content": "{\n  \"age\": 25,\n  \"name\": \"Lila Marlowe\"\n}"}
+j_schema_engine_functions 1 200 VALID prompt_n=4 constrained=True {"content": "{\n  \"age\": 25,\n  \"name\": \"Emma Smith\"\n}"}
+j_schema_engine_functions 2 200 VALID prompt_n=4 constrained=True {"content": "{\"age\": 30, \"name\": \"Liam Harper\"}"}
+j_schema_engine_functions 3 200 VALID prompt_n=4 constrained=True {"content": "{\n  \"age\": 35,\n  \"name\": \"Liam Carter\"\n}"}
+j_schema_engine_functions 4 200 VALID prompt_n=4 constrained=True {"content": "{\n  \"age\": 25,\n  \"name\": \"Alice Johnson\"\n}"}
+j_schema_engine_functions 5 200 VALID prompt_n=4 constrained=True {"content": "{\n  \"age\": 28,\n  \"name\": \"Alice\"\n}"}
+j_schema_engine_functions 6 200 VALID prompt_n=4 constrained=True {"content": "{\n  \"age\": 30,\n  \"name\": \"Lila Marlowe\"\n}"}
+j_schema_engine_functions 7 200 VALID prompt_n=4 constrained=True {"content": "{\n  \"age\": 25,\n  \"name\": \"Liam Carter\"\n}"}
+j_schema_engine_functions 8 200 VALID prompt_n=4 constrained=True {"content": "{\n  \"age\": 25,\n  \"name\": \"Lila Marlowe\"\n}"}
+j_schema_engine_functions 9 200 VALID prompt_n=4 constrained=True {"content": "{\n  \"age\": 25,\n  \"name\": \"Liam\"\n}"}
+i_named_get_time 0 200 VALID prompt_n=155 constrained=True {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_time"}, "id": "call_1795558556704", "type": "function"}], "content": "\n", "reasoning": ""}
+i_named_get_time 1 200 VALID prompt_n=1 constrained=True {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_time"}, "id": "call_1795558557768", "type": "function"}], "content": "\n", "reasoning": ""}
+i_named_get_time 2 200 VALID prompt_n=1 constrained=True {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_time"}, "id": "call_1795558558843", "type": "function"}], "content": "\n", "reasoning": ""}
+i_named_get_time 3 200 VALID prompt_n=1 constrained=True {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_time"}, "id": "call_1795558559922", "type": "function"}], "content": "\n", "reasoning": ""}
+i_named_get_time 4 200 VALID prompt_n=1 constrained=True {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_time"}, "id": "call_1795558560982", "type": "function"}], "content": "\n", "reasoning": ""}
+i_named_get_time 5 200 VALID prompt_n=1 constrained=True {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_time"}, "id": "call_1795558562072", "type": "function"}], "content": "\n", "reasoning": ""}
+i_named_get_time 6 200 VALID prompt_n=1 constrained=True {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_time"}, "id": "call_1795558563150", "type": "function"}], "content": "\n", "reasoning": ""}
+i_named_get_time 7 200 VALID prompt_n=1 constrained=True {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_time"}, "id": "call_1795558564201", "type": "function"}], "content": "\n", "reasoning": ""}
+i_named_get_time 8 200 VALID prompt_n=1 constrained=True {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_time"}, "id": "call_1795558565258", "type": "function"}], "content": "\n", "reasoning": ""}
+i_named_get_time 9 200 VALID prompt_n=1 constrained=True {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_time"}, "id": "call_1795558566369", "type": "function"}], "content": "\n", "reasoning": ""}
+i2_named_unknown 0 400 VALID prompt_n=None constrained=False {"status": 400, "error": "tool_choice names the function 'nope', which is not in tools"}
+i2_named_unknown 1 400 VALID prompt_n=None constrained=False {"status": 400, "error": "tool_choice names the function 'nope', which is not in tools"}
+i2_named_unknown 2 400 VALID prompt_n=None constrained=False {"status": 400, "error": "tool_choice names the function 'nope', which is not in tools"}
+i2_named_unknown 3 400 VALID prompt_n=None constrained=False {"status": 400, "error": "tool_choice names the function 'nope', which is not in tools"}
+i2_named_unknown 4 400 VALID prompt_n=None constrained=False {"status": 400, "error": "tool_choice names the function 'nope', which is not in tools"}
+i2_named_unknown 5 400 VALID prompt_n=None constrained=False {"status": 400, "error": "tool_choice names the function 'nope', which is not in tools"}
+i2_named_unknown 6 400 VALID prompt_n=None constrained=False {"status": 400, "error": "tool_choice names the function 'nope', which is not in tools"}
+i2_named_unknown 7 400 VALID prompt_n=None constrained=False {"status": 400, "error": "tool_choice names the function 'nope', which is not in tools"}
+i2_named_unknown 8 400 VALID prompt_n=None constrained=False {"status": 400, "error": "tool_choice names the function 'nope', which is not in tools"}
+i2_named_unknown 9 400 VALID prompt_n=None constrained=False {"status": 400, "error": "tool_choice names the function 'nope', which is not in tools"}
+{
+ "f2_schema_tool_weather_question": {
+  "valid": 8,
+  "n": 10,
+  "constrained_log": 0,
+  "median_s": 1.524,
+  "prompt_n": [
+   1,
+   155
+  ]
+ },
+ "f_json_schema_with_tool": {
+  "valid": 0,
+  "n": 10,
+  "constrained_log": 0,
+  "median_s": 1.715,
+  "prompt_n": [
+   1,
+   4,
+   52,
+   58,
+   458
+  ]
+ },
+ "c_json_schema": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 10,
+  "median_s": 0.338,
+  "prompt_n": [
+   1,
+   28
+  ]
+ },
+ "b_json_object": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 10,
+  "median_s": 0.277,
+  "prompt_n": [
+   1,
+   28
+  ]
+ },
+ "d_grammar": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 10,
+  "median_s": 0.133,
+  "prompt_n": [
+   1,
+   29
+  ]
+ },
+ "e_tool_required": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 10,
+  "median_s": 0.27,
+  "prompt_n": [
+   1,
+   155,
+   674
+  ]
+ },
+ "h_required_unrelated": {
+  "valid": 0,
+  "n": 10,
+  "constrained_log": 10,
+  "median_s": 3.609,
+  "prompt_n": [
+   1,
+   4,
+   54,
+   56,
+   155
+  ]
+ },
+ "g_grammar_with_tool": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 0,
+  "median_s": 0.065,
+  "prompt_n": []
+ },
+ "g2_grammar_engine_functions": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 10,
+  "median_s": 0.221,
+  "prompt_n": [
+   1,
+   4
+  ]
+ },
+ "j_schema_engine_functions": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 10,
+  "median_s": 0.43,
+  "prompt_n": [
+   4,
+   28
+  ]
+ },
+ "i_named_get_time": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 10,
+  "median_s": 0.257,
+  "prompt_n": [
+   1,
+   155
+  ]
+ },
+ "i2_named_unknown": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 0,
+  "median_s": 0.043,
+  "prompt_n": []
+ }
+}
