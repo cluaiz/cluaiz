@@ -85,6 +85,19 @@ def check_registry(problems: list[str]) -> None:
                 slugs[key] = file_path
 
 
+def submodule_roots() -> list[Path]:
+    """Submodule folders from .gitmodules. CI checks out the repository without submodules, so a link into
+    one (for example engine/llama/llama.cpp/CLUAIZ_PATCHES.md) cannot be checked there and is skipped."""
+    gitmodules = ROOT / ".gitmodules"
+    if not gitmodules.is_file():
+        return []
+    found = re.findall(r"^\s*path\s*=\s*(.+?)\s*$", gitmodules.read_text(encoding="utf-8"), re.M)
+    return [(ROOT / rel).resolve() for rel in found]
+
+
+SUBMODULES = submodule_roots()
+
+
 def check_links(path: Path, problems: list[str]) -> None:
     lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
     rel = path.relative_to(ROOT).as_posix()
@@ -97,6 +110,8 @@ def check_links(path: Path, problems: list[str]) -> None:
             file_part, _, anchor = target.partition("#")
             destination = path if not file_part else (path.parent / file_part).resolve()
             if file_part and not destination.exists():
+                if any(destination.is_relative_to(sub) for sub in SUBMODULES):
+                    continue
                 problems.append(f"{rel}:{number}: link to a missing file {target}")
                 continue
             if anchor and destination.suffix == ".md" and destination.is_file():
