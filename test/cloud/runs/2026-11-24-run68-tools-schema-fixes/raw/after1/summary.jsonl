@@ -1,0 +1,8 @@
+{"case": "v_img_tool", "exe": "after1", "valid": 10, "n": 10, "constrained_log": 0, "median_s": 5.494, "prompt_n": [482]}
+{"case": "v_txt_tool", "exe": "after1", "valid": 10, "n": 10, "constrained_log": 0, "median_s": 3.14, "prompt_n": [4, 13, 284]}
+{"case": "v_img_red", "exe": "after1", "valid": 10, "n": 10, "constrained_log": 0, "median_s": 3.157, "prompt_n": [219]}
+{"case": "b_json_object", "exe": "after1", "valid": 10, "n": 10, "constrained_log": 10, "median_s": 0.289, "prompt_n": [1, 22]}
+{"case": "c_json_schema", "exe": "after1", "valid": 10, "n": 10, "constrained_log": 10, "median_s": 0.37, "prompt_n": [1, 22]}
+{"case": "d_grammar", "exe": "after1", "valid": 10, "n": 10, "constrained_log": 10, "median_s": 0.152, "prompt_n": [1, 23]}
+{"case": "e_tool_required", "exe": "after1", "valid": 10, "n": 10, "constrained_log": 0, "median_s": 1.876, "prompt_n": [1, 10, 157]}
+{"case": "f2_schema_tool_weather_question", "exe": "after1", "valid": 10, "n": 10, "constrained_log": 0, "median_s": 1.916, "prompt_n": [1, 12, 157]}

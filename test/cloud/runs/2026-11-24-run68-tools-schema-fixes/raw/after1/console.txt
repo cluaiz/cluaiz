@@ -1,0 +1,163 @@
+v_img_tool 0 200 VALID prompt_n=482 constrained=False {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518644024", "type": "function"}], "content": "\n", "reasoning": ""}
+v_img_tool 1 200 VALID prompt_n=482 constrained=False {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518650473", "type": "function"}], "content": "\n", "reasoning": ""}
+v_img_tool 2 200 VALID prompt_n=482 constrained=False {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518656789", "type": "function"}], "content": "\n", "reasoning": ""}
+v_img_tool 3 200 VALID prompt_n=482 constrained=False {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518663298", "type": "function"}], "content": "\n", "reasoning": ""}
+v_img_tool 4 200 VALID prompt_n=482 constrained=False {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518669366", "type": "function"}], "content": "\n", "reasoning": ""}
+v_img_tool 5 200 VALID prompt_n=482 constrained=False {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518675671", "type": "function"}], "content": "\n", "reasoning": ""}
+v_img_tool 6 200 VALID prompt_n=482 constrained=False {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518681537", "type": "function"}], "content": "\n", "reasoning": ""}
+v_img_tool 7 200 VALID prompt_n=482 constrained=False {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518687406", "type": "function"}], "content": "\n", "reasoning": ""}
+v_img_tool 8 200 VALID prompt_n=482 constrained=False {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518693381", "type": "function"}], "content": "\n", "reasoning": ""}
+v_img_tool 9 200 VALID prompt_n=482 constrained=False {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518701404", "type": "function"}], "content": "\n", "reasoning": ""}
+v_txt_tool 0 200 VALID prompt_n=13 constrained=False {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518705196", "type": "function"}], "content": "\n", "reasoning": ""}
+v_txt_tool 1 200 VALID prompt_n=284 constrained=False {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518708805", "type": "function"}], "content": "\n", "reasoning": ""}
+v_txt_tool 2 200 VALID prompt_n=4 constrained=False {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518712965", "type": "function"}], "content": "\n", "reasoning": ""}
+v_txt_tool 3 200 VALID prompt_n=4 constrained=False {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518717050", "type": "function"}], "content": "\n", "reasoning": ""}
+v_txt_tool 4 200 VALID prompt_n=4 constrained=False {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518720198", "type": "function"}], "content": "\n", "reasoning": ""}
+v_txt_tool 5 200 VALID prompt_n=4 constrained=False {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518724001", "type": "function"}], "content": "\n", "reasoning": ""}
+v_txt_tool 6 200 VALID prompt_n=4 constrained=False {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518727979", "type": "function"}], "content": "\n", "reasoning": ""}
+v_txt_tool 7 200 VALID prompt_n=4 constrained=False {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518731961", "type": "function"}], "content": "\n", "reasoning": ""}
+v_txt_tool 8 200 VALID prompt_n=4 constrained=False {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518735921", "type": "function"}], "content": "\n", "reasoning": ""}
+v_txt_tool 9 200 VALID prompt_n=4 constrained=False {"tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518739300", "type": "function"}], "content": "\n", "reasoning": ""}
+v_img_red 0 200 VALID prompt_n=219 constrained=False {"content": " red"}
+v_img_red 1 200 VALID prompt_n=219 constrained=False {"content": " red"}
+v_img_red 2 200 VALID prompt_n=219 constrained=False {"content": " red"}
+v_img_red 3 200 VALID prompt_n=219 constrained=False {"content": " red"}
+v_img_red 4 200 VALID prompt_n=219 constrained=False {"content": " red"}
+v_img_red 5 200 VALID prompt_n=219 constrained=False {"content": " red"}
+v_img_red 6 200 VALID prompt_n=219 constrained=False {"content": " red"}
+v_img_red 7 200 VALID prompt_n=219 constrained=False {"content": " red"}
+v_img_red 8 200 VALID prompt_n=219 constrained=False {"content": " red"}
+v_img_red 9 200 VALID prompt_n=219 constrained=False {"content": " red"}
+b_json_object 0 200 VALID prompt_n=22 constrained=True {"content": "{\n  \"name\": \"Lila\",\n  \"age\": 25\n}"}
+b_json_object 1 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"name\": \"Lila\",\n  \"age\": 25\n}"}
+b_json_object 2 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"name\": \"Sara\",\n  \"age\": 35\n}"}
+b_json_object 3 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"name\": \"Alice Johnson\",\n  \"age\": 30\n}"}
+b_json_object 4 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"name\": \"Lila Marlowe\",\n  \"age\": 25\n}"}
+b_json_object 5 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"name\": \"Alice\",\n  \"age\": 25\n}"}
+b_json_object 6 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"name\": \"Zara\",\n  \"age\": 28\n}"}
+b_json_object 7 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"name\": \"Elias\",\n  \"age\": 30\n}"}
+b_json_object 8 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"name\": \"Lila\",\n  \"age\": 25\n}"}
+b_json_object 9 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"name\": \"Lila\",\n  \"age\": 28\n}"}
+c_json_schema 0 200 VALID prompt_n=22 constrained=True {"content": "{\n  \"age\": 25,\n  \"name\": \"Liam Carter\"\n}"}
+c_json_schema 1 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"age\": 30,\n  \"name\": \"Mira\"\n}"}
+c_json_schema 2 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"age\": 25,\n  \"name\": \"Mira\"\n}"}
+c_json_schema 3 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"age\": 30,\n  \"name\": \"Jasmine Lee\"\n}"}
+c_json_schema 4 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"age\": 35,\n  \"name\": \"Lila\"\n}"}
+c_json_schema 5 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"age\": 25,\n  \"name\": \"Emily Carter\"\n}"}
+c_json_schema 6 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"age\": 25,\n  \"name\": \"Johndoe\"\n}"}
+c_json_schema 7 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"age\": 25,\n  \"name\": \"Lila Marlowe\"\n}"}
+c_json_schema 8 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"age\": 25,\n  \"name\": \"Lila\"\n}"}
+c_json_schema 9 200 VALID prompt_n=1 constrained=True {"content": "{\n  \"age\": 25,\n  \"name\": \"Jasmine\"\n}"}
+d_grammar 0 200 VALID prompt_n=23 constrained=True {"content": "yes"}
+d_grammar 1 200 VALID prompt_n=1 constrained=True {"content": "yes"}
+d_grammar 2 200 VALID prompt_n=1 constrained=True {"content": "yes"}
+d_grammar 3 200 VALID prompt_n=1 constrained=True {"content": "yes"}
+d_grammar 4 200 VALID prompt_n=1 constrained=True {"content": "yes"}
+d_grammar 5 200 VALID prompt_n=1 constrained=True {"content": "yes"}
+d_grammar 6 200 VALID prompt_n=1 constrained=True {"content": "yes"}
+d_grammar 7 200 VALID prompt_n=1 constrained=True {"content": "yes"}
+d_grammar 8 200 VALID prompt_n=1 constrained=True {"content": "yes"}
+d_grammar 9 200 VALID prompt_n=1 constrained=True {"content": "yes"}
+e_tool_required 0 200 VALID prompt_n=10 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518815841", "type": "function"}], "finish_reason": "tool_calls"}
+e_tool_required 1 200 VALID prompt_n=157 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518817910", "type": "function"}], "finish_reason": "tool_calls"}
+e_tool_required 2 200 VALID prompt_n=1 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518820346", "type": "function"}], "finish_reason": "tool_calls"}
+e_tool_required 3 200 VALID prompt_n=1 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518822818", "type": "function"}], "finish_reason": "tool_calls"}
+e_tool_required 4 200 VALID prompt_n=1 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518825368", "type": "function"}], "finish_reason": "tool_calls"}
+e_tool_required 5 200 VALID prompt_n=1 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518828483", "type": "function"}], "finish_reason": "tool_calls"}
+e_tool_required 6 200 VALID prompt_n=1 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518831428", "type": "function"}], "finish_reason": "tool_calls"}
+e_tool_required 7 200 VALID prompt_n=1 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518834149", "type": "function"}], "finish_reason": "tool_calls"}
+e_tool_required 8 200 VALID prompt_n=1 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518836843", "type": "function"}], "finish_reason": "tool_calls"}
+e_tool_required 9 200 VALID prompt_n=1 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518839653", "type": "function"}], "finish_reason": "tool_calls"}
+f2_schema_tool_weather_question 0 200 VALID prompt_n=12 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518842317", "type": "function"}], "finish_reason": "tool_calls"}
+f2_schema_tool_weather_question 1 200 VALID prompt_n=157 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518845349", "type": "function"}], "finish_reason": "tool_calls"}
+f2_schema_tool_weather_question 2 200 VALID prompt_n=1 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518848062", "type": "function"}], "finish_reason": "tool_calls"}
+f2_schema_tool_weather_question 3 200 VALID prompt_n=1 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518850864", "type": "function"}], "finish_reason": "tool_calls"}
+f2_schema_tool_weather_question 4 200 VALID prompt_n=1 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518853780", "type": "function"}], "finish_reason": "tool_calls"}
+f2_schema_tool_weather_question 5 200 VALID prompt_n=1 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518856404", "type": "function"}], "finish_reason": "tool_calls"}
+f2_schema_tool_weather_question 6 200 VALID prompt_n=1 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518859142", "type": "function"}], "finish_reason": "tool_calls"}
+f2_schema_tool_weather_question 7 200 VALID prompt_n=1 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518861808", "type": "function"}], "finish_reason": "tool_calls"}
+f2_schema_tool_weather_question 8 200 VALID prompt_n=1 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518864436", "type": "function"}], "finish_reason": "tool_calls"}
+f2_schema_tool_weather_question 9 200 VALID prompt_n=1 constrained=False {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795518867290", "type": "function"}], "finish_reason": "tool_calls"}
+{
+ "v_img_tool": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 0,
+  "median_s": 5.494,
+  "prompt_n": [
+   482
+  ]
+ },
+ "v_txt_tool": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 0,
+  "median_s": 3.14,
+  "prompt_n": [
+   4,
+   13,
+   284
+  ]
+ },
+ "v_img_red": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 0,
+  "median_s": 3.157,
+  "prompt_n": [
+   219
+  ]
+ },
+ "b_json_object": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 10,
+  "median_s": 0.289,
+  "prompt_n": [
+   1,
+   22
+  ]
+ },
+ "c_json_schema": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 10,
+  "median_s": 0.37,
+  "prompt_n": [
+   1,
+   22
+  ]
+ },
+ "d_grammar": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 10,
+  "median_s": 0.152,
+  "prompt_n": [
+   1,
+   23
+  ]
+ },
+ "e_tool_required": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 0,
+  "median_s": 1.876,
+  "prompt_n": [
+   1,
+   10,
+   157
+  ]
+ },
+ "f2_schema_tool_weather_question": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 0,
+  "median_s": 1.916,
+  "prompt_n": [
+   1,
+   12,
+   157
+  ]
+ }
+}
