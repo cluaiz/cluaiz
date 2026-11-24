@@ -28,6 +28,7 @@ graph TD
 | [`report.rs`](src/report.rs) | The plan as `cluaiz show` prints it (see Plan report below). |
 | [`moe_cache.rs`](src/moe_cache.rs) | Size and CPU share of llama.cpp's MoE GPU cache for a MoE split (see below). |
 | [`expert_prefetch.rs`](src/expert_prefetch.rs) | Bytes the llama.cpp fork may prefetch per MoE cache upload (`expert_prefetch_bytes`), from the setting, the cache, the experts and the platform (Auto's rule); never changes the placement (see below). |
+| [`load_prefetch.rs`](src/load_prefetch.rs) | Whether a load leaves the CPU-mapped weights out of llama.cpp's load-time OS prefetch (fork patch 3); only for a plan that reads from disk; Auto off (see below); never changes the placement. |
 | [`media_budget.rs`](src/media_budget.rs) | Additive media preflight after model load. Reuses safety policies without changing text placement math. |
 
 ## Auto context and KV cache
@@ -195,6 +196,29 @@ dumped before and after the Auto change (a test kept out of the commit): `rows 8
 and after the change (a test kept out of the commit): 882 of 882 plans identical without the new field, the
 new field 0 in all of them.
 
+## Load prefetch skip for a model larger than free RAM (Auto off)
+
+At load, llama.cpp asks the OS to read the whole model file. When the plan reads experts from disk
+(`disk_stream_gb > 0`), the fork can leave the weights mapped in the CPU's default buffer (the experts) out of
+that read (`engine/llama/README.md`, "Load prefetch skip"). [`load_prefetch.rs`](src/load_prefetch.rs) decides;
+[`native_load.rs`](../runtime/src/native_load.rs) sets the fork's thread-local switch right before the load and
+resets it right after. No plan field, so every plan stays as it was.
+
+| `CLUAIZ_LAZY_HOST_WEIGHTS` | Plan reads from disk | Plan fits in RAM |
+|---|---|---|
+| not set (Auto) | off | off |
+| `on` | on | off (the runtime asks only for disk plans) |
+| `off` | off | off |
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| Auto off | run 61 (laptop, 9 pairs): load 8.0 -> 4.3 s and load disk read 2.90 -> 0.80 GB, generation 15.77 against 15.54 t/s (ranges overlap), but at 0 MiB free RAM the prompt pass was 7-12x slower in 2 of 9 pairs (4.53 and 7.63 against 52.90 and 57.18 t/s). Not proven better in every state, so the default stays | Auto on for disk plans on Windows (the median says faster load; the two bad pairs say a release risk) |
+| Only for disk plans, even with the env set to `on` | a model that fits in RAM loses nothing to the whole-file read and is read once | the env forcing it on for every load |
+| A function, not a plan field | the 882-plan dump stays byte-identical (`rows 882`, md5 `a8436037085a3d6429884140b15c9558` at HEAD and with the module, 2026-11-24) and no API shape changes | a `lazy_host_weights` plan field like `expert_prefetch_bytes` |
+
+**Tested:** `load_prefetch::tests::auto_follows_its_rule_and_the_environment_overrides_it` (env on/off/unknown on
+both platforms, Auto off with no disk read). Live: run 61.
+
 ## VRAM buffer
 
 | Model | Kept free |
@@ -259,7 +283,7 @@ shown as 0 kept free: it only removes the margin, it never adds VRAM.
 
 ## Tests
 
-`cargo test -p cluaiz-plan` on 2026-11-22 (Windows 11): 60 passed, 1 ignored (`tests/real_models.rs`, needs installed
+`cargo test -p cluaiz-plan` on 2026-11-24 (Windows 11): 63 passed, 1 ignored (`tests/real_models.rs`, needs installed
 models). Real loads: runs 11, 12, 21 (L4), 17, 20 (laptop), 15-19 (VPS) in `test/cloud/BENCHMARKS.md`.
 
 ## Pending
@@ -270,6 +294,7 @@ models). Real loads: runs 11, 12, 21 (L4), 17, 20 (laptop), 15-19 (VPS) in `test
 | Proof that the out-of-memory retry steps down correctly on big models | built, not measured on a big model | the same big-GPU run |
 | First load with other apps holding VRAM (run 20 chose CPU only) | the dry run before every GPU load may have fixed it | a rerun of the run 20 case |
 | Expert prefetch between 4% and 25% cache share, and on Windows with a big cache | Auto is off there because nothing is measured; the cause of run 44's slowdown is not proven (it read only 0.74 GB from disk in round 1, so it was not disk thrashing; per-call cost of `PrefetchVirtualMemory` is one candidate, ?) | a laptop A/B with a big cache (free VRAM), and a Linux run with a small cache |
+| Load prefetch skip Auto | off: 7-12x slower prompts at 0 MiB free RAM in run 61 | a free-RAM guard, or the skip with the ask-once prefetch on a MoE cache |
 | Prompt speed (pp) with the prefetch | not measured fairly yet (run 43 reloaded per prompt) | the owner's run 45 |
 | Forced MoE cache (`CLUAIZ_MOE_CACHE=on`) on a model read from disk | run 13 measured it slower without prefetch; whether cache + prefetch beats no cache is the question of Phase 0/2 | the L4 script in `test/cloud/remote/` (not run) |
 | Expert prefetch cap | the cache size is a rule, not a measured value; in runs 43 and 44 it never limited anything (4.8 and 15.0-18.6 MiB asked per call against caps of 3602 and 258-452 MiB) | a run that compares a smaller cap |

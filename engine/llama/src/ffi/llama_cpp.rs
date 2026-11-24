@@ -241,6 +241,10 @@ extern "C" {
     /// host experts the MoE cache uploads, at most `max_bytes` per upload; 0 = off. Set 0 before `llama_free`.
     pub fn llama_cluaiz_set_moe_prefetch(ctx: *mut std::ffi::c_void, max_bytes: usize);
 
+    /// Fork-only (`llama-cluaiz.h`, `CLUAIZ_PATCHES.md` patch 3): for later model loads on the calling
+    /// thread, true leaves the weights mapped in the CPU's default buffer out of the load-time OS prefetch.
+    pub fn llama_cluaiz_set_lazy_host_weights(on: bool);
+
     /// 🔤 Tokenize text.
     pub fn llama_tokenize(
         vocab: *const std::ffi::c_void,

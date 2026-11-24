@@ -46,7 +46,7 @@ graph TD
 | [`native/prompt_cache.rs`](src/native/prompt_cache.rs) | RAM prompt cache (llama-server `--cache-ram`): earlier prompts' sequence states and the selection rule; off unless `CLUAIZ_PROMPT_CACHE_MB` is set. |
 | [`native/speech.rs`](src/native/speech.rs) | Experimental libmtmd speech generator, independent backbone/projector, vocabulary-derived language guard and optional authorized speaker PCM through the shared bitmap owner. |
 | [`ffi/reasoning.rs`](src/ffi/reasoning.rs), [`ffi/reasoning_bridge.cpp`](src/ffi/reasoning_bridge.cpp) | Narrow C ABI to the pinned upstream reasoning-budget sampler; no copied budget state machine. |
-| [`llama.cpp/`](llama.cpp/) | The underlying C/C++ inference engine with custom M-RoPE and chat C-ABI patches, and the MoE expert prefetch (see below); fork patches and their re-apply steps: [`CLUAIZ_PATCHES.md`](llama.cpp/CLUAIZ_PATCHES.md). |
+| [`llama.cpp/`](llama.cpp/) | The underlying C/C++ inference engine with custom M-RoPE and chat C-ABI patches, the MoE expert prefetch and the load prefetch skip (see below); fork patches and their re-apply steps: [`CLUAIZ_PATCHES.md`](llama.cpp/CLUAIZ_PATCHES.md). |
 | [`native/projection.rs`](src/native/projection.rs) | What a model and context will take per device, from llama.cpp's own no-alloc dry run (the one behind `--fit`), so the planner can correct its byte estimate (`project`, `ProjectedMemory`, `DeviceBytes`). Nothing is allocated. |
 | [`native/load_steps.rs`](src/native/load_steps.rs) | What a chat-model load is doing, for an observer set on the loading thread (`observe`): weights read in percent (llama.cpp's `progress_callback`, set only when someone observes), a fallback llama.cpp's own load took, context creation, warmup. Used by `engine/runtime` load events. |
 | [`native/tokenizer.rs`](src/native/tokenizer.rs) | One native tokenizer (`VocabHandle`) for chat and embedding contexts. |
@@ -133,7 +133,8 @@ MSVC module.
   `grep -rl "llama_engine" --include=*.rs . | grep -v "^./target\|^./engine/llama/"` on 2026-11-23.
 - The fork's own changes, with their re-apply steps: [`llama.cpp/CLUAIZ_PATCHES.md`](llama.cpp/CLUAIZ_PATCHES.md).
 - A lost hook fails the build: the fork's `src/CMakeLists.txt` stops the configure step when the MoE prefetch
-  call is missing from `llama-moe-cache.cpp` (patch 1 in `CLUAIZ_PATCHES.md`).
+  call is missing from `llama-moe-cache.cpp` (patch 1 in `CLUAIZ_PATCHES.md`) or the load-range call is missing
+  from `llama-model-loader.cpp` (patch 3).
 - Upgrade checklist: re-apply the patches in `CLUAIZ_PATCHES.md`; compare the build toolchains and CMake options
   with upstream's `.github/workflows/release.yml` (section above); before a release, run the same-machine speed
   check against official llama-bench (command above, and a GPU placement).
@@ -410,6 +411,67 @@ https://github.com/ggml-org/llama.cpp/pull/32515.
 | macOS, Vulkan, Metal, CPU only | Metal and CPU only have no MoE cache upload; Vulkan's MoE cache is untested | runs on those machines; a CPU-only path is a later phase |
 | One warning per failed call | could repeat for every layer if the OS keeps refusing | a counter in the fork file if it is ever seen |
 | `docs/engine/moe_ssd_streaming.md` and `docs/engine/llm_optimization.md` do not mention it | public docs; the owner decides | the owner's word after a measured run |
+
+## Load prefetch skip for CPU-mapped weights (llama.cpp fork, off unless the plan turns it on)
+
+**What it does:** at load, llama.cpp asks the OS to read the whole model file (Windows: one
+`PrefetchVirtualMemory` over the file; Linux: `MAP_POPULATE` plus `POSIX_MADV_WILLNEED`,
+`llama.cpp/src/llama-mmap.cpp`, from `init_mappings(true, ...)` in `src/llama-model.cpp`). When the model does
+not fit in free RAM, most of what that reads is evicted again before it is used. With the skip on, the fork
+passes every weight that stays mapped from the file in the CPU's default buffer type (the MoE experts kept on
+the CPU) to `llama_mmap` as a lazy range, upstream's own way to leave a range out of that prefetch. Weights
+copied to the GPU at load keep the prefetch. The skipped pages are read on first use.
+
+```mermaid
+graph LR
+    Plan["cluaiz_plan::load_prefetch::lazy_host_weights(plan)"] --> Rt["runtime native_load.rs: plan reads from disk?"]
+    Rt -->|yes| Set["llama_cluaiz_set_lazy_host_weights(true), this thread"]
+    Set --> Load["NativeLlama::load"]
+    Load --> Init["fork init_mappings: llama_cluaiz_mmap_lazy_ranges"]
+    Init --> Mmap["llama_mmap: prefetch the complement only (upstream)"]
+    Load --> Reset["llama_cluaiz_set_lazy_host_weights(false)"]
+```
+
+**Where the code is:** fork files `include/llama-cluaiz.h` (setter), `src/llama-cluaiz-load.{h,cpp}`, two marked
+lines in `src/llama-model-loader.cpp` and the source entry plus a second guard in `src/CMakeLists.txt` (patch 3
+in [`llama.cpp/CLUAIZ_PATCHES.md`](llama.cpp/CLUAIZ_PATCHES.md)). Rust: the declaration in
+[`ffi/llama_cpp.rs`](src/ffi/llama_cpp.rs); the call in `engine/runtime/src/native_load.rs`; the rule in
+`engine/plan/src/load_prefetch.rs` (`engine/plan/README.md`).
+
+**Decisions and why:**
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| Reuse upstream's lazy ranges in `llama_mmap` | upstream already skips them in all three prefetch calls; the fork adds ranges, no new mapping code | a new `prefetch` argument path (edits `llama-mmap.cpp` and `llama-model.cpp`) |
+| Not upstream's `lazy_mode` | it applies only to tensors the architecture marks `TENSOR_READ_LAZY` and moves them to a row-gather path; there is no upstream setting for the load prefetch (`competitor-repos/llama.cpp` at `d3c3e24`) | `--lazy on` style flags (would not touch experts) |
+| Only the CPU's default buffer type | that is the one buffer that wraps the mapping itself (`is_default_buft` in `llama-model.cpp`); every other buffer copies the data at load, where the prefetch helps | every host tensor (pinned host buffers would page-fault their copy) |
+| A thread-local setter, set and reset around the load | no field in `llama_model_params` (the Rust mirror would drift on every merge); the load runs `init_mappings` on the calling thread, so a concurrent load on another thread is not affected | a global flag (a second load at the same time would inherit it) |
+| The build fails when the call is gone | a merge that drops the line would silently turn the skip off | a runtime check |
+
+**Measured** (run 61, `test/cloud/runs/2026-11-24-run61-laptop-lazy-load/SUMMARY.md`; Windows laptop, RTX 3050
+4 GB, Gemma 4 26B A4B IQ4_XS 14.2 GB, free RAM 8.0-13.9 GB before each run, release build, `-p 512 -n 128 -r 1`,
+`--n-cpu-moe 30`, 9 rotated pairs with and without `CLUAIZ_LAZY_HOST_WEIGHTS=on`): the fork logged `11797 MiB of
+CPU-mapped weights left out of the load prefetch` (every expert). Medians: load 8.0 -> 4.3 s, disk read during the
+load 2.90 -> 0.80 GB, pp512 80.71 -> 104.43, tg128 15.77 -> 15.54 t/s (ranges overlap). In the 2 pairs where free
+RAM fell to 0 MiB the prompt pass with the skip was 7-12x slower (4.53 and 7.63 against 52.90 and 57.18 t/s): the
+experts were then read by page faults, which the eviction repeated. So the plan keeps it off (Auto off,
+`engine/plan/README.md`); the switch stays for further runs. Configure guard: the block in `src/CMakeLists.txt`
+matches `llama_cluaiz_mmap_lazy_ranges(*this, idx)` in `llama-model-loader.cpp` (same pattern as patch 1, whose
+negative test is above). Negative test (2026-11-24): with the call replaced by `lazy.for_file(idx)`,
+`cmake -S engine/llama/llama.cpp -DGGML_CUDA=OFF` stopped with `cluaiz: src/llama-model-loader.cpp lost the
+llama_cluaiz_mmap_lazy_ranges call` (exit 1); the file was restored.
+
+**Failure and recovery:** the skipped pages are read by page faults on first use (upstream's lazy-range
+behaviour); nothing fails. A merge that loses the call stops the configure step; a renamed loader member stops
+the compile. `CLUAIZ_LAZY_HOST_WEIGHTS=off` turns it off for every load.
+
+**Pending:**
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| Auto on for disk plans | halves load time, but 7-12x slower prompts at 0 MiB free RAM (run 61) | a free-RAM guard, or the skip together with the ask-once expert prefetch on a MoE cache |
+| Linux | lazy ranges also get `POSIX_MADV_RANDOM` there (no read-around on faults); not measured | a Linux run with a model larger than RAM |
+| Upstream | a load-prefetch setting upstream would remove patch 3 | an upstream issue or PR (owner's call) |
 
 ## MTP speculative decoding (experimental)
 

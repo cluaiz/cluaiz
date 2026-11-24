@@ -63,7 +63,19 @@ fn load_native(
     }
     // llama.cpp only reads the override list during load; `moe_overrides` lives until this returns
     let mtp = if embedding { 0 } else { mtp_mode(model_path, plan, settings) };
+    // The fork's load prefetch skip (cluaiz_plan::load_prefetch) is per loading thread: set right
+    // before this synchronous load and reset right after, so no other load on this thread inherits it
+    let lazy_host = !embedding && placement.disk_stream && cluaiz_plan::load_prefetch::lazy_host_weights(plan);
+    if lazy_host {
+        tracing::info!("📥 [Load] CPU-mapped weights left out of the load prefetch (model larger than free RAM)");
+        // SAFETY: sets a thread-local flag in the fork; no pointers
+        unsafe { llama_engine::ffi::llama_cpp::llama_cluaiz_set_lazy_host_weights(true) };
+    }
     let loaded = NativeLlama::load(model_path, model_params, ctx_params, dna, 0, 0, mtp, None);
+    if lazy_host {
+        // SAFETY: as above
+        unsafe { llama_engine::ffi::llama_cpp::llama_cluaiz_set_lazy_host_weights(false) };
+    }
     drop(moe_overrides);
     let mut llama = loaded?;
     // The fork's MoE expert prefetch needs the context, so it is set after the load (cluaiz_plan::expert_prefetch)
