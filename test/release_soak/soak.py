@@ -5,6 +5,7 @@ Example: python test/release_soak/soak.py --exe target/debug/deps/cluaiz.exe
     --model <installed-model-id> --minutes 60 --seed 52
 """
 import argparse
+import ctypes
 import http.client
 import json
 import os
@@ -135,10 +136,22 @@ def sample(engine, stop):
         ram_kib = None
         if os.name == "nt":
             try:
-                output = subprocess.run(["powershell", "-NoProfile", "-Command",
-                    f"(Get-Process -Id {process.pid}).WorkingSet64"], capture_output=True, text=True, timeout=5)
-                ram_kib = int(output.stdout.strip()) // 1024
-            except (ValueError, OSError, subprocess.TimeoutExpired):
+                class MemoryCounters(ctypes.Structure):
+                    _fields_ = [("size", ctypes.c_ulong), ("faults", ctypes.c_ulong)] + [
+                        (name, ctypes.c_size_t) for name in (
+                            "peak_working_set", "working_set", "quota_peak_paged", "quota_paged",
+                            "quota_peak_nonpaged", "quota_nonpaged", "pagefile", "peak_pagefile", "private")]
+                kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+                kernel.OpenProcess.restype = ctypes.c_void_p
+                handle = kernel.OpenProcess(0x1000, False, process.pid)
+                if handle:
+                    counters = MemoryCounters()
+                    counters.size = ctypes.sizeof(counters)
+                    if ctypes.WinDLL("psapi", use_last_error=True).GetProcessMemoryInfo(
+                            ctypes.c_void_p(handle), ctypes.byref(counters), counters.size):
+                        ram_kib = counters.working_set // 1024
+                    kernel.CloseHandle(ctypes.c_void_p(handle))
+            except (ValueError, OSError, AttributeError):
                 pass
         gpu_mib = None
         try:
@@ -172,6 +185,9 @@ def main():
     p.add_argument("--minutes", type=float, default=60)
     p.add_argument("--seed", type=int, default=52)
     p.add_argument("--users", type=int, default=3)
+    p.add_argument("--restart-every", type=int, default=1,
+                   help="restart after this many complete shuffled scenario sweeps")
+    p.add_argument("--exclude", default="", help="comma-separated scenario names excluded from this run")
     args = p.parse_args()
     args.home, args.out, args.exe = args.home.resolve(), args.out.resolve(), args.exe.resolve()
     if args.port in (8000, 8011) or not (1 <= args.port <= 65535):
@@ -179,12 +195,13 @@ def main():
     owner_home = Path.home() / ".cluaiz"
     if args.home == owner_home or owner_home in args.home.parents or args.home == Path.home():
         p.error("never use the owner's home")
-    if not args.exe.is_file() or args.minutes <= 0 or not (3 <= args.users <= 5):
-        p.error("exe must exist, minutes must be positive, users must be 3..5")
+    if not args.exe.is_file() or args.minutes <= 0 or not (3 <= args.users <= 5) or args.restart_every < 1:
+        p.error("exe must exist, minutes positive, users 3..5, restart-every positive")
     args.home.mkdir(parents=True, exist_ok=True)
     journal = Journal(args.out, args.home)
     journal.write("events.jsonl", {"event": "setup", "seed": args.seed, "minutes": args.minutes,
-                  "users": args.users, "model": args.model, "exe": str(args.exe), "time": time.time()})
+                  "users": args.users, "restart_every": args.restart_every,
+                  "excluded": args.exclude, "model": args.model, "exe": str(args.exe), "time": time.time()})
     engine = Engine(args, journal)
     stop = threading.Event()
     monitor = threading.Thread(target=sample, args=(engine, stop), daemon=True)
@@ -194,10 +211,16 @@ def main():
         monitor.start()
         scenarios = ["single", "stream", "multi", "concurrent", "bad_json", "unknown_model",
                      "empty", "n", "logprobs", "max_tokens", "long_input", "think_on", "cancel_stream"]
+        excluded = {item for item in args.exclude.split(",") if item}
+        if excluded - set(scenarios):
+            p.error(f"unknown scenario exclusions: {sorted(excluded - set(scenarios))}")
+        scenarios = [name for name in scenarios if name not in excluded]
         rng = random.Random(args.seed)
         deadline = time.monotonic() + args.minutes * 60
         turn = 0
+        sweep = 0
         while time.monotonic() < deadline:
+            sweep += 1
             rng.shuffle(scenarios)
             for scenario in scenarios:
                 if time.monotonic() >= deadline:
@@ -273,9 +296,11 @@ def main():
                 except Exception as exc:
                     failed += 1
                     journal.write("checks.jsonl", {"turn": turn, "scenario": scenario, "pass": False, "error": repr(exc)})
-            engine.stop()
-            engine.start()
-        journal.write("events.jsonl", {"event": "finished", "passed": passed, "failed": failed, "time": time.time()})
+            if sweep % args.restart_every == 0 and time.monotonic() < deadline:
+                engine.stop()
+                engine.start()
+        journal.write("events.jsonl", {"event": "finished", "passed": passed, "failed": failed,
+                      "sweeps": sweep, "time": time.time()})
     finally:
         stop.set()
         engine.stop()
