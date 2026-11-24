@@ -695,6 +695,16 @@ impl PreparedChatContext {
                 Some("grammar"),
             ));
         }
+        // response_format JSON without the client's tools: the Engine's own functions are left out,
+        // as for a custom grammar, so the answer keeps its schema grammar and thinking (e654894f).
+        // With them in the prompt the schema could not go to the template: with callable tools it
+        // stays out so calls stay possible (`native/stream.rs`, owner decision 2026-11-25)
+        let answer_json = request
+            .response_format
+            .as_ref()
+            .and_then(|format| format["type"].as_str())
+            .is_some_and(|kind| kind == "json_schema" || kind == "json_object");
+        let schema_alone = answer_json && client_schemas.is_empty() && tool_choice.mode != "none";
         let client_tools: Vec<String> = client_schemas
             .iter()
             .filter_map(|tool| tool["function"]["name"].as_str().map(str::to_owned))
@@ -723,7 +733,10 @@ impl PreparedChatContext {
         if custom_grammar && !request.plain_prompt {
             tracing::info!("📐 [ChatHandler] A custom grammar: the Engine's own functions are left out of this request so the grammar applies");
         }
-        let tools_allowed = !request.plain_prompt && tool_choice.mode != "none" && tool_choice.function.is_none() && !custom_grammar;
+        if schema_alone && !custom_grammar && !request.plain_prompt {
+            tracing::info!("📐 [ChatHandler] response_format without the client's tools: the Engine's own functions are left out of this request so the schema applies");
+        }
+        let tools_allowed = !request.plain_prompt && tool_choice.mode != "none" && tool_choice.function.is_none() && !custom_grammar && !schema_alone;
         if !tools_allowed {
             tool_ids_to_compile.clear();
         }

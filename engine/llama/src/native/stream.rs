@@ -306,8 +306,13 @@ pub(crate) fn stream_tokens_with_media(
         // (common/chat-auto-parser-generator.cpp). Without it, a model that opens thinking itself
         // (Qwen3: the prompt does not hold the start tag) had the schema grammar from its first token
         // and could not think. A GBNF grammar with tools is refused by the API.
+        // Not while tools can be called (owner decision, 2026-11-25): llama.cpp's one strict grammar
+        // let small models write the schema's JSON instead of a call (run 68 weather question: 10 / 10
+        // get_weather calls before 9dde6a3e, 0 / 10 after, answers like {"age":25,"name":"get_weather"}).
+        // With callable tools the answer is not constrained, as before 9dde6a3e.
+        let tools_callable = native_tools.is_some() && tool_choice.as_deref() != Some("none");
         let template_schema = match &req_output {
-            Some(cluaiz_core::OutputConstraint::JsonSchema(schema)) if native_tools.is_some() || parse_answer => Some(schema.clone()),
+            Some(cluaiz_core::OutputConstraint::JsonSchema(schema)) if !tools_callable && (native_tools.is_some() || parse_answer) => Some(schema.clone()),
             _ => None,
         };
         // What llama.cpp returned for the last native render (grammar, triggers, parser)
@@ -872,6 +877,8 @@ pub(crate) fn stream_tokens_with_media(
             } else {
                 info!("📐 [NativeStream] Answer constrained by a JSON schema grammar from the template, thinking block included (llama.cpp)");
             }
+        } else if tools_callable && !tool_grammar.is_null() && matches!(req_output, Some(cluaiz_core::OutputConstraint::JsonSchema(_))) {
+            info!("📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible");
         } else if !tool_grammar.is_null() && req_output.is_some() {
             tracing::warn!("⚠️ [NativeStream] This template's tool-call grammar did not take the request's grammar or JSON schema; the answer is not constrained");
         }
