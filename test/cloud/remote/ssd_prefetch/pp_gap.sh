@@ -9,6 +9,9 @@
 #   C         cluaiz bench --n-gpu-layers all --n-cpu-moe 41 -c 16384 (run 48's C-pin), prefetch off
 #   LF-b<MiB> LF with a second process in the same cgroup holding <MiB> of anonymous memory (balloon.py)
 #   C-c<N>    C with -c N (llama-bench sizes its context to each test: n_prompt + n_gen)
+#   C-b<N>    C with -b N (llama-bench's default n_batch is 2048, Cluaiz's 512; n_ubatch is 512 on both)
+#   LFB<N>    LF with -b N
+#   C-nw      C with CLUAIZ_TEST_NO_WARMUP=1 (only a test binary built with that switch skips the load warmup)
 #   CN        C with CLUAIZ_ENV (any env assignments) for a fix candidate
 #   CB        C with the binary CLUAIZ_BASE (before / after a fix in one session)
 #
@@ -107,7 +110,7 @@ l_bench() {
   local mib="$1" tag="$2"
   if [ "$mib" = 0 ]; then
     capped "r55-$tag" -- /usr/bin/time -v -o "$OUT/$tag.time" "$BENCH" -m "$GGUF" -ngl 99 -ncmoe 41 -ctk f16 -ctv f16 \
-      -fa auto -t "$THREADS" -p "$PP" -n "$TG" -r "$REPS" --progress -o md 2>&1 > "$OUT/$tag.md" | stamp > "$OUT/$tag.log"
+      -fa auto -t "$THREADS" -p "$PP" -n "$TG" -r "$REPS" ${LX:-} --progress -o md 2>&1 > "$OUT/$tag.md" | stamp > "$OUT/$tag.log"
   else
     capped "r55-$tag" -- bash -c 'python3 "$1" "$2" & b=$!; sleep 8; shift 2; "$@"; rc=$?; kill $b; exit $rc' _ \
       "$HERE/balloon.py" "$mib" /usr/bin/time -v -o "$OUT/$tag.time" "$BENCH" -m "$GGUF" -ngl 99 -ncmoe 41 -ctk f16 -ctv f16 \
@@ -133,6 +136,9 @@ for r in $(seq 1 "$ROUNDS"); do
     case "$c" in
       LF) run "$tag" llama-bench l_bench 0 ;;
       LF-b*) run "$tag" llama-bench l_bench "${c#LF-b}" ;;
+      LFB*) LX="-b ${c#LFB}" run "$tag" llama-bench l_bench 0 ;;
+      C-b*) run "$tag" "$(basename "$CLUAIZ")" c_bench -- -p "$PP" -c 16384 -b "${c#C-b}" ;;
+      C-nw) run "$tag" "$(basename "$CLUAIZ")" c_bench CLUAIZ_TEST_NO_WARMUP=1 -- -p "$PP" -c 16384 ;;
       C) run "$tag" "$(basename "$CLUAIZ")" c_bench -- -p "$PP" -c 16384 ;;
       C-c*) run "$tag" "$(basename "$CLUAIZ")" c_bench -- -p "$PP" -c "${c#C-c}" ;;
       CB) CLUAIZ_SAVE="$CLUAIZ"; CLUAIZ="${CLUAIZ_BASE:?}"; run "$tag" "$(basename "$CLUAIZ")" c_bench -- -p "$PP" -c 16384; CLUAIZ="$CLUAIZ_SAVE" ;;

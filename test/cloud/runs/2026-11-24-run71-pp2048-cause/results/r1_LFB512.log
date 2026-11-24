@@ -1,0 +1,10 @@
+1795530047.005430323 ggml_cuda_init: found 1 CUDA devices (Total VRAM: 22614 MiB):
+1795530047.007091565   Device 0: NVIDIA L4, compute capability 8.9, VMM: yes, VRAM: 22614 MiB
+1795530047.014856906 llama-bench: benchmark 1/2: starting
+1795530148.547980473 llama-bench: benchmark 1/2: warmup prompt run
+1795530508.048776664 llama-bench: benchmark 1/2: prompt run 1/2
+1795530518.090773019 llama-bench: benchmark 1/2: prompt run 2/2
+1795530528.326893092 llama-bench: benchmark 2/2: starting
+1795530528.382356743 llama-bench: benchmark 2/2: warmup prompt run
+1795530551.091172261 llama-bench: benchmark 2/2: prompt run 1/2
+1795530569.801658896 llama-bench: benchmark 2/2: prompt run 2/2

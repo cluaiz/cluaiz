@@ -187,7 +187,9 @@ sampler that also records the cgroup's `memory.stat` and the process's RSS and m
 logs (`llama-bench --progress`, `cluaiz bench`'s "running" lines). Configs (`CONFIGS`): `LF` fork llama-bench,
 `C` `cluaiz bench`, `CB` `cluaiz bench` with the `CLUAIZ_BASE` binary (before / after in one session), `CN` `C`
 with `CLUAIZ_ENV` set, `C-c<N>` `C` with `-c N`, `LF-b<MiB>` `LF` beside `balloon.py` holding that much anonymous
-memory in the same cgroup. Usage on the VM:
+memory in the same cgroup, `C-b<N>` `C` with `-b N` and `LFB<N>` `LF` with `-b N` (llama-bench's default batch
+is 2048, Cluaiz's 512; the micro-batch is 512 on both), `C-nw` `C` with `CLUAIZ_TEST_NO_WARMUP=1` (skips the
+load-time warmup only in a test binary built with that switch, see the pp2048 cause run). Usage on the VM:
 `CLUAIZ=<binary> CLUAIZ_BASE=<binary> PP=512,2048 TG=128 REPS=2 ROUNDS=2 CONFIGS="C CB LF" bash pp_gap.sh <out>`,
 then `python3 analyze_pp_gap.py <out>` for seconds, MiB read, faults and memory per phase. Results and
 causes: `test/cloud/runs/2026-11-24-run59-l4-pp-gap/`. Use `--mtp off` where MTP must stay off: the harness's

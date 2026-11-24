@@ -1,0 +1,57 @@
+961a673f test(api): run 65 summary
+96b0cfb2d fix(moe-cache): ask Windows to prefetch each expert slice once per context
+ engine/llama/src/native/core.rs | 4 ++++
+ 1 file changed, 4 insertions(+)
+   Compiling ort-sys v2.0.0-rc.15
+warning: llama-engine@0.1.0: 🔩 Found local cached llama.cpp at "/home/<user>/cluaiz-pf/engine/llama/llama.cpp"
+warning: llama-engine@0.1.0: In file included from /home/<user>/cluaiz-pf/engine/llama/llama.cpp/common/jinja/parser.h:4,
+warning: llama-engine@0.1.0:                  from /home/<user>/cluaiz-pf/engine/llama/llama.cpp/common/chat.h:7,
+warning: llama-engine@0.1.0:                  from src/ffi/chat_bridge.cpp:4:
+warning: llama-engine@0.1.0: /home/<user>/cluaiz-pf/engine/llama/llama.cpp/common/jinja/runtime.h:770:20: warning: 'std::string jinja::render_string_parts(const value_string&)' defined but not used [-Wunused-function]
+warning: llama-engine@0.1.0:   770 | static std::string render_string_parts(const value_string & parts) {
+warning: llama-engine@0.1.0:       |                    ^~~~~~~~~~~~~~~~~~~
+warning: llama-engine@0.1.0: In file included from /home/<user>/cluaiz-pf/engine/llama/llama.cpp/common/jinja/parser.h:3:
+warning: llama-engine@0.1.0: /home/<user>/cluaiz-pf/engine/llama/llama.cpp/common/jinja/lexer.h:50:20: warning: 'std::string jinja::type_to_string(token::type)' defined but not used [-Wunused-function]
+warning: llama-engine@0.1.0:    50 | static std::string type_to_string(token::type t) {
+warning: llama-engine@0.1.0:       |                    ^~~~~~~~~~~~~~
+warning: llama-engine@0.1.0: 🧿 [Llama-Engine] Industrial CMake Build Complete.
+   Compiling llama-engine v0.1.0 (/home/<user>/cluaiz-pf/engine/llama)
+   Compiling ort v2.0.0-rc.15
+   Compiling onnx-engine v0.1.0 (/home/<user>/cluaiz-pf/engine/onnx)
+   Compiling cluaiz-runtime v0.1.0 (/home/<user>/cluaiz-pf/engine/runtime)
+   Compiling cluaiz-api v0.1.0 (/home/<user>/cluaiz-pf/api)
+   Compiling cluaiz-automation-host v0.1.0 (/home/<user>/cluaiz-pf/automation/host)
+   Compiling cmd v0.1.0 (/home/<user>/cluaiz-pf/cmd)
+warning: variable does not need to be mutable
+   --> cmd/src/core/bootstrapper.rs:101:17
+    |
+101 |             let mut res = std::fs::copy(src, dest);
+    |                 ----^^^
+    |                 |
+    |                 help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `e`
+   --> cmd/src/core/bootstrapper.rs:102:24
+    |
+102 |             if let Err(ref e) = res {
+    |                        ^^^^^ help: if this is intentional, prefix it with an underscore: `_e`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `cmd` (bin "cluaiz") generated 2 warnings (run `cargo fix --bin "cluaiz" -p cmd` to apply 2 suggestions)
+warning: unused dependency `winres`
+  --> cmd/Cargo.toml:55:1
+   |
+55 | winres = "0.1"
+   | ^^^^^^^^^^^^^^
+   |
+   = note: `cargo::unused_dependencies` is set to `warn` by default
+help: consider removing the dependency on `winres`
+warning: `cmd` (manifest) generated 1 warning
+    Finished `release` profile [optimized] target(s) in 4m 15s
+== build exit 0 after 256 s
+-rwxrwxr-x 1 <user> <user> 81422544 Nov 24 13:41 /home/<user>/ppcause/cluaiz
+/home/<user>/ppcause/cluaiz: error while loading shared libraries: libmtmd.so.1: cannot open shared object file: No such file or directory
+/dev/nvme0n1p1  148G  122G   20G  87% /
