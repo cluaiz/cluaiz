@@ -1,0 +1,2 @@
+{"exe": "C:\\Users\\<user>\\my\\Cluaiz-workspace\\Cluaiz-Technologies\\cluaiz\\target\\debug\\deps\\cluaiz.exe", "home": "<engine-home>", "port": 8013, "script": "C:\\Users\\<user>\\my\\Cluaiz-workspace\\Cluaiz-Technologies\\cluaiz\\test\\cloud\\runs\\2026-11-24-run56-workflow-engine\\engine-check.cjs", "time": 1795486086.3453305}
+{"event": "finished", "exit": 0, "passed": 7, "total": 7, "time": 1795486158.4360387}

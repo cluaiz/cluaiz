@@ -1,0 +1,26 @@
+<engine-start>
+2026-11-24T02:08:06.485693Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-24T02:08:09.240940Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-24T02:08:11.674840Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+Starting the Cluaiz API server on http://localhost:8013 ...
+2026-11-24T02:08:11.678711Z  INFO 🔒 [Auth] Initialized local session secret at <engine-home>\session.token
+2026-11-24T02:08:12.540945Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-24T02:08:12.580768Z  INFO 🌐 Cluaiz API Server running on http://<ip>:8013
+2026-11-24T02:08:13.452180Z  INFO Automation: saved flow qa-1795486093150-child (user) at <engine-home>\flows\qa-1795486093150-child.flow.json
+2026-11-24T02:08:13.586651Z  INFO Automation: saved flow qa-1795486093150-logic (user) at <engine-home>\flows\qa-1795486093150-logic.flow.json
+2026-11-24T02:08:15.913261Z  INFO Automation: qa-1795486093150-logic (run_41de53607936) started qa-1795486093150-child as run run_cd57f62c1e66
+2026-11-24T02:08:16.172680Z  INFO Automation: qa-1795486093150-logic (run_0f96b92c8417) started qa-1795486093150-child as run run_9a5c51915651
+2026-11-24T02:08:16.602355Z  INFO Automation: saved flow qa-1795486093150-negative (user) at <engine-home>\flows\qa-1795486093150-negative.flow.json
+2026-11-24T02:08:17.159993Z  INFO Automation: saved flow qa-1795486093150-engine-event (user) at <engine-home>\flows\qa-1795486093150-engine-event.flow.json
+2026-11-24T02:08:17.265530Z  INFO Automation: saved flow qa-1795486093150-event (user) at <engine-home>\flows\qa-1795486093150-event.flow.json
+2026-11-24T02:08:17.367311Z  INFO Automation: saved flow qa-1795486093150-sender (user) at <engine-home>\flows\qa-1795486093150-sender.flow.json
+2026-11-24T02:08:17.561028Z  INFO Automation: event_0 started run run_e6b5fd73e5b7 of qa-1795486093150-event
+2026-11-24T02:08:17.571911Z  INFO Automation: engine_0 started run run_cd86ae73210a of qa-1795486093150-engine-event
+2026-11-24T02:08:17.962435Z  INFO Automation: saved flow qa-1795486093150-every (user) at <engine-home>\flows\qa-1795486093150-every.flow.json
+2026-11-24T02:08:17.971925Z  INFO Automation: saved flow qa-1795486093150-file (user) at <engine-home>\flows\qa-1795486093150-file.flow.json
+2026-11-24T02:08:17.989425Z  INFO Automation: saved flow qa-1795486093150-schedule (user) at <engine-home>\flows\qa-1795486093150-schedule.flow.json
+2026-11-24T02:08:17.990354Z  INFO Automation: saved flow qa-1795486093150-poll (user) at <engine-home>\flows\qa-1795486093150-poll.flow.json
+2026-11-24T02:08:18.101865Z  INFO Automation: poll_0 started run run_c5ec5f164635 of qa-1795486093150-poll
+2026-11-24T02:08:19.363301Z  INFO Automation: file_0 started run run_f2d0368c66d2 of qa-1795486093150-file
+2026-11-24T02:09:00.065441Z  INFO Automation: schedule_0 started run run_09e23f39a4e4 of qa-1795486093150-schedule
+2026-11-24T02:09:18.033296Z  INFO Automation: every_0 started run run_060dbafc0afb of qa-1795486093150-every

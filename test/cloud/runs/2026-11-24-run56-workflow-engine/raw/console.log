@@ -1,0 +1,8 @@
+PASS call, switch, parallel, repeat, wait, run, return and rerun_from {"status":"succeeded","rerun":"succeeded","outputs":{"child":{"ok":true}}}
+PASS fail step yields an explicit error {"status":"failed","error":"Expected acceptance failure"}
+PASS emit step, event trigger, Engine event trigger {"emit":"succeeded","event":"event","value":42,"engineEvent":"engine"}
+PASS poll trigger {"kind":"poll","status":"succeeded","runId":"run_c5ec5f164635"}
+PASS file trigger sees a new matching file {"kind":"file","status":"succeeded","runId":"run_f2d0368c66d2"}
+PASS schedule trigger {"kind":"schedule","status":"succeeded","runId":"run_09e23f39a4e4"}
+PASS every trigger {"kind":"every","status":"succeeded","runId":"run_060dbafc0afb"}
+Totals: 7 passed, 0 failed
