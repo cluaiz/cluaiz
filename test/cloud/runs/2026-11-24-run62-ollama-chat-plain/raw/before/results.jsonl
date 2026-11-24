@@ -1,0 +1,5 @@
+{"check": "ollama_chat_hi", "pass": true, "status": 200, "content": "Hello! I'm ready to help you with your project. Could you please tell me what you need assistance with?", "prompt_eval_count": 921}
+{"check": "ollama_chat_hi_stream", "pass": true, "status": 200, "content": "Hello! I'm ready to help you with your project. Could you please tell me what you need assistance with?", "prompt_eval_count": 921}
+{"check": "ollama_chat_tools", "pass": true, "status": 200, "call": "get_weather", "arguments": {"city": "Paris"}, "prompt_eval_count": 987}
+{"check": "v1_chat_hi", "pass": true, "status": 200, "prompt_tokens": 921, "tools": {"meta_tools": true, "hint_tokens": 37, "system_tools_tokens": 86, "template_tools_tokens": 362, "format": "native"}}
+{"check": "v1_chat_tools", "pass": true, "status": 200, "call": "get_weather", "arguments": "{\"city\":\"Paris\"}", "prompt_tokens": 921}

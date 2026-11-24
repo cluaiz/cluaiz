@@ -594,8 +594,8 @@ impl PreparedChatContext {
         let workspace = super::recall::current_workspace();
         let note_query = request.messages.last().map(|m| m.content.text_content()).unwrap_or_default();
         let note_user = super::recall::note_user(request.user.as_deref());
-        // A plain prompt (Ollama's /api/generate) gets none of what the Engine adds: no notes,
-        // no agent files, no tools (`plain_prompt`)
+        // A plain prompt (Ollama's /api/generate and /api/chat) gets none of what the Engine adds:
+        // no notes, no agent files, no Engine tools; only the client's own tools (`plain_prompt`)
         let (pinned_notes, relevant_notes) = if request.plain_prompt {
             (Vec::new(), Vec::new())
         } else {
@@ -687,7 +687,8 @@ impl PreparedChatContext {
             .map(|m| m.content.text_content());
         let before_tools = std::time::Instant::now();
 
-        // tool_choice "none" (OpenAI), or a plain prompt: the model gets no tools for this request
+        // tool_choice "none" (OpenAI), or a plain prompt: the model gets none of the Engine's tools
+        // for this request (the client's own functions, `client_schemas`, are added below)
         let tools_allowed = !request.plain_prompt && request.tool_choice.as_ref().and_then(|choice| choice.as_str()) != Some("none");
         if !tools_allowed {
             tool_ids_to_compile.clear();

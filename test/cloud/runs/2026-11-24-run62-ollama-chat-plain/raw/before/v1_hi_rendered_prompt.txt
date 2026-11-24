@@ -1,0 +1,52 @@
+<|im_start|>system
+# Tools
+
+You have access to the following functions:
+
+<tools>
+{"type": "function", "function": {"name": "load_tool", "description": "Load an installed tool by id. Returns its instructions and the functions you can then call.", "parameters": {"properties": {"functions": {"description": "Optional: only these functions", "items": {"type": "string"}, "type": "array"}, "id": {"type": "string"}}, "required": ["id"], "type": "object"}}}
+{"type": "function", "function": {"name": "unload_tool", "description": "Remove a loaded tool you do not need, to free space.", "parameters": {"properties": {"id": {"type": "string"}}, "required": ["id"], "type": "object"}}}
+{"type": "function", "function": {"name": "read_tool_file", "description": "Read one more file from a tool's own folder, such as a reference its instructions point to; not for project files. An empty path lists the tool's files.", "parameters": {"properties": {"id": {"type": "string"}, "path": {"type": "string"}}, "required": ["id", "path"], "type": "object"}}}
+{"type": "function", "function": {"name": "find_tools", "description": "Search the other installed tools by what they do, when none of the listed tools fits. Returns short cards.", "parameters": {"properties": {"query": {"type": "string"}}, "required": ["query"], "type": "object"}}}
+{"type": "function", "function": {"name": "read_item", "description": "Read a rule, workflow, skill or instruction file named in the system prompt. Call it before a task the item is for, then follow what it says.", "parameters": {"properties": {"kind": {"description": "When two items have the same name: the kind in brackets after it", "enum": ["rule", "workflow", "skill", "memory"], "type": "string"}, "name": {"description": "The name as listed", "type": "string"}}, "required": ["name"], "type": "object"}}}
+</tools>
+
+If you choose to call a function ONLY reply in the following format with NO suffix:
+
+<tool_call>
+<function=example_function_name>
+<parameter=example_parameter_1>
+value_1
+</parameter>
+<parameter=example_parameter_2>
+This is the value for the second parameter
+that can span
+multiple lines
+</parameter>
+</function>
+</tool_call>
+
+<IMPORTANT>
+Reminder:
+- Function calls MUST follow the specified format: an inner <function=...></function> block must be nested within <tool_call></tool_call> XML tags
+- Required parameters MUST be specified
+- You may provide optional reasoning for your function call in natural language BEFORE the function call, but NOT after
+- If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls
+</IMPORTANT>
+
+More rules, workflows and skills of this project, and the facts in its memory. When the task fits a rule, workflow or skill, call read_item with its name before you start, then follow it. A memory line is the fact itself:
+- math (skill): Evaluates math expressions and converts units, so results are computed rather than guessed. Use whenever an answer needs arithmetic, a formula or a unit convers
+- filesystem (skill): Reads, writes, moves and searches files in the open folder. Use when files in the open folder must be read, found or changed.
+
+Tools run in the project folder <engine-home>\workspace. Use paths relative to it ("." is the project folder).<|im_end|>
+<|im_start|>user
+<tools_hint>
+Before a task that fits a rule, workflow or skill of the project's index, call read_item with its name and follow it.
+</tools_hint>
+
+hi<|im_end|>
+<|im_start|>assistant
+<think>
+
+</think>
+

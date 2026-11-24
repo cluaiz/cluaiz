@@ -147,10 +147,10 @@ pub struct ExternalChatRequest {
     /// Set by `POST /v1/chat/{id}/context/preview`: plan only, change nothing
     #[serde(skip)]
     pub preview: bool,
-    /// Set by Ollama's `POST /api/generate`: only the client's messages go to the model template.
-    /// No workspace agent files, notes, tool suggestions, Engine functions or saved flows are
-    /// added (Ollama's own generate renders the prompt with no tools). Never read from the body,
-    /// so `/v1/chat/completions` is not changed by it.
+    /// Set by Ollama's `POST /api/generate` and `POST /api/chat`: only the client's messages and
+    /// the client's own function tools go to the model template. No workspace agent files, notes,
+    /// tool suggestions, Engine functions or saved flows are added (Ollama renders only what the
+    /// client sent). Never read from the body, so `/v1/chat/completions` is not changed by it.
     #[serde(skip)]
     pub plain_prompt: bool,
     /// llama.cpp load settings for this request (llama.cpp names). Missing = auto (planner + user settings).

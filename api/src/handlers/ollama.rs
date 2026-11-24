@@ -19,7 +19,8 @@ use serde_json::{json, Map, Value};
 
 use crate::AppState;
 
-/// `POST /api/chat`
+/// `POST /api/chat`: the client's messages and the client's own tools, with nothing the Engine
+/// would add to a chat (`plain_prompt`)
 pub async fn chat(state: State<Arc<AppState>>, body: Bytes) -> Response {
     run(state, body, Kind::Chat).await
 }
@@ -112,9 +113,11 @@ async fn run(state: State<Arc<AppState>>, body: Bytes, kind: Kind) -> Response {
         Ok(r) => r,
         Err(e) => return error(StatusCode::BAD_REQUEST, &e.to_string()),
     };
-    // Ollama's generate renders the system text and the prompt with the model's template and no
-    // tools (`GenerateHandler` in ollama/server/routes.go): the Engine adds nothing either
-    chat_request.plain_prompt = kind == Kind::Generate;
+    // Ollama renders only what the client sent with the model's template: generate the system
+    // text and the prompt with no tools, chat the messages with the request's `tools`
+    // (`GenerateHandler` and `ChatHandler` in ollama/server/routes.go). The Engine adds nothing
+    // either; the client's tools still go to the model (`to_openai`)
+    chat_request.plain_prompt = true;
     let inner = super::chat::chat_completions(state, Json(chat_request)).await;
     let status = inner.status();
     if !status.is_success() {
