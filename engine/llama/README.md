@@ -335,7 +335,8 @@ cache are uploaded from the host experts, which are mmap'd from the model file
 them in one after another. With the prefetch on, the fork first passes the address ranges of those experts
 (every fill and every miss left to the CPU, for each expert tensor, up to a cap) to llama.cpp's own
 `llama_prefetch` in one call, so the OS can read them together (Windows: one `PrefetchVirtualMemory`
-call; Linux: one `madvise(MADV_WILLNEED)` per 128 KiB window). Then the upload runs as before.
+call; Linux: one `madvise(MADV_WILLNEED)` per 128 KiB window). Then the upload runs as before. On Windows each
+expert slice is asked for once per context (see the decision below); Linux asks every time.
 
 ```mermaid
 graph LR
@@ -367,6 +368,7 @@ re-apply steps is [`llama.cpp/CLUAIZ_PATCHES.md`](llama.cpp/CLUAIZ_PATCHES.md). 
 | Linux window steps in the fork file, `llama_prefetch` not edited | upstream PR #32515 (open on 2026-11-22): one `MADV_WILLNEED` reads at most one readahead window | editing `llama_prefetch` (a third upstream file to carry) |
 | The build fails when the call is gone | a merge that drops the call would otherwise turn the feature off without a sign | a runtime check |
 | Advisory, off by default | `llama_prefetch` only logs a warning on failure and the upload then reads as before | treating a failed prefetch as an error |
+| Windows asks each expert slice once per context (`ask_once`) | run 44 asked 173-215 GB per run for 11.8 GB of experts, again and again for resident pages; `PrefetchVirtualMemory` costs about 43 us per MiB in the working set and 85 us per MiB on standby on the calling thread and saves nothing for them (run 60 micro-benchmark). A replay of the call pattern: asked bytes -64%, prefetch time -48-68% (run 60) | a byte cap per step (still re-asks resident pages); a residency check with `QueryWorkingSetEx` (one more call per range, standby pages look not resident) |
 | The fork only obeys the cap; when to prefetch is decided by the planner | one owner per rule: Auto's rule (cache share and platform, runs 43 and 44) lives in `engine/plan/src/expert_prefetch.rs`, so changing it needs no llama.cpp rebuild | a run-time guard in the fork (hit rate or bytes per token); not needed while the plan-time rule separates the measured runs |
 
 **Tested** (2026-11-22, Windows 11, debug build `cargo build -p cmd`, RTX 3050 Laptop 4 GB, CUDA,
@@ -406,6 +408,7 @@ https://github.com/ggml-org/llama.cpp/pull/32515.
 
 | Item | Why it matters | Needs |
 |---|---|---|
+| Ask-once on a live load with a MoE cache (Windows) | run 61's 9 cache runs got no cache (1.0-2.2 GB of VRAM used by others); run 60's replay found no prefetch still fastest with resident pages, so Windows Auto stays off | a laptop run with about 2.7 GB of free VRAM |
 | Speed with a model larger than RAM | the reason for the feature; not measured | Phase 0/2 on the L4 with gpt-oss-120b, page cache dropped, 3 rounds, against official llama.cpp |
 | Linux window steps | written from #32515, not run | a Linux run with a model larger than RAM |
 | macOS, Vulkan, Metal, CPU only | Metal and CPU only have no MoE cache upload; Vulkan's MoE cache is untested | runs on those machines; a CPU-only path is a later phase |
