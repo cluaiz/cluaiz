@@ -125,8 +125,9 @@ flowchart TD
 - `non_streaming.rs`:
   - **Logic:** `execute_non_streaming` runs the same turn and answers one JSON;
     `separate_reasoning` splits thinking from the answer with the model's tags. When the turn
-    ends at the step or repeat limit (`Ended::StepLimit`), the last generation is a call that was
-    not answered: only the text before `<tool_call>` is the answer, as for a client call. Before
+    still ends at the step or repeat limit (`Ended::StepLimit`: the client sent its own functions,
+    or the final no-tools answer of `api_turn::run` made a call anyway), the last generation is a
+    call that was not answered: only the text before `<tool_call>` is the answer, as for a client call. Before
     run 57 the whole text went to `separate_reasoning`, whose generic fallback takes any leading
     `<tag>…</tag>` as thinking, so the call came back as `reasoning_content` with an empty answer
     (run 52 `long_input`). Alternative not taken: changing the generic fallback in
@@ -137,13 +138,44 @@ flowchart TD
     still read when the model has them, so thinking that comes anyway is not mixed into the
     answer), finds calls only in the answer part, runs meta tools, skills, plugins and MCP tools
     through the approval gate, and continues generation with the tool steps.
+  - **Final answer at the limit (`api_turn::run`, since 2026-11-24, run 70):** both modes run the
+    turn through `api_turn::run`, not `cluaiz_agents::turn::run` directly. When the turn ends at
+    the step limit (`max_steps`, default 100) or the repeat limit (`REPEAT_STOP_THRESHOLD` = 4
+    identical calls in a row, `agents/src/turn.rs`), the model is asked one more time with
+    `ToolTurns::final_answer`: the same conversation with every tool result so far, no `tools`,
+    `tool_choice: "none"`, and the managed prompt `agent.final_answer` as the last user message
+    (joined to the last user message when there is one, for templates that refuse two user
+    messages in a row). That reply is returned as normal `content` (`Ended::Answered`). The log
+    line is `stopped at step/repeat limit (max_steps=N): asking once more for a final answer
+    without tools`. Why: a small model with a long prompt kept calling tools until the limit and
+    the reply had no answer. Run 70 (Qwen3.5-0.8B, run 52's `long_input` prompt and 9 variants,
+    filesystem MCP and math plugin installed): before, 0 / 10 answers, 8 turns ended at a limit
+    with content `"\n"`; after, the same 8 turns each ended with a final answer (8 / 10 answers,
+    6 / 10 with the right marker); `max_steps: 2` 0 / 5 to 5 / 5; streaming 0 / 3 to 3 / 3; a
+    request with its own `tools` 3 / 3 client `tool_calls` both before and after. The other 2 / 10
+    were not at a limit: their last call was cut by `max_tokens` (48) and comes back as text.
+    Not done when the client sent its own functions (`client_tools`): that
+    client runs calls itself and gets them as before. Not done when the request was cancelled.
+    If the final reply still writes a call, it is not run; the turn stays `Ended::StepLimit` and
+    only the text before the call is returned (log: `the final answer without tools still made
+    a call`). The extra generation is one more than `max_steps`. Cost: the tool schemas leave the
+    prompt, so its start changes and the whole prompt is processed again (run 70: 3,784 to 11,339
+    tokens with 0 from the cache; the final answer took 1.0 to 2.9 s from the log line to its end
+    on the laptop's RTX 3050). Alternative not taken: keep the tools and send only
+    `tool_choice: "none"` (llama.cpp still renders the tools, so the KV cache would be reused, but
+    the model still sees the functions it was looping on); the owner chose removing them. The
+    terminal agent (`cmd`) has its own front end of `cluaiz_agents::turn` and does not do this.
 - `tool_parser.rs`:
   - **Logic:** `extract_tool_call` finds a `<tool_call>` block in text, also inside markdown
     fences or with nested JSON.
 - `tool_turns.rs`:
   - **Logic:** Each tool step adds one assistant message (the call) and one tool message (the
     result); the conversation is rendered again through the template. The unchanged beginning
-    keeps its KV cache, so only the new step is processed.
+    keeps its KV cache, so only the new step is processed. `final_answer` builds the prompt of
+    the last no-tools answer at the step or repeat limit (see `api_turn.rs`); for an image or
+    audio prompt it adds `agent.final_answer` to the pivot text. Tools written into the system
+    text (inline tools, templates without native tools) stay there, since the system prompt is
+    the request's own; a call written anyway is cut off.
 - `authorize.rs`:
   - **Logic:** `assess` (does this call need approval, under the request's approval mode:
     `approval_mode`, never looser than the global mode, resolved once in preflight and kept only in
@@ -224,6 +256,8 @@ flowchart TD
   as a refused result.
 - **Unreadable call or answer only in thinking:** corrected and asked again, not run
   (`cluaiz_agents::turn`).
+- **Step or repeat limit reached:** one more answer without tools (`api_turn::run`); when that
+  answer still writes a call, the text before the call is the answer.
 - **Cancel:** `chat.cancel` sets the stream's flag; generation and tool waits stop.
 - **Embedding model missing for notes:** word matching instead.
 
@@ -247,3 +281,6 @@ behaviour was checked live in runs 30 and 31 (`test/cloud/runs/`).
 | `tool_choice_takes_openai_forms` unit test not run | the api suite builds both native backends; the forms were checked live in run 68 | a CI job with the CPU backend |
 | `tool_choice` is not forwarded to providers (a named choice only narrows `tools` there) | a provider could force the call itself | add it to `api/src/providers/request.rs` |
 | `n` and `logprobs` not forwarded to providers | a provider could answer them | forward in `preflight.rs` provider `extra` and handle several `choices` in the reply |
+| A tool call cut by `max_tokens` comes back as text in `content` (run 70: 2 / 10, `<tool_call>{"arguments":"{\"content\":...`) | the turn is not at a limit, so the final no-tools answer does not run; the user sees half a call | treat a half call at `finish_reason: "length"` as unusable (`turn::Unusable`) or cut it, then decide whether to ask once more |
+| Final no-tools answer not checked for a request with client `tools` that reached a limit, nor for an image request or inline (non-native) tools | run 70 covered native tools on one model; with client tools the model called the client function first (3 / 3) | a script that makes the Engine's own tools loop while client tools are present; a vision model run; a template without native tools |
+| The terminal agent (`cmd`) still ends at the step limit without a final answer | it runs its own front end of `cluaiz_agents::turn` | the same step in `cmd/src/agent` if wanted |

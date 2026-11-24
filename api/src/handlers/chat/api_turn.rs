@@ -8,7 +8,7 @@ use super::tool_parser;
 use super::types::{ExternalChatRequest, ACTIVE_STREAMS, DEFAULT_MAX_TOKENS};
 use crate::state::AppState;
 use chrono::Utc;
-use cluaiz_agents::turn::{CallRun, Generated, ToolCall};
+use cluaiz_agents::turn::{Agent, CallRun, Ended, Generated, ToolCall};
 use cluaiz_runtime::HostResponse;
 use serde_json::{json, Value};
 use std::sync::atomic::Ordering;
@@ -21,6 +21,35 @@ pub const MAX_STEPS: usize = 100;
 /// Resolves the step limit for an API turn (`request.max_steps`, defaulting to [`MAX_STEPS`])
 pub fn max_steps_for(request: &ExternalChatRequest) -> usize {
     request.max_steps.unwrap_or(MAX_STEPS)
+}
+
+/// Runs an API turn (`cluaiz_agents::turn::run`). When it ends at the step or repeat limit, the
+/// model is asked once more, with no tools and the managed prompt `agent.final_answer`, and that
+/// reply is the answer (`Ended::Answered`). Small models with a long prompt kept calling tools
+/// until the limit, and the reply had no answer (run 52 `long_input`). Not when the client sent
+/// its own functions: it gets the calls as before. A last reply that still makes a call stays
+/// `Ended::StepLimit`, and the callers keep only the text before the call.
+pub async fn run(turn: &mut ApiTurn<'_>, max_steps: usize) -> anyhow::Result<Ended> {
+    let ended = cluaiz_agents::turn::run(turn, max_steps).await?;
+    if ended != Ended::StepLimit {
+        return Ok(ended);
+    }
+    let id = turn.ctx.request_id.clone();
+    if !turn.ctx.client_tools.is_empty() || turn.stopped() {
+        tracing::info!("🔁 [API] Turn '{}' stopped at step/repeat limit (max_steps={})", id, max_steps);
+        return Ok(ended);
+    }
+    tracing::info!("🧾 [API] Turn '{}' stopped at step/repeat limit (max_steps={}): asking once more for a final answer without tools", id, max_steps);
+    turn.final_answer = true;
+    let ended = match turn.generate(max_steps).await? {
+        Generated::Answer { said, calls } if calls.is_empty() => Ended::Answered(said),
+        Generated::Stopped { said } => Ended::Stopped(said),
+        Generated::Answer { .. } | Generated::Unusable { .. } => Ended::StepLimit,
+    };
+    if ended == Ended::StepLimit {
+        tracing::info!("🔁 [API] Turn '{}': the final answer without tools still made a call; only the text before it is the answer", id);
+    }
+    Ok(ended)
 }
 
 pub struct ApiTurn<'a> {
@@ -55,6 +84,8 @@ pub struct ApiTurn<'a> {
     project_sent: Vec<String>,
     /// A confirmation went unanswered: nobody is there, so this turn asks no more and waits no more
     nobody_answered: bool,
+    /// The next generation is the last one, without tools (see [`run`])
+    final_answer: bool,
 }
 
 impl<'a> ApiTurn<'a> {
@@ -76,6 +107,7 @@ impl<'a> ApiTurn<'a> {
         Self {
             project_sent,
             nobody_answered: false,
+            final_answer: false,
             state,
             ctx,
             request,
@@ -216,8 +248,12 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
             None => {
                 // The next step renders the conversation with the calls made so far
                 self.think_filter.reset_turn(false);
-                let prompt = self.tool_turns.continuation(self.ctx);
-                tracing::info!("🔄 [API] Step {step}: generating again with the tool result");
+                let prompt = if self.final_answer {
+                    self.tool_turns.final_answer(self.ctx)
+                } else {
+                    tracing::info!("🔄 [API] Step {step}: generating again with the tool result");
+                    self.tool_turns.continuation(self.ctx)
+                };
                 self.ctx
                     .dispatch(&self.state.host, Some(&prompt), self.ctx.validated_max_tokens.unwrap_or(DEFAULT_MAX_TOKENS))
                     .await

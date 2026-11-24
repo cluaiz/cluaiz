@@ -20,7 +20,7 @@ pub async fn execute_non_streaming(
 
     let max_steps = super::api_turn::max_steps_for(&request);
     let mut turn = super::api_turn::ApiTurn::new(state.clone(), &ctx, &request, dispatch_result, None);
-    let ended = match cluaiz_agents::turn::run(&mut turn, max_steps).await {
+    let ended = match super::api_turn::run(&mut turn, max_steps).await {
         Ok(ended) => ended,
         Err(_) => {
             if keep_alive_val == Some(0) {
@@ -32,14 +32,12 @@ pub async fn execute_non_streaming(
     };
     // A client-run call ends the answer: OpenAI `tool_calls`, finish_reason "tool_calls"
     let client_call = turn.client_call.take();
-    // At the step or repeat limit the last generation is a call that was not run: only the text
-    // before it is the answer. Whole, its `<tool_call>…</tool_call>` block would be taken as a
-    // reasoning block by `separate_reasoning` (any leading `<tag>…</tag>`), so the call came back
-    // as `reasoning_content` with an empty answer (run 52 `long_input`, run 57)
+    // Still `StepLimit` after the final no-tools answer (`api_turn::run`): that answer made a call
+    // too, which was not run, so only the text before it is the answer. Whole, its
+    // `<tool_call>…</tool_call>` block would be taken as a reasoning block by `separate_reasoning`
+    // (any leading `<tag>…</tag>`), so the call came back as `reasoning_content` with an empty
+    // answer (run 52 `long_input`, run 57)
     let unrun_call = matches!(ended, cluaiz_agents::turn::Ended::StepLimit);
-    if unrun_call {
-        tracing::info!("🔁 [API] Turn '{}' stopped at step/repeat limit (max_steps={})", ctx.request_id, max_steps);
-    }
     let final_raw_text = if client_call.is_some() || unrun_call {
         turn.last_raw.split(cluaiz_core::tool_calls::OPEN).next().unwrap_or_default().to_string()
     } else {

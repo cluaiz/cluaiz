@@ -115,6 +115,43 @@ impl ToolTurns {
         envelope.to_string()
     }
 
+    /// The prompt for one last answer after the step or repeat limit: the conversation with every
+    /// tool result so far, no function schemas, `tool_choice` "none", and the managed prompt
+    /// `agent.final_answer` as the last user message, so the model answers from what it has.
+    /// Tools listed in the system text (inline tools) stay there: the system prompt is the
+    /// request's own, and a call written anyway is cut off by the caller.
+    pub fn final_answer(&self, ctx: &PreparedChatContext) -> String {
+        let note = cluaiz_core::prompts::text("agent.final_answer");
+        if ctx.prepared_media.is_some() {
+            let pivot = self.media_pivot(ctx);
+            let Some(Ok(mut envelope)) = pivot.strip_prefix("[PIVOT_CONTINUE]").map(serde_json::from_str::<Value>) else {
+                return pivot;
+            };
+            let text = envelope["pivot_prompt"].as_str().unwrap_or_default().to_string();
+            envelope["pivot_prompt"] = json!(format!("{text}\n{note}\n"));
+            return format!("[PIVOT_CONTINUE]{envelope}");
+        }
+        let mut envelope: Value =
+            serde_json::from_str(&with_steps(&ctx.json_prompt, &self.steps, self.tool_role)).unwrap_or_else(|_| json!({}));
+        if let Some(fields) = envelope.as_object_mut() {
+            fields.remove("tools");
+            fields.insert("tool_choice".into(), json!("none"));
+        }
+        if let Some(messages) = envelope.get_mut("messages").and_then(Value::as_array_mut) {
+            // After a user message (a `<tool_response>` block for templates without a tool role)
+            // the note joins it: templates that require user and assistant turns to alternate
+            // (Mistral, Gemma 2) refuse two user messages in a row
+            match messages.last_mut() {
+                Some(last) if last["role"] == "user" && last["content"].is_string() => {
+                    let content = last["content"].as_str().unwrap_or_default();
+                    last["content"] = json!(format!("{content}\n\n{note}"));
+                }
+                _ => messages.push(json!({ "role": "user", "content": note })),
+            }
+        }
+        envelope.to_string()
+    }
+
     /// Media prompts are rendered again in full for every step (their embeddings cannot be
     /// reused), so the steps are written once into the last user message.
     fn media_pivot(&self, ctx: &PreparedChatContext) -> String {
