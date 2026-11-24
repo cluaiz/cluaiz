@@ -22,7 +22,7 @@ graph LR
 
 | File | Routes | Shared with CEP |
 |---|---|---|
-| `ollama.rs` | `/api/chat`, `/api/generate`, `/api/embed`, `/api/ps`, `/api/version` | Ollama's request turned into the OpenAI request of `chat/` or `embeddings.rs`, and the answer turned back: one object, or one JSON object per line when streaming (Ollama's default). Ollama's `keep_alive` number is seconds; it is turned into the Engine's minutes. Unit tests in the file; the Ollama Python library 0.6.1 against it in run 36. |
+| `ollama.rs` | `/api/chat`, `/api/generate`, `/api/embed`, `/api/ps`, `/api/version` | Ollama's request turned into the OpenAI request of `chat/` or `embeddings.rs`, and the answer turned back: one object, or one JSON object per line when streaming (Ollama's default). Ollama's `keep_alive` number is seconds; it is turned into the Engine's minutes. Unit tests in the file; the Ollama Python library 0.6.1 against it in run 36. `/api/generate` sets `plain_prompt` on the chat request (a field the JSON body cannot set): only the system text and the prompt reach the model template, with no tools, no workspace agent files and no notes, as Ollama's own `GenerateHandler` renders it with an empty tool list (`ollama/server/routes.go`, read 2026-11-24). Its `tools` field is not passed on; `/api/chat` keeps the full chat pipeline. Why: in run 53 the Engine put about 3,700 tokens of agent files and its tool list in front of "The capital of France is" and the 0.8B model described Cluaiz instead of answering; run 57 has the before/after. Alternative not taken: sending `tool_choice: "none"` and `context_policy.project_files: "off"` from the adapter; notes have no such switch, so a pinned note would still reach a generate request. |
 | `chat/` | `/v1/chat/completions` (and `/api/chat` through `ollama.rs`) | The whole chat pipeline. `chat.*`, `memory.*`, `context.*` and `approvals.*` call into `chat/recall.rs`, `chat/authorize.rs`, `chat/context_plan.rs` and `chat/background.rs`. |
 | `ingest/` (`mod.rs`, `model.rs`) | `/v1/ingest` | Shared document extraction/source resolution and existing embedding/native model owners; direct final JSON, not a CEP task |
 | `embeddings.rs` | `/v1/embeddings` | `EmbeddingExecutor` is reused by `/v1/ingest` with a model |
@@ -43,6 +43,8 @@ Rules for this folder:
 
 | Item | Why it matters | Needs |
 |---|---|---|
+| `/api/chat` still gets what the Engine adds to a chat (workspace agent files, tool suggestions, notes), unlike Ollama, which sends only the client's tools | an Ollama chat client sees Engine functions it did not ask for | the owner's decision whether `/api/chat` is a plain chat too (`plain_prompt`) |
+| `/api/generate` does not read `raw`, `suffix`, `template` or `context` | raw completions and fill-in-the-middle through Ollama's route are not there | a raw-prompt path in the chat pipeline |
 | `/api/show` sends no tensor list (`verbose`) and no `capabilities` | Ollama clients that read capabilities (tools, vision) see none | ggml tensor type names; a mapping from the package capabilities |
 | ONNX models still show `parameter_size: Unknown` | no size class for speech models in Ollama clients | a count from the ONNX initializers |
 | OpenAI fields not supported on installed models (`n` > 1, `logprobs`): refused with HTTP 400 since 2026-11-22, no longer ignored (`logit_bias` works on GGUF models since 2026-11-23) | clients that need them get an error | pass them to llama.cpp (`chat/README.md`, Pending) |

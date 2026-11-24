@@ -88,7 +88,10 @@ flowchart TD
     OpenAI `logit_bias` (token id string -> bias) into sorted (id, bias) pairs and refuses a key
     that is not a token id or a value outside -100..100; `check_vocabulary` refuses an id the
     model does not have. Values are kept as raw JSON so a wrong one is a 400 naming the field, not
-    a body parse error.
+    a body parse error. `plain_prompt` is set only by Ollama's `/api/generate` (`#[serde(skip)]`,
+    like `preview`, so no JSON body can set it): preflight then adds no notes, no project agent
+    files and no tools of any kind (`tools_allowed` false), so the model gets the client's messages
+    in its template and nothing else. `/v1/chat/completions` never has it set.
 - `processing.rs`:
   - **Logic:** With `stream` and `return_progress`, progress events start before preflight so
     file decoding and model load are visible; token strings never carry events.

@@ -594,7 +594,13 @@ impl PreparedChatContext {
         let workspace = super::recall::current_workspace();
         let note_query = request.messages.last().map(|m| m.content.text_content()).unwrap_or_default();
         let note_user = super::recall::note_user(request.user.as_deref());
-        let (pinned_notes, relevant_notes) = super::recall::notes_for(state, &policy, note_user.as_deref(), ledger_chat.as_deref(), &workspace, &note_query).await;
+        // A plain prompt (Ollama's /api/generate) gets none of what the Engine adds: no notes,
+        // no agent files, no tools (`plain_prompt`)
+        let (pinned_notes, relevant_notes) = if request.plain_prompt {
+            (Vec::new(), Vec::new())
+        } else {
+            super::recall::notes_for(state, &policy, note_user.as_deref(), ledger_chat.as_deref(), &workspace, &note_query).await
+        };
         let starting = ledger.as_ref().is_none_or(|saved| saved.turns.is_empty() && saved.notes.is_none())
             && request.messages.iter().filter(|m| !m.role.eq_ignore_ascii_case("system")).count() <= 1;
         let z0_note_ids: Vec<String> = match ledger.as_ref().and_then(|saved| saved.notes.clone()) {
@@ -606,7 +612,7 @@ impl PreparedChatContext {
         block_notes.extend(relevant_notes);
         // The workspace's agent files (AGENTS.md, .agents/), as the terminal agent reads them: the
         // same files give the same text, so the system prompt stays the same while they do
-        let project = super::project::for_chat(&policy, dynamic_context_limit, skip_brain);
+        let project = if request.plain_prompt { None } else { super::project::for_chat(&policy, dynamic_context_limit, skip_brain) };
         let project_text = project.as_ref().map(|p| p.prompt.text.clone()).unwrap_or_default();
         context_plan::inject(&mut augmented_messages, &mut origin, "", &project_text);
         context_plan::inject(&mut augmented_messages, &mut origin, "", &super::recall::notes_system(&z0_notes));
@@ -681,8 +687,8 @@ impl PreparedChatContext {
             .map(|m| m.content.text_content());
         let before_tools = std::time::Instant::now();
 
-        // tool_choice "none" (OpenAI): the model gets no tools for this request
-        let tools_allowed = request.tool_choice.as_ref().and_then(|choice| choice.as_str()) != Some("none");
+        // tool_choice "none" (OpenAI), or a plain prompt: the model gets no tools for this request
+        let tools_allowed = !request.plain_prompt && request.tool_choice.as_ref().and_then(|choice| choice.as_str()) != Some("none");
         if !tools_allowed {
             tool_ids_to_compile.clear();
         }

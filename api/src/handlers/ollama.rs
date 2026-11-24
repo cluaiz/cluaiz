@@ -24,7 +24,8 @@ pub async fn chat(state: State<Arc<AppState>>, body: Bytes) -> Response {
     run(state, body, Kind::Chat).await
 }
 
-/// `POST /api/generate`: a prompt (and an optional system text) as one chat turn
+/// `POST /api/generate`: a prompt (and an optional system text) as one chat turn, with nothing
+/// the Engine would add to a chat (`plain_prompt`)
 pub async fn generate(state: State<Arc<AppState>>, body: Bytes) -> Response {
     run(state, body, Kind::Generate).await
 }
@@ -107,10 +108,13 @@ async fn run(state: State<Arc<AppState>>, body: Bytes, kind: Kind) -> Response {
     let stream = request.get("stream").and_then(Value::as_bool).unwrap_or(true);
     let model = request.get("model").cloned().unwrap_or(Value::Null);
     let openai = to_openai(&request, kind, stream);
-    let chat_request: super::chat::types::ExternalChatRequest = match serde_json::from_value(openai) {
+    let mut chat_request: super::chat::types::ExternalChatRequest = match serde_json::from_value(openai) {
         Ok(r) => r,
         Err(e) => return error(StatusCode::BAD_REQUEST, &e.to_string()),
     };
+    // Ollama's generate renders the system text and the prompt with the model's template and no
+    // tools (`GenerateHandler` in ollama/server/routes.go): the Engine adds nothing either
+    chat_request.plain_prompt = kind == Kind::Generate;
     let inner = super::chat::chat_completions(state, Json(chat_request)).await;
     let status = inner.status();
     if !status.is_success() {
@@ -155,7 +159,8 @@ fn to_openai(request: &Value, kind: Kind, stream: bool) -> Value {
     if stream {
         out.insert("stream_options".into(), json!({"include_usage": true}));
     }
-    if let Some(tools) = request.get("tools") {
+    // Ollama's generate request has no `tools` field; only chat takes them
+    if let Some(tools) = request.get("tools").filter(|_| kind == Kind::Chat) {
         out.insert("tools".into(), tools.clone());
     }
     // Ollama's `think`: true / false, or a level for models that take one
@@ -448,6 +453,10 @@ mod tests {
         let out = to_openai(&json!({"model": "m", "prompt": "p", "system": "s"}), Kind::Generate, false);
         assert_eq!(out["messages"][0], json!({"role": "system", "content": "s"}));
         assert_eq!(out["messages"][1], json!({"role": "user", "content": "p"}));
+        // Ollama's generate has no tools; chat passes the client's on
+        let tools = json!([{"type": "function", "function": {"name": "f"}}]);
+        assert!(to_openai(&json!({"model": "m", "prompt": "p", "tools": tools}), Kind::Generate, false).get("tools").is_none());
+        assert_eq!(to_openai(&json!({"model": "m", "messages": [], "tools": tools}), Kind::Chat, false)["tools"], tools);
         assert!(out.get("stream_options").is_none());
     }
 

@@ -65,7 +65,7 @@ from the Engine's own counts.
 | Ollama route | In Cluaiz |
 |---|---|
 | `POST /api/chat` | Ollama's request and reply; streams by default, one JSON object per line (run 36) |
-| `POST /api/generate` | the prompt (and `system`) as one chat turn; the answer in `response` (run 36) |
+| `POST /api/generate` | the prompt (and `system`) as one chat turn in the model's template; the answer in `response` (run 36). As in Ollama, nothing else goes to the model: no tools (a `tools` field is ignored), no workspace agent files, no notes (run 57). `raw`, `suffix`, `template` and `context` are not read |
 | `POST /api/embed` | `{"model", "input"}` to `{"model", "embeddings"}` through `/v1/embeddings`; needs an embedding model ([Embeddings](../api/inference/embeddings.md)) |
 | `GET /api/tags` | the installed models; `modified_at` is the model file's change time (run 35) |
 | `POST /api/show` | an installed model's details, GGUF header (`model_info`) and chat template, without loading it; no tensor list and no `capabilities` yet ([Show a model](../api/models/show_model.md)) |
