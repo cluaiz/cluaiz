@@ -52,7 +52,7 @@ graph TD
 | [`native/tokenizer.rs`](src/native/tokenizer.rs) | One native tokenizer (`VocabHandle`) for chat and embedding contexts. |
 | [`native/media_tests.rs`](src/native/media_tests.rs) | Tests of the media owners. |
 | [`ffi/chat.rs`](src/ffi/chat.rs) | Narrow C ABI to `chat_bridge.cpp` for native tool calls: llama.cpp's common chat layer renders tools in the model's own format (`ChatTools::apply`), gives the lazy tool-call grammar, parses the output (`ChatParser::parse`, partial too) and turns a JSON schema into a grammar (`json_schema_grammar`). |
-| [`native/speculative.rs`](src/native/speculative.rs), [`ffi/speculative_bridge.cpp`](src/ffi/speculative_bridge.cpp) | MTP speculative decoding, experimental. Settings `optimization.mtp`: `auto` (default: the runtime's load rules, then a guard in each answer that stops guessing where it is slower), `on`, `off` (load flag `--mtp`; `CLUAIZ_MTP=on` forces it for tests; `CLUAIZ_MTP_DRAFT` = guesses per step, default 3 as llama-server; `CLUAIZ_MTP_PMIN` = least drafter probability, default 0). A model with NextN layers (Qwen3.5 / 3.6, GLM-4.5+, DeepSeek-V3, ...) is loaded with `load_mtp`; llama.cpp's own `draft-mtp` drafter (`common_speculative`) guesses the next tokens on an MTP context; `stream.rs` decodes the token and its guesses in one batch and keeps a guess only when the target's sampler picks it, so the answer is the target's. The drafter sees every target decode (prompt chunks too). Media prompts do not draft; a context shift stops drafting for that answer. Its memory is not in the load plan yet (Auto turns MTP off when it would not fit next to the plan). |
+| [`native/speculative.rs`](src/native/speculative.rs), [`ffi/speculative_bridge.cpp`](src/ffi/speculative_bridge.cpp) | MTP speculative decoding, experimental. Settings `optimization.mtp`: `auto` (default: the runtime's load rules, then a guard in each answer that stops guessing where it is slower), `on`, `off` (load flag `--mtp`; `CLUAIZ_MTP=on` / `off` forces it on or off for tests (also `1`/`true`/`yes`, `0`/`false`/`no`; other values are logged and ignored); `CLUAIZ_MTP_DRAFT` = guesses per step, default 3 as llama-server; `CLUAIZ_MTP_PMIN` = least drafter probability, default 0). A model with NextN layers (Qwen3.5 / 3.6, GLM-4.5+, DeepSeek-V3, ...) is loaded with `load_mtp`; llama.cpp's own `draft-mtp` drafter (`common_speculative`) guesses the next tokens on an MTP context; `stream.rs` decodes the token and its guesses in one batch and keeps a guess only when the target's sampler picks it, so the answer is the target's. The drafter sees every target decode (prompt chunks too). Media prompts do not draft; a context shift stops drafting for that answer. Its memory is not in the load plan yet (Auto turns MTP off when it would not fit next to the plan). |
 | [`moe_override.rs`](src/moe_override.rs) | `--n-cpu-moe N`: the routed experts of the first N blocks stay in RAM (a CPU buffer), everything else of those blocks (attention, shared weights, KV) on the GPU; the same tensor overrides llama.cpp builds (`CpuMoeOverrides`). |
 
 ## Why Cluaiz was slower than llama.cpp on Windows (2026-11-23)
@@ -161,8 +161,8 @@ this shape, so it stays.
 **Not the cause** (run 59): memory left to the page cache (anon 410-440 MiB and file 11.7 GB in both tools), the
 llama.cpp parameters (`n_ctx` aside, the same as llama-bench's; field by field in the run's SUMMARY).
 
-**Test trap found on the way.** `CLUAIZ_MTP=off` does nothing (`native::speculative::requested` reads only
-on / 1 / true). Run 48's `-c 4608` and run 59's `-c 2048` loaded MTP through Auto (no stored measurement for that
+**Test trap found on the way.** `CLUAIZ_MTP=off` did nothing then (the old `native::speculative::requested`
+read only on / 1 / true; since fixed: `env_override` reads off / 0 / false / no as off). Run 48's `-c 4608` and run 59's `-c 2048` loaded MTP through Auto (no stored measurement for that
 context), which explains their slower prompts and larger disk reads. Use `--mtp off` in tests.
 
 **Rerun:** `test/cloud/remote/ssd_prefetch/pp_gap.sh` (configs and usage in its header; `analyze_pp_gap.py` splits
@@ -526,7 +526,7 @@ the compile. `CLUAIZ_LAZY_HOST_WEIGHTS=off` turns it off for every load.
   `optimization.mtp = "auto"`: the runtime decides per load (`engine/runtime/src/native_load.rs`
   `mtp_mode`) and a guard in each answer stops guessing where it is slower (`native/stream.rs`, "MTP
   guard"); `on` and `off` force it (load flag `--mtp`; `CLUAIZ_MTP=on` forces on for tests, without
-  the guard). Measuring tool `cluaiz bench <model> --mtp-compare` (off, on and auto per round).
+  the guard, and `CLUAIZ_MTP=off` forces off). Measuring tool `cluaiz bench <model> --mtp-compare` (off, on and auto per round).
   Records: runs [22](../../test/cloud/runs/2026-11-19-run22-laptop-mtp/SUMMARY.md),
   [23](../../test/cloud/runs/2026-11-20-run23-mtp-placements/SUMMARY.md),
   [24](../../test/cloud/runs/2026-11-20-run24-mtp-auto/SUMMARY.md).

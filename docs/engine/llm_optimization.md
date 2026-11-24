@@ -99,7 +99,7 @@ without NextN layers loads as usual. Environment variables for tests:
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `CLUAIZ_MTP` | off | `on` turns MTP on for every load, whatever the setting says |
+| `CLUAIZ_MTP` | unset (the setting decides, Auto by default) | `on` / `1` / `true` / `yes` turns MTP on for every load (without the Auto guard), `off` / `0` / `false` / `no` turns it off, whatever the setting says; any other value is logged and ignored |
 | `CLUAIZ_MTP_DRAFT` | `3` | Most tokens guessed per step (llama-server's `--spec-draft-n-max` default) |
 | `CLUAIZ_MTP_PMIN` | `0` | A draft stops at the first guess the drafter gives less than this probability (llama-server `--spec-draft-p-min`) |
 

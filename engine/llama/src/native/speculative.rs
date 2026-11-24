@@ -5,8 +5,9 @@
 //! target decode and the check stay in `stream.rs`, so the answer is the one the target would give
 //! token by token (a guess is kept only when the target's sampler picks the same token).
 //!
-//! Experimental and off unless `CLUAIZ_MTP=on`: it is not yet measured against llama-server on the
-//! same model and settings, and its memory is not in the load plan.
+//! Experimental. Turned on by the setting `optimization.mtp` (on, or Auto through the runtime's load
+//! rules) or forced by the `CLUAIZ_MTP` test override ([`env_override`]); its memory is not in the
+//! load plan yet.
 
 use std::ffi::{c_char, c_void, CStr};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -34,9 +35,25 @@ unsafe extern "C" {
 /// Tokens drafted per step, llama-server's default (`--spec-draft-n-max 3`)
 pub const DEFAULT_DRAFT_MAX: i32 = 3;
 
-/// Whether MTP is asked for (`CLUAIZ_MTP=on`); off by default while it is experimental
-pub fn requested() -> bool {
-    std::env::var("CLUAIZ_MTP").is_ok_and(|v| matches!(v.trim().to_ascii_lowercase().as_str(), "on" | "1" | "true"))
+/// The `CLUAIZ_MTP` test override: `Some(true)` forces MTP on, `Some(false)` forces it off, `None`
+/// leaves the load to the setting (`optimization.mtp`, Auto by default). An unknown value is logged
+/// and ignored.
+pub fn env_override() -> Option<bool> {
+    let raw = std::env::var("CLUAIZ_MTP").ok()?;
+    let parsed = parse_override(&raw);
+    if parsed.is_none() && !raw.trim().is_empty() {
+        tracing::warn!("🔮 [MTP] CLUAIZ_MTP={raw:?} is not on/1/true/yes or off/0/false/no: ignored, the setting decides");
+    }
+    parsed
+}
+
+/// `on`/`1`/`true`/`yes` -> on, `off`/`0`/`false`/`no` -> off, anything else -> no override
+fn parse_override(value: &str) -> Option<bool> {
+    match value.trim().to_ascii_lowercase().as_str() {
+        "on" | "1" | "true" | "yes" => Some(true),
+        "off" | "0" | "false" | "no" => Some(false),
+        _ => None,
+    }
 }
 
 /// How many tokens one draft may hold (`CLUAIZ_MTP_DRAFT`, else llama-server's 3)
@@ -140,5 +157,23 @@ impl Drop for MtpDrafter {
     fn drop(&mut self) {
         // SAFETY: the handle came from cluaiz_mtp_init and is freed once.
         unsafe { cluaiz_mtp_free(self.handle) }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::parse_override;
+
+    #[test]
+    fn mtp_override_values() {
+        for on in ["on", "1", "true", "yes", " ON ", "Yes"] {
+            assert_eq!(parse_override(on), Some(true), "{on:?}");
+        }
+        for off in ["off", "0", "false", "no", " Off ", "NO"] {
+            assert_eq!(parse_override(off), Some(false), "{off:?}");
+        }
+        for other in ["", "auto", "2", "maybe"] {
+            assert_eq!(parse_override(other), None, "{other:?}");
+        }
     }
 }

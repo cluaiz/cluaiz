@@ -42,7 +42,7 @@ pub struct NativeLlama {
     /// than one token as prompt processing (`llama-context.cpp`, `n_queued_tokens > 1`), so a check of
     /// guesses would land in the prompt numbers; the stream measures generation itself then.
     pub mtp_timings: Option<GenerationTimings>,
-    /// llama.cpp's MTP drafter over the model's NextN layers (`CLUAIZ_MTP=on` and a model that has
+    /// llama.cpp's MTP drafter over the model's NextN layers (MTP asked for and a model that has
     /// them); freed before the context
     pub mtp: Option<crate::native::speculative::MtpDrafter>,
     /// Stop drafting in an answer where MTP is slower than plain decoding (Auto; see `stream.rs`)
@@ -649,11 +649,12 @@ impl NativeLlama {
         crate::native::load_steps::clear_error();
         let mut model_params = model_params;
         // MTP asked for: speculative_decoding_mode 1 = on (settings `optimization.mtp = on`), 2 = on with
-        // the per-answer guard (Auto, see `stream.rs` "MTP guard"), or the CLUAIZ_MTP test override.
-        // The NextN layers are left out of a load unless asked for (llama.cpp `load_mtp`)
-        let mtp_forced = crate::native::speculative::requested();
-        let mtp_requested = matches!(speculative_decoding_mode, 1 | 2) || mtp_forced;
-        let mtp_guard = speculative_decoding_mode == 2 && !mtp_forced;
+        // the per-answer guard (Auto, see `stream.rs` "MTP guard"). The CLUAIZ_MTP test override wins
+        // both ways (on without the guard, or off). The NextN layers are left out of a load unless
+        // asked for (llama.cpp `load_mtp`)
+        let mtp_override = crate::native::speculative::env_override();
+        let mtp_requested = mtp_override.unwrap_or(matches!(speculative_decoding_mode, 1 | 2));
+        let mtp_guard = speculative_decoding_mode == 2 && mtp_override.is_none();
         if mtp_requested {
             model_params.load_mtp = true;
         }

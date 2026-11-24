@@ -191,7 +191,7 @@ memory in the same cgroup. Usage on the VM:
 `CLUAIZ=<binary> CLUAIZ_BASE=<binary> PP=512,2048 TG=128 REPS=2 ROUNDS=2 CONFIGS="C CB LF" bash pp_gap.sh <out>`,
 then `python3 analyze_pp_gap.py <out>` for seconds, MiB read, faults and memory per phase. Results and
 causes: `test/cloud/runs/2026-11-24-run59-l4-pp-gap/`. Use `--mtp off` where MTP must stay off: the harness's
-`CLUAIZ_MTP=off` is not read.
+`CLUAIZ_MTP=off` was not read by the binaries of runs 48 and 59 (fixed later in `native::speculative::env_override`).
 
 ## Run 48 additions to `run_case_g.sh` (fair baselines and the prompt-speed gap)
 
