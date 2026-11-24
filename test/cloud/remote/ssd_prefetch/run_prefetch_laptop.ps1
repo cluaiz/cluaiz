@@ -23,6 +23,15 @@
 # second (free RAM, disk read bytes/s, disk read queue, GPU dedicated memory), free RAM before.
 # Then results.md: one row per run, the median per configuration, and run 20's numbers beside them.
 #
+# -Set lazy (run 55): the load-prefetch skip (CLUAIZ_LAZY_HOST_WEIGHTS, engine/plan/src/load_prefetch.rs) and the
+# Windows ask-once expert prefetch, every Cluaiz config with -vv so the log has the load timestamps:
+#   L            as above
+#   C / C-lazy   run 20's flags, CLUAIZ_LAZY_HOST_WEIGHTS=off / on
+#   C-plan / C-plan-lazy   the planner's placement, CLUAIZ_LAZY_HOST_WEIGHTS=off / on
+#   C-cache / C-pf / C-lazy-pf   CLUAIZ_MOE_CACHE=on with the prefetch off / on / on plus the load skip
+# Tables per run (load seconds, disk bytes read during the load): analyze_lazy_load.py <out folder>.
+# -Only L,C,C-lazy keeps only those configurations (a pp512 run took 11 min at 0.2-1 GB free RAM).
+#
 # Usage (PowerShell, Engine root):
 #   powershell -ExecutionPolicy Bypass -File test\cloud\remote\ssd_prefetch\run_prefetch_laptop.ps1
 # Small format check with another model:
@@ -39,7 +48,9 @@ param(
     [string]$Llama = "$env:LOCALAPPDATA\cluaiz-test\llama-official-b12428\llama-bench.exe",
     [string]$Cluaiz = "$PSScriptRoot\..\..\..\..\target\debug\cluaiz.exe",
     [string]$Out = "$env:LOCALAPPDATA\cluaiz-test\prefetch-laptop-$(Get-Date -Format 'yyyyMMdd-HHmmss')",
-    [string]$CluaizHome = ''
+    [string]$CluaizHome = '',
+    [string]$Set = 'prefetch',
+    [string[]]$Only = @()
 )
 $ErrorActionPreference = 'Stop'
 
@@ -62,7 +73,7 @@ $Out = (Resolve-Path -LiteralPath $Out).Path
 if (-not $CluaizHome) { $CluaizHome = "$env:LOCALAPPDATA\cluaiz-test\prefetch-home-$(Split-Path $Out -Leaf)" }
 New-Item -ItemType Directory -Force $CluaizHome | Out-Null
 $env:CLUAIZ_HOME = $CluaizHome
-foreach ($k in @('CLUAIZ_MOE_CACHE', 'CLUAIZ_EXPERT_PREFETCH', 'GGML_CUDA_NO_PINNED')) {
+foreach ($k in @('CLUAIZ_MOE_CACHE', 'CLUAIZ_EXPERT_PREFETCH', 'CLUAIZ_LAZY_HOST_WEIGHTS', 'GGML_CUDA_NO_PINNED')) {
     Remove-Item "env:$k" -ErrorAction SilentlyContinue
 }
 $EngineLog = Join-Path $CluaizHome 'cluaiz_Core.log'
@@ -138,7 +149,24 @@ $configs = [ordered]@{
     'C-cache' = @{ exe = $Cluaiz; argv = @('bench', $Model) + $bench + $load + @('-vv'); env = @{ CLUAIZ_MOE_CACHE = 'on'; CLUAIZ_EXPERT_PREFETCH = 'off' } }
     'C-pf'    = @{ exe = $Cluaiz; argv = @('bench', $Model) + $bench + $load + @('-vv'); env = @{ CLUAIZ_MOE_CACHE = 'on'; CLUAIZ_EXPERT_PREFETCH = 'on' } }
 }
-$names = @($configs.Keys)
+if ($Set -eq 'lazy') {
+    $v = @('-vv')
+    $configs = [ordered]@{
+        'L'           = $configs['L']
+        'C'           = @{ exe = $Cluaiz; argv = @('bench', $Model) + $bench + $load + $split + $v; env = @{ CLUAIZ_EXPERT_PREFETCH = 'off'; CLUAIZ_LAZY_HOST_WEIGHTS = 'off' } }
+        'C-lazy'      = @{ exe = $Cluaiz; argv = @('bench', $Model) + $bench + $load + $split + $v; env = @{ CLUAIZ_EXPERT_PREFETCH = 'off'; CLUAIZ_LAZY_HOST_WEIGHTS = 'on' } }
+        'C-plan'      = @{ exe = $Cluaiz; argv = @('bench', $Model) + $bench + $load + $v; env = @{ CLUAIZ_EXPERT_PREFETCH = 'off'; CLUAIZ_LAZY_HOST_WEIGHTS = 'off' } }
+        'C-plan-lazy' = @{ exe = $Cluaiz; argv = @('bench', $Model) + $bench + $load + $v; env = @{ CLUAIZ_EXPERT_PREFETCH = 'off'; CLUAIZ_LAZY_HOST_WEIGHTS = 'on' } }
+        'C-cache'     = @{ exe = $Cluaiz; argv = @('bench', $Model) + $bench + $load + $v; env = @{ CLUAIZ_MOE_CACHE = 'on'; CLUAIZ_EXPERT_PREFETCH = 'off'; CLUAIZ_LAZY_HOST_WEIGHTS = 'off' } }
+        'C-pf'        = @{ exe = $Cluaiz; argv = @('bench', $Model) + $bench + $load + $v; env = @{ CLUAIZ_MOE_CACHE = 'on'; CLUAIZ_EXPERT_PREFETCH = 'on'; CLUAIZ_LAZY_HOST_WEIGHTS = 'off' } }
+        'C-lazy-pf'   = @{ exe = $Cluaiz; argv = @('bench', $Model) + $bench + $load + $v; env = @{ CLUAIZ_MOE_CACHE = 'on'; CLUAIZ_EXPERT_PREFETCH = 'on'; CLUAIZ_LAZY_HOST_WEIGHTS = 'on' } }
+    }
+}
+# -Only keeps only the named configurations (in the table's order), for a shorter run
+# (powershell -File passes "L,C" as one string, so split it here; PowerShell names are case-blind, so not $Configs)
+$Only = @($Only | ForEach-Object { $_ -split ',' } | Where-Object { $_ })
+$names = @($configs.Keys | Where-Object { $Only.Count -eq 0 -or $Only -contains $_ })
+if ($names.Count -eq 0) { Write-Error "no configuration left after -Only $($Only -join ',')"; exit 1 }
 
 Run-One 'warmup' $Cluaiz (@('bench', $Model, '-p', '0', '-n', '8', '-r', '1', '-t', "$Threads") + $load + $split) @{ CLUAIZ_EXPERT_PREFETCH = 'off' }
 

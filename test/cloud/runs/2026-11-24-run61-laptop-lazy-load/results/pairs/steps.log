@@ -1,0 +1,31 @@
+== 2026-11-24T09:10:35 start: model google_gemma-4-26B-A4B-it-IQ4_XS.gguf 14205004928 bytes, rounds 6, reps 1, pp512 tg128, n_cpu_moe 30, threads 8
+== 2026-11-24T09:10:35 CLUAIZ_HOME C:\Users\<user>\AppData\Local\cluaiz-test\prefetch-home-run55-lazy-pairs
+== 2026-11-24T09:10:36 cluaiz: cluaiz 0.1.0 (pre-release)
+== 2026-11-24T09:10:36 free RAM MiB: 11553
+== 2026-11-24T09:10:37 warmup : cluaiz.exe bench C:\Users\<user>\AppData\Local\cluaiz-test\models\gemma4-26b-a4b-iq4xs\google_gemma-4-26B-A4B-it-IQ4_XS.gguf -p 0 -n 8 -r 1 -t 8 -c 1024 --flash-attn on --cache-type-k f16 --cache-type-v f16 --n-gpu-layers all --n-cpu-moe 30 CLUAIZ_EXPERT_PREFETCH=off
+== 2026-11-24T09:11:29 warmup done in 47s, exit 0
+== 2026-11-24T09:11:29 r1_C : cluaiz.exe bench C:\Users\<user>\AppData\Local\cluaiz-test\models\gemma4-26b-a4b-iq4xs\google_gemma-4-26B-A4B-it-IQ4_XS.gguf -p 512 -n 128 -r 1 -t 8 -c 1024 --flash-attn on --cache-type-k f16 --cache-type-v f16 --n-gpu-layers all --n-cpu-moe 30 -vv CLUAIZ_EXPERT_PREFETCH=off CLUAIZ_LAZY_HOST_WEIGHTS=off
+== 2026-11-24T09:13:23 r1_C done in 110s, exit 0
+== 2026-11-24T09:13:23 r1_C-lazy : cluaiz.exe bench C:\Users\<user>\AppData\Local\cluaiz-test\models\gemma4-26b-a4b-iq4xs\google_gemma-4-26B-A4B-it-IQ4_XS.gguf -p 512 -n 128 -r 1 -t 8 -c 1024 --flash-attn on --cache-type-k f16 --cache-type-v f16 --n-gpu-layers all --n-cpu-moe 30 -vv CLUAIZ_EXPERT_PREFETCH=off CLUAIZ_LAZY_HOST_WEIGHTS=on
+== 2026-11-24T09:16:58 r1_C-lazy done in 211s, exit 0
+== 2026-11-24T09:16:58 r2_C-lazy : cluaiz.exe bench C:\Users\<user>\AppData\Local\cluaiz-test\models\gemma4-26b-a4b-iq4xs\google_gemma-4-26B-A4B-it-IQ4_XS.gguf -p 512 -n 128 -r 1 -t 8 -c 1024 --flash-attn on --cache-type-k f16 --cache-type-v f16 --n-gpu-layers all --n-cpu-moe 30 -vv CLUAIZ_EXPERT_PREFETCH=off CLUAIZ_LAZY_HOST_WEIGHTS=on
+== 2026-11-24T09:20:43 r2_C-lazy done in 220s, exit 0
+== 2026-11-24T09:20:43 r2_C : cluaiz.exe bench C:\Users\<user>\AppData\Local\cluaiz-test\models\gemma4-26b-a4b-iq4xs\google_gemma-4-26B-A4B-it-IQ4_XS.gguf -p 512 -n 128 -r 1 -t 8 -c 1024 --flash-attn on --cache-type-k f16 --cache-type-v f16 --n-gpu-layers all --n-cpu-moe 30 -vv CLUAIZ_EXPERT_PREFETCH=off CLUAIZ_LAZY_HOST_WEIGHTS=off
+== 2026-11-24T09:22:02 r2_C done in 75s, exit 0
+== 2026-11-24T09:22:02 r3_C : cluaiz.exe bench C:\Users\<user>\AppData\Local\cluaiz-test\models\gemma4-26b-a4b-iq4xs\google_gemma-4-26B-A4B-it-IQ4_XS.gguf -p 512 -n 128 -r 1 -t 8 -c 1024 --flash-attn on --cache-type-k f16 --cache-type-v f16 --n-gpu-layers all --n-cpu-moe 30 -vv CLUAIZ_EXPERT_PREFETCH=off CLUAIZ_LAZY_HOST_WEIGHTS=off
+== 2026-11-24T09:23:25 r3_C done in 79s, exit 0
+== 2026-11-24T09:23:25 r3_C-lazy : cluaiz.exe bench C:\Users\<user>\AppData\Local\cluaiz-test\models\gemma4-26b-a4b-iq4xs\google_gemma-4-26B-A4B-it-IQ4_XS.gguf -p 512 -n 128 -r 1 -t 8 -c 1024 --flash-attn on --cache-type-k f16 --cache-type-v f16 --n-gpu-layers all --n-cpu-moe 30 -vv CLUAIZ_EXPERT_PREFETCH=off CLUAIZ_LAZY_HOST_WEIGHTS=on
+== 2026-11-24T09:23:51 r3_C-lazy done in 22s, exit 0
+== 2026-11-24T09:23:51 r4_C-lazy : cluaiz.exe bench C:\Users\<user>\AppData\Local\cluaiz-test\models\gemma4-26b-a4b-iq4xs\google_gemma-4-26B-A4B-it-IQ4_XS.gguf -p 512 -n 128 -r 1 -t 8 -c 1024 --flash-attn on --cache-type-k f16 --cache-type-v f16 --n-gpu-layers all --n-cpu-moe 30 -vv CLUAIZ_EXPERT_PREFETCH=off CLUAIZ_LAZY_HOST_WEIGHTS=on
+== 2026-11-24T09:24:17 r4_C-lazy done in 22s, exit 0
+== 2026-11-24T09:24:17 r4_C : cluaiz.exe bench C:\Users\<user>\AppData\Local\cluaiz-test\models\gemma4-26b-a4b-iq4xs\google_gemma-4-26B-A4B-it-IQ4_XS.gguf -p 512 -n 128 -r 1 -t 8 -c 1024 --flash-attn on --cache-type-k f16 --cache-type-v f16 --n-gpu-layers all --n-cpu-moe 30 -vv CLUAIZ_EXPERT_PREFETCH=off CLUAIZ_LAZY_HOST_WEIGHTS=off
+== 2026-11-24T09:25:31 r4_C done in 70s, exit 0
+== 2026-11-24T09:25:31 r5_C : cluaiz.exe bench C:\Users\<user>\AppData\Local\cluaiz-test\models\gemma4-26b-a4b-iq4xs\google_gemma-4-26B-A4B-it-IQ4_XS.gguf -p 512 -n 128 -r 1 -t 8 -c 1024 --flash-attn on --cache-type-k f16 --cache-type-v f16 --n-gpu-layers all --n-cpu-moe 30 -vv CLUAIZ_EXPERT_PREFETCH=off CLUAIZ_LAZY_HOST_WEIGHTS=off
+== 2026-11-24T09:26:52 r5_C done in 77s, exit 0
+== 2026-11-24T09:26:52 r5_C-lazy : cluaiz.exe bench C:\Users\<user>\AppData\Local\cluaiz-test\models\gemma4-26b-a4b-iq4xs\google_gemma-4-26B-A4B-it-IQ4_XS.gguf -p 512 -n 128 -r 1 -t 8 -c 1024 --flash-attn on --cache-type-k f16 --cache-type-v f16 --n-gpu-layers all --n-cpu-moe 30 -vv CLUAIZ_EXPERT_PREFETCH=off CLUAIZ_LAZY_HOST_WEIGHTS=on
+== 2026-11-24T09:28:11 r5_C-lazy done in 76s, exit 0
+== 2026-11-24T09:28:11 r6_C-lazy : cluaiz.exe bench C:\Users\<user>\AppData\Local\cluaiz-test\models\gemma4-26b-a4b-iq4xs\google_gemma-4-26B-A4B-it-IQ4_XS.gguf -p 512 -n 128 -r 1 -t 8 -c 1024 --flash-attn on --cache-type-k f16 --cache-type-v f16 --n-gpu-layers all --n-cpu-moe 30 -vv CLUAIZ_EXPERT_PREFETCH=off CLUAIZ_LAZY_HOST_WEIGHTS=on
+== 2026-11-24T09:28:40 r6_C-lazy done in 25s, exit 0
+== 2026-11-24T09:28:40 r6_C : cluaiz.exe bench C:\Users\<user>\AppData\Local\cluaiz-test\models\gemma4-26b-a4b-iq4xs\google_gemma-4-26B-A4B-it-IQ4_XS.gguf -p 512 -n 128 -r 1 -t 8 -c 1024 --flash-attn on --cache-type-k f16 --cache-type-v f16 --n-gpu-layers all --n-cpu-moe 30 -vv CLUAIZ_EXPERT_PREFETCH=off CLUAIZ_LAZY_HOST_WEIGHTS=off
+== 2026-11-24T09:29:58 r6_C done in 74s, exit 0
+== 2026-11-24T09:30:01 done: C:\Users\<user>\AppData\Local\cluaiz-test\run55-lazy-pairs\results.md

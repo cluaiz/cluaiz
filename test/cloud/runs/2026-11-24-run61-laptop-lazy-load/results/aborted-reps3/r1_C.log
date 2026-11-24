@@ -1,0 +1,293 @@
+2026-11-24T02:09:35.494850Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-24T02:09:36.202623Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-24T02:09:36.204508Z DEBUG 🔌 Hardware dynamic drivers directory verified: "C:\\Users\\<user>\\AppData\\Local\\cluaiz-test\\prefetch-home-run55-lazy\\bin"
+2026-11-24T02:09:36.212912Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+2026-11-24T02:09:36.215408Z DEBUG ℹ️ [cluaiz] Running from workspace binary; global deployment available via dev-sync.
+2026-11-24T02:09:36.457996Z DEBUG [llama.cpp] ggml_cuda_init: found 1 CUDA devices (Total VRAM: 4093 MiB):
+2026-11-24T02:09:36.459974Z DEBUG [llama.cpp] Device 0: NVIDIA GeForce RTX 3050 A Laptop GPU, compute capability 8.9, VMM: yes, VRAM: 4093 MiB
+2026-11-24T02:09:36.461558Z DEBUG [llama.cpp] load_backend: loaded CUDA backend from C:\Users\<user>\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\target\release\ggml-cuda.dll
+2026-11-24T02:09:36.518274Z DEBUG [llama.cpp] load_backend: loaded CPU backend from C:\Users\<user>\my\Cluaiz-workspace\Cluaiz-Technologies\cluaiz\target\release\ggml-cpu-haswell.dll
+2026-11-24T02:09:36.519409Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-24T02:09:36.608246Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : google_gemma-4-26B-A4B-it-IQ4_XS.gguf
+║   • Architecture    : gemma4 | 30 layers | heads 16 | KV heads 8 | head size K 512 / V 512, sliding window 1024 on 25 layers | 128 experts, 8 active | experts 11.52 GB
+║   • Weights         : file 14.21 GB (as Hugging Face counts it) | input embeddings 0.56 GB (always CPU) | output head 0.56 GB | vocab 262144
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 1024 tokens, KV Kv16 (Custom 1024 tokens, KV Kv16, buffer 0.17 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA GeForce RTX 3050 A Laptop GPU | free 2.97 of 4.00 GB | buffer kept free 0.17 GB (measured: GPU pool -0.03 GB + 0.20 GB reserve; estimate corrected by llama.cpp's dry run +0.04 GB)
+║   • RAM             : free 11.65 of 23.69 GB | Cluaiz may use 10.49 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : MoE split (attention on GPU, experts in RAM)
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 30 | n_ctx = 1024 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 30 on GPU, 0 in RAM (of 30)
+║   • VRAM            : 2.41 GB (weights + KV 0.21 + logits)
+║   • RAM             : 12.08 GB (incl. KV 0.00)
+║   • Disk (mmap)     : 1.59 GB of experts read from disk when used
+║   • Reason         : User setting: planner bypassed: n_gpu_layers -1 n_cpu_moe 30 offload_kqv 1 -> estimate VRAM 2.41 of usable 2.80 GB; 1.59 GB over the RAM limit is read from disk when used (mmap)
+║   • Speed           : 1.6 tokens/s generation, measured by cluaiz bench
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • User setting     [FITS]     VRAM  2.41 GB | RAM 12.08 GB | planner bypassed: n_gpu_layers -1 n_cpu_moe 30 offload_kqv 1 -> estimate VRAM 2.41 of usable 2.80 GB; 1.59 GB over the RAM limit is read from disk when used (mmap) | 1.6 t/s measured
+║   • Full GPU         [NO]       VRAM 13.97 GB | RAM  0.56 GB | does not fit in VRAM: weights 13.21 + KV 0.21 + buffers 0.54 = 13.97 GB vs usable VRAM 2.80 GB
+║   • MoE split        [FITS]     VRAM  2.80 GB | RAM 11.70 GB | attention/shared 1.69 + KV 0.21 + buffers 0.50 on GPU, experts of 29 / 30 layers in RAM (11.14 GB); 1.21 GB over the RAM limit is read from disk when used (mmap) | 1.6 t/s measured
+║   • Weights GPU, KV RAM [NO]       VRAM 13.75 GB | RAM  0.78 GB | does not fit in VRAM: weights 13.21 + buffers 0.54 on GPU, KV 0.21 GB in RAM (attention on CPU, slower as the chat grows)
+║   • GPU + RAM split  [FITS]     VRAM  2.79 GB | RAM 11.71 GB | 4 / 30 blocks + output head on GPU (2.79 GB), 26 blocks in RAM; 1.22 GB over the RAM limit is read from disk when used (mmap)
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM 13.93 GB | weights 13.21 + KV 0.21 + logits 0.50 = 13.93 GB in RAM; 3.44 GB over the RAM limit is read from disk when used (mmap)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 8 / batch 8 | flash attention On | KV setting Kv16 -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-24T02:09:36.611681Z  INFO 🔮 [MTP] Auto: off (weights are read from the disk, where MTP was slower on every prompt)
+2026-11-24T02:09:36.612684Z DEBUG 🆘 [MEMORY TRACE: 1. BEFORE MODEL LOAD] Free RAM: 11.64 GB / 23.69 GB
+2026-11-24T02:09:36.614019Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 8, n_threads_batch = 8
+2026-11-24T02:09:36.614379Z  INFO 🧬 [Native-Llama] Loading model: C:\Users\<user>\AppData\Local\cluaiz-test\models\gemma4-26b-a4b-iq4xs\google_gemma-4-26B-A4B-it-IQ4_XS.gguf | ctx: 1024 tokens
+2026-11-24T02:09:36.807692Z DEBUG [llama.cpp] llama_model_loader: loaded meta data with 54 key-value pairs and 658 tensors from C:\Users\<user>\AppData\Local\cluaiz-test\models\gemma4-26b-a4b-iq4xs\google_gemma-4-26B-A4B-it-IQ4_XS.gguf (version GGUF V3 (latest))
+2026-11-24T02:09:36.808964Z DEBUG [llama.cpp] llama_model_loader: Dumping metadata keys/values. Note: KV overrides do not apply in this output.
+2026-11-24T02:09:36.811185Z DEBUG [llama.cpp] llama_model_loader: - type  f32:  392 tensors
+2026-11-24T02:09:36.811869Z DEBUG [llama.cpp] llama_model_loader: - type q8_0:   55 tensors
+2026-11-24T02:09:36.812684Z DEBUG [llama.cpp] llama_model_loader: - type q5_K:   30 tensors
+2026-11-24T02:09:36.813630Z DEBUG [llama.cpp] llama_model_loader: - type q6_K:   15 tensors
+2026-11-24T02:09:36.814555Z DEBUG [llama.cpp] llama_model_loader: - type iq4_nl:   60 tensors
+2026-11-24T02:09:36.815059Z DEBUG [llama.cpp] llama_model_loader: - type iq4_xs:  106 tensors
+2026-11-24T02:09:36.816294Z DEBUG [llama.cpp] print_info: file format = GGUF V3 (latest)
+2026-11-24T02:09:36.816560Z DEBUG [llama.cpp] print_info: file type   = IQ4_XS - 4.25 bpw
+2026-11-24T02:09:36.817409Z DEBUG [llama.cpp] print_info: file size   = 13.21 GiB (4.50 BPW)
+2026-11-24T02:09:37.040520Z DEBUG [llama.cpp] llama_prepare_model_devices: using device CUDA0 (NVIDIA GeForce RTX 3050 A Laptop GPU) (0000:01:00.0) - 3250 MiB free
+2026-11-24T02:09:37.417512Z DEBUG [llama.cpp] init_tokenizer: initializing tokenizer for type 2
+2026-11-24T02:09:37.563868Z DEBUG [llama.cpp] load: 0 unused tokens
+2026-11-24T02:09:37.565270Z DEBUG [llama.cpp] load: control token:      0 '<pad>' is not marked as EOG
+2026-11-24T02:09:37.565878Z DEBUG [llama.cpp] load: control token:      2 '<bos>' is not marked as EOG
+2026-11-24T02:09:37.566450Z DEBUG [llama.cpp] load: control token:      3 '<unk>' is not marked as EOG
+2026-11-24T02:09:37.566994Z DEBUG [llama.cpp] load: control token:      4 '<mask>' is not marked as EOG
+2026-11-24T02:09:37.567920Z DEBUG [llama.cpp] load: control token:     46 '<|tool>' is not marked as EOG
+2026-11-24T02:09:37.569092Z DEBUG [llama.cpp] load: control token:     47 '<tool|>' is not marked as EOG
+2026-11-24T02:09:37.569605Z  WARN [llama.cpp] load: control-looking token:     50 '<|tool_response>' was not control-type; this is probably a bug in the model. its type will be overridden
+2026-11-24T02:09:37.570666Z DEBUG [llama.cpp] load: control token:     98 '<|think|>' is not marked as EOG
+2026-11-24T02:09:37.571766Z DEBUG [llama.cpp] load: control token:    105 '<|turn>' is not marked as EOG
+2026-11-24T02:09:37.572158Z  WARN [llama.cpp] load: control-looking token:    212 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+2026-11-24T02:09:37.605685Z DEBUG [llama.cpp] load: control token: 258882 '<image|>' is not marked as EOG
+2026-11-24T02:09:37.614097Z DEBUG [llama.cpp] load: control token: 258880 '<|image|>' is not marked as EOG
+2026-11-24T02:09:37.619529Z DEBUG [llama.cpp] load: control token: 256000 '<|audio>' is not marked as EOG
+2026-11-24T02:09:37.629701Z DEBUG [llama.cpp] load: control token: 258883 '<audio|>' is not marked as EOG
+2026-11-24T02:09:37.633256Z DEBUG [llama.cpp] load: control token: 258884 '<|video|>' is not marked as EOG
+2026-11-24T02:09:37.646691Z DEBUG [llama.cpp] load: control token: 255999 '<|image>' is not marked as EOG
+2026-11-24T02:09:37.647555Z DEBUG [llama.cpp] load: control token: 258881 '<|audio|>' is not marked as EOG
+2026-11-24T02:09:37.673829Z DEBUG [llama.cpp] load: printing all EOG tokens:
+2026-11-24T02:09:37.674555Z DEBUG [llama.cpp] load:   - 1 ('<eos>')
+2026-11-24T02:09:37.674956Z DEBUG [llama.cpp] load:   - 50 ('<|tool_response>')
+2026-11-24T02:09:37.675500Z DEBUG [llama.cpp] load:   - 106 ('<turn|>')
+2026-11-24T02:09:37.676127Z DEBUG [llama.cpp] load:   - 212 ('</s>')
+2026-11-24T02:09:37.677940Z  WARN [llama.cpp] load: '</s>' is a normal token here, removing it from EOG list
+2026-11-24T02:09:37.679394Z DEBUG [llama.cpp] load: special tokens cache size = 24
+2026-11-24T02:09:37.728865Z DEBUG [llama.cpp] load: token to piece cache size = 1.9445 MB
+2026-11-24T02:09:37.730340Z DEBUG [llama.cpp] print_info: arch                  = gemma4
+2026-11-24T02:09:37.730944Z DEBUG [llama.cpp] print_info: vocab_only            = 0
+2026-11-24T02:09:37.731462Z DEBUG [llama.cpp] print_info: no_alloc              = 0
+2026-11-24T02:09:37.731769Z DEBUG [llama.cpp] print_info: n_ctx_train           = 262144
+2026-11-24T02:09:37.732695Z DEBUG [llama.cpp] print_info: n_embd_inp            = 2816
+2026-11-24T02:09:37.733274Z DEBUG [llama.cpp] print_info: n_embd                = 2816
+2026-11-24T02:09:37.733798Z DEBUG [llama.cpp] print_info: n_embd_out            = 2816
+2026-11-24T02:09:37.734292Z DEBUG [llama.cpp] print_info: n_layer               = 30
+2026-11-24T02:09:37.734966Z DEBUG [llama.cpp] print_info: n_layer_all           = 30
+2026-11-24T02:09:37.738707Z DEBUG [llama.cpp] print_info: n_head                = 16
+2026-11-24T02:09:37.739707Z DEBUG [llama.cpp] print_info: n_head_kv             = [8, 8, 8, 8, 8, 2, 8, 8, 8, 8, 8, 2, 8, 8, 8, 8, 8, 2, 8, 8, 8, 8, 8, 2, 8, 8, 8, 8, 8, 2]
+2026-11-24T02:09:37.740003Z DEBUG [llama.cpp] print_info: n_rot                 = 512
+2026-11-24T02:09:37.740424Z DEBUG [llama.cpp] print_info: n_swa                 = 1024
+2026-11-24T02:09:37.740994Z DEBUG [llama.cpp] print_info: is_swa_any            = 1
+2026-11-24T02:09:37.741187Z DEBUG [llama.cpp] print_info: non_causal_type       = 1
+2026-11-24T02:09:37.741631Z DEBUG [llama.cpp] print_info: n_embd_head_k         = 512
+2026-11-24T02:09:37.742211Z DEBUG [llama.cpp] print_info: n_embd_head_v         = 512
+2026-11-24T02:09:37.742806Z DEBUG [llama.cpp] print_info: n_gqa                 = [2, 2, 2, 2, 2, 8, 2, 2, 2, 2, 2, 8, 2, 2, 2, 2, 2, 8, 2, 2, 2, 2, 2, 8, 2, 2, 2, 2, 2, 8]
+2026-11-24T02:09:37.743448Z DEBUG [llama.cpp] print_info: n_embd_k_gqa          = [2048, 2048, 2048, 2048, 2048, 1024, 2048, 2048, 2048, 2048, 2048, 1024, 2048, 2048, 2048, 2048, 2048, 1024, 2048, 2048, 2048, 2048, 2048, 1024, 2048, 2048, 2048, 2048, 2048, 1024]
+2026-11-24T02:09:37.743891Z DEBUG [llama.cpp] print_info: n_embd_v_gqa          = [2048, 2048, 2048, 2048, 2048, 1024, 2048, 2048, 2048, 2048, 2048, 1024, 2048, 2048, 2048, 2048, 2048, 1024, 2048, 2048, 2048, 2048, 2048, 1024, 2048, 2048, 2048, 2048, 2048, 1024]
+2026-11-24T02:09:37.744427Z DEBUG [llama.cpp] print_info: f_norm_eps            = 0.0e+00
+2026-11-24T02:09:37.745052Z DEBUG [llama.cpp] print_info: f_norm_rms_eps        = 1.0e-06
+2026-11-24T02:09:37.745577Z DEBUG [llama.cpp] print_info: f_clamp_kqv           = 0.0e+00
+2026-11-24T02:09:37.746114Z DEBUG [llama.cpp] print_info: f_max_alibi_bias      = 0.0e+00
+2026-11-24T02:09:37.746627Z DEBUG [llama.cpp] print_info: f_logit_scale         = 0.0e+00
+2026-11-24T02:09:37.747140Z DEBUG [llama.cpp] print_info: f_attn_scale          = 1.0e+00
+2026-11-24T02:09:37.747666Z DEBUG [llama.cpp] print_info: f_attn_value_scale    = 0.0000
+2026-11-24T02:09:37.747918Z DEBUG [llama.cpp] print_info: n_ff                  = 2112
+2026-11-24T02:09:37.748348Z DEBUG [llama.cpp] print_info: n_expert              = 128
+2026-11-24T02:09:37.748683Z DEBUG [llama.cpp] print_info: n_expert_used         = 8
+2026-11-24T02:09:37.749156Z DEBUG [llama.cpp] print_info: n_expert_groups       = 0
+2026-11-24T02:09:37.750044Z DEBUG [llama.cpp] print_info: n_group_used          = 0
+2026-11-24T02:09:37.750286Z DEBUG [llama.cpp] print_info: causal attn           = 1
+2026-11-24T02:09:37.750636Z DEBUG [llama.cpp] print_info: pooling type          = -1
+2026-11-24T02:09:37.751161Z DEBUG [llama.cpp] print_info: rope type             = 2
+2026-11-24T02:09:37.751702Z DEBUG [llama.cpp] print_info: rope scaling          = linear
+2026-11-24T02:09:37.752199Z DEBUG [llama.cpp] print_info: freq_base_train       = 1000000.0
+2026-11-24T02:09:37.754124Z DEBUG [llama.cpp] print_info: freq_scale_train      = 1
+2026-11-24T02:09:37.754699Z DEBUG [llama.cpp] print_info: freq_base_swa         = 10000.0
+2026-11-24T02:09:37.755856Z DEBUG [llama.cpp] print_info: freq_scale_swa        = 1
+2026-11-24T02:09:37.756818Z DEBUG [llama.cpp] print_info: n_embd_head_k_swa     = 256
+2026-11-24T02:09:37.757355Z DEBUG [llama.cpp] print_info: n_embd_head_v_swa     = 256
+2026-11-24T02:09:37.757557Z DEBUG [llama.cpp] print_info: n_rot_swa             = 256
+2026-11-24T02:09:37.758143Z DEBUG [llama.cpp] print_info: n_ctx_orig_yarn       = 262144
+2026-11-24T02:09:37.758750Z DEBUG [llama.cpp] print_info: rope_yarn_log_mul     = 0.0000
+2026-11-24T02:09:37.759111Z DEBUG [llama.cpp] print_info: rope_finetuned        = unknown
+2026-11-24T02:09:37.759821Z DEBUG [llama.cpp] print_info: model type            = 26B.A4B
+2026-11-24T02:09:37.760369Z DEBUG [llama.cpp] print_info: model params          = 25.23 B
+2026-11-24T02:09:37.760863Z DEBUG [llama.cpp] print_info: general.name          = Gemma 4 26B A4B It
+2026-11-24T02:09:37.761392Z DEBUG [llama.cpp] print_info: vocab type            = BPE
+2026-11-24T02:09:37.762062Z DEBUG [llama.cpp] print_info: n_vocab               = 262144
+2026-11-24T02:09:37.762550Z DEBUG [llama.cpp] print_info: n_merges              = 514906
+2026-11-24T02:09:37.763625Z DEBUG [llama.cpp] print_info: BOS token             = 2 '<bos>'
+2026-11-24T02:09:37.764199Z DEBUG [llama.cpp] print_info: EOS token             = 1 '<eos>'
+2026-11-24T02:09:37.764636Z DEBUG [llama.cpp] print_info: UNK token             = 3 '<unk>'
+2026-11-24T02:09:37.765343Z DEBUG [llama.cpp] print_info: PAD token             = 0 '<pad>'
+2026-11-24T02:09:37.765917Z DEBUG [llama.cpp] print_info: MASK token            = 4 '<mask>'
+2026-11-24T02:09:37.766148Z DEBUG [llama.cpp] print_info: LF token              = 107 '
+'
+2026-11-24T02:09:37.766602Z DEBUG [llama.cpp] print_info: EOG token             = 1 '<eos>'
+2026-11-24T02:09:37.767344Z DEBUG [llama.cpp] print_info: EOG token             = 50 '<|tool_response>'
+2026-11-24T02:09:37.767817Z DEBUG [llama.cpp] print_info: EOG token             = 106 '<turn|>'
+2026-11-24T02:09:37.768292Z DEBUG [llama.cpp] print_info: max token length      = 93
+2026-11-24T02:09:37.768762Z DEBUG [llama.cpp] load_tensors: loading model tensors, this can take a while... (load_mode = mmap)
+2026-11-24T02:09:37.777509Z  WARN [llama.cpp] llama_model_loader: tensor overrides to CPU are used with mmap enabled - consider using --load-mode none for better performance
+2026-11-24T02:09:37.889047Z DEBUG [llama.cpp] done_getting_tensors: tensor 'token_embd.weight' (q6_K) (and 90 others) cannot be used with preferred buffer type CUDA_Host, using CPU instead
+2026-11-24T02:09:45.954491Z DEBUG [llama.cpp] load_tensors: offloading output layer to GPU
+2026-11-24T02:09:45.955572Z DEBUG [llama.cpp] load_tensors: offloading 29 repeating layers to GPU
+2026-11-24T02:09:45.956131Z DEBUG [llama.cpp] load_tensors: offloaded 31/31 layers to GPU
+2026-11-24T02:09:45.956722Z DEBUG [llama.cpp] load_tensors:        CUDA0 model buffer size =  1734.40 MiB
+2026-11-24T02:09:49.249325Z DEBUG 🆘 [MEMORY TRACE: 2. AFTER MODEL LOAD] Free RAM: 9.60 GB / 23.69 GB
+2026-11-24T02:09:49.250901Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "C:\\Users\\<user>\\AppData\\Local\\cluaiz-test\\models\\gemma4-26b-a4b-iq4xs"
+2026-11-24T02:09:49.299070Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<|channel>thought"
+2026-11-24T02:09:49.299715Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "<channel|>"
+2026-11-24T02:09:49.300676Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 1024 tokens
+2026-11-24T02:09:49.301870Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-24T02:09:49.302685Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-24T02:09:49.303837Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-24T02:09:49.304705Z  INFO ⚡ [Native-Llama] flash_attn_type=1 (-1 auto, 0 off, 1 on), threads 8/8
+2026-11-24T02:09:49.306641Z DEBUG 🆘 [MEMORY TRACE: 4. BEFORE CONTEXT CREATION] Free RAM: 9.60 GB / 23.69 GB
+2026-11-24T02:09:49.308273Z DEBUG [llama.cpp] llama_context: constructing llama_context
+2026-11-24T02:09:49.309413Z DEBUG [llama.cpp] llama_context: n_seq_max             = 1
+2026-11-24T02:09:49.310352Z DEBUG [llama.cpp] llama_context: n_ctx                 = 1024
+2026-11-24T02:09:49.311552Z DEBUG [llama.cpp] llama_context: n_ctx_seq             = 1024
+2026-11-24T02:09:49.312218Z DEBUG [llama.cpp] llama_context: n_batch               = 512
+2026-11-24T02:09:49.313107Z DEBUG [llama.cpp] llama_context: n_ubatch              = 512
+2026-11-24T02:09:49.314254Z DEBUG [llama.cpp] llama_context: causal_attn           = 1
+2026-11-24T02:09:49.315147Z DEBUG [llama.cpp] llama_context: flash_attn            = enabled
+2026-11-24T02:09:49.316432Z DEBUG [llama.cpp] llama_context: kv_unified            = false
+2026-11-24T02:09:49.319013Z DEBUG [llama.cpp] llama_context: freq_base             = 1000000.0
+2026-11-24T02:09:49.320015Z DEBUG [llama.cpp] llama_context: freq_scale            = 1
+2026-11-24T02:09:49.320768Z DEBUG [llama.cpp] llama_context: n_rs_seq              = 0
+2026-11-24T02:09:49.321597Z DEBUG [llama.cpp] llama_context: n_outputs_max         = 512
+2026-11-24T02:09:49.322596Z DEBUG [llama.cpp] llama_context: n_outputs_max_per_seq = 1
+2026-11-24T02:09:49.323406Z DEBUG [llama.cpp] llama_context: n_ctx_seq (1024) < n_ctx_train (262144) -- the full capacity of the model will not be utilized
+2026-11-24T02:09:49.326839Z DEBUG [llama.cpp] set_abort_callback: call
+2026-11-24T02:09:49.329677Z DEBUG [llama.cpp] llama_context:  CUDA_Host  output buffer size =     1.00 MiB
+2026-11-24T02:09:49.334920Z DEBUG [llama.cpp] llama_kv_cache_iswa: creating non-SWA KV cache, size = 1024 cells
+2026-11-24T02:09:49.339668Z DEBUG [llama.cpp] llama_kv_cache: reusing layers:
+2026-11-24T02:09:49.340826Z DEBUG [llama.cpp] llama_kv_cache: - layer   0: no reuse
+2026-11-24T02:09:49.342438Z DEBUG [llama.cpp] llama_kv_cache: - layer   1: no reuse
+2026-11-24T02:09:49.343505Z DEBUG [llama.cpp] llama_kv_cache: - layer   2: no reuse
+2026-11-24T02:09:49.344811Z DEBUG [llama.cpp] llama_kv_cache: - layer   3: no reuse
+2026-11-24T02:09:49.345919Z DEBUG [llama.cpp] llama_kv_cache: - layer   4: no reuse
+2026-11-24T02:09:49.347199Z DEBUG [llama.cpp] llama_kv_cache: - layer   5: no reuse
+2026-11-24T02:09:49.348628Z DEBUG [llama.cpp] llama_kv_cache: - layer   6: no reuse
+2026-11-24T02:09:49.349865Z DEBUG [llama.cpp] llama_kv_cache: - layer   7: no reuse
+2026-11-24T02:09:49.351094Z DEBUG [llama.cpp] llama_kv_cache: - layer   8: no reuse
+2026-11-24T02:09:49.352450Z DEBUG [llama.cpp] llama_kv_cache: - layer   9: no reuse
+2026-11-24T02:09:49.353619Z DEBUG [llama.cpp] llama_kv_cache: - layer  10: no reuse
+2026-11-24T02:09:49.354371Z DEBUG [llama.cpp] llama_kv_cache: - layer  11: no reuse
+2026-11-24T02:09:49.355250Z DEBUG [llama.cpp] llama_kv_cache: - layer  12: no reuse
+2026-11-24T02:09:49.356028Z DEBUG [llama.cpp] llama_kv_cache: - layer  13: no reuse
+2026-11-24T02:09:49.357124Z DEBUG [llama.cpp] llama_kv_cache: - layer  14: no reuse
+2026-11-24T02:09:49.358233Z DEBUG [llama.cpp] llama_kv_cache: - layer  15: no reuse
+2026-11-24T02:09:49.359432Z DEBUG [llama.cpp] llama_kv_cache: - layer  16: no reuse
+2026-11-24T02:09:49.360515Z DEBUG [llama.cpp] llama_kv_cache: - layer  17: no reuse
+2026-11-24T02:09:49.361488Z DEBUG [llama.cpp] llama_kv_cache: - layer  18: no reuse
+2026-11-24T02:09:49.362326Z DEBUG [llama.cpp] llama_kv_cache: - layer  19: no reuse
+2026-11-24T02:09:49.363376Z DEBUG [llama.cpp] llama_kv_cache: - layer  20: no reuse
+2026-11-24T02:09:49.364583Z DEBUG [llama.cpp] llama_kv_cache: - layer  21: no reuse
+2026-11-24T02:09:49.365116Z DEBUG [llama.cpp] llama_kv_cache: - layer  22: no reuse
+2026-11-24T02:09:49.366058Z DEBUG [llama.cpp] llama_kv_cache: - layer  23: no reuse
+2026-11-24T02:09:49.366788Z DEBUG [llama.cpp] llama_kv_cache: - layer  24: no reuse
+2026-11-24T02:09:49.367789Z DEBUG [llama.cpp] llama_kv_cache: - layer  25: no reuse
+2026-11-24T02:09:49.368682Z DEBUG [llama.cpp] llama_kv_cache: - layer  26: no reuse
+2026-11-24T02:09:49.369705Z DEBUG [llama.cpp] llama_kv_cache: - layer  27: no reuse
+2026-11-24T02:09:49.370881Z DEBUG [llama.cpp] llama_kv_cache: - layer  28: no reuse
+2026-11-24T02:09:49.371997Z DEBUG [llama.cpp] llama_kv_cache: - layer  29: no reuse
+2026-11-24T02:09:49.376394Z DEBUG [llama.cpp] llama_kv_cache:      CUDA0 KV buffer size =    20.00 MiB
+2026-11-24T02:09:49.378054Z DEBUG [llama.cpp] llama_kv_cache: size =   20.00 MiB (  1024 cells,   5 layers,  1/1 seqs), K (f16):   10.00 MiB, V (f16):   10.00 MiB
+2026-11-24T02:09:49.379047Z DEBUG [llama.cpp] llama_kv_cache: n_rot_k = 0, n_embd_head_k_all = 512
+2026-11-24T02:09:49.380240Z DEBUG [llama.cpp] llama_kv_cache: n_rot_v = 0, n_embd_head_k_all = 512
+2026-11-24T02:09:49.381611Z DEBUG [llama.cpp] llama_kv_cache_iswa: creating     SWA KV cache, size = 1024 cells
+2026-11-24T02:09:49.382436Z DEBUG [llama.cpp] llama_kv_cache: reusing layers:
+2026-11-24T02:09:49.383211Z DEBUG [llama.cpp] llama_kv_cache: - layer   0: no reuse
+2026-11-24T02:09:49.384129Z DEBUG [llama.cpp] llama_kv_cache: - layer   1: no reuse
+2026-11-24T02:09:49.385152Z DEBUG [llama.cpp] llama_kv_cache: - layer   2: no reuse
+2026-11-24T02:09:49.385988Z DEBUG [llama.cpp] llama_kv_cache: - layer   3: no reuse
+2026-11-24T02:09:49.386921Z DEBUG [llama.cpp] llama_kv_cache: - layer   4: no reuse
+2026-11-24T02:09:49.387988Z DEBUG [llama.cpp] llama_kv_cache: - layer   5: no reuse
+2026-11-24T02:09:49.388909Z DEBUG [llama.cpp] llama_kv_cache: - layer   6: no reuse
+2026-11-24T02:09:49.389941Z DEBUG [llama.cpp] llama_kv_cache: - layer   7: no reuse
+2026-11-24T02:09:49.390915Z DEBUG [llama.cpp] llama_kv_cache: - layer   8: no reuse
+2026-11-24T02:09:49.391745Z DEBUG [llama.cpp] llama_kv_cache: - layer   9: no reuse
+2026-11-24T02:09:49.392598Z DEBUG [llama.cpp] llama_kv_cache: - layer  10: no reuse
+2026-11-24T02:09:49.393615Z DEBUG [llama.cpp] llama_kv_cache: - layer  11: no reuse
+2026-11-24T02:09:49.394566Z DEBUG [llama.cpp] llama_kv_cache: - layer  12: no reuse
+2026-11-24T02:09:49.395552Z DEBUG [llama.cpp] llama_kv_cache: - layer  13: no reuse
+2026-11-24T02:09:49.396450Z DEBUG [llama.cpp] llama_kv_cache: - layer  14: no reuse
+2026-11-24T02:09:49.397228Z DEBUG [llama.cpp] llama_kv_cache: - layer  15: no reuse
+2026-11-24T02:09:49.398156Z DEBUG [llama.cpp] llama_kv_cache: - layer  16: no reuse
+2026-11-24T02:09:49.398963Z DEBUG [llama.cpp] llama_kv_cache: - layer  17: no reuse
+2026-11-24T02:09:49.399942Z DEBUG [llama.cpp] llama_kv_cache: - layer  18: no reuse
+2026-11-24T02:09:49.400944Z DEBUG [llama.cpp] llama_kv_cache: - layer  19: no reuse
+2026-11-24T02:09:49.401733Z DEBUG [llama.cpp] llama_kv_cache: - layer  20: no reuse
+2026-11-24T02:09:49.402502Z DEBUG [llama.cpp] llama_kv_cache: - layer  21: no reuse
+2026-11-24T02:09:49.403445Z DEBUG [llama.cpp] llama_kv_cache: - layer  22: no reuse
+2026-11-24T02:09:49.404525Z DEBUG [llama.cpp] llama_kv_cache: - layer  23: no reuse
+2026-11-24T02:09:49.405499Z DEBUG [llama.cpp] llama_kv_cache: - layer  24: no reuse
+2026-11-24T02:09:49.406578Z DEBUG [llama.cpp] llama_kv_cache: - layer  25: no reuse
+2026-11-24T02:09:49.407288Z DEBUG [llama.cpp] llama_kv_cache: - layer  26: no reuse
+2026-11-24T02:09:49.409021Z DEBUG [llama.cpp] llama_kv_cache: - layer  27: no reuse
+2026-11-24T02:09:49.410430Z DEBUG [llama.cpp] llama_kv_cache: - layer  28: no reuse
+2026-11-24T02:09:49.411937Z DEBUG [llama.cpp] llama_kv_cache: - layer  29: no reuse
+2026-11-24T02:09:49.424172Z DEBUG [llama.cpp] llama_kv_cache:      CUDA0 KV buffer size =   200.00 MiB
+2026-11-24T02:09:49.425224Z DEBUG [llama.cpp] llama_kv_cache: size =  200.00 MiB (  1024 cells,  25 layers,  1/1 seqs), K (f16):  100.00 MiB, V (f16):  100.00 MiB
+2026-11-24T02:09:49.426460Z DEBUG [llama.cpp] llama_kv_cache: n_rot_k = 0, n_embd_head_k_all = 256
+2026-11-24T02:09:49.427480Z DEBUG [llama.cpp] llama_kv_cache: n_rot_v = 0, n_embd_head_k_all = 256
+2026-11-24T02:09:49.429302Z DEBUG [llama.cpp] llama_context: enumerating backends
+2026-11-24T02:09:49.430338Z DEBUG [llama.cpp] llama_context: backend_ptrs.size() = 2
+2026-11-24T02:09:49.432447Z DEBUG [llama.cpp] sched_reserve: reserving ...
+2026-11-24T02:09:49.433143Z DEBUG [llama.cpp] sched_reserve: max_nodes = 5272
+2026-11-24T02:09:49.434547Z DEBUG [llama.cpp] sched_reserve: reserving full memory module
+2026-11-24T02:09:49.435331Z DEBUG [llama.cpp] sched_reserve: worst-case: n_tokens = 512, n_seqs = 1, n_outputs = 1
+2026-11-24T02:09:49.436641Z DEBUG [llama.cpp] resolve_fused_ops: resolving fused DeepSeek V4 HC support:
+2026-11-24T02:09:49.438299Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2026-11-24T02:09:49.454645Z DEBUG [llama.cpp] resolve_fused_ops: fused DeepSeek V4 HC pre enabled
+2026-11-24T02:09:49.455388Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2026-11-24T02:09:49.460647Z DEBUG [llama.cpp] resolve_fused_ops: fused DeepSeek V4 HC comb enabled
+2026-11-24T02:09:49.461427Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2026-11-24T02:09:49.466680Z DEBUG [llama.cpp] resolve_fused_ops: fused DeepSeek V4 HC post enabled
+2026-11-24T02:09:49.467509Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =  512, n_seqs =  1, n_outputs =  512
+2026-11-24T02:09:49.489787Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2026-11-24T02:09:49.498536Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =  512, n_seqs =  1, n_outputs =  512
+2026-11-24T02:09:49.506492Z DEBUG [llama.cpp] sched_reserve:      CUDA0 compute buffer size =   540.52 MiB
+2026-11-24T02:09:49.507277Z DEBUG [llama.cpp] sched_reserve:  CUDA_Host compute buffer size =    24.03 MiB
+2026-11-24T02:09:49.508174Z DEBUG [llama.cpp] sched_reserve: graph: nodes = 2648, splits = 62, input objects = 4, input tensors = 13
+2026-11-24T02:09:49.509003Z DEBUG [llama.cpp] sched_reserve: reserve took 75.86 ms, sched copies = 1
+2026-11-24T02:09:49.511726Z DEBUG 🆘 [MEMORY TRACE: 5. AFTER CONTEXT CREATION] Free RAM: 9.51 GB / 23.69 GB
+2026-11-24T02:09:54.123105Z  INFO 🔍 [EngineHost] VRAM planned 2.41 GB, taken 2.55 GB | n_ctx planned 1024 created 1024 | n_gpu_layers -1 n_cpu_moe 30
+2026-11-24T02:09:54.126042Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: C:\Users\<user>\AppData\Local\cluaiz-test\models\gemma4-26b-a4b-iq4xs\google_gemma-4-26B-A4B-it-IQ4_XS.gguf
+  placement  MoE split (attention on GPU, experts in RAM)
+  GPU        2.41 GB: attention of all 30 blocks, output head, KV
+  RAM        12.08 GB: experts of 30 blocks, input embeddings
+  SSD        1.59 GB of experts, read when a token needs them
+  context    1,024 tokens | KV F16 on the GPU
+  llama.cpp  -ngl -1 -ncmoe 30 -c 1024 -ctk f16 -ctv f16
+  reason     User setting: planner bypassed: n_gpu_layers -1 n_cpu_moe 30 offload_kqv 1 -> estimate VRAM 2.41 of usable 2.80 GB; 1.59 GB over the RAM limit is read from disk when used (mmap)
+running pp512 on MoE split (attention on GPU, experts in RAM) (3 runs)...
+running tg128 on MoE split (attention on GPU, experts in RAM) (3 runs)...

@@ -168,6 +168,18 @@ cache on this laptop; the release build (run 20 used `target\release`; this scri
 build `cargo build -p cmd` makes, whose llama.cpp is built with CMake's Release flags, while the Rust code
 is not optimized); cold-cache runs.
 
+`-Set lazy` (run 61, `test/cloud/runs/2026-11-24-run61-laptop-lazy-load/`): the load-prefetch skip
+(`CLUAIZ_LAZY_HOST_WEIGHTS`) and the Windows ask-once expert prefetch. Configs `L`, `C` / `C-lazy` (run 20's
+placement without / with the skip), `C-plan` / `C-plan-lazy` (the planner's placement), `C-cache` / `C-pf` /
+`C-lazy-pf` (`CLUAIZ_MOE_CACHE=on`, prefetch off / on / on plus the skip); every Cluaiz config runs with `-vv`
+so the log has the load timestamps. `-Only C,C-lazy` keeps only the named configs (one string, split on
+commas; the parameter is not `-Configs` because PowerShell names are case-blind and the script has a
+`$configs` table). `analyze_lazy_load.py <out folder>` writes `lazy_load.md`: per run the free RAM before and
+the lowest during the run, load seconds (the Engine's `MEMORY TRACE` lines before and after the model load),
+disk GB read in that window and in the whole run (typeperf), pp/tg, placement, MoE cache, skipped MiB and the
+prefetch counters; then the median per config. With 0.2-1 GB free RAM a pp512 pass took 11 minutes, so run 61
+used `-Reps 1`.
+
 ## Run 48 additions to `run_case_g.sh` (fair baselines and the prompt-speed gap)
 
 Run 43 compared Cluaiz with the MoE cache and the prefetch against llama.cpp without its cache, and loaded
@@ -209,6 +221,7 @@ the real counts are in each answer's `prompt_n`). llama-server and bmoe-server r
 | Item | Why it matters | Needs |
 |---|---|---|
 | The run itself | no number exists yet | the owner's yes and the VM cost |
+| Windows laptop run with a MoE cache for the ask-once prefetch | run 61's 9 cache runs got no cache (usable VRAM 2.15 GB) | about 2.7 GB of free VRAM |
 | Windows laptop run with a big MoE cache | runs 42, 44 and 46 had at most 452 MiB of cache on the 4 GB GPU, so Windows has no measurement of the shape where Auto turns the prefetch on (Auto stays off on Windows) | a GPU with more free VRAM, or the 4 GB GPU with nothing else on it |
 | Final pass numbers | the bar above is proposed | the owner |
 | `L-cache` / `L-bench-mc` through llama-bench | a different method from the other rows when llama-server is used | a llama-bench with `--moe-cache-mib`; upstream master `a8f8294` (2026-11-23) has none |
