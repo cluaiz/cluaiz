@@ -32,6 +32,7 @@ pub async fn execute_non_streaming(
     };
     // A client-run call ends the answer: OpenAI `tool_calls`, finish_reason "tool_calls"
     let client_call = turn.client_call.take();
+    let calls_off = turn.calls_off;
     // Still `StepLimit` after the final no-tools answer (`ApiTurn::prepare_final_answer`): that answer made a call
     // too, which was not run, so only the text before it is the answer. Whole, its
     // `<tool_call>…</tool_call>` block would be taken as a reasoning block by `separate_reasoning`
@@ -46,13 +47,21 @@ pub async fn execute_non_streaming(
     let tool_events = std::mem::take(&mut turn.tool_events);
     let tool_turns = turn.tool_turns;
 
+    // tool_choice "none": a `<tool_call>` block the model wrote anyway is answer text, as llama-server
+    // returns it; whole, `separate_reasoning`'s generic fallback (any leading `<tag>…</tag>`) took it
+    // as thinking and the answer came back empty (run 73)
+    let (head, call_text) = match final_raw_text.find(cluaiz_core::tool_calls::OPEN) {
+        Some(at) if calls_off => final_raw_text.split_at(at),
+        _ => (final_raw_text.as_str(), ""),
+    };
     // Extract reasoning and clean answer conforming to standard
-    let (reasoning_opt, final_content, _) =
+    let (reasoning_opt, mut final_content, _) =
         cluaiz_models::StructuralDNA::separate_reasoning(
-            &final_raw_text,
+            head,
             ctx.dyn_think_start.as_deref(),
             ctx.dyn_think_end.as_deref(),
         );
+    final_content.push_str(call_text);
 
     let mut message_json = json!({
         "role": "assistant",

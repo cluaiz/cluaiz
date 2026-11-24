@@ -55,6 +55,9 @@ pub struct ApiTurn<'a> {
     project_sent: Vec<String>,
     /// A confirmation went unanswered: nobody is there, so this turn asks no more and waits no more
     nobody_answered: bool,
+    /// `tool_choice: "none"`: no call is read from the answer. llama-server then parses no calls,
+    /// so a `<tool_call>` the model writes anyway stays answer text, not a client call
+    pub calls_off: bool,
     /// The next generation is the last one, without tools (see `prepare_final_answer`)
     final_answer: bool,
 }
@@ -78,6 +81,7 @@ impl<'a> ApiTurn<'a> {
         Self {
             project_sent,
             nobody_answered: false,
+            calls_off: request.tool_choice_mode().is_ok_and(|choice| choice.mode == "none"),
             final_answer: false,
             state,
             ctx,
@@ -269,7 +273,7 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
             if let (Some(content), _) = answer_filter.process_token(&token) {
                 answer.push_str(&content);
             }
-            if let Some(call) = tool_parser::extract_tool_call(&answer) {
+            if let Some(call) = tool_parser::extract_tool_call(&answer).filter(|_| !self.calls_off) {
                 // The call is complete: stop generating now (the worker stops at its next token),
                 // instead of after the tool ran or its approval was answered
                 rx.close();
@@ -281,7 +285,7 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
         if let (Some(content), _) = answer_filter.flush_final() {
             answer.push_str(&content);
         }
-        if let Some(call) = tool_parser::extract_tool_call(&answer) {
+        if let Some(call) = tool_parser::extract_tool_call(&answer).filter(|_| !self.calls_off) {
             return Ok(self.answer_with_call(text, &answer, call));
         }
         self.last_raw = text.clone();
