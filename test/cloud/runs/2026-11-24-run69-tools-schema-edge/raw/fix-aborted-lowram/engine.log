@@ -1,0 +1,139 @@
+<engine-start>
+2026-11-24T14:30:00.460794Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-24T14:30:04.027576Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-24T14:30:06.593540Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+Starting the Cluaiz API server on http://localhost:8013 ...
+2026-11-24T14:30:06.635240Z  INFO 🔒 [Auth] Initialized local session secret at <engine-home>\session.token
+2026-11-24T14:30:08.091600Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-24T14:30:08.209870Z  INFO 🌐 Cluaiz API Server running on http://<ip>:8013
+2026-11-24T14:30:08.373465Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-2b-mtp-gguf-Q4_K_M' to "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M\\Qwen3.5-2B-Q4_K_M.gguf"
+2026-11-24T14:30:08.687003Z  INFO
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3.5-2b-mtp-gguf-Q4_K_M
+║   • Architecture    : qwen35 | 25 layers | heads 8 | KV heads 2 | head size K 256 / V 256 | dense | hybrid: 7 attention layers with a KV cache, 18 linear-attention layers with a 1.1 MB state
+║   • Weights         : file 1.33 GB (as Hugging Face counts it) | input embeddings 0.39 GB (always CPU) | output head 0.39 GB | vocab 248320
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 2048 tokens, KV Kv4 (Auto: 2048 tokens, KV Kv4 + buffer 0.48 GB, to stay on the GPU (4096 did not fit))
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA GeForce RTX 3050 A Laptop GPU | free 2.19 of 4.00 GB | buffer kept free 0.48 GB (measured: GPU pool +0.28 GB + 0.20 GB reserve; estimate corrected by llama.cpp's dry run -0.02 GB)
+║   • RAM             : free 2.65 of 23.69 GB | Cluaiz may use 1.48 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 2048 | KV Kv4 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 25 on GPU, 0 in RAM (of 25)
+║   • VRAM            : 1.71 GB (weights + KV 0.03 + logits)
+║   • RAM             : 0.39 GB (incl. KV 0.00)
+║   • Reason         : Full GPU: weights 1.23 + KV 0.03 + buffers 0.45 = 1.71 GB vs usable VRAM 1.71 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  1.71 GB | RAM  0.39 GB | weights 1.23 + KV 0.03 + buffers 0.45 = 1.71 GB vs usable VRAM 1.71 GB
+║   • GPU + RAM split  [FITS]     VRAM  1.67 GB | RAM  0.43 GB | 24 / 25 blocks + output head on GPU (1.67 GB), 1 blocks in RAM
+║   • CPU only         [NO]       VRAM  0.00 GB | RAM  1.73 GB | weights 1.23 + KV 0.03 + logits 0.47 = 1.73 GB in RAM; needs 0.25 GB more RAM than allowed
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 8 / batch 8 | flash attention Auto | KV setting Auto -> used Kv4 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-24T14:30:08.691421Z  INFO 🔮 [MTP] Auto: off (its memory would not fit next to this placement)
+2026-11-24T14:30:08.761845Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 8, n_threads_batch = 8
+2026-11-24T14:30:08.818748Z  INFO 🧬 [Native-Llama] Loading model: C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\models\chat\qwen3.5-2b-mtp-gguf-Q4_K_M\Qwen3.5-2B-Q4_K_M.gguf | ctx: 2048 tokens
+2026-11-24T14:30:10.118762Z  WARN [llama.cpp] model has unused tensor blk.24.attn_norm.weight (size = 8192 bytes) -- ignoring
+2026-11-24T14:30:10.118960Z  WARN [llama.cpp] model has unused tensor blk.24.post_attention_norm.weight (size = 8192 bytes) -- ignoring
+2026-11-24T14:30:10.119080Z  WARN [llama.cpp] model has unused tensor blk.24.attn_q.weight (size = 4718592 bytes) -- ignoring
+2026-11-24T14:30:10.119360Z  WARN [llama.cpp] model has unused tensor blk.24.attn_k.weight (size = 589824 bytes) -- ignoring
+2026-11-24T14:30:10.119496Z  WARN [llama.cpp] model has unused tensor blk.24.attn_v.weight (size = 860160 bytes) -- ignoring
+2026-11-24T14:30:10.119684Z  WARN [llama.cpp] model has unused tensor blk.24.attn_output.weight (size = 2359296 bytes) -- ignoring
+2026-11-24T14:30:10.119844Z  WARN [llama.cpp] model has unused tensor blk.24.attn_q_norm.weight (size = 1024 bytes) -- ignoring
+2026-11-24T14:30:10.120020Z  WARN [llama.cpp] model has unused tensor blk.24.attn_k_norm.weight (size = 1024 bytes) -- ignoring
+2026-11-24T14:30:10.120113Z  WARN [llama.cpp] model has unused tensor blk.24.ffn_gate.weight (size = 7077888 bytes) -- ignoring
+2026-11-24T14:30:10.120271Z  WARN [llama.cpp] model has unused tensor blk.24.ffn_down.weight (size = 10321920 bytes) -- ignoring
+2026-11-24T14:30:10.120402Z  WARN [llama.cpp] model has unused tensor blk.24.ffn_up.weight (size = 7077888 bytes) -- ignoring
+2026-11-24T14:30:10.120529Z  WARN [llama.cpp] model has unused tensor blk.24.nextn.eh_proj.weight (size = 8912896 bytes) -- ignoring
+2026-11-24T14:30:10.120623Z  WARN [llama.cpp] model has unused tensor blk.24.nextn.enorm.weight (size = 8192 bytes) -- ignoring
+2026-11-24T14:30:10.120749Z  WARN [llama.cpp] model has unused tensor blk.24.nextn.hnorm.weight (size = 8192 bytes) -- ignoring
+2026-11-24T14:30:10.120917Z  WARN [llama.cpp] model has unused tensor blk.24.nextn.shared_head_norm.weight (size = 8192 bytes) -- ignoring
+2026-11-24T14:30:16.840393Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M"
+2026-11-24T14:30:17.217682Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-11-24T14:30:17.218069Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-11-24T14:30:17.218134Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 2048 tokens
+2026-11-24T14:30:17.218814Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-24T14:30:17.218906Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-24T14:30:17.219365Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-24T14:30:17.219427Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 8/8
+2026-11-24T14:30:34.378773Z  INFO 🔍 [EngineHost] VRAM planned 1.71 GB, taken 1.75 GB | n_ctx planned 2048 created 2048 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-24T14:30:35.453440Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\models\chat\qwen3.5-2b-mtp-gguf-Q4_K_M\Qwen3.5-2B-Q4_K_M.gguf
+2026-11-24T14:30:39.450022Z  INFO 🧮 [Tokens] Conversation 1 tokens (1 messages) counted in 1219.28 ms
+2026-11-24T14:30:40.134348Z  INFO ⏱️ [Preflight] 31766 ms total | model load 27814 ms | registry + template + tags 2040 ms | skills + tools 1303 ms | rest 599 ms
+2026-11-24T14:30:40.530520Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (71 bytes) in 1 ms
+2026-11-24T14:30:43.015550Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-24T14:30:43.019492Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795530643
+2026-11-24T14:30:45.741483Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T14:30:45.741583Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 13 tokens in 1852 ms (7.02 t/s) | generation 4 tokens in 2437 ms (1.64 t/s)
+2026-11-24T14:30:45.741635Z  INFO 🧠 [Context] prompt 13 tokens (0 from the cache) | context 17 of 2048 | stop limit
+2026-11-24T14:30:46.836484Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-2b-mtp-gguf-Q4_K_M' to "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M\\Qwen3.5-2B-Q4_K_M.gguf"
+2026-11-24T14:30:47.220209Z  INFO 🧮 [Tokens] Conversation 15 tokens (1 messages) counted in 0.27 ms
+2026-11-24T14:30:49.673666Z  INFO ⏱️ [Preflight] 2843 ms total | model load 22 ms | registry + template + tags 337 ms | skills + tools 85 ms | rest 2368 ms
+2026-11-24T14:30:50.616621Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-2b-mtp-gguf-Q4_K_M' to "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M\\Qwen3.5-2B-Q4_K_M.gguf"
+2026-11-24T14:30:50.661253Z  INFO 🧮 [Tokens] Conversation 15 tokens (1 messages) counted in 0.03 ms
+2026-11-24T14:30:50.730075Z  INFO ⏱️ [Preflight] 122 ms total | model load 25 ms | registry + template + tags 14 ms | skills + tools 2 ms | rest 66 ms
+2026-11-24T14:30:51.601621Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-2b-mtp-gguf-Q4_K_M' to "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M\\Qwen3.5-2B-Q4_K_M.gguf"
+2026-11-24T14:30:51.638781Z  INFO 🧮 [Tokens] Conversation 15 tokens (1 messages) counted in 0.03 ms
+2026-11-24T14:30:51.688627Z  INFO ⏱️ [Preflight] 93 ms total | model load 16 ms | registry + template + tags 10 ms | skills + tools 8 ms | rest 47 ms
+2026-11-24T14:30:52.567632Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-2b-mtp-gguf-Q4_K_M' to "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M\\Qwen3.5-2B-Q4_K_M.gguf"
+2026-11-24T14:30:52.614963Z  INFO 🧮 [Tokens] Conversation 15 tokens (1 messages) counted in 0.04 ms
+2026-11-24T14:30:52.647455Z  INFO ⏱️ [Preflight] 104 ms total | model load 29 ms | registry + template + tags 12 ms | skills + tools 1 ms | rest 30 ms
+2026-11-24T14:30:53.513221Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-2b-mtp-gguf-Q4_K_M' to "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M\\Qwen3.5-2B-Q4_K_M.gguf"
+2026-11-24T14:30:53.560140Z  INFO 🧮 [Tokens] Conversation 15 tokens (1 messages) counted in 0.03 ms
+2026-11-24T14:30:53.615549Z  INFO ⏱️ [Preflight] 108 ms total | model load 23 ms | registry + template + tags 18 ms | skills + tools 1 ms | rest 53 ms
+2026-11-24T14:30:54.490739Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-2b-mtp-gguf-Q4_K_M' to "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M\\Qwen3.5-2B-Q4_K_M.gguf"
+2026-11-24T14:30:54.526422Z  INFO 🧮 [Tokens] Conversation 15 tokens (1 messages) counted in 0.04 ms
+2026-11-24T14:30:54.579989Z  INFO ⏱️ [Preflight] 97 ms total | model load 16 ms | registry + template + tags 14 ms | skills + tools 2 ms | rest 51 ms
+2026-11-24T14:30:55.451928Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-2b-mtp-gguf-Q4_K_M' to "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M\\Qwen3.5-2B-Q4_K_M.gguf"
+2026-11-24T14:30:55.491588Z  INFO 🧮 [Tokens] Conversation 15 tokens (1 messages) counted in 0.04 ms
+2026-11-24T14:30:55.556119Z  INFO ⏱️ [Preflight] 110 ms total | model load 23 ms | registry + template + tags 12 ms | skills + tools 2 ms | rest 62 ms
+2026-11-24T14:30:56.424467Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-2b-mtp-gguf-Q4_K_M' to "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M\\Qwen3.5-2B-Q4_K_M.gguf"
+2026-11-24T14:30:56.458198Z  INFO 🧮 [Tokens] Conversation 15 tokens (1 messages) counted in 0.03 ms
+2026-11-24T14:30:56.593996Z  INFO ⏱️ [Preflight] 177 ms total | model load 17 ms | registry + template + tags 11 ms | skills + tools 2 ms | rest 133 ms
+2026-11-24T14:30:57.452547Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-2b-mtp-gguf-Q4_K_M' to "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M\\Qwen3.5-2B-Q4_K_M.gguf"
+2026-11-24T14:30:57.497331Z  INFO 🧮 [Tokens] Conversation 15 tokens (1 messages) counted in 0.03 ms
+2026-11-24T14:30:57.762010Z  INFO ⏱️ [Preflight] 315 ms total | model load 28 ms | registry + template + tags 12 ms | skills + tools 1 ms | rest 262 ms
+2026-11-24T14:30:58.630822Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-2b-mtp-gguf-Q4_K_M' to "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M\\Qwen3.5-2B-Q4_K_M.gguf"
+2026-11-24T14:30:58.680601Z  INFO 🧮 [Tokens] Conversation 15 tokens (1 messages) counted in 0.04 ms
+2026-11-24T14:30:58.723194Z  INFO ⏱️ [Preflight] 102 ms total | model load 26 ms | registry + template + tags 18 ms | skills + tools 3 ms | rest 38 ms
+2026-11-24T14:30:59.379451Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-2b-mtp-gguf-Q4_K_M' to "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M\\Qwen3.5-2B-Q4_K_M.gguf"
+2026-11-24T14:30:59.436882Z  INFO 🧮 [Tokens] Conversation 1 tokens (1 messages) counted in 0.03 ms
+2026-11-24T14:30:59.438263Z  INFO ⏱️ [Preflight] 65 ms total | model load 29 ms | registry + template + tags 27 ms | skills + tools 1 ms | rest 0 ms
+2026-11-24T14:30:59.440369Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (71 bytes) in 1 ms
+2026-11-24T14:30:59.854266Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-24T14:30:59.854387Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795530659
+2026-11-24T14:30:59.984172Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T14:30:59.984421Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 13 tokens in 396 ms (32.79 t/s) | generation 4 tokens in 116 ms (34.46 t/s)
+2026-11-24T14:30:59.984658Z  INFO 🧠 [Context] prompt 13 tokens (0 from the cache) | context 17 of 2048 | stop limit
+2026-11-24T14:31:00.301742Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-2b-mtp-gguf-Q4_K_M' to "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M\\Qwen3.5-2B-Q4_K_M.gguf"
+2026-11-24T14:31:00.336493Z  INFO 🧮 [Tokens] Conversation 15 tokens (1 messages) counted in 0.05 ms
+2026-11-24T14:31:00.340798Z  INFO ⏱️ [Preflight] 47 ms total | model load 19 ms | registry + template + tags 14 ms | skills + tools 4 ms | rest 0 ms
+2026-11-24T14:31:00.552354Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T14:31:00.552515Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T14:31:04.934130Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-24T14:31:04.934824Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-24T14:31:04.934900Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 284 tokens in 178 ms (1598.61 t/s) | generation 25 tokens in 767 ms (32.60 t/s)
+2026-11-24T14:31:04.934951Z  INFO 🧠 [Context] prompt 284 tokens (0 from the cache) | context 309 of 2048 | stop eos
+2026-11-24T14:31:05.788750Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-2b-mtp-gguf-Q4_K_M' to "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M\\Qwen3.5-2B-Q4_K_M.gguf"
+2026-11-24T14:31:05.823602Z  INFO 🧮 [Tokens] Conversation 15 tokens (1 messages) counted in 0.04 ms
+2026-11-24T14:31:05.825851Z  INFO ⏱️ [Preflight] 43 ms total | model load 20 ms | registry + template + tags 14 ms | skills + tools 1 ms | rest 0 ms
+2026-11-24T14:31:05.877370Z  INFO 🧠 [Context] Restarted from the checkpoint at 280 tokens (sliding window or recurrent state)
+2026-11-24T14:31:05.905083Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T14:31:05.905294Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T14:31:10.947752Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-24T14:31:10.948261Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-24T14:31:10.948341Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 4 tokens in 38 ms (105.73 t/s) | generation 25 tokens in 1608 ms (15.55 t/s)
+2026-11-24T14:31:10.948393Z  INFO 🧠 [Context] prompt 284 tokens (280 from the cache) | context 309 of 2048 | stop eos
+2026-11-24T14:31:11.793214Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-2b-mtp-gguf-Q4_K_M' to "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M\\Qwen3.5-2B-Q4_K_M.gguf"

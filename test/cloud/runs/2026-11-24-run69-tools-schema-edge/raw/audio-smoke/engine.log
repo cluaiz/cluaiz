@@ -1,0 +1,96 @@
+<engine-start>
+2026-11-24T14:23:35.882567Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-24T14:23:36.982095Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-24T14:23:36.990636Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+Starting the Cluaiz API server on http://localhost:8013 ...
+2026-11-24T14:23:36.996778Z  INFO 🔒 [Auth] Initialized local session secret at <engine-home>\session.token
+2026-11-24T14:23:37.392130Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-24T14:23:37.436598Z  INFO 🌐 Cluaiz API Server running on http://<ip>:8013
+2026-11-24T14:23:37.885919Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-asr-0.6b-gguf-Q8_0' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\edge\\asr-model\\Qwen3-ASR-0.6B-Q8_0.gguf"
+2026-11-24T14:23:37.943275Z  INFO
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3-asr-0.6b-gguf-Q8_0
+║   • Architecture    : qwen3vl | 28 layers | heads 16 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 0.80 GB (as Hugging Face counts it) | input embeddings 0.15 GB (always CPU) | output head 0.15 GB | vocab 151936
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 65536 tokens
+║   • Active context  : 16384 tokens, KV Kv8 (Auto: 16384 tokens with KV Kv8 + buffer 0.24 GB, to stay on the GPU (16384 tokens with KV Kv16 did not fit))
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA GeForce RTX 3050 A Laptop GPU | free 2.19 of 4.00 GB | buffer kept free 0.24 GB (measured: GPU pool +0.04 GB + 0.20 GB reserve; estimate corrected by llama.cpp's dry run +0.01 GB)
+║   • RAM             : free 5.39 of 23.69 GB | Cluaiz may use 4.21 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 16384 | KV Kv8 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 28 on GPU, 0 in RAM (of 28)
+║   • VRAM            : 1.82 GB (weights + KV 0.93 + logits)
+║   • RAM             : 0.15 GB (incl. KV 0.00)
+║   • Reason         : Full GPU: weights 0.59 + KV 0.93 + buffers 0.30 = 1.82 GB vs usable VRAM 1.95 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  1.82 GB | RAM  0.15 GB | weights 0.59 + KV 0.93 + buffers 0.30 = 1.82 GB vs usable VRAM 1.95 GB
+║   • GPU + RAM split  [FITS]     VRAM  1.77 GB | RAM  0.20 GB | 27 / 28 blocks + output head on GPU (1.77 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  1.96 GB | weights 0.74 + KV 0.93 + logits 0.29 = 1.96 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 8 / batch 8 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-24T14:23:37.945426Z  INFO 🔮 [MTP] Auto: off (its memory would not fit next to this placement)
+2026-11-24T14:23:37.946930Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 8, n_threads_batch = 8
+2026-11-24T14:23:37.947039Z  INFO 🧬 [Native-Llama] Loading model: C:\Users\<user>\AppData\Local\Temp\claude\6c30a0ef6fee852f\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\scratchpad\edge\asr-model\Qwen3-ASR-0.6B-Q8_0.gguf | ctx: 16384 tokens
+2026-11-24T14:23:38.590057Z  WARN [llama.cpp] load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+2026-11-24T14:23:39.447269Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\edge\\asr-model"
+2026-11-24T14:23:39.452791Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16384 tokens
+2026-11-24T14:23:39.452899Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-24T14:23:39.452946Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-24T14:23:39.452984Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-24T14:23:39.453027Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 8/8
+2026-11-24T14:23:39.846422Z  INFO 🔍 [EngineHost] VRAM planned 1.82 GB, taken 1.80 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-24T14:23:39.848582Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: C:\Users\<user>\AppData\Local\Temp\claude\6c30a0ef6fee852f\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\scratchpad\edge\asr-model\Qwen3-ASR-0.6B-Q8_0.gguf
+2026-11-24T14:23:39.908911Z  INFO 🧮 [Tokens] Conversation 1 tokens (1 messages) counted in 0.21 ms
+2026-11-24T14:23:39.911479Z  INFO ⏱️ [Preflight] 2049 ms total | model load 1997 ms | registry + template + tags 24 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T14:23:39.918518Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (52 bytes) in 0 ms
+2026-11-24T14:23:39.989892Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-24T14:23:39.990086Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795530219
+2026-11-24T14:23:40.054469Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T14:23:40.054749Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T14:23:40.054844Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 9 tokens in 71 ms (127.22 t/s) | generation 3 tokens in 59 ms (50.79 t/s)
+2026-11-24T14:23:40.054902Z  INFO 🧠 [Context] prompt 9 tokens (0 from the cache) | context 12 of 16384 | stop eos
+2026-11-24T14:23:40.370165Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-asr-0.6b-gguf-Q8_0' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\edge\\asr-model\\Qwen3-ASR-0.6B-Q8_0.gguf"
+2026-11-24T14:23:40.411607Z  INFO 🧮 [Tokens] Conversation 11 tokens (1 messages) counted in 0.20 ms
+2026-11-24T14:23:40.489485Z  INFO ⏱️ [Preflight] 125 ms total | model load 23 ms | registry + template + tags 14 ms | skills + tools 15 ms | rest 62 ms
+2026-11-24T14:23:41.529502Z  WARN [llama.cpp] init_audio: audio input is in experimental stage and may have reduced quality:
+    https://github.com/ggml-org/llama.cpp/discussions/13759
+2026-11-24T14:23:41.531332Z  INFO Projector loaded placement=Cpu free_vram_before_mib=346 taken_by_load_mib=0 weights_mib=204 workspace_mib=1024 buffer_mib=0
+2026-11-24T14:23:41.579258Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (702 bytes) in 0 ms
+2026-11-24T14:23:41.580311Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (702 bytes) in 0 ms
+2026-11-24T14:23:42.425464Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T14:23:42.553543Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T14:23:42.553635Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 187 tokens in 831 ms (225.04 t/s) | generation 12 tokens in 114 ms (104.85 t/s)
+2026-11-24T14:23:42.553681Z  INFO 🧠 [Context] prompt 187 tokens (0 from the cache) | context 199 of 16384 | stop eos
+2026-11-24T14:23:43.121320Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-asr-0.6b-gguf-Q8_0' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\edge\\asr-model\\Qwen3-ASR-0.6B-Q8_0.gguf"
+2026-11-24T14:23:43.165247Z  INFO 🧮 [Tokens] Conversation 1 tokens (1 messages) counted in 0.04 ms
+2026-11-24T14:23:43.168170Z  INFO ⏱️ [Preflight] 54 ms total | model load 28 ms | registry + template + tags 14 ms | skills + tools 2 ms | rest 0 ms
+2026-11-24T14:23:43.169810Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (52 bytes) in 0 ms
+2026-11-24T14:23:43.198230Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-24T14:23:43.198383Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795530223
+2026-11-24T14:23:43.253606Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T14:23:43.253840Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T14:23:43.253915Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 9 tokens in 29 ms (308.97 t/s) | generation 3 tokens in 49 ms (61.03 t/s)
+2026-11-24T14:23:43.253960Z  INFO 🧠 [Context] prompt 9 tokens (0 from the cache) | context 12 of 16384 | stop eos
+2026-11-24T14:23:43.567966Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-asr-0.6b-gguf-Q8_0' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\edge\\asr-model\\Qwen3-ASR-0.6B-Q8_0.gguf"
+2026-11-24T14:23:43.601143Z  INFO 🧮 [Tokens] Conversation 11 tokens (1 messages) counted in 0.04 ms
+2026-11-24T14:23:43.639839Z  INFO ⏱️ [Preflight] 76 ms total | model load 15 ms | registry + template + tags 13 ms | skills + tools 2 ms | rest 36 ms
+2026-11-24T14:23:43.702896Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (121 bytes) in 0 ms
+2026-11-24T14:23:43.703541Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (121 bytes) in 0 ms
+2026-11-24T14:23:44.358225Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T14:23:44.491043Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-24T14:23:44.491132Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 60 tokens in 642 ms (93.41 t/s) | generation 12 tokens in 119 ms (100.75 t/s)
+2026-11-24T14:23:44.491173Z  INFO 🧠 [Context] prompt 60 tokens (0 from the cache) | context 72 of 16384 | stop eos

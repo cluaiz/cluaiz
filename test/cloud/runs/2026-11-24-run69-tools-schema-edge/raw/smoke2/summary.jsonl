@@ -1,0 +1,15 @@
+{"case": "s1_txt_tool_stream", "exe": "bin-base", "valid": 1, "n": 1, "constrained_log": 0, "reasoning_nonempty": 0, "finish_reasons": {"tool_calls": 1}, "median_s": 2.374}
+{"case": "t2_img_tool_think_stream", "exe": "bin-base", "valid": 1, "n": 1, "constrained_log": 0, "reasoning_nonempty": 1, "finish_reasons": {"tool_calls": 1}, "median_s": 6.954}
+{"case": "t2_img_tool_required_think", "exe": "bin-base", "valid": 1, "n": 1, "constrained_log": 1, "reasoning_nonempty": 1, "finish_reasons": {"tool_calls": 1}, "median_s": 4.43}
+{"case": "t2_img_red_think", "exe": "bin-base", "valid": 1, "n": 1, "constrained_log": 0, "reasoning_nonempty": 1, "finish_reasons": {"stop": 1}, "median_s": 5.077}
+{"case": "t2_img_red_think_tools", "exe": "bin-base", "valid": 1, "n": 1, "constrained_log": 0, "reasoning_nonempty": 1, "finish_reasons": {"stop": 1}, "median_s": 4.105}
+{"case": "k3_schema_tool_think", "exe": "bin-base", "valid": 1, "n": 1, "constrained_log": 1, "reasoning_nonempty": 1, "finish_reasons": {"stop": 1}, "median_s": 1.627}
+{"case": "k3_schema_tool_think_weatherq", "exe": "bin-base", "valid": 1, "n": 1, "constrained_log": 1, "reasoning_nonempty": 1, "finish_reasons": {"stop": 1}, "median_s": 1.716}
+{"case": "k3v_schema_think", "exe": "bin-base", "valid": 1, "n": 1, "constrained_log": 1, "reasoning_nonempty": 1, "finish_reasons": {"stop": 1}, "median_s": 17.44}
+{"case": "k3v_schema_tool_think", "exe": "bin-base", "valid": 1, "n": 1, "constrained_log": 1, "reasoning_nonempty": 1, "finish_reasons": {"stop": 1}, "median_s": 2.211}
+{"case": "c4_schema_stream", "exe": "bin-base", "valid": 1, "n": 1, "constrained_log": 1, "reasoning_nonempty": 0, "finish_reasons": {"stop": 1}, "median_s": 0.377}
+{"case": "c4_schema_think_stream", "exe": "bin-base", "valid": 1, "n": 1, "constrained_log": 1, "reasoning_nonempty": 0, "finish_reasons": {"stop": 1}, "median_s": 0.579}
+{"case": "c4_schema_tool_think_stream", "exe": "bin-base", "valid": 1, "n": 1, "constrained_log": 1, "reasoning_nonempty": 1, "finish_reasons": {"stop": 1}, "median_s": 2.179}
+{"case": "r6_tool_auto", "exe": "bin-base", "valid": 1, "n": 1, "constrained_log": 0, "reasoning_nonempty": 0, "finish_reasons": {"tool_calls": 1}, "median_s": 1.58}
+{"case": "r6_json_object", "exe": "bin-base", "valid": 1, "n": 1, "constrained_log": 1, "reasoning_nonempty": 0, "finish_reasons": {"stop": 1}, "median_s": 0.428}
+{"case": "r6_gbnf_yes_no", "exe": "bin-base", "valid": 1, "n": 1, "constrained_log": 1, "reasoning_nonempty": 0, "finish_reasons": {"stop": 1}, "median_s": 0.156}

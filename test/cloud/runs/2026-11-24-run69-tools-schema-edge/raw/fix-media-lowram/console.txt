@@ -1,0 +1,27 @@
+s1_img_tool_stream 0 200 INVALID constrained=False reasoning=0 finish=None {"content": null, "tool_calls": [], "finish_reason": null, "reasoning_len": 0}
+s1_img_tool_stream 1 200 INVALID constrained=False reasoning=0 finish=None {"content": null, "tool_calls": [], "finish_reason": null, "reasoning_len": 0}
+s1_img_tool_stream 2 200 INVALID constrained=False reasoning=0 finish=None {"content": null, "tool_calls": [], "finish_reason": null, "reasoning_len": 0}
+s1_img_tool_stream 3 200 INVALID constrained=False reasoning=0 finish=None {"content": null, "tool_calls": [], "finish_reason": null, "reasoning_len": 0}
+s1_img_tool_stream 4 200 INVALID constrained=False reasoning=0 finish=None {"content": null, "tool_calls": [], "finish_reason": null, "reasoning_len": 0}
+s1_img_tool_stream 5 200 INVALID constrained=False reasoning=0 finish=None {"content": null, "tool_calls": [], "finish_reason": null, "reasoning_len": 0}
+s1_img_tool_stream 6 200 INVALID constrained=False reasoning=0 finish=None {"content": null, "tool_calls": [], "finish_reason": null, "reasoning_len": 0}
+s1_img_tool_stream 7 200 INVALID constrained=False reasoning=0 finish=None {"content": null, "tool_calls": [], "finish_reason": null, "reasoning_len": 0}
+s1_img_tool_stream 8 200 INVALID constrained=False reasoning=0 finish=None {"content": null, "tool_calls": [], "finish_reason": null, "reasoning_len": 0}
+s1_img_tool_stream 9 200 INVALID constrained=False reasoning=0 finish=None {"content": null, "tool_calls": [], "finish_reason": null, "reasoning_len": 0}
+t2_img_tool_think 0 500 INVALID constrained=False reasoning=0 finish=None {"status": 500, "reply": {"error": {"code": null, "message": "Media needs 1742571137 host bytes; live RAM budget is 856002150", "type": "engine_error"}}}
+t2_img_tool_think 1 500 INVALID constrained=False reasoning=0 finish=None {"status": 500, "reply": {"error": {"code": null, "message": "Media needs 1742571137 host bytes; live RAM budget is 862146150", "type": "engine_error"}}}
+t2_img_tool_think 2 500 INVALID constrained=False reasoning=0 finish=None {"status": 500, "reply": {"error": {"code": null, "message": "Media needs 1742571137 host bytes; live RAM budget is 857075302", "type": "engine_error"}}}
+t2_img_tool_think 3 500 INVALID constrained=False reasoning=0 finish=None {"status": 500, "reply": {"error": {"code": null, "message": "Media needs 1742571137 host bytes; live RAM budget is 862166630", "type": "engine_error"}}}
+t2_img_tool_think 4 500 INVALID constrained=False reasoning=0 finish=None {"status": 500, "reply": {"error": {"code": null, "message": "Media needs 1742571137 host bytes; live RAM budget is 879791718", "type": "engine_error"}}}
+t2_img_tool_think 5 500 INVALID constrained=False reasoning=0 finish=None {"status": 500, "reply": {"error": {"code": null, "message": "Media needs 1742571137 host bytes; live RAM budget is 867511910", "type": "engine_error"}}}
+t2_img_tool_think 6 500 INVALID constrained=False reasoning=0 finish=None {"status": 500, "reply": {"error": {"code": null, "message": "Media needs 1742571137 host bytes; live RAM budget is 824225382", "type": "engine_error"}}}
+t2_img_tool_think 7 500 INVALID constrained=False reasoning=0 finish=None {"status": 500, "reply": {"error": {"code": null, "message": "Media needs 1742571137 host bytes; live RAM budget is 800296550", "type": "engine_error"}}}
+t2_img_tool_think 8 500 INVALID constrained=False reasoning=0 finish=None {"status": 500, "reply": {"error": {"code": null, "message": "Media needs 1742571137 host bytes; live RAM budget is 805211750", "type": "engine_error"}}}
+t2_img_tool_think 9 500 INVALID constrained=False reasoning=0 finish=None {"status": 500, "reply": {"error": {"code": null, "message": "Media needs 1742571137 host bytes; live RAM budget is 864370278", "type": "engine_error"}}}
+t2_img_tool_think_stream 0 200 INVALID constrained=False reasoning=0 finish=None {"content": null, "tool_calls": [], "finish_reason": null, "reasoning_len": 0}
+t2_img_tool_think_stream 1 200 INVALID constrained=False reasoning=0 finish=None {"content": null, "tool_calls": [], "finish_reason": null, "reasoning_len": 0}
+t2_img_tool_think_stream 2 200 INVALID constrained=False reasoning=0 finish=None {"content": null, "tool_calls": [], "finish_reason": null, "reasoning_len": 0}
+t2_img_tool_think_stream 3 200 INVALID constrained=False reasoning=0 finish=None {"content": null, "tool_calls": [], "finish_reason": null, "reasoning_len": 0}
+t2_img_tool_think_stream 4 200 INVALID constrained=False reasoning=0 finish=None {"content": null, "tool_calls": [], "finish_reason": null, "reasoning_len": 0}
+t2_img_tool_think_stream 5 200 VALID constrained=False reasoning=181 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795533616420", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 181}
+t2_img_tool_think_stream 6 200 VALID constrained=False reasoning=302 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795533631334", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 302}

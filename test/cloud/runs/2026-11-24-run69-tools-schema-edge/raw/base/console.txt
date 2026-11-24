@@ -1,0 +1,443 @@
+s1_img_tool_stream 0 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795528888476", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 0}
+s1_img_tool_stream 1 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795528896946", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 0}
+s1_img_tool_stream 2 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795528905004", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 0}
+s1_img_tool_stream 3 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795528911042", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 0}
+s1_img_tool_stream 4 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795528917181", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 0}
+s1_img_tool_stream 5 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795528923357", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 0}
+s1_img_tool_stream 6 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795528929264", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 0}
+s1_img_tool_stream 7 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795528935105", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 0}
+s1_img_tool_stream 8 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795528940910", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 0}
+s1_img_tool_stream 9 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795528949372", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 0}
+s1_txt_tool_stream 0 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795528952983", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 0}
+s1_txt_tool_stream 1 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795528956626", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 0}
+s1_txt_tool_stream 2 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795528960740", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 0}
+s1_txt_tool_stream 3 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795528964324", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 0}
+s1_txt_tool_stream 4 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795528967914", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 0}
+s1_txt_tool_stream 5 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795528971212", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 0}
+s1_txt_tool_stream 6 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795528975544", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 0}
+s1_txt_tool_stream 7 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795528979868", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 0}
+s1_txt_tool_stream 8 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795528983838", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 0}
+s1_txt_tool_stream 9 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795528987427", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 0}
+t2_img_tool_think 0 200 VALID constrained=False reasoning=238 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795528994587", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 238}
+t2_img_tool_think 1 200 VALID constrained=False reasoning=130 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529002189", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 130}
+t2_img_tool_think 2 200 VALID constrained=False reasoning=333 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529013789", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 333}
+t2_img_tool_think 3 200 VALID constrained=False reasoning=337 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529024615", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 337}
+t2_img_tool_think 4 200 VALID constrained=False reasoning=116 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529034327", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 116}
+t2_img_tool_think 5 200 VALID constrained=False reasoning=228 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529043620", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 228}
+t2_img_tool_think 6 200 VALID constrained=False reasoning=202 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529053656", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 202}
+t2_img_tool_think 7 200 VALID constrained=False reasoning=315 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529062590", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 315}
+t2_img_tool_think 8 200 VALID constrained=False reasoning=418 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529071796", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 418}
+t2_img_tool_think 9 200 VALID constrained=False reasoning=227 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529079152", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 227}
+t2_img_tool_think_stream 0 200 VALID constrained=False reasoning=205 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795529086394", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 205}
+t2_img_tool_think_stream 1 200 VALID constrained=False reasoning=131 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795529092528", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 131}
+t2_img_tool_think_stream 2 200 VALID constrained=False reasoning=127 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795529098791", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 127}
+t2_img_tool_think_stream 3 200 VALID constrained=False reasoning=309 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795529105401", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 309}
+t2_img_tool_think_stream 4 200 VALID constrained=False reasoning=183 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795529111997", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 183}
+t2_img_tool_think_stream 5 200 VALID constrained=False reasoning=131 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795529118058", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 131}
+t2_img_tool_think_stream 6 200 VALID constrained=False reasoning=358 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795529125374", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 358}
+t2_img_tool_think_stream 7 200 VALID constrained=False reasoning=383 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795529132803", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 383}
+t2_img_tool_think_stream 8 200 VALID constrained=False reasoning=220 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795529139457", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 220}
+t2_img_tool_think_stream 9 200 VALID constrained=False reasoning=176 finish=tool_calls {"content": null, "tool_calls": [{"id": "call_1795529146201", "type": "function", "function": {"name": "get_weather", "arguments": "{\"city\":\"Paris\"}"}}], "finish_reason": "tool_calls", "reasoning_len": 176}
+t2_img_tool_required_think 0 200 VALID constrained=True reasoning=164 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529151515", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 164}
+t2_img_tool_required_think 1 200 VALID constrained=True reasoning=246 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529157959", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 246}
+t2_img_tool_required_think 2 200 VALID constrained=True reasoning=77 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529162918", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 77}
+t2_img_tool_required_think 3 200 VALID constrained=True reasoning=318 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529168240", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 318}
+t2_img_tool_required_think 4 200 VALID constrained=True reasoning=365 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529174311", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 365}
+t2_img_tool_required_think 5 200 VALID constrained=True reasoning=268 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529179684", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 268}
+t2_img_tool_required_think 6 200 VALID constrained=True reasoning=173 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529184763", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 173}
+t2_img_tool_required_think 7 200 VALID constrained=True reasoning=243 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529190388", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 243}
+t2_img_tool_required_think 8 200 VALID constrained=True reasoning=124 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529196165", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 124}
+t2_img_tool_required_think 9 200 VALID constrained=True reasoning=408 finish=tool_calls {"content": "", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529202779", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 408}
+t2_img_red_think 0 200 VALID constrained=False reasoning=324 finish=stop {"content": "Red", "reasoning_len": 324, "finish_reason": "stop"}
+t2_img_red_think 1 200 VALID constrained=False reasoning=304 finish=stop {"content": "Red", "reasoning_len": 304, "finish_reason": "stop"}
+t2_img_red_think 2 200 VALID constrained=False reasoning=428 finish=stop {"content": "red", "reasoning_len": 428, "finish_reason": "stop"}
+t2_img_red_think 3 200 VALID constrained=False reasoning=296 finish=stop {"content": "Red", "reasoning_len": 296, "finish_reason": "stop"}
+t2_img_red_think 4 200 VALID constrained=False reasoning=407 finish=stop {"content": "Red", "reasoning_len": 407, "finish_reason": "stop"}
+t2_img_red_think 5 200 VALID constrained=False reasoning=299 finish=stop {"content": "Red", "reasoning_len": 299, "finish_reason": "stop"}
+t2_img_red_think 6 200 VALID constrained=False reasoning=364 finish=stop {"content": "Red", "reasoning_len": 364, "finish_reason": "stop"}
+t2_img_red_think 7 200 VALID constrained=False reasoning=255 finish=stop {"content": "Red", "reasoning_len": 255, "finish_reason": "stop"}
+t2_img_red_think 8 200 VALID constrained=False reasoning=513 finish=stop {"content": "Red", "reasoning_len": 513, "finish_reason": "stop"}
+t2_img_red_think 9 200 VALID constrained=False reasoning=277 finish=stop {"content": "Red", "reasoning_len": 277, "finish_reason": "stop"}
+t2_img_red_think_tools 0 200 VALID constrained=False reasoning=361 finish=stop {"content": "red", "reasoning_len": 361, "finish_reason": "stop"}
+t2_img_red_think_tools 1 200 VALID constrained=False reasoning=442 finish=stop {"content": "Red", "reasoning_len": 442, "finish_reason": "stop"}
+t2_img_red_think_tools 2 200 VALID constrained=False reasoning=260 finish=stop {"content": "red", "reasoning_len": 260, "finish_reason": "stop"}
+t2_img_red_think_tools 3 200 VALID constrained=False reasoning=296 finish=stop {"content": "Red", "reasoning_len": 296, "finish_reason": "stop"}
+t2_img_red_think_tools 4 200 VALID constrained=False reasoning=275 finish=stop {"content": "red", "reasoning_len": 275, "finish_reason": "stop"}
+t2_img_red_think_tools 5 200 VALID constrained=False reasoning=325 finish=stop {"content": "Red", "reasoning_len": 325, "finish_reason": "stop"}
+t2_img_red_think_tools 6 200 VALID constrained=False reasoning=228 finish=stop {"content": "red", "reasoning_len": 228, "finish_reason": "stop"}
+t2_img_red_think_tools 7 200 VALID constrained=False reasoning=290 finish=stop {"content": "Red", "reasoning_len": 290, "finish_reason": "stop"}
+t2_img_red_think_tools 8 200 VALID constrained=False reasoning=279 finish=stop {"content": "Red", "reasoning_len": 279, "finish_reason": "stop"}
+t2_img_red_think_tools 9 200 VALID constrained=False reasoning=297 finish=stop {"content": "Red", "reasoning_len": 297, "finish_reason": "stop"}
+k3_schema_think 0 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 25, \"name\": \"Zara\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_think 1 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 28, \"name\": \"Lily\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_think 2 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 26, \"name\": \"Lily\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_think 3 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 30, \"name\": \"Alice\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_think 4 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 22, \"name\": \"John Doe\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_think 5 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 28, \"name\": \"John Doe\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_think 6 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 30, \"name\": \"Tommy\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_think 7 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 16, \"name\": \"Emily\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_think 8 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 30, \"name\": \"Jenifer M. White, 35 years old\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_think 9 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 20, \"name\": \"John Doe\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_tool_think 0 200 VALID constrained=True reasoning=864 finish=stop {"content": "{\"age\": 25, \"name\": \"Lila\"}", "reasoning_len": 864, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_tool_think 1 200 VALID constrained=True reasoning=355 finish=stop {"content": "{\"age\": 30, \"name\": \"Alice Johnson\"}", "reasoning_len": 355, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_tool_think 2 200 VALID constrained=True reasoning=867 finish=stop {"content": "{\"age\": 25, \"name\": \"Lila\"}", "reasoning_len": 867, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_tool_think 3 200 VALID constrained=True reasoning=803 finish=stop {"content": "{\"age\": 30, \"name\": \"Alice\"}", "reasoning_len": 803, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_tool_think 4 200 VALID constrained=True reasoning=611 finish=stop {"content": "{\"age\": 30, \"name\": \"Jude\"}", "reasoning_len": 611, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_tool_think 5 200 VALID constrained=True reasoning=760 finish=stop {"content": "{\"age\": 35, \"name\": \"Zara\"}", "reasoning_len": 760, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_tool_think 6 200 VALID constrained=True reasoning=430 finish=stop {"content": "{\"age\": 35, \"name\": \"Alice Johnson\"}", "reasoning_len": 430, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_tool_think 7 200 VALID constrained=True reasoning=732 finish=stop {"content": "{\"age\": 30, \"name\": \"Alice\"}", "reasoning_len": 732, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_tool_think 8 200 VALID constrained=True reasoning=724 finish=stop {"content": "{\"age\": 25, \"name\": \"Lila\"}", "reasoning_len": 724, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_tool_think 9 200 VALID constrained=True reasoning=791 finish=stop {"content": "{\"age\": 25, \"name\": \"Clara\"}", "reasoning_len": 791, "tool_calls": null, "finish_reason": "stop"}
+k3_schema_tool_think_weatherq 0 200 VALID constrained=True reasoning=458 finish=stop {"content": "{\"age\": 0, \"name\": \"get_weather\"}", "tool_calls": [], "finish_reason": "stop", "reasoning_len": 458}
+k3_schema_tool_think_weatherq 1 200 VALID constrained=True reasoning=394 finish=stop {"content": "{\"age\": 0, \"name\": \"get_weather_applications_weather_tool_calling_20231025_141245\"}", "tool_calls": [], "finish_reason": "stop", "reasoning_len": 394}
+k3_schema_tool_think_weatherq 2 200 VALID constrained=True reasoning=398 finish=stop {"content": "{\"age\": 15, \"name\": \"Paris\"}", "tool_calls": [], "finish_reason": "stop", "reasoning_len": 398}
+k3_schema_tool_think_weatherq 3 200 VALID constrained=True reasoning=327 finish=stop {"content": "{\"age\": 35, \"name\": \"Lena\"}", "tool_calls": [], "finish_reason": "stop", "reasoning_len": 327}
+k3_schema_tool_think_weatherq 4 200 VALID constrained=True reasoning=388 finish=stop {"content": "{\"age\": 0, \"name\": \"get_weather\" }", "tool_calls": [], "finish_reason": "stop", "reasoning_len": 388}
+k3_schema_tool_think_weatherq 5 200 INVALID constrained=True reasoning=383 finish=length {"content": "{\"age\": 1, \"name\": \"get_weather_procedure_2024_02_01_10_00_00_12_34_567890_1234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789012345678901234567
+k3_schema_tool_think_weatherq 6 200 VALID constrained=True reasoning=389 finish=stop {"content": "{\n  \"age\": 25,\n  \"name\": \"Alex\"\n}", "tool_calls": [], "finish_reason": "stop", "reasoning_len": 389}
+k3_schema_tool_think_weatherq 7 200 VALID constrained=True reasoning=380 finish=stop {"content": "{\n  \"age\": 1,\n  \"name\": \"get_weather\"\n}", "tool_calls": [], "finish_reason": "stop", "reasoning_len": 380}
+k3_schema_tool_think_weatherq 8 200 VALID constrained=True reasoning=409 finish=stop {"content": "{\"age\": 0, \"name\": \"get_weather\"}", "tool_calls": [], "finish_reason": "stop", "reasoning_len": 409}
+k3_schema_tool_think_weatherq 9 200 VALID constrained=True reasoning=431 finish=stop {"content": "{\"age\": 1, \"name\": \"get_weather\"}", "tool_calls": [], "finish_reason": "stop", "reasoning_len": 431}
+k3v_schema_think 0 200 VALID constrained=True reasoning=953 finish=stop {"content": "{\n  \"age\": 27,\n  \"name\": \"Elian Varrick\"\n}", "reasoning_len": 953, "tool_calls": null, "finish_reason": "stop"}
+k3v_schema_think 1 200 VALID constrained=True reasoning=3397 finish=stop {"content": "{\n  \"age\": 28,\n  \"name\": \"Elena Voss\"\n}", "reasoning_len": 3397, "tool_calls": null, "finish_reason": "stop"}
+k3v_schema_think 2 200 VALID constrained=True reasoning=34978 finish=stop {"content": "{\n  \"age\": 29,\n  \"name\": \"Julian Thorne\"\n}", "reasoning_len": 34978, "tool_calls": null, "finish_reason": "stop"}
+k3v_schema_think 3 200 VALID constrained=True reasoning=1001 finish=stop {"content": "{\n  \"age\": 24,\n  \"name\": \"Elio Thorne\"\n}", "reasoning_len": 1001, "tool_calls": null, "finish_reason": "stop"}
+k3v_schema_think 4 200 VALID constrained=True reasoning=2534 finish=stop {"content": "{\n  \"age\": 30,\n  \"name\": \"Julian Thorne\"\n}", "reasoning_len": 2534, "tool_calls": null, "finish_reason": "stop"}
+k3v_schema_think 5 200 VALID constrained=True reasoning=768 finish=stop {"content": "{\n  \"age\": 24,\n  \"name\": \"Elena Vance\"\n}", "reasoning_len": 768, "tool_calls": null, "finish_reason": "stop"}
+k3v_schema_think 6 200 VALID constrained=True reasoning=2436 finish=stop {"content": "{\n  \"age\": 31,\n  \"name\": \"Elena Vance\"\n}", "reasoning_len": 2436, "tool_calls": null, "finish_reason": "stop"}
+k3v_schema_think 7 200 VALID constrained=True reasoning=2429 finish=stop {"content": "{\n  \"age\": 34,\n  \"name\": \"Elena Vane\"\n}", "reasoning_len": 2429, "tool_calls": null, "finish_reason": "stop"}
+k3v_schema_think 8 200 VALID constrained=True reasoning=2644 finish=stop {"content": "{\n  \"age\": 30,\n  \"name\": \"Elena Vance\"\n}", "reasoning_len": 2644, "tool_calls": null, "finish_reason": "stop"}
+k3v_schema_think 9 200 VALID constrained=True reasoning=1964 finish=stop {"content": "{\n  \"age\": 24,\n  \"name\": \"Elena Voss\"\n}", "reasoning_len": 1964, "tool_calls": null, "finish_reason": "stop"}
+k3v_schema_tool_think 0 200 VALID constrained=True reasoning=306 finish=stop {"content": "{\n  \"age\": 28,\n  \"name\": \"Elena Vance\"\n}", "reasoning_len": 306, "tool_calls": null, "finish_reason": "stop"}
+k3v_schema_tool_think 1 200 VALID constrained=True reasoning=334 finish=stop {"content": "{\n  \"age\": 25,\n  \"name\": \"Elena Rodriguez\"\n}", "reasoning_len": 334, "tool_calls": null, "finish_reason": "stop"}
+k3v_schema_tool_think 2 200 VALID constrained=True reasoning=447 finish=stop {"content": "{\n  \"age\": 24,\n  \"name\": \"Elena Rodriguez\"\n}", "reasoning_len": 447, "tool_calls": null, "finish_reason": "stop"}
+k3v_schema_tool_think 3 200 VALID constrained=True reasoning=302 finish=stop {"content": "{\n  \"age\": 30,\n  \"name\": \"Elena Rodriguez\"\n}", "reasoning_len": 302, "tool_calls": null, "finish_reason": "stop"}
+k3v_schema_tool_think 4 200 VALID constrained=True reasoning=289 finish=stop {"content": "{\n  \"age\": 28,\n  \"name\": \"Alex Chen\"\n}", "reasoning_len": 289, "tool_calls": null, "finish_reason": "stop"}
+k3v_schema_tool_think 5 200 VALID constrained=True reasoning=369 finish=stop {"content": "{\n  \"age\": 27,\n  \"name\": \"Lena Chen\"\n}", "reasoning_len": 369, "tool_calls": null, "finish_reason": "stop"}
+k3v_schema_tool_think 6 200 VALID constrained=True reasoning=304 finish=stop {"content": "{\n  \"age\": 27,\n  \"name\": \"Elena Rostova\"\n}", "reasoning_len": 304, "tool_calls": null, "finish_reason": "stop"}
+k3v_schema_tool_think 7 200 VALID constrained=True reasoning=255 finish=stop {"content": "{\n  \"age\": 28,\n  \"name\": \"Elena\"\n}", "reasoning_len": 255, "tool_calls": null, "finish_reason": "stop"}
+k3v_schema_tool_think 8 200 VALID constrained=True reasoning=291 finish=stop {"content": "{\n  \"age\": 28,\n  \"name\": \"Elena Rodriguez\"\n}", "reasoning_len": 291, "tool_calls": null, "finish_reason": "stop"}
+k3v_schema_tool_think 9 200 VALID constrained=True reasoning=307 finish=stop {"content": "{\n    \"age\": 28,\n    \"name\": \"Alex Johnson\"\n}", "reasoning_len": 307, "tool_calls": null, "finish_reason": "stop"}
+k3_json_object_think 0 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\n\n\n   \t}"}
+k3_json_object_think 1 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\n\n\n    }"}
+k3_json_object_think 2 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\n\n\n    \t}"}
+k3_json_object_think 3 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\n\n\n    \t\t\t\t\t\t\t\t}"}
+k3_json_object_think 4 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"name\": \"Zara\", \"age\": 25, \"city\": \"New York, USA\"}"}
+k3_json_object_think 5 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"name\": \"John Doe\", \"age\": 25, \"city\": \"New York\"}"}
+k3_json_object_think 6 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"name\": \"Johanna\", \"age\": 20, \"occupation\": \"Teacher\"}"}
+k3_json_object_think 7 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"name\": \"Mira\", \"age\": 28}"}
+k3_json_object_think 8 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\n\n\n    \t}"}
+k3_json_object_think 9 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"name\": \"Alice\", \"age\": 25}"}
+k3_gbnf_think 0 200 INVALID constrained=True reasoning=0 finish=stop {"content": "no"}
+k3_gbnf_think 1 200 INVALID constrained=True reasoning=0 finish=stop {"content": "no"}
+k3_gbnf_think 2 200 INVALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+k3_gbnf_think 3 200 INVALID constrained=True reasoning=0 finish=stop {"content": "no"}
+k3_gbnf_think 4 200 INVALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+k3_gbnf_think 5 200 INVALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+k3_gbnf_think 6 200 INVALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+k3_gbnf_think 7 200 INVALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+k3_gbnf_think 8 200 INVALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+k3_gbnf_think 9 200 INVALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+c4_schema_stream 0 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"age\": 30,\n  \"name\": \"Lila\"\n}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_stream 1 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"age\": 25,\n  \"name\": \"Emma Carter\"\n}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_stream 2 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"age\": 30,\n  \"name\": \"Avery Taylor\"\n}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_stream 3 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"age\": 30,\n  \"name\": \"Lily\"\n}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_stream 4 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"age\": 25,\n  \"name\": \"Luka\"\n}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_stream 5 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"age\": 25,\n  \"name\": \"Alice\"\n}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_stream 6 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"age\": 25,\n  \"name\": \"Liam\"\n}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_stream 7 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"age\": 35,\n  \"name\": \"Johanna\"\n}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_stream 8 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"age\": 25,\n  \"name\": \"Luna\"\n}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_stream 9 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"age\": 30,\n  \"name\": \"Alice\"\n}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_stream 0 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"age\": 25,\n  \"name\": \"Lila\"\n}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_stream 1 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"age\": 18,\n  \"name\": \"Zara\"\n}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_stream 2 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"age\": 35,\n  \"name\": \"Lila\"\n}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_stream 3 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 35, \"name\": \"Samuel\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_stream 4 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 30, \"name\": \"Alice\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_stream 5 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 25, \"name\": \"Alice\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_stream 6 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 25, \"name\": \"Alice\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_stream 7 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 30, \"name\": \"Alice\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_stream 8 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 25, \"name\": \"Alice\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_stream 9 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"age\": 25,\n  \"name\": \"Luna\"\n}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_think_stream 0 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 25, \"name\": \"Dmitri Kovalskyi\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_think_stream 1 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 25, \"name\": \"John Doe\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_think_stream 2 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 25, \"name\": \"Lucas\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_think_stream 3 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 25, \"name\": \"Lila Rose Maron\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_think_stream 4 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 18, \"name\": \"John Doe\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_think_stream 5 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 35, \"name\": \"Sally\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_think_stream 6 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 30, \"name\": \"Jenifer Marlowe\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_think_stream 7 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 25, \"name\": \"Mia\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_think_stream 8 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 30, \"name\": \"Lucas\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_think_stream 9 200 INVALID constrained=True reasoning=0 finish=stop {"content": "{\"age\": 25, \"name\": \"John Doe\"}", "reasoning_len": 0, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_think_stream 0 200 VALID constrained=True reasoning=650 finish=stop {"content": "{\"age\": 35, \"name\": \"Alex Carter\"}", "reasoning_len": 650, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_think_stream 1 200 VALID constrained=True reasoning=514 finish=stop {"content": "{\"age\": 25, \"name\": \"Elena\"}", "reasoning_len": 514, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_think_stream 2 200 VALID constrained=True reasoning=969 finish=stop {"content": "{\"age\": 25, \"name\": \"Lila\"}", "reasoning_len": 969, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_think_stream 3 200 VALID constrained=True reasoning=626 finish=stop {"content": "{\"age\": 25, \"name\": \"Alice Johnson\"}", "reasoning_len": 626, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_think_stream 4 200 VALID constrained=True reasoning=942 finish=stop {"content": "{\"age\": 25, \"name\": \"Lila Marlowe\"}", "reasoning_len": 942, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_think_stream 5 200 VALID constrained=True reasoning=553 finish=stop {"content": "{\"age\": 30, \"name\": \"Alice\"}", "reasoning_len": 553, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_think_stream 6 200 VALID constrained=True reasoning=553 finish=stop {"content": "{\"age\": 35, \"name\": \"Alice Johnson\"}", "reasoning_len": 553, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_think_stream 7 200 VALID constrained=True reasoning=441 finish=stop {"content": "{\n  \"age\": 35,\n  \"name\": \"Elena\"\n}", "reasoning_len": 441, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_think_stream 8 200 VALID constrained=True reasoning=675 finish=stop {"content": "{\"age\": 35, \"name\": \"Luna Sparkle\"}", "reasoning_len": 675, "tool_calls": null, "finish_reason": "stop"}
+c4_schema_tool_think_stream 9 200 VALID constrained=True reasoning=536 finish=stop {"content": "{\"age\": 30, \"name\": \"Emma\"}", "reasoning_len": 536, "tool_calls": null, "finish_reason": "stop"}
+r6_plain 0 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_plain 1 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_plain 2 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_plain 3 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! I'm here to help!", "finish_reason": "stop"}
+r6_plain 4 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_plain 5 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_plain 6 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_plain 7 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_plain 8 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_plain 9 200 VALID constrained=False reasoning=0 finish=stop {"content": "Hello! How can I assist you today?", "finish_reason": "stop"}
+r6_tool_auto 0 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529884324", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_tool_auto 1 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529886428", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_tool_auto 2 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529888618", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_tool_auto 3 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529890747", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_tool_auto 4 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529893030", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_tool_auto 5 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529895360", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_tool_auto 6 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529897585", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_tool_auto 7 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529899868", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_tool_auto 8 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529901972", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_tool_auto 9 200 VALID constrained=False reasoning=0 finish=tool_calls {"content": "\n", "tool_calls": [{"function": {"arguments": "{\"city\":\"Paris\"}", "name": "get_weather"}, "id": "call_1795529904079", "type": "function"}], "finish_reason": "tool_calls", "reasoning_len": 0}
+r6_json_object 0 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"name\": \"Luna\",\n  \"age\": 28\n}"}
+r6_json_object 1 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"name\": \"Alyssa Carter\",\n  \"age\": 27\n}"}
+r6_json_object 2 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"name\": \"Lila\",\n  \"age\": 25\n}"}
+r6_json_object 3 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"name\": \"Lila\",\n  \"age\": 25\n}"}
+r6_json_object 4 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"name\": \"Liam\",\n  \"age\": 25\n}"}
+r6_json_object 5 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"name\": \"Liam Johnson\",\n  \"age\": 28\n}"}
+r6_json_object 6 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"name\": \"Evan Carter\",\n  \"age\": 28\n}"}
+r6_json_object 7 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"name\": \"Liam Jordan\",\n  \"age\": 28\n}"}
+r6_json_object 8 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"name\": \"Lila\",\n  \"age\": 25\n}"}
+r6_json_object 9 200 VALID constrained=True reasoning=0 finish=stop {"content": "{\n  \"name\": \"Lila\",\n  \"age\": 25\n}"}
+r6_gbnf_yes_no 0 200 VALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+r6_gbnf_yes_no 1 200 VALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+r6_gbnf_yes_no 2 200 VALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+r6_gbnf_yes_no 3 200 VALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+r6_gbnf_yes_no 4 200 VALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+r6_gbnf_yes_no 5 200 VALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+r6_gbnf_yes_no 6 200 VALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+r6_gbnf_yes_no 7 200 VALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+r6_gbnf_yes_no 8 200 VALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+r6_gbnf_yes_no 9 200 VALID constrained=True reasoning=0 finish=stop {"content": "yes"}
+{
+ "s1_img_tool_stream": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 0,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "tool_calls": 10
+  },
+  "median_s": 5.32
+ },
+ "s1_txt_tool_stream": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 0,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "tool_calls": 10
+  },
+  "median_s": 2.821
+ },
+ "t2_img_tool_think": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 0,
+  "reasoning_nonempty": 10,
+  "finish_reasons": {
+   "tool_calls": 10
+  },
+  "median_s": 8.469
+ },
+ "t2_img_tool_think_stream": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 0,
+  "reasoning_nonempty": 10,
+  "finish_reasons": {
+   "tool_calls": 10
+  },
+  "median_s": 5.835
+ },
+ "t2_img_tool_required_think": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 10,
+  "reasoning_nonempty": 10,
+  "finish_reasons": {
+   "tool_calls": 10
+  },
+  "median_s": 4.555
+ },
+ "t2_img_red_think": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 0,
+  "reasoning_nonempty": 10,
+  "finish_reasons": {
+   "stop": 10
+  },
+  "median_s": 5.313
+ },
+ "t2_img_red_think_tools": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 0,
+  "reasoning_nonempty": 10,
+  "finish_reasons": {
+   "stop": 10
+  },
+  "median_s": 4.912
+ },
+ "k3_schema_think": {
+  "valid": 0,
+  "n": 10,
+  "constrained_log": 10,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "stop": 10
+  },
+  "median_s": 0.528
+ },
+ "k3_schema_tool_think": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 10,
+  "reasoning_nonempty": 10,
+  "finish_reasons": {
+   "stop": 10
+  },
+  "median_s": 2.169
+ },
+ "k3_schema_tool_think_weatherq": {
+  "valid": 9,
+  "n": 10,
+  "constrained_log": 10,
+  "reasoning_nonempty": 10,
+  "finish_reasons": {
+   "stop": 9,
+   "length": 1
+  },
+  "median_s": 1.403
+ },
+ "k3v_schema_think": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 10,
+  "reasoning_nonempty": 10,
+  "finish_reasons": {
+   "stop": 10
+  },
+  "median_s": 14.153
+ },
+ "k3v_schema_tool_think": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 10,
+  "reasoning_nonempty": 10,
+  "finish_reasons": {
+   "stop": 10
+  },
+  "median_s": 2.138
+ },
+ "k3_json_object_think": {
+  "valid": 0,
+  "n": 10,
+  "constrained_log": 10,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "stop": 10
+  },
+  "median_s": 0.529
+ },
+ "k3_gbnf_think": {
+  "valid": 0,
+  "n": 10,
+  "constrained_log": 10,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "stop": 10
+  },
+  "median_s": 0.233
+ },
+ "c4_schema_stream": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 10,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "stop": 10
+  },
+  "median_s": 0.42
+ },
+ "c4_schema_tool_stream": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 10,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "stop": 10
+  },
+  "median_s": 0.492
+ },
+ "c4_schema_think_stream": {
+  "valid": 0,
+  "n": 10,
+  "constrained_log": 10,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "stop": 10
+  },
+  "median_s": 0.63
+ },
+ "c4_schema_tool_think_stream": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 10,
+  "reasoning_nonempty": 10,
+  "finish_reasons": {
+   "stop": 10
+  },
+  "median_s": 1.752
+ },
+ "r6_plain": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 0,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "stop": 10
+  },
+  "median_s": 0.118
+ },
+ "r6_tool_auto": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 0,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "tool_calls": 10
+  },
+  "median_s": 1.403
+ },
+ "r6_json_object": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 10,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "stop": 10
+  },
+  "median_s": 0.287
+ },
+ "r6_gbnf_yes_no": {
+  "valid": 10,
+  "n": 10,
+  "constrained_log": 10,
+  "reasoning_nonempty": 0,
+  "finish_reasons": {
+   "stop": 10
+  },
+  "median_s": 0.12
+ }
+}
