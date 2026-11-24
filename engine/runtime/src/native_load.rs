@@ -221,7 +221,12 @@ fn mtp_mode(model_path: &str, plan: &ExecutionPlan, settings: &ActiveUserSetting
         FeatureState::On => return 1,
         FeatureState::Auto => mtp_auto(model_path, plan, settings),
     };
-    tracing::info!("🔮 [MTP] Auto: {} ({})", ["off", "on", "on with the per-answer guard"][mode as usize], why);
+    let rule = ["off", "on", "on with the per-answer guard"][mode as usize];
+    // The CLUAIZ_MTP test override wins at load (`llama_engine::native::core`): the line names what loads
+    match llama_engine::native::speculative::env_override() {
+        Some(forced) => tracing::info!("🔮 [MTP] {} by CLUAIZ_MTP (Auto alone: {rule}, {why})", if forced { "on" } else { "off" }),
+        None => tracing::info!("🔮 [MTP] Auto: {rule} ({why})"),
+    }
     mode
 }
 

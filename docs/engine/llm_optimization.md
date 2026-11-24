@@ -94,7 +94,7 @@ which can flip a choice between two nearly equal tokens. It is llama.cpp's own
 memory would not fit next to the planned placement; on or off by a stored `cluaiz bench <model>
 --mtp-compare` result for that placement (on at 5% faster); otherwise on, with a guard in each answer
 that times the first tokens with and without guesses and stops guessing where it is slower. The log
-says which rule decided (`[MTP] Auto: ...`) and when the guard stopped (`[MTP] Guard: ...`). A model
+says which rule decided (`[MTP] Auto: ...`; with `CLUAIZ_MTP` set, `[MTP] on/off by CLUAIZ_MTP (Auto alone: ...)`) and when the guard stopped (`[MTP] Guard: ...`). A model
 without NextN layers loads as usual. Environment variables for tests:
 
 | Variable | Default | Meaning |
