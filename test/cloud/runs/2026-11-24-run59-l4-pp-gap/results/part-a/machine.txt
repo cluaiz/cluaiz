@@ -1,0 +1,7 @@
+Linux cluaiz-32gb 6.12.117+deb13-cloud-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.117-1 (2026-11-12) x86_64 GNU/Linux
+8
+               total        used        free      shared  buff/cache   available
+Mem:           32099         993       30162           0        1223       31106
+Swap:              0           0           0
+name, memory.total [MiB], memory.used [MiB], driver_version
+NVIDIA L4, 23034 MiB, 0 MiB, 620.70.06

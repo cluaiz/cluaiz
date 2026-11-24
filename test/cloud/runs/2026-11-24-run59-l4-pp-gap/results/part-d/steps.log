@@ -1,0 +1,16 @@
+== 2026-11-24T04:09:00Z machine
+cluaiz 0.1.0 (pre-release)
+14424 MiB
+== 2026-11-24T04:09:00Z r1_CN
+rc 0, major faults 495038, read 40044 MiB from disk, 373 s
+== 2026-11-24T04:15:15Z r1_C
+rc 0, major faults 505704, read 40478 MiB from disk, 376 s
+== 2026-11-24T04:21:32Z r1_LF
+rc 0, major faults 1196661, read 36781 MiB from disk, 541 s
+== 2026-11-24T04:30:34Z r2_C
+rc 0, major faults 506006, read 40364 MiB from disk, 376 s
+== 2026-11-24T04:36:52Z r2_LF
+rc 0, major faults 1205856, read 37926 MiB from disk, 550 s
+== 2026-11-24T04:46:03Z r2_CN
+rc 0, major faults 498642, read 40084 MiB from disk, 370 s
+== 2026-11-24T04:52:14Z done

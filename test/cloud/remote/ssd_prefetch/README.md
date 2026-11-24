@@ -180,6 +180,19 @@ disk GB read in that window and in the whole run (typeperf), pp/tg, placement, M
 prefetch counters; then the median per config. With 0.2-1 GB free RAM a pp512 pass took 11 minutes, so run 61
 used `-Reps 1`.
 
+## `pp_gap.sh` (run 59, the prompt-speed gap)
+
+Run 48's bench shape (L4, ~8 GB VRAM by `vram_hog.py`, 12 GB cgroup, `--n-cpu-moe 41`, no MoE cache), with a
+sampler that also records the cgroup's `memory.stat` and the process's RSS and major faults, and time-stamped
+logs (`llama-bench --progress`, `cluaiz bench`'s "running" lines). Configs (`CONFIGS`): `LF` fork llama-bench,
+`C` `cluaiz bench`, `CB` `cluaiz bench` with the `CLUAIZ_BASE` binary (before / after in one session), `CN` `C`
+with `CLUAIZ_ENV` set, `C-c<N>` `C` with `-c N`, `LF-b<MiB>` `LF` beside `balloon.py` holding that much anonymous
+memory in the same cgroup. Usage on the VM:
+`CLUAIZ=<binary> CLUAIZ_BASE=<binary> PP=512,2048 TG=128 REPS=2 ROUNDS=2 CONFIGS="C CB LF" bash pp_gap.sh <out>`,
+then `python3 analyze_pp_gap.py <out>` for seconds, MiB read, faults and memory per phase. Results and
+causes: `test/cloud/runs/2026-11-24-run59-l4-pp-gap/`. Use `--mtp off` where MTP must stay off: the harness's
+`CLUAIZ_MTP=off` is not read.
+
 ## Run 48 additions to `run_case_g.sh` (fair baselines and the prompt-speed gap)
 
 Run 43 compared Cluaiz with the MoE cache and the prefetch against llama.cpp without its cache, and loaded
