@@ -10,6 +10,8 @@ publish = false
 [dependencies]
 cluaiz-cep = { path = "../../../cep" }
 cluaiz-agents = { path = "../../../agents" }
+# api/src/cep/methods/workspace.rs (compiled in by fs_methods_contract) reads the home from cluaiz-core
+cluaiz-core = { path = "../../../engine/core" }
 base64 = "0.22"
 chrono = "0.4"
 dirs = "5"
