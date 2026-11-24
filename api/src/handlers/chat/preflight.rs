@@ -1614,6 +1614,10 @@ pub fn media_continuation(
     use anyhow::Context;
     let mut continued = prepared.clone();
     if let Some(pivot) = pivot {
+        // `tool_choice` ("required", a named function) is for the request's first answer, as on
+        // the text path (`ToolTurns::continuation`): kept, every step was forced to call again
+        // until the repeat limit
+        continued.tool_choice = None;
         let value: serde_json::Value =
             serde_json::from_str(pivot.strip_prefix("[PIVOT_CONTINUE]").unwrap_or(pivot))?;
         let text = value
