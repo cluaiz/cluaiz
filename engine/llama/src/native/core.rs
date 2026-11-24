@@ -167,6 +167,12 @@ pub struct GenerationTimings {
     pub predicted_per_second: f64,
 }
 
+unsafe extern "C" {
+    /// The C library's rand(): llama-bench draws its random tokens from it (`NativeLlama::bench`)
+    #[link_name = "rand"]
+    fn c_rand() -> std::ffi::c_int;
+}
+
 /// llama.cpp's op-offload size: a micro-batch smaller than this runs on the CPU for layers kept in RAM
 /// (`GGML_OP_OFFLOAD_MIN_BATCH`, 32 in every GPU backend)
 fn op_offload_min_batch() -> usize {
@@ -284,13 +290,12 @@ impl NativeLlama {
             let vocab = llama_cpp::llama_model_get_vocab(self.model_ptr);
             let n_vocab = llama_cpp::llama_vocab_n_tokens(vocab).max(1) as u64;
             let bos = llama_cpp::llama_vocab_get_add_bos(vocab).then(|| llama_cpp::llama_vocab_bos(vocab));
-            let mut rng = 0x2545_F491_4F6C_DD1D_u64;
-            let mut random_token = || {
-                rng ^= rng << 13;
-                rng ^= rng >> 7;
-                rng ^= rng << 17;
-                (rng % n_vocab) as i32
-            };
+            // The same random tokens as llama-bench: the C library's rand(), unseeded (llama-bench calls
+            // std::rand() without srand). On a model read from the disk the tokens decide which experts
+            // are read, so another stream reads other bytes: run 59, Qwen3.6-35B-A3B on an L4 with
+            // the experts read from the SSD, an own xorshift stream gave 45.3 / 91.0 t/s at pp512 /
+            // pp2048 against 49.0 / 95.6 with this one, same binary otherwise
+            let random_token = || (c_rand().max(0) as u64 % n_vocab) as i32;
             let ctx = self.ctx_ptr;
             let n_batch = self.n_batch.max(1) as usize;
             let decode = |tokens: &mut [i32]| -> anyhow::Result<()> {
@@ -300,19 +305,29 @@ impl NativeLlama {
                     rc => Err(anyhow::anyhow!("llama_decode failed with code {}", rc)),
                 }
             };
-            let mut run = |n_prompt: usize, n_gen: usize| -> anyhow::Result<()> {
+            let run = |n_prompt: usize, n_gen: usize| -> anyhow::Result<()> {
                 let mut done = 0;
                 while done < n_prompt {
                     let n = n_batch.min(n_prompt - done);
-                    let mut tokens: Vec<i32> = (0..n).map(|_| random_token()).collect();
-                    if done == 0 {
-                        if let Some(b) = bos { tokens[0] = b; }
+                    // as llama-bench draws them: the BOS slot takes no random number
+                    let tokens_first = match bos {
+                        Some(b) if done == 0 => Some(b),
+                        _ => None,
+                    };
+                    let mut tokens: Vec<i32> = Vec::with_capacity(n);
+                    tokens.extend(tokens_first);
+                    while tokens.len() < n {
+                        tokens.push(random_token());
                     }
                     decode(&mut tokens)?;
                     done += n;
                 }
                 if n_prompt > 0 {
                     llama_cpp::llama_synchronize(ctx);
+                }
+                // a prompt-only run draws no generation token (llama-bench runs no generation there)
+                if n_gen == 0 {
+                    return Ok(());
                 }
                 let mut token = bos.unwrap_or_else(|| random_token());
                 for _ in 0..n_gen {

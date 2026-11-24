@@ -124,6 +124,50 @@ powershell -ExecutionPolicy Bypass -File test\cloud\remote\warm_tg_gap\run_warm_
 round-to-round spread of llama-bench. A `target\release\ggml-cpu-haswell.dll` that names `VCOMP140.DLL` is an
 MSVC module.
 
+## Why `cluaiz bench` prompt speed was below llama-bench on a model read from the disk (2026-11-24)
+
+**Shape.** Run 48 / run 59: GCP L4 with about 8 GB of VRAM left, 12 GB RAM cgroup, Qwen3.6-35B-A3B UD-IQ4_XS
+(experts 14.5 GB, so they are read from the SSD), all experts in RAM (`--n-cpu-moe 41`), no MoE cache, 4 threads.
+`cluaiz bench` was 0.90x of llama-bench (same fork) at pp512.
+
+**Cause 1, fixed: different random tokens.** `NativeLlama::bench` (`src/native/core.rs`) drew its prompt tokens from
+its own xorshift stream; llama-bench draws them from `std::rand()` without `srand`. When the experts come from the
+disk, the tokens decide which experts each batch needs and so how many bytes are read, and each tool repeats its
+own stream in every run. Same binary, only the stream swapped (run 59 part d, 2 rounds): pp512 45.37 / 45.19 with
+the own stream, 48.82 / 49.12 with llama-bench's; pp2048 90.36 / 91.58 against 96.16 / 95.10.
+**Fix:** `bench` now takes its tokens from the C library's `rand()` (the same call as llama-bench on each
+platform), draws no number for the BOS slot and no generation token in a prompt-only run, as llama-bench does.
+Only `cluaiz bench` changes; chat and serve never use this code. Alternative not taken: a seeded Rust copy of
+glibc's generator (it would not match llama-bench on Windows, where `rand()` is MSVC's).
+
+After the fix (run 59 part e, 2 rounds, same session; t/s):
+
+| | pp512 | pp2048 | tg128 |
+|---|---|---|---|
+| before (Engine `03de2c96`) | 45.24 / 45.33 | 90.13 / 91.69 | 11.81 / 11.35 |
+| after (`03de2c96` + this fix) | 49.56 / 50.61 | 92.03 / 86.37 | 12.07 / 10.65 |
+| llama-bench (fork) | 50.76 / 51.13 | 94.83 / 99.59 | 11.79 / 13.04 |
+
+pp512 went from 0.89x to 0.98x of llama-bench. pp2048 is inside the run-to-run spread on both sides (Cluaiz
+86-92, llama-bench 95-108 over runs 48 / 59), so a 5-10% gap there is not proven either way.
+
+**Cause 2, not changed: the load-time warmup.** `NativeLlama::warmup` decodes one full batch at load (so the
+planner learns the GPU pool, `cluaiz_plan::margin`); llama-bench has no load-time warmup. With a test switch that
+skipped it, the major page faults per run doubled to llama-bench's pattern (1.19-1.22 million against 0.50
+million), the first prompt after load took 385 s instead of 195 s (llama-bench's first prompt: 355-361 s), and
+pp512 rose by 1-3 t/s (run 59 parts c and e). The warmup makes the first real prompt about twice as fast on
+this shape, so it stays.
+
+**Not the cause** (run 59): memory left to the page cache (anon 410-440 MiB and file 11.7 GB in both tools), the
+llama.cpp parameters (`n_ctx` aside, the same as llama-bench's; field by field in the run's SUMMARY).
+
+**Test trap found on the way.** `CLUAIZ_MTP=off` does nothing (`native::speculative::requested` reads only
+on / 1 / true). Run 48's `-c 4608` and run 59's `-c 2048` loaded MTP through Auto (no stored measurement for that
+context), which explains their slower prompts and larger disk reads. Use `--mtp off` in tests.
+
+**Rerun:** `test/cloud/remote/ssd_prefetch/pp_gap.sh` (configs and usage in its header; `analyze_pp_gap.py` splits
+each run into phases by the time-stamped logs).
+
 ## Boundary with llama.cpp
 
 - The only crate that depends on `llama-engine` is `engine/runtime` (`engine/runtime/Cargo.toml`); 9 of its
