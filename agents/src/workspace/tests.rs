@@ -375,3 +375,34 @@ Steps.");
     assert_eq!(workspace.matched_skills("What is the SHA-256 hash of the text abc? Use the text tool.", None), ["text"]);
     let _ = std::fs::remove_dir_all(&root);
 }
+
+#[test]
+fn a_home_inside_a_repository_keeps_that_repository_out_of_its_default_workspace() {
+    let base = base("home-in-repo");
+    let home = base.join("output").join("home");
+    let (workspace_dir, project) = (home.join("workspace"), base.join("app"));
+    std::fs::create_dir_all(base.join(".git")).unwrap();
+    std::fs::create_dir_all(&workspace_dir).unwrap();
+    write(&base.join("AGENTS.md"), "checkout rules");
+    write(&base.join(".agents/rules/proof.md"), "Paste the output.");
+    write(&home.join("AGENTS.md"), "home rules");
+    write(&workspace_dir.join("AGENTS.md"), "workspace rules");
+    write(&project.join("AGENTS.md"), "app rules");
+
+    // The default workspace (run 53: the checkout's AGENTS.md went into every chat)
+    let homes = Homes { cluaiz: Some(&home), user: None };
+    let workspace = Workspace::scan(&workspace_dir, homes, &[]);
+    let labels: Vec<_> = workspace.instructions.iter().map(|i| i.label.as_str()).collect();
+    assert_eq!(labels, ["~/.cluaiz/AGENTS.md", "AGENTS.md"]);
+    assert_eq!(workspace.instructions[1].text, "workspace rules");
+    assert_eq!(workspace.root, workspace_dir);
+    assert!(workspace.rules.is_empty());
+
+    // A folder the user opened inside the same checkout is still a project of it
+    let workspace = Workspace::scan(&project, homes, &[]);
+    let labels: Vec<_> = workspace.instructions.iter().map(|i| i.label.as_str()).collect();
+    assert_eq!(labels, ["~/.cluaiz/AGENTS.md", "AGENTS.md", "app/AGENTS.md"]);
+    assert_eq!(workspace.root, base);
+    assert_eq!(workspace.rules.len(), 1);
+    let _ = std::fs::remove_dir_all(base);
+}

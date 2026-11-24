@@ -154,7 +154,7 @@ impl Workspace {
     /// Reads the agent files for work in `dir`. `installed` are the ids of skills installed from
     /// the registry (already offered with the installed tools, so not listed again).
     pub fn scan(dir: &Path, homes: Homes, installed: &[String]) -> Self {
-        let (root, folders) = project_folders(dir);
+        let (root, folders) = agent_folders(dir, homes.cluaiz);
         let mut workspace = Workspace { root: root.to_path_buf(), ..Default::default() };
         workspace.instructions = instructions::load(dir, homes.cluaiz, usize::MAX, &mut workspace.problems);
 
@@ -348,6 +348,26 @@ pub fn project_folders(dir: &Path) -> (&Path, Vec<&Path>) {
     folders.push(root);
     folders.reverse();
     (root, folders)
+}
+
+/// [`project_folders`] for the agent files of `dir`. The Cluaiz home and its default workspace are
+/// folders nobody chose as a project (`EnvironmentManager::is_unchosen_workspace`): they are their
+/// own root, so a home that sits inside a repository (a test home under a checkout, a home folder
+/// kept in git) never brings that repository's AGENTS.md and `.agents/` into every chat
+fn agent_folders<'a>(dir: &'a Path, cluaiz_home: Option<&Path>) -> (&'a Path, Vec<&'a Path>) {
+    let unchosen = cluaiz_home.is_some_and(|home| {
+        let env = cluaiz_core::EnvironmentManager {
+            mode: cluaiz_core::EnvironmentMode::Installed,
+            local_dir: home.to_path_buf(),
+            global_dir: home.to_path_buf(),
+        };
+        env.is_unchosen_workspace(dir)
+    });
+    if unchosen {
+        (dir, vec![dir])
+    } else {
+        project_folders(dir)
+    }
 }
 
 pub fn same_file(a: &Path, b: &Path) -> bool {

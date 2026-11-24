@@ -5,7 +5,7 @@
 
 use std::path::{Path, PathBuf};
 
-use super::{project_folders, same_file, split_front_matter, AGENT_FOLDERS};
+use super::{agent_folders, same_file, split_front_matter, AGENT_FOLDERS};
 
 /// A folder's own instruction file, in this order (the first one found counts)
 const NAMES: [&str; 3] = ["AGENTS.md", "CLAUDE.md", "GEMINI.md"];
@@ -40,7 +40,7 @@ pub fn load(dir: &Path, cluaiz_home: Option<&Path>, budget: usize, problems: &mu
     if let Some(home) = cluaiz_home {
         add("~/.cluaiz/AGENTS.md".into(), home.join("AGENTS.md"));
     }
-    let (root, folders) = project_folders(dir);
+    let (root, folders) = agent_folders(dir, cluaiz_home);
     for folder in folders {
         let relative = folder.strip_prefix(root).unwrap_or(folder);
         let label = |name: &str| relative.join(name).display().to_string().replace('\\', "/");
