@@ -20,16 +20,27 @@ pub async fn execute_non_streaming(
 
     let max_steps = super::api_turn::max_steps_for(&request);
     let mut turn = super::api_turn::ApiTurn::new(state.clone(), &ctx, &request, dispatch_result, None);
-    if cluaiz_agents::turn::run(&mut turn, max_steps).await.is_err() {
-        if keep_alive_val == Some(0) {
-            state.host.unload_model().await;
+    let ended = match cluaiz_agents::turn::run(&mut turn, max_steps).await {
+        Ok(ended) => ended,
+        Err(_) => {
+            if keep_alive_val == Some(0) {
+                state.host.unload_model().await;
+            }
+            let (message, kind) = turn.error.clone().unwrap_or_else(|| ("The answer stopped with an error".into(), "engine_error"));
+            return super::preflight::error_response(&request, &ctx.request_id, message, kind, None);
         }
-        let (message, kind) = turn.error.clone().unwrap_or_else(|| ("The answer stopped with an error".into(), "engine_error"));
-        return super::preflight::error_response(&request, &ctx.request_id, message, kind, None);
-    }
+    };
     // A client-run call ends the answer: OpenAI `tool_calls`, finish_reason "tool_calls"
     let client_call = turn.client_call.take();
-    let final_raw_text = if client_call.is_some() {
+    // At the step or repeat limit the last generation is a call that was not run: only the text
+    // before it is the answer. Whole, its `<tool_call>…</tool_call>` block would be taken as a
+    // reasoning block by `separate_reasoning` (any leading `<tag>…</tag>`), so the call came back
+    // as `reasoning_content` with an empty answer (run 52 `long_input`, run 57)
+    let unrun_call = matches!(ended, cluaiz_agents::turn::Ended::StepLimit);
+    if unrun_call {
+        tracing::info!("🔁 [API] Turn '{}' stopped at step/repeat limit (max_steps={})", ctx.request_id, max_steps);
+    }
+    let final_raw_text = if client_call.is_some() || unrun_call {
         turn.last_raw.split(cluaiz_core::tool_calls::OPEN).next().unwrap_or_default().to_string()
     } else {
         std::mem::take(&mut turn.last_raw)

@@ -115,7 +115,13 @@ flowchart TD
     Registers the stream in `ACTIVE_STREAMS` so it can be cancelled or its thinking skipped.
 - `non_streaming.rs`:
   - **Logic:** `execute_non_streaming` runs the same turn and answers one JSON;
-    `separate_reasoning` splits thinking from the answer with the model's tags.
+    `separate_reasoning` splits thinking from the answer with the model's tags. When the turn
+    ends at the step or repeat limit (`Ended::StepLimit`), the last generation is a call that was
+    not answered: only the text before `<tool_call>` is the answer, as for a client call. Before
+    run 57 the whole text went to `separate_reasoning`, whose generic fallback takes any leading
+    `<tag>…</tag>` as thinking, so the call came back as `reasoning_content` with an empty answer
+    (run 52 `long_input`). Alternative not taken: changing the generic fallback in
+    `cluaiz_models::StructuralDNA`, which every reasoning split uses.
 - `api_turn.rs`:
   - **Logic:** The API side of an agent turn (`cluaiz_agents::turn`) for both modes: reads the
     tokens through a `StreamingReasoningFilter` (thinking apart; with thinking off the tags are
