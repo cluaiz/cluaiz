@@ -1,0 +1,6 @@
+mode none: 2000 calls x 15 MiB, asked 0 MiB, skipped 0 MiB, prefetch 0.00 s, touch 11.82 s, total 11.82 s (sum 1)
+mode every: 2000 calls x 15 MiB, asked 30000 MiB, skipped 0 MiB, prefetch 3.08 s, touch 6.34 s, total 9.42 s (sum 1)
+mode once: 2000 calls x 15 MiB, asked 10833 MiB, skipped 19167 MiB, prefetch 1.49 s, touch 5.82 s, total 7.32 s (sum 1)
+mode once: 2000 calls x 15 MiB, asked 10833 MiB, skipped 19167 MiB, prefetch 1.60 s, touch 5.98 s, total 7.58 s (sum 1)
+mode every: 2000 calls x 15 MiB, asked 30000 MiB, skipped 0 MiB, prefetch 3.66 s, touch 7.16 s, total 10.82 s (sum 1)
+mode none: 2000 calls x 15 MiB, asked 0 MiB, skipped 0 MiB, prefetch 0.00 s, touch 6.97 s, total 6.97 s (sum 1)

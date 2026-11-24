@@ -1,0 +1,16 @@
+ranges 15 x 1024 KiB = 15.0 MiB at offset 500 MiB, 3 iterations
+cold-or-standby first call: pvm 0 us, then touch 9044 us
+ranges 15 x 1024 KiB = 15.0 MiB at offset 4500 MiB, 3 iterations
+cold-or-standby first call: pvm 0 us, then touch 16674 us
+ranges 15 x 1024 KiB = 15.0 MiB at offset 10500 MiB, 3 iterations
+cold-or-standby first call: pvm 0 us, then touch 7698 us
+ranges 15 x 1024 KiB = 15.0 MiB at offset 12500 MiB, 3 iterations
+cold-or-standby first call: pvm 0 us, then touch 8020 us
+ranges 15 x 1024 KiB = 15.0 MiB at offset 2500 MiB, 3 iterations
+cold-or-standby first call: pvm 2916 us, then touch 7607 us
+ranges 15 x 1024 KiB = 15.0 MiB at offset 8500 MiB, 3 iterations
+cold-or-standby first call: pvm 3130 us, then touch 7438 us
+ranges 15 x 1024 KiB = 15.0 MiB at offset 11500 MiB, 3 iterations
+cold-or-standby first call: pvm 2042 us, then touch 8106 us
+ranges 15 x 1024 KiB = 15.0 MiB at offset 13100 MiB, 3 iterations
+cold-or-standby first call: pvm 1833 us, then touch 7344 us

@@ -1,0 +1,13 @@
+free RAM MiB: 13315
+ranges 15 x 1024 KiB = 15.0 MiB at offset 6000 MiB, 50 iterations
+cold-or-standby first call: pvm 8699 us, then touch 7865 us
+in working set: pvm median 668 us (min 636), touch 41 us
+standby: pvm median 1551 us, touch after pvm 7500 us, touch without pvm 7490 us
+ranges 15 x 1024 KiB = 15.0 MiB at offset 9000 MiB, 50 iterations
+cold-or-standby first call: pvm 4840 us, then touch 7516 us
+in working set: pvm median 646 us (min 632), touch 41 us
+standby: pvm median 1359 us, touch after pvm 7423 us, touch without pvm 7415 us
+ranges 5 x 1024 KiB = 5.0 MiB at offset 3000 MiB, 50 iterations
+cold-or-standby first call: pvm 1216 us, then touch 3052 us
+in working set: pvm median 217 us (min 211), touch 11 us
+standby: pvm median 422 us, touch after pvm 2258 us, touch without pvm 2169 us
