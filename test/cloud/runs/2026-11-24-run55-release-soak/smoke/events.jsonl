@@ -1,0 +1,4 @@
+{"event": "setup", "seed": 5500, "minutes": 2.0, "users": 3, "restart_every": 2, "model": "qwen3.5-0.8b-gguf-Q4_K_M", "exe": "C:\\Users\\<user>\\my\\Cluaiz-workspace\\Cluaiz-Technologies\\cluaiz\\target\\debug\\deps\\cluaiz.exe", "time": 1795485572.3465745}
+{"event": "engine_started", "pid": 32968, "time": 1795485598.6355803}
+{"event": "finished", "passed": 2, "failed": 1, "sweeps": 1, "time": 1795485771.290362}
+{"event": "engine_stopped", "time": 1795485771.6325963}

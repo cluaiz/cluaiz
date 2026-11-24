@@ -1,0 +1,2 @@
+{"turn": 1, "scenario": "bad_json", "pass": true, "status": 400}
+{"turn": 2, "scenario": "max_tokens", "pass": true, "status": 200}
