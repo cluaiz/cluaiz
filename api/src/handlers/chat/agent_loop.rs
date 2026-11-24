@@ -160,7 +160,7 @@ pub async fn execute_streaming_loop(
         let max_steps = super::api_turn::max_steps_for(&request);
         let mut turn = super::api_turn::ApiTurn::new(state_clone.clone(), &ctx, &request, HostResponse::TokenStream(initial_rx), Some(sink));
         let outcome = {
-            let core = super::api_turn::run(&mut turn, max_steps);
+            let core = cluaiz_agents::turn::run(&mut turn, max_steps);
             tokio::pin!(core);
             loop {
                 let next = tokio::select! {

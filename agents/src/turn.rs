@@ -3,7 +3,8 @@
 //! The model answers; when the answer ends with tool calls, each call runs and its result joins the
 //! conversation, and the model answers again. The turn ends with an answer that makes no call, a call
 //! the client runs itself (OpenAI `tool_calls`), a stop (Ctrl+C, a cancelled stream, a closed
-//! client), or the step limit.
+//! client), or the step limit. At the step or repeat limit a front end can ask for one last answer
+//! without tools ([`Agent::prepare_final_answer`]), which [`run`] then generates.
 //!
 //! The API chat (streaming and not) and the terminal agent run their turns through [`run`]. Each
 //! brings what differs through [`Agent`]: how the model is asked (a prompt continuation or a
@@ -119,6 +120,15 @@ pub trait Agent: Send {
 
     /// The user or the client stopped the turn (checked before each generation and call)
     fn stopped(&self) -> bool;
+
+    /// The turn reached the step or repeat limit: true readies one more generation, without tools,
+    /// that answers from the tool results so far (the managed prompt `agent.final_answer`), and
+    /// [`run`] generates it. Small models with a long prompt kept calling tools until the limit and
+    /// the turn had no answer (run 52 `long_input`, run 70). False (the default): the turn ends
+    /// with [`Ended::StepLimit`], e.g. when the client runs its own functions.
+    fn prepare_final_answer(&mut self) -> bool {
+        false
+    }
 }
 
 /// Consecutive identical calls before a warning is returned instead of re-running the call
@@ -136,8 +146,28 @@ fn call_signature(call: &ToolCall) -> (String, String) {
     (call.name.trim().to_ascii_lowercase(), canonical_args)
 }
 
-/// Runs one turn: at most `max_steps` generations (`0` = unlimited, guarded by repeat detection)
+/// Runs one turn: at most `max_steps` generations (`0` = unlimited, guarded by repeat detection).
+/// At the step or repeat limit, one more generation without tools when the front end readies it
+/// ([`Agent::prepare_final_answer`]): an answer without calls is [`Ended::Answered`]; one that still
+/// makes a call (not run) or cannot be used stays [`Ended::StepLimit`].
 pub async fn run<A: Agent>(agent: &mut A, max_steps: usize) -> anyhow::Result<Ended> {
+    let ended = steps(agent, max_steps).await?;
+    if ended != Ended::StepLimit || agent.stopped() || !agent.prepare_final_answer() {
+        return Ok(ended);
+    }
+    let ended = match agent.generate(max_steps).await? {
+        Generated::Answer { said, calls } if calls.is_empty() => Ended::Answered(said),
+        Generated::Stopped { said } => Ended::Stopped(said),
+        Generated::Answer { .. } | Generated::Unusable { .. } => Ended::StepLimit,
+    };
+    if ended == Ended::StepLimit {
+        tracing::info!("🔁 [Turn] The final answer without tools still made a call (or could not be used); only the text before it is the answer");
+    }
+    Ok(ended)
+}
+
+/// The steps of a turn, up to its ending or the step or repeat limit
+async fn steps<A: Agent>(agent: &mut A, max_steps: usize) -> anyhow::Result<Ended> {
     let limit = if max_steps == 0 { usize::MAX } else { max_steps };
     let mut last_sig: Option<(String, String)> = None;
     let mut repeat_count: usize = 0;
@@ -207,6 +237,8 @@ mod tests {
         stopped: bool,
         /// Whether corrections can be added to the conversation
         corrects: bool,
+        /// Whether a final answer without tools is readied at the step or repeat limit
+        final_answer: bool,
     }
 
     fn call(name: &str) -> ToolCall {
@@ -218,7 +250,7 @@ mod tests {
     }
 
     fn script(answers: Vec<Generated>) -> Script {
-        Script { answers: answers.into(), client: vec![], stop_on_call: None, log: vec![], stopped: false, corrects: true }
+        Script { answers: answers.into(), client: vec![], stop_on_call: None, log: vec![], stopped: false, corrects: true, final_answer: false }
     }
 
     impl Agent for Script {
@@ -249,6 +281,10 @@ mod tests {
         }
         fn stopped(&self) -> bool {
             self.stopped
+        }
+        fn prepare_final_answer(&mut self) -> bool {
+            self.log.push("final answer".into());
+            self.final_answer
         }
     }
 
@@ -292,6 +328,29 @@ mod tests {
     async fn the_step_limit_ends_a_turn_that_keeps_calling() {
         let mut agent = script(vec![answer("a", &["t"]), answer("b", &["t"])]);
         assert_eq!(run(&mut agent, 2).await.unwrap(), Ended::StepLimit);
+    }
+
+    #[tokio::test]
+    async fn at_the_step_limit_one_answer_without_tools_ends_the_turn() {
+        let mut agent = script(vec![answer("a", &["t"]), answer("b", &["u"]), answer("from the results", &[])]);
+        agent.final_answer = true;
+        assert_eq!(run(&mut agent, 2).await.unwrap(), Ended::Answered("from the results".into()));
+        assert_eq!(agent.log.iter().rev().take(2).cloned().collect::<Vec<_>>(), ["generate 2", "final answer"]);
+    }
+
+    #[tokio::test]
+    async fn at_the_repeat_limit_too_and_a_call_in_the_final_answer_is_not_run() {
+        let mut agent = script(vec![
+            answer("1", &["stuck"]),
+            answer("2", &["stuck"]),
+            answer("3", &["stuck"]),
+            answer("4", &["stuck"]),
+            answer("still", &["stuck"]),
+        ]);
+        agent.final_answer = true;
+        assert_eq!(run(&mut agent, 0).await.unwrap(), Ended::StepLimit);
+        assert_eq!(agent.log.iter().filter(|l| *l == "call stuck").count(), 2);
+        assert_eq!(agent.log.last().map(String::as_str), Some("generate 0"), "{:?}", agent.log);
     }
 
     #[tokio::test]

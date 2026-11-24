@@ -837,7 +837,7 @@ context    {}", plan.summary(), plan.context_reason)
         let schemas = self.tools.all_schemas();
         self.tools.cancelled = false;
         let max_steps = self.max_steps;
-        let mut turn = CliTurn { agent: self, schemas: &schemas, generated: false };
+        let mut turn = CliTurn { agent: self, schemas: &schemas, generated: false, final_answer: false };
         let ended = cluaiz_agents::turn::run(&mut turn, max_steps).await.map_err(|error| eyre!("{error:#}"))?;
         let generated = turn.generated;
         match ended {
@@ -902,6 +902,8 @@ struct CliTurn<'a> {
     schemas: &'a serde_json::Value,
     /// A generation started (a stop before it is "cancelled before generation")
     generated: bool,
+    /// The next generation is the last one, without tools (`prepare_final_answer`)
+    final_answer: bool,
 }
 
 impl cluaiz_agents::turn::Agent for CliTurn<'_> {
@@ -910,11 +912,15 @@ impl cluaiz_agents::turn::Agent for CliTurn<'_> {
         self.generated = true;
         let agent = &mut *self.agent;
         let (answer, report) = loop {
-            let mut messages = Vec::with_capacity(agent.history.len() + 1);
+            let mut messages = Vec::with_capacity(agent.history.len() + 2);
             messages.push(message("system", agent.system.clone()));
             messages.extend(agent.history.iter().cloned());
+            if self.final_answer {
+                final_answer_note(&mut messages);
+            }
+            let schemas = (!self.final_answer).then_some(self.schemas);
             let mut out = agent.display.output(agent.session.options.show_thinking);
-            match agent.session.generate_prepared(messages, Some(self.schemas), &mut *out).await {
+            match agent.session.generate_prepared(messages, schemas, &mut *out).await {
                 Ok(done) => break done,
                 Err(e) if e.to_string().contains("exceeds the available context") && agent.make_room() => {
                     agent.display.emit(Event::Message(
@@ -989,12 +995,33 @@ impl cluaiz_agents::turn::Agent for CliTurn<'_> {
         true
     }
 
+    fn prepare_final_answer(&mut self) -> bool {
+        self.agent.display.emit(Event::Message(
+            "Steps".into(),
+            "Step or repeat limit reached: one last answer from the tool results so far, without tools.".into(),
+        ));
+        self.final_answer = true;
+        true
+    }
+
     fn stopped(&self) -> bool {
         let agent = &*self.agent;
         agent.display.closing()
             || agent.display.interrupted()
             || agent.tools.cancelled
             || cluaiz_core::GLOBAL_CANCEL_SIGNAL.load(std::sync::atomic::Ordering::SeqCst)
+    }
+}
+
+/// The last answer at the step or repeat limit (`cluaiz_agents::turn::run`): the managed prompt
+/// `agent.final_answer` as the last user message, as the API does (`ToolTurns::final_answer`). After a
+/// user message (a correction) it joins that message: some templates refuse two user messages in a
+/// row. It is not kept in the history; the answer is.
+fn final_answer_note(messages: &mut Vec<ChatMessage<Vec<PreparedPart>>>) {
+    let note = cluaiz_core::prompts::text("agent.final_answer");
+    match messages.last_mut() {
+        Some(last) if last.role == "user" => last.content.push(PreparedPart::Text { text: format!("\n\n{note}") }),
+        _ => messages.push(message("user", note)),
     }
 }
 

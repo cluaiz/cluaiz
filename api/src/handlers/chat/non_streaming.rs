@@ -20,7 +20,7 @@ pub async fn execute_non_streaming(
 
     let max_steps = super::api_turn::max_steps_for(&request);
     let mut turn = super::api_turn::ApiTurn::new(state.clone(), &ctx, &request, dispatch_result, None);
-    let ended = match super::api_turn::run(&mut turn, max_steps).await {
+    let ended = match cluaiz_agents::turn::run(&mut turn, max_steps).await {
         Ok(ended) => ended,
         Err(_) => {
             if keep_alive_val == Some(0) {
@@ -32,7 +32,7 @@ pub async fn execute_non_streaming(
     };
     // A client-run call ends the answer: OpenAI `tool_calls`, finish_reason "tool_calls"
     let client_call = turn.client_call.take();
-    // Still `StepLimit` after the final no-tools answer (`api_turn::run`): that answer made a call
+    // Still `StepLimit` after the final no-tools answer (`ApiTurn::prepare_final_answer`): that answer made a call
     // too, which was not run, so only the text before it is the answer. Whole, its
     // `<tool_call>…</tool_call>` block would be taken as a reasoning block by `separate_reasoning`
     // (any leading `<tag>…</tag>`), so the call came back as `reasoning_content` with an empty
