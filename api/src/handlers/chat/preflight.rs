@@ -1506,8 +1506,10 @@ impl PreparedChatContext {
     ) -> cluaiz_runtime::HostResponse {
         if let Some(run) = &self.provider {
             if let Some(prepared) = &self.prepared_media {
+                // A provider takes its tools from the start prompt: the final answer gets none
+                let start = if is_final_answer_pivot(pivot) { without_tools(&self.start_prompt) } else { self.start_prompt.clone() };
                 return match media_continuation(prepared, pivot) {
-                    Ok(prepared) => run.dispatch_prepared(prepared, &self.start_prompt, &self.active_think_mode, self.active_reasoning_effort, Arc::clone(&self.cancel_signal)).await,
+                    Ok(prepared) => run.dispatch_prepared(prepared, &start, &self.active_think_mode, self.active_reasoning_effort, Arc::clone(&self.cancel_signal)).await,
                     Err(error) => cluaiz_runtime::HostResponse::Error(error.to_string()),
                 };
             }
@@ -1606,6 +1608,30 @@ impl PreparedChatContext {
     }
 }
 
+/// Field of a media pivot that marks the final answer without tools (`ToolTurns::final_answer`)
+pub const FINAL_ANSWER_PIVOT: &str = "final_answer";
+
+fn value_is_final_answer(pivot: &str) -> bool {
+    serde_json::from_str::<serde_json::Value>(pivot.strip_prefix("[PIVOT_CONTINUE]").unwrap_or(pivot))
+        .is_ok_and(|value| value[FINAL_ANSWER_PIVOT] == true)
+}
+
+fn is_final_answer_pivot(pivot: Option<&str>) -> bool {
+    pivot.is_some_and(value_is_final_answer)
+}
+
+/// The start prompt without its function schemas and `tool_choice`
+fn without_tools(prompt: &str) -> String {
+    let Ok(mut envelope) = serde_json::from_str::<serde_json::Value>(prompt) else {
+        return prompt.to_string();
+    };
+    if let Some(fields) = envelope.as_object_mut() {
+        fields.remove("tools");
+        fields.remove("tool_choice");
+    }
+    envelope.to_string()
+}
+
 /// Regenerate full multimodal context; text-only KV pivot reuse cannot represent media embeddings.
 pub fn media_continuation(
     prepared: &cluaiz_core::ChatEnvelope<Vec<cluaiz_core::media::PreparedPart>>,
@@ -1618,6 +1644,10 @@ pub fn media_continuation(
         // the text path (`ToolTurns::continuation`): kept, every step was forced to call again
         // until the repeat limit
         continued.tool_choice = None;
+        // The final answer at the step or repeat limit (`ToolTurns::final_answer`) offers no tools
+        if value_is_final_answer(pivot) {
+            continued.tools = None;
+        }
         let value: serde_json::Value =
             serde_json::from_str(pivot.strip_prefix("[PIVOT_CONTINUE]").unwrap_or(pivot))?;
         let text = value

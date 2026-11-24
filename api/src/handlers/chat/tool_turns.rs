@@ -129,6 +129,8 @@ impl ToolTurns {
             };
             let text = envelope["pivot_prompt"].as_str().unwrap_or_default().to_string();
             envelope["pivot_prompt"] = json!(format!("{text}\n{note}\n"));
+            // `media_continuation` and the provider dispatch then leave the tools out
+            envelope[super::preflight::FINAL_ANSWER_PIVOT] = json!(true);
             return format!("[PIVOT_CONTINUE]{envelope}");
         }
         let mut envelope: Value =
