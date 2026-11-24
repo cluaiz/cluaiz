@@ -426,6 +426,36 @@ impl ExternalChatRequest {
         cluaiz_security::chat_security_mode(global, requested)
     }
 
+    /// OpenAI `tool_choice`: "auto" (also when missing or null), "none", "required", or
+    /// `{"type": "function", "function": {"name": X}}`, which is "required" with the tool list cut
+    /// to X. Anything else is an error message for a 400 naming `tool_choice` (llama-server refuses
+    /// an unknown string the same way, `common_chat_tool_choice_parse_oaicompat`)
+    pub fn tool_choice_mode(&self) -> Result<ToolChoice, String> {
+        let invalid = |value: &serde_json::Value| {
+            format!("Invalid tool_choice: {value} (send \"auto\", \"none\", \"required\" or {{\"type\": \"function\", \"function\": {{\"name\": \"...\"}}}})")
+        };
+        match &self.tool_choice {
+            None | Some(serde_json::Value::Null) => Ok(ToolChoice { mode: "auto", function: None }),
+            Some(value @ serde_json::Value::String(mode)) => match mode.as_str() {
+                "auto" => Ok(ToolChoice { mode: "auto", function: None }),
+                "none" => Ok(ToolChoice { mode: "none", function: None }),
+                "required" => Ok(ToolChoice { mode: "required", function: None }),
+                _ => Err(invalid(value)),
+            },
+            Some(value) => {
+                let name = value
+                    .get("function")
+                    .and_then(|f| f.get("name"))
+                    .and_then(|n| n.as_str())
+                    .filter(|n| !n.is_empty() && value.get("type").and_then(|t| t.as_str()) == Some("function"));
+                match name {
+                    Some(name) => Ok(ToolChoice { mode: "required", function: Some(name.to_string()) }),
+                    None => Err(invalid(value)),
+                }
+            }
+        }
+    }
+
     /// `logit_bias` as (token id, bias) pairs, sorted by id; missing or `{}` = none. A key that is
     /// not a token id or a value outside -100..100 (OpenAI's range) is an error message for a 400.
     /// Ids past the model's vocabulary are checked once the model is known (`check_vocabulary`)
@@ -445,6 +475,14 @@ impl ExternalChatRequest {
         pairs.sort_by_key(|(token, _)| *token);
         Ok(pairs)
     }
+}
+
+/// `tool_choice` as llama.cpp takes it (`mode`: "auto", "none" or "required") and the one
+/// function a named choice allows
+#[derive(Debug, Clone, PartialEq)]
+pub struct ToolChoice {
+    pub mode: &'static str,
+    pub function: Option<String>,
 }
 
 /// OpenAI's `logit_bias` range: -100 bans a token, 100 makes it the only choice
@@ -501,6 +539,17 @@ mod openai_field_tests {
             let error = parse(&format!(r#","approval_mode":{bad}"#)).approval_mode_id("sandboxed").unwrap_err();
             assert!(error.contains("approval_mode"), "{error}");
         }
+    }
+
+    #[test]
+    fn tool_choice_takes_openai_forms() {
+        assert_eq!(parse("").tool_choice_mode().unwrap().mode, "auto");
+        assert_eq!(parse(r#","tool_choice":"none""#).tool_choice_mode().unwrap().mode, "none");
+        assert_eq!(parse(r#","tool_choice":"required""#).tool_choice_mode().unwrap().mode, "required");
+        let named = parse(r#","tool_choice":{"type":"function","function":{"name":"get_time"}}"#).tool_choice_mode().unwrap();
+        assert_eq!((named.mode, named.function.as_deref()), ("required", Some("get_time")));
+        assert!(parse(r#","tool_choice":"any""#).tool_choice_mode().is_err());
+        assert!(parse(r#","tool_choice":{"type":"function"}"#).tool_choice_mode().is_err());
     }
 
     #[test]

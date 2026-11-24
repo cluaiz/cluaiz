@@ -6,6 +6,7 @@
 #include "json-schema-to-grammar.h"
 #include "llama.h"
 
+#include <cctype>
 #include <cstdlib>
 #include <cstring>
 #include <memory>
@@ -47,7 +48,13 @@ common_chat_templates_inputs inputs_from(const common_json & body) {
     if (body.contains("tools")) {
         inputs.tools = common_chat_tools_parse_oaicompat(body.at("tools"));
     }
-    inputs.tool_choice         = COMMON_CHAT_TOOL_CHOICE_AUTO;
+    // "auto", "none" or "required", parsed as llama-server does (server-common.cpp)
+    inputs.tool_choice         = common_chat_tool_choice_parse_oaicompat(body.value("tool_choice", std::string("auto")));
+    // The answer's JSON schema: llama.cpp then builds one strict grammar for the answer and the
+    // calls (chat-auto-parser-generator.cpp), as llama-server passes response_format
+    if (body.contains("json_schema") && body.at("json_schema").is_object()) {
+        inputs.json_schema = body.at("json_schema").dump();
+    }
     // The Engine runs one call per step and renders the conversation again after it
     inputs.parallel_tool_calls = false;
     inputs.reasoning_format    = COMMON_REASONING_FORMAT_DEEPSEEK;
@@ -104,7 +111,8 @@ extern "C" void cluaiz_chat_templates_free(cluaiz_chat_templates * tmpls) noexce
 }
 
 // request: {"messages": [OpenAI messages], "tools": [OpenAI tools], "enable_thinking": bool,
-//           "chat_template_kwargs": {..}}
+//           "chat_template_kwargs": {..}, "tool_choice": "auto" | "none" | "required",
+//           "json_schema": {..}}
 // returns: {"prompt", "format", "grammar", "grammar_lazy", "triggers": [{"type", "value", "token"}],
 //           "preserved_tokens", "additional_stops", "generation_prompt", "parser_serial", "request"}
 //           or {"error"}
@@ -331,12 +339,35 @@ extern "C" llama_sampler * cluaiz_tool_grammar_init(const llama_vocab * vocab, c
         for (const auto & pattern : patterns) {
             patterns_c.push_back(pattern.c_str());
         }
-        llama_sampler * inner = body.value("grammar_lazy", false)
+        const bool lazy = body.value("grammar_lazy", false);
+        llama_sampler * inner = lazy
             ? llama_sampler_init_grammar_lazy_patterns(vocab, grammar.c_str(), "root", patterns_c.data(),
                   patterns_c.size(), tokens.data(), tokens.size())
             : llama_sampler_init_grammar(vocab, grammar.c_str(), "root");
         if (!inner) {
             return nullptr;
+        }
+        // A strict grammar from the template (a response format, or tool_choice "required") starts
+        // at the generation prompt the template already wrote: it is fed those tokens first, as
+        // common_sampler_init does for tool-call grammars. A request's own grammar has no
+        // generation_prompt in its spec and is not fed anything.
+        const std::string generation_prompt = body.value("generation_prompt", std::string());
+        if (!lazy && !generation_prompt.empty()) {
+            const auto ids = common_tokenize(vocab, generation_prompt, false, true);
+            try {
+                for (size_t i = 0; i < ids.size(); i++) {
+                    const std::string piece = common_token_to_piece(vocab, ids[i], true);
+                    // Some tokenizers add a space before the first special token
+                    if (i == 0 && !piece.empty() && std::isspace(static_cast<unsigned char>(piece[0])) &&
+                        !std::isspace(static_cast<unsigned char>(generation_prompt[0]))) {
+                        continue;
+                    }
+                    llama_sampler_accept(inner, ids[i]);
+                }
+            } catch (...) {
+                llama_sampler_free(inner);
+                return nullptr;
+            }
         }
         return llama_sampler_init(&tool_grammar_iface, new cluaiz_tool_grammar{ inner, false });
     } catch (...) {

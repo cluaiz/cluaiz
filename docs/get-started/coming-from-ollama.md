@@ -86,7 +86,7 @@ from the Engine's own counts.
 | `options.num_ctx` | the context size of this load (`llama.n_ctx`); without it the planner chooses from free memory |
 | other `options` (for example `num_gpu`, `num_thread`, `mirostat`) | ignored; load settings are in `settings.json` or the `llama` object of `/v1/chat/completions` |
 | `think`: `true`, `false` or a level | thinking on or off; a level (`low`, `medium`, `high`) sets the thinking budget |
-| `format`: `"json"` or a JSON schema | the answer is held to it by a grammar |
+| `format`: `"json"` or a JSON schema | the answer is held to it by a grammar, also together with `tools` (one grammar for the answer and the calls) |
 | `keep_alive` | as in Ollama: a number is seconds, a string a duration (`"5m"`). On the OpenAI routes a number means minutes |
 | `images` (base64) | sent to a vision model as images |
 | `tools`, `tool_calls` | passed through; the model's calls come back in `message.tool_calls` |

@@ -97,12 +97,21 @@ impl ToolTurns {
             return self.media_pivot(ctx);
         }
         let prompt = with_steps(&ctx.json_prompt, &self.steps, self.tool_role);
-        if self.loaded_functions.is_empty() {
+        let forced = ctx.json_prompt.contains("\"tool_choice\"");
+        if self.loaded_functions.is_empty() && !forced {
             return prompt;
         }
         let mut envelope: Value = serde_json::from_str(&prompt).unwrap_or_else(|_| json!({}));
-        let tools = envelope.get("tools").and_then(Value::as_array).cloned().unwrap_or_default();
-        envelope["tools"] = json!(unique_functions([tools, self.loaded_functions.clone()].concat()));
+        // `tool_choice` ("required", a named function) is for the request's first answer, as an
+        // OpenAI request is one answer: after the Engine ran a call the model may answer, else
+        // every step would be forced to call again until max_steps
+        if let Some(fields) = envelope.as_object_mut() {
+            fields.remove("tool_choice");
+        }
+        if !self.loaded_functions.is_empty() {
+            let tools = envelope.get("tools").and_then(Value::as_array).cloned().unwrap_or_default();
+            envelope["tools"] = json!(unique_functions([tools, self.loaded_functions.clone()].concat()));
+        }
         envelope.to_string()
     }
 

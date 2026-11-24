@@ -159,6 +159,7 @@ async fn real_packaged_video_pixels_timestamps_audio_limits_and_shared_request()
         grammar: None,
         response_format: None,
         tools: None,
+        tool_choice: None,
         stop: Vec::new(),
         logit_bias: Vec::new(),
     };

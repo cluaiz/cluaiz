@@ -149,12 +149,17 @@ pub(crate) fn stream_tokens_with_media(
                         .map(|m| m.to_string());
                     // Function schemas the model's own template renders (native tool calls), and
                     // whether calls are read from the answer (`parse_tools: false` keeps the
-                    // same prompt for a job that wants plain text, like an idle-time card)
+                    // same prompt for a job that wants plain text, like an idle-time card), and
+                    // the request's `tool_choice` ("none", "required"; missing = "auto")
                     let tools = envelope
                         .get("tools")
                         .filter(|t| t.as_array().is_some_and(|a| !a.is_empty()))
                         .cloned()
-                        .map(|tools| (tools, envelope.get("parse_tools").and_then(|p| p.as_bool()) != Some(false)));
+                        .map(|tools| (
+                            tools,
+                            envelope.get("parse_tools").and_then(|p| p.as_bool()) != Some(false),
+                            envelope.get("tool_choice").and_then(|c| c.as_str()).map(str::to_string),
+                        ));
                     // Thinking off without changing the start of the prompt (a job that reuses a
                     // chat's KV): see below
                     let keep_prefix = envelope.get("thinking_off_keeps_prefix").and_then(|k| k.as_bool()) == Some(true);
@@ -284,9 +289,16 @@ pub(crate) fn stream_tokens_with_media(
         // format, and llama.cpp gives the grammar and parser for its calls (llama-server's path).
         // Image and audio prompts too: llama-server renders the tools the same way for a multimodal
         // request (the media parts are markers in the text). Continuations keep the inline form.
-        let (native_tools, parse_tools) = match req_tools.filter(|_| !is_pivot) {
-            Some((tools, parse)) => (Some(tools), parse),
-            None => (None, false),
+        let (native_tools, parse_tools, tool_choice) = match req_tools.filter(|_| !is_pivot) {
+            Some((tools, parse, choice)) => (Some(tools), parse, choice),
+            None => (None, false, None),
+        };
+        // The answer's JSON schema goes into the same template call, so llama.cpp builds one strict
+        // grammar for the answer and the calls (llama-server's response_format with tools,
+        // common/chat-auto-parser-generator.cpp). A GBNF grammar with tools is refused by the API.
+        let tools_schema = match &req_output {
+            Some(cluaiz_core::OutputConstraint::JsonSchema(schema)) if native_tools.is_some() => Some(schema.clone()),
+            _ => None,
         };
         if native_tools.is_some() && llama.chat_tools_for(dna.chat_template.as_deref()).is_none() {
             tracing::warn!("⚠️ [NativeTools] llama.cpp could not parse the template for tool use; tools go inline");
@@ -300,11 +312,17 @@ pub(crate) fn stream_tokens_with_media(
         let render = |llama: &NativeLlama, messages: &[(String, String)]| {
             if let Some(tools) = &native_tools {
                 if let Some(chat_tools) = llama.chat_tools(dna.chat_template.as_deref()) {
-                    let request = serde_json::json!({
+                    let mut request = serde_json::json!({
                         "messages": cluaiz_core::tool_calls::openai_messages(messages),
                         "tools": tools,
                         "enable_thinking": enable_thinking,
                     });
+                    if let Some(choice) = &tool_choice {
+                        request["tool_choice"] = serde_json::json!(choice);
+                    }
+                    if let Some(schema) = &tools_schema {
+                        request["json_schema"] = schema.clone();
+                    }
                     match chat_tools.apply(&request) {
                         Ok(apply) if apply["supports_tools"].as_bool() == Some(false) => {
                             tracing::info!("🧰 [NativeTools] The template does not render tools; they go inline")
@@ -835,9 +853,26 @@ pub(crate) fn stream_tokens_with_media(
             (Some(apply), Some(_)) => crate::ffi::chat::tool_grammar(vocab, apply),
             _ => std::ptr::null_mut(),
         };
+        // A strict grammar from the template: the answer's JSON schema and the calls together, or
+        // tool_choice "required". Like llama.cpp's common_sampler it applies from the first token,
+        // thinking included (the grammar has the thinking block in it), and starts after the
+        // generation prompt (`cluaiz_tool_grammar_init` feeds it those tokens)
+        let template_strict = !tool_grammar.is_null()
+            && native_apply.as_ref().is_some_and(|apply| apply["grammar_lazy"].as_bool() == Some(false));
+        let mut grammar_lazy = !template_strict;
+        if template_strict && tools_schema.is_some() {
+            info!("📐 [NativeStream] Answer constrained by a JSON schema grammar, in one grammar with the tool calls (llama.cpp)");
+        } else if !tool_grammar.is_null() && req_output.is_some() {
+            tracing::warn!("⚠️ [NativeStream] This template's tool-call grammar did not take the request's grammar or JSON schema; the answer is not constrained");
+        }
+        if template_strict && tool_choice.as_deref() == Some("required") {
+            info!("🧰 [NativeTools] tool_choice required: the answer must be a call");
+        }
+        if tool_choice.as_deref() == Some("required") && native_tools.is_some() && native_apply.is_none() {
+            tracing::warn!("⚠️ [NativeTools] tool_choice required is not enforced: the template does not render tools natively");
+        }
         // Without a tool grammar, the request's own grammar or JSON schema shapes the answer
         // (llama-server's `grammar` / `response_format`); it too waits until thinking is done
-        let mut grammar_lazy = true;
         if tool_grammar.is_null() {
             let gbnf = match &req_output {
                 Some(cluaiz_core::OutputConstraint::Gbnf(g)) => Some(g.clone()),
@@ -943,7 +978,7 @@ pub(crate) fn stream_tokens_with_media(
         // The last thinking token ended a line (set per token below)
         let mut think_line_end = false;
         safe_sampler.sampler = root;
-        // The grammar sees only what the model writes outside thinking
+        // The grammar sees only what the model writes outside thinking (a strict template grammar: everything)
         let mut grammar_active = false;
         let mut set_grammar = |active: bool, replay: &str| {
             if !tool_grammar.is_null() && active != grammar_active {
@@ -952,7 +987,7 @@ pub(crate) fn stream_tokens_with_media(
             }
         };
         // The prompt's own thinking end tag (thinking off) is not output: nothing to replay
-        set_grammar(!prompt_opens_thinking, "");
+        set_grammar(template_strict || !prompt_opens_thinking, "");
         // Everything generated (thinking included) for the parser, the answer part, and what of
         // the parsed answer was sent
         let mut generated = String::new();
@@ -1116,7 +1151,9 @@ pub(crate) fn stream_tokens_with_media(
 
                     // Thinking just ended: the grammar wakes up and sees the end tag (llama-server)
                     // (a strict grammar starts at the answer itself: nothing to replay)
-                    set_grammar(!in_think_block, if grammar_lazy { &think_end_tag } else { "" });
+                    if !template_strict {
+                        set_grammar(!in_think_block, if grammar_lazy { &think_end_tag } else { "" });
+                    }
                     generated.push_str(emit_str);
                     // A start tag over several tokens (Gemma 4: "<|channel>" + "thought"): its first
                     // tokens went to the answer parser, which sends nothing of them. The reader of the

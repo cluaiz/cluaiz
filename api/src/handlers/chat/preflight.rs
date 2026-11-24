@@ -655,7 +655,12 @@ impl PreparedChatContext {
             }
         }
 
-        // OpenAI function definitions: rendered for the model like any tool, run by the client
+        // OpenAI `tool_choice`, passed to llama.cpp's template layer ("auto", "none", "required")
+        let tool_choice = request.tool_choice_mode().map_err(|message| {
+            error_response_with_param(request, request_id, message, "invalid_request_error", Some("invalid_value"), Some("tool_choice"))
+        })?;
+        // OpenAI function definitions: rendered for the model like any tool, run by the client. A
+        // named tool_choice keeps only that function
         let client_schemas: Vec<serde_json::Value> = request
             .tools
             .iter()
@@ -664,8 +669,32 @@ impl PreparedChatContext {
                 tool.get("type").and_then(|t| t.as_str()) == Some("function")
                     && tool.get("function").is_some_and(|f| f.get("name").is_some_and(|n| n.is_string()))
             })
+            .filter(|tool| tool_choice.function.as_deref().is_none_or(|name| tool["function"]["name"].as_str() == Some(name)))
             .cloned()
             .collect();
+        if let (Some(name), true) = (&tool_choice.function, client_schemas.is_empty()) {
+            return Err(error_response_with_param(
+                request,
+                request_id,
+                format!("tool_choice names the function '{name}', which is not in tools"),
+                "invalid_request_error",
+                Some("invalid_value"),
+                Some("tool_choice"),
+            ));
+        }
+        // A custom GBNF grammar and tools cannot both shape the answer: llama-server refuses the
+        // request (server-common.cpp, "Cannot use custom grammar constraints with tools.")
+        let custom_grammar = request.grammar.as_deref().is_some_and(|g| !g.trim().is_empty()) && tool_choice.mode != "none";
+        if custom_grammar && !client_schemas.is_empty() {
+            return Err(error_response_with_param(
+                request,
+                request_id,
+                "Cannot use custom grammar constraints with tools.".into(),
+                "invalid_request_error",
+                Some("invalid_value"),
+                Some("grammar"),
+            ));
+        }
         let client_tools: Vec<String> = client_schemas
             .iter()
             .filter_map(|tool| tool["function"]["name"].as_str().map(str::to_owned))
@@ -687,9 +716,14 @@ impl PreparedChatContext {
             .map(|m| m.content.text_content());
         let before_tools = std::time::Instant::now();
 
-        // tool_choice "none" (OpenAI), or a plain prompt: the model gets none of the Engine's tools
-        // for this request (the client's own functions, `client_schemas`, are added below)
-        let tools_allowed = !request.plain_prompt && request.tool_choice.as_ref().and_then(|choice| choice.as_str()) != Some("none");
+        // tool_choice "none" (OpenAI), a named function, a custom grammar (only the client could
+        // have sent tools with it, see above), or a plain prompt: the model gets none of the
+        // Engine's tools for this request (the client's own functions, `client_schemas`, are
+        // added below)
+        if custom_grammar && !request.plain_prompt {
+            tracing::info!("📐 [ChatHandler] A custom grammar: the Engine's own functions are left out of this request so the grammar applies");
+        }
+        let tools_allowed = !request.plain_prompt && tool_choice.mode != "none" && tool_choice.function.is_none() && !custom_grammar;
         if !tools_allowed {
             tool_ids_to_compile.clear();
         }
@@ -1257,6 +1291,7 @@ impl PreparedChatContext {
             // In the struct, not patched into the JSON afterwards: an image request is built from
             // this struct (`prepared_media` below) and needs the same function schemas
             tools: (!template_tools.is_empty()).then(|| json!(template_tools)),
+            tool_choice: (tool_choice.mode != "auto" && !template_tools.is_empty()).then(|| tool_choice.mode.to_string()),
             stop: request.stop.clone().map(|s| s.into_vec()).unwrap_or_default(),
             logit_bias: logit_bias.clone(),
         };

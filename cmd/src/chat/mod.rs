@@ -337,6 +337,7 @@ impl Session {
             grammar: None,
             response_format: None,
             tools: tools.cloned(),
+            tool_choice: None,
             stop: Vec::new(),
             logit_bias: Vec::new(),
         };

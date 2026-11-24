@@ -167,6 +167,7 @@ mod tests {
                 grammar: None,
                 response_format: None,
                 tools: None,
+                tool_choice: None,
                 stop: Vec::new(),
                 logit_bias: Vec::new(),
             };

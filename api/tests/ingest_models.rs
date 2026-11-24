@@ -101,6 +101,7 @@ async fn pdf_preparation(pdf: &str, mut settings: cluaiz_core::ActiveUserSetting
         grammar: None,
         response_format: None,
         tools: None,
+        tool_choice: None,
         stop: Vec::new(),
         logit_bias: Vec::new(),
     };

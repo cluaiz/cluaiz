@@ -43,8 +43,8 @@ Python example above was not run in run 32 (the requests there used `curl`).
 | `stream_options.include_usage` | yes | the usage chunk at the end, as OpenAI sends it |
 | `max_tokens` | yes | limits the answer; thinking has its own budget (`reasoning_effort`) |
 | `temperature`, `top_p`, `frequency_penalty`, `presence_penalty`, `seed` | yes | passed to the sampler |
-| `response_format` | yes | JSON or a JSON schema, enforced by a grammar |
-| `tools`, `tool_choice` | yes | `tool_choice: "none"` sends no tools |
+| `response_format` | yes | JSON or a JSON schema, enforced by a grammar; with tools, one grammar covers the answer and the calls (run 68) |
+| `tools`, `tool_choice` | yes | `tool_choice`: `auto`, `none` (no Engine tools, no call asked for), `required` (a call is forced) or a named function (only that function, call forced); tools also work with image and audio messages (run 68) |
 | `reasoning_effort` | yes | `low`, `medium`, `high`, plus `auto`, `max` or a number of tokens |
 | `stop` | yes (recorded) | a string or an array; the answer ends before the first match, `finish_reason: "stop"` (run 34) |
 | `max_completion_tokens` | yes (recorded) | the answer limit when `max_tokens` is not sent; `max_tokens` wins when both are (run 34) |

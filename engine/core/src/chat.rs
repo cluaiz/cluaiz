@@ -36,6 +36,11 @@ pub struct ChatEnvelope<Content = String> {
     /// Native tool schemas survive text/media conversion; omitted for callers without tools.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tools: Option<serde_json::Value>,
+    /// OpenAI `tool_choice` as llama.cpp takes it: "none" or "required" (a named function arrives
+    /// as "required" with `tools` cut to that function); None = "auto". Kept through text/media
+    /// conversion like `tools`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tool_choice: Option<String>,
     /// OpenAI `stop`: the answer ends before the first of these strings; empty = none
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub stop: Vec<String>,
@@ -71,6 +76,7 @@ impl<Content> ChatEnvelope<Content> {
             grammar: self.grammar,
             response_format: self.response_format,
             tools: self.tools,
+            tool_choice: self.tool_choice,
             stop: self.stop,
             logit_bias: self.logit_bias,
         })
@@ -97,21 +103,21 @@ impl OutputConstraint {
             return Some(Self::Gbnf(grammar.to_string()));
         }
         let format = response_format?;
-        match format.get("type").and_then(|t| t.as_str()) {
-            Some("json_object") => Some(Self::JsonSchema(
-                format
-                    .get("schema")
-                    .cloned()
-                    .unwrap_or_else(|| serde_json::json!({ "type": "object" })),
-            )),
+        let schema = match format.get("type").and_then(|t| t.as_str()) {
+            Some("json_object") => format.get("schema").cloned().unwrap_or_default(),
             Some("json_schema") => {
                 let spec = format.get("json_schema")?;
-                Some(Self::JsonSchema(
-                    spec.get("schema").cloned().unwrap_or_else(|| spec.clone()),
-                ))
+                spec.get("schema").cloned().unwrap_or_else(|| spec.clone())
             }
-            _ => None,
-        }
+            _ => return None,
+        };
+        // An absent or empty schema means any object (server-common.cpp, "an absent or empty
+        // schema means any object"); llama.cpp's template layer builds no grammar for `{}`
+        Some(Self::JsonSchema(match schema {
+            serde_json::Value::Null => serde_json::json!({ "type": "object" }),
+            serde_json::Value::Object(map) if map.is_empty() => serde_json::json!({ "type": "object" }),
+            other => other,
+        }))
     }
 }
 
@@ -355,6 +361,11 @@ mod tests {
             None
         );
         assert_eq!(OutputConstraint::from_request(None, None), None);
+        // Empty schema = any object, as llama-server
+        assert_eq!(
+            OutputConstraint::from_request(None, Some(&json!({"type": "json_schema", "json_schema": {"name": "x", "schema": {}}}))),
+            Some(OutputConstraint::JsonSchema(json!({"type": "object"})))
+        );
     }
 
     #[test]
@@ -504,6 +515,7 @@ mod tests {
             grammar: None,
             response_format: None,
             tools: None,
+            tool_choice: None,
             stop: Vec::new(),
             logit_bias: Vec::new(),
         };
@@ -518,5 +530,9 @@ mod tests {
             Some(serde_json::json!([{"type":"function","function":{"name":"read_file"}}]));
         let v: serde_json::Value = serde_json::from_str(&with_tools.to_prompt()).unwrap();
         assert_eq!(v["tools"][0]["function"]["name"], "read_file");
+        assert!(v.get("tool_choice").is_none());
+        with_tools.tool_choice = Some("required".into());
+        let v: serde_json::Value = serde_json::from_str(&with_tools.to_prompt()).unwrap();
+        assert_eq!(v["tool_choice"], "required");
     }
 }

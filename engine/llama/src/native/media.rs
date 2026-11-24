@@ -478,6 +478,7 @@ impl MediaInput {
                 grammar: request.grammar,
                 response_format: request.response_format,
                 tools: request.tools,
+                tool_choice: request.tool_choice,
                 stop: request.stop,
                 logit_bias: request.logit_bias,
             },
