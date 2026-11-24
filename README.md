@@ -38,7 +38,7 @@ scripts and agents memory, tools and workflows on top of them:
   runs, how large the context is and which KV cache type fits. You can override any of it.
 - **MoE models larger than the GPU, and larger than free RAM:** attention stays on the GPU, the experts sit in
   RAM with llama.cpp's MoE GPU cache sized by the planner, and experts that do not fit RAM are read from the
-  memory-mapped model file on the disk when used (at the disk's speed; a dedicated SSD prefetch is planned).
+  memory-mapped model file on the disk when used (at the disk's speed; an expert prefetch hints the disk reads ahead, on by default only on Linux when the MoE cache holds at least 20% of the experts, see [docs](docs/engine/moe_ssd_streaming.md)).
 - **APIs** that existing clients already speak (OpenAI-compatible routes, and Ollama's chat, generate, embed, tags and pull routes), plus CEP, one
   JSON-RPC 2.0 protocol for everything engine-specific, over HTTP, MCP or a C library.
 - **Cloud providers** beside local models, through the same APIs.
@@ -53,12 +53,12 @@ scripts and agents memory, tools and workflows on top of them:
 
 On the same model file, placement and settings, Cluaiz runs at the speed of official llama.cpp's `llama-bench` on
 the GPU and on a GPU + RAM split. On the CPU alone, generation is equal, prompts were 6-26% slower on an 8-thread
-laptop, and one quantization (Q2_0) was 13-20% slower on a 1 vCPU server (see [Benchmarks](#benchmarks)).
+laptop (Windows CPU backends are now built with clang and LLVM OpenMP, about 5% behind in run 54), and one quantization (Q2_0) was 13-20% slower on a 1 vCPU server (see [Benchmarks](#benchmarks)).
 
 > [!TIP]
 > **A 26B model on a 4 GB laptop GPU.** Gemma 4 26B A4B (MoE, IQ4_XS, 14.2 GB model file) on an RTX 3050
 > Laptop with 4 GB VRAM and 24 GB RAM: attention on the GPU, experts in RAM, and the experts that do not fit
-> RAM read from the memory-mapped model file on the disk when used (no SSD prefetch yet). Measured
+> RAM read from the memory-mapped model file on the disk when used (measured without the expert prefetch, which is off by default on Windows). Measured
 > 2026-11-16: **16.7 tokens/s** in a short `cluaiz bench` (128 tokens) and **11-13 tokens/s** for chat answers
 > of about 400 tokens; the first answer after loading is much slower (2.8 tokens/s) until the experts are in
 > RAM. The less free RAM, the more is read from the disk and the slower it gets. With the same placement,
@@ -216,7 +216,7 @@ Reference: [`docs/api/README.md`](docs/api/README.md) and [`docs/api/cep/README.
   ([details](docs/api/inference/chat_completions.md)).
 - **Execution policy:** `full_access` or `sandboxed` (default) per engine and per tool; actions outside the
   workspace ask for approval; destructive commands (disk wipes, `rm -rf /`) and credential paths are blocked.
-  This is an approval policy, not OS isolation: an allowed command runs with your user's access.
+  The approval policy itself is not OS isolation. The OS sandbox (`os_sandbox`, default `auto`) confines commands on Linux (bubblewrap) and macOS (sandbox-exec) when the tool exists; on Windows `auto` does not confine, and `required` uses an AppContainer (`agents/src/execution/os_sandbox.rs`).
 - **API tokens** for every route (`cluaiz token`), and an **audit log** of every write, exec and admin call
   (parameters kept only as a hash).
 
@@ -264,7 +264,7 @@ The same model file, placement and settings on Cluaiz and on llama.cpp's `llama-
 | Generation, CPU only | Equal, except Ternary-Bonsai Q2_0 on a 1 vCPU server: 13-20% slower ([run 16](test/cloud/runs/2026-11-16-run16-vps-ollama/SUMMARY.md)) |
 | Prompt, model fully on the GPU | Equal on the laptop and the T4; llama.cpp up to 11% faster on the L4 |
 | Prompt, model split across GPU and RAM | Equal with `cluaiz bench` (prompt 512, [run 17](test/cloud/runs/2026-11-16-run17-laptop-same-settings/SUMMARY.md)). Through the chat API, a prompt just over 512 tokens (about 530) was 1.4x to 2.2x faster on the laptop and up to 1.6x on the T4, because Cluaiz cuts it into two even chunks; on the L4 0.82x to 1.3x |
-| Prompt, CPU only | Equal on a 1 vCPU server ([run 15](test/cloud/runs/2026-11-16-run15-vps-cpu/SUMMARY.md)); 6-26% slower on 8 threads ([run 17](test/cloud/runs/2026-11-16-run17-laptop-same-settings/SUMMARY.md)), not explained yet |
+| Prompt, CPU only | Equal on a 1 vCPU server ([run 15](test/cloud/runs/2026-11-16-run15-vps-cpu/SUMMARY.md)); 6-26% slower on 8 threads ([run 17](test/cloud/runs/2026-11-16-run17-laptop-same-settings/SUMMARY.md)); the cause was the MSVC build without LLVM OpenMP, and with the clang build Qwen3-1.7B pp512 went 117 -> 129 t/s against llama-bench 136, about 5% behind ([run 54](test/cloud/runs/2026-11-23-run54-windows-llvm-cpu-backends/SUMMARY.md)) |
 
 On a 1 vCPU / 3.8 GB server without a GPU, Ollama generated 14-23% slower than Cluaiz with the same settings and
 could not load Llama 3.2 3B ([run 16](test/cloud/runs/2026-11-16-run16-vps-ollama/SUMMARY.md)). Nine chat models
@@ -409,7 +409,7 @@ placement Cluaiz chose. Prompt about 544 tokens.*
   (GPU, GPU + RAM, CPU) from live hardware measurements.
 - **Backends:** `llama.cpp` (cluaiz fork, linked into the engine) for GGUF models; ONNX Runtime for speech and
   vision models.
-- **Platforms:** Windows x64 (MSVC), Linux x64 / ARM64 (glibc 2.39+), macOS Apple Silicon.
+- **Platforms:** Windows x64 (CPU backends built with clang and LLVM OpenMP, the CUDA backend with MSVC), Linux x64 / ARM64 (glibc 2.39+), macOS Apple Silicon.
 - **Delivery:** a CPU core plus optional GPU packs (CUDA 12, CUDA 13, Vulkan); the engine loads the GPU backend
   libraries it finds next to its executable at start.
 
