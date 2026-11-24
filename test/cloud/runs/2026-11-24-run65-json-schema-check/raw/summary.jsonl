@@ -1,0 +1,11 @@
+{"case": "a_plain", "valid": 0, "n": 10, "median_s": 0.206, "completion_tokens": [22, 21, 21, 21, 21, 24, 24, 24, 24, 24]}
+{"case": "b_json_object", "valid": 10, "n": 10, "median_s": 0.32, "completion_tokens": [19, 19, 19, 19, 19, 19, 18, 18, 18, 18]}
+{"case": "c_json_schema", "valid": 10, "n": 10, "median_s": 0.351, "completion_tokens": [17, 17, 17, 17, 17, 17, 18, 18, 18, 18]}
+{"case": "d_grammar", "valid": 10, "n": 10, "median_s": 0.122, "completion_tokens": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}
+{"case": "e_tool_required", "valid": 10, "n": 10, "median_s": 1.955, "completion_tokens": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}
+{"case": "b_json_object_none", "valid": 10, "n": 10, "median_s": 0.329, "completion_tokens": [18, 18, 19, 19, 19, 18, 18, 18, 18, 18]}
+{"case": "c_json_schema_none", "valid": 10, "n": 10, "median_s": 0.385, "completion_tokens": [17, 17, 18, 18, 17, 17, 17, 17, 17, 18]}
+{"case": "d_grammar_none", "valid": 10, "n": 10, "median_s": 0.153, "completion_tokens": [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}
+{"case": "f_json_schema_with_tool", "valid": 9, "n": 10, "median_s": 0.178, "completion_tokens": [0, 1, 1, 1, 1, 17, 17, 17, 17, 17]}
+{"case": "g_grammar_with_tool", "valid": 0, "n": 10, "median_s": 0.077, "completion_tokens": [2, 2, 2, 2, 2, 2, 2, 2, 2, 2]}
+{"case": "h_required_unrelated", "valid": 0, "n": 10, "median_s": 0.114, "completion_tokens": [9, 9, 9, 9, 9, 9, 9, 9, 9, 9]}
