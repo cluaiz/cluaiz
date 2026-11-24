@@ -282,8 +282,9 @@ pub(crate) fn stream_tokens_with_media(
 
         // Native tool calls: the template renders the tools and the tool turns in the model's own
         // format, and llama.cpp gives the grammar and parser for its calls (llama-server's path).
-        // Media prompts and continuations keep the inline form.
-        let (native_tools, parse_tools) = match req_tools.filter(|_| !is_media && !is_pivot) {
+        // Image and audio prompts too: llama-server renders the tools the same way for a multimodal
+        // request (the media parts are markers in the text). Continuations keep the inline form.
+        let (native_tools, parse_tools) = match req_tools.filter(|_| !is_pivot) {
             Some((tools, parse)) => (Some(tools), parse),
             None => (None, false),
         };

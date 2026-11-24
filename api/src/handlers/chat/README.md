@@ -108,6 +108,12 @@ flowchart TD
     titles), bound tools whole or left out, flows that fit; the hint in the user turn (the system
     prompt stays the same for the KV cache); the context plan; auto-recall, the open task's
     checkpoint, notes and project items that fit this message; sampling and the envelope.
+  - **Function schemas in the envelope:** the template's function list (`template_tools`: bound
+    tools, the Engine's own functions, the client's functions) is set in the `ChatEnvelope` struct
+    (`tools`), not patched into the prompt JSON afterwards. Why: an image or audio request is
+    built from that struct (`prepared_media`); until 2026-11-24 it was cloned before the patch,
+    so an image request reached the model with no function schemas (run 64: 0 / 10 calls with
+    the image, 10 / 10 without). See `engine/llama/README.md`, "Tools on image and audio requests".
   - **Flow:** `dispatch` sends the prepared envelope to `EngineHost` or `ProviderRun`.
     `TurnMemory` saves the chat's KV after the turn (also on drop). `context_report` builds the
     report sent at the end.

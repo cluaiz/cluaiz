@@ -1254,7 +1254,9 @@ impl PreparedChatContext {
             chat_template_kwargs: request.chat_template_kwargs.clone(),
             grammar: request.grammar.clone(),
             response_format: request.response_format.clone(),
-            tools: None,
+            // In the struct, not patched into the JSON afterwards: an image request is built from
+            // this struct (`prepared_media` below) and needs the same function schemas
+            tools: (!template_tools.is_empty()).then(|| json!(template_tools)),
             stop: request.stop.clone().map(|s| s.into_vec()).unwrap_or_default(),
             logit_bias: logit_bias.clone(),
         };
@@ -1331,14 +1333,9 @@ impl PreparedChatContext {
             None
         };
         let mut json_prompt = envelope.to_prompt();
-        if !template_tools.is_empty() || request.return_prompt == Some(true) {
+        if request.return_prompt == Some(true) {
             if let Ok(mut value) = serde_json::from_str::<serde_json::Value>(&json_prompt) {
-                if !template_tools.is_empty() {
-                    value["tools"] = json!(template_tools);
-                }
-                if request.return_prompt == Some(true) {
-                    value["return_prompt"] = json!(true);
-                }
+                value["return_prompt"] = json!(true);
                 json_prompt = value.to_string();
             }
         }
