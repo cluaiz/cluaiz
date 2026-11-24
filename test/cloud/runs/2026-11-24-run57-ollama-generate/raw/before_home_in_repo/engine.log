@@ -1,0 +1,132 @@
+<engine-start>
+2026-11-24T02:03:45.533526Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-24T02:03:46.400774Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-24T02:03:48.450918Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+Starting the Cluaiz API server on http://localhost:8014 ...
+2026-11-24T02:03:48.454828Z  INFO 🔒 [Auth] Initialized local session secret at <engine-home>\session.token
+2026-11-24T02:03:48.783875Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-24T02:03:48.820164Z  INFO 🌐 Cluaiz API Server running on http://<ip>:8014
+2026-11-24T02:03:48.951776Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-24T02:03:48.966465Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-0.8b-gguf-Q4_K_M' to "<engine-home>\\models\\chat\\qwen3.5-0.8b-gguf-Q4_K_M\\Qwen3.5-0.8B-Q4_K_M.gguf"
+2026-11-24T02:03:49.102928Z  INFO
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3.5-0.8b-gguf-Q4_K_M
+║   • Architecture    : qwen35 | 24 layers | heads 8 | KV heads 2 | head size K 256 / V 256 | dense | hybrid: 6 attention layers with a KV cache, 18 linear-attention layers with a 1.1 MB state
+║   • Weights         : file 0.53 GB (as Hugging Face counts it) | input embeddings 0.19 GB (always CPU) | output head 0.19 GB | vocab 248320
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 16384 tokens, KV Kv16 (Auto: 16384 tokens, KV Kv16, buffer 0.74 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA GeForce RTX 3050 A Laptop GPU | free 2.49 of 4.00 GB | buffer kept free 0.74 GB (measured: GPU pool +0.54 GB + 0.20 GB reserve; estimate corrected by llama.cpp's dry run +0.01 GB)
+║   • RAM             : free 4.21 of 23.69 GB | Cluaiz may use 3.03 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 24 on GPU, 0 in RAM (of 24)
+║   • VRAM            : 1.18 GB (weights + KV 0.21 + logits)
+║   • RAM             : 0.19 GB (incl. KV 0.00)
+║   • Reason         : Full GPU: weights 0.49 + KV 0.21 + buffers 0.49 = 1.18 GB vs usable VRAM 1.75 GB
+║   • Speed           : 86.2 tokens/s generation, 2268.3 tokens/s prompt, measured by cluaiz bench
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  1.18 GB | RAM  0.19 GB | weights 0.49 + KV 0.21 + buffers 0.49 = 1.18 GB vs usable VRAM 1.75 GB | 86.2 t/s measured (prompt 2268.3 t/s)
+║   • GPU + RAM split  [FITS]     VRAM  1.16 GB | RAM  0.21 GB | 23 / 24 blocks + output head on GPU (1.16 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  1.17 GB | weights 0.49 + KV 0.21 + logits 0.47 = 1.17 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 8 / batch 8 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-24T02:03:49.105852Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-24T02:03:49.107526Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 8, n_threads_batch = 8
+2026-11-24T02:03:49.107599Z  INFO 🧬 [Native-Llama] Loading model: <engine-home>\models\chat\qwen3.5-0.8b-gguf-Q4_K_M\Qwen3.5-0.8B-Q4_K_M.gguf | ctx: 16384 tokens
+2026-11-24T02:03:50.662729Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "<engine-home>\\models\\chat\\qwen3.5-0.8b-gguf-Q4_K_M"
+2026-11-24T02:03:50.685145Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-11-24T02:03:50.685231Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-11-24T02:03:50.685281Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16384 tokens
+2026-11-24T02:03:50.685365Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-24T02:03:50.685439Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-24T02:03:50.685483Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-24T02:03:50.685527Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 8/8
+2026-11-24T02:03:50.685645Z  INFO 🔮 [MTP] MTP asked for, but this model has no multi-token-prediction layers: decoding without it
+2026-11-24T02:03:51.076446Z  INFO 🔍 [EngineHost] VRAM planned 1.18 GB, taken 1.26 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-24T02:03:51.078439Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: <engine-home>\models\chat\qwen3.5-0.8b-gguf-Q4_K_M\Qwen3.5-0.8B-Q4_K_M.gguf
+2026-11-24T02:03:51.183672Z  INFO 🧮 [Tokens] Conversation 3394 tokens (2 messages) counted in 14.07 ms
+2026-11-24T02:03:51.214887Z  INFO ⏱️ [Preflight] 2263 ms total | model load 2139 ms | registry + template + tags 63 ms | skills + tools 24 ms | rest 20 ms
+2026-11-24T02:03:51.908440Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T02:03:51.908961Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T02:03:53.844879Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-24T02:03:53.844960Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 4153 tokens in 638 ms (6508.50 t/s) | generation 16 tokens in 165 ms (97.12 t/s)
+2026-11-24T02:03:53.845036Z  INFO 🧠 [Context] prompt 4153 tokens (0 from the cache) | context 4169 of 16384 | stop limit
+2026-11-24T02:03:53.847135Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"name":"cluaiz
+2026-11-24T02:03:53.848707Z  INFO 📚 [Project] read_item({"name":"cluaiz) -> 332 chars
+2026-11-24T02:03:53.848970Z  INFO ✅ [API] Tool 'read_item' done (332 chars)
+2026-11-24T02:03:53.850979Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-24T02:03:53.860437Z  WARN ⚠️ [NativeTools] Tool template failed (Failed to parse tool call arguments as JSON: [json.exception.parse_error.101] parse error at line 1, column 16: syntax error while parsing value - invalid string: missing closing quote; last read: '"cluaiz'); tools go inline
+2026-11-24T02:03:53.866450Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (16168 bytes) in 3 ms
+2026-11-24T02:03:54.427410Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T02:03:54.588152Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 4056 tokens in 523 ms (7750.72 t/s) | generation 16 tokens in 140 ms (114.42 t/s)
+2026-11-24T02:03:54.588228Z  INFO 🧠 [Context] prompt 4056 tokens (0 from the cache) | context 4072 of 16384 | stop limit
+2026-11-24T02:03:54.598926Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-24T02:03:54.613257Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-0.8b-gguf-Q4_K_M' to "<engine-home>\\models\\chat\\qwen3.5-0.8b-gguf-Q4_K_M\\Qwen3.5-0.8B-Q4_K_M.gguf"
+2026-11-24T02:03:54.682064Z  INFO 🧮 [Tokens] Conversation 3394 tokens (2 messages) counted in 0.12 ms
+2026-11-24T02:03:54.689727Z  INFO ⏱️ [Preflight] 91 ms total | model load 28 ms | registry + template + tags 39 ms | skills + tools 3 ms | rest 3 ms
+2026-11-24T02:03:55.294364Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T02:03:55.294484Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T02:03:57.490888Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-24T02:03:57.490974Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 4153 tokens in 563 ms (7372.35 t/s) | generation 16 tokens in 166 ms (96.21 t/s)
+2026-11-24T02:03:57.491017Z  INFO 🧠 [Context] prompt 4153 tokens (0 from the cache) | context 4169 of 16384 | stop limit
+2026-11-24T02:03:57.494031Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"name":"cluaiz
+2026-11-24T02:03:57.495271Z  INFO 📚 [Project] read_item({"name":"cluaiz) -> 332 chars
+2026-11-24T02:03:57.495397Z  INFO ✅ [API] Tool 'read_item' done (332 chars)
+2026-11-24T02:03:57.498332Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-24T02:03:57.504154Z  WARN ⚠️ [NativeTools] Tool template failed (Failed to parse tool call arguments as JSON: [json.exception.parse_error.101] parse error at line 1, column 16: syntax error while parsing value - invalid string: missing closing quote; last read: '"cluaiz'); tools go inline
+2026-11-24T02:03:57.508675Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (16168 bytes) in 2 ms
+2026-11-24T02:03:58.286229Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T02:03:58.472537Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 4056 tokens in 731 ms (5546.58 t/s) | generation 16 tokens in 160 ms (99.77 t/s)
+2026-11-24T02:03:58.472658Z  INFO 🧠 [Context] prompt 4056 tokens (0 from the cache) | context 4072 of 16384 | stop limit
+2026-11-24T02:03:58.486064Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-24T02:03:58.504977Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-0.8b-gguf-Q4_K_M' to "<engine-home>\\models\\chat\\qwen3.5-0.8b-gguf-Q4_K_M\\Qwen3.5-0.8B-Q4_K_M.gguf"
+2026-11-24T02:03:58.580489Z  INFO 🧮 [Tokens] Conversation 3394 tokens (2 messages) counted in 0.18 ms
+2026-11-24T02:03:58.591448Z  INFO ⏱️ [Preflight] 106 ms total | model load 16 ms | registry + template + tags 58 ms | skills + tools 4 ms | rest 6 ms
+2026-11-24T02:03:59.261543Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T02:03:59.261681Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T02:04:01.606403Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-24T02:04:01.606495Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 4153 tokens in 608 ms (6829.68 t/s) | generation 16 tokens in 201 ms (79.67 t/s)
+2026-11-24T02:04:01.606597Z  INFO 🧠 [Context] prompt 4153 tokens (0 from the cache) | context 4169 of 16384 | stop limit
+2026-11-24T02:04:01.609165Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"name":"cluaiz
+2026-11-24T02:04:01.609571Z  INFO 📚 [Project] read_item({"name":"cluaiz) -> 332 chars
+2026-11-24T02:04:01.609675Z  INFO ✅ [API] Tool 'read_item' done (332 chars)
+2026-11-24T02:04:01.611559Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-24T02:04:01.615852Z  WARN ⚠️ [NativeTools] Tool template failed (Failed to parse tool call arguments as JSON: [json.exception.parse_error.101] parse error at line 1, column 16: syntax error while parsing value - invalid string: missing closing quote; last read: '"cluaiz'); tools go inline
+2026-11-24T02:04:01.621060Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (16168 bytes) in 2 ms
+2026-11-24T02:04:02.732025Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T02:04:02.962536Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 4056 tokens in 1063 ms (3815.12 t/s) | generation 16 tokens in 205 ms (77.91 t/s)
+2026-11-24T02:04:02.962639Z  INFO 🧠 [Context] prompt 4056 tokens (0 from the cache) | context 4072 of 16384 | stop limit
+2026-11-24T02:04:02.980924Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-24T02:04:02.996486Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-0.8b-gguf-Q4_K_M' to "<engine-home>\\models\\chat\\qwen3.5-0.8b-gguf-Q4_K_M\\Qwen3.5-0.8B-Q4_K_M.gguf"
+2026-11-24T02:04:03.017376Z  INFO 📏 [EngineHost] The loaded model now takes +1.09 GB over its estimate; learned for its next load
+2026-11-24T02:04:03.085490Z  INFO 🧮 [Tokens] Conversation 4904 tokens (2 messages) counted in 7.28 ms
+2026-11-24T02:04:03.138040Z  INFO ⏱️ [Preflight] 157 ms total | model load 20 ms | registry + template + tags 59 ms | skills + tools 27 ms | rest 32 ms
+2026-11-24T02:04:04.263577Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T02:04:04.263694Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-24T02:04:04.853210Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-24T02:04:04.853304Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 5663 tokens in 1051 ms (5387.40 t/s) | generation 48 tokens in 510 ms (94.11 t/s)
+2026-11-24T02:04:04.853351Z  INFO 🧠 [Context] prompt 5663 tokens (0 from the cache) | context 5711 of 16384 | stop limit
+2026-11-24T02:04:04.873546Z  INFO ℹ️ [Slot Capability Guidance] Executing request for model in slot 'chat_slot' (supported_tasks: [], requested: ["chat-completion", "text-generation", "vision-chat", "multimodal-vision"]). Passing to engine driver.
+2026-11-24T02:04:04.892034Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-0.8b-gguf-Q4_K_M' to "<engine-home>\\models\\chat\\qwen3.5-0.8b-gguf-Q4_K_M\\Qwen3.5-0.8B-Q4_K_M.gguf"
+2026-11-24T02:04:04.983655Z  INFO 🧮 [Tokens] Conversation 3402 tokens (2 messages) counted in 0.43 ms
+2026-11-24T02:04:04.997373Z  INFO ⏱️ [Preflight] 124 ms total | model load 32 ms | registry + template + tags 58 ms | skills + tools 6 ms | rest 7 ms
+2026-11-24T02:04:05.754207Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-24T02:04:05.754341Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795485845
+2026-11-24T02:04:05.755456Z  INFO 🧠 [NativeStream] Auto thinking ceiling 8742 tokens (94.1 t/s for up to 180 s, room 11657)
+2026-11-24T02:04:09.674464Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-24T02:04:09.674940Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-24T02:04:09.675013Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 4215 tokens in 690 ms (6107.38 t/s) | generation 57 tokens in 617 ms (92.32 t/s)
+2026-11-24T02:04:09.675065Z  INFO 🧠 [Context] prompt 4215 tokens (0 from the cache) | context 4272 of 16384 | stop eos

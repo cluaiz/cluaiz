@@ -1,0 +1,16 @@
+test workspace::tests::front_matter_is_split_only_when_it_is_closed ... ok
+test workspace::tests::outside_a_repository_only_the_working_folder_counts ... ok
+test workspace::tests::a_tool_skill_matches_on_its_package_triggers ... ok
+test workspace::tests::an_empty_folder_adds_nothing ... ok
+test workspace::tests::glob_rules_apply_to_matching_files ... ok
+test workspace::tests::a_plugin_or_mcp_package_with_a_skill_file_is_in_the_index ... ok
+test workspace::tests::a_large_context_gets_everything_whole_and_the_index ... ok
+test workspace::tests::a_small_context_keeps_the_index_cuts_instructions_and_never_cuts_a_rule ... ok
+test workspace::tests::a_home_inside_a_repository_keeps_that_repository_out_of_its_default_workspace ... ok
+test workspace::tests::workflows_and_skills_are_indexed_with_name_and_description ... ok
+test workspace::tests::rules_have_triggers_and_a_nearer_rule_hides_a_farther_one ... ok
+test workspace::tests::instructions_come_from_home_agents_folders_and_folder_files_nearest_last ... ok
+test workspace::tests::items_that_fit_a_message_go_into_its_context_block ... ok
+test workspace::tests::a_confirmed_fact_is_a_file_in_the_project_and_a_newer_one_replaces_it ... ok
+test workspace::tests::the_prompt_stays_within_the_budget_and_a_shared_name_is_read_by_kind ... ok
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 157 filtered out; finished in 0.12s
