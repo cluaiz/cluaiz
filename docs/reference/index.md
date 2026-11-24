@@ -6,6 +6,7 @@ Reference pages for the Cluaiz Engine.
 
 ## Reference sections
 
+* **[Engine features](features.md)**: Every feature on one page, with an example, its status, its source and the test run that checked it.
 * **[C library and FFI](c-pointer-fii.md)**: `cep_call` / `cep_free` and memory rules at the C boundary.
 * **[System dictionary](dictionary.md)**: Terms used in these docs.
 * **[Terminal commands](terminal-commands.md)**: What each `cluaiz` command does.

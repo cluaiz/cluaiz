@@ -24,6 +24,18 @@
     ]
   },
   {
+    "id": "features",
+    "title": "Features",
+    "groups": [
+      {
+        "group": "All features",
+        "pages": [
+          { "slug": "features", "title": "🗂️ All Engine Features", "file_path": "docs/reference/features.md" }
+        ]
+      }
+    ]
+  },
+  {
     "id": "api",
     "title": "🔌 API",
     "groups": [
