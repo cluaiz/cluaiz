@@ -377,7 +377,19 @@ pub(crate) fn stream_tokens_with_media(
                     if let Some(schema) = &template_schema {
                         request["json_schema"] = schema.clone();
                     }
-                    chat_tools.apply(&request).map_err(|e| tracing::debug!("📝 [NativeTemplate] No answer parser: {}", e)).ok()
+                    chat_tools
+                        .apply(&request)
+                        .or_else(|e| match request.as_object_mut().and_then(|fields| fields.remove("json_schema")) {
+                            // A schema llama.cpp cannot turn into a grammar: the parser stays, as before
+                            // e654894f, and the schema grammar below says whether it applies
+                            Some(_) => {
+                                tracing::warn!("📝 [NativeTemplate] The template did not take the JSON schema ({}); answer parser kept without it", e);
+                                chat_tools.apply(&request)
+                            }
+                            None => Err(e),
+                        })
+                        .map_err(|e| tracing::debug!("📝 [NativeTemplate] No answer parser: {}", e))
+                        .ok()
                 })
                 // Content-only: the answer is the text; a render unlike the prompt: its parser
                 // would read another conversation
