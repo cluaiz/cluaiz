@@ -1463,8 +1463,19 @@ pub(crate) fn stream_tokens_with_media(
                 match parser.parse(&generated, false) {
                     Ok(parsed) => {
                         let content = parsed["content"].as_str().unwrap_or_default();
-                        let calls = parsed["tool_calls"].as_array().cloned().unwrap_or_default();
-                        let bare = (calls.is_empty() && native_tools.is_some()).then(|| cluaiz_core::tool_calls::call_without_open(content)).flatten();
+                        let mut calls = parsed["tool_calls"].as_array().cloned().unwrap_or_default();
+                        // Stopped by max_tokens or a full context: llama.cpp's final parse is lenient,
+                        // so a call cut in the middle comes back with half its arguments (run 70:
+                        // `write_file` ran with a cut payload). llama-server returns such calls with
+                        // finish_reason "length" and runs nothing (`server-task.cpp`,
+                        // `to_json_oaicompat_chat`); here a block sent on is run, so none is sent and
+                        // the answer is the text before the call
+                        let limited = report.stop == "limit";
+                        if limited && !calls.is_empty() {
+                            tracing::warn!("🧰 [NativeTools] {} call(s) cut by the token limit: not sent, nothing runs", calls.len());
+                            calls.clear();
+                        }
+                        let bare = (!limited && calls.is_empty() && native_tools.is_some()).then(|| cluaiz_core::tool_calls::call_without_open(content)).flatten();
                         let text = bare.as_ref().map_or(content, |(before, _, _)| before.as_str());
                         if let Some(delta) = content_stream.delta(text) {
                             let _ = callback(delta);
