@@ -1,3 +1,6 @@
+<!-- name: cep
+description: The CEP protocol core (crate cluaiz-cep): JSON-RPC 2.0 envelope, method registry and dispatcher, reachable over HTTP, MCP and native calls. -->
+
 # CEP protocol core (`cep/`, crate `cluaiz-cep`)
 
 CEP, the Cluaiz Engine Protocol, carries every Engine-specific operation as a JSON-RPC 2.0 method. The same methods are reachable three ways:

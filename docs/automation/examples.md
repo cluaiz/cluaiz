@@ -1,3 +1,6 @@
+<!-- name: Flow examples
+description: Automation flows from one step to a large flow, ready to copy and adapt. -->
+
 # Flow examples
 
 > **Draft for review.** Automation is partly built; examples that use triggers or steps not built yet show the planned format. What is built: [Automation](README.md).

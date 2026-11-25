@@ -1,3 +1,6 @@
+<!-- name: System architecture overview
+description: One program, cluaiz, holds the CLI, the terminal agent, the HTTP server and the model runtimes: how the parts fit. -->
+
 # System Architecture Overview
 
 One program, `cluaiz`, holds the CLI, the terminal agent, the HTTP server and the model runtimes.

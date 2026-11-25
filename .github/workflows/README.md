@@ -1,3 +1,6 @@
+<!-- name: .github/workflows
+description: The CI and release workflows: what each one builds, tests and publishes. -->
+
 # cluaiz: CI/CD & RELEASE ARCHITECTURE
 
 ![The release ships a core and GPU packs; the installer adds one pack chosen from the GPU: CUDA 13 or 12, Vulkan, Metal in the macOS core, or CPU only](../../docs/assets/get-started/install-packs.png)

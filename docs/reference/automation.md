@@ -1,3 +1,6 @@
+<!-- name: Automation reference
+description: One-page reference of Automation: flow file, steps, triggers, expressions, methods and limits. -->
+
 # Automation reference
 
 > **Draft for review.** Automation is built in four parts (not released): the format, all seventeen step kinds, all ten triggers and sixteen methods (see [automation/README.md](../../automation/README.md)). This page is a quick overview of the

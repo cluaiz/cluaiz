@@ -1,3 +1,6 @@
+<!-- name: Step ask: one answer from a model
+description: The ask step: an instruction and data go to a chat model and its answer is kept. -->
+
 # `ask`: one answer from a model
 
 > **Draft for review.** Built. Not built yet: `tools`, `attachments` and `session`; with them the step says so. Names and fields may change before a release. See [Automation](../README.md).

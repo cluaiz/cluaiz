@@ -1,3 +1,6 @@
+<!-- name: cluaiz run: chat in the terminal
+description: Load a model and get one answer or open a plain text chat in the terminal. -->
+
 # `cluaiz run`: chat with a model in the terminal
 
 `cluaiz run` loads a model and either answers one prompt or opens a chat. It is a plain chat: the

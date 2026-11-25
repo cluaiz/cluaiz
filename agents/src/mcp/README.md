@@ -1,3 +1,6 @@
+<!-- name: agents/src/mcp
+description: The Engine as an MCP client: starts installed MCP servers, keeps each running, lists and calls their tools. -->
+
 # Component: `agents/src/mcp/`
 
 ## Technical Specification

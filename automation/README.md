@@ -1,3 +1,6 @@
+<!-- name: automation
+description: Cluaiz Automation, a layer outside the Engine: runs flows of steps that use the Engine's tools, methods and models. -->
+
 # `automation/`: Cluaiz Automation
 
 Automation runs **flows**: files of steps that use the Engine's tools, methods and models. It is

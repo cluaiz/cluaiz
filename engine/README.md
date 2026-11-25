@@ -1,3 +1,6 @@
+<!-- name: engine
+description: The compute layer: settings, hardware, model files, placement, media decoding, the llama.cpp and ONNX backends, and the runtime host. -->
+
 # Component: `engine/` (the compute layer)
 
 ## Technical specification

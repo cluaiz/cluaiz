@@ -1,3 +1,6 @@
+<!-- name: test/workflows
+description: Linters for the GitHub workflows and Python tests of the release and installer scripts. -->
+
 # Component: `test/workflows/` (workflow and installer checks)
 
 ![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/cloud/runs and BENCHMARKS.md](../../docs/assets/contributing/test-kinds.png)

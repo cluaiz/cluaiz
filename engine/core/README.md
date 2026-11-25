@@ -1,3 +1,6 @@
+<!-- name: engine/core
+description: Shared configuration, paths, unit conversion and core contracts of the compute engine, including model asset manifests. -->
+
 # Cluaiz Core (`engine/core`)
 
 Central foundational module for the Cluaiz compute engine. Responsible for single-source-of-truth configuration, paths, unit conversion, and core engine contracts.

@@ -1,3 +1,6 @@
+<!-- name: Quickstart
+description: Install Cluaiz with one command and run your first model. -->
+
 # Quickstart Guide
 
 ![The installer puts the core (the cluaiz program and CPU builds of llama.cpp) and one GPU pack chosen from the GPU: NVIDIA gets CUDA 13 or 12, AMD and Intel Arc get Vulkan, Apple Silicon uses Metal in the core, otherwise CPU only; every file is checked against SHA256SUMS.txt](../assets/get-started/install-packs.png)

@@ -1,3 +1,6 @@
+<!-- name: engine/hardware
+description: Finds the machine the Engine runs on (CPU, RAM, disks, GPUs) and how much RAM and VRAM is free now. -->
+
 # Component: `engine/hardware/` (crate `cluaiz-hw`)
 
 ## Technical specification

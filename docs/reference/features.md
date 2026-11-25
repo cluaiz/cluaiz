@@ -1,3 +1,6 @@
+<!-- name: Engine features
+description: Every Engine feature on one page: what it does, when you need it, one example, its status and where to read more. -->
+
 # Engine Features
 
 Every feature of the Cluaiz Engine (the `cluaiz` program in this repository) on one page: what it does,

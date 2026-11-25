@@ -1,3 +1,6 @@
+<!-- name: Automation limits and concurrency
+description: The settings that cap runs, steps, time and parallel work for every flow. -->
+
 # Limits and concurrency
 
 > **Draft for review.** Automation is partly built; what is and is not: [Automation](README.md). All defaults on

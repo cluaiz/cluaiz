@@ -1,3 +1,6 @@
+<!-- name: agents/src/plugins
+description: Running a plugin's function: WebAssembly plugins sandboxed inside the Engine, other plugins as child processes in the OS sandbox. -->
+
 # Component: `agents/src/plugins/`
 
 ## Technical Specification

@@ -1,3 +1,6 @@
+<!-- name: Step code: your WebAssembly module
+description: The code step: runs a function of a WebAssembly module in the plugin sandbox with the step input as JSON. -->
+
 # `code`: your WebAssembly module
 
 > **Draft for review.** Built. Names and fields may change before a release. See [Automation](../README.md).

@@ -1,3 +1,6 @@
+<!-- name: Automation events
+description: The fields an engine trigger or an event wait receives in trigger.data. -->
+
 # Events
 
 > **Draft for review.** The Engine sends these events now: `task.done`, `task.failed`,

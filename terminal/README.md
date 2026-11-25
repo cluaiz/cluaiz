@@ -1,3 +1,6 @@
+<!-- name: terminal
+description: Presentation-only terminal UI library: drawing, input editing, themes and the transcript view; execution stays in the caller. -->
+
 # Component: terminal presentation
 
 ## Technical specification

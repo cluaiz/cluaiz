@@ -1,3 +1,6 @@
+<!-- name: Docs tooling
+description: Scripts that check the Engine docs, draw their images and build the docs index. -->
+
 # Docs tooling (`docs/tools/`)
 
 Checks for the Engine docs. Not shown on the website (only pages listed in `docs/registry.json` are).

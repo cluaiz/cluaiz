@@ -1,3 +1,6 @@
+<!-- name: Step agent: a model with tool rounds
+description: The agent step: a model that may call tools for several rounds before it answers. -->
+
 # `agent`: a model with several rounds of tools
 
 > **Draft for review.** Built. Not built yet: `tool_search`, `attachments` and `session`; with them the step says so. Names and fields may change before a release. See [Automation](../README.md).

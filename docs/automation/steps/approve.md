@@ -1,3 +1,6 @@
+<!-- name: Step approve: a person's yes or no
+description: The approve step: the flow waits for a person to approve or reject, like chat and tool approvals. -->
+
 # `approve`: a person's yes or no
 
 > **Draft for review.** Built. Names and fields may change before a release. See [Automation](../README.md).

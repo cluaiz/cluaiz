@@ -1,3 +1,6 @@
+<!-- name: CLI and matching API methods
+description: What each cluaiz command does and the API method that does the same over HTTP. -->
+
 # Cluaiz CLI Reference
 
 What each `cluaiz` command does, and the API method that does the same thing over HTTP.

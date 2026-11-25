@@ -1,3 +1,6 @@
+<!-- name: OpenAI compatibility
+description: Which OpenAI routes and fields the Engine serves, which differ, and how to point an OpenAI client library at Cluaiz. -->
+
 # OpenAI compatibility
 
 Cluaiz serves OpenAI's chat, models, embeddings and audio routes, so an OpenAI client library works by

@@ -1,3 +1,6 @@
+<!-- name: agents/src/installer
+description: Installing, updating and removing tools from the Cluaiz Tools registry: the plan, safe fetch and unpack, placement with rollback, permission answers. -->
+
 # Component: `agents/src/installer/`
 
 ![Installing a tool: the request, a plan, questions the user's mode leaves open, fetch, stage and place with checked paths, then permissions](../../../docs/assets/engine/tool-install.png)

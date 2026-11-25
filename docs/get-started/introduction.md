@@ -1,3 +1,6 @@
+<!-- name: Introduction to Cluaiz
+description: What Cluaiz is: the AI engine where models, voice, vision, memory, tools, agents and workflows work as one. -->
+
 # Introduction to Cluaiz
 
 Cluaiz is the AI engine where models, voice, vision, memory, tools, agents and workflows work as one.

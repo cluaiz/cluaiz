@@ -1,3 +1,6 @@
+<!-- name: api/src/providers
+description: Every call to a model provider in providers.json: request format, signing, reading the streamed answer back, and errors. -->
+
 # Component: `api/src/providers/`
 
 ## Technical Specification

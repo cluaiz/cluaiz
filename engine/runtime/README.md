@@ -1,3 +1,6 @@
+<!-- name: engine/runtime
+description: The runtime host: loads, shares and unloads models for chat, ONNX tasks and GGUF speech. -->
+
 # Cluaiz Engine Runtime & Host (`engine/runtime`)
 
 ![EngineHost loads models into llama.cpp and ONNX Runtime and unloads idle speech and embedding models first when memory is short](../../docs/assets/engine/two-runtimes.png)

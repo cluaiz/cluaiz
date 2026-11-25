@@ -1,3 +1,6 @@
+<!-- name: engine/models/src/fetcher
+description: From a model name to a registered model on disk: id parsing, which files belong to a variant, download and checks. -->
+
 # Component: `engine/models/src/fetcher/`
 
 ## Technical Specification

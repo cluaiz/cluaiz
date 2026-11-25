@@ -1,3 +1,6 @@
+<!-- name: engine/media/providers/ffmpeg
+description: The optional FFmpeg video decoder provider and how to build it against a staged SDK. -->
+
 # Component: Optional FFmpeg video provider
 
 ## Technical specification

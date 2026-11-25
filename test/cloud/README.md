@@ -1,3 +1,6 @@
+<!-- name: test/cloud
+description: Cloud machine runs: creating test VMs, running suites, and recording every run with its raw results. -->
+
 # Component: `test/cloud/` (machine runs and their record)
 
 ## Technical specification

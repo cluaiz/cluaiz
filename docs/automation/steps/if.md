@@ -1,3 +1,6 @@
+<!-- name: Step if: one of two branches
+description: The if step chooses between two lists of steps; when decides whether one step runs. -->
+
 # `if`: one of two branches
 
 > **Draft for review.** Built. Names and fields may change before a release. See [Automation](../README.md).

@@ -1,3 +1,6 @@
+<!-- name: The HTTP server (Axum)
+description: What the Engine's HTTP server serves and how it is built on Axum and Tokio. -->
+
 # Axum API
 
 The Engine's HTTP server is built on Axum and Tokio (`api/src/routes.rs`). It serves:

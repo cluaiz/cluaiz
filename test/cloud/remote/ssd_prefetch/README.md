@@ -1,3 +1,6 @@
+<!-- name: test/cloud/remote/ssd_prefetch
+description: Measures the MoE expert prefetch and forced GPU cache on a model larger than RAM against official llama.cpp. -->
+
 # Component: `test/cloud/remote/ssd_prefetch/` (expert prefetch speed proof, written, not run on the real models)
 
 ## Technical specification

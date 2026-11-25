@@ -1,3 +1,6 @@
+<!-- name: Automation permissions and security
+description: A flow may do only what it lists, and what it lists is confirmed: how flow permissions work. -->
+
 # Permissions and security
 
 > **Draft for review.** Automation is partly built; what is and is not: [Automation](README.md).

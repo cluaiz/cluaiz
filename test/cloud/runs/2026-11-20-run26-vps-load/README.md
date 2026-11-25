@@ -1,3 +1,6 @@
+<!-- name: Run 26: small VPS under load
+description: Run 26 results on a 1 vCPU, 4 GB VPS next to a web app and PostgreSQL: Cluaiz, llama.cpp and Ollama compared. -->
+
 # Run 26 results: conclusion, what went well, what to fix
 
 1 vCPU, 4 GB VPS with a web app and PostgreSQL running next to the engine. Cluaiz (a build from before

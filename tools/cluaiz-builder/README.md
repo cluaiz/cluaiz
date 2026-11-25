@@ -1,3 +1,6 @@
+<!-- name: tools/cluaiz-builder
+description: Builds only what changed across the core binary and the GPU driver packs. -->
+
 # Component: Cluaiz Modular Builder (`tools/cluaiz-builder`)
 
 ## Technical Specification

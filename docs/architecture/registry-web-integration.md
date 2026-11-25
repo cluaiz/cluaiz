@@ -1,3 +1,6 @@
+<!-- name: Model registry and website integration (design)
+description: Design document for linking the model registry with cluaiz.com: data layout and routing. -->
+
 # Independent Neural Registry: Web Integration & System Design
 **Software Architecture & Dynamic Routing Blueprint for cluaiz.com**
 

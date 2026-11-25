@@ -1,3 +1,6 @@
+<!-- name: Automation errors and retries
+description: What a failed step and a failed run contain, and how retries and on_error steps handle failures. -->
+
 # Errors and retries
 
 > **Draft for review.** Automation is partly built; what is and is not: [Automation](README.md).

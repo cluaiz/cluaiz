@@ -1,3 +1,6 @@
+<!-- name: test/cpu
+description: CPU test on a Windows PC without a graphics card: install, chat, speed, memory and the coding agent. -->
+
 # CPU test (Windows PC without a graphics card)
 
 ![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/cloud/runs and BENCHMARKS.md](../../docs/assets/contributing/test-kinds.png)

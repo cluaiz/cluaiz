@@ -1,3 +1,6 @@
+<!-- name: What gets installed where
+description: File by file, what the installer puts on each operating system and which folders the Engine creates. -->
+
 # What gets installed where
 
 This page lists, file by file, what the installer puts on each operating system and which folders the engine

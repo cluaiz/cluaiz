@@ -1,3 +1,6 @@
+<!-- name: Model providers
+description: Use models from other services (OpenAI-compatible or Anthropic API, online or local) through the Engine. -->
+
 # Model providers
 
 A model provider is another service with an OpenAI-compatible API or the Anthropic Messages API, on the internet or on the same computer. Once a provider is added, its chat models work in `cluaiz run`, `cluaiz agent` and `/v1/chat/completions`, and its embedding, text-to-speech and speech-to-text models in `/v1/embeddings`, `/v1/audio/speech` and `/v1/audio/transcriptions`, next to the models installed in Cluaiz.

@@ -1,3 +1,6 @@
+<!-- name: engine/llama
+description: The Rust layer over the llama.cpp fork: GGUF chat, embeddings, speech, tools and grammar, and the fork's patches. -->
+
 # Cluaiz Llama Engine (`engine/llama`)
 
 Direct Rust API wrapping custom `llama.cpp` C/C++ memory. Compiled as an `rlib` to eliminate dual-static memory copies between Exe and DLL.

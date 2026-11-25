@@ -1,3 +1,6 @@
+<!-- name: Tools: permissions, settings and environment
+description: How the Engine treats an installed skill, plugin or MCP server: what it may reach, which values it gets, what an install does. -->
+
 # Tools: permissions, settings and environment
 
 How the Engine treats an installed tool (a skill, a plugin or an MCP server): what it may reach,

@@ -1,3 +1,6 @@
+<!-- name: The terminal screen
+description: The full-screen mode of cluaiz agent: when it is used, what it shows and its keys. -->
+
 # The terminal screen
 
 `cluaiz agent` has two ways to show its work: a full screen (rich mode) and plain printed lines.

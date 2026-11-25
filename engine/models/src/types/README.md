@@ -1,3 +1,6 @@
+<!-- name: engine/models/src/types
+description: Shared model data types, and the streaming filter that separates thinking from the answer for every caller. -->
+
 # Component: `engine/models/src/types/`
 
 ## Technical Specification

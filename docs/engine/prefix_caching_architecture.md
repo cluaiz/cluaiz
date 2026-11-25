@@ -1,3 +1,6 @@
+<!-- name: KV cache reuse (prefix caching)
+description: How the Engine keeps the KV cache of the last generation so a continued chat only computes the new part. -->
+
 # KV Cache Reuse (Prefix Caching)
 
 ![The KV cache holds the system message, tools, earlier turns and the last answer; the new prompt keeps that common prefix and computes only the new message. After each answer the KV is saved to disk and read back later when the model file and load settings are the same](../assets/engine/kv-reuse.png)

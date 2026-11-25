@@ -1,3 +1,6 @@
+<!-- name: api/src/native
+description: Serving the API over a local Windows named pipe or Unix socket instead of TCP. -->
+
 # Local native API transport
 
 `NativeListener` binds one caller-provided Windows named pipe or Unix socket.

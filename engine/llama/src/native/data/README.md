@@ -1,3 +1,6 @@
+<!-- name: engine/llama/src/native/data
+description: Language alias data for the native speech input adapter; not a list of supported models. -->
+
 # Component: Native speech policy data
 
 ## Technical Specification

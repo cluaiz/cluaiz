@@ -1,3 +1,6 @@
+<!-- name: Flow triggers
+description: What starts a flow: time, file, webhook, event or call triggers and their fields. -->
+
 # Triggers
 
 > **Draft for review.** Every trigger below is built, with every field. `tool` offers flows to MCP

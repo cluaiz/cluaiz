@@ -1,3 +1,6 @@
+<!-- name: permission.json
+description: The permission.json settings: listen address, API keys, approval mode, OS sandbox and system.exec policy. -->
+
 # permission.json
 
 `permission.json` is in the config folder (`~/.cluaiz/config/permission.json`, or

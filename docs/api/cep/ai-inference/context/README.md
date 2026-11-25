@@ -1,3 +1,6 @@
+<!-- name: Context runtime (context.*)
+description: How the Engine shares a model's context between system prompt, conversation, tools and answer, and the report of what it did per request. -->
+
 # Context runtime (`context.*`)
 
 ![The planner takes protected segments first, then the newest two turns, tools in use, evidence, suggestions, older history and evictable segments, until the room is full](../../../../assets/engine/context-plan.png)

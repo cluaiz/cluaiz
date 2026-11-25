@@ -1,3 +1,6 @@
+<!-- name: Steps emit, return, fail
+description: Send an event other flows can start on or wait for, end a flow with a value, or fail it on purpose. -->
+
 # `emit`, `return`, `fail`
 
 > **Draft for review.** Built. Names and fields may change before a release. See [Automation](../README.md).

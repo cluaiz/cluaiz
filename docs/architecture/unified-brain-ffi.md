@@ -1,3 +1,6 @@
+<!-- name: C library (FFI) and GPU backend loading
+description: Running the Engine inside another program through cluaizcep.dll / libcluaizcep.so / .dylib, and how GPU backends are loaded. -->
+
 # C Library (FFI) and GPU Backend Loading
 
 ## 1. The Engine as a C library

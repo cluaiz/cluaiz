@@ -1,3 +1,6 @@
+<!-- name: C library and FFI memory rules
+description: Memory and pointer rules for calling the Engine's C library; how to build it, as releases do not include it yet. -->
+
 # C Library and FFI Memory Rules
 
 The release packages do not include this library yet: build it with `cargo build --release -p cluaiz-ffi`.

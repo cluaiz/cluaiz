@@ -1,3 +1,6 @@
+<!-- name: api/tests/support
+description: Test helper: one real authenticated loopback HTTP request shared by acceptance tests. -->
+
 # Component: API acceptance transport support
 
 ## Technical Specification

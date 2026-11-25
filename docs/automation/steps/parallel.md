@@ -1,3 +1,6 @@
+<!-- name: Step parallel: branches at the same time
+description: The parallel step: named branches of steps that run at the same time. -->
+
 # `parallel`: named branches at the same time
 
 > **Draft for review.** Built. Names and fields may change before a release. See [Automation](../README.md).

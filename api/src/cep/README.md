@@ -1,3 +1,6 @@
+<!-- name: api/src/cep
+description: The Engine side of CEP (JSON-RPC 2.0): method context, every Engine method, the /v1/cep and /mcp doors, and the hook for outside layers. -->
+
 # Component: `api/src/cep/`
 
 ![One CEP call: transport, envelope, registry, principal, method, approval or task, audit](../../../docs/assets/api/cep-call.png)

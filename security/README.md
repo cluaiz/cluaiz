@@ -1,3 +1,6 @@
+<!-- name: security
+description: The data side of security: permission.json (listen address, API keys, approval and sandbox modes) and the CEP audit log. -->
+
 # Component: `security/` (crate `cluaiz-security`)
 
 ## Technical specification

@@ -1,3 +1,6 @@
+<!-- name: Reference index
+description: The list of reference pages for the Cluaiz Engine. -->
+
 # Master Reference Index
 
 Reference pages for the Cluaiz Engine.

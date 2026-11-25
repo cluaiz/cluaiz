@@ -1,3 +1,6 @@
+<!-- name: agents
+description: The cluaiz-agents crate: installed tools and their registry, permissions, tool matching, one agent turn for every front end, command execution, chat memory and project agent files. -->
+
 # Component: `agents/` (crate `cluaiz-agents`)
 
 ## Technical specification

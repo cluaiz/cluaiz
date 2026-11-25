@@ -1,3 +1,6 @@
+<!-- name: cmd/tests/agent
+description: Regression tests of the terminal agent's file, search, edit, command and approval behaviour with temporary files. -->
+
 # Component: agent tool regression tests
 
 ## Technical specification

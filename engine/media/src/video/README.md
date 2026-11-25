@@ -1,3 +1,6 @@
+<!-- name: engine/media/src/video
+description: The versioned C ABI shared by the optional video decoder and the media code. -->
+
 # Component: Video ABI contract
 
 ![One SourceResolver reads a local path, URL or base64 with size limits; shared decoders give images, audio, document text or video frames to the model](../../../../docs/assets/engine/media-sources.png)

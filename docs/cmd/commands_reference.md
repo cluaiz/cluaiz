@@ -1,3 +1,6 @@
+<!-- name: cluaiz CLI command reference
+description: Every cluaiz command and flag, with the agent's slash commands. -->
+
 # cluaiz CLI, Command Reference
 
 > Binary: `cluaiz`. Built from `cmd/`. `cluaiz <command> --help` lists every flag.

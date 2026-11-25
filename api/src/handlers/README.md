@@ -1,3 +1,6 @@
+<!-- name: api/src/handlers
+description: Direct HTTP route handlers: inference, document extraction and compatibility routes; Engine control lives in CEP. -->
+
 # Direct HTTP route handlers (`api/src/handlers/`)
 
 ![The HTTP routes behind the auth check: chat, models, embeddings and speech, and CEP](../../../docs/assets/api/route-map.png)

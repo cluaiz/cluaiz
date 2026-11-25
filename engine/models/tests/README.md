@@ -1,3 +1,6 @@
+<!-- name: engine/models/tests
+description: Opt-in read-only audits of model package graphs in a temporary folder. -->
+
 # Component: Model package capability acceptance
 
 ## Technical Specification

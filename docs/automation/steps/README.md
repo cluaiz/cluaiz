@@ -1,3 +1,6 @@
+<!-- name: Flow steps
+description: Every step kind of a flow and the fields all steps share. -->
+
 # Steps
 
 > **Draft for review.** Automation is partly built; what is and is not: [Automation](../README.md).

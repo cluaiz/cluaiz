@@ -1,3 +1,6 @@
+<!-- name: API reference overview
+description: Choose an endpoint and learn the request rules shared by all Engine routes. -->
+
 # Cluaiz API reference
 
 Use this page to choose an endpoint and understand common request rules. Each domain reference contains accepted fields, defaults, payload variants, code examples, responses and errors.

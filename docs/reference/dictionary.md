@@ -1,3 +1,6 @@
+<!-- name: Dictionary
+description: Terms used across the Cluaiz Engine docs. -->
+
 # System Dictionary
 
 Terms used across the Cluaiz Engine docs.

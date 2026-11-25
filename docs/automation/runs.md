@@ -1,3 +1,6 @@
+<!-- name: Runs and records
+description: The shape of a flow run record returned by flows.runs, flows.run_get and a flows.run task. -->
+
 # Runs and records
 
 > **Draft for review.** Automation is partly built; what is and is not: [Automation](README.md).

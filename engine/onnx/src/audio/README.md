@@ -1,3 +1,6 @@
+<!-- name: engine/onnx/src/audio
+description: ONNX speech to text and text to speech: model families, required files and voices. -->
+
 # Component: Cluaiz ONNX Audio & TTS Subsystem (`src/audio/`)
 
 ![Text goes through reading preparation and a TTS family adapter (Kokoro, Piper, Supertonic, Chatterbox, CosyVoice, Matcha, OmniVoice) to a WAV; audio is decoded and prepared for Whisper](../../../../docs/assets/engine/speech-pipeline.png)

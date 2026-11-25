@@ -1,3 +1,6 @@
+<!-- name: tools
+description: Developer programs and scripts for people who build the Engine; none ships in a release. -->
+
 # Developer tools (`tools/`)
 
 Programs and scripts for the people who build the Engine. None of them ships in a release or runs

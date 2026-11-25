@@ -1,3 +1,6 @@
+<!-- name: Step wait: a time, an event or a webhook
+description: The wait step: the run pauses until a time, an event or a webhook, holding no worker, and survives a restart. -->
+
 # `wait`: until a time, an event or a webhook
 
 > **Draft for review.** Built. Names and fields may change before a release. See [Automation](../README.md).

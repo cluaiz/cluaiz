@@ -1,3 +1,6 @@
+<!-- name: Automation methods
+description: The methods applications use to save, check, run and read flows. -->
+
 # Automation methods
 
 > **Draft for review.** Every method below is built (not released). Names and fields may change before a release.

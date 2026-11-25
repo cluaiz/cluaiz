@@ -1,3 +1,6 @@
+<!-- name: The flow file
+description: The flow file format (JSON or YAML, one schema): its top-level fields and how Automation saves it. -->
+
 # The flow file
 
 > **Draft for review.** Automation is partly built; what is and is not: [Automation](README.md).

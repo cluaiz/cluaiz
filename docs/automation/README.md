@@ -1,3 +1,6 @@
+<!-- name: Cluaiz Automation
+description: Automation runs flows: files of steps that start on a trigger and use the Engine's tools, methods and models. Start page with links to every part. -->
+
 # Cluaiz Automation
 
 ![Automation: cluaiz serve and cluaiz flow start the host; the host runs flows defined by the core crate and reaches the Engine through events, extension routes and tools, long approvals and the WebAssembly runner](../assets/engine/automation-layers.png)

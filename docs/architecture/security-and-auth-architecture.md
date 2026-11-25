@@ -1,3 +1,6 @@
+<!-- name: Security and authentication
+description: How the Engine protects tool runs, files and the API: auth, API keys, approvals, OS sandbox, locally and on a server. -->
+
 # Security & Authentication Architecture
 
 > **Document Type:** System Architecture & Security Reference  

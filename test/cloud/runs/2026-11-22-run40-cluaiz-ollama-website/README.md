@@ -1,3 +1,6 @@
+<!-- name: Cluaiz on small Linux servers
+description: Every measurement of Cluaiz on 1-2 vCPU, 4-8 GB Linux servers without a GPU, often next to a website. -->
+
 # Cluaiz on small Linux servers: every measurement so far, compared
 
 This page puts together everything measured about running Cluaiz on a small Linux server (1 or 2 vCPU,

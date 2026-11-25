@@ -1,3 +1,6 @@
+<!-- name: engine/models/src/registry
+description: Which models are installed and where: model_registry.json, the vault folders and model slots. -->
+
 # Component: `engine/models/src/registry/`
 
 ![cluaiz pull ends by writing the installed ID to model_registry.json, which cluaiz list shows](../../../../docs/assets/get-started/model-download.png)

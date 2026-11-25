@@ -1,3 +1,6 @@
+<!-- name: Step run: another flow
+description: The run step: starts another saved flow with inputs and keeps its result. -->
+
 # `run`: another flow
 
 > **Draft for review.** Built. Names and fields may change before a release. See [Automation](../README.md).

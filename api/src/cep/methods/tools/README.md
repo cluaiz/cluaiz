@@ -1,3 +1,6 @@
+<!-- name: api/src/cep/methods/tools
+description: The CEP methods that control skills, plugins, MCP servers and components on top of the existing tool system. -->
+
 # Component: CEP tool controls
 
 ## Technical specification

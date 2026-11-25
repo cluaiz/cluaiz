@@ -1,3 +1,6 @@
+<!-- name: agents/src
+description: Source map of the cluaiz-agents crate: tool logic, turn lifecycle, chat memory store and the project's .agents/ files. -->
+
 # Agents crate source (`agents/src/`)
 
 ![One agent turn: the message, tool search, schemas, the model, and for each tool call the approval, the run and the result going back to the model](../../docs/assets/engine/agent-turn.png)

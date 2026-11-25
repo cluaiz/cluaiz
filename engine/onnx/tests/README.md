@@ -1,3 +1,6 @@
+<!-- name: engine/onnx/tests
+description: Opt-in integration test of real ONNX image embedding packages. -->
+
 # Component: ONNX native media acceptance
 
 ## Technical Specification

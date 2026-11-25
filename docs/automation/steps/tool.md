@@ -1,3 +1,6 @@
+<!-- name: Step tool: an installed tool
+description: The tool step: runs one function of an installed MCP server, plugin or skill through tools.call. -->
+
 # `tool`: run an installed tool
 
 > **Draft for review.** Built. Not built yet: `settings`; with it the step says so. Names and fields may change before a release. See [Automation](../README.md).

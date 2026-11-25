@@ -1,3 +1,6 @@
+<!-- name: Engine API reference
+description: Start of the Engine API reference: direct inference routes, CEP controls at /v1/cep, model selection, media payloads and response formats. -->
+
 # Cluaiz Engine API Reference
 
 ![HTTP routes: chat, models, embeddings and audio routes, and /v1/cep and /mcp for every Engine-specific method, behind the bearer-token check; /health stays open](../assets/api/route-map.png)

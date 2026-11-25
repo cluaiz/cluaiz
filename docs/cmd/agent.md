@@ -1,3 +1,6 @@
+<!-- name: cluaiz agent: a coding agent in your terminal
+description: Run a local model as a coding agent in a folder: it reads, searches, edits files and runs commands with your approval. -->
+
 # `cluaiz agent`: a coding agent in your terminal
 
 `cluaiz agent` runs a local model as an agent in a folder on your computer. You describe a task in

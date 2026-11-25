@@ -1,3 +1,6 @@
+<!-- name: Flow validation
+description: What flows.validate and flows.save check, and the errors and warnings they return. -->
+
 # Validation
 
 > **Draft for review.** Automation is partly built; what is and is not: [Automation](README.md).

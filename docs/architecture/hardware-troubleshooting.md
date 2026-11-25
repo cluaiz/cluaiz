@@ -1,3 +1,6 @@
+<!-- name: Hardware troubleshooting and VRAM
+description: Common hardware limits when running the Engine and the settings that help. -->
+
 # Hardware Troubleshooting & VRAM Management
 
 This document outlines common hardware bottlenecks, performance limits, and safe mitigation configurations when running the cluaiz Inference Engine.

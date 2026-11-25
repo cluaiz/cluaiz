@@ -1,3 +1,6 @@
+<!-- name: Step call: an Engine method or route
+description: The call step: runs one CEP method or Engine route in the same program, not over HTTP. -->
+
 # `call`: run an Engine method or route
 
 > **Draft for review.** Built for CEP methods. Not built yet: the Engine routes (`ingest`, `embeddings`, `speech`, `transcription`). Names and fields may change before a release. See [Automation](../README.md).

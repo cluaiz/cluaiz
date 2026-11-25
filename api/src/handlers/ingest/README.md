@@ -1,3 +1,6 @@
+<!-- name: api/src/handlers/ingest
+description: POST /v1/ingest: one JSON request and one JSON answer for document extraction and optional model processing. -->
+
 # Component: Direct document ingestion
 
 ![One SourceResolver reads a local path, URL or base64 with size limits; shared decoders give images, audio, document text or video frames to the model](../../../../docs/assets/engine/media-sources.png)

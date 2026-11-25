@@ -1,3 +1,6 @@
+<!-- name: Step switch: the first case that holds
+description: The switch step: runs the steps of the first case whose condition holds. -->
+
 # `switch`: the first case that holds
 
 > **Draft for review.** Built. Names and fields may change before a release. See [Automation](../README.md).

@@ -1,3 +1,6 @@
+<!-- name: Step each: steps for every item
+description: The each step: runs its steps once for every item of a list. -->
+
 # `each`: steps for every item
 
 > **Draft for review.** Built. Names and fields may change before a release. See [Automation](../README.md).

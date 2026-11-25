@@ -1,3 +1,6 @@
+<!-- name: cmd
+description: The cluaiz program: the command line of the Engine and where each command is implemented. -->
+
 # The `cluaiz` program (`cmd/`)
 
 ![One agent turn: the message, tool search, schemas, the model, and for each tool call the approval, the run and the result going back to the model](../docs/assets/engine/agent-turn.png)

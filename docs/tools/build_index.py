@@ -5,6 +5,7 @@ Each row: title, description, kind ("docs" or "readme"), path, and whether the f
 Metadata (`.agents/skills/readme-docs`):
 - docs page: YAML front matter `title:` and `description:` (generated CEP pages: `method:` and `summary:`);
 - folder README: an HTML comment `<!-- name: ... description: ... -->` at the top (GitHub hides it).
+Generated CEP category pages (written by api/tests/cep_docs.rs) count as described.
 A file without metadata falls back to its first heading and first paragraph and is marked `metadata: false`.
 
 Run from the repository root:
@@ -75,10 +76,13 @@ def read_row(path: Path, kind: str) -> dict:
         title = field(block, "name")
         description = field(block, "description")
         body = text[comment.end():]
-    has_metadata = bool(title and description)
+    generated = "Generated from the CEP registry" in text[:400]
+    has_metadata = bool(title and description) or generated
     heading = HEADING.search(body)
     if not title:
         title = plain(heading.group(1)) if heading else rel
+    if not description and generated:
+        description = f"Generated list of the {plain(title)} CEP methods, from the Rust method registry."
     if not description:
         description = first_paragraph(body[heading.end():] if heading else body)
     return {

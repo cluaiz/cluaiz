@@ -1,3 +1,6 @@
+<!-- name: agents/src/registry
+description: The list of installed tools and their switches (tools_registry.json), kept in line with disk, and the rule for when a tool call needs approval. -->
+
 # Component: `agents/src/registry/`
 
 ![Installing a tool: the request, a plan, questions the user's mode leaves open, fetch, stage and place with checked paths, then permissions](../../../docs/assets/engine/tool-install.png)

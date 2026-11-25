@@ -1,3 +1,6 @@
+<!-- name: Automation guide: your first flows
+description: Step by step: write, check and run your first Automation flows. -->
+
 # Automation guide: your first flows
 
 > **Draft for review.** Automation is partly built (see [Automation](README.md)). This page describes the whole design; names,

@@ -1,3 +1,6 @@
+<!-- name: agents/src/execution
+description: Running programs for the agent and tools: the command safety check, timeouts and process-tree kill, PTY, skill scripts and each program's environment. -->
+
 # Component: `agents/src/execution/`
 
 ## Technical Specification

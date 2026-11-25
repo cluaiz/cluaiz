@@ -1,3 +1,6 @@
+<!-- name: Release workflow
+description: How the release workflow builds and publishes Cluaiz: a CPU core plus GPU packs, with its jobs and smoke test. -->
+
 # Release Workflow
 
 [`.github/workflows/release.yml`](../../.github/workflows/release.yml) builds and publishes Cluaiz: a **core** that runs everything on the CPU, plus the **GPU drivers** the core loads when they sit beside it. The drivers come from two workflows that `release.yml` calls, so every file of a version lands on **one release page**:

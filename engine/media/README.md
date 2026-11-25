@@ -1,3 +1,6 @@
+<!-- name: engine/media
+description: Shared media preparation: bounded sources, format detection, image and audio decoding, document text extraction and WAV output. -->
+
 # Component: Cluaiz Media
 
 ![One SourceResolver reads a local path, URL or base64 with size limits; shared decoders give images, audio, document text or video frames to the model](../../docs/assets/engine/media-sources.png)

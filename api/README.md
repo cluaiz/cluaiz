@@ -1,3 +1,6 @@
+<!-- name: api
+description: The Engine's HTTP and SSE server (Axum): routes, auth, CEP, providers, and the optional local pipe or socket transport. -->
+
 # Cluaiz API Gateway (`api/`)
 
 Direct Axum HTTP and Server-Sent Events (SSE) server for Cluaiz.

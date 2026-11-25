@@ -1,3 +1,6 @@
+<!-- name: CLI audit (old, April 2026)
+description: Historical April 2026 audit of an earlier terminal console; it does not describe the current cluaiz program. -->
+
 # CLI Audit (old, April 2026)
 
 > **Historical design draft (April 2026).** This page described a design for an earlier terminal

@@ -1,3 +1,6 @@
+<!-- name: Hardware profile
+description: The hardware_profile.json the planner uses: RAM, CPU and GPUs found by the hardware probe. -->
+
 # Hardware Profile (`hardware_profile.json`)
 
 The planner needs to know this machine: RAM, CPU and GPUs. The hardware probe

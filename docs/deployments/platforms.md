@@ -1,3 +1,6 @@
+<!-- name: Platform support
+description: Which operating systems, CPUs and GPUs Cluaiz supports, and which GPU pack each needs. -->
+
 # Platform Support
 
 ![The core plus one GPU pack chosen from the GPU: CUDA 13 or 12 for NVIDIA, Vulkan for AMD and Intel Arc, Metal inside the macOS core, otherwise CPU only](../assets/get-started/install-packs.png)

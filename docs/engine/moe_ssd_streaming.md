@@ -1,3 +1,6 @@
+<!-- name: Mixture-of-Experts models on small GPUs
+description: How the Engine runs a MoE model larger than the GPU, like llama.cpp's --n-cpu-moe, and its expert cache. -->
+
 # Mixture-of-Experts Models on Small GPUs
 
 ![For the first N blocks the routed experts stay in RAM and attention, shared weights and KV go on the GPU, with a MoE GPU cache of the most used experts; later blocks are fully on the GPU; N is chosen from free VRAM](../assets/engine/moe-placement.png)

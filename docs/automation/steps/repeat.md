@@ -1,3 +1,6 @@
+<!-- name: Step repeat: again until a condition holds
+description: The repeat step: runs its steps again until a condition holds. -->
+
 # `repeat`: again until a condition holds
 
 > **Draft for review.** Built. Names and fields may change before a release. See [Automation](../README.md).

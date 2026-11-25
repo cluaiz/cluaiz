@@ -1,3 +1,6 @@
+<!-- name: Your first API request
+description: In ten minutes: a running server, a small model, one answer, one streamed answer and an API key, with recorded output. -->
+
 # Your first API request
 
 In ten minutes: a running server, a small model, one answer, one streamed answer, and an API key. Every

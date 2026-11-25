@@ -1,3 +1,6 @@
+<!-- name: Load and speed settings
+description: The optimization settings in settings.json that control how llama.cpp loads and runs a GGUF model. -->
+
 # Load and Speed Settings (`settings.json` → `optimization`)
 
 These settings control how a GGUF model is loaded and run by llama.cpp. They are the

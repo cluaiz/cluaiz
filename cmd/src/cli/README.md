@@ -1,3 +1,6 @@
+<!-- name: cmd/src/cli
+description: Handlers of the cluaiz subcommands other than chat and agent: one file per command or shared piece. -->
+
 # Component: `cmd/src/cli/`
 
 ![cluaiz pull: model id, resolve, plan the files, download with resume, check, registry, cluaiz list](../../../docs/assets/get-started/model-download.png)

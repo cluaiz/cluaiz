@@ -1,3 +1,6 @@
+<!-- name: test/media_regression/video_spike
+description: Isolated acceptance of the shared native video decoder package. -->
+
 # Component: Native video packaging acceptance
 
 ## Technical specification

@@ -1,3 +1,6 @@
+<!-- name: Downloading models
+description: How Cluaiz downloads models from Hugging Face, where the files go on disk, and the commands to use. -->
+
 # HuggingFace Model Downloading & Management
 
 To run models locally, the Cluaiz Engine includes a high-performance, edge-optimized downloader designed to pull weight tensors, tokenizers, and configurations directly from the HuggingFace Hub. 

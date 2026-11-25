@@ -1,3 +1,6 @@
+<!-- name: Coming from Ollama
+description: What carries over from Ollama (GGUF models, command names, API routes) and the Cluaiz command for each common task. -->
+
 # Coming from Ollama
 
 If you use Ollama today, most of what you know carries over: the same kind of model files (GGUF,

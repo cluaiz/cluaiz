@@ -1,3 +1,6 @@
+<!-- name: Welcome to the Cluaiz docs
+description: Start page of the Cluaiz Engine docs, with links to each part. -->
+
 # Welcome to cluaiz Documentation
 
 Cluaiz is the AI engine where models, voice, vision, memory, tools, agents and workflows work as one.

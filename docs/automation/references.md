@@ -1,3 +1,6 @@
+<!-- name: Flow references
+description: How a reference reads a value from a run's context (inputs, steps, trigger). -->
+
 # References
 
 > **Draft for review.** Automation is partly built; what is and is not: [Automation](README.md).

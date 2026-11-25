@@ -1,3 +1,6 @@
+<!-- name: Engine configuration reference
+description: Every settings file in the config folder, its fields and defaults. -->
+
 # Engine Configuration Reference
 
 The Engine keeps its settings in JSON files in the config folder: `~/.cluaiz/config/`, or

@@ -1,3 +1,6 @@
+<!-- name: agents/src/memory
+description: Chat memory on disk without a database: event logs, durable notes, embeddings of notes and facts, execution records with secrets removed. -->
+
 # Component: `agents/src/memory/`
 
 ## Technical Specification

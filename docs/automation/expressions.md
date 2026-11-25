@@ -1,3 +1,6 @@
+<!-- name: Flow expressions
+description: JSON expressions that decide when, if, switch and until in a flow, and compute values: every operator. -->
+
 # Expressions
 
 > **Draft for review.** Automation is partly built; what is and is not: [Automation](README.md).

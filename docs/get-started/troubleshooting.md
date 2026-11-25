@@ -1,3 +1,6 @@
+<!-- name: Troubleshooting
+description: Start from the message the Engine prints: the cause, the fix and the page that explains the setting. -->
+
 # Troubleshooting
 
 Start from the message you see. Each entry gives the cause and the fix, and links to the page that

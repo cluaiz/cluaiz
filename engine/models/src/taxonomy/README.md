@@ -1,3 +1,6 @@
+<!-- name: engine/models/src/taxonomy
+description: What kind of model something is, from what it declares, never from its name: slot, variants and capabilities. -->
+
 # Component: `engine/models/src/taxonomy/`
 
 ## Technical Specification

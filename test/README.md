@@ -1,3 +1,6 @@
+<!-- name: test
+description: Tests that need a whole Engine, a real model or a real machine, and where the unit tests live. -->
+
 # Component: `test/` (tests against a running Engine, and recorded machine runs)
 
 ## Technical specification

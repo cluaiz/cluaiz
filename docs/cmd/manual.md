@@ -1,3 +1,6 @@
+<!-- name: CLI manual
+description: The cluaiz terminal commands to check hardware, manage models and run generation. -->
+
 # CLI Manual
 
 The cluaiz CLI provides a set of direct terminal utilities to calibrate hardware, manage models, and run interactive generation.

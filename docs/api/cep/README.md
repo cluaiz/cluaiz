@@ -1,3 +1,6 @@
+<!-- name: CEP: Cluaiz Engine Protocol
+description: How CEP methods are documented: one page per method in five categories, with a header generated from the Rust method registry. -->
+
 # CEP: Cluaiz Engine Protocol
 
 ## Documentation and API Explorer data

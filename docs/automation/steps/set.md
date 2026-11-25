@@ -1,3 +1,6 @@
+<!-- name: Step set: keep values
+description: The set step: keeps named values, plain or computed by an expression, for later steps. -->
+
 # `set`: keep values
 
 > **Draft for review.** Built. Names and fields may change before a release. See [Automation](../README.md).

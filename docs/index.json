@@ -1,24 +1,24 @@
 [
  {
-  "title": "Cluaiz Engine API Reference",
-  "description": "Reference for the Engine's direct inference routes and CEP controls at /v1/cep, model selection, media payloads and response formats. Use the endpoint pages below for accepted fields, examples and...",
+  "title": "Engine API reference",
+  "description": "Start of the Engine API reference: direct inference routes, CEP controls at /v1/cep, model selection, media payloads and response formats.",
   "kind": "docs",
   "path": "docs/api/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "CEP: Cluaiz Engine Protocol",
-  "description": "Each method has one page below the five categories. Its leading --- block is generated from the Rust method registry; the explanation below that block is written documentation. Generate blocks with...",
+  "description": "How CEP methods are documented: one page per method in five categories, with a header generated from the Rust method registry.",
   "kind": "docs",
   "path": "docs/api/cep/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "Agents, MCP & Tools",
-  "description": "All categories: CEP reference. Folder: docs/api/cep/agents-tools/.",
+  "description": "Generated list of the Agents, MCP & Tools CEP methods, from the Rust method registry.",
   "kind": "docs",
   "path": "docs/api/cep/agents-tools/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "approvals.approve",
@@ -134,10 +134,10 @@
  },
  {
   "title": "AI & Inference Core",
-  "description": "How it works: memory. overview, context. overview.",
+  "description": "Generated list of the AI & Inference Core CEP methods, from the Rust method registry.",
   "kind": "docs",
   "path": "docs/api/cep/ai-inference/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "audio.languages",
@@ -204,10 +204,10 @@
  },
  {
   "title": "Context runtime (context.)",
-  "description": "How the Engine shares a model's context between the system prompt, the conversation, tools and the answer, and what it did for each request. The plan itself is described in Chat Completions → Context...",
+  "description": "How the Engine shares a model's context between system prompt, conversation, tools and answer, and the report of what it did per request.",
   "kind": "docs",
   "path": "docs/api/cep/ai-inference/context/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "context.jobs",
@@ -260,10 +260,10 @@
  },
  {
   "title": "Chat memory (memory.)",
-  "description": "The Engine keeps an event log for every chat sent with a sessionid (and not temporarychat), and builds a Chat Map from it: one card per message, episodes, open tasks and a graph. Recall in a chat,...",
+  "description": "The event log the Engine keeps for every chat with a sessionid and the Chat Map built from it: cards, index and recall.",
   "kind": "docs",
   "path": "docs/api/cep/ai-inference/memory/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "memory.delete",
@@ -407,10 +407,10 @@
  },
  {
   "title": "Filesystem & Workspace",
-  "description": "All categories: CEP reference. Folder: docs/api/cep/filesystem/.",
+  "description": "Generated list of the Filesystem & Workspace CEP methods, from the Rust method registry.",
   "kind": "docs",
   "path": "docs/api/cep/filesystem/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "fs.copy",
@@ -519,10 +519,10 @@
  },
  {
   "title": "Models & Engine Vault",
-  "description": "All categories: CEP reference. Folder: docs/api/cep/models/.",
+  "description": "Generated list of the Models & Engine Vault CEP methods, from the Rust method registry.",
   "kind": "docs",
   "path": "docs/api/cep/models/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "models.discard",
@@ -617,10 +617,10 @@
  },
  {
   "title": "System & Infrastructure",
-  "description": "All categories: CEP reference. Folder: docs/api/cep/system/.",
+  "description": "Generated list of the System & Infrastructure CEP methods, from the Rust method registry.",
   "kind": "docs",
   "path": "docs/api/cep/system/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "config.get",
@@ -799,10 +799,10 @@
  },
  {
   "title": "OpenAI compatibility",
-  "description": "Cluaiz serves OpenAI's chat, models, embeddings and audio routes, so an OpenAI client library works by pointing its base URL at the Engine. This page lists which request fields an installed...",
+  "description": "Which OpenAI routes and fields the Engine serves, which differ, and how to point an OpenAI client library at Cluaiz.",
   "kind": "docs",
   "path": "docs/api/inference/openai_compatibility.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "GET",
@@ -833,116 +833,116 @@
   "metadata": true
  },
  {
-  "title": "CLI Architecture (old design draft)",
-  "description": "",
+  "title": "CLI architecture (old design draft)",
+  "description": "Historical April 2026 design for an earlier terminal console; it does not describe the current cluaiz program.",
   "kind": "docs",
   "path": "docs/architecture/cli-architecture.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "CLI Audit (old, April 2026)",
-  "description": "",
+  "title": "CLI audit (old, April 2026)",
+  "description": "Historical April 2026 audit of an earlier terminal console; it does not describe the current cluaiz program.",
   "kind": "docs",
   "path": "docs/architecture/cli-deep-audit.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "CLI Process Design (old design draft)",
-  "description": "",
+  "title": "CLI process design (old design draft)",
+  "description": "Historical April 2026 process design for an earlier terminal console; it does not describe the current cluaiz program.",
   "kind": "docs",
   "path": "docs/architecture/cli-process-design.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Hardware Troubleshooting & VRAM Management",
-  "description": "This document outlines common hardware bottlenecks, performance limits, and safe mitigation configurations when running the cluaiz Inference Engine.",
+  "title": "Hardware troubleshooting and VRAM",
+  "description": "Common hardware limits when running the Engine and the settings that help.",
   "kind": "docs",
   "path": "docs/architecture/hardware-troubleshooting.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Independent Neural Registry: Web Integration & System Design",
-  "description": "Software Architecture & Dynamic Routing Blueprint for cluaiz.com",
+  "title": "Model registry and website integration (design)",
+  "description": "Design document for linking the model registry with cluaiz.com: data layout and routing.",
   "kind": "docs",
   "path": "docs/architecture/registry-web-integration.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Security & Authentication Architecture",
-  "description": "Cluaiz is an AI engine that runs models and an agent runtime. Because the engine executes tools, reads/writes files, and can run in both local desktop environments and cloud/server deployments, it...",
+  "title": "Security and authentication",
+  "description": "How the Engine protects tool runs, files and the API: auth, API keys, approvals, OS sandbox, locally and on a server.",
   "kind": "docs",
   "path": "docs/architecture/security-and-auth-architecture.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "C Library (FFI) and GPU Backend Loading",
-  "description": "cluaizcep.dll / libcluaizcep.so / libcluaizcep.dylib runs the Engine inside another program. It exports two functions:",
+  "title": "C library (FFI) and GPU backend loading",
+  "description": "Running the Engine inside another program through cluaizcep.dll / libcluaizcep.so / .dylib, and how GPU backends are loaded.",
   "kind": "docs",
   "path": "docs/architecture/unified-brain-ffi.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "Cluaiz Automation",
-  "description": "Automation runs flows: files of steps that start on a trigger (a time, a file, a webhook, an event, a call) and use everything Cluaiz has: installed tools (MCP servers, plugins, skills), the Engine's...",
+  "description": "Automation runs flows: files of steps that start on a trigger and use the Engine's tools, methods and models. Start page with links to every part.",
   "kind": "docs",
   "path": "docs/automation/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Errors and retries",
-  "description": "A failed step has steps..error; a failed run has error (in onerror steps and in its record):",
+  "title": "Automation errors and retries",
+  "description": "What a failed step and a failed run contain, and how retries and onerror steps handle failures.",
   "kind": "docs",
   "path": "docs/automation/errors.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Events",
-  "description": "What an engine trigger or a wait with event can receive. trigger.data (or the wait's output data) has these fields:",
+  "title": "Automation events",
+  "description": "The fields an engine trigger or an event wait receives in trigger.data.",
   "kind": "docs",
   "path": "docs/automation/events.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "Flow examples",
-  "description": "From one step to a large flow. The tool names (mcp:notify/send, mcp:github/...) stand for whatever MCP servers or plugins you have installed; flows.nodes lists yours.",
+  "description": "Automation flows from one step to a large flow, ready to copy and adapt.",
   "kind": "docs",
   "path": "docs/automation/examples.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Expressions",
-  "description": "An expression is a JSON object with one operator: its key is the operator, its value the arguments. Expressions decide (when, if, switch, until, filter, stopwhen) and compute values ({ \"expr\": … } in...",
+  "title": "Flow expressions",
+  "description": "JSON expressions that decide when, if, switch and until in a flow, and compute values: every operator.",
   "kind": "docs",
   "path": "docs/automation/expressions.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "The flow file",
-  "description": "Both formats have the same schema (flows.schema). Automation turns either into the same model, and saves a flow in the format it was given. flows.get can return either form.",
+  "description": "The flow file format (JSON or YAML, one schema): its top-level fields and how Automation saves it.",
   "kind": "docs",
   "path": "docs/automation/file.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "Automation guide: your first flows",
-  "description": "A flow is a list of steps that Cluaiz Automation runs for you: when something happens (a time, a new file, a webhook, an event in the Engine), or when you start it. A step can run any installed tool...",
+  "description": "Step by step: write, check and run your first Automation flows.",
   "kind": "docs",
   "path": "docs/automation/guide.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Limits and concurrency",
-  "description": "Automation's settings (settings.json → automation) cap these for every flow, and set:",
+  "title": "Automation limits and concurrency",
+  "description": "The settings that cap runs, steps, time and parallel work for every flow.",
   "kind": "docs",
   "path": "docs/automation/limits.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "Automation methods",
-  "description": "Applications save, check, run and read flows through these methods. They are Automation's methods, not the Engine's, but they are called at the same POST /v1/cep address in the same JSON-RPC form, so...",
+  "description": "The methods applications use to save, check, run and read flows.",
   "kind": "docs",
   "path": "docs/automation/methods/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "flows.disable",
@@ -1057,151 +1057,151 @@
   "metadata": true
  },
  {
-  "title": "Permissions and security",
-  "description": "A flow runs without anyone watching, often started by outside events. It may therefore do only what it lists, and what is listed is confirmed by the owner when the flow is saved.",
+  "title": "Automation permissions and security",
+  "description": "A flow may do only what it lists, and what it lists is confirmed: how flow permissions work.",
   "kind": "docs",
   "path": "docs/automation/permissions.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "References",
-  "description": "A reference reads a value from the run's context.",
+  "title": "Flow references",
+  "description": "How a reference reads a value from a run's context (inputs, steps, trigger).",
   "kind": "docs",
   "path": "docs/automation/references.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "Runs and records",
-  "description": "flows.runs, flows.runget and tasks.result of a flows.run task return runs in this shape:",
+  "description": "The shape of a flow run record returned by flows.runs, flows.runget and a flows.run task.",
   "kind": "docs",
   "path": "docs/automation/runs.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Steps",
-  "description": "A step is a JSON object (a YAML mapping) with exactly one kind key and any of the fields every step may have.",
+  "title": "Flow steps",
+  "description": "Every step kind of a flow and the fields all steps share.",
   "kind": "docs",
   "path": "docs/automation/steps/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "agent: a model with several rounds of tools",
-  "description": "Like ask, but the model may call tools, read their results and call more, for up to maxturns rounds, before it answers. Use it when the steps are not known in advance; use fixed steps when they are,...",
+  "title": "Step agent: a model with tool rounds",
+  "description": "The agent step: a model that may call tools for several rounds before it answers.",
   "kind": "docs",
   "path": "docs/automation/steps/agent.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "approve: a person's yes or no",
-  "description": "The question becomes an Engine approval, like those of chats and tools:",
+  "title": "Step approve: a person's yes or no",
+  "description": "The approve step: the flow waits for a person to approve or reject, like chat and tool approvals.",
   "kind": "docs",
   "path": "docs/automation/steps/approve.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "ask: one answer from a model",
-  "description": "Gives a model an instruction and data, and keeps its answer. Any chat model works: one installed in Cluaiz, or a provider's (/).",
+  "title": "Step ask: one answer from a model",
+  "description": "The ask step: an instruction and data go to a chat model and its answer is kept.",
   "kind": "docs",
   "path": "docs/automation/steps/ask.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "call: run an Engine method or route",
-  "description": "Runs one CEP method, or one of the Engine's own routes, through the Engine's CEP dispatcher in the same program (not over HTTP).",
+  "title": "Step call: an Engine method or route",
+  "description": "The call step: runs one CEP method or Engine route in the same program, not over HTTP.",
   "kind": "docs",
   "path": "docs/automation/steps/call.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "code: your WebAssembly module",
-  "description": "Runs a function of a WebAssembly module in the WebAssembly sandbox (the same one plugins use). The module gets the step's input as JSON and returns JSON. Write it in any language that compiles to...",
+  "title": "Step code: your WebAssembly module",
+  "description": "The code step: runs a function of a WebAssembly module in the plugin sandbox with the step input as JSON.",
   "kind": "docs",
   "path": "docs/automation/steps/code.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "each: steps for every item",
-  "description": "Steps outside the loop can be read as usual.",
+  "title": "Step each: steps for every item",
+  "description": "The each step: runs its steps once for every item of a list.",
   "kind": "docs",
   "path": "docs/automation/steps/each.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "emit, return, fail",
-  "description": "Sends an event that other flows can start on (event trigger) or wait for (wait).",
+  "title": "Steps emit, return, fail",
+  "description": "Send an event other flows can start on or wait for, end a flow with a value, or fail it on purpose.",
   "kind": "docs",
   "path": "docs/automation/steps/emit-return-fail.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "if: one of two branches",
-  "description": "when on a step decides whether that one step runs. if chooses between two lists of steps.",
+  "title": "Step if: one of two branches",
+  "description": "The if step chooses between two lists of steps; when decides whether one step runs.",
   "kind": "docs",
   "path": "docs/automation/steps/if.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "parallel: named branches at the same time",
-  "description": "",
+  "title": "Step parallel: branches at the same time",
+  "description": "The parallel step: named branches of steps that run at the same time.",
   "kind": "docs",
   "path": "docs/automation/steps/parallel.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "repeat: again until a condition holds",
-  "description": "To wait for something outside Cluaiz without asking repeatedly, use wait with an event or a webhook when the other side can send one.",
+  "title": "Step repeat: again until a condition holds",
+  "description": "The repeat step: runs its steps again until a condition holds.",
   "kind": "docs",
   "path": "docs/automation/steps/repeat.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "run: another flow",
-  "description": "",
+  "title": "Step run: another flow",
+  "description": "The run step: starts another saved flow with inputs and keeps its result.",
   "kind": "docs",
   "path": "docs/automation/steps/run.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "set: keep values",
-  "description": "",
+  "title": "Step set: keep values",
+  "description": "The set step: keeps named values, plain or computed by an expression, for later steps.",
   "kind": "docs",
   "path": "docs/automation/steps/set.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "switch: the first case that holds",
-  "description": "Short form:",
+  "title": "Step switch: the first case that holds",
+  "description": "The switch step: runs the steps of the first case whose condition holds.",
   "kind": "docs",
   "path": "docs/automation/steps/switch.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "tool: run an installed tool",
-  "description": "Runs one function of an installed MCP server, plugin or skill, through the Engine's tools.call.",
+  "title": "Step tool: an installed tool",
+  "description": "The tool step: runs one function of an installed MCP server, plugin or skill through tools.call.",
   "kind": "docs",
   "path": "docs/automation/steps/tool.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "wait: until a time, an event or a webhook",
-  "description": "A waiting run holds no worker and no memory beyond its record; it survives a restart.",
+  "title": "Step wait: a time, an event or a webhook",
+  "description": "The wait step: the run pauses until a time, an event or a webhook, holding no worker, and survives a restart.",
   "kind": "docs",
   "path": "docs/automation/steps/wait.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Triggers",
-  "description": "on is a list. Each item is one trigger: one kind key, plus the fields every trigger may have. A flow may have several triggers; any of them starts a run.",
+  "title": "Flow triggers",
+  "description": "What starts a flow: time, file, webhook, event or call triggers and their fields.",
   "kind": "docs",
   "path": "docs/automation/triggers.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Validation",
-  "description": "flows.validate checks a flow without saving or running it. flows.save runs the same checks and refuses a flow with errors. A flow with warnings can be saved and run.",
+  "title": "Flow validation",
+  "description": "What flows.validate and flows.save check, and the errors and warnings they return.",
   "kind": "docs",
   "path": "docs/automation/validation.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "POST",
@@ -1212,115 +1212,115 @@
  },
  {
   "title": "cluaiz agent: a coding agent in your terminal",
-  "description": "cluaiz agent runs a local model as an agent in a folder on your computer. You describe a task in plain words; the model reads files, searches them, edits them and runs commands to do it, and tells...",
+  "description": "Run a local model as a coding agent in a folder: it reads, searches, edits files and runs commands with your approval.",
   "kind": "docs",
   "path": "docs/cmd/agent.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "cluaiz run: chat with a model in the terminal",
-  "description": "cluaiz run loads a model and either answers one prompt or opens a chat. It is a plain chat: the model only writes text. To let a model read and change files or run commands, use cluaiz agent.",
+  "title": "cluaiz run: chat in the terminal",
+  "description": "Load a model and get one answer or open a plain text chat in the terminal.",
   "kind": "docs",
   "path": "docs/cmd/chat.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "cluaiz CLI, Command Reference",
-  "description": "Inside the agent: /yes, /ask, /clear, /undo, /rewind, /bye, /?, and the project's workflows as /. Tools, approvals and limits: agent guide.",
+  "title": "cluaiz CLI command reference",
+  "description": "Every cluaiz command and flag, with the agent's slash commands.",
   "kind": "docs",
   "path": "docs/cmd/commands_reference.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "CLI Manual",
-  "description": "The cluaiz CLI provides a set of direct terminal utilities to calibrate hardware, manage models, and run interactive generation.",
+  "title": "CLI manual",
+  "description": "The cluaiz terminal commands to check hardware, manage models and run generation.",
   "kind": "docs",
   "path": "docs/cmd/manual.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "The terminal screen",
-  "description": "cluaiz agent has two ways to show its work: a full screen (rich mode) and plain printed lines. This page covers the full screen: when it is used, how it is laid out, and every key it takes. What the...",
+  "description": "The full-screen mode of cluaiz agent: when it is used, what it shows and its keys.",
   "kind": "docs",
   "path": "docs/cmd/tui.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Release Workflow",
-  "description": ".github/workflows/release.yml builds and publishes Cluaiz: a core that runs everything on the CPU, plus the GPU drivers the core loads when they sit beside it. The drivers come from two workflows...",
+  "title": "Release workflow",
+  "description": "How the release workflow builds and publishes Cluaiz: a CPU core plus GPU packs, with its jobs and smoke test.",
   "kind": "docs",
   "path": "docs/deployments/cicd.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "What gets installed where",
-  "description": "This page lists, file by file, what the installer puts on each operating system and which folders the engine creates when it runs. The file lists and sizes are read from the v0.1.0 release archives;...",
+  "description": "File by file, what the installer puts on each operating system and which folders the Engine creates.",
   "kind": "docs",
   "path": "docs/deployments/install-layout.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Platform Support",
-  "description": "Cluaiz ships as a core plus optional GPU packs (see Release Workflow). The core runs every model on the CPU and picks the fastest CPU code for the processor at start. A GPU pack in the same folder...",
+  "title": "Platform support",
+  "description": "Which operating systems, CPUs and GPUs Cluaiz supports, and which GPU pack each needs.",
   "kind": "docs",
   "path": "docs/deployments/platforms.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Axum API",
-  "description": "The Engine's HTTP server is built on Axum and Tokio (api/src/routes.rs). It serves:",
+  "title": "The HTTP server (Axum)",
+  "description": "What the Engine's HTTP server serves and how it is built on Axum and Tokio.",
   "kind": "docs",
   "path": "docs/engine/api.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Two Runtimes: llama.cpp and ONNX Runtime",
-  "description": "The Engine runs models through two runtimes, inside one process.",
+  "title": "Two runtimes: llama.cpp and ONNX Runtime",
+  "description": "How the Engine runs GGUF models with llama.cpp and speech, vision and embedding models with ONNX Runtime in one process.",
   "kind": "docs",
   "path": "docs/engine/dual_engine_architecture.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Load and Speed Settings (settings.json → optimization)",
-  "description": "These settings control how a GGUF model is loaded and run by llama.cpp. They are the optimization section of settings.json (OptimizationControl in engine/core/src/settings.rs). Change them with...",
+  "title": "Load and speed settings",
+  "description": "The optimization settings in settings.json that control how llama.cpp loads and runs a GGUF model.",
   "kind": "docs",
   "path": "docs/engine/llm_optimization.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Mixture-of-Experts Models on Small GPUs",
-  "description": "A Mixture-of-Experts (MoE) model can be larger than the GPU. The Engine runs it the same way llama.cpp does with --n-cpu-moe:",
+  "title": "Mixture-of-Experts models on small GPUs",
+  "description": "How the Engine runs a MoE model larger than the GPU, like llama.cpp's --n-cpu-moe, and its expert cache.",
   "kind": "docs",
   "path": "docs/engine/moe_ssd_streaming.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "permission.json",
-  "description": "permission.json is in the config folder (~/.cluaiz/config/permission.json, or /config/permission.json). The schema is security/src/permissionschema.rs. Missing fields take their defaults. If the file...",
+  "description": "The permission.json settings: listen address, API keys, approval mode, OS sandbox and system.exec policy.",
   "kind": "docs",
   "path": "docs/engine/permission.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "KV Cache Reuse (Prefix Caching)",
-  "description": "When a chat continues, most of the new prompt is the same as the last one. The Engine keeps the KV cache of the last generation and computes only the tokens that changed. This works like...",
+  "title": "KV cache reuse (prefix caching)",
+  "description": "How the Engine keeps the KV cache of the last generation so a continued chat only computes the new part.",
   "kind": "docs",
   "path": "docs/engine/prefix_caching_architecture.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "Model providers",
-  "description": "A model provider is another service with an OpenAI-compatible API or the Anthropic Messages API, on the internet or on the same computer. Once a provider is added, its chat models work in cluaiz run,...",
+  "description": "Use models from other services (OpenAI-compatible or Anthropic API, online or local) through the Engine.",
   "kind": "docs",
   "path": "docs/engine/providers.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Hardware Profile (hardwareprofile.json)",
-  "description": "The planner needs to know this machine: RAM, CPU and GPUs. The hardware probe (engine/hardware/src/prober.rs) collects this.",
+  "title": "Hardware profile",
+  "description": "The hardwareprofile.json the planner uses: RAM, CPU and GPUs found by the hardware probe.",
   "kind": "docs",
   "path": "docs/engine/system_control.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "Call your own functions (tool calling)",
@@ -1331,220 +1331,220 @@
  },
  {
   "title": "Tools: permissions, settings and environment",
-  "description": "How the Engine treats an installed tool (a skill, a plugin or an MCP server): what it may reach, which values it gets, and what an install does before anything is downloaded. The package format...",
+  "description": "How the Engine treats an installed skill, plugin or MCP server: what it may reach, which values it gets, what an install does.",
   "kind": "docs",
   "path": "docs/engine/tools.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "System Architecture Overview",
-  "description": "One program, cluaiz, holds the CLI, the terminal agent, the HTTP server and the model runtimes.",
+  "title": "System architecture overview",
+  "description": "One program, cluaiz, holds the CLI, the terminal agent, the HTTP server and the model runtimes: how the parts fit.",
   "kind": "docs",
   "path": "docs/get-started/architecture.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "Coming from Ollama",
-  "description": "If you use Ollama today, most of what you know carries over: the same kind of model files (GGUF, run by llama.cpp), the same command names, and Ollama's own chat, generate, embed and model routes, so...",
+  "description": "What carries over from Ollama (GGUF models, command names, API routes) and the Cluaiz command for each common task.",
   "kind": "docs",
   "path": "docs/get-started/coming-from-ollama.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "Your first API request",
-  "description": "In ten minutes: a running server, a small model, one answer, one streamed answer, and an API key. Every output below was recorded on Windows 11 with Engine 0.1.0 on 2026-11-21 (an isolated home on...",
+  "description": "In ten minutes: a running server, a small model, one answer, one streamed answer and an API key, with recorded output.",
   "kind": "docs",
   "path": "docs/get-started/first-api-request.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "Introduction to Cluaiz",
-  "description": "Cluaiz is the AI engine where models, voice, vision, memory, tools, agents and workflows work as one. It runs language, speech, vision and embedding models on your own computer or server, with the...",
+  "description": "What Cluaiz is: the AI engine where models, voice, vision, memory, tools, agents and workflows work as one.",
   "kind": "docs",
   "path": "docs/get-started/introduction.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "HuggingFace Model Downloading & Management",
-  "description": "To run models locally, the Cluaiz Engine includes a high-performance, edge-optimized downloader designed to pull weight tensors, tokenizers, and configurations directly from the HuggingFace Hub.",
+  "title": "Downloading models",
+  "description": "How Cluaiz downloads models from Hugging Face, where the files go on disk, and the commands to use.",
   "kind": "docs",
   "path": "docs/get-started/model-downloading.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Quickstart Guide",
-  "description": "This guide details the deployment pathways to install, bootstrap, and execute cluaiz natively on your workstation. The runtime can be deployed via a single-line automated installer or compiled...",
+  "title": "Quickstart",
+  "description": "Install Cluaiz with one command and run your first model.",
   "kind": "docs",
   "path": "docs/get-started/quickstart.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "Troubleshooting",
-  "description": "Start from the message you see. Each entry gives the cause and the fix, and links to the page that explains the setting. Messages are quoted as the Engine prints them.",
+  "description": "Start from the message the Engine prints: the cause, the fix and the page that explains the setting.",
   "kind": "docs",
   "path": "docs/get-started/troubleshooting.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Welcome to cluaiz Documentation",
-  "description": "Cluaiz is the AI engine where models, voice, vision, memory, tools, agents and workflows work as one. It runs language, speech, vision and embedding models on your own computer or server, can use...",
+  "title": "Welcome to the Cluaiz docs",
+  "description": "Start page of the Cluaiz Engine docs, with links to each part.",
   "kind": "docs",
   "path": "docs/get-started/welcome.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Cluaiz API reference",
-  "description": "Use this page to choose an endpoint and understand common request rules. Each domain reference contains accepted fields, defaults, payload variants, code examples, responses and errors.",
+  "title": "API reference overview",
+  "description": "Choose an endpoint and learn the request rules shared by all Engine routes.",
   "kind": "docs",
   "path": "docs/reference/api.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "Automation reference",
-  "description": "Automation runs flows: files of steps that start on a trigger and use the Engine's tools, methods and models. It is a separate layer, not part of the Engine or the API: it calls the Engine through...",
+  "description": "One-page reference of Automation: flow file, steps, triggers, expressions, methods and limits.",
   "kind": "docs",
   "path": "docs/reference/automation.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "C Library and FFI Memory Rules",
-  "description": "The release packages do not include this library yet: build it with cargo build --release -p cluaiz-ffi.",
+  "title": "C library and FFI memory rules",
+  "description": "Memory and pointer rules for calling the Engine's C library; how to build it, as releases do not include it yet.",
   "kind": "docs",
   "path": "docs/reference/c-pointer-fii.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "System Dictionary",
+  "title": "Dictionary",
   "description": "Terms used across the Cluaiz Engine docs.",
   "kind": "docs",
   "path": "docs/reference/dictionary.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Engine Configuration Reference",
-  "description": "The Engine keeps its settings in JSON files in the config folder: ~/.cluaiz/config/, or /config/. Missing fields take their defaults.",
+  "title": "Engine configuration reference",
+  "description": "Every settings file in the config folder, its fields and defaults.",
   "kind": "docs",
   "path": "docs/reference/engine-configuration.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Engine Features",
-  "description": "Every feature of the Cluaiz Engine (the cluaiz program in this repository) on one page: what it does, when you need it, one example, its status, where the code is and which test run checked it. The...",
+  "title": "Engine features",
+  "description": "Every Engine feature on one page: what it does, when you need it, one example, its status and where to read more.",
   "kind": "docs",
   "path": "docs/reference/features.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Master Reference Index",
-  "description": "Reference pages for the Cluaiz Engine.",
+  "title": "Reference index",
+  "description": "The list of reference pages for the Cluaiz Engine.",
   "kind": "docs",
   "path": "docs/reference/index.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Cluaiz CLI Reference",
-  "description": "What each cluaiz command does, and the API method that does the same thing over HTTP. cluaiz --help and cluaiz --help list every flag. cluaiz help all lists every command and subcommand at once;...",
+  "title": "CLI and matching API methods",
+  "description": "What each cluaiz command does and the API method that does the same over HTTP.",
   "kind": "docs",
   "path": "docs/reference/terminal-commands.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Docs tooling (docs/tools/)",
-  "description": "Checks for the Engine docs. Not shown on the website (only pages listed in docs/registry.json are).",
+  "title": "Docs tooling",
+  "description": "Scripts that check the Engine docs, draw their images and build the docs index.",
   "kind": "docs",
   "path": "docs/tools/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "cluaiz: CI/CD & RELEASE ARCHITECTURE",
-  "description": "This document is the entry point for the CI/CD pipeline. The full job list, file names and smoke test are in docs/deployments/cicd.md; hardware and OS coverage is in docs/deployments/platforms.md.",
+  "title": ".github/workflows",
+  "description": "The CI and release workflows: what each one builds, tests and publishes.",
   "kind": "readme",
   "path": ".github/workflows/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: agents/ (crate cluaiz-agents)",
-  "description": "An answer the loop cannot use (a call it cannot read, or only thinking) is not run: the model is told what was wrong and answers again, at most MOSTCORRECTIONS (2) times in a row (src/turn.rs:129).",
+  "title": "agents",
+  "description": "The cluaiz-agents crate: installed tools and their registry, permissions, tool matching, one agent turn for every front end, command execution, chat memory and project agent files.",
   "kind": "readme",
   "path": "agents/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Agents crate source (agents/src/)",
-  "description": "All tool logic (skills, plugins, MCP, registry, turn lifecycle, telemetry), the chat memory store and the project's .agents/ workspace files live in this crate.",
+  "title": "agents/src",
+  "description": "Source map of the cluaiz-agents crate: tool logic, turn lifecycle, chat memory store and the project's .agents/ files.",
   "kind": "readme",
   "path": "agents/src/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: agents/src/execution/",
-  "description": "Every process this crate starts for an agent or a tool goes through ossandbox::confinehere: agent commands (terminalrunner.rs direct and shell, ptyrunner.rs), MCP servers (mcp/client.rs) and native...",
+  "title": "agents/src/execution",
+  "description": "Running programs for the agent and tools: the command safety check, timeouts and process-tree kill, PTY, skill scripts and each program's environment.",
   "kind": "readme",
   "path": "agents/src/execution/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: agents/src/installer/",
-  "description": "10 unit tests: themodetable, permissionsbymode, answersdecidewhatisinstalled, arefusedrequiredtoolinstallsnothing, dependenciesarereadwithneedandinfo, testdetectpureskill, testdetectnoderuntime,...",
+  "title": "agents/src/installer",
+  "description": "Installing, updating and removing tools from the Cluaiz Tools registry: the plan, safe fetch and unpack, placement with rollback, permission answers.",
   "kind": "readme",
   "path": "agents/src/installer/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: agents/src/mcp/",
-  "description": "Part of cargo test -p cluaiz-agents: 161 passed on 2026-11-21. The reference-server test was not run that day. MCP over the Engine's own CEP server: test/cep/mcpjourney.py.",
+  "title": "agents/src/mcp",
+  "description": "The Engine as an MCP client: starts installed MCP servers, keeps each running, lists and calls their tools.",
   "kind": "readme",
   "path": "agents/src/mcp/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: agents/src/memory/",
-  "description": "21 unit tests, among them testjsonlstoreconformance, testmemstoreconformance, testalinecutbyacrashisskippedandreported, testfullsegmentsarecompressedandstillread,...",
+  "title": "agents/src/memory",
+  "description": "Chat memory on disk without a database: event logs, durable notes, embeddings of notes and facts, execution records with secrets removed.",
   "kind": "readme",
   "path": "agents/src/memory/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: agents/src/plugins/",
-  "description": "22 unit tests in this folder, part of cargo test -p cluaiz-agents (161 passed on 2026-11-21):",
+  "title": "agents/src/plugins",
+  "description": "Running a plugin's function: WebAssembly plugins sandboxed inside the Engine, other plugins as child processes in the OS sandbox.",
   "kind": "readme",
   "path": "agents/src/plugins/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: agents/src/registry/",
-  "description": "7 unit tests: abrokenfileiskeptasideandasaveiswhole, testexecutionmodeparsing, testsecuritymodeparsing, atoolwithapermissionoffisaskedaboutineverymode, testserderoundtrip,...",
+  "title": "agents/src/registry",
+  "description": "The list of installed tools and their switches (toolsregistry.json), kept in line with disk, and the rule for when a tool call needs approval.",
   "kind": "readme",
   "path": "agents/src/registry/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Cluaiz API Gateway (api/)",
-  "description": "Direct Axum HTTP and Server-Sent Events (SSE) server for Cluaiz.",
+  "title": "api",
+  "description": "The Engine's HTTP and SSE server (Axum): routes, auth, CEP, providers, and the optional local pipe or socket transport.",
   "kind": "readme",
   "path": "api/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: api/src/cep/",
-  "description": "9 unit tests in methods/; contract tests api/tests/cep.rs (8 files, 13 tests) and the live journeys in test/cep/. api builds both native backends, so none of these tests were run on 2026-11-21 (see...",
+  "title": "api/src/cep",
+  "description": "The Engine side of CEP (JSON-RPC 2.0): method context, every Engine method, the /v1/cep and /mcp doors, and the hook for outside layers.",
   "kind": "readme",
   "path": "api/src/cep/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: CEP tool controls",
-  "description": "",
+  "title": "api/src/cep/methods/tools",
+  "description": "The CEP methods that control skills, plugins, MCP servers and components on top of the existing tool system.",
   "kind": "readme",
   "path": "api/src/cep/methods/tools/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Direct HTTP route handlers (api/src/handlers/)",
-  "description": "This folder holds direct inference, document extraction and compatibility routes. Engine control operations are CEP methods in ../cep/ (POST /v1/cep, /mcp, cepcall).",
+  "title": "api/src/handlers",
+  "description": "Direct HTTP route handlers: inference, document extraction and compatibility routes; Engine control lives in CEP.",
   "kind": "readme",
   "path": "api/src/handlers/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
   "title": "api/src/handlers/chat",
@@ -1554,367 +1554,367 @@
   "metadata": true
  },
  {
-  "title": "Component: Direct document ingestion",
-  "description": "api builds both native backends, so none of these tests were run on 2026-11-21 (see api/README.md, Tests). No checked-in run executes ingestmodels.rs with models.",
+  "title": "api/src/handlers/ingest",
+  "description": "POST /v1/ingest: one JSON request and one JSON answer for document extraction and optional model processing.",
   "kind": "readme",
   "path": "api/src/handlers/ingest/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Local native API transport",
-  "description": "NativeListener binds one caller-provided Windows named pipe or Unix socket. It carries HTTP/1 request, response and streaming frames through Hyper and then calls the existing Axum router. It never...",
+  "title": "api/src/native",
+  "description": "Serving the API over a local Windows named pipe or Unix socket instead of TCP.",
   "kind": "readme",
   "path": "api/src/native/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: api/src/providers/",
-  "description": "49 unit tests in this folder (src/providers/tests/ and inline). api builds both native backends, so none of these tests were run on 2026-11-21 (see api/README.md, Tests). Real provider calls need...",
+  "title": "api/src/providers",
+  "description": "Every call to a model provider in providers.json: request format, signing, reading the streamed answer back, and errors.",
   "kind": "readme",
   "path": "api/src/providers/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: API acceptance transport support",
-  "description": "",
+  "title": "api/tests/support",
+  "description": "Test helper: one real authenticated loopback HTTP request shared by acceptance tests.",
   "kind": "readme",
   "path": "api/tests/support/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "automation/: Cluaiz Automation",
-  "description": "Automation runs flows: files of steps that use the Engine's tools, methods and models. It is a separate layer, not part of the Engine and not part of the API. The user docs are in docs/automation.",
+  "title": "automation",
+  "description": "Cluaiz Automation, a layer outside the Engine: runs flows of steps that use the Engine's tools, methods and models.",
   "kind": "readme",
   "path": "automation/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "CEP protocol core (cep/, crate cluaiz-cep)",
-  "description": "CEP, the Cluaiz Engine Protocol, carries every Engine-specific operation as a JSON-RPC 2.0 method. The same methods are reachable three ways:",
+  "title": "cep",
+  "description": "The CEP protocol core (crate cluaiz-cep): JSON-RPC 2.0 envelope, method registry and dispatcher, reachable over HTTP, MCP and native calls.",
   "kind": "readme",
   "path": "cep/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "The cluaiz program (cmd/)",
-  "description": "The command line of the Engine. cluaiz --help lists every command; cluaiz -h explains one. The full references are docs/cmd/commandsreference.md (commands), docs/cmd/agent.md (coding agent) and...",
+  "title": "cmd",
+  "description": "The cluaiz program: the command line of the Engine and where each command is implemented.",
   "kind": "readme",
   "path": "cmd/ReadMe.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "cmd/src: the cluaiz command-line interface",
-  "description": "A terminal program: interactive agent sessions use a same-tab terminal UI; scripts and --ui plain retain line-oriented output. No desktop shell or second executable is required. Load and sampling...",
+  "title": "cmd/src",
+  "description": "Source map of the cluaiz command-line program: terminal UI for agent sessions, plain output for scripts.",
   "kind": "readme",
   "path": "cmd/src/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: terminal agent frontend",
-  "description": "cluaiz agent loads the existing local chat::Session, presents its six built-in file/command tools and repeats generation until the model answers without a tool call. The interactive UI and plain...",
+  "title": "cmd/src/agent",
+  "description": "The terminal agent front end: six file and command tools and the loop that generates until the model answers without a call.",
   "kind": "readme",
   "path": "cmd/src/agent/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: cmd/src/cli/",
-  "description": "",
+  "title": "cmd/src/cli",
+  "description": "Handlers of the cluaiz subcommands other than chat and agent: one file per command or shared piece.",
   "kind": "readme",
   "path": "cmd/src/cli/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: agent tool regression tests",
-  "description": "",
+  "title": "cmd/tests/agent",
+  "description": "Regression tests of the terminal agent's file, search, edit, command and approval behaviour with temporary files.",
   "kind": "readme",
   "path": "cmd/tests/agent/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "cluaiz-context",
-  "description": "Pure context planning for the Engine. It gets segments with real token counts and returns which ones go into the next prompt, with a reason for each. It reads no files, calls no model, holds no KV...",
+  "title": "context",
+  "description": "Pure context planning: given segments with real token counts, decides which go into the next prompt and why.",
   "kind": "readme",
   "path": "context/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: engine/ (the compute layer)",
-  "description": "Taken from each crate's Cargo.toml on 2026-11-21. An arrow means \"depends on\".",
+  "title": "engine",
+  "description": "The compute layer: settings, hardware, model files, placement, media decoding, the llama.cpp and ONNX backends, and the runtime host.",
   "kind": "readme",
   "path": "engine/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Cluaiz Core (engine/core)",
-  "description": "Central foundational module for the Cluaiz compute engine. Responsible for single-source-of-truth configuration, paths, unit conversion, and core engine contracts.",
+  "title": "engine/core",
+  "description": "Shared configuration, paths, unit conversion and core contracts of the compute engine, including model asset manifests.",
   "kind": "readme",
   "path": "engine/core/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: engine/hardware/ (crate cluaiz-hw)",
-  "description": "At each process start the saved profile is compared with facts read in milliseconds (quickfacts, prober.rs:94): total RAM, logical CPU threads, and each NVIDIA GPU's name and total VRAM. Any of them...",
+  "title": "engine/hardware",
+  "description": "Finds the machine the Engine runs on (CPU, RAM, disks, GPUs) and how much RAM and VRAM is free now.",
   "kind": "readme",
   "path": "engine/hardware/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Cluaiz Llama Engine (engine/llama)",
-  "description": "Direct Rust API wrapping custom llama.cpp C/C++ memory. Compiled as an rlib to eliminate dual-static memory copies between Exe and DLL.",
+  "title": "engine/llama",
+  "description": "The Rust layer over the llama.cpp fork: GGUF chat, embeddings, speech, tools and grammar, and the fork's patches.",
   "kind": "readme",
   "path": "engine/llama/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: Native speech policy data",
-  "description": "Part of the llama-engine tests (not run on 2026-11-21, native build).",
+  "title": "engine/llama/src/native/data",
+  "description": "Language alias data for the native speech input adapter; not a list of supported models.",
   "kind": "readme",
   "path": "engine/llama/src/native/data/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: Cluaiz Media",
-  "description": "SourceResolver::withprogress optionally connects shared preparation to the backend-neutral cluaizcore::processing observer. Reading and decoding emit actual start/end stages per original content...",
+  "title": "engine/media",
+  "description": "Shared media preparation: bounded sources, format detection, image and audio decoding, document text extraction and WAV output.",
   "kind": "readme",
   "path": "engine/media/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: Optional FFmpeg video provider",
-  "description": "Set FFMPEGDIR to a deliberately staged SDK with include/ and lib/, then run:",
+  "title": "engine/media/providers/ffmpeg",
+  "description": "The optional FFmpeg video decoder provider and how to build it against a staged SDK.",
   "kind": "readme",
   "path": "engine/media/providers/ffmpeg/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Shared document extraction",
-  "description": "extract consumes bounded source bytes and their format evidence; it returns ordered DocumentPart values with real text, method, optional PDF page number, omissions, warnings and optional OCR...",
+  "title": "engine/media/src/documents",
+  "description": "Document extraction: turns PDF, Office and text files into ordered text parts with their method.",
   "kind": "readme",
   "path": "engine/media/src/documents/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: Video ABI contract",
-  "description": "Part of cargo test -p cluaiz-media (2026-11-21 (Windows 11): 49 passed, 4 ignored). Pending items: media/README.md.",
+  "title": "engine/media/src/video",
+  "description": "The versioned C ABI shared by the optional video decoder and the media code.",
   "kind": "readme",
   "path": "engine/media/src/video/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Shared media acceptance",
-  "description": "documents.rs exercises real small PDF and OOXML DOCX packages. support/mod.rs owns document builders used directly by these tests and the API document tests; it is not compiled into production...",
+  "title": "engine/media/tests",
+  "description": "Acceptance tests of document, Office and audio decoding with real small files.",
   "kind": "readme",
   "path": "engine/media/tests/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Audio decoder fixtures",
-  "description": "opus-mono.webm and opus-stereo.webm contain an 80 ms synthetic 440 Hz tone encoded as real Opus in streaming-layout WebM, with unknown segment duration and short clusters. They contain no user...",
+  "title": "engine/media/tests/fixtures",
+  "description": "Tiny synthetic Opus WebM recordings used by the audio decoder tests, and how they were made.",
   "kind": "readme",
   "path": "engine/media/tests/fixtures/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Cluaiz Models Subsystem (engine/models)",
-  "description": "Unified Model Subsystem for Cluaiz: HuggingFace model downloading, registry/vault tracking, multi-modal taxonomy, and single GGUF reader.",
+  "title": "engine/models",
+  "description": "Model files: downloading from Hugging Face, the installed registry and vault, model kind detection and the GGUF reader.",
   "kind": "readme",
   "path": "engine/models/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: engine/models/src/fetcher/",
-  "description": "Part of cargo test -p cluaiz-models (2026-11-21 (Windows 11): 50 passed, 8 ignored). Pending items: models/README.md.",
+  "title": "engine/models/src/fetcher",
+  "description": "From a model name to a registered model on disk: id parsing, which files belong to a variant, download and checks.",
   "kind": "readme",
   "path": "engine/models/src/fetcher/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: engine/models/src/registry/",
-  "description": "Part of cargo test -p cluaiz-models (2026-11-21 (Windows 11): 50 passed, 8 ignored). Pending items: models/README.md.",
+  "title": "engine/models/src/registry",
+  "description": "Which models are installed and where: modelregistry.json, the vault folders and model slots.",
   "kind": "readme",
   "path": "engine/models/src/registry/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: engine/models/src/taxonomy/",
-  "description": "Part of cargo test -p cluaiz-models (2026-11-21 (Windows 11): 50 passed, 8 ignored). Pending items: models/README.md.",
+  "title": "engine/models/src/taxonomy",
+  "description": "What kind of model something is, from what it declares, never from its name: slot, variants and capabilities.",
   "kind": "readme",
   "path": "engine/models/src/taxonomy/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: engine/models/src/types/",
-  "description": "Part of cargo test -p cluaiz-models (2026-11-21 (Windows 11): 50 passed, 8 ignored). Pending items: models/README.md.",
+  "title": "engine/models/src/types",
+  "description": "Shared model data types, and the streaming filter that separates thinking from the answer for every caller.",
   "kind": "readme",
   "path": "engine/models/src/types/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: Model package capability acceptance",
-  "description": "Part of cargo test -p cluaiz-models (2026-11-21 (Windows 11): 50 passed, 8 ignored). Pending items: models/README.md.",
+  "title": "engine/models/tests",
+  "description": "Opt-in read-only audits of model package graphs in a temporary folder.",
   "kind": "readme",
   "path": "engine/models/tests/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Cluaiz ONNX Audio & Multimodal Engine (engine/onnx)",
-  "description": "Unified ONNX compute engine for Audio STT (Whisper, Moonshine), TTS (Kokoro and Piper/VITS; the CosyVoice, Matcha, Chatterbox, Supertonic and OmniVoice code is experimental, see models.md), and...",
+  "title": "engine/onnx",
+  "description": "The ONNX Runtime backend: speech to text, text to speech, vision and embeddings.",
   "kind": "readme",
   "path": "engine/onnx/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: Cluaiz ONNX Audio & TTS Subsystem (src/audio/)",
-  "description": "Audio8 required asset paths come from cluaiz-core::modelassets, shared with discovery/installation. The backend keeps numerical layout/dimension checks, actual graph sessions, voice conditioning and...",
+  "title": "engine/onnx/src/audio",
+  "description": "ONNX speech to text and text to speech: model families, required files and voices.",
   "kind": "readme",
   "path": "engine/onnx/src/audio/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: ONNX native media acceptance",
-  "description": "Part of the onnx-engine tests (69 unit, 11 ignored; not run on 2026-11-21, native build). Pending items: onnx/README.md.",
+  "title": "engine/onnx/tests",
+  "description": "Opt-in integration test of real ONNX image embedding packages.",
   "kind": "readme",
   "path": "engine/onnx/tests/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Cluaiz Execution Planner (engine/plan)",
-  "description": "Pure mathematical negotiation and placement engine for Cluaiz.",
+  "title": "engine/plan",
+  "description": "The load planner: decides where a model's layers, KV cache and experts go (GPU, CPU, disk) before loading.",
   "kind": "readme",
   "path": "engine/plan/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Cluaiz Engine Runtime & Host (engine/runtime)",
-  "description": "Model execution supervisor with separate chat, ONNX-task and GGUF-speech owners.",
+  "title": "engine/runtime",
+  "description": "The runtime host: loads, shares and unloads models for chat, ONNX tasks and GGUF speech.",
   "kind": "readme",
   "path": "engine/runtime/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "The Engine as a C library (ffi/, crate cluaiz-ffi)",
-  "description": "The release packages do not include this library yet: build it with cargo build --release -p cluaiz-ffi.",
+  "title": "ffi",
+  "description": "The Engine as a C library (crate cluaiz-ffi) and how to build it; releases do not include it yet.",
   "kind": "readme",
   "path": "ffi/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: security/ (crate cluaiz-security)",
-  "description": "Two copies of the settings exist at run time:",
+  "title": "security",
+  "description": "The data side of security: permission.json (listen address, API keys, approval and sandbox modes) and the CEP audit log.",
   "kind": "readme",
   "path": "security/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: terminal presentation",
-  "description": "In the library, Paste is text insertion, including / or ! prefixes. The CMD adapter first recognizes file/encoded-media paste and handles it as attachment input. Pasting never executes it. Pasted...",
+  "title": "terminal",
+  "description": "Presentation-only terminal UI library: drawing, input editing, themes and the transcript view; execution stays in the caller.",
   "kind": "readme",
   "path": "terminal/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: test/ (tests against a running Engine, and recorded machine runs)",
-  "description": ".github/workflows/rust-tests.yml (added 2026-11-21) runs cargo test on every push for the crates that build without llama.cpp or ONNX Runtime (core, hw, models, plan, context, security, media,...",
+  "title": "test",
+  "description": "Tests that need a whole Engine, a real model or a real machine, and where the unit tests live.",
   "kind": "readme",
   "path": "test/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "CEP file, system, model and tool tests",
-  "description": "Tests for the fs., workspace., system., storage., models. and tools. CEP methods. Two kinds:",
+  "title": "test/cep/waveb",
+  "description": "Tests of the fs, workspace, system, storage, models and tools CEP methods.",
   "kind": "readme",
   "path": "test/cep/wave_b/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: test/cloud/ (machine runs and their record)",
-  "description": "vm.sh creates Spot VMs (--provisioning-model=SPOT --instance-termination-action=STOP --max-run-duration), tries the zones in ZONES in order and remembers the zone per VM. A stopped VM keeps its disk...",
+  "title": "test/cloud",
+  "description": "Cloud machine runs: creating test VMs, running suites, and recording every run with its raw results.",
   "kind": "readme",
   "path": "test/cloud/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: test/cloud/remote/ssdprefetch/ (expert prefetch speed proof, written, not run on the real models)",
-  "description": "Every run: page cache dropped first, -t 4 -p 512 -n 128,400 -r 1 (REPS changes -r), flash attention auto. Pairs to compare: C-plan with L-mmap, C-cache with L-cache, C-pf with the best of L-mmap /...",
+  "title": "test/cloud/remote/ssdprefetch",
+  "description": "Measures the MoE expert prefetch and forced GPU cache on a model larger than RAM against official llama.cpp.",
   "kind": "readme",
   "path": "test/cloud/remote/ssd_prefetch/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Run 26 results: conclusion, what went well, what to fix",
-  "description": "1 vCPU, 4 GB VPS with a web app and PostgreSQL running next to the engine. Cluaiz (a build from before fe21984c), llama.cpp b12428 and Ollama 0.40.16, same models and settings. Full numbers and...",
+  "title": "Run 26: small VPS under load",
+  "description": "Run 26 results on a 1 vCPU, 4 GB VPS next to a web app and PostgreSQL: Cluaiz, llama.cpp and Ollama compared.",
   "kind": "readme",
   "path": "test/cloud/runs/2026-11-20-run26-vps-load/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Cluaiz on small Linux servers: every measurement so far, compared",
-  "description": "This page puts together everything measured about running Cluaiz on a small Linux server (1 or 2 vCPU, 4 or 8 GB, no GPU), often next to a website and its database, against llama.cpp and Ollama. It...",
+  "title": "Cluaiz on small Linux servers",
+  "description": "Every measurement of Cluaiz on 1-2 vCPU, 4-8 GB Linux servers without a GPU, often next to a website.",
   "kind": "readme",
   "path": "test/cloud/runs/2026-11-22-run40-cluaiz-ollama-website/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Context runtime: routing set",
-  "description": "routingset.jsonl holds 165 labelled user messages for the tool matcher (agents/src/toolsearch.rs): English, Hinglish and Devanagari; direct requests, paraphrases, several tools at once, follow-ups...",
+  "title": "test/context-runtime",
+  "description": "A labelled set of 165 user messages for the tool matcher, in English, Hinglish and Devanagari.",
   "kind": "readme",
   "path": "test/context-runtime/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "CPU test (Windows PC without a graphics card)",
-  "description": "Installs the newest release with the website's command and tests it on the CPU: chat, speed and memory on small models, the coding agent, plugins and skills, speech, embeddings and a document. It...",
+  "title": "test/cpu",
+  "description": "CPU test on a Windows PC without a graphics card: install, chat, speed, memory and the coding agent.",
   "kind": "readme",
   "path": "test/cpu/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: test/engineregression/ (every chat model x placement, against llama-bench)",
-  "description": "run.py takes every installed GGUF chat model from a running Engine (/v1/models, category chat), runs each placement mode (auto, gpu, split, cpu) through the real chat API and checks that the request...",
+  "title": "test/engineregression",
+  "description": "Runs every installed GGUF chat model in every placement mode against a running Engine.",
   "kind": "readme",
   "path": "test/engine_regression/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Mac test (Apple Silicon)",
-  "description": "Runs Cluaiz on a Mac with Apple Silicon and compares it with plain llama.cpp on the same model files and the same settings. It takes about an hour and needs one command; all results are packed into...",
+  "title": "test/mac",
+  "description": "Mac test on Apple Silicon: Cluaiz against plain llama.cpp with the same model files and settings.",
   "kind": "readme",
   "path": "test/mac/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: Media release acceptance",
-  "description": "Supply these environment variables before running:",
+  "title": "test/mediaregression",
+  "description": "Attachment API acceptance through a real CLI executable in a private home.",
   "kind": "readme",
   "path": "test/media_regression/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: Native video packaging acceptance",
-  "description": "Run the second command without SDK/library-search environment entries. On Linux the test package's own $ORIGIN lookup must find transitive dependencies. On Windows the explicit loader restricts...",
+  "title": "test/mediaregression/videospike",
+  "description": "Isolated acceptance of the shared native video decoder package.",
   "kind": "readme",
   "path": "test/media_regression/video_spike/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: test/workflows/ (workflow and installer checks)",
-  "description": "Two kinds of scripts: linters that check .github/workflows/.yml before a push (run-actionlint.ps1, run-act.ps1), and Python tests of the release launcher and the installer scripts. Only...",
+  "title": "test/workflows",
+  "description": "Linters for the GitHub workflows and Python tests of the release and installer scripts.",
   "kind": "readme",
   "path": "test/workflows/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Developer tools (tools/)",
-  "description": "Programs and scripts for the people who build the Engine. None of them ships in a release or runs inside the Engine.",
+  "title": "tools",
+  "description": "Developer programs and scripts for people who build the Engine; none ships in a release.",
   "kind": "readme",
   "path": "tools/README.md",
-  "metadata": false
+  "metadata": true
  },
  {
-  "title": "Component: Cluaiz Modular Builder (tools/cluaiz-builder)",
-  "description": "The builder gives 1:1 granular control so you compile only what changed:",
+  "title": "tools/cluaiz-builder",
+  "description": "Builds only what changed across the core binary and the GPU driver packs.",
   "kind": "readme",
   "path": "tools/cluaiz-builder/README.md",
-  "metadata": false
+  "metadata": true
  }
 ]

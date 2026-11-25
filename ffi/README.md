@@ -1,3 +1,6 @@
+<!-- name: ffi
+description: The Engine as a C library (crate cluaiz-ffi) and how to build it; releases do not include it yet. -->
+
 # The Engine as a C library (`ffi/`, crate `cluaiz-ffi`)
 
 ![cep_call takes a JSON-RPC request and returns the reply from the same CEP methods as /v1/cep; cep_free frees it](../docs/assets/engine/ffi-call.png)

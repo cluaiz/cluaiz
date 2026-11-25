@@ -1,3 +1,6 @@
+<!-- name: engine/models
+description: Model files: downloading from Hugging Face, the installed registry and vault, model kind detection and the GGUF reader. -->
+
 # Cluaiz Models Subsystem (`engine/models`)
 
 ![cluaiz pull: model id, resolve, plan the files, download with resume, check, registry, cluaiz list](../../docs/assets/get-started/model-download.png)
