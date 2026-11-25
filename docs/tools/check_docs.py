@@ -5,6 +5,8 @@
 2. Every relative link in `docs/**/*.md`, the root README and every folder README points to a file that exists, and a
    `#heading` anchor to a heading that exists in that file (GitHub's slug rules).
 3. No page links to a local Windows path (`C:\\...`, `file://`), which works on nobody else's machine.
+4. `docs/index.json` and `docs/index.md` match what `docs/tools/build_index.py` writes now. Files without their own
+   name and description are counted, not failed (report only until every file has them).
 
 External links (http/https) are not fetched here; that is a separate, scheduled check.
 
@@ -133,12 +135,25 @@ def code_readmes() -> list[Path]:
     return sorted(found)
 
 
+def check_index(problems: list[str]) -> None:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import build_index
+
+    as_json, as_md = build_index.build()
+    for path, want in ((build_index.INDEX_JSON, as_json), (build_index.INDEX_MD, as_md)):
+        if not path.is_file() or path.read_text(encoding="utf-8") != want:
+            problems.append(f"{path.relative_to(ROOT).as_posix()}: out of date; run python docs/tools/build_index.py")
+    missing = sum(1 for row in json.loads(as_json) if not row["metadata"])
+    print(f"{missing} file(s) without their own name and description (report only)", file=sys.stderr)
+
+
 def main() -> int:
     problems: list[str] = []
     check_registry(problems)
     pages = sorted(DOCS.rglob("*.md")) + [ROOT / "README.md"] + code_readmes()
     for page in pages:
         check_links(page, problems)
+    check_index(problems)
     for problem in problems:
         print(problem)
     print(f"{len(pages)} pages checked, {len(problems)} problem(s)", file=sys.stderr)

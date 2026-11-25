@@ -1,0 +1,1920 @@
+[
+ {
+  "title": "Cluaiz Engine API Reference",
+  "description": "Reference for the Engine's direct inference routes and CEP controls at /v1/cep, model selection, media payloads and response formats. Use the endpoint pages below for accepted fields, examples and...",
+  "kind": "docs",
+  "path": "docs/api/README.md",
+  "metadata": false
+ },
+ {
+  "title": "CEP: Cluaiz Engine Protocol",
+  "description": "Each method has one page below the five categories. Its leading --- block is generated from the Rust method registry; the explanation below that block is written documentation. Generate blocks with...",
+  "kind": "docs",
+  "path": "docs/api/cep/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Agents, MCP & Tools",
+  "description": "All categories: CEP reference. Folder: docs/api/cep/agents-tools/.",
+  "kind": "docs",
+  "path": "docs/api/cep/agents-tools/README.md",
+  "metadata": false
+ },
+ {
+  "title": "approvals.approve",
+  "description": "Allows the waiting call; with remember chat, the tool also runs without asking in that chat for a while",
+  "kind": "docs",
+  "path": "docs/api/cep/agents-tools/approvals/approvals.approve.md",
+  "metadata": true
+ },
+ {
+  "title": "approvals.list",
+  "description": "Approval requests waiting for the owner",
+  "kind": "docs",
+  "path": "docs/api/cep/agents-tools/approvals/approvals.list.md",
+  "metadata": true
+ },
+ {
+  "title": "approvals.reject",
+  "description": "Refuses the waiting call",
+  "kind": "docs",
+  "path": "docs/api/cep/agents-tools/approvals/approvals.reject.md",
+  "metadata": true
+ },
+ {
+  "title": "tools.cache",
+  "description": "Actual cache entries and byte counts for installed tools",
+  "kind": "docs",
+  "path": "docs/api/cep/agents-tools/tools/tools.cache.md",
+  "metadata": true
+ },
+ {
+  "title": "tools.call",
+  "description": "Execute an installed tool using the existing ToolsEngine",
+  "kind": "docs",
+  "path": "docs/api/cep/agents-tools/tools/tools.call.md",
+  "metadata": true
+ },
+ {
+  "title": "tools.clearcache",
+  "description": "Remove cached files without uninstalling tools",
+  "kind": "docs",
+  "path": "docs/api/cep/agents-tools/tools/tools.clear_cache.md",
+  "metadata": true
+ },
+ {
+  "title": "tools.discover",
+  "description": "Dry-run the existing installed-tool matcher",
+  "kind": "docs",
+  "path": "docs/api/cep/agents-tools/tools/tools.discover.md",
+  "metadata": true
+ },
+ {
+  "title": "tools.files",
+  "description": "Files inside a tool package, with cache counts",
+  "kind": "docs",
+  "path": "docs/api/cep/agents-tools/tools/tools.files.md",
+  "metadata": true
+ },
+ {
+  "title": "tools.getsettings",
+  "description": "Read installed tool settings, and the values (such as API keys) it asks the user for, without their values",
+  "kind": "docs",
+  "path": "docs/api/cep/agents-tools/tools/tools.get_settings.md",
+  "metadata": true
+ },
+ {
+  "title": "tools.install",
+  "description": "Install a registry tool and the tools it depends on; what the user's mode leaves open is asked through approvals; task result reports the actual outcome",
+  "kind": "docs",
+  "path": "docs/api/cep/agents-tools/tools/tools.install.md",
+  "metadata": true
+ },
+ {
+  "title": "tools.list",
+  "description": "Installed tools with settings and known function schemas",
+  "kind": "docs",
+  "path": "docs/api/cep/agents-tools/tools/tools.list.md",
+  "metadata": true
+ },
+ {
+  "title": "tools.openfile",
+  "description": "Ask the local file editor to open a tool file (owner only)",
+  "kind": "docs",
+  "path": "docs/api/cep/agents-tools/tools/tools.open_file.md",
+  "metadata": true
+ },
+ {
+  "title": "tools.readfile",
+  "description": "Read a UTF-8 file inside an installed tool package",
+  "kind": "docs",
+  "path": "docs/api/cep/agents-tools/tools/tools.read_file.md",
+  "metadata": true
+ },
+ {
+  "title": "tools.remove",
+  "description": "Remove an installed tool and update its registry",
+  "kind": "docs",
+  "path": "docs/api/cep/agents-tools/tools/tools.remove.md",
+  "metadata": true
+ },
+ {
+  "title": "tools.setsettings",
+  "description": "Validate and save a tool settings patch",
+  "kind": "docs",
+  "path": "docs/api/cep/agents-tools/tools/tools.set_settings.md",
+  "metadata": true
+ },
+ {
+  "title": "tools.writefile",
+  "description": "Write SKILL.md or package.json in an installed tool package",
+  "kind": "docs",
+  "path": "docs/api/cep/agents-tools/tools/tools.write_file.md",
+  "metadata": true
+ },
+ {
+  "title": "AI & Inference Core",
+  "description": "How it works: memory. overview, context. overview.",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/README.md",
+  "metadata": false
+ },
+ {
+  "title": "audio.languages",
+  "description": "Languages declared by the selected transcription model",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/audio/audio.languages.md",
+  "metadata": true
+ },
+ {
+  "title": "audio.run",
+  "description": "Run the existing speech/transcription executor; chunks are task events",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/audio/audio.run.md",
+  "metadata": true
+ },
+ {
+  "title": "audio.voices",
+  "description": "Voice inventory and speech capabilities without loading weights",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/audio/audio.voices.md",
+  "metadata": true
+ },
+ {
+  "title": "chat.cancel",
+  "description": "Stops a running chat stream",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/chat/chat.cancel.md",
+  "metadata": true
+ },
+ {
+  "title": "chat.importapp",
+  "description": "Imports the App's old chats (read-only) into the Engine's event logs, as a task",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/chat/chat.import_app.md",
+  "metadata": true
+ },
+ {
+  "title": "chat.settools",
+  "description": "Attaches, updates or detaches a chat's tools",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/chat/chat.set_tools.md",
+  "metadata": true
+ },
+ {
+  "title": "chat.skipreasoning",
+  "description": "Ends the model's reasoning; the same stream continues with the answer",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/chat/chat.skip_reasoning.md",
+  "metadata": true
+ },
+ {
+  "title": "chat.telemetry",
+  "description": "How a chat's context is used by its tools, for a model",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/chat/chat.telemetry.md",
+  "metadata": true
+ },
+ {
+  "title": "chat.tools",
+  "description": "The tools attached to a chat, with their turns left",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/chat/chat.tools.md",
+  "metadata": true
+ },
+ {
+  "title": "Context runtime (context.)",
+  "description": "How the Engine shares a model's context between the system prompt, the conversation, tools and the answer, and what it did for each request. The plan itself is described in Chat Completions → Context...",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/context/README.md",
+  "metadata": false
+ },
+ {
+  "title": "context.jobs",
+  "description": "The idle-time scheduler's queue, counts and recent results",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/context/context.jobs.md",
+  "metadata": true
+ },
+ {
+  "title": "context.preview",
+  "description": "The plan and tool choices a chat request would get, without generating (loads the model for its tokenizer)",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/context/context.preview.md",
+  "metadata": true
+ },
+ {
+  "title": "context.report",
+  "description": "One of a chat's last 20 context reports (kept in memory)",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/context/context.report.md",
+  "metadata": true
+ },
+ {
+  "title": "context.reports",
+  "description": "Ids of a chat's kept context reports, newest last",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/context/context.reports.md",
+  "metadata": true
+ },
+ {
+  "title": "kv.clear",
+  "description": "Forgets every chat's saved KV",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/kv/kv.clear.md",
+  "metadata": true
+ },
+ {
+  "title": "kv.delete",
+  "description": "Forgets one chat's saved KV",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/kv/kv.delete.md",
+  "metadata": true
+ },
+ {
+  "title": "kv.status",
+  "description": "Where saved KV caches are kept, the disk they use, and the saved chats (most recently used first)",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/kv/kv.status.md",
+  "metadata": true
+ },
+ {
+  "title": "Chat memory (memory.)",
+  "description": "The Engine keeps an event log for every chat sent with a sessionid (and not temporarychat), and builds a Chat Map from it: one card per message, episodes, open tasks and a graph. Recall in a chat,...",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/memory/README.md",
+  "metadata": false
+ },
+ {
+  "title": "memory.delete",
+  "description": "Deletes a chat's event log, ledger, saved KV, context reports and Chat Map",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/memory/memory.delete.md",
+  "metadata": true
+ },
+ {
+  "title": "memory.events",
+  "description": "A chat's event log, oldest first",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/memory/memory.events.md",
+  "metadata": true
+ },
+ {
+  "title": "memory.export",
+  "description": "A chat's events and cards, for an app's own store",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/memory/memory.export.md",
+  "metadata": true
+ },
+ {
+  "title": "memory.grants",
+  "description": "Tools the user allowed for this chat, with minutes left",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/memory/memory.grants.md",
+  "metadata": true
+ },
+ {
+  "title": "memory.import",
+  "description": "Gives back a chat an app keeps itself (storage external), held in RAM only",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/memory/memory.import.md",
+  "metadata": true
+ },
+ {
+  "title": "memory.index",
+  "description": "A chat's cards (one per visible message, no text), episodes, tasks and graph",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/memory/memory.index.md",
+  "metadata": true
+ },
+ {
+  "title": "memory.item",
+  "description": "The exact message behind a reference (m:)",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/memory/memory.item.md",
+  "metadata": true
+ },
+ {
+  "title": "memory.revokegrants",
+  "description": "Asks again for this chat's tools (or one tool)",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/memory/memory.revoke_grants.md",
+  "metadata": true
+ },
+ {
+  "title": "memory.search",
+  "description": "Messages of a chat that fit a query, or text from the other chats",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/memory/memory.search.md",
+  "metadata": true
+ },
+ {
+  "title": "notes.confirm",
+  "description": "A proposed note becomes confirmed. A proposed change does its work: it replaces the note it names, or forgets it; in a project, it rewrites or deletes the fact it names. A workspace note of a project...",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/notes/notes.confirm.md",
+  "metadata": true
+ },
+ {
+  "title": "notes.create",
+  "description": "A note written by the user, confirmed at once. It replaces only the note named in replaces; similar lists notes that may be about the same thing",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/notes/notes.create.md",
+  "metadata": true
+ },
+ {
+  "title": "notes.invalidate",
+  "description": "Forgets a note: it leaves the notes (kept out of sight for noteshistorydays, when set). A proposal is turned down",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/notes/notes.invalidate.md",
+  "metadata": true
+ },
+ {
+  "title": "notes.list",
+  "description": "Notes, newest last",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/notes/notes.list.md",
+  "metadata": true
+ },
+ {
+  "title": "notes.move",
+  "description": "A confirmed workspace note, saved before notes of a project became its .agents/memory/ facts, becomes one now",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/notes/notes.move.md",
+  "metadata": true
+ },
+ {
+  "title": "notes.pin",
+  "description": "Pins or unpins a note; pinned notes go into the system prompt of new chats",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/notes/notes.pin.md",
+  "metadata": true
+ },
+ {
+  "title": "prompts.get",
+  "description": "One prompt and the text in use",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/prompts/prompts.get.md",
+  "metadata": true
+ },
+ {
+  "title": "prompts.history",
+  "description": "The texts a prompt had before, newest first (the last 20)",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/prompts/prompts.history.md",
+  "metadata": true
+ },
+ {
+  "title": "prompts.list",
+  "description": "Every prompt the Engine sends to a model: id, description, variables, the text in use, and whether it is the user's text",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/prompts/prompts.list.md",
+  "metadata": true
+ },
+ {
+  "title": "prompts.reset",
+  "description": "Goes back to the default text; the user's text is kept in the history",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/prompts/prompts.reset.md",
+  "metadata": true
+ },
+ {
+  "title": "prompts.set",
+  "description": "Replaces a prompt's text for every later request; the text it replaces is kept in its history",
+  "kind": "docs",
+  "path": "docs/api/cep/ai-inference/prompts/prompts.set.md",
+  "metadata": true
+ },
+ {
+  "title": "Filesystem & Workspace",
+  "description": "All categories: CEP reference. Folder: docs/api/cep/filesystem/.",
+  "kind": "docs",
+  "path": "docs/api/cep/filesystem/README.md",
+  "metadata": false
+ },
+ {
+  "title": "fs.copy",
+  "description": "Copies a file or directory between authorized paths",
+  "kind": "docs",
+  "path": "docs/api/cep/filesystem/fs/fs.copy.md",
+  "metadata": true
+ },
+ {
+  "title": "fs.delete",
+  "description": "Deletes a file or directory; a link is removed itself, never its target",
+  "kind": "docs",
+  "path": "docs/api/cep/filesystem/fs/fs.delete.md",
+  "metadata": true
+ },
+ {
+  "title": "fs.list",
+  "description": "Lists directory entries, optionally recursively",
+  "kind": "docs",
+  "path": "docs/api/cep/filesystem/fs/fs.list.md",
+  "metadata": true
+ },
+ {
+  "title": "fs.mkdir",
+  "description": "Creates a directory and missing parents",
+  "kind": "docs",
+  "path": "docs/api/cep/filesystem/fs/fs.mkdir.md",
+  "metadata": true
+ },
+ {
+  "title": "fs.pickfolder",
+  "description": "Opens the host folder picker and selects the workspace",
+  "kind": "docs",
+  "path": "docs/api/cep/filesystem/fs/fs.pick_folder.md",
+  "metadata": true
+ },
+ {
+  "title": "fs.read",
+  "description": "Reads a UTF-8 file, or returns base64 for binary data",
+  "kind": "docs",
+  "path": "docs/api/cep/filesystem/fs/fs.read.md",
+  "metadata": true
+ },
+ {
+  "title": "fs.rename",
+  "description": "Moves a file or directory between authorized paths; a link is moved itself",
+  "kind": "docs",
+  "path": "docs/api/cep/filesystem/fs/fs.rename.md",
+  "metadata": true
+ },
+ {
+  "title": "fs.write",
+  "description": "Writes exactly one of text or database64 to a file",
+  "kind": "docs",
+  "path": "docs/api/cep/filesystem/fs/fs.write.md",
+  "metadata": true
+ },
+ {
+  "title": "workspace.forget",
+  "description": "Deletes a fact of the project's memory (.agents/memory/.md) the user wants gone",
+  "kind": "docs",
+  "path": "docs/api/cep/filesystem/workspace/workspace.forget.md",
+  "metadata": true
+ },
+ {
+  "title": "workspace.get",
+  "description": "Returns the current workspace directory",
+  "kind": "docs",
+  "path": "docs/api/cep/filesystem/workspace/workspace.get.md",
+  "metadata": true
+ },
+ {
+  "title": "workspace.index",
+  "description": "A project's agent files: AGENTS.md instructions, rules with their trigger, workflows, skills and memory facts, with name and description",
+  "kind": "docs",
+  "path": "docs/api/cep/filesystem/workspace/workspace.index.md",
+  "metadata": true
+ },
+ {
+  "title": "workspace.item",
+  "description": "The text of one rule, workflow, skill, memory fact or instruction file of a project, without its front matter",
+  "kind": "docs",
+  "path": "docs/api/cep/filesystem/workspace/workspace.item.md",
+  "metadata": true
+ },
+ {
+  "title": "workspace.memory",
+  "description": "A project's memory facts (.agents/memory/), live and replaced, with their text",
+  "kind": "docs",
+  "path": "docs/api/cep/filesystem/workspace/workspace.memory.md",
+  "metadata": true
+ },
+ {
+  "title": "workspace.remember",
+  "description": "Saves a fact the user confirmed in the project's memory (.agents/memory/.md). With replaces, that fact's file gets the new text; without, nothing is replaced and similar lists facts that may be about...",
+  "kind": "docs",
+  "path": "docs/api/cep/filesystem/workspace/workspace.remember.md",
+  "metadata": true
+ },
+ {
+  "title": "workspace.set",
+  "description": "Changes the workspace to an existing directory",
+  "kind": "docs",
+  "path": "docs/api/cep/filesystem/workspace/workspace.set.md",
+  "metadata": true
+ },
+ {
+  "title": "Models & Engine Vault",
+  "description": "All categories: CEP reference. Folder: docs/api/cep/models/.",
+  "kind": "docs",
+  "path": "docs/api/cep/models/README.md",
+  "metadata": false
+ },
+ {
+  "title": "models.discard",
+  "description": "Deletes what a stopped models.download left (its .part and finished files), so the next download starts over; an installed model is never touched",
+  "kind": "docs",
+  "path": "docs/api/cep/models/models/models.discard.md",
+  "metadata": true
+ },
+ {
+  "title": "models.download",
+  "description": "Downloads and registers a model (catalog id, or Hugging Face owner/name[:QUANT]) as cluaiz pull does; the :QUANT variant, else the first",
+  "kind": "docs",
+  "path": "docs/api/cep/models/models/models.download.md",
+  "metadata": true
+ },
+ {
+  "title": "models.embeddingroom",
+  "description": "Where each embedding model would run beside the chat model (GPU, CPU or no room) on today's free memory, and the one to recommend",
+  "kind": "docs",
+  "path": "docs/api/cep/models/models/models.embedding_room.md",
+  "metadata": true
+ },
+ {
+  "title": "models.inspect",
+  "description": "Raw GGUF metadata and tensor table of an installed model",
+  "kind": "docs",
+  "path": "docs/api/cep/models/models/models.inspect.md",
+  "metadata": true
+ },
+ {
+  "title": "models.list",
+  "description": "Installed registry entries, optionally filtered by category",
+  "kind": "docs",
+  "path": "docs/api/cep/models/models/models.list.md",
+  "metadata": true
+ },
+ {
+  "title": "models.load",
+  "description": "Loads an installed GGUF model using the existing Engine host. A task: its progress is the share of the weights read, its events the load's steps (started with the plan, a llama.cpp fallback, context,...",
+  "kind": "docs",
+  "path": "docs/api/cep/models/models/models.load.md",
+  "metadata": true
+ },
+ {
+  "title": "models.loadhistory",
+  "description": "This machine's chat-model loads, refusals, failures and unloads, oldest first: placement, VRAM planned and taken, attempts, time (the newest 500 are kept)",
+  "kind": "docs",
+  "path": "docs/api/cep/models/models/models.load_history.md",
+  "metadata": true
+ },
+ {
+  "title": "models.remove",
+  "description": "Unloads the selected model if active and removes its installed package",
+  "kind": "docs",
+  "path": "docs/api/cep/models/models/models.remove.md",
+  "metadata": true
+ },
+ {
+  "title": "providers.list",
+  "description": "The model providers and their listed models; keys are never returned",
+  "kind": "docs",
+  "path": "docs/api/cep/models/providers/providers.list.md",
+  "metadata": true
+ },
+ {
+  "title": "providers.models",
+  "description": "The models a provider offers (its GET /models), with the context size it reports",
+  "kind": "docs",
+  "path": "docs/api/cep/models/providers/providers.models.md",
+  "metadata": true
+ },
+ {
+  "title": "providers.remove",
+  "description": "Removes a provider, with its key if it was kept in the file",
+  "kind": "docs",
+  "path": "docs/api/cep/models/providers/providers.remove.md",
+  "metadata": true
+ },
+ {
+  "title": "providers.set",
+  "description": "Adds a provider, or changes its URL, key source and listed models",
+  "kind": "docs",
+  "path": "docs/api/cep/models/providers/providers.set.md",
+  "metadata": true
+ },
+ {
+  "title": "providers.test",
+  "description": "Sends one short request of the model's kind: the URL, the key and the model work",
+  "kind": "docs",
+  "path": "docs/api/cep/models/providers/providers.test.md",
+  "metadata": true
+ },
+ {
+  "title": "System & Infrastructure",
+  "description": "All categories: CEP reference. Folder: docs/api/cep/system/.",
+  "kind": "docs",
+  "path": "docs/api/cep/system/README.md",
+  "metadata": false
+ },
+ {
+  "title": "config.get",
+  "description": "The saved settings: one section, or all of them",
+  "kind": "docs",
+  "path": "docs/api/cep/system/config/config.get.md",
+  "metadata": true
+ },
+ {
+  "title": "config.set",
+  "description": "Changes the given fields of one settings section; answers with the section as saved",
+  "kind": "docs",
+  "path": "docs/api/cep/system/config/config.set.md",
+  "metadata": true
+ },
+ {
+  "title": "rpc.discover",
+  "description": "The OpenRPC description of the methods you may call",
+  "kind": "docs",
+  "path": "docs/api/cep/system/rpc/rpc.discover.md",
+  "metadata": true
+ },
+ {
+  "title": "storage.clean",
+  "description": "Removes cached temporary media",
+  "kind": "docs",
+  "path": "docs/api/cep/system/storage/storage.clean.md",
+  "metadata": true
+ },
+ {
+  "title": "storage.status",
+  "description": "Temporary media storage usage",
+  "kind": "docs",
+  "path": "docs/api/cep/system/storage/storage.status.md",
+  "metadata": true
+ },
+ {
+  "title": "system.audit",
+  "description": "The newest lines of the CEP audit log, newest first",
+  "kind": "docs",
+  "path": "docs/api/cep/system/system/system.audit.md",
+  "metadata": true
+ },
+ {
+  "title": "system.events",
+  "description": "Recent Engine events (model loads and unloads, downloads, tasks, approvals, tool installs) after a cursor, with an optional long-poll wait",
+  "kind": "docs",
+  "path": "docs/api/cep/system/system/system.events.md",
+  "metadata": true
+ },
+ {
+  "title": "system.exec",
+  "description": "Runs a program on the host and returns its output; the owner approves each call",
+  "kind": "docs",
+  "path": "docs/api/cep/system/system/system.exec.md",
+  "metadata": true
+ },
+ {
+  "title": "system.info",
+  "description": "Engine name and version, CEP version, hardware, and the LAN address",
+  "kind": "docs",
+  "path": "docs/api/cep/system/system/system.info.md",
+  "metadata": true
+ },
+ {
+  "title": "system.live",
+  "description": "Current process, memory, CPU and GPU telemetry",
+  "kind": "docs",
+  "path": "docs/api/cep/system/system/system.live.md",
+  "metadata": true
+ },
+ {
+  "title": "system.plan",
+  "description": "Plans an installed model without loading its weights or changing saved settings",
+  "kind": "docs",
+  "path": "docs/api/cep/system/system/system.plan.md",
+  "metadata": true
+ },
+ {
+  "title": "system.ps",
+  "description": "Loaded model execution plan and hardware snapshot",
+  "kind": "docs",
+  "path": "docs/api/cep/system/system/system.ps.md",
+  "metadata": true
+ },
+ {
+  "title": "system.updatecheck",
+  "description": "Whether a newer Cluaiz release is published: this Engine's version and the newest release on GitHub. Installs nothing (cluaiz self update does)",
+  "kind": "docs",
+  "path": "docs/api/cep/system/system/system.update_check.md",
+  "metadata": true
+ },
+ {
+  "title": "tasks.cancel",
+  "description": "Cancels a running task",
+  "kind": "docs",
+  "path": "docs/api/cep/system/tasks/tasks.cancel.md",
+  "metadata": true
+ },
+ {
+  "title": "tasks.get",
+  "description": "A task's status, progress and new events",
+  "kind": "docs",
+  "path": "docs/api/cep/system/tasks/tasks.get.md",
+  "metadata": true
+ },
+ {
+  "title": "tasks.list",
+  "description": "Your tasks that have not expired, newest first",
+  "kind": "docs",
+  "path": "docs/api/cep/system/tasks/tasks.list.md",
+  "metadata": true
+ },
+ {
+  "title": "tasks.result",
+  "description": "A task's final result or error; waits up to waitms",
+  "kind": "docs",
+  "path": "docs/api/cep/system/tasks/tasks.result.md",
+  "metadata": true
+ },
+ {
+  "title": "tokens.create",
+  "description": "Makes a new API key (at most 5)",
+  "kind": "docs",
+  "path": "docs/api/cep/system/tokens/tokens.create.md",
+  "metadata": true
+ },
+ {
+  "title": "tokens.list",
+  "description": "The API keys, and whether API authentication is required",
+  "kind": "docs",
+  "path": "docs/api/cep/system/tokens/tokens.list.md",
+  "metadata": true
+ },
+ {
+  "title": "tokens.revoke",
+  "description": "Removes an API key; with none left, API authentication turns off (as before)",
+  "kind": "docs",
+  "path": "docs/api/cep/system/tokens/tokens.revoke.md",
+  "metadata": true
+ },
+ {
+  "title": "POST",
+  "description": "Text to speech with an installed TTS model; the answer holds a WAV",
+  "kind": "docs",
+  "path": "docs/api/inference/audio_speech.md",
+  "metadata": true
+ },
+ {
+  "title": "POST",
+  "description": "Speech to text with an installed STT model (Whisper and others)",
+  "kind": "docs",
+  "path": "docs/api/inference/audio_transcriptions.md",
+  "metadata": true
+ },
+ {
+  "title": "POST",
+  "description": "Chat with an installed model: text and media in, text out, streamed or whole",
+  "kind": "docs",
+  "path": "docs/api/inference/chat_completions.md",
+  "metadata": true
+ },
+ {
+  "title": "POST",
+  "description": "Vectors for text (GGUF or ONNX) or for an image (ONNX image graph)",
+  "kind": "docs",
+  "path": "docs/api/inference/embeddings.md",
+  "metadata": true
+ },
+ {
+  "title": "POST",
+  "description": "Documents and images to text, chunks, model text or vectors; model selection is optional",
+  "kind": "docs",
+  "path": "docs/api/inference/ingest.md",
+  "metadata": true
+ },
+ {
+  "title": "OpenAI compatibility",
+  "description": "Cluaiz serves OpenAI's chat, models, embeddings and audio routes, so an OpenAI client library works by pointing its base URL at the Engine. This page lists which request fields an installed...",
+  "kind": "docs",
+  "path": "docs/api/inference/openai_compatibility.md",
+  "metadata": false
+ },
+ {
+  "title": "GET",
+  "description": "List locally installed models in the OpenAI list format",
+  "kind": "docs",
+  "path": "docs/api/models/list_models.md",
+  "metadata": true
+ },
+ {
+  "title": "POST",
+  "description": "Downloads and registers a model, as cluaiz pull does; streams one JSON line per step",
+  "kind": "docs",
+  "path": "docs/api/models/pull_model.md",
+  "metadata": true
+ },
+ {
+  "title": "POST",
+  "description": "An installed model's details and GGUF header in Ollama's show shape; nothing is loaded",
+  "kind": "docs",
+  "path": "docs/api/models/show_model.md",
+  "metadata": true
+ },
+ {
+  "title": "GET",
+  "description": "Whether the Engine is up; the only route that is always open",
+  "kind": "docs",
+  "path": "docs/api/system/health.md",
+  "metadata": true
+ },
+ {
+  "title": "CLI Architecture (old design draft)",
+  "description": "",
+  "kind": "docs",
+  "path": "docs/architecture/cli-architecture.md",
+  "metadata": false
+ },
+ {
+  "title": "CLI Audit (old, April 2026)",
+  "description": "",
+  "kind": "docs",
+  "path": "docs/architecture/cli-deep-audit.md",
+  "metadata": false
+ },
+ {
+  "title": "CLI Process Design (old design draft)",
+  "description": "",
+  "kind": "docs",
+  "path": "docs/architecture/cli-process-design.md",
+  "metadata": false
+ },
+ {
+  "title": "Hardware Troubleshooting & VRAM Management",
+  "description": "This document outlines common hardware bottlenecks, performance limits, and safe mitigation configurations when running the cluaiz Inference Engine.",
+  "kind": "docs",
+  "path": "docs/architecture/hardware-troubleshooting.md",
+  "metadata": false
+ },
+ {
+  "title": "Independent Neural Registry: Web Integration & System Design",
+  "description": "Software Architecture & Dynamic Routing Blueprint for cluaiz.com",
+  "kind": "docs",
+  "path": "docs/architecture/registry-web-integration.md",
+  "metadata": false
+ },
+ {
+  "title": "Security & Authentication Architecture",
+  "description": "Cluaiz is an AI engine that runs models and an agent runtime. Because the engine executes tools, reads/writes files, and can run in both local desktop environments and cloud/server deployments, it...",
+  "kind": "docs",
+  "path": "docs/architecture/security-and-auth-architecture.md",
+  "metadata": false
+ },
+ {
+  "title": "C Library (FFI) and GPU Backend Loading",
+  "description": "cluaizcep.dll / libcluaizcep.so / libcluaizcep.dylib runs the Engine inside another program. It exports two functions:",
+  "kind": "docs",
+  "path": "docs/architecture/unified-brain-ffi.md",
+  "metadata": false
+ },
+ {
+  "title": "Cluaiz Automation",
+  "description": "Automation runs flows: files of steps that start on a trigger (a time, a file, a webhook, an event, a call) and use everything Cluaiz has: installed tools (MCP servers, plugins, skills), the Engine's...",
+  "kind": "docs",
+  "path": "docs/automation/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Errors and retries",
+  "description": "A failed step has steps..error; a failed run has error (in onerror steps and in its record):",
+  "kind": "docs",
+  "path": "docs/automation/errors.md",
+  "metadata": false
+ },
+ {
+  "title": "Events",
+  "description": "What an engine trigger or a wait with event can receive. trigger.data (or the wait's output data) has these fields:",
+  "kind": "docs",
+  "path": "docs/automation/events.md",
+  "metadata": false
+ },
+ {
+  "title": "Flow examples",
+  "description": "From one step to a large flow. The tool names (mcp:notify/send, mcp:github/...) stand for whatever MCP servers or plugins you have installed; flows.nodes lists yours.",
+  "kind": "docs",
+  "path": "docs/automation/examples.md",
+  "metadata": false
+ },
+ {
+  "title": "Expressions",
+  "description": "An expression is a JSON object with one operator: its key is the operator, its value the arguments. Expressions decide (when, if, switch, until, filter, stopwhen) and compute values ({ \"expr\": … } in...",
+  "kind": "docs",
+  "path": "docs/automation/expressions.md",
+  "metadata": false
+ },
+ {
+  "title": "The flow file",
+  "description": "Both formats have the same schema (flows.schema). Automation turns either into the same model, and saves a flow in the format it was given. flows.get can return either form.",
+  "kind": "docs",
+  "path": "docs/automation/file.md",
+  "metadata": false
+ },
+ {
+  "title": "Automation guide: your first flows",
+  "description": "A flow is a list of steps that Cluaiz Automation runs for you: when something happens (a time, a new file, a webhook, an event in the Engine), or when you start it. A step can run any installed tool...",
+  "kind": "docs",
+  "path": "docs/automation/guide.md",
+  "metadata": false
+ },
+ {
+  "title": "Limits and concurrency",
+  "description": "Automation's settings (settings.json → automation) cap these for every flow, and set:",
+  "kind": "docs",
+  "path": "docs/automation/limits.md",
+  "metadata": false
+ },
+ {
+  "title": "Automation methods",
+  "description": "Applications save, check, run and read flows through these methods. They are Automation's methods, not the Engine's, but they are called at the same POST /v1/cep address in the same JSON-RPC form, so...",
+  "kind": "docs",
+  "path": "docs/automation/methods/README.md",
+  "metadata": false
+ },
+ {
+  "title": "flows.disable",
+  "description": "Turns a flow's triggers off; runs in progress go on unless cancelled",
+  "kind": "docs",
+  "path": "docs/automation/methods/flows.disable.md",
+  "metadata": true
+ },
+ {
+  "title": "flows.draft",
+  "description": "Writes a flow from a description, using only what is installed; checks it and can test it; does not save",
+  "kind": "docs",
+  "path": "docs/automation/methods/flows.draft.md",
+  "metadata": true
+ },
+ {
+  "title": "flows.enable",
+  "description": "Turns a flow's triggers on; confirms new permissions of a changed file",
+  "kind": "docs",
+  "path": "docs/automation/methods/flows.enable.md",
+  "metadata": true
+ },
+ {
+  "title": "flows.explain",
+  "description": "A flow in plain words: what starts it, what each step does, what it may touch",
+  "kind": "docs",
+  "path": "docs/automation/methods/flows.explain.md",
+  "metadata": true
+ },
+ {
+  "title": "flows.fix",
+  "description": "Proposes a change to a flow from a failed run or from validation problems; does not save",
+  "kind": "docs",
+  "path": "docs/automation/methods/flows.fix.md",
+  "metadata": true
+ },
+ {
+  "title": "flows.get",
+  "description": "One flow: its summary, its file as text and as JSON, and its triggers' state",
+  "kind": "docs",
+  "path": "docs/automation/methods/flows.get.md",
+  "metadata": true
+ },
+ {
+  "title": "flows.list",
+  "description": "The flows of the project and the user, with their state and last run",
+  "kind": "docs",
+  "path": "docs/automation/methods/flows.list.md",
+  "metadata": true
+ },
+ {
+  "title": "flows.nodes",
+  "description": "Everything a step can run here: installed tools and CEP methods with their input and output schemas; plus step kinds, triggers and operators",
+  "kind": "docs",
+  "path": "docs/automation/methods/flows.nodes.md",
+  "metadata": true
+ },
+ {
+  "title": "flows.remove",
+  "description": "Removes a flow file, and its runs unless kept",
+  "kind": "docs",
+  "path": "docs/automation/methods/flows.remove.md",
+  "metadata": true
+ },
+ {
+  "title": "flows.rerunfrom",
+  "description": "Starts a new run that reuses the outputs before one step of an earlier run and runs from that step",
+  "kind": "docs",
+  "path": "docs/automation/methods/flows.rerun_from.md",
+  "metadata": true
+ },
+ {
+  "title": "flows.run",
+  "description": "Starts a run of a flow (a task): by hand, as a test with sample data, or without side effects",
+  "kind": "docs",
+  "path": "docs/automation/methods/flows.run.md",
+  "metadata": true
+ },
+ {
+  "title": "flows.runget",
+  "description": "One run with its trigger data and every step's record: input, output, attempts, tokens",
+  "kind": "docs",
+  "path": "docs/automation/methods/flows.run_get.md",
+  "metadata": true
+ },
+ {
+  "title": "flows.runs",
+  "description": "Runs of one flow or of all flows, newest first, page by page",
+  "kind": "docs",
+  "path": "docs/automation/methods/flows.runs.md",
+  "metadata": true
+ },
+ {
+  "title": "flows.save",
+  "description": "Saves a new flow, or replaces one; asks the owner to confirm the permissions it needs",
+  "kind": "docs",
+  "path": "docs/automation/methods/flows.save.md",
+  "metadata": true
+ },
+ {
+  "title": "flows.schema",
+  "description": "The JSON Schema of the flow file, for editors, applications and models",
+  "kind": "docs",
+  "path": "docs/automation/methods/flows.schema.md",
+  "metadata": true
+ },
+ {
+  "title": "flows.validate",
+  "description": "Checks a flow without saving it: problems with their place in the file, the permissions it needs, and the flow with defaults filled in",
+  "kind": "docs",
+  "path": "docs/automation/methods/flows.validate.md",
+  "metadata": true
+ },
+ {
+  "title": "Permissions and security",
+  "description": "A flow runs without anyone watching, often started by outside events. It may therefore do only what it lists, and what is listed is confirmed by the owner when the flow is saved.",
+  "kind": "docs",
+  "path": "docs/automation/permissions.md",
+  "metadata": false
+ },
+ {
+  "title": "References",
+  "description": "A reference reads a value from the run's context.",
+  "kind": "docs",
+  "path": "docs/automation/references.md",
+  "metadata": false
+ },
+ {
+  "title": "Runs and records",
+  "description": "flows.runs, flows.runget and tasks.result of a flows.run task return runs in this shape:",
+  "kind": "docs",
+  "path": "docs/automation/runs.md",
+  "metadata": false
+ },
+ {
+  "title": "Steps",
+  "description": "A step is a JSON object (a YAML mapping) with exactly one kind key and any of the fields every step may have.",
+  "kind": "docs",
+  "path": "docs/automation/steps/README.md",
+  "metadata": false
+ },
+ {
+  "title": "agent: a model with several rounds of tools",
+  "description": "Like ask, but the model may call tools, read their results and call more, for up to maxturns rounds, before it answers. Use it when the steps are not known in advance; use fixed steps when they are,...",
+  "kind": "docs",
+  "path": "docs/automation/steps/agent.md",
+  "metadata": false
+ },
+ {
+  "title": "approve: a person's yes or no",
+  "description": "The question becomes an Engine approval, like those of chats and tools:",
+  "kind": "docs",
+  "path": "docs/automation/steps/approve.md",
+  "metadata": false
+ },
+ {
+  "title": "ask: one answer from a model",
+  "description": "Gives a model an instruction and data, and keeps its answer. Any chat model works: one installed in Cluaiz, or a provider's (/).",
+  "kind": "docs",
+  "path": "docs/automation/steps/ask.md",
+  "metadata": false
+ },
+ {
+  "title": "call: run an Engine method or route",
+  "description": "Runs one CEP method, or one of the Engine's own routes, through the Engine's CEP dispatcher in the same program (not over HTTP).",
+  "kind": "docs",
+  "path": "docs/automation/steps/call.md",
+  "metadata": false
+ },
+ {
+  "title": "code: your WebAssembly module",
+  "description": "Runs a function of a WebAssembly module in the WebAssembly sandbox (the same one plugins use). The module gets the step's input as JSON and returns JSON. Write it in any language that compiles to...",
+  "kind": "docs",
+  "path": "docs/automation/steps/code.md",
+  "metadata": false
+ },
+ {
+  "title": "each: steps for every item",
+  "description": "Steps outside the loop can be read as usual.",
+  "kind": "docs",
+  "path": "docs/automation/steps/each.md",
+  "metadata": false
+ },
+ {
+  "title": "emit, return, fail",
+  "description": "Sends an event that other flows can start on (event trigger) or wait for (wait).",
+  "kind": "docs",
+  "path": "docs/automation/steps/emit-return-fail.md",
+  "metadata": false
+ },
+ {
+  "title": "if: one of two branches",
+  "description": "when on a step decides whether that one step runs. if chooses between two lists of steps.",
+  "kind": "docs",
+  "path": "docs/automation/steps/if.md",
+  "metadata": false
+ },
+ {
+  "title": "parallel: named branches at the same time",
+  "description": "",
+  "kind": "docs",
+  "path": "docs/automation/steps/parallel.md",
+  "metadata": false
+ },
+ {
+  "title": "repeat: again until a condition holds",
+  "description": "To wait for something outside Cluaiz without asking repeatedly, use wait with an event or a webhook when the other side can send one.",
+  "kind": "docs",
+  "path": "docs/automation/steps/repeat.md",
+  "metadata": false
+ },
+ {
+  "title": "run: another flow",
+  "description": "",
+  "kind": "docs",
+  "path": "docs/automation/steps/run.md",
+  "metadata": false
+ },
+ {
+  "title": "set: keep values",
+  "description": "",
+  "kind": "docs",
+  "path": "docs/automation/steps/set.md",
+  "metadata": false
+ },
+ {
+  "title": "switch: the first case that holds",
+  "description": "Short form:",
+  "kind": "docs",
+  "path": "docs/automation/steps/switch.md",
+  "metadata": false
+ },
+ {
+  "title": "tool: run an installed tool",
+  "description": "Runs one function of an installed MCP server, plugin or skill, through the Engine's tools.call.",
+  "kind": "docs",
+  "path": "docs/automation/steps/tool.md",
+  "metadata": false
+ },
+ {
+  "title": "wait: until a time, an event or a webhook",
+  "description": "A waiting run holds no worker and no memory beyond its record; it survives a restart.",
+  "kind": "docs",
+  "path": "docs/automation/steps/wait.md",
+  "metadata": false
+ },
+ {
+  "title": "Triggers",
+  "description": "on is a list. Each item is one trigger: one kind key, plus the fields every trigger may have. A flow may have several triggers; any of them starts a run.",
+  "kind": "docs",
+  "path": "docs/automation/triggers.md",
+  "metadata": false
+ },
+ {
+  "title": "Validation",
+  "description": "flows.validate checks a flow without saving or running it. flows.save runs the same checks and refuses a flow with errors. A flow with warnings can be saved and run.",
+  "kind": "docs",
+  "path": "docs/automation/validation.md",
+  "metadata": false
+ },
+ {
+  "title": "POST",
+  "description": "Starts a flow from an outside service (a webhook), proved by the flow's secret",
+  "kind": "docs",
+  "path": "docs/automation/webhooks.md",
+  "metadata": true
+ },
+ {
+  "title": "cluaiz agent: a coding agent in your terminal",
+  "description": "cluaiz agent runs a local model as an agent in a folder on your computer. You describe a task in plain words; the model reads files, searches them, edits them and runs commands to do it, and tells...",
+  "kind": "docs",
+  "path": "docs/cmd/agent.md",
+  "metadata": false
+ },
+ {
+  "title": "cluaiz run: chat with a model in the terminal",
+  "description": "cluaiz run loads a model and either answers one prompt or opens a chat. It is a plain chat: the model only writes text. To let a model read and change files or run commands, use cluaiz agent.",
+  "kind": "docs",
+  "path": "docs/cmd/chat.md",
+  "metadata": false
+ },
+ {
+  "title": "cluaiz CLI, Command Reference",
+  "description": "Inside the agent: /yes, /ask, /clear, /undo, /rewind, /bye, /?, and the project's workflows as /. Tools, approvals and limits: agent guide.",
+  "kind": "docs",
+  "path": "docs/cmd/commands_reference.md",
+  "metadata": false
+ },
+ {
+  "title": "CLI Manual",
+  "description": "The cluaiz CLI provides a set of direct terminal utilities to calibrate hardware, manage models, and run interactive generation.",
+  "kind": "docs",
+  "path": "docs/cmd/manual.md",
+  "metadata": false
+ },
+ {
+  "title": "The terminal screen",
+  "description": "cluaiz agent has two ways to show its work: a full screen (rich mode) and plain printed lines. This page covers the full screen: when it is used, how it is laid out, and every key it takes. What the...",
+  "kind": "docs",
+  "path": "docs/cmd/tui.md",
+  "metadata": false
+ },
+ {
+  "title": "Release Workflow",
+  "description": ".github/workflows/release.yml builds and publishes Cluaiz: a core that runs everything on the CPU, plus the GPU drivers the core loads when they sit beside it. The drivers come from two workflows...",
+  "kind": "docs",
+  "path": "docs/deployments/cicd.md",
+  "metadata": false
+ },
+ {
+  "title": "What gets installed where",
+  "description": "This page lists, file by file, what the installer puts on each operating system and which folders the engine creates when it runs. The file lists and sizes are read from the v0.1.0 release archives;...",
+  "kind": "docs",
+  "path": "docs/deployments/install-layout.md",
+  "metadata": false
+ },
+ {
+  "title": "Platform Support",
+  "description": "Cluaiz ships as a core plus optional GPU packs (see Release Workflow). The core runs every model on the CPU and picks the fastest CPU code for the processor at start. A GPU pack in the same folder...",
+  "kind": "docs",
+  "path": "docs/deployments/platforms.md",
+  "metadata": false
+ },
+ {
+  "title": "Axum API",
+  "description": "The Engine's HTTP server is built on Axum and Tokio (api/src/routes.rs). It serves:",
+  "kind": "docs",
+  "path": "docs/engine/api.md",
+  "metadata": false
+ },
+ {
+  "title": "Two Runtimes: llama.cpp and ONNX Runtime",
+  "description": "The Engine runs models through two runtimes, inside one process.",
+  "kind": "docs",
+  "path": "docs/engine/dual_engine_architecture.md",
+  "metadata": false
+ },
+ {
+  "title": "Load and Speed Settings (settings.json → optimization)",
+  "description": "These settings control how a GGUF model is loaded and run by llama.cpp. They are the optimization section of settings.json (OptimizationControl in engine/core/src/settings.rs). Change them with...",
+  "kind": "docs",
+  "path": "docs/engine/llm_optimization.md",
+  "metadata": false
+ },
+ {
+  "title": "Mixture-of-Experts Models on Small GPUs",
+  "description": "A Mixture-of-Experts (MoE) model can be larger than the GPU. The Engine runs it the same way llama.cpp does with --n-cpu-moe:",
+  "kind": "docs",
+  "path": "docs/engine/moe_ssd_streaming.md",
+  "metadata": false
+ },
+ {
+  "title": "permission.json",
+  "description": "permission.json is in the config folder (~/.cluaiz/config/permission.json, or /config/permission.json). The schema is security/src/permissionschema.rs. Missing fields take their defaults. If the file...",
+  "kind": "docs",
+  "path": "docs/engine/permission.md",
+  "metadata": false
+ },
+ {
+  "title": "KV Cache Reuse (Prefix Caching)",
+  "description": "When a chat continues, most of the new prompt is the same as the last one. The Engine keeps the KV cache of the last generation and computes only the tokens that changed. This works like...",
+  "kind": "docs",
+  "path": "docs/engine/prefix_caching_architecture.md",
+  "metadata": false
+ },
+ {
+  "title": "Model providers",
+  "description": "A model provider is another service with an OpenAI-compatible API or the Anthropic Messages API, on the internet or on the same computer. Once a provider is added, its chat models work in cluaiz run,...",
+  "kind": "docs",
+  "path": "docs/engine/providers.md",
+  "metadata": false
+ },
+ {
+  "title": "Hardware Profile (hardwareprofile.json)",
+  "description": "The planner needs to know this machine: RAM, CPU and GPUs. The hardware probe (engine/hardware/src/prober.rs) collects this.",
+  "kind": "docs",
+  "path": "docs/engine/system_control.md",
+  "metadata": false
+ },
+ {
+  "title": "Call your own functions (tool calling)",
+  "description": "Give the model your functions in an OpenAI-style request; the Engine returns the call, you run it and send the result back for the final answer.",
+  "kind": "docs",
+  "path": "docs/engine/tool-calling.md",
+  "metadata": true
+ },
+ {
+  "title": "Tools: permissions, settings and environment",
+  "description": "How the Engine treats an installed tool (a skill, a plugin or an MCP server): what it may reach, which values it gets, and what an install does before anything is downloaded. The package format...",
+  "kind": "docs",
+  "path": "docs/engine/tools.md",
+  "metadata": false
+ },
+ {
+  "title": "System Architecture Overview",
+  "description": "One program, cluaiz, holds the CLI, the terminal agent, the HTTP server and the model runtimes.",
+  "kind": "docs",
+  "path": "docs/get-started/architecture.md",
+  "metadata": false
+ },
+ {
+  "title": "Coming from Ollama",
+  "description": "If you use Ollama today, most of what you know carries over: the same kind of model files (GGUF, run by llama.cpp), the same command names, and Ollama's own chat, generate, embed and model routes, so...",
+  "kind": "docs",
+  "path": "docs/get-started/coming-from-ollama.md",
+  "metadata": false
+ },
+ {
+  "title": "Your first API request",
+  "description": "In ten minutes: a running server, a small model, one answer, one streamed answer, and an API key. Every output below was recorded on Windows 11 with Engine 0.1.0 on 2026-11-21 (an isolated home on...",
+  "kind": "docs",
+  "path": "docs/get-started/first-api-request.md",
+  "metadata": false
+ },
+ {
+  "title": "Introduction to Cluaiz",
+  "description": "Cluaiz is the AI engine where models, voice, vision, memory, tools, agents and workflows work as one. It runs language, speech, vision and embedding models on your own computer or server, with the...",
+  "kind": "docs",
+  "path": "docs/get-started/introduction.md",
+  "metadata": false
+ },
+ {
+  "title": "HuggingFace Model Downloading & Management",
+  "description": "To run models locally, the Cluaiz Engine includes a high-performance, edge-optimized downloader designed to pull weight tensors, tokenizers, and configurations directly from the HuggingFace Hub.",
+  "kind": "docs",
+  "path": "docs/get-started/model-downloading.md",
+  "metadata": false
+ },
+ {
+  "title": "Quickstart Guide",
+  "description": "This guide details the deployment pathways to install, bootstrap, and execute cluaiz natively on your workstation. The runtime can be deployed via a single-line automated installer or compiled...",
+  "kind": "docs",
+  "path": "docs/get-started/quickstart.md",
+  "metadata": false
+ },
+ {
+  "title": "Troubleshooting",
+  "description": "Start from the message you see. Each entry gives the cause and the fix, and links to the page that explains the setting. Messages are quoted as the Engine prints them.",
+  "kind": "docs",
+  "path": "docs/get-started/troubleshooting.md",
+  "metadata": false
+ },
+ {
+  "title": "Welcome to cluaiz Documentation",
+  "description": "Cluaiz is the AI engine where models, voice, vision, memory, tools, agents and workflows work as one. It runs language, speech, vision and embedding models on your own computer or server, can use...",
+  "kind": "docs",
+  "path": "docs/get-started/welcome.md",
+  "metadata": false
+ },
+ {
+  "title": "Cluaiz API reference",
+  "description": "Use this page to choose an endpoint and understand common request rules. Each domain reference contains accepted fields, defaults, payload variants, code examples, responses and errors.",
+  "kind": "docs",
+  "path": "docs/reference/api.md",
+  "metadata": false
+ },
+ {
+  "title": "Automation reference",
+  "description": "Automation runs flows: files of steps that start on a trigger and use the Engine's tools, methods and models. It is a separate layer, not part of the Engine or the API: it calls the Engine through...",
+  "kind": "docs",
+  "path": "docs/reference/automation.md",
+  "metadata": false
+ },
+ {
+  "title": "C Library and FFI Memory Rules",
+  "description": "The release packages do not include this library yet: build it with cargo build --release -p cluaiz-ffi.",
+  "kind": "docs",
+  "path": "docs/reference/c-pointer-fii.md",
+  "metadata": false
+ },
+ {
+  "title": "System Dictionary",
+  "description": "Terms used across the Cluaiz Engine docs.",
+  "kind": "docs",
+  "path": "docs/reference/dictionary.md",
+  "metadata": false
+ },
+ {
+  "title": "Engine Configuration Reference",
+  "description": "The Engine keeps its settings in JSON files in the config folder: ~/.cluaiz/config/, or /config/. Missing fields take their defaults.",
+  "kind": "docs",
+  "path": "docs/reference/engine-configuration.md",
+  "metadata": false
+ },
+ {
+  "title": "Engine Features",
+  "description": "Every feature of the Cluaiz Engine (the cluaiz program in this repository) on one page: what it does, when you need it, one example, its status, where the code is and which test run checked it. The...",
+  "kind": "docs",
+  "path": "docs/reference/features.md",
+  "metadata": false
+ },
+ {
+  "title": "Master Reference Index",
+  "description": "Reference pages for the Cluaiz Engine.",
+  "kind": "docs",
+  "path": "docs/reference/index.md",
+  "metadata": false
+ },
+ {
+  "title": "Cluaiz CLI Reference",
+  "description": "What each cluaiz command does, and the API method that does the same thing over HTTP. cluaiz --help and cluaiz --help list every flag. cluaiz help all lists every command and subcommand at once;...",
+  "kind": "docs",
+  "path": "docs/reference/terminal-commands.md",
+  "metadata": false
+ },
+ {
+  "title": "Docs tooling (docs/tools/)",
+  "description": "Checks for the Engine docs. Not shown on the website (only pages listed in docs/registry.json are).",
+  "kind": "docs",
+  "path": "docs/tools/README.md",
+  "metadata": false
+ },
+ {
+  "title": "cluaiz: CI/CD & RELEASE ARCHITECTURE",
+  "description": "This document is the entry point for the CI/CD pipeline. The full job list, file names and smoke test are in docs/deployments/cicd.md; hardware and OS coverage is in docs/deployments/platforms.md.",
+  "kind": "readme",
+  "path": ".github/workflows/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: agents/ (crate cluaiz-agents)",
+  "description": "An answer the loop cannot use (a call it cannot read, or only thinking) is not run: the model is told what was wrong and answers again, at most MOSTCORRECTIONS (2) times in a row (src/turn.rs:129).",
+  "kind": "readme",
+  "path": "agents/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Agents crate source (agents/src/)",
+  "description": "All tool logic (skills, plugins, MCP, registry, turn lifecycle, telemetry), the chat memory store and the project's .agents/ workspace files live in this crate.",
+  "kind": "readme",
+  "path": "agents/src/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: agents/src/execution/",
+  "description": "Every process this crate starts for an agent or a tool goes through ossandbox::confinehere: agent commands (terminalrunner.rs direct and shell, ptyrunner.rs), MCP servers (mcp/client.rs) and native...",
+  "kind": "readme",
+  "path": "agents/src/execution/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: agents/src/installer/",
+  "description": "10 unit tests: themodetable, permissionsbymode, answersdecidewhatisinstalled, arefusedrequiredtoolinstallsnothing, dependenciesarereadwithneedandinfo, testdetectpureskill, testdetectnoderuntime,...",
+  "kind": "readme",
+  "path": "agents/src/installer/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: agents/src/mcp/",
+  "description": "Part of cargo test -p cluaiz-agents: 161 passed on 2026-11-21. The reference-server test was not run that day. MCP over the Engine's own CEP server: test/cep/mcpjourney.py.",
+  "kind": "readme",
+  "path": "agents/src/mcp/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: agents/src/memory/",
+  "description": "21 unit tests, among them testjsonlstoreconformance, testmemstoreconformance, testalinecutbyacrashisskippedandreported, testfullsegmentsarecompressedandstillread,...",
+  "kind": "readme",
+  "path": "agents/src/memory/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: agents/src/plugins/",
+  "description": "22 unit tests in this folder, part of cargo test -p cluaiz-agents (161 passed on 2026-11-21):",
+  "kind": "readme",
+  "path": "agents/src/plugins/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: agents/src/registry/",
+  "description": "7 unit tests: abrokenfileiskeptasideandasaveiswhole, testexecutionmodeparsing, testsecuritymodeparsing, atoolwithapermissionoffisaskedaboutineverymode, testserderoundtrip,...",
+  "kind": "readme",
+  "path": "agents/src/registry/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Cluaiz API Gateway (api/)",
+  "description": "Direct Axum HTTP and Server-Sent Events (SSE) server for Cluaiz.",
+  "kind": "readme",
+  "path": "api/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: api/src/cep/",
+  "description": "9 unit tests in methods/; contract tests api/tests/cep.rs (8 files, 13 tests) and the live journeys in test/cep/. api builds both native backends, so none of these tests were run on 2026-11-21 (see...",
+  "kind": "readme",
+  "path": "api/src/cep/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: CEP tool controls",
+  "description": "",
+  "kind": "readme",
+  "path": "api/src/cep/methods/tools/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Direct HTTP route handlers (api/src/handlers/)",
+  "description": "This folder holds direct inference, document extraction and compatibility routes. Engine control operations are CEP methods in ../cep/ (POST /v1/cep, /mcp, cepcall).",
+  "kind": "readme",
+  "path": "api/src/handlers/README.md",
+  "metadata": false
+ },
+ {
+  "title": "api/src/handlers/chat",
+  "description": "The chat pipeline behind POST /v1/chat/completions and the CEP chat, memory, context and approvals methods: memory, project files, tools, context plan, the model, the agent loop with approvals, and...",
+  "kind": "readme",
+  "path": "api/src/handlers/chat/README.md",
+  "metadata": true
+ },
+ {
+  "title": "Component: Direct document ingestion",
+  "description": "api builds both native backends, so none of these tests were run on 2026-11-21 (see api/README.md, Tests). No checked-in run executes ingestmodels.rs with models.",
+  "kind": "readme",
+  "path": "api/src/handlers/ingest/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Local native API transport",
+  "description": "NativeListener binds one caller-provided Windows named pipe or Unix socket. It carries HTTP/1 request, response and streaming frames through Hyper and then calls the existing Axum router. It never...",
+  "kind": "readme",
+  "path": "api/src/native/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: api/src/providers/",
+  "description": "49 unit tests in this folder (src/providers/tests/ and inline). api builds both native backends, so none of these tests were run on 2026-11-21 (see api/README.md, Tests). Real provider calls need...",
+  "kind": "readme",
+  "path": "api/src/providers/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: API acceptance transport support",
+  "description": "",
+  "kind": "readme",
+  "path": "api/tests/support/README.md",
+  "metadata": false
+ },
+ {
+  "title": "automation/: Cluaiz Automation",
+  "description": "Automation runs flows: files of steps that use the Engine's tools, methods and models. It is a separate layer, not part of the Engine and not part of the API. The user docs are in docs/automation.",
+  "kind": "readme",
+  "path": "automation/README.md",
+  "metadata": false
+ },
+ {
+  "title": "CEP protocol core (cep/, crate cluaiz-cep)",
+  "description": "CEP, the Cluaiz Engine Protocol, carries every Engine-specific operation as a JSON-RPC 2.0 method. The same methods are reachable three ways:",
+  "kind": "readme",
+  "path": "cep/README.md",
+  "metadata": false
+ },
+ {
+  "title": "The cluaiz program (cmd/)",
+  "description": "The command line of the Engine. cluaiz --help lists every command; cluaiz -h explains one. The full references are docs/cmd/commandsreference.md (commands), docs/cmd/agent.md (coding agent) and...",
+  "kind": "readme",
+  "path": "cmd/ReadMe.md",
+  "metadata": false
+ },
+ {
+  "title": "cmd/src: the cluaiz command-line interface",
+  "description": "A terminal program: interactive agent sessions use a same-tab terminal UI; scripts and --ui plain retain line-oriented output. No desktop shell or second executable is required. Load and sampling...",
+  "kind": "readme",
+  "path": "cmd/src/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: terminal agent frontend",
+  "description": "cluaiz agent loads the existing local chat::Session, presents its six built-in file/command tools and repeats generation until the model answers without a tool call. The interactive UI and plain...",
+  "kind": "readme",
+  "path": "cmd/src/agent/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: cmd/src/cli/",
+  "description": "",
+  "kind": "readme",
+  "path": "cmd/src/cli/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: agent tool regression tests",
+  "description": "",
+  "kind": "readme",
+  "path": "cmd/tests/agent/README.md",
+  "metadata": false
+ },
+ {
+  "title": "cluaiz-context",
+  "description": "Pure context planning for the Engine. It gets segments with real token counts and returns which ones go into the next prompt, with a reason for each. It reads no files, calls no model, holds no KV...",
+  "kind": "readme",
+  "path": "context/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: engine/ (the compute layer)",
+  "description": "Taken from each crate's Cargo.toml on 2026-11-21. An arrow means \"depends on\".",
+  "kind": "readme",
+  "path": "engine/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Cluaiz Core (engine/core)",
+  "description": "Central foundational module for the Cluaiz compute engine. Responsible for single-source-of-truth configuration, paths, unit conversion, and core engine contracts.",
+  "kind": "readme",
+  "path": "engine/core/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: engine/hardware/ (crate cluaiz-hw)",
+  "description": "At each process start the saved profile is compared with facts read in milliseconds (quickfacts, prober.rs:94): total RAM, logical CPU threads, and each NVIDIA GPU's name and total VRAM. Any of them...",
+  "kind": "readme",
+  "path": "engine/hardware/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Cluaiz Llama Engine (engine/llama)",
+  "description": "Direct Rust API wrapping custom llama.cpp C/C++ memory. Compiled as an rlib to eliminate dual-static memory copies between Exe and DLL.",
+  "kind": "readme",
+  "path": "engine/llama/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: Native speech policy data",
+  "description": "Part of the llama-engine tests (not run on 2026-11-21, native build).",
+  "kind": "readme",
+  "path": "engine/llama/src/native/data/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: Cluaiz Media",
+  "description": "SourceResolver::withprogress optionally connects shared preparation to the backend-neutral cluaizcore::processing observer. Reading and decoding emit actual start/end stages per original content...",
+  "kind": "readme",
+  "path": "engine/media/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: Optional FFmpeg video provider",
+  "description": "Set FFMPEGDIR to a deliberately staged SDK with include/ and lib/, then run:",
+  "kind": "readme",
+  "path": "engine/media/providers/ffmpeg/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Shared document extraction",
+  "description": "extract consumes bounded source bytes and their format evidence; it returns ordered DocumentPart values with real text, method, optional PDF page number, omissions, warnings and optional OCR...",
+  "kind": "readme",
+  "path": "engine/media/src/documents/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: Video ABI contract",
+  "description": "Part of cargo test -p cluaiz-media (2026-11-21 (Windows 11): 49 passed, 4 ignored). Pending items: media/README.md.",
+  "kind": "readme",
+  "path": "engine/media/src/video/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Shared media acceptance",
+  "description": "documents.rs exercises real small PDF and OOXML DOCX packages. support/mod.rs owns document builders used directly by these tests and the API document tests; it is not compiled into production...",
+  "kind": "readme",
+  "path": "engine/media/tests/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Audio decoder fixtures",
+  "description": "opus-mono.webm and opus-stereo.webm contain an 80 ms synthetic 440 Hz tone encoded as real Opus in streaming-layout WebM, with unknown segment duration and short clusters. They contain no user...",
+  "kind": "readme",
+  "path": "engine/media/tests/fixtures/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Cluaiz Models Subsystem (engine/models)",
+  "description": "Unified Model Subsystem for Cluaiz: HuggingFace model downloading, registry/vault tracking, multi-modal taxonomy, and single GGUF reader.",
+  "kind": "readme",
+  "path": "engine/models/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: engine/models/src/fetcher/",
+  "description": "Part of cargo test -p cluaiz-models (2026-11-21 (Windows 11): 50 passed, 8 ignored). Pending items: models/README.md.",
+  "kind": "readme",
+  "path": "engine/models/src/fetcher/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: engine/models/src/registry/",
+  "description": "Part of cargo test -p cluaiz-models (2026-11-21 (Windows 11): 50 passed, 8 ignored). Pending items: models/README.md.",
+  "kind": "readme",
+  "path": "engine/models/src/registry/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: engine/models/src/taxonomy/",
+  "description": "Part of cargo test -p cluaiz-models (2026-11-21 (Windows 11): 50 passed, 8 ignored). Pending items: models/README.md.",
+  "kind": "readme",
+  "path": "engine/models/src/taxonomy/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: engine/models/src/types/",
+  "description": "Part of cargo test -p cluaiz-models (2026-11-21 (Windows 11): 50 passed, 8 ignored). Pending items: models/README.md.",
+  "kind": "readme",
+  "path": "engine/models/src/types/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: Model package capability acceptance",
+  "description": "Part of cargo test -p cluaiz-models (2026-11-21 (Windows 11): 50 passed, 8 ignored). Pending items: models/README.md.",
+  "kind": "readme",
+  "path": "engine/models/tests/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Cluaiz ONNX Audio & Multimodal Engine (engine/onnx)",
+  "description": "Unified ONNX compute engine for Audio STT (Whisper, Moonshine), TTS (Kokoro and Piper/VITS; the CosyVoice, Matcha, Chatterbox, Supertonic and OmniVoice code is experimental, see models.md), and...",
+  "kind": "readme",
+  "path": "engine/onnx/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: Cluaiz ONNX Audio & TTS Subsystem (src/audio/)",
+  "description": "Audio8 required asset paths come from cluaiz-core::modelassets, shared with discovery/installation. The backend keeps numerical layout/dimension checks, actual graph sessions, voice conditioning and...",
+  "kind": "readme",
+  "path": "engine/onnx/src/audio/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: ONNX native media acceptance",
+  "description": "Part of the onnx-engine tests (69 unit, 11 ignored; not run on 2026-11-21, native build). Pending items: onnx/README.md.",
+  "kind": "readme",
+  "path": "engine/onnx/tests/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Cluaiz Execution Planner (engine/plan)",
+  "description": "Pure mathematical negotiation and placement engine for Cluaiz.",
+  "kind": "readme",
+  "path": "engine/plan/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Cluaiz Engine Runtime & Host (engine/runtime)",
+  "description": "Model execution supervisor with separate chat, ONNX-task and GGUF-speech owners.",
+  "kind": "readme",
+  "path": "engine/runtime/README.md",
+  "metadata": false
+ },
+ {
+  "title": "The Engine as a C library (ffi/, crate cluaiz-ffi)",
+  "description": "The release packages do not include this library yet: build it with cargo build --release -p cluaiz-ffi.",
+  "kind": "readme",
+  "path": "ffi/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: security/ (crate cluaiz-security)",
+  "description": "Two copies of the settings exist at run time:",
+  "kind": "readme",
+  "path": "security/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: terminal presentation",
+  "description": "In the library, Paste is text insertion, including / or ! prefixes. The CMD adapter first recognizes file/encoded-media paste and handles it as attachment input. Pasting never executes it. Pasted...",
+  "kind": "readme",
+  "path": "terminal/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: test/ (tests against a running Engine, and recorded machine runs)",
+  "description": ".github/workflows/rust-tests.yml (added 2026-11-21) runs cargo test on every push for the crates that build without llama.cpp or ONNX Runtime (core, hw, models, plan, context, security, media,...",
+  "kind": "readme",
+  "path": "test/README.md",
+  "metadata": false
+ },
+ {
+  "title": "CEP file, system, model and tool tests",
+  "description": "Tests for the fs., workspace., system., storage., models. and tools. CEP methods. Two kinds:",
+  "kind": "readme",
+  "path": "test/cep/wave_b/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: test/cloud/ (machine runs and their record)",
+  "description": "vm.sh creates Spot VMs (--provisioning-model=SPOT --instance-termination-action=STOP --max-run-duration), tries the zones in ZONES in order and remembers the zone per VM. A stopped VM keeps its disk...",
+  "kind": "readme",
+  "path": "test/cloud/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: test/cloud/remote/ssdprefetch/ (expert prefetch speed proof, written, not run on the real models)",
+  "description": "Every run: page cache dropped first, -t 4 -p 512 -n 128,400 -r 1 (REPS changes -r), flash attention auto. Pairs to compare: C-plan with L-mmap, C-cache with L-cache, C-pf with the best of L-mmap /...",
+  "kind": "readme",
+  "path": "test/cloud/remote/ssd_prefetch/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Run 26 results: conclusion, what went well, what to fix",
+  "description": "1 vCPU, 4 GB VPS with a web app and PostgreSQL running next to the engine. Cluaiz (a build from before fe21984c), llama.cpp b12428 and Ollama 0.40.16, same models and settings. Full numbers and...",
+  "kind": "readme",
+  "path": "test/cloud/runs/2026-11-20-run26-vps-load/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Cluaiz on small Linux servers: every measurement so far, compared",
+  "description": "This page puts together everything measured about running Cluaiz on a small Linux server (1 or 2 vCPU, 4 or 8 GB, no GPU), often next to a website and its database, against llama.cpp and Ollama. It...",
+  "kind": "readme",
+  "path": "test/cloud/runs/2026-11-22-run40-cluaiz-ollama-website/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Context runtime: routing set",
+  "description": "routingset.jsonl holds 165 labelled user messages for the tool matcher (agents/src/toolsearch.rs): English, Hinglish and Devanagari; direct requests, paraphrases, several tools at once, follow-ups...",
+  "kind": "readme",
+  "path": "test/context-runtime/README.md",
+  "metadata": false
+ },
+ {
+  "title": "CPU test (Windows PC without a graphics card)",
+  "description": "Installs the newest release with the website's command and tests it on the CPU: chat, speed and memory on small models, the coding agent, plugins and skills, speech, embeddings and a document. It...",
+  "kind": "readme",
+  "path": "test/cpu/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: test/engineregression/ (every chat model x placement, against llama-bench)",
+  "description": "run.py takes every installed GGUF chat model from a running Engine (/v1/models, category chat), runs each placement mode (auto, gpu, split, cpu) through the real chat API and checks that the request...",
+  "kind": "readme",
+  "path": "test/engine_regression/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Mac test (Apple Silicon)",
+  "description": "Runs Cluaiz on a Mac with Apple Silicon and compares it with plain llama.cpp on the same model files and the same settings. It takes about an hour and needs one command; all results are packed into...",
+  "kind": "readme",
+  "path": "test/mac/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: Media release acceptance",
+  "description": "Supply these environment variables before running:",
+  "kind": "readme",
+  "path": "test/media_regression/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: Native video packaging acceptance",
+  "description": "Run the second command without SDK/library-search environment entries. On Linux the test package's own $ORIGIN lookup must find transitive dependencies. On Windows the explicit loader restricts...",
+  "kind": "readme",
+  "path": "test/media_regression/video_spike/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: test/workflows/ (workflow and installer checks)",
+  "description": "Two kinds of scripts: linters that check .github/workflows/.yml before a push (run-actionlint.ps1, run-act.ps1), and Python tests of the release launcher and the installer scripts. Only...",
+  "kind": "readme",
+  "path": "test/workflows/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Developer tools (tools/)",
+  "description": "Programs and scripts for the people who build the Engine. None of them ships in a release or runs inside the Engine.",
+  "kind": "readme",
+  "path": "tools/README.md",
+  "metadata": false
+ },
+ {
+  "title": "Component: Cluaiz Modular Builder (tools/cluaiz-builder)",
+  "description": "The builder gives 1:1 granular control so you compile only what changed:",
+  "kind": "readme",
+  "path": "tools/cluaiz-builder/README.md",
+  "metadata": false
+ }
+]
