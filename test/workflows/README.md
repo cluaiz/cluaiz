@@ -1,22 +1,13 @@
 <!-- name: test/workflows
 description: Linters for the GitHub workflows and Python tests of the release and installer scripts. -->
 
-# Component: `test/workflows/` (workflow and installer checks)
+# Workflow and installer checks (`test/workflows/`)
 
 ![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/cloud/runs and BENCHMARKS.md](../../docs/assets/contributing/test-kinds.png)
 
 Two kinds of scripts: linters that check `.github/workflows/*.yml` before a push (`run-actionlint.ps1`,
 `run-act.ps1`), and Python tests of the release launcher and the installer scripts. Only
 `test_clean_windows_runtime.py` runs in CI (`.github/workflows/release.yml:119`).
-
-```mermaid
-graph LR
-    YML[".github/workflows/*.yml"] --> AL["run-actionlint.ps1<br/>(needs actionlint on PATH)"]
-    YML --> ACT["run-act.ps1<br/>(needs act + Docker)"]
-    Smoke[".github/scripts/smoke_test launcher"] --> CW["test_clean_windows_runtime.py<br/>(release.yml, Windows job)"]
-    Inst["install.ps1 / install.sh"] --> BAN["test_installer_banner.py"]
-    Inst --> PRO["test_installer_progress.py<br/>+ installer_download_case.ps1"]
-```
 
 Scripts to test the GitHub Actions workflows on the local machine before pushing them, which saves CI time and
 keeps the commit history clean.

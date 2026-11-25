@@ -1,12 +1,15 @@
 <!-- name: tools/cluaiz-builder
 description: Builds only what changed across the core binary and the GPU driver packs. -->
 
-# Component: Cluaiz Modular Builder (`tools/cluaiz-builder`)
+# Modular builder (`tools/cluaiz-builder/`)
 
-## Technical Specification
+Orchestrates granular compilation across the single-binary core and hardware-adaptive dynamic drivers without
+compiling unused dependencies.
+
+## At a glance
+
 - **Component Name:** `cluaiz-builder`
 - **Location:** `tools/cluaiz-builder/`
-- **Purpose:** Orchestrates granular compilation across the single-binary core and hardware-adaptive dynamic drivers without compiling unused dependencies.
 - **Platform Support:** Windows (x86_64), Linux (x86_64, aarch64), macOS (Apple Silicon arm64, x86_64).
 - **Execution Target:** Generates the unified standalone executable (`bin/cluaiz.exe` / `bin/cluaiz`) and dynamically loaded execution providers (`bin/`, beside the executable).
 - **Build Profiles:** `debug` (Rapid iteration, unoptimized) and `release` (LTO, SIMD vectorized, optimized production binary).

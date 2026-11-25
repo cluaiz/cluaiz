@@ -1,13 +1,14 @@
 <!-- name: engine/models/src/types
 description: Shared model data types, and the streaming filter that separates thinking from the answer for every caller. -->
 
-# Component: `engine/models/src/types/`
+# Model data types (`engine/models/src/types/`)
 
-## Technical Specification
+The shared data shapes of `cluaiz-models`: a model's manifest and registry entry, its slot, chat entity types,
+and `StructuralDNA` with the streaming reasoning filter that separates thinking from the answer for every
+caller (API chat, terminal, providers).
 
-- **Purpose:** The shared data shapes of `cluaiz-models`: a model's manifest and registry entry,
-  its slot, chat entity types, and `StructuralDNA` with the streaming reasoning filter that
-  separates thinking from the answer for every caller (API chat, terminal, providers).
+## At a glance
+
 - **Platform Support:** Any.
 - **Reusability Level:** Imported across the Engine (`cluaiz_models::*`).
 

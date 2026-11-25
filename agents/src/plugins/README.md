@@ -1,17 +1,18 @@
 <!-- name: agents/src/plugins
 description: Running a plugin's function: WebAssembly plugins sandboxed inside the Engine, other plugins as child processes in the OS sandbox. -->
 
-# Component: `agents/src/plugins/`
+# Running plugins (`agents/src/plugins/`)
 
-## Technical Specification
+Running a plugin's function. A WebAssembly plugin (`.wasm`) runs inside the Engine, closed in: its own memory,
+an instruction budget, no files, no programs, and the network only through one checked door
+(`cluaiz.http_fetch`). Any other plugin runs as a child process through the OS sandbox
+(`execution::os_sandbox::confine_here`, `SandboxPolicy::for_tool`: secret folders and the Cluaiz home hidden,
+its own folder read-only, network as its permission says); where no sandbox applies (Windows in `auto`,
+`os_sandbox = off`) it has the user's rights. This folder also owns the settings a tool names in `env` (API
+keys, addresses) as the user sees them, and the secret filling for plugin requests.
 
-- **Purpose:** Running a plugin's function. A WebAssembly plugin (`.wasm`) runs inside the
-  Engine, closed in: its own memory, an instruction budget, no files, no programs, and the network
-  only through one checked door (`cluaiz.http_fetch`). Any other plugin runs as a child process
-  through the OS sandbox (`execution::os_sandbox::confine_here`, `SandboxPolicy::for_tool`: secret
-  folders and the Cluaiz home hidden, its own folder read-only, network as its permission says); where
-  no sandbox applies (Windows in `auto`, `os_sandbox = off`) it has the user's rights. This folder also owns the settings a tool names in `env`
-  (API keys, addresses) as the user sees them, and the secret filling for plugin requests.
+## At a glance
+
 - **Platform Support:** Windows, Linux, macOS (`wasmtime`).
 - **Reusability Level:** Internal to `cluaiz-agents`; called by `ToolsEngine` in `lib.rs`, the
   agent and the API chat. Also the `code` step of Automation uses `wasm::run_module`.
@@ -21,27 +22,6 @@ description: Running a plugin's function: WebAssembly plugins sandboxed inside t
 ## Architectural Flow
 
 ![A WebAssembly plugin runs inside the Engine with fuel and memory limits and reaches the network only through cluaiz.http_fetch; a native plugin runs as a child process through the OS sandbox](../../../docs/assets/engine/plugin-runners.png)
-
-
-```mermaid
-flowchart LR
-    CALL["Plugin call<br/>(function + JSON arguments)"]
-    MAN["manifest.rs<br/>PluginManifestParser"]
-    EXEC["executor.rs<br/>PluginExecutor::execute"]
-    WASM["wasm.rs<br/>run_file / run_module<br/>fuel · memory"]
-    NET["net.rs · NetAccess<br/>cluaiz.http_fetch"]
-    CHILD["child process<br/>in the plugin folder"]
-    SET["config/tool_settings.json<br/>{{secret:NAME}} · {{url:NAME}}"]
-    WEB["public https host"]
-
-    CALL --> EXEC
-    MAN --> EXEC
-    EXEC -->|".wasm"| WASM
-    EXEC -->|"other"| CHILD
-    WASM -->|"host function"| NET
-    SET --> NET
-    NET --> WEB
-```
 
 ## API Contract (Interface)
 

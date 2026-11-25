@@ -1,10 +1,12 @@
 <!-- name: engine/models/tests
 description: Opt-in read-only audits of model package graphs in a temporary folder. -->
 
-# Component: Model package capability acceptance
+# Model package tests (`engine/models/tests/`)
 
-## Technical Specification
-- **Purpose:** Opt-in read-only graph audits and genuine missing-helper completion in a separately owned temporary package.
+Opt-in read-only graph audits and genuine missing-helper completion in a separately owned temporary package.
+
+## At a glance
+
 - **Platform Support:** Host file/protobuf/HTTP support. Metadata success does not certify GPU/platform inference.
 - **Reusability Level:** Test-only; no production CLI diagnostics.
 

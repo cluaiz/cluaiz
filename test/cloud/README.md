@@ -1,33 +1,20 @@
 <!-- name: test/cloud
 description: Cloud machine runs: creating test VMs, running suites, and recording every run with its raw results. -->
 
-# Component: `test/cloud/` (machine runs and their record)
+# Cloud machine runs (`test/cloud/`)
 
-## Technical specification
+Run the Engine on machines other than the developer's (Google Cloud GPU and CPU VMs, a 1 vCPU VPS, the dev
+laptop for same-settings comparisons) and keep every result with its raw output. Speed, memory and platform
+claims in READMEs and docs point to a run here.
 
-- **Purpose:** run the Engine on machines other than the developer's (Google Cloud GPU and CPU VMs, a
-  1 vCPU VPS, the dev laptop for same-settings comparisons) and keep every result with its raw output.
-  Speed, memory and platform claims in READMEs and docs point to a run here.
+## At a glance
+
 - **Platform support:** the helper `vm.sh` needs `gcloud` (Bash; Git Bash on Windows). Remote scripts
   run on Ubuntu / Debian VMs; some runs were on Windows (runs 17, 20, 22, 27, 29-31).
 
 ## Flow of one run
 
 ![Cloud run: vm.sh create, build, test, vm.sh get, run folder, BENCHMARKS row, vm.sh delete](../../docs/assets/contributing/cloud-run.png)
-
-
-```mermaid
-graph LR
-    Create["vm.sh create &lt;name&gt; &lt;machine&gt; &lt;gpu|none&gt;<br/>Spot VM, stops itself after MAX_RUN (3h)"] --> Put["vm.sh put: remote/*.sh, *.py"]
-    Put --> Build["remote/linux_build.sh<br/>toolchain + release build"]
-    Build --> Tests["remote/linux_tests.sh: unit tests,<br/>isolated server, checks.py"]
-    Build --> Special["a run script: run11.sh, run21_planner.sh,<br/>mtp23/run24.sh, regression_all.sh ..."]
-    Tests --> Get["vm.sh get ~/results"]
-    Special --> Get
-    Get --> Folder["runs/&lt;date&gt;-runN-&lt;what&gt;/<br/>SUMMARY.md + raw files + script"]
-    Folder --> Row["BENCHMARKS.md row"]
-    Get --> Delete["vm.sh delete (VM and disk)"]
-```
 
 `vm.sh` creates Spot VMs (`--provisioning-model=SPOT --instance-termination-action=STOP
 --max-run-duration`), tries the zones in `ZONES` in order and remembers the zone per VM. A stopped VM

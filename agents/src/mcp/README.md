@@ -1,13 +1,14 @@
 <!-- name: agents/src/mcp
 description: The Engine as an MCP client: starts installed MCP servers, keeps each running, lists and calls their tools. -->
 
-# Component: `agents/src/mcp/`
+# MCP client (`agents/src/mcp/`)
 
-## Technical Specification
+The Engine as an MCP **client**: it starts installed MCP servers (stdio), keeps each one running as one
+long-lived process, lists its tools and calls them. (The Engine as an MCP **server** is `api/src/cep/mcp.rs`
+and `cluaiz mcp-server`.)
 
-- **Purpose:** The Engine as an MCP **client**: it starts installed MCP servers (stdio), keeps
-  each one running as one long-lived process, lists its tools and calls them. (The Engine as an
-  MCP **server** is `api/src/cep/mcp.rs` and `cluaiz mcp-server`.)
+## At a glance
+
 - **Platform Support:** Windows (a job object ends the server and everything it started),
   Linux, macOS.
 - **OS sandbox:** each server is started through `execution::os_sandbox::confine_here` with
@@ -20,25 +21,6 @@ description: The Engine as an MCP client: starts installed MCP servers, keeps ea
 ## Architectural Flow
 
 ![MCP server process: started on the first call, reused, stopped after 10 idle minutes or when more than 4 run; restarted after 1 s then 2 s; unavailable after 3 crashes in 10 minutes](../../../docs/assets/engine/mcp-server-life.png)
-
-
-```mermaid
-flowchart LR
-    CALL["call_tool / list_tools<br/>(server folder)"]
-    MAN["manifest.rs<br/>McpManifestParser: command, args, execution.env"]
-    SESS["SESSIONS<br/>one running process per server"]
-    START["start: cleared env + tool values<br/>initialize once"]
-    RPC["JSON-RPC over stdio<br/>tools/list (paged) · tools/call"]
-    IDLE["idle 10 min → stop<br/>more than 4 → stop least recent"]
-    CRASH["CRASHES<br/>backoff 1 s, 2 s; 3 in 10 min → unavailable"]
-
-    CALL --> SESS
-    SESS -->|"not running"| START --> RPC
-    MAN --> START
-    SESS -->|"running"| RPC
-    SESS --> IDLE
-    RPC -->|"process exited"| CRASH --> SESS
-```
 
 ## API Contract (Interface)
 

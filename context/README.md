@@ -1,7 +1,7 @@
 <!-- name: context
 description: Pure context planning: given segments with real token counts, decides which go into the next prompt and why. -->
 
-# cluaiz-context
+# Context planning (`context/`, crate `cluaiz-context`)
 
 Pure context planning for the Engine. It gets segments with real token counts and returns which
 ones go into the next prompt, with a reason for each. It reads no files, calls no model, holds no

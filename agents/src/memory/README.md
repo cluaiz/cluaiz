@@ -1,46 +1,22 @@
 <!-- name: agents/src/memory
 description: Chat memory on disk without a database: event logs, durable notes, embeddings of notes and facts, execution records with secrets removed. -->
 
-# Component: `agents/src/memory/`
+# Chat memory on disk (`agents/src/memory/`)
 
-## Technical Specification
+Chat memory on disk, with no database: each chat's **event log** (what was said and done, in order,
+append-only JSON lines), from which the Chat Map (cards, index, recall) is built; **durable notes** (facts and
+preferences that outlive a chat); **embeddings** of notes and project facts made once and kept; and
+**execution records** with secrets taken out. The API chat (`api/src/handlers/chat/`), the CEP `memory.*` and
+`notes.*` methods and the terminal agent read and write through this folder.
 
-- **Purpose:** Chat memory on disk, with no database: each chat's **event log** (what was said
-  and done, in order, append-only JSON lines), from which the Chat Map (cards, index, recall) is
-  built; **durable notes** (facts and preferences that outlive a chat); **embeddings** of notes
-  and project facts made once and kept; and **execution records** with secrets taken out. The API
-  chat (`api/src/handlers/chat/`), the CEP `memory.*` and `notes.*` methods and the terminal agent
-  read and write through this folder.
+## At a glance
+
 - **Platform Support:** Windows, Linux, macOS (plain files, `zstd` for closed segments).
 - **Reusability Level:** Internal library of `cluaiz-agents`, public to the API and the CLI.
 
 ## Architectural Flow
 
 ![A chat request is compared with the log (new, edited, retracted), secrets are redacted, and events are appended to events.jsonl; large payloads go to blobs; notes and vectors are separate files](../../../docs/assets/engine/memory-store.png)
-
-
-```mermaid
-flowchart TD
-    REQ["Chat request<br/>(client messages)"]
-    TR["transcript.rs<br/>diff: new / edited / retracted"]
-    EXT["external.rs<br/>storage: external → RAM only"]
-    STORE["store.rs · EventStore<br/>JsonlStore"]
-    DISK["CLUAIZ_HOME/memory/chats/&lt;chat&gt;/<br/>events.jsonl · events-NNNN.jsonl.zst · ledger.json"]
-    BLOBS["memory/blobs/&lt;sha256&gt;<br/>payloads over 8 KB"]
-    REC["records.rs<br/>redact secrets"]
-    NOTES["notes.rs · NoteStore<br/>memory/notes/notes.jsonl"]
-    VEC["vectors.rs · VectorStore<br/>memory/vectors/&lt;model&gt;.json"]
-    MAP["Chat Map, recall<br/>api/src/handlers/chat/recall.rs"]
-
-    REQ --> TR --> STORE
-    REQ -->|"storage: external"| EXT
-    EXT -.->|"instead of disk"| STORE
-    REC --> STORE
-    STORE --> DISK
-    STORE --> BLOBS
-    STORE --> MAP
-    NOTES --> VEC
-```
 
 ## API Contract (Interface)
 

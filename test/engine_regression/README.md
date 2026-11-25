@@ -1,7 +1,7 @@
 <!-- name: test/engine_regression
 description: Runs every installed GGUF chat model in every placement mode against a running Engine. -->
 
-# Component: `test/engine_regression/` (every chat model x placement, against llama-bench)
+# Chat model regression (`test/engine_regression/`)
 
 ![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/cloud/runs and BENCHMARKS.md](../../docs/assets/contributing/test-kinds.png)
 

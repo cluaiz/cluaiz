@@ -1,13 +1,15 @@
 <!-- name: api/src/handlers/ingest
 description: POST /v1/ingest: one JSON request and one JSON answer for document extraction and optional model processing. -->
 
-# Component: Direct document ingestion
+# Document ingestion route (`api/src/handlers/ingest/`)
+
+Serve `POST /v1/ingest` as a plain JSON request with one final JSON response. Native extraction and optional
+model processing share the same source and media owners used elsewhere in the Engine.
 
 ![One SourceResolver reads a local path, URL or base64 with size limits; shared decoders give images, audio, document text or video frames to the model](../../../../docs/assets/engine/media-sources.png)
 
-## Technical specification
+## At a glance
 
-- **Purpose:** Serve `POST /v1/ingest` as a plain JSON request with one final JSON response. Native extraction and optional model processing share the same source and media owners used elsewhere in the Engine.
 - **Boundary:** No CEP registration, task creation, persistent chat session or vector database. The HTTP authentication middleware identifies the owner; local paths use the shared canonicalizer. CEP extension roots are a different boundary.
 - **Platform:** Portable Rust orchestration; PDF/OCR and selected-model execution depend on the packaged native assets and runtime backend. This transport change is exercised on Windows; it is not new cross-platform model certification.
 - **Reusability:** Document parsing stays in `cluaiz_media`; vectors stay in `EmbeddingExecutor`; generative model execution stays in the existing runtime host.

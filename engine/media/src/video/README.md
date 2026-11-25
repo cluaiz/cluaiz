@@ -1,13 +1,15 @@
 <!-- name: engine/media/src/video
 description: The versioned C ABI shared by the optional video decoder and the media code. -->
 
-# Component: Video ABI contract
+# Video decoder ABI (`engine/media/src/video/`)
+
+`abi.rs` owns the exact versioned C layout shared by the optional decoder and shared-media consumer. It
+contains actual interface definitions, not forwarding imports.
 
 ![One SourceResolver reads a local path, URL or base64 with size limits; shared decoders give images, audio, document text or video frames to the model](../../../../docs/assets/engine/media-sources.png)
 
-## Technical specification
+## At a glance
 
-- **Purpose:** `abi.rs` owns the exact versioned C layout shared by the optional decoder and shared-media consumer. It contains actual interface definitions, not forwarding imports.
 - **Platform support:** C ABI, pointer sizes and native library artifacts must match the engine target. Windows/Linux x86_64 acceptance is recorded in the parent provider documentation; other targets are unverified.
 - **Reuse:** `src/video.rs` and the separately built `providers/ffmpeg` compile this same source. No parallel definition is maintained.
 

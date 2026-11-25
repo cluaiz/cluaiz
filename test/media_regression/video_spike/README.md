@@ -1,11 +1,13 @@
 <!-- name: test/media_regression/video_spike
 description: Isolated acceptance of the shared native video decoder package. -->
 
-# Component: Native video packaging acceptance
+# Video decoder package test (`test/media_regression/video_spike/`)
 
-## Technical specification
+Isolated SDK and lazy-package acceptance for the shared native decoder. No test command is added to production
+CLI binaries.
 
-- **Purpose:** isolated SDK and lazy-package acceptance for the shared native decoder. No test command is added to production CLI binaries.
+## At a glance
+
 - **Platform evidence:** genuine H264 frames were checked on Windows x86_64 and Ubuntu 24.04 x86_64 under WSL. Build/source presence alone does not establish a model/API result.
 - **Reuse:** the lazy loader compiles the exact production `video/abi.rs` contract. Actual production decoding remains in `engine/media/providers/ffmpeg`.
 

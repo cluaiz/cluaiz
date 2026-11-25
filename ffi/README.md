@@ -16,15 +16,6 @@ void  cep_free(char *reply);               /* frees a reply */
 
 The messages are the same as `POST /v1/cep`. Ask `rpc.discover` for the methods.
 
-```mermaid
-flowchart LR
-    H["Host program (Python ctypes, Node, C…)"] -->|"cep_call(json)"| F["ffi/src/lib.rs: panic guard, runtime"]
-    F -->|"first call"| B["api::boot::boot_in_process()"]
-    F --> E["AppState.cep: Engine::call (same as /v1/cep)"]
-    E --> R["JSON reply → CString"]
-    R -->|"cep_free"| H
-```
-
 ## How it runs
 
 - **Start-up.** The first call starts the Engine with `CLUAIZ_HOME` (or the default home). It uses the same start-up code as `cluaiz serve`, but does **not** write `session.token`, so a daemon running on the same home keeps working.

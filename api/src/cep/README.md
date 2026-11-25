@@ -1,18 +1,18 @@
 <!-- name: api/src/cep
 description: The Engine side of CEP (JSON-RPC 2.0): method context, every Engine method, the /v1/cep and /mcp doors, and the hook for outside layers. -->
 
-# Component: `api/src/cep/`
+# CEP methods of the Engine (`api/src/cep/`)
+
+The Engine side of CEP (Cluaiz Engine Protocol, JSON-RPC 2.0): the context every method gets, every method of
+the Engine (one file per group in `methods/`), the HTTP door `POST /v1/cep`, the MCP door `POST /mcp`, and the
+hook that lets layers outside the Engine (Automation) add their own methods. The protocol itself (envelope,
+registry, dispatcher, principals and scopes, approvals, tasks, discovery, audit) is the `cluaiz-cep` crate
+([`cep/`](../../../cep/)); this folder only registers methods and serves them.
 
 ![One CEP call: transport, envelope, registry, principal, method, approval or task, audit](../../../docs/assets/api/cep-call.png)
 
-## Technical Specification
+## At a glance
 
-- **Purpose:** The Engine side of CEP (Cluaiz Engine Protocol, JSON-RPC 2.0): the context every
-  method gets, every method of the Engine (one file per group in `methods/`), the HTTP door
-  `POST /v1/cep`, the MCP door `POST /mcp`, and the hook that lets layers outside the Engine
-  (Automation) add their own methods. The protocol itself (envelope, registry, dispatcher,
-  principals and scopes, approvals, tasks, discovery, audit) is the `cluaiz-cep` crate
-  ([`cep/`](../../../cep/)); this folder only registers methods and serves them.
 - **Platform Support:** Windows, Linux, macOS.
 - **Reusability Level:** Global gateway for Engine control. The App, the website, the C library
   (`cep_call`, `ffi/`) and MCP clients all reach the Engine through it.

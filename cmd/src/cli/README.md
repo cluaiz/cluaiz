@@ -1,18 +1,19 @@
 <!-- name: cmd/src/cli
 description: Handlers of the cluaiz subcommands other than chat and agent: one file per command or shared piece. -->
 
-# Component: `cmd/src/cli/`
+# CLI subcommands (`cmd/src/cli/`)
+
+The handlers of the `cluaiz` subcommands other than the chat and the agent (those live in
+[`../chat/`](../chat/) and [`../agent/`](../agent/)). `main.rs` parses the command line with clap and calls
+one `execute` / `handle_*` function here. Each file owns one command or one piece shared by several (load
+flags, dotted keys, talking to a running server). The commands reuse the same code the API uses (model
+resolution, settings merge, the download flow, providers, CEP methods), so the terminal and the API behave the
+same.
 
 ![cluaiz pull: model id, resolve, plan the files, download with resume, check, registry, cluaiz list](../../../docs/assets/get-started/model-download.png)
 
-## Technical Specification
+## At a glance
 
-- **Purpose:** The handlers of the `cluaiz` subcommands other than the chat and the agent
-  (those live in [`../chat/`](../chat/) and [`../agent/`](../agent/)). `main.rs` parses the
-  command line with clap and calls one `execute` / `handle_*` function here. Each file owns one
-  command or one piece shared by several (load flags, dotted keys, talking to a running server).
-  The commands reuse the same code the API uses (model resolution, settings merge, the download
-  flow, providers, CEP methods), so the terminal and the API behave the same.
 - **Platform Support:** Windows, Linux, macOS. `self update` runs `install.ps1` on Windows and
   `install.sh` elsewhere.
 - **Reusability Level:** Terminal front end of the Engine; nothing here is used by the server.

@@ -1,7 +1,7 @@
 <!-- name: engine/runtime
 description: The runtime host: loads, shares and unloads models for chat, ONNX tasks and GGUF speech. -->
 
-# Cluaiz Engine Runtime & Host (`engine/runtime`)
+# Runtime host (`engine/runtime/`)
 
 ![EngineHost loads models into llama.cpp and ONNX Runtime and unloads idle speech and embedding models first when memory is short](../../docs/assets/engine/two-runtimes.png)
 
@@ -10,15 +10,6 @@ Model execution supervisor with separate chat, ONNX-task and GGUF-speech owners.
 ## Speech admission and shared load transitions
 
 ![Requests wait in arrival order and run one at a time; one still waiting after 120 seconds gets HTTP 429](../../docs/assets/api/request-queue.png)
-
-```mermaid
-graph LR
-    R["TTS request"] --> A["One speech lease before reference decoding"]
-    A --> C["Release only the previous TTS backend resident"]
-    C --> L["Shared chat / ONNX / GGUF load transition"]
-    L --> B["Live-memory policy: complete package + workspace estimate"]
-    B --> W["Worker retains lease through cancellation / completion"]
-```
 
 The API uses `SpeechHost` admission for both TTS backends; a request that overlaps a running one waits in line (arrival order, `SpeechHost::acquire`) and gets `speech_busy` only after `QUEUE_WAIT` (120 s). Preparation and backend-release workers keep a cloned lease if their caller disconnects, so prepared speech references do not accumulate behind an unbounded native queue. Chat/STT generation is independent. Only load decisions/allocations share `EngineHost::model_transition`, not all inference.
 

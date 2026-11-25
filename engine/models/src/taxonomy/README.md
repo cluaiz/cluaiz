@@ -1,16 +1,16 @@
 <!-- name: engine/models/src/taxonomy
 description: What kind of model something is, from what it declares, never from its name: slot, variants and capabilities. -->
 
-# Component: `engine/models/src/taxonomy/`
+# Model kind detection (`engine/models/src/taxonomy/`)
 
-## Technical Specification
+What kind of model something is, from what the model declares, never from its name: the slot (chat, ingest,
+embedding, TTS, STT) from its Hugging Face pipeline tag and tags or the tasks in its weights; which files of a
+repository are quantization variants of the same model, shards of one file or companions; and which speech
+family (TTS / STT) a package belongs to. Used by the fetcher (variants, file grouping), the registry (slot of
+an installed model) and the ONNX runtime (family).
 
-- **Purpose:** What kind of model something is, from what the model declares, never from its
-  name: the slot (chat, ingest, embedding, TTS, STT) from its Hugging Face pipeline tag and tags
-  or the tasks in its weights; which files of a repository are quantization variants of the same
-  model, shards of one file or companions; and which speech family (TTS / STT) a package
-  belongs to. Used by the fetcher (variants, file grouping), the registry (slot of an installed
-  model) and the ONNX runtime (family).
+## At a glance
+
 - **Platform Support:** Any (pure functions over strings).
 - **Reusability Level:** The one definition of model kinds and file grouping in
   `cluaiz-models`.

@@ -1,12 +1,13 @@
 <!-- name: terminal
 description: Presentation-only terminal UI library: drawing, input editing, themes and the transcript view; execution stays in the caller. -->
 
-# Component: terminal presentation
+# Terminal UI library (`terminal/`)
 
-## Technical specification
+Presentation-only Rust library for an interactive client. It owns screen drawing, input editing, theme preview
+and a bounded transcript projection. Execution stays in the caller.
 
-- **Purpose:** Presentation-only Rust library for an interactive client. It owns screen drawing,
-  input editing, theme preview and a bounded transcript projection. Execution stays in the caller.
+## At a glance
+
 - **Client:** The existing `cluaiz agent` command supplies real generation/tool events through
   `cmd/src/agent/terminal.rs`. This library remains presentation-only; it does not execute tools.
   Saved sessions and the remaining shared-controller migration are separate work.
@@ -18,17 +19,6 @@ description: Presentation-only terminal UI library: drawing, input editing, them
 ## Architectural flow
 
 ![The terminal screen draws and edits text; the agent runs the model and tools, gets send, stop, approve or exit from the screen and gives back what really happened](../docs/assets/engine/terminal-screen.png)
-
-```mermaid
-flowchart LR
-    Caller["Client supplies metadata and display entries"] --> State["App and bounded transcript"]
-    Input["Crossterm key / paste / resize"] --> Reducer["App.handle"]
-    Reducer --> State
-    Reducer --> Action["Submit / Cancel / Approval / Exit returned to client"]
-    State --> Render["Pure Ratatui rendering"]
-    Render --> Screen["Exclusive Screen guard"]
-    Screen --> Restore["Normal close, error or panic restores terminal modes"]
-```
 
 ## API contract
 

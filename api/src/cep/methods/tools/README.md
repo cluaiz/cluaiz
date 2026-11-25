@@ -1,11 +1,13 @@
 <!-- name: api/src/cep/methods/tools
 description: The CEP methods that control skills, plugins, MCP servers and components on top of the existing tool system. -->
 
-# Component: CEP tool controls
+# CEP tool controls (`api/src/cep/methods/tools/`)
 
-## Technical specification
+P3.6 moves skill/plugin/MCP and component controls to thirteen typed CEP methods. This is an API cutover using
+the existing tool system.
 
-- **Purpose:** P3.6 moves skill/plugin/MCP and component controls to thirteen typed CEP methods. This is an API cutover using the existing tool system.
+## At a glance
+
 - **Entry:** `../tools.rs::register`; the parent registry already includes this group. HTTP, native and MCP frontends share that registry.
 - **Dependencies:** existing `ToolsEngine`, `ToolsInstaller`, tool registry, matcher, cached function discovery, CEP tasks and canonical path resolver.
 - **Ownership:** Wave B owns these adapters. CEP core, the MCP frontend and native ABI remain separate Wave A work.

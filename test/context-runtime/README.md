@@ -1,7 +1,7 @@
 <!-- name: test/context-runtime
 description: A labelled set of 165 user messages for the tool matcher, in English, Hinglish and Devanagari. -->
 
-# Context runtime: routing set
+# Tool routing test set (`test/context-runtime/`)
 
 ![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/cloud/runs and BENCHMARKS.md](../../docs/assets/contributing/test-kinds.png)
 

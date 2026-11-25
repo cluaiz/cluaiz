@@ -1,7 +1,7 @@
 <!-- name: engine/media/src/documents
 description: Document extraction: turns PDF, Office and text files into ordered text parts with their method. -->
 
-# Shared document extraction
+# Document extraction (`engine/media/src/documents/`)
 
 ![One SourceResolver reads a local path, URL or base64 with size limits; shared decoders give images, audio, document text or video frames to the model](../../../../docs/assets/engine/media-sources.png)
 

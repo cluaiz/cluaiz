@@ -1,7 +1,7 @@
 <!-- name: cmd/src
 description: Source map of the cluaiz command-line program: terminal UI for agent sessions, plain output for scripts. -->
 
-# `cmd/src`: the `cluaiz` command-line interface
+# Command-line interface source (`cmd/src/`)
 
 A terminal program: interactive `agent` sessions use a same-tab terminal UI; scripts and `--ui plain`
 retain line-oriented output. No desktop shell or second executable is required. Load and sampling flags use

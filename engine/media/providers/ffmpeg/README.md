@@ -1,11 +1,13 @@
 <!-- name: engine/media/providers/ffmpeg
 description: The optional FFmpeg video decoder provider and how to build it against a staged SDK. -->
 
-# Component: Optional FFmpeg video provider
+# FFmpeg video provider (`engine/media/providers/ffmpeg/`)
 
-## Technical specification
+The single native video demux/frame-decode owner. It emits timestamped RGB frame views to shared media and
+never invokes a model or an external command.
 
-- **Purpose:** the single native video demux/frame-decode owner. It emits timestamped RGB frame views to shared media and never invokes a model or an external command.
+## At a glance
+
 - **Build boundary:** separate `cdylib`, outside the default Cargo workspace. `ffmpeg-next = 8.1.0` uses codec, format and software-scaling features. The main engine has no link-time FFmpeg dependency.
 - **Platform evidence:** real encoded-video/ABI tests on Windows x86_64 and Ubuntu 24.04 x86_64 under WSL. Other targets are unverified.
 - **Reuse:** both inference backends consume the shared core `DecodedImage` representation. A backend still needs an implemented compatible task; video decoding does not implement ONNX generative chat.

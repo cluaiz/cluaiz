@@ -1,15 +1,16 @@
 <!-- name: engine
 description: The compute layer: settings, hardware, model files, placement, media decoding, the llama.cpp and ONNX backends, and the runtime host. -->
 
-# Component: `engine/` (the compute layer)
+# The compute layer (`engine/`)
 
-## Technical specification
+Everything that runs a model: settings and paths (`core`), hardware facts (`hardware`), model files and the
+catalogue (`models`), where a model's layers go (`plan`), decoding of images, audio and documents (`media`),
+the two backends, llama.cpp for GGUF (`llama`) and ONNX Runtime (`onnx`), and the host that loads, shares and
+unloads models (`runtime`). Code above this folder (API, agent, CLI, automation) reaches a model only through
+`engine/runtime`.
 
-- **Purpose:** everything that runs a model: settings and paths (`core`), hardware facts (`hardware`),
-  model files and the catalogue (`models`), where a model's layers go (`plan`), decoding of images,
-  audio and documents (`media`), the two backends, llama.cpp for GGUF (`llama`) and ONNX Runtime
-  (`onnx`), and the host that loads, shares and unloads models (`runtime`). Code above this folder
-  (API, agent, CLI, automation) reaches a model only through `engine/runtime`.
+## At a glance
+
 - **Platform support:** Windows, Linux, macOS. GPU backends: CUDA and Vulkan on Windows and Linux,
   Metal on macOS (llama.cpp build features `GGML_CUDA` / `GGML_VULKAN` / `GGML_METAL`,
   `llama/build.rs`); for ONNX Runtime, DirectML on Windows and CUDA when cuDNN is present
@@ -20,7 +21,6 @@ description: The compute layer: settings, hardware, model files, placement, medi
 ## How the crates depend on each other
 
 ![The Engine in four layers: api, cmd and automation on top; runtime and agents; plan, llama, onnx and media; models, hardware and core at the bottom. A crate depends only on crates below it](../docs/assets/engine/crate-layers.png)
-
 
 Taken from each crate's `Cargo.toml` on 2026-11-21. An arrow means "depends on".
 
@@ -58,23 +58,6 @@ rules); `hardware` only on `core`; nothing inside `engine/` depends on `api`, `a
 ## One chat request through the engine
 
 ![One chat request: api, runtime ensure_loaded, hardware free memory, plan, llama load, stream, answer with timings](../docs/assets/engine/chat-request.png)
-
-
-```mermaid
-sequenceDiagram
-    participant API as api (chat handler)
-    participant RT as runtime (host)
-    participant PL as plan
-    participant HW as hardware
-    participant LL as llama
-    API->>RT: ensure_loaded(model, path, settings)
-    RT->>HW: with_live_memory()
-    RT->>PL: plan(GGUF header, free RAM/VRAM, settings)
-    PL-->>RT: GPU layers, context size, KV type
-    RT->>LL: load with the plan (llama.cpp)
-    API->>LL: stream(prompt, sampling, thinking budget)
-    LL-->>API: tokens (callback), then timings and reports
-```
 
 Details of each step: [`runtime/README.md`](runtime/README.md), [`plan/README.md`](plan/README.md),
 [`llama/README.md`](llama/README.md).

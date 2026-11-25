@@ -1,17 +1,17 @@
 <!-- name: agents/src/registry
 description: The list of installed tools and their switches (tools_registry.json), kept in line with disk, and the rule for when a tool call needs approval. -->
 
-# Component: `agents/src/registry/`
+# Installed tools registry (`agents/src/registry/`)
+
+The list of installed tools (skills, plugins, MCP servers) and each one's switches:
+`~/.cluaiz/config/tools_registry.json` (or `<CLUAIZ_HOME>/config/`), kept in RAM, brought in line with the
+tool folders on disk, and the rule that decides whether a call of a tool needs the user's approval. Tool
+search, the prompt compiler, the agent, the API chat, the installer and the CEP `tools.*` methods all read it.
 
 ![Installing a tool: the request, a plan, questions the user's mode leaves open, fetch, stage and place with checked paths, then permissions](../../../docs/assets/engine/tool-install.png)
 
-## Technical Specification
+## At a glance
 
-- **Purpose:** The list of installed tools (skills, plugins, MCP servers) and each one's
-  switches: `~/.cluaiz/config/tools_registry.json` (or `<CLUAIZ_HOME>/config/`), kept in RAM,
-  brought in line with the tool folders on disk, and the rule that decides whether a call of a
-  tool needs the user's approval. Tool search, the prompt compiler, the agent, the API chat, the
-  installer and the CEP `tools.*` methods all read it.
 - **Platform Support:** Windows, Linux, macOS (JSON file and folder scan).
 - **Reusability Level:** The one record of installed tools inside `cluaiz-agents`.
 

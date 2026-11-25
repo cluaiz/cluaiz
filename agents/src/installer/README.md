@@ -1,19 +1,19 @@
 <!-- name: agents/src/installer
 description: Installing, updating and removing tools from the Cluaiz Tools registry: the plan, safe fetch and unpack, placement with rollback, permission answers. -->
 
-# Component: `agents/src/installer/`
+# Installing tools (`agents/src/installer/`)
+
+Installing tools (skills, plugins, MCP servers) from the Cluaiz Tools registry: the plan before anything is
+downloaded (the tool, its dependencies and the permissions each asks for, decided by the user's agent mode),
+fetching and unpacking packages safely, putting them in place with a way back, recording the permission
+answers, removing tools and clearing their caches, and preparing a tool's runtime (a Python virtual
+environment, npm packages). `cluaiz <type> install|remove|cache`, CEP `tools.install` / `tools.remove` /
+`tools.clear_cache` and the agent use it.
 
 ![Installing a tool: the request, a plan, questions the user's mode leaves open, fetch, stage and place with checked paths, then permissions](../../../docs/assets/engine/tool-install.png)
 
-## Technical Specification
+## At a glance
 
-- **Purpose:** Installing tools (skills, plugins, MCP servers) from the Cluaiz Tools registry:
-  the plan before anything is downloaded (the tool, its dependencies and the permissions each
-  asks for, decided by the user's agent mode), fetching and unpacking packages safely, putting
-  them in place with a way back, recording the permission answers, removing tools and clearing
-  their caches, and preparing a tool's runtime (a Python virtual environment, npm packages).
-  `cluaiz <type> install|remove|cache`, CEP `tools.install` / `tools.remove` /
-  `tools.clear_cache` and the agent use it.
 - **Platform Support:** Windows, Linux, macOS. A plugin's native binary is `.dll`, `.so` or
   `.dylib` by OS; WebAssembly plugins are `.wasm` everywhere.
 - **Reusability Level:** Internal to `cluaiz-agents`.

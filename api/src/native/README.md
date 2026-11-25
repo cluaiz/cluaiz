@@ -1,7 +1,7 @@
 <!-- name: api/src/native
 description: Serving the API over a local Windows named pipe or Unix socket instead of TCP. -->
 
-# Local native API transport
+# Local pipe and socket transport (`api/src/native/`)
 
 `NativeListener` binds one caller-provided Windows named pipe or Unix socket.
 It carries HTTP/1 request, response and streaming frames through Hyper and then

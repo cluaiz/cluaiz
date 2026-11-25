@@ -1,18 +1,18 @@
 <!-- name: engine/models/src/registry
 description: Which models are installed and where: model_registry.json, the vault folders and model slots. -->
 
-# Component: `engine/models/src/registry/`
+# Installed models registry (`engine/models/src/registry/`)
+
+Which models exist and where: the **installed state** (`<CLUAIZ_HOME>/config/model_registry.json`, one entry
+per installed model with its folder, files, slot and capabilities), the **vault** (one folder per model
+category under `<CLUAIZ_HOME>/models/`), the **roster** (installed models plus the Cluaiz model library
+templates, used to resolve short ids), discovery of model folders copied in by hand, and a RAM/VRAM health
+check for recommendations.
 
 ![cluaiz pull ends by writing the installed ID to model_registry.json, which cluaiz list shows](../../../../docs/assets/get-started/model-download.png)
 
-## Technical Specification
+## At a glance
 
-- **Purpose:** Which models exist and where: the **installed state**
-  (`<CLUAIZ_HOME>/config/model_registry.json`, one entry per installed model with its folder,
-  files, slot and capabilities), the **vault** (one folder per model category under
-  `<CLUAIZ_HOME>/models/`), the **roster** (installed models plus the Cluaiz model library
-  templates, used to resolve short ids), discovery of model folders copied in by hand, and a
-  RAM/VRAM health check for recommendations.
 - **Platform Support:** Windows, Linux, macOS (JSON files and folder scans).
 - **Reusability Level:** The one record of installed models: the CLI (`list`, `show`,
   `rm`, `run`), the API (`/v1/models`, a request's `model`), CEP `models.*` and the planner read it.

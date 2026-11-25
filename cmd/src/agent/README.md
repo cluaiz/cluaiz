@@ -1,7 +1,7 @@
 <!-- name: cmd/src/agent
 description: The terminal agent front end: six file and command tools and the loop that generates until the model answers without a call. -->
 
-# Component: terminal agent frontend
+# Terminal agent (`cmd/src/agent/`)
 
 ![One agent turn: the message, tool search, schemas, the model, and for each tool call the approval, the run and the result going back to the model](../../../docs/assets/engine/agent-turn.png)
 

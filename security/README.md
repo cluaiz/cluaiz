@@ -1,14 +1,14 @@
 <!-- name: security
 description: The data side of security: permission.json (listen address, API keys, approval and sandbox modes) and the CEP audit log. -->
 
-# Component: `security/` (crate `cluaiz-security`)
+# Security settings (`security/`, crate `cluaiz-security`)
 
-## Technical specification
+The data side of security. It owns `permission.json` (what the server listens on, API keys, the agent's
+approval mode, the OS sandbox mode, the `system.exec` policy, the active model slots) and the CEP audit log
+file. It enforces nothing itself: each check runs where the call is made, and reads its setting from here.
 
-- **Purpose:** the data side of security. It owns `permission.json` (what the server listens on, API
-  keys, the agent's approval mode, the OS sandbox mode, the `system.exec` policy, the active model
-  slots) and the CEP audit log file. It enforces nothing itself: each check runs where the call is
-  made, and reads its setting from here.
+## At a glance
+
 - **Platform support:** all (plain files under the selected home; no OS calls).
 - **Reusability level:** shared data crate. Read by `api`, `agents`, `cmd` and `automation`.
 - **Dependencies:** `cluaiz-core` (`EnvironmentManager`: where the home and `config/` are),
@@ -18,26 +18,6 @@ description: The data side of security: permission.json (listen address, API key
 ## Architectural flow
 
 ![permission.json has the file and a server copy loaded at boot; the CLI writes only the file, CEP writes both](../docs/assets/engine/permission-copies.png)
-
-
-```mermaid
-graph LR
-    subgraph security["security/ (this crate)"]
-        PS["permission_schema.rs<br/>PermissionSchema"]
-        AF["audit.rs<br/>AuditFile"]
-    end
-    File["&lt;home&gt;/config/permission.json"] -->|"load(): read on every call"| PS
-    PS -->|"save()"| File
-    PS --> Auth["api/src/auth.rs<br/>bearer token check"]
-    PS --> Mode["agents + api/handlers/chat/authorize.rs<br/>approval mode"]
-    PS --> Box["agents/src/execution/os_sandbox.rs<br/>os_sandbox"]
-    PS --> Exec["api/src/cep/methods/system_exec.rs<br/>exec policy"]
-    PS --> Bind["api/src/lib.rs<br/>host, port, lazy load"]
-    Cfg["CEP config.set (section engine)"] -->|"merge_patch()"| PS
-    Disp["cep/src/dispatch.rs<br/>every non-read call and every denial"] -->|"Audit::record"| AF
-    AF --> Log["&lt;home&gt;/cep-audit.jsonl<br/>(+ .1 .2 .3)"]
-    Log -->|"recent()"| Read["CEP system.audit"]
-```
 
 Two copies of the settings exist at run time:
 

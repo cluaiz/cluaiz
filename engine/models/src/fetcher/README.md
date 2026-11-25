@@ -1,16 +1,17 @@
 <!-- name: engine/models/src/fetcher
 description: From a model name to a registered model on disk: id parsing, which files belong to a variant, download and checks. -->
 
-# Component: `engine/models/src/fetcher/`
+# Model download (`engine/models/src/fetcher/`)
 
-## Technical Specification
+Everything between "a model name" and "a registered model on disk": what a model id means (a catalog id, a
+Hugging Face repo, `hf://`, a URL, with an optional `:QUANT`), which files of the repository belong to the
+chosen variant (shards, projector, tokenizer, ONNX companions), downloading them resumably, and registering
+the model only when its primary weight file and required assets are there. `cluaiz pull` / `cluaiz run`, the
+API's `/api/pull` and CEP `models.download` / `models.discard` all use it, so a model resolves the same
+everywhere.
 
-- **Purpose:** Everything between "a model name" and "a registered model on disk": what a model
-  id means (a catalog id, a Hugging Face repo, `hf://`, a URL, with an optional `:QUANT`), which
-  files of the repository belong to the chosen variant (shards, projector, tokenizer, ONNX
-  companions), downloading them resumably, and registering the model only when its primary weight
-  file and required assets are there. `cluaiz pull` / `cluaiz run`, the API's `/api/pull` and
-  CEP `models.download` / `models.discard` all use it, so a model resolves the same everywhere.
+## At a glance
+
 - **Platform Support:** Windows, Linux, macOS. Network: the Cluaiz catalog and Hugging Face over
   HTTPS (`reqwest`).
 - **Reusability Level:** Public module of `cluaiz-models` (`cluaiz_models::fetcher`).
@@ -20,28 +21,6 @@ description: From a model name to a registered model on disk: id parsing, which 
 ## Architectural Flow
 
 ![cluaiz pull: resolve the model id to a repository and variant, plan the files, download with resume, check the package, write the installed ID to the registry; cluaiz list shows that ID](../../../../docs/assets/get-started/model-download.png)
-
-```mermaid
-flowchart TD
-    ID["model id<br/>qwen3 · owner/repo · hf:// · URL · :Q4_K_M"]
-    RES["resolve.rs · resolve()<br/>ResolveUi shows steps, makes choices"]
-    CAT["client.rs<br/>online catalog: short id → HF repo"]
-    HF["hf_hub.rs<br/>repo tree, variants, shards, metadata"]
-    BUNDLE["asset_bundler.rs · package_bundler.rs<br/>companion files, multi-graph packages"]
-    PLAN["DownloadPlan<br/>manifest + files"]
-    INST["mod.rs · ModelDownloader::install"]
-    DL["downloader.rs · FileDownloader<br/>&lt;name&gt;.part, Range resume"]
-    HEAL["auto_heal.rs<br/>missing config / tokenizer"]
-    CHECK["validate_package<br/>primary file + ONNX assets"]
-    REG["model_registry.json<br/>(registry/)"]
-
-    ID --> RES
-    RES -->|"short id not known here"| CAT --> RES
-    RES --> HF --> BUNDLE --> PLAN
-    PLAN --> INST --> DL
-    INST --> HEAL
-    INST --> CHECK -->|"ready"| REG
-```
 
 ## API Contract (Interface)
 

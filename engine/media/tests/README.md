@@ -1,7 +1,7 @@
 <!-- name: engine/media/tests
 description: Acceptance tests of document, Office and audio decoding with real small files. -->
 
-# Shared media acceptance
+# Media acceptance tests (`engine/media/tests/`)
 
 `documents.rs` exercises real small PDF and OOXML DOCX packages. `support/mod.rs` owns document builders used directly by these tests and the API document tests; it is not compiled into production libraries or CLI binaries.
 

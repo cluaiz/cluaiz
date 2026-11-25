@@ -1,10 +1,13 @@
 <!-- name: engine/llama/src/native/data
 description: Language alias data for the native speech input adapter; not a list of supported models. -->
 
-# Component: Native speech policy data
+# Speech language data (`engine/llama/src/native/data/`)
 
-## Technical Specification
-- **Purpose:** ISO language aliases for the native speech input adapter and regression inputs. This data is not an advertised model-support list.
+ISO language aliases for the native speech input adapter and regression inputs. This data is not an advertised
+model-support list.
+
+## At a glance
+
 - **Platform Support:** Embedded JSON, platform neutral; native acceptance depends on the compiled backend and model.
 - **Reusability Level:** Private to the native speech wrapper.
 

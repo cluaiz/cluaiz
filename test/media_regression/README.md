@@ -1,13 +1,15 @@
 <!-- name: test/media_regression
 description: Attachment API acceptance through a real CLI executable in a private home. -->
 
-# Component: Media release acceptance
+# Media release acceptance (`test/media_regression/`)
+
+Exercise attachment APIs through an actual separately supplied CLI executable. This complements library and
+in-process router tests; it does not replace App or installer acceptance.
 
 ![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/cloud/runs and BENCHMARKS.md](../../docs/assets/contributing/test-kinds.png)
 
-## Technical specification
+## At a glance
 
-- **Purpose:** exercise attachment APIs through an actual separately supplied CLI executable. This complements library and in-process router tests; it does not replace App or installer acceptance.
 - **Selected-model proof:** `processing_acceptance.rs` (a module of `artifact_acceptance.rs`) runs the real executable in a private home and checks the model it selected, without changing its planner.
 - **Owner:** `artifact_acceptance.rs` is registered as the `artifact_acceptance` integration target in `api/Cargo.toml`. It adds no production command or startup dependency.
 - **Platform:** the process launcher suppresses a background console on Windows. Runtime model/provider compatibility still depends on the supplied executable/package; results apply only to the actual target exercised.

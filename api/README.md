@@ -1,7 +1,7 @@
 <!-- name: api
 description: The Engine's HTTP and SSE server (Axum): routes, auth, CEP, providers, and the optional local pipe or socket transport. -->
 
-# Cluaiz API Gateway (`api/`)
+# HTTP API server (`api/`)
 
 Direct Axum HTTP and Server-Sent Events (SSE) server for Cluaiz.
 
@@ -15,24 +15,6 @@ per-extension authorization boundary.
 ## Route map (`src/routes.rs`, 2026-11-21)
 
 ![HTTP routes: chat, models, embeddings and audio routes, and /v1/cep and /mcp for every Engine-specific method, behind the bearer-token check; /health stays open](../docs/assets/api/route-map.png)
-
-
-```mermaid
-graph LR
-    C["Client"] --> R["routes.rs<br/>auth middleware (api/src/auth.rs)"]
-    R --> H["/health (no key)"]
-    R --> OAI["/v1/chat/completions<br/>handlers/chat"]
-    R --> OLL["/api/chat, /api/generate, /api/embed<br/>handlers/ollama.rs"] --> OAI
-    R --> M["/v1/models, /api/tags, /api/show, /api/pull<br/>handlers/models.rs"]
-    R --> E["/v1/embeddings"]
-    R --> A["/v1/audio/speech, /v1/audio/transcriptions"]
-    R --> I["/v1/ingest<br/>handlers/ingest"]
-    R --> CEP["/v1/cep, /mcp<br/>src/cep (every Engine-specific method)"]
-    OAI --> RT["cluaiz-runtime (EngineHost)"]
-    E --> RT
-    A --> RT
-    CEP --> RT
-```
 
 New Engine features are CEP methods, not new HTTP routes; the HTTP routes are OpenAI's (chat,
 models, embeddings, audio), Ollama's (`/api/chat`, `/api/generate`, `/api/embed`, `/api/ps`, `/api/tags`,

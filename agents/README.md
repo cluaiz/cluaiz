@@ -1,15 +1,15 @@
 <!-- name: agents
 description: The cluaiz-agents crate: installed tools and their registry, permissions, tool matching, one agent turn for every front end, command execution, chat memory and project agent files. -->
 
-# Component: `agents/` (crate `cluaiz-agents`)
+# Tools and agent loop (`agents/`, crate `cluaiz-agents`)
 
-## Technical specification
+Everything around tools and the agent loop that does not run a model: the installed tools (skills, plugins,
+MCP servers) and their registry, install plans and permissions, matching a message to tools, the function
+schemas the model sees, one agent turn for every front end, command execution with approval policy and OS
+confinement, chat memory and notes, and a project's agent files (`AGENTS.md`, `.agents/`).
 
-- **Purpose:** everything around tools and the agent loop that does not run a model: the installed
-  tools (skills, plugins, MCP servers) and their registry, install plans and permissions, matching a
-  message to tools, the function schemas the model sees, one agent turn for every front end, command
-  execution with approval policy and OS confinement, chat memory and notes, and a project's agent
-  files (`AGENTS.md`, `.agents/`).
+## At a glance
+
 - **Platform support:** Windows, Linux, macOS. OS confinement per platform: see
   [`src/execution/README.md`](src/execution/README.md).
 - **Used by:** `api` (26 files import it), `cmd` (12), `automation` (2), counted 2026-11-21.
@@ -21,30 +21,6 @@ description: The cluaiz-agents crate: installed tools and their registry, permis
 ## Architectural flow: one agent turn
 
 ![One agent turn: message, tool search, schemas, model; approval, run in the OS sandbox, results back to the model](../docs/assets/engine/agent-turn.png)
-
-
-```mermaid
-sequenceDiagram
-    participant FE as Front end (api chat / cmd agent)
-    participant T as turn.rs (run)
-    participant TS as tool_search.rs
-    participant PC as prompt_compiler.rs
-    participant M as Model (through the Agent trait)
-    participant X as Tool runners (skills, plugins, MCP, commands)
-    FE->>TS: message
-    TS-->>FE: matching tools (cards / titles)
-    FE->>PC: loaded tools
-    PC-->>FE: function schemas within a size budget
-    FE->>T: run(agent, max_steps)
-    loop until an answer without calls, a stop or the step limit
-        T->>M: conversation + schemas
-        M-->>T: answer and/or tool calls
-        T->>FE: approve? (policy: agent_security_mode, tool permissions, chat grants)
-        T->>X: run approved calls (OS sandbox where enabled)
-        X-->>T: results join the conversation
-    end
-    T-->>FE: final answer, or a call the client runs itself
-```
 
 An answer the loop cannot use (a call it cannot read, or only thinking) is not run: the model is told
 what was wrong and answers again, at most `MOST_CORRECTIONS` (2) times in a row (`src/turn.rs:129`).

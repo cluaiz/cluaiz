@@ -1,18 +1,18 @@
 <!-- name: api/src/providers
 description: Every call to a model provider in providers.json: request format, signing, reading the streamed answer back, and errors. -->
 
-# Component: `api/src/providers/`
+# Model providers (`api/src/providers/`)
 
-## Technical Specification
+Every call the Engine makes to a model provider listed in `config/providers.json` (OpenAI-compatible services,
+Claude, Gemini, Vertex AI, Amazon Bedrock, Azure, NVIDIA, OpenRouter, a local server). It writes the Engine's
+conversation in the provider's format, signs the request the way the provider takes a key, reads the streamed
+answer back into the Engine's own form (thinking apart, calls as `<tool_call>` blocks), and turns failures
+into plain messages and retries. The server's chat (`/v1/chat/completions`), the terminal
+(`cmd/src/chat/provider.rs`, `cluaiz agent`), the CEP `providers.*` methods and the media routes all go
+through this folder, so they send and read the same.
 
-- **Purpose:** Every call the Engine makes to a model provider listed in `config/providers.json`
-  (OpenAI-compatible services, Claude, Gemini, Vertex AI, Amazon Bedrock, Azure, NVIDIA,
-  OpenRouter, a local server). It writes the Engine's conversation in the provider's format,
-  signs the request the way the provider takes a key, reads the streamed answer back into the
-  Engine's own form (thinking apart, calls as `<tool_call>` blocks), and turns failures into
-  plain messages and retries. The server's chat (`/v1/chat/completions`), the terminal
-  (`cmd/src/chat/provider.rs`, `cluaiz agent`), the CEP `providers.*` methods and the media
-  routes all go through this folder, so they send and read the same.
+## At a glance
+
 - **Platform Support:** Windows, Linux, macOS. Network only (`reqwest` with rustls). Sign-ins
   that call a CLI (`gcloud`, `aws`, `az`) need that CLI installed.
 - **Reusability Level:** Shared gateway inside `cluaiz-api`; the public items are re-exported
@@ -22,35 +22,6 @@ description: Every call to a model provider in providers.json: request format, s
 ## Architectural Flow
 
 ![A chat to a cloud provider: the model name picks the provider, its differences shape the body, the reply stream is decoded into the same blocks as an installed model](../../../docs/assets/engine/provider-call.png)
-
-```mermaid
-flowchart TD
-    CALLER["Caller<br/>/v1/chat/completions · cluaiz run/agent · providers.* · /v1/embeddings · /v1/audio/*"]
-    TARGET["mod.rs<br/>target_for_model: provider/model, or the default chat model"]
-    COMPAT["compat.rs<br/>Compat::of: differences told from the URL, providers.json overrides"]
-    HIST["history.rs<br/>conversation → provider messages"]
-    REQ["request.rs<br/>chat_body: samplers, limit, thinking, tools"]
-    ANTH["anthropic.rs<br/>Messages format (Claude)"]
-    OPEN["chat.rs · open()<br/>send, retry, shrink, leave a field out"]
-    HTTP["http.rs<br/>client + auth"]
-    AUTH["google.rs · aws.rs · azure.rs<br/>sign-ins without a key"]
-    PROV["Provider API"]
-    ERR["errors.rs · retry.rs<br/>kind of failure, wait"]
-    STREAM["stream.rs · Decoder<br/>thinking, text, calls, usage"]
-    OUT["Engine tokens<br/>&lt;think&gt; … &lt;/think&gt;, &lt;tool_call&gt; blocks"]
-    MEDIA["media/<br/>embeddings · speech · transcription"]
-
-    CALLER --> TARGET --> COMPAT
-    COMPAT --> HIST --> REQ
-    REQ --> ANTH
-    REQ --> OPEN
-    ANTH --> OPEN
-    OPEN --> HTTP --> PROV
-    HTTP --> AUTH
-    PROV -->|"non-2xx"| ERR -->|"wait / change body"| OPEN
-    PROV -->|"SSE"| STREAM --> OUT
-    CALLER -->|"embeddings, audio"| MEDIA --> HTTP
-```
 
 ## API Contract (Interface)
 

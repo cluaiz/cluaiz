@@ -1,7 +1,7 @@
 <!-- name: .github/workflows
 description: The CI and release workflows: what each one builds, tests and publishes. -->
 
-# cluaiz: CI/CD & RELEASE ARCHITECTURE
+# CI and release workflows (`.github/workflows/`)
 
 ![The release ships a core and GPU packs; the installer adds one pack chosen from the GPU: CUDA 13 or 12, Vulkan, Metal in the macOS core, or CPU only](../../docs/assets/get-started/install-packs.png)
 
@@ -9,7 +9,7 @@ This document is the entry point for the CI/CD pipeline. The full job list, file
 
 ---
 
-## 1. CORE + GPU DRIVERS
+## 1. Core and GPU drivers
 
 A release is one **core** per platform plus optional **GPU drivers**, the layout llama.cpp itself ships:
 
@@ -23,7 +23,7 @@ The display driver of the GPU itself is never shipped: it comes from NVIDIA, AMD
 
 ---
 
-## 2. ONE RELEASE PAGE: `release.yml`
+## 2. One release page: `release.yml`
 
 - **Only by hand**: pushes and pull requests never start a build.
 - **Run workflow** (manual, a version that equals `[workspace.package] version` in `Cargo.toml`; a first job checks it) builds the core for every platform, runs the smoke test (no GPU, fresh home, pull + answer), calls `cluaize-llama-driver.yml` and `cluaize-onnx-driver.yml` and publishes everything on one GitHub release `v<version>` with `SHA256SUMS.txt`. Each driver workflow can also be run alone to build its drivers without a release.
@@ -37,7 +37,7 @@ The older split workflows (`cluaize-cmd`, `-engine`, `-kernel-*`, `publish-regis
 
 ---
 
-## 3. RELEASE NOTES
+## 3. Release notes
 
 The release page text comes from `.github/release-notes.md` (install commands and which file each machine needs). Release Drafter was removed: it ran on every push but builds its changelog only from pull requests, which this repository does not use.
 

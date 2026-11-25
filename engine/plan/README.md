@@ -1,7 +1,7 @@
 <!-- name: engine/plan
 description: The load planner: decides where a model's layers, KV cache and experts go (GPU, CPU, disk) before loading. -->
 
-# Cluaiz Execution Planner (`engine/plan`)
+# Load planner (`engine/plan/`)
 
 Pure mathematical negotiation and placement engine for Cluaiz.
 

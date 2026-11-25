@@ -1,17 +1,19 @@
 <!-- name: engine/onnx/src/audio
 description: ONNX speech to text and text to speech: model families, required files and voices. -->
 
-# Component: Cluaiz ONNX Audio & TTS Subsystem (`src/audio/`)
+# ONNX speech (`engine/onnx/src/audio/`)
+
+ONNX STT model preprocessing/graphs and multi-family TTS orchestration. Input source reading, codec decoding
+and PCM preparation are shared through cluaiz-media.
 
 ![Text goes through reading preparation and a TTS family adapter (Kokoro, Piper, Supertonic, Chatterbox, CosyVoice, Matcha, OmniVoice) to a WAV; audio is decoded and prepared for Whisper](../../../../docs/assets/engine/speech-pipeline.png)
 
-## Technical Specification
-- **Purpose:** ONNX STT model preprocessing/graphs and multi-family TTS orchestration. Input source reading, codec decoding and PCM preparation are shared through cluaiz-media.
+## At a glance
+
 - **Platform Support:** Linux x86_64, macOS ARM64, Windows x86_64, Android AArch64.
 - **Reusability Level:** Backend-owned model processing; common audio preparation is imported directly from cluaiz-media.
 
 Audio8 required asset paths come from `cluaiz-core::model_assets`, shared with discovery/installation. The backend keeps numerical layout/dimension checks, actual graph sessions, voice conditioning and sampling. Prompt/sampler data remains in its backend protocol JSON; generator/decoder/tokenizer filenames have one shared owner.
-
 ---
 
 ## Architectural Flow

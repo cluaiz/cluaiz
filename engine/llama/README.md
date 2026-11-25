@@ -1,7 +1,7 @@
 <!-- name: engine/llama
 description: The Rust layer over the llama.cpp fork: GGUF chat, embeddings, speech, tools and grammar, and the fork's patches. -->
 
-# Cluaiz Llama Engine (`engine/llama`)
+# llama.cpp backend (`engine/llama/`)
 
 Direct Rust API wrapping custom `llama.cpp` C/C++ memory. Compiled as an `rlib` to eliminate dual-static memory copies between Exe and DLL.
 
@@ -220,17 +220,6 @@ graph LR
 The opt-in `speech_stream` integration test accepts `CLUAIZ_TTS_TEST_THREADS` (integer, default 2) and `CLUAIZ_TTS_TEST_GPU` (boolean, default false) alongside its externally supplied model, projector, text and output paths. It prints native load time and first-utterance synthesis time separately. These controls belong to the test harness; they do not change production placement or establish real-time audio quality.
 
 ## Native reasoning control
-
-```mermaid
-graph LR
-    Request["Request-owned skip flag"] --> Session["Serialized NativeSession"]
-    Session --> Poll["Generation checks before sampling"]
-    Poll --> Gate["Upstream reasoning-budget sampler"]
-    Gate --> Chain["Existing user sampler chain"]
-    Chain --> Decode["Real tokens accepted and decoded"]
-    Decode --> End["Actual template end marker"]
-    End --> Answer["Same stream continues with answer"]
-```
 
 - **Tags and budget:** actual template/model tags and the existing context-aware token budget configure the upstream sampler. A prompt already inside reasoning starts counting immediately; otherwise the gate waits for a real start sequence. No model-name rules or fixed reasoning tags are used.
 - **Ownership:** `SafeSampler` owns a composed chain: the reasoning gate precedes the existing already-prefilled user chain. The borrowed `ReasoningHandle` is used only on that generation thread while the root lives. Root destruction frees both samplers once. Initialization errors leave the old chain with its caller.

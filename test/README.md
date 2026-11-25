@@ -1,14 +1,15 @@
 <!-- name: test
 description: Tests that need a whole Engine, a real model or a real machine, and where the unit tests live. -->
 
-# Component: `test/` (tests against a running Engine, and recorded machine runs)
+# Tests against a running Engine (`test/`)
 
-## Technical specification
+The tests that need a whole Engine, a real model or a real machine. Unit and contract tests that `cargo test`
+runs live next to the code, in each crate's `src/` and `tests/` (counts below). This folder holds what `cargo
+test` cannot do: journeys against a started server, scripts for cloud VMs, Mac and CPU-only PCs, and the
+record of every run.
 
-- **Purpose:** the tests that need a whole Engine, a real model or a real machine. Unit and contract
-  tests that `cargo test` runs live next to the code, in each crate's `src/` and `tests/` (counts
-  below). This folder holds what `cargo test` cannot do: journeys against a started server, scripts
-  for cloud VMs, Mac and CPU-only PCs, and the record of every run.
+## At a glance
+
 - **Platform support:** Python 3 scripts (any OS), PowerShell scripts (Windows), Bash scripts (Linux,
   macOS, Git Bash), two small Rust programs.
 - **Safety rule for every script here:** run it against an isolated home (`CLUAIZ_HOME=<temp folder>`)
@@ -18,26 +19,6 @@ description: Tests that need a whole Engine, a real model or a real machine, and
 ## Two kinds of tests in this repository
 
 ![Two kinds of tests: cargo test next to the code, and the test folder with journeys against a started server; recorded runs go to test/cloud/runs](../docs/assets/contributing/test-kinds.png)
-
-
-```mermaid
-graph TD
-    subgraph cargo["cargo test (next to the code)"]
-        U["Unit tests: src/**, #[test]"]
-        C["Contract tests: &lt;crate&gt;/tests/*.rs<br/>(api starts an in-process server)"]
-    end
-    subgraph live["test/ (this folder)"]
-        J["Journeys: Python scripts that start<br/>cluaiz serve on an isolated home"]
-        R["Regression: every installed model x placement,<br/>compared with official llama-bench"]
-        M["Machine scripts: Mac, CPU-only PC, cloud VMs"]
-        Rec["Records: test/cloud/runs/&lt;date&gt;-runN-*/<br/>+ test/cloud/BENCHMARKS.md"]
-    end
-    U --> Dev["developer before a commit"]
-    C --> Dev
-    J --> Rec
-    R --> Rec
-    M --> Rec
-```
 
 `.github/workflows/rust-tests.yml` (added 2026-11-21) runs `cargo test` on every push for the crates that
 build without llama.cpp or ONNX Runtime (core, hw, models, plan, context, security, media, automation, cep),

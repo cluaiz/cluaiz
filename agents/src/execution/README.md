@@ -1,17 +1,17 @@
 <!-- name: agents/src/execution
 description: Running programs for the agent and tools: the command safety check, timeouts and process-tree kill, PTY, skill scripts and each program's environment. -->
 
-# Component: `agents/src/execution/`
+# Running commands and tool programs (`agents/src/execution/`)
 
-## Technical Specification
+Running programs on the host for the agent and for tools: the safety check of a command line before it runs
+(`ExecutionPolicy`), the process itself with timeout, cancel, output limits and killing the whole process tree
+(`SandboxTerminalRunner`), an interactive terminal for commands that ask questions (`pty_runner.rs`), a
+skill's script in its declared language (`DeclarativeScriptRunner`), and the environment each program gets
+(`EnvironmentResolver`). The terminal agent's `run_command`, the API chat's command tool, skills' scripts, MCP
+servers and `system.exec` run through here.
 
-- **Purpose:** Running programs on the host for the agent and for tools: the safety check of a
-  command line before it runs (`ExecutionPolicy`), the process itself with timeout, cancel, output
-  limits and killing the whole process tree (`SandboxTerminalRunner`), an interactive terminal for
-  commands that ask questions (`pty_runner.rs`), a skill's script in its declared language
-  (`DeclarativeScriptRunner`), and the environment each program gets (`EnvironmentResolver`).
-  The terminal agent's `run_command`, the API chat's command tool, skills' scripts, MCP servers
-  and `system.exec` run through here.
+## At a glance
+
 - **Platform Support:** Windows (PowerShell, `cmd.exe` when the line starts with it, ConPTY,
   `taskkill /T`), Linux and macOS (`sh -c`, a pty, `kill -9 -<pgid>`).
 - **Reusability Level:** Internal execution backend of `cluaiz-agents`, used by `cmd` and `api`.
@@ -119,7 +119,6 @@ flowchart LR
 ## OS sandbox (`os_sandbox.rs`, 2026-11-20)
 
 ![Approval policy first, then the OS sandbox: the command sees the project folder, not the home folder or secrets](../../../docs/assets/engine/two-walls.png)
-
 
 Every process this crate starts for an agent or a tool goes through `os_sandbox::confine_here`: agent
 commands (`terminal_runner.rs` direct and shell, `pty_runner.rs`), MCP servers (`mcp/client.rs`) and native

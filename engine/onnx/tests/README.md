@@ -1,10 +1,12 @@
 <!-- name: engine/onnx/tests
 description: Opt-in integration test of real ONNX image embedding packages. -->
 
-# Component: ONNX native media acceptance
+# ONNX media tests (`engine/onnx/tests/`)
 
-## Technical Specification
-- **Purpose:** Opt-in real graph/EmbeddingDriver proof with externally supplied read-only image package paths.
+Opt-in real graph/EmbeddingDriver proof with externally supplied read-only image package paths.
+
+## At a glance
+
 - **Platform Support:** The test uses configured CPU ONNX Runtime. A run on one host does not certify other OS/GPU combinations.
 - **Reusability Level:** Integration test only; no diagnostic command is added to production binaries.
 

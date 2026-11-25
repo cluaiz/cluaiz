@@ -1,13 +1,16 @@
 <!-- name: engine/media
 description: Shared media preparation: bounded sources, format detection, image and audio decoding, document text extraction and WAV output. -->
 
-# Component: Cluaiz Media
+# Media preparation (`engine/media/`)
+
+Shared bounded source preparation, extensible format detection, owned temporary assets, image-to-RGB8 and
+audio-to-PCM F32 decoding, and model-independent document text extraction/chunking. Core remains the sole
+owner of decoded-buffer and settings/limit contracts.
 
 ![One SourceResolver reads a local path, URL or base64 with size limits; shared decoders give images, audio, document text or video frames to the model](../../docs/assets/engine/media-sources.png)
 
-## Technical specification
+## At a glance
 
-- **Purpose:** shared bounded source preparation, extensible format detection, owned temporary assets, image-to-RGB8 and audio-to-PCM F32 decoding, and model-independent document text extraction/chunking. Core remains the sole owner of decoded-buffer and settings/limit contracts.
 - **Platform evidence:** unit tests target the available Windows host. Opus decoding uses native libopus through the existing audiopus dependency; its other-platform build/package/runtime behavior remains unverified.
 - **Reuse:** imported directly by API/CLI consumers and either inference backend, without depending on a model registry or inference engine.
 - **Speech output:** `wav::encode_pcm16` writes checked mono PCM16 WAV and rejects invalid samples/rates/RIFF sizes or configured decoded-buffer budgets. ONNX and native GGUF speech share it. Encoding failures propagate to the request.

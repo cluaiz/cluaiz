@@ -1,7 +1,7 @@
 <!-- name: engine/media/tests/fixtures
 description: Tiny synthetic Opus WebM recordings used by the audio decoder tests, and how they were made. -->
 
-# Audio decoder fixtures
+# Audio test files (`engine/media/tests/fixtures/`)
 
 `opus-mono.webm` and `opus-stereo.webm` contain an 80 ms synthetic 440 Hz tone encoded as real Opus in streaming-layout WebM, with unknown segment duration and short clusters. They contain no user recording. The ordinary Rust decoder tests embed these bytes; no encoder, network or model is needed when tests run.
 

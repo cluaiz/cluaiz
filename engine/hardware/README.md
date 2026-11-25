@@ -1,14 +1,14 @@
 <!-- name: engine/hardware
 description: Finds the machine the Engine runs on (CPU, RAM, disks, GPUs) and how much RAM and VRAM is free now. -->
 
-# Component: `engine/hardware/` (crate `cluaiz-hw`)
+# Hardware facts (`engine/hardware/`, crate `cluaiz-hw`)
 
-## Technical specification
+The one place that finds out what machine the Engine runs on (CPU, RAM, disks, GPUs) and how much RAM and VRAM
+is free right now. The load planner (`engine/plan`), the runtime (`engine/runtime`), llama and ONNX sessions,
+the CLI (`cluaiz status`, `show`) and CEP `system.*` read it. It decides nothing itself.
 
-- **Purpose:** the one place that finds out what machine the Engine runs on (CPU, RAM, disks, GPUs)
-  and how much RAM and VRAM is free right now. The load planner (`engine/plan`), the runtime
-  (`engine/runtime`), llama and ONNX sessions, the CLI (`cluaiz status`, `show`) and CEP `system.*`
-  read it. It decides nothing itself.
+## At a glance
+
 - **Platform support:** Windows, Linux, macOS. NVIDIA GPUs through NVML (not on macOS). Other GPUs
   (Metal, Vulkan) come from llama.cpp's backends through a callback (`set_backend_gpus`).
 - **Reusability level:** shared engine utility; no dependency on other engine crates except
@@ -19,25 +19,6 @@ description: Finds the machine the Engine runs on (CPU, RAM, disks, GPUs) and ho
 ## Architectural flow
 
 ![Hardware profile: quick facts at start; unchanged profile reused with free memory measured now; changed or missing profile probed again; free memory measured again before a load](../../docs/assets/engine/hardware-profile.png)
-
-
-```mermaid
-graph TD
-    Caller["Callers: engine/plan, engine/runtime,<br/>llama session, CEP system.*, CLI"] --> Cur["HardwareProber::current()"]
-    Caller --> Live["HardwareProber::with_live_memory()<br/>(planning, load checks)"]
-    Cur --> Mem{"In-process cache<br/>(CACHED_HARDWARE)?"}
-    Mem -->|"yes"| Ret["SystemInfo"]
-    Mem -->|"no"| File{"&lt;home&gt;/config/hardware_profile.json<br/>exists and matches quick facts?"}
-    File -->|"yes"| Fresh["apply_live_memory()<br/>free RAM + free VRAM now"]
-    File -->|"no / changed"| Deep["probe_system()<br/>deep probe, seconds"]
-    Deep --> Save["save_profile()"]
-    Fresh --> Ret
-    Save --> Ret
-    Ret --> Backend{"NVML found no GPU?"}
-    Backend -->|"yes"| BG["BACKEND_GPUS callback<br/>(llama.cpp Metal / Vulkan devices)"]
-    Live --> Snap["live_snapshot(): sysinfo RAM +<br/>NVML free VRAM + used_only_by_cluaiz per NVIDIA GPU"]
-    Cal["cluaiz calibrate"] --> Deep
-```
 
 ### What the quick facts are
 

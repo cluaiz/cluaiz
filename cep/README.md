@@ -20,19 +20,6 @@ the same list as OpenRPC: [`docs/api/cep/openrpc.json`](../docs/api/cep/openrpc.
 
 ![A CEP call: transport, JSON-RPC envelope, registry and schema check, principal scope, method, approval or task, and an audit line for every non-read call and denial](../docs/assets/api/cep-call.png)
 
-```mermaid
-flowchart LR
-    T["Transport: HTTP / pipe / C ABI / MCP"] -->|principal + bytes| D["Engine::call (dispatch.rs)"]
-    D --> E["envelope.rs: parse, batch, _meta"]
-    E --> R["registry.rs: lookup, did_you_mean, typed params"]
-    R --> P["principal.rs: scope / owner check"]
-    P --> M["method fn(ctx, Call, Params)"]
-    M -->|check_path / require_approval| A["approval.rs"]
-    M -->|start_task| K["task.rs"]
-    D --> AU["Audit trait: write/exec/admin calls and denials"]
-    R --> DI["discover.rs: OpenRPC for rpc.discover"]
-```
-
 | File | Owns |
 |---|---|
 | `envelope.rs` | JSON-RPC 2.0 parsing and responses: by-name params only, the `params._meta` split, batch and depth limits |

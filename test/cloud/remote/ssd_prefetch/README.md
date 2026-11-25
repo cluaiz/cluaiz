@@ -1,15 +1,16 @@
 <!-- name: test/cloud/remote/ssd_prefetch
 description: Measures the MoE expert prefetch and forced GPU cache on a model larger than RAM against official llama.cpp. -->
 
-# Component: `test/cloud/remote/ssd_prefetch/` (expert prefetch speed proof, written, not run on the real models)
+# MoE expert prefetch speed test (`test/cloud/remote/ssd_prefetch/`)
 
-## Technical specification
+Measure whether the llama.cpp fork's MoE expert prefetch (`CLUAIZ_EXPERT_PREFETCH`, `engine/llama/README.md`)
+together with the MoE GPU cache forced on (`CLUAIZ_MOE_CACHE=on`, `engine/plan/README.md`) makes generation
+faster for a model larger than RAM, against official ggml-org llama.cpp on the same machine, file and
+placement. Method: section 5 of `.agent/plans/engine/ssd-streaming/01-research-and-architecture.md`
+(git-ignored plan folder).
 
-- **Purpose:** measure whether the llama.cpp fork's MoE expert prefetch (`CLUAIZ_EXPERT_PREFETCH`,
-  `engine/llama/README.md`) together with the MoE GPU cache forced on (`CLUAIZ_MOE_CACHE=on`,
-  `engine/plan/README.md`) makes generation faster for a model larger than RAM, against official
-  ggml-org llama.cpp on the same machine, file and placement. Method: section 5 of
-  `.agent/plans/engine/ssd-streaming/01-research-and-architecture.md` (git-ignored plan folder).
+## At a glance
+
 - **Status:** `run_prefetch.sh` has not been run on its real model. `run_prefetch_laptop.ps1` ran in runs 42
   and 44. `run_case_g.sh` (run 23 case G with the cache and the prefetch; `CONFIGS` picks configurations,
   tables by `summarize_case_g.py`) ran in run 43 (`test/cloud/runs/2026-11-23-run43-l4-case-g-prefetch/`).

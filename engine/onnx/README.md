@@ -1,7 +1,7 @@
 <!-- name: engine/onnx
 description: The ONNX Runtime backend: speech to text, text to speech, vision and embeddings. -->
 
-# Cluaiz ONNX Audio & Multimodal Engine (`engine/onnx`)
+# ONNX Runtime backend (`engine/onnx/`)
 
 ![Text goes through reading preparation and a TTS family adapter (Kokoro, Piper, Supertonic, Chatterbox, CosyVoice, Matcha, OmniVoice) to a WAV; audio is decoded and prepared for Whisper](../../docs/assets/engine/speech-pipeline.png)
 

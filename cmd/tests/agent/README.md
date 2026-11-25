@@ -1,11 +1,12 @@
 <!-- name: cmd/tests/agent
 description: Regression tests of the terminal agent's file, search, edit, command and approval behaviour with temporary files. -->
 
-# Component: agent tool regression tests
+# Terminal agent tool tests (`cmd/tests/agent/`)
 
-## Technical specification
+Exercise actual file/search/edit/command and approval behavior with temporary files.
 
-- **Purpose:** Exercise actual file/search/edit/command and approval behavior with temporary files.
+## At a glance
+
 - **Ownership:** `tools.rs` is included by `cmd/src/agent/tools.rs` only under `cfg(test)` through a
   path module. It is not a second executable, CLI command or production transcript fixture.
 - **Dependencies:** Existing tool executor, tempfile, Tokio and the display permission channel.

@@ -1,7 +1,7 @@
 <!-- name: test/cep/wave_b
 description: Tests of the fs, workspace, system, storage, models and tools CEP methods. -->
 
-# CEP file, system, model and tool tests
+# CEP file, system, model and tool tests (`test/cep/wave_b/`)
 
 ![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/cloud/runs and BENCHMARKS.md](../../../docs/assets/contributing/test-kinds.png)
 

@@ -7,22 +7,6 @@ description: Direct HTTP route handlers: inference, document extraction and comp
 
 This folder holds direct inference, document extraction and compatibility routes. Engine control operations are CEP methods in [`../cep/`](../cep/) (`POST /v1/cep`, `/mcp`, `cep_call`).
 
-```mermaid
-graph LR
-    Client["OpenAI and Ollama clients"] --> Router["routes.rs"]
-    Router --> Chat["chat/: /v1/chat/completions, /api/chat"]
-    Router --> Ingest["ingest/: /v1/ingest"]
-    Ingest --> Emb["embeddings.rs: shared EmbeddingExecutor"]
-    Router --> Emb["embeddings.rs: /v1/embeddings"]
-    Router --> Audio["audio.rs: /v1/audio/speech, /v1/audio/transcriptions"]
-    Router --> Models["models.rs: /v1/models, /api/tags, /api/show, /api/pull"]
-    Router --> Health["health.rs: /health"]
-    Router --> CEP["../cep: /v1/cep, /mcp"]
-    CEP -->|"methods reuse"| Chat
-    CEP -->|"methods reuse"| Audio
-    CEP -->|"methods reuse"| Emb
-```
-
 | File | Routes | Shared with CEP |
 |---|---|---|
 | `ollama.rs` | `/api/chat`, `/api/generate`, `/api/embed`, `/api/ps`, `/api/version` | Ollama's request turned into the OpenAI request of `chat/` or `embeddings.rs`, and the answer turned back: one object, or one JSON object per line when streaming (Ollama's default). Ollama's `keep_alive` number is seconds; it is turned into the Engine's minutes. Unit tests in the file; the Ollama Python library 0.6.1 against it in run 36. `/api/generate` sets `plain_prompt` on the chat request (a field the JSON body cannot set): only the system text and the prompt reach the model template, with no tools, no workspace agent files and no notes, as Ollama's own `GenerateHandler` renders it with an empty tool list (`ollama/server/routes.go`, read 2026-11-24). Its `tools` field is not passed on. `/api/chat` sets `plain_prompt` too (since run 62): the client's messages and the client's own `tools` reach the template and nothing the Engine adds, as Ollama's `ChatHandler` renders the request's messages with `req.Tools` (`ollama/server/routes.go`, commit `b8db8d5`, read 2026-11-24); before, a "hi" took 921 prompt tokens (the Engine's functions, the project's skill index and a `<tools_hint>`), after 13. Why: in run 53 the Engine put about 3,700 tokens of agent files and its tool list in front of "The capital of France is" and the 0.8B model described Cluaiz instead of answering; run 57 has the before/after. Alternative not taken: sending `tool_choice: "none"` and `context_policy.project_files: "off"` from the adapter; notes have no such switch, so a pinned note would still reach a generate request. |

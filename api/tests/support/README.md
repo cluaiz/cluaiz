@@ -1,10 +1,12 @@
 <!-- name: api/tests/support
 description: Test helper: one real authenticated loopback HTTP request shared by acceptance tests. -->
 
-# Component: API acceptance transport support
+# API test transport helper (`api/tests/support/`)
 
-## Technical Specification
-- **Purpose:** One real authenticated loopback HTTP request helper shared by native/audio and embedding acceptance tests.
+One real authenticated loopback HTTP request helper shared by native/audio and embedding acceptance tests.
+
+## At a glance
+
 - **Platform Support:** OS TCP loopback and Tokio/Reqwest; actual model/platform acceptance is defined by each caller.
 - **Reusability Level:** Test-only; not compiled into production API/CLI paths.
 
