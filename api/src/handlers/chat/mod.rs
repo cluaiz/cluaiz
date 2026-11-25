@@ -15,6 +15,7 @@ pub mod non_streaming;
 pub mod preflight;
 mod processing;
 pub(crate) mod project;
+mod tool_budget;
 pub mod tool_parser;
 mod tool_turns;
 mod turn_end;

@@ -868,19 +868,54 @@ impl PreparedChatContext {
         // in the prompt anyway: on a plain message ("tell me a story") a small model took them as
         // all it can do and refused. No words of the message decide it.
         let tool_meta = offer_meta_tools;
+        // A small model (under 2B weights, `tool_budget`): only the client's own tools, the bound
+        // ones and tool search; the Engine's other functions below are left out (run 77)
+        let model_params = if tools_allowed && provider.is_none() && is_gguf {
+            state.host.model_description().await.map(|d| d.n_params)
+        } else {
+            None
+        };
+        let lean_tools = super::tool_budget::lean(&policy.small_model_tools, model_params);
+        let mut left_out: Vec<serde_json::Value> = Vec::new();
         // read_item, when the project has items the system prompt only lists; the memory functions
         // come along with it, as with any tool in the prompt
         let read_item_schema = project.as_ref().filter(|p| tools_allowed && p.has_unread()).and_then(|p| p.workspace.read_item_schema());
+        // What the memory functions would come along with, before a small model leaves read_item out
+        let read_item_wanted = read_item_schema.is_some();
+        let read_item_schema = if lean_tools {
+            left_out.extend(read_item_schema);
+            None
+        } else {
+            read_item_schema
+        };
         let project_read = read_item_schema.is_some();
         if project_read {
             offer_meta_tools = true;
         }
-        let memory_room = tools_allowed && ledger_chat.is_some() && (history_hidden || tool_meta || project_read);
+        let memory_room = tools_allowed && ledger_chat.is_some() && (history_hidden || tool_meta || read_item_wanted);
         // recall / open_memory, also for other chats when cross_chat is not deny
         let memory_tools = memory_room && (history_hidden || policy.cross_chat != "deny");
         // remember, in every chat the Engine keeps when notes are on (without it a model told
         // "remember this" answers "noted" and nothing is kept); the model decides when to call it
         let remember_tool = tools_allowed && ledger_chat.is_some() && policy.notes != "off";
+        let task_tool = open_task.is_some() && ledger_chat.is_some() && tools_allowed;
+        if lean_tools {
+            if memory_tools {
+                left_out.extend(super::recall::memory_schemas());
+            }
+            if remember_tool {
+                left_out.push(super::recall::remember_schema());
+                if policy.notes_change != "off" {
+                    left_out.push(super::recall::forget_schema());
+                }
+            }
+            if task_tool {
+                left_out.push(super::recall::task_schema());
+            }
+        }
+        let memory_tools = memory_tools && !lean_tools;
+        let remember_tool = remember_tool && !lean_tools;
+        let task_tool = task_tool && !lean_tools;
         if memory_tools {
             if hint_lines.is_empty() && history_hidden {
                 hint_lines = format!("{}\n", cluaiz_core::prompts::text("chat.recall_hint"));
@@ -903,7 +938,7 @@ impl PreparedChatContext {
             }
         }
         // task_update while a task is open
-        if open_task.is_some() && ledger_chat.is_some() && tools_allowed {
+        if task_tool {
             meta_schemas.push(super::recall::task_schema());
             offer_meta_tools = true;
             if hint_lines.is_empty() {
@@ -914,7 +949,7 @@ impl PreparedChatContext {
         // Saved flows that fit the message, offered as tools, and the ones offered earlier in this
         // chat (they stay, so the tool list in the prompt stays the same)
         let mut extension_tools = Vec::new();
-        if tools_allowed {
+        if tools_allowed && !lean_tools {
             let earlier = ledger.as_ref().map(|saved| saved.offered_flows.clone()).unwrap_or_default();
             let (offered, schemas) = super::flows::offer(state, &initial_user_query, previous_user_query.as_deref(), &earlier).await;
             if !offered.is_empty() {
@@ -1053,6 +1088,15 @@ impl PreparedChatContext {
                 });
             }
         }
+        let left_out = super::tool_budget::function_names(&left_out);
+        if lean_tools {
+            tracing::info!(
+                "🪶 [Tools] Small model ({} weights, under {}): only the client's tools, bound tools and tool search; left out: {:?} (context_policy small_model_tools: \"full\" keeps them)",
+                model_params.unwrap_or_default(),
+                super::tool_budget::SMALL_MODEL_PARAMS,
+                left_out
+            );
+        }
         let tokens = cluaiz_agents::tool_search::tokens;
         let template_tools_text = template_tools.iter().map(|t| t.to_string()).collect::<Vec<_>>().join("\n");
         let (part_tokens, _) = count_tokens(&[&hint, &system_tools, &template_tools_text]);
@@ -1062,6 +1106,7 @@ impl PreparedChatContext {
             "loaded_in_chat": inline_tool_ids.clone(),
             "bound": tool_ids_to_compile.clone(),
             "meta_tools": offer_meta_tools,
+            "small_model": super::tool_budget::report(&policy.small_model_tools, model_params, lean_tools, &left_out),
             "auto_loaded": auto_loaded.as_ref().and(auto_pick.clone()),
             "hint_tokens": part_tokens[0],
             "system_tools_tokens": part_tokens[1],

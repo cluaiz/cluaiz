@@ -58,10 +58,14 @@ pub struct Policy {
     /// memory, as the terminal agent reads them) go into the system prompt within a share of the
     /// context; "off": the chat gets none of them
     pub project_files: String,
+    /// "lean": a loaded model under 2 billion weights gets only the client's own tools, the tools
+    /// bound to the chat and tool search (`find_tools`, `load_tool`, ...), not the Engine's other
+    /// functions (run 77); "full": every model gets them all
+    pub small_model_tools: String,
 }
 
 impl Default for Policy {
     fn default() -> Self {
-        Self { recent_turns_min: 2, evidence_cap_pct: 15, suggestions_cap_pct: 5, margin_pct: 2, compact_at_pct: 85, compact_to_pct: 60, indexer: "auto".into(), notes: "ask".into(), notes_change: "ask".into(), notes_history_days: 0, notes_match: "auto".into(), notes_similar_pct: 50, notes_recall_pct: 50, notes_max: 3, cross_chat: "ask".into(), tool_format: "native".into(), auto_load: "off".into(), mcp_prewarm: "on".into(), project_files: "on".into() }
+        Self { recent_turns_min: 2, evidence_cap_pct: 15, suggestions_cap_pct: 5, margin_pct: 2, compact_at_pct: 85, compact_to_pct: 60, indexer: "auto".into(), notes: "ask".into(), notes_change: "ask".into(), notes_history_days: 0, notes_match: "auto".into(), notes_similar_pct: 50, notes_recall_pct: 50, notes_max: 3, cross_chat: "ask".into(), tool_format: "native".into(), auto_load: "off".into(), mcp_prewarm: "on".into(), project_files: "on".into(), small_model_tools: "lean".into() }
     }
 }

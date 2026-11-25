@@ -27,13 +27,14 @@ User-facing reference: [chat_completions.md](../../../../docs/api/inference/chat
 | `mod.rs` | entry `chat_completions` (registered in `routes.rs`); `engine_history` applies `storage` (`engine`, `external`, `none`) and `history` (`client`, `engine`) |
 | `types.rs` | the request (`ExternalChatRequest`, OpenAI fields plus the Engine's own), field checks, the live stream registry `ACTIVE_STREAMS` |
 | `processing.rs` | with `stream` and `return_progress`: progress events from before preflight, so file decoding and model load are visible |
-| `preflight.rs` | `PreparedChatContext::prepare` (everything before the first token) and `dispatch`; `TurnMemory`; `context_report`; `media_continuation`. 1,908 lines, over the 800-line limit (Pending) |
+| `preflight.rs` | `PreparedChatContext::prepare` (everything before the first token) and `dispatch`; `TurnMemory`; `context_report`; `media_continuation`. 1,953 lines, over the 800-line limit (Pending) |
 | `agent_loop.rs` | the SSE stream: content and `reasoning_content` deltas, tool events, permission requests, the context report, `[DONE]` |
 | `non_streaming.rs` | the same turn as one JSON; `separate_reasoning`; `finish_reason` |
 | `api_turn.rs` | the API side of an agent turn (`cluaiz_agents::turn`): thinking filter, calls found only in the answer, tools run through the approval gate |
 | `tool_parser.rs` | `extract_tool_call`: a `<tool_call>` block, also inside markdown fences or with nested JSON |
 | `tool_turns.rs` | each tool step adds one assistant and one tool message and re-renders, so the unchanged start keeps its KV cache; `final_answer`; `media_pivot` (image and audio steps) |
 | `authorize.rs` | `assess`, `request`, `wait`: the approval gate under the request's `approval_mode` |
+| `tool_budget.rs` | small models (under 2 billion weights, llama.cpp's count) get only client tools, bound tools and tool search (`small_model_tools`) |
 | `flows.rs` | saved Automation flows (`flow.<name>`) offered like tools when they fit |
 | `project.rs` | `~/.cluaiz/AGENTS.md`, the project's `AGENTS.md` and `.agents/` rules, skills and facts, within a share of the context |
 | `ingest_events.rs` | the chat's event log (messages, tool steps, loads, compaction, the answer); temporary chats log nothing |
@@ -60,6 +61,7 @@ payload: `turn_end.rs` (with `usage.mtp` when the engine drafted).
 | `response_format` with callable client tools is not grammar-enforced | one grammar for both let small models write JSON instead of a call (run 73: 0 / 10 calls before, 8 / 10 after); llama-server cannot hold both either | one grammar for schema and calls (run 68's way) |
 | `tool_choice` named function keeps only that client function and leaves the Engine's own out | OpenAI's meaning of a named choice; run 68: 10 / 10 `get_time` calls (0 / 10 before) | llama-server's way (an object falls back to auto) |
 | A tool loaded with `load_tool` adds its functions to `tools` for the next steps, on image and audio requests too (`media_pivot` carries them, `media_continuation` and the provider start prompt add them) | run 73: on image requests the loaded functions were missing, so the model called `load_tool` again until the repeat limit (3 / 3); OpenAI and llama-server take `tools` with each request, and OpenAI's `tool_search` makes a loaded function callable in the same turn (developers.openai.com/api/docs/guides/function-calling, read 2026-11-26) | listing every installed tool's functions from the start (too many tokens for small models) |
+| A loaded GGUF model under 2 billion weights gets only client tools, bound tools and tool search; `read_item`, memory, notes, `task_update` and flows are left out (`small_model_tools: "lean"`, default; `"full"` turns it off) | run 77 (partial, one pass): Llama 3.2 1B 32 / 40 with client tools only, 6 / 40 with the Engine's context tools (`read_item` on 29 / 40 prompts, 414 steps); Qwen3 0.6B thinking off 27 / 40 to 21 / 40. Not a proven boundary: Llama 3.2 3B looped too, and the setups also differ in route | a fixed tool count for every model; per-model lists |
 | `required` holds only for the first answer | otherwise every step is forced to call until `max_steps` | required on every step |
 | At the limit, only the text before `<tool_call>` is the answer | before run 57 the whole text went to `separate_reasoning`, and its generic fallback took the call as thinking (run 52 `long_input`) | changing the generic fallback in `cluaiz_models::StructuralDNA`, which every reasoning split uses |
 | The system prompt stays the same; per-message hints go into the user turn | keeps the KV cache valid across turns | hints in the system prompt |
@@ -77,7 +79,7 @@ payload: `turn_end.rs` (with `usage.mtp` when the engine drafted).
 
 ## Tested
 
-- 28 unit tests in this folder (3 for loaded functions on media steps: `media_tool_step_tests` in `preflight.rs`); route tests in `api/tests/` (`reasoning_contract.rs`, `media_contract.rs`,
+- 34 unit tests in this folder (`grep -c '#\[test\]'`, 2026-11-26; 3 for loaded functions on media steps: `media_tool_step_tests` in `preflight.rs`); route tests in `api/tests/` (`reasoning_contract.rs`, `media_contract.rs`,
   `processing_contract.rs`, `mtp_contract.rs`). None run since 2026-11-21: the `api` suite builds both
   native backends (`api/README.md`, Tests).
 - Live runs, each with raw files in `test/cloud/runs/`: thinking budget (runs 30, 31), KV reuse across turns
@@ -107,7 +109,7 @@ Cost of the final answer at the limit: the tool schemas leave the prompt, so it 
 
 | Item | Why it matters | Needs |
 |---|---|---|
-| `preflight.rs` is 1,908 lines (limit 800) | hard to change safely | a split |
+| `preflight.rs` is 1,953 lines (limit 800) | hard to change safely | a split |
 | Route and unit tests not run since October and not in CI (`logit_bias_takes_token_ids_and_openai_range`, `approval_mode_tightens_and_names_the_field`, `tool_choice_takes_openai_forms`) | the api suite builds both native backends | a CI job with the CPU backend |
 | `logit_bias` on an ONNX chat model is refused | no ONNX chat sampler takes a bias | an ONNX logit hook |
 | `approval_mode` can only tighten the global mode | loosening per chat needs an owner decision (auth on: one token is every caller) | owner decision, then a rule in `cluaiz_security::chat_security_mode` |
@@ -116,4 +118,5 @@ Cost of the final answer at the limit: the tool schemas leave the prompt, so it 
 | `tool_choice`, `n`, `logprobs` not forwarded to providers | a provider could answer them | `api/src/providers/request.rs`, provider `extra` in `preflight.rs` |
 | Final no-tools answer not checked with client `tools` at a limit, on an image request, or with inline tools | run 70 covered native tools on one model | a script for each case; a vision model run |
 | Loaded functions on image and audio steps not checked live | the unit tests cover the envelope only | rerun run 73's `media_tools_probe.py` (red image + math) |
+| Small-model tool rule not measured live; the 2 billion line rests on partial run 77 (SmolLM3, Qwen3.5 0.8B and 2B missing) | the line may be wrong for some families | finish run 77, then a before/after run with `small_model_tools` lean and full |
 | Thinking in the first step is not counted in the `max_tokens` budget | a thinking model can use more than the client's limit | count thinking tokens of every step |

@@ -276,6 +276,7 @@ pub fn valid(policy: &Policy) -> bool {
         && matches!(policy.auto_load.as_str(), "off" | "on")
         && matches!(policy.mcp_prewarm.as_str(), "off" | "on")
         && matches!(policy.project_files.as_str(), "off" | "on")
+        && matches!(policy.small_model_tools.as_str(), "lean" | "full")
         && policy.recent_turns_min <= 50
         && [policy.evidence_cap_pct, policy.suggestions_cap_pct, policy.margin_pct, policy.compact_at_pct, policy.compact_to_pct]
             .iter()
