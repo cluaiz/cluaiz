@@ -581,6 +581,13 @@
   "metadata": true
  },
  {
+  "title": "models.unload",
+  "description": "Unloads a loaded model now (model), or every loaded model (all: true): the chat model as keepalive: 0 does, an embedding, speech or ONNX model when no request is using it (busy otherwise). A model...",
+  "kind": "docs",
+  "path": "docs/api/cep/models/models/models.unload.md",
+  "metadata": true
+ },
+ {
   "title": "providers.list",
   "description": "The model providers and their listed models; keys are never returned",
   "kind": "docs",

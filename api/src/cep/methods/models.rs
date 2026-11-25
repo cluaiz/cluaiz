@@ -1,4 +1,4 @@
-//! `models.*`: installed models, load, inspect, remove, and download (a task).
+//! `models.*`: installed models, load, unload, inspect, remove, and download (a task).
 
 use crate::cep::{roots, CallCtx};
 use crate::handlers::models;
@@ -148,6 +148,71 @@ struct ListParams {
 struct ModelParams {
     /// An installed model id (from `models.list`)
     model: String,
+}
+
+#[derive(Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+struct UnloadParams {
+    /// The loaded model's id (as `system.ps` or `models.list` shows it); give this or `all`
+    #[serde(default)]
+    model: Option<String>,
+    /// true unloads every loaded model: the chat model and the embedding, speech and ONNX
+    /// residents (default false)
+    #[serde(default)]
+    all: Option<bool>,
+}
+
+/// What `models.unload` frees: one model by id, or every loaded one
+#[derive(Debug, PartialEq)]
+enum UnloadTarget {
+    One(String),
+    All,
+}
+
+impl UnloadTarget {
+    fn from_params(params: UnloadParams) -> Result<Self, CepError> {
+        let model = params.model.map(|m| m.trim().to_string()).filter(|m| !m.is_empty());
+        match (model, params.all.unwrap_or(false)) {
+            (Some(_), true) => Err(roots::invalid("all", "Give `model` or `all: true`, not both")),
+            (Some(model), false) => Ok(Self::One(model)),
+            (None, true) => Ok(Self::All),
+            (None, false) => Err(roots::invalid("model", "Give a model id, or `all: true` to unload every loaded model")),
+        }
+    }
+
+    fn wants(&self, id: &str) -> bool {
+        match self {
+            Self::All => true,
+            Self::One(model) => model == id,
+        }
+    }
+}
+
+/// Frees what `target` names through the hosts' own unload paths: the chat model as `keep_alive: 0`
+/// does (`EngineHost::unload_model`), a media resident only when no request is using it (`busy`
+/// otherwise). A model that is not loaded is no error: the result lists nothing for it.
+async fn unload(host: &cluaiz_runtime::EngineHost, target: UnloadTarget) -> Value {
+    let (mut unloaded, mut busy) = (Vec::new(), Vec::new());
+    let chat = host.current_plan.lock().await.as_ref().map(|plan| plan.model_id.clone());
+    if let Some(id) = chat.filter(|id| target.wants(id)) {
+        host.unload_model().await;
+        unloaded.push(json!({"model": id, "kind": "chat"}));
+    }
+    let mut free = |kind: &str, id: Option<String>, freed: &dyn Fn() -> bool| {
+        if let Some(id) = id.filter(|id| target.wants(id)) {
+            let row = json!({"model": id, "kind": kind});
+            if freed() { unloaded.push(row) } else { busy.push(row) }
+        }
+    };
+    free("embedding", host.embeddings.resident_model(), &|| host.embeddings.unload_idle());
+    free("speech", host.speech.resident_model(), &|| host.speech.unload_idle());
+    let onnx = host.onnx.resident_model().await.ok().flatten();
+    if onnx.is_none() && target == UnloadTarget::All && host.onnx.any_resident().await {
+        // Only parked ONNX models (kept for a quick return): freed without an id to report
+        host.onnx.unload_idle();
+    }
+    free("onnx", onnx, &|| host.onnx.unload_idle());
+    json!({"unloaded": unloaded, "busy": busy})
 }
 
 #[derive(Deserialize, JsonSchema)]
@@ -320,6 +385,23 @@ pub fn register(registry: &mut Registry<CallCtx>) {
                 })?;
                 Ok(json!({"model":entry.id,"loaded_ms":started.elapsed().as_millis()}))
             })
+        },
+    );
+    registry.add(
+        "models.unload",
+        Meta::new(
+            Scope::Write,
+            "Unloads a loaded model now (`model`), or every loaded model (`all: true`): the chat model as `keep_alive: 0` does, an embedding, speech or ONNX model when no request is using it (`busy` otherwise). A model that is not loaded is no error",
+        )
+        .idempotent(true)
+        .error(-32602, "invalid_params", "Neither `model` nor `all: true` was given, or both were")
+        .example(
+            json!({"model":"qwen3-4b-instruct-2507-gguf-Q4_K_M"}),
+            json!({"unloaded":[{"model":"qwen3-4b-instruct-2507-gguf-Q4_K_M","kind":"chat"}],"busy":[]}),
+        ),
+        |ctx: CallCtx, _: Call, params: UnloadParams| async move {
+            let target = UnloadTarget::from_params(params)?;
+            Ok(unload(&ctx.state.host, target).await)
         },
     );
     registry.add(
@@ -575,4 +657,37 @@ fn inspect(model: &str, path: &Path) -> Result<Value, CepError> {
               "int_arrays":header.int_arrays,"speech_languages":header.speech_languages,
               "tensors":tensors}),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn target(params: Value) -> Result<UnloadTarget, CepError> {
+        UnloadTarget::from_params(serde_json::from_value(params).expect("UnloadParams"))
+    }
+
+    #[test]
+    fn unload_takes_one_model_or_all() {
+        assert_eq!(target(json!({"model":" m1 "})).ok(), Some(UnloadTarget::One("m1".into())));
+        assert_eq!(target(json!({"all":true})).ok(), Some(UnloadTarget::All));
+        // Optional fields never fail: an empty model with `all`, or `all: false` with a model
+        assert_eq!(target(json!({"model":"","all":true})).ok(), Some(UnloadTarget::All));
+        assert_eq!(target(json!({"model":"m1","all":false})).ok(), Some(UnloadTarget::One("m1".into())));
+        for params in [json!({}), json!({"all":false}), json!({"model":"  "}), json!({"model":"m1","all":true})] {
+            assert!(target(params.clone()).is_err(), "{params}");
+        }
+        assert!(serde_json::from_value::<UnloadParams>(json!({"model":"m1","force":true})).is_err());
+        assert!(UnloadTarget::All.wants("any"));
+        assert!(UnloadTarget::One("m1".into()).wants("m1"));
+        assert!(!UnloadTarget::One("m1".into()).wants("m2"));
+    }
+
+    #[tokio::test]
+    async fn unload_with_nothing_loaded_lists_nothing() {
+        let host = cluaiz_runtime::EngineHost::new();
+        for target in [UnloadTarget::All, UnloadTarget::One("m1".into())] {
+            assert_eq!(unload(&host, target).await, json!({"unloaded": [], "busy": []}));
+        }
+    }
 }

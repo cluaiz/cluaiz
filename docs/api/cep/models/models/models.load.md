@@ -279,6 +279,7 @@ Resource admission, unsupported architectures, corrupt weights and native backen
 - [`models.list`](models.list.md): use its separate documented contract.
 - [`system.plan`](../../system/system/system.plan.md): use its separate documented contract.
 - [`system.ps`](../../system/system/system.ps.md): use its separate documented contract.
+- [`models.unload`](models.unload.md): free the model again without a chat request.
 
 ## Implementation reference
 

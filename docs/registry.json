@@ -847,6 +847,11 @@
             "file_path": "docs/api/cep/models/models/models.remove.md"
           },
           {
+            "slug": "cep-models-unload",
+            "title": "models.unload",
+            "file_path": "docs/api/cep/models/models/models.unload.md"
+          },
+          {
             "slug": "cep-providers-list",
             "title": "providers.list",
             "file_path": "docs/api/cep/models/providers/providers.list.md"

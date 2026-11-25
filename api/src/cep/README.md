@@ -88,7 +88,7 @@ flowchart LR
   | `fs.rs`, `fs_picker.rs` | `fs.list`, `read`, `write`, `copy`, `rename`, `mkdir`, `delete`, `pick_folder` | Files inside the caller's roots; the native folder picker in the foreground |
   | `kv.rs` | `kv.status`, `delete`, `clear` | Saved KV cache per chat (`session_id`) |
   | `memory.rs` | `memory.events`, `index`, `item`, `search`, `export`, `import`, `delete`, `grants`, `revoke_grants` | A chat's event log, its Chat Map, search, export/import, deleting a chat with everything derived from it |
-  | `models.rs` | `models.list`, `inspect`, `load`, `load_history`, `remove`, `download`, `discard`, `embedding_room` | Installed models; load and download as tasks (load: weights read as progress, the load steps as events; download: pause and continue); `load_history` pages this machine's loads, refusals, failures and unloads; `discard` deletes what a stopped download left |
+  | `models.rs` | `models.list`, `inspect`, `load`, `unload`, `load_history`, `remove`, `download`, `discard`, `embedding_room` | Installed models; load and download as tasks (load: weights read as progress, the load steps as events; download: pause and continue); `load_history` pages this machine's loads, refusals, failures and unloads; `unload` frees one loaded model or all of them now (the chat model as `keep_alive: 0` does); `discard` deletes what a stopped download left |
   | `notes.rs` | `notes.list`, `create`, `confirm`, `pin`, `move`, `invalidate` | Durable notes that outlive a chat |
   | `prompts.rs` | `prompts.list`, `get`, `set`, `reset`, `history` | The instructions the Engine itself sends to a model, each with an id and a default |
   | `providers.rs` | `providers.list`, `set`, `remove`, `models`, `test` | providers.json; replies never hold a key, only where it comes from; a `warning` when auth is off and keys are set |
@@ -116,7 +116,7 @@ flowchart LR
 
 ## Tests
 
-9 unit tests in `methods/`; contract tests `api/tests/cep_*.rs` (8 files, 13 tests) and the live
+12 unit tests in `methods/`; contract tests `api/tests/cep_*.rs` (8 files, 13 tests) and the live
 journeys in `test/cep/`. `api` builds both native backends, so none of these tests were run on 2026-11-21 (see `api/README.md`, Tests). `test/cep/wave_b/` contracts were run that day: roots 10
 passed, folder picker 2 passed, fs methods 11 passed and 2 failed on stale assertions
 (`test/cep/wave_b/README.md`).

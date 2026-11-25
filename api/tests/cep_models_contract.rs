@@ -179,6 +179,19 @@ async fn test_models_registry_inspect_remove_validation_and_retired_routes() -> 
         .unwrap_err();
     assert_eq!(error["code"], -32007);
     assert!(state.host.current_plan.lock().await.is_none());
+    // Unloading a model that is not loaded, or everything when nothing is, is no error
+    for params in [json!({"model":gguf.id}), json!({"all":true})] {
+        let unloaded = support::cep(&router, "models.unload", params)
+            .await?
+            .map_err(|e| anyhow!(e))?;
+        assert_eq!(unloaded, json!({"unloaded":[],"busy":[]}));
+    }
+    for params in [json!({}), json!({"model":gguf.id,"all":true})] {
+        let error = support::cep(&router, "models.unload", params)
+            .await?
+            .unwrap_err();
+        assert_eq!(error["code"], -32602, "{error}");
+    }
     let principal = Arc::new(Principal {
         id: "token:model-test".into(),
         scopes: vec![Scope::Read, Scope::Write],
