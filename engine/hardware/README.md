@@ -16,7 +16,7 @@ the CLI (`cluaiz status`, `show`) and CEP `system.*` read it. It decides nothing
 - **Dependencies:** `sysinfo` 0.30 (CPU, RAM, disks, OS name), `nvml-wrapper` 0.12 (NVIDIA), `raw-cpuid`
   (x86 cache sizes), `libc` on macOS (`host_statistics64`).
 
-## Architectural flow
+## How it works
 
 ![Hardware profile: quick facts at start; unchanged profile reused with free memory measured now; changed or missing profile probed again; free memory measured again before a load](../../docs/assets/engine/hardware-profile.png)
 
@@ -28,8 +28,7 @@ VRAM. Any of them changed (RAM by more than 1/32, to allow small differences bet
 the deep probe runs again (`hardware_changed`, `prober.rs:114`). A fact that reads as zero is not a
 change.
 
-## API contract
-
+## Interface
 | Construct | Kind | Used by |
 |---|---|---|
 | `HardwareProber::current()` | static fact snapshot (free memory as of process start) | CEP `system.info`, chat types, CLI bootstrap, llama session, ONNX cuDNN driver, builder CI |
@@ -54,8 +53,7 @@ change.
 | `gpus[*].pcie_*`, `compute_capability` | no (`compute_capability` is shown by CEP `system.info`) | |
 | `GpuSubsystem::estimated_vram_bandwidth_gbps()` | no caller | a table by VRAM size, not a measurement |
 
-## Deep file breakdown
-
+## Files
 - `src/prober.rs`
   - **Cache layers:** an in-process `RwLock<Option<SystemInfo>>`, then `hardware_profile.json` in the
     home's `config/`. The deep probe (memory benchmark, PowerShell/WMI calls) takes
@@ -81,8 +79,7 @@ change.
 Removed on 2026-11-21: `telemetry.rs` (a polling thread with "gears" that no code called); live
 numbers come from CEP `system.live`.
 
-## Decisions and why
-
+## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | Deep probe once, saved in `hardware_profile.json`, re-run on a quick-facts change | the deep probe takes seconds; RAM added or a resized VM must still be noticed (test `saved_profile_is_stale_after_ram_cpu_or_gpu_changes`) | probe at every start; or never re-probe without `calibrate` |

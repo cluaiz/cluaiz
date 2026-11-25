@@ -13,7 +13,7 @@ contains actual interface definitions, not forwarding imports.
 - **Platform support:** C ABI, pointer sizes and native library artifacts must match the engine target. Windows/Linux x86_64 acceptance is recorded in the parent provider documentation; other targets are unverified.
 - **Reuse:** `src/video.rs` and the separately built `providers/ffmpeg` compile this same source. No parallel definition is maintained.
 
-## Architectural flow
+## How it works
 
 ```mermaid
 flowchart LR

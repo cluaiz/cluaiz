@@ -10,7 +10,7 @@ Opt-in read-only graph audits and genuine missing-helper completion in a separat
 - **Platform Support:** Host file/protobuf/HTTP support. Metadata success does not certify GPU/platform inference.
 - **Reusability Level:** Test-only; no production CLI diagnostics.
 
-## Architectural Flow
+## How it works
 ```mermaid
 flowchart LR
     A["External real graph paths"] --> B["Signature / helper inspection"]

@@ -416,8 +416,7 @@ native package) and unit tests in `src/` (providers 49, chat handlers 20, CEP me
 run on 2026-11-21. The dated "Executed ... acceptance" sections above are from 2026-10-14 and 2026-10-15.
 Route behaviour is also exercised by every cloud run (`test/cloud/BENCHMARKS.md`).
 
-## Decisions and why
-
+## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | Engine-specific operations are CEP methods on `/v1/cep` (also `/mcp`, the C ABI) | one method set for every transport, with schemas from code and one audit rule (`cep/README.md`) | a REST route per feature |

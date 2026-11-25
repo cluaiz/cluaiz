@@ -11,7 +11,7 @@ CLI binaries.
 - **Platform evidence:** genuine H264 frames were checked on Windows x86_64 and Ubuntu 24.04 x86_64 under WSL. Build/source presence alone does not establish a model/API result.
 - **Reuse:** the lazy loader compiles the exact production `video/abi.rs` contract. Actual production decoding remains in `engine/media/providers/ffmpeg`.
 
-## Architectural flow
+## How it works
 
 ```mermaid
 flowchart LR

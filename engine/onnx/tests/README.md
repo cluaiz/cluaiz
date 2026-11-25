@@ -10,7 +10,7 @@ Opt-in real graph/EmbeddingDriver proof with externally supplied read-only image
 - **Platform Support:** The test uses configured CPU ONNX Runtime. A run on one host does not certify other OS/GPU combinations.
 - **Reusability Level:** Integration test only; no diagnostic command is added to production binaries.
 
-## Architectural Flow
+## How it works
 ```mermaid
 flowchart LR
     A["External model/config/tokenizer package"] --> B["Captured CPU provider settings"]

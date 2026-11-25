@@ -16,7 +16,7 @@ and PCM preparation are shared through cluaiz-media.
 Audio8 required asset paths come from `cluaiz-core::model_assets`, shared with discovery/installation. The backend keeps numerical layout/dimension checks, actual graph sessions, voice conditioning and sampling. Prompt/sampler data remains in its backend protocol JSON; generator/decoder/tokenizer filenames have one shared owner.
 ---
 
-## Architectural Flow
+## How it works
 
 ```mermaid
 graph TD
@@ -57,8 +57,7 @@ graph TD
 
 ---
 
-## API Contract (Interface)
-
+## Interface
 ### Hindi pronunciation input boundaries
 
 `tts/rules_g2p.rs` uses per-language `data/g2p_rules/*.json` rules. Abugida files may declare `ignored_characters` (formatting controls or elision signs) and `word_separators` (internal word boundaries). Hindi declares ZWJ/ZWNJ and avagraha as ignored, and selected hyphens, slash and apostrophes as separators. Each piece runs through the existing vowel/schwa rules independently; formatting controls do not split consonant conjuncts. Other languages retain their own policy; Hindi does not override a preferred same-script language merely because it accepts a separator.
@@ -94,8 +93,7 @@ Decimal/grouping/time separators between digits, configured abbreviations, inter
 
 ---
 
-## Deep File Breakdown
-
+## Files
 ### A. Core Audio Subsystem (`src/audio/`)
 - [`config.rs`](./config.rs):
   - **Logic:** Dynamic JSON config parser (`config.json`, `preprocessor_config.json`, `generation_config.json`).
@@ -166,7 +164,7 @@ Decimal/grouping/time separators between digits, configured abbreviations, inter
 
 ---
 
-## Failure & Recovery Logic
+## Failure and recovery
 - **Invalid Output PCM Buffer:** `sanitize_audio_pcm` checks generated float32 samples for `NaN` or `Infinite` values and aborts synthesis to prevent speaker buzzing/clipping damage.
 - **Low Signal Noise Amplification:** If max amplitude is below `0.01`, peak scaling is skipped to avoid multiplying background neural floating-point noise into blowing air sound ("fhoor fhoor").
 - **Asset Inventory Failure:** `validate_package_inventory` checks required ONNX sub-components before allocating GPU/RAM session memory and returns `PackageContractException`.

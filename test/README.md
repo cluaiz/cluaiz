@@ -68,8 +68,7 @@ Every test on a real machine gets a folder `test/cloud/runs/<date>-runN-<what>/`
 produced them, and one row in [`cloud/BENCHMARKS.md`](cloud/BENCHMARKS.md). Usernames and keys are
 removed from recorded files (`<user>`, `<key>`). Details: [`cloud/README.md`](cloud/README.md).
 
-## Decisions and why
-
+## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | Live tests start their own server on an isolated home and port 8011 | a test against the developer's own server can change its settings, tokens and installed models; an isolated home also starts from a known state | test against whatever runs on 8000 |

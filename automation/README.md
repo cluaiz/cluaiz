@@ -137,8 +137,7 @@ flow saved, the chat preflight's "skills + tools" part went from 15-17 ms to 1-2
 flow with a `tool` trigger was still listed by MCP `tools/list` as `flow.weekly-report` and offered in a
 chat ("Please write the weekly report"), which called it.
 
-## Decisions and why
-
+## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | Automation is its own layer, outside the Engine and the API | flows use the Engine through small additive hooks (events, extension routes and tools) and can change without touching Engine code | flows inside `api` |

@@ -12,7 +12,7 @@ never invokes a model or an external command.
 - **Platform evidence:** real encoded-video/ABI tests on Windows x86_64 and Ubuntu 24.04 x86_64 under WSL. Other targets are unverified.
 - **Reuse:** both inference backends consume the shared core `DecodedImage` representation. A backend still needs an implemented compatible task; video decoding does not implement ONNX generative chat.
 
-## Architectural flow
+## How it works
 
 ```mermaid
 flowchart LR
@@ -24,8 +24,7 @@ flowchart LR
     F --> G["Shared packed RGB and timestamp owner"]
 ```
 
-## API contract
-
+## Interface
 - **Interface:** `cluaiz_video_api_v1` returns the versioned C function table defined once in `../../src/video/abi.rs`. That source is compiled by the provider and its consumer. No Rust collection or allocator ownership crosses the ABI.
 - **Input lifetime:** one synchronous `decode` call borrows encoded bytes and callback state. Native IO/format/codec/scaler/frame owners are destroyed before return. Frame views expire at callback return; the consumer copies checked rows into its own packed RGB allocation.
 - **IO policy:** custom read/seek callbacks access only the supplied bytes. `AVFormatContext.io_open` refuses secondary files/protocols. Native interrupt callbacks consult the same cancellation/deadline signal as frame delivery.

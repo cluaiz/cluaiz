@@ -15,7 +15,7 @@ search, the prompt compiler, the agent, the API chat, the installer and the CEP 
 - **Platform Support:** Windows, Linux, macOS (JSON file and folder scan).
 - **Reusability Level:** The one record of installed tools inside `cluaiz-agents`.
 
-## Architectural Flow
+## How it works
 
 ```mermaid
 flowchart LR
@@ -34,8 +34,7 @@ flowchart LR
     USERS -->|"set_tool_* → save()"| DISK
 ```
 
-## API Contract (Interface)
-
+## Interface
 - **`index.rs`:** `ToolsRegistry` (`installed_tools: id → ToolEntry`), `registry_path()`,
   `generation()` (changes whenever the RAM snapshot is replaced), `load()`, `save()`,
   `get_tool`, `list_tools`, `set_tool_enabled`, `set_tool_execution_mode`,
@@ -52,8 +51,7 @@ flowchart LR
 - **Dependencies:** `serde`, `serde_json`, `serde_yaml` (legacy migration), `cluaiz_core`
   (home folder), `crate::permissions`.
 
-## Deep File Breakdown
-
+## Files
 - `index.rs`:
   - **Logic:** `load()` returns the RAM snapshot; at most every 2 s (`RECHECK`) it compares a
     fingerprint of the registry file and every tool's manifest files (sizes and change times,
@@ -85,8 +83,7 @@ flowchart LR
     server's annotations, the tool is on `inherit`, the mode is not `strict`, the function is
     marked `readOnlyHint` and not `destructiveHint`, and no permission of the tool is off.
 
-## Failure & Recovery Logic
-
+## Failure and recovery
 - **Registry file missing:** built from the tool folders.
 - **Legacy YAML registry:** migrated to JSON on first read.
 - **Tool folder deleted by hand:** its entry is removed on the next sync.
@@ -100,8 +97,7 @@ flowchart LR
   never left half written.
 - **Unknown mode strings:** `from_raw` gives `None`; the caller refuses the value.
 
-## Decisions and why
-
+## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | The registry is kept in RAM, JSON on disk only | a chat turn looks tools up many times; reading the folders each time would repeat file work | read on every lookup; a binary cache |

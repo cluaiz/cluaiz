@@ -136,8 +136,7 @@ After the fix, macOS ran only on a virtual GitHub macOS 15 runner (Apple M1, no 
 ([`../cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md`](../cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md)).
 The Metal path of `07cf30fa` has not been run on a real Mac.
 
-## Decisions and why
-
+## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | The script builds `llama-bench` with Metal from the same llama.cpp commit | a speed number is only meaningful next to plain llama.cpp on the same Mac and settings | report Cluaiz numbers alone |

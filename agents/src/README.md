@@ -3,16 +3,13 @@ description: Source map of the cluaiz-agents crate: tool logic, turn lifecycle, 
 
 # Agents crate source (`agents/src/`)
 
+Where each part of the `cluaiz-agents` crate lives: tool logic (skills, plugins, MCP, registry), the agent
+turn, chat memory and the project's `.agents/` files. Decisions, tests and open items for the whole crate
+are in [`../README.md`](../README.md); folders with their own README are linked below.
+
 ![One agent turn: the message, tool search, schemas, the model, and for each tool call the approval, the run and the result going back to the model](../../docs/assets/engine/agent-turn.png)
 
-## 1. Scope
-
-All tool logic (skills, plugins, MCP, registry, turn lifecycle, telemetry), the chat memory
-store and the project's `.agents/` workspace files live in this crate.
-
----
-
-## 2. Directory Layout & Subsystems
+## Modules
 
 | Subsystem | Folder | Responsibility |
 | :--- | :--- | :--- |
@@ -33,9 +30,7 @@ store and the project's `.agents/` workspace files live in this crate.
 | **Lifecycle** | [`lifecycle/`](./lifecycle/) | `session_map.rs`: the tools bound to each chat (`SESSION_TOOL_REGISTRY`) with their turns (`-1` always, `0` this answer, `N` answers); a loaded tool not used for `IDLE_TURNS` (3) answers is unloaded unless its manifest sets `default_turns`. `duration.rs`: counts the turns down after each answer. `ledger.rs`: what the Engine added to each turn (tool hints, calls, results), so the next request renders earlier turns exactly as the model saw them and the KV cache is reused. `grants.rs`: "allow this tool for this chat" after an approval with `remember: "chat"` (60 minutes by default, 24 hours at most), kept as `grant` events in the chat's log so they come back after a restart. |
 | **Telemetry** | [`telemetry/`](./telemetry/) | `context_tracker.rs`: the context breakdown of a request (system prompt, tools, messages, answer) for a model and chat. `types.rs`: the breakdown shapes; `apply_measured` replaces the character estimates with the engine's measured `n_ctx` and `n_tokens`, keeping the system and tool shares inside that total. |
 
----
-
-## 3. Standardized Filesystem Root (`~/.cluaiz/`)
+## Files on disk (`~/.cluaiz/`)
 
 ```
 ~/.cluaiz/

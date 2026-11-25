@@ -19,12 +19,11 @@ keys, addresses) as the user sees them, and the secret filling for plugin reques
 - **Related:** [docs/engine/tools.md](../../../docs/engine/tools.md) (permissions, settings,
   environment).
 
-## Architectural Flow
+## How it works
 
 ![A WebAssembly plugin runs inside the Engine with fuel and memory limits and reaches the network only through cluaiz.http_fetch; a native plugin runs as a child process through the OS sandbox](../../../docs/assets/engine/plugin-runners.png)
 
-## API Contract (Interface)
-
+## Interface
 - **`executor.rs`:** `PluginExecutor::execute(plugin_dir, payload) -> Vec<u8>`.
 - **`manifest.rs`:** `PluginManifest`, `PluginDiscovery`, `PluginActivation`, `PluginLimits`,
   `PluginExecution`, `PluginManifestParser::parse_file`.
@@ -39,8 +38,7 @@ keys, addresses) as the user sees them, and the secret filling for plugin reques
 - **Export Type:** Rust, inside `cluaiz-agents`.
 - **Dependencies:** `wasmtime`, `reqwest`, `serde_json`, `crate::permissions`, `crate::tool_env`.
 
-## Deep File Breakdown
-
+## Files
 - `executor.rs`: picks the runner. `.wasm` → `wasm::run_file` with the plugin's network access;
   anything else → a child process in the plugin's folder whose stdout is the answer. A call to a
   function the plugin does not list fails and names its functions (`lib.rs`).
@@ -66,8 +64,7 @@ keys, addresses) as the user sees them, and the secret filling for plugin reques
     `required`, `secret`, `set`, `in_system` (never the value); `save_user_setting` writes
     `config/tool_settings.json` (`{ "<tool id>": { "NAME": "value" } }`).
 
-## Failure & Recovery Logic
-
+## Failure and recovery
 - **`network` not declared:** `{code: "no_permission"}`.
 - **`network` switched off by the user:** `{code: "permission_off"}` with the command to turn it
   on.
@@ -78,8 +75,7 @@ keys, addresses) as the user sees them, and the secret filling for plugin reques
 - **Native plugin fails:** its non-zero exit and stderr come back as the error; it is not closed
   in, so its permissions are asked about before each call instead (`registry/types.rs`).
 
-## Decisions and why
-
+## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | WASM plugins get the network only through `cluaiz.http_fetch` | one checked door enforces https, public addresses, host lists and limits for every plugin; a WASI socket would bypass them | WASI networking |

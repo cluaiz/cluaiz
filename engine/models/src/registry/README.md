@@ -17,7 +17,7 @@ check for recommendations.
 - **Reusability Level:** The one record of installed models: the CLI (`list`, `show`,
   `rm`, `run`), the API (`/v1/models`, a request's `model`), CEP `models.*` and the planner read it.
 
-## Architectural Flow
+## How it works
 
 ```mermaid
 flowchart LR
@@ -39,8 +39,7 @@ flowchart LR
     AUD --> CAT
 ```
 
-## API Contract (Interface)
-
+## Interface
 - **`installed_state.rs`:** `InstalledStateRegistry::{get_registry_path, load, find, id_for_path,
   save, register_model, unregister_model, get_models_for_slot, entry_for_folder,
   sync_from_disk}`.
@@ -54,8 +53,7 @@ flowchart LR
 - **Dependencies:** `serde_json`, `tracing`, `cluaiz_core` (home folder), the crate's `types/`,
   `taxonomy/`, `capabilities` and `gguf`.
 
-## Deep File Breakdown
-
+## Files
 - `installed_state.rs`:
   - **Logic:** `load` reads the file (parsed once and kept in RAM, keyed by the content hash, so
     an unchanged file is not parsed again), drops entries whose folder or primary weight file is
@@ -77,8 +75,7 @@ flowchart LR
   `provisioner.rs` is a thin entry over it.
 - `auditor.rs`: `HealthStatus` for a model's RAM need and GPU requirement against this machine.
 
-## Failure & Recovery Logic
-
+## Failure and recovery
 - **Model folder deleted by hand:** its entry is dropped on the next `load`.
 - **Model folder copied in by hand:** registered by `sync_from_disk` at server start.
 - **Registry file missing:** read as an empty registry; `sync_from_disk` registers the model

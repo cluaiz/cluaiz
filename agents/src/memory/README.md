@@ -14,12 +14,11 @@ preferences that outlive a chat); **embeddings** of notes and project facts made
 - **Platform Support:** Windows, Linux, macOS (plain files, `zstd` for closed segments).
 - **Reusability Level:** Internal library of `cluaiz-agents`, public to the API and the CLI.
 
-## Architectural Flow
+## How it works
 
 ![A chat request is compared with the log (new, edited, retracted), secrets are redacted, and events are appended to events.jsonl; large payloads go to blobs; notes and vectors are separate files](../../../docs/assets/engine/memory-store.png)
 
-## API Contract (Interface)
-
+## Interface
 - **`mod.rs`:** `memory_root()` (`<CLUAIZ_HOME>/memory`), `chat_stem(chat_id)` (safe folder
   name of a chat), re-exports.
 - **`events.rs`:** `Event` (`v`, `id`, `chat`, `seq`, `ts`, `kind` + the kind's fields),
@@ -39,8 +38,7 @@ preferences that outlive a chat); **embeddings** of notes and project facts made
 - **Export Type:** Public Rust API of `cluaiz-agents`.
 - **Dependencies:** `serde_json`, `zstd`, `sha2`, `chrono`, `cluaiz_core` (home folder).
 
-## Deep File Breakdown
-
+## Files
 - `store.rs`:
   - **Logic:** `JsonlStore` writes one JSON line per event to the chat's current segment; at
     8 MiB the segment is closed and compressed with zstd (`events-0001.jsonl.zst`, …). A payload
@@ -80,8 +78,7 @@ preferences that outlive a chat); **embeddings** of notes and project facts made
   - **Logic:** What a tool call touched (`files_touched`) and the call with secrets replaced by
     `[redacted]` before it is logged.
 
-## Failure & Recovery Logic
-
+## Failure and recovery
 - **Crash mid-write:** the cut line is skipped and reported on the next read
   (`ReadLog`); later events are kept.
 - **Disk full / write error:** the append fails and the error goes up to the caller; the chat
@@ -93,8 +90,7 @@ preferences that outlive a chat); **embeddings** of notes and project facts made
 - **Deleting a chat (`memory.delete`):** its log, segments, ledger and everything derived from it
   go; `DeleteReport` says what was removed.
 
-## Decisions and why
-
+## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | Append-only JSON-lines files | they survive crashes and any tool can read them; a line cut by a crash is skipped and reported (test below) | a database |

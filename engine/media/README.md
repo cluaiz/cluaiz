@@ -23,7 +23,7 @@ flowchart LR
     WAV --> Parts["WAV parts and final result"]
 ```
 
-## Architectural flow
+## How it works
 
 ```mermaid
 flowchart LR
@@ -49,8 +49,7 @@ flowchart LR
     H --> N["PreparedPart messages with original generation options"]
 ```
 
-## API contract
-
+## Interface
 - **Policy:** `MediaLimits::new(max_input_bytes, max_decoded_bytes)` requires non-zero ceilings supplied by the caller. The policy supports Serde configuration round trips.
 - **Checks:** `check_input_bytes` validates a file/running download count; `check_decoded_bytes` validates planned decoded bytes. Exact limits are accepted; one byte above returns `MediaLimitError::Exceeded` with the resource kind and counts.
 - **Ownership:** import buffers directly from `cluaiz_core::media` and byte limits directly from `cluaiz_core::media_limits`. No forwarding module or duplicated implementation exists in this crate.

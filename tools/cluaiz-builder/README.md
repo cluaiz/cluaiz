@@ -16,7 +16,7 @@ compiling unused dependencies.
 
 ---
 
-## Architectural Flow
+## How it works
 
 ```mermaid
 graph TD
@@ -127,17 +127,14 @@ Every file per OS and GPU is listed in [`docs/deployments/install-layout.md`](..
 
 ---
 
-## Deep File Breakdown
-
+## Files
 - `src/main.rs`:
   - **Logic:** Command-line entrypoint. Parses target flags (`all`, `core`, `drivers`, `driver <name>`), validates profile (`debug` vs `release`), and constructs atomic Cargo invocations.
   - **Flow:** Resolves target crates, applies local CI hooks if available, and executes `Command::new("cargo")` synchronously.
-  - **Why:** Centralizes the build contract so developers and CI workflows use a unified script rather than remembering crate dependencies.
 
 - `src/local_ci.rs`:
   - **Logic:** Local-first continuous integration harness.
   - **Flow:** Inspects host hardware capabilities via `cluaiz_hw::HardwareProber` and appends target-specific feature flags (e.g., `--features cuda` when an NVIDIA GPU is present).
-  - **Why:** Guarantees that local driver builds match host silicon capabilities automatically.
 
 ---
 
@@ -152,6 +149,13 @@ Every file per OS and GPU is listed in [`docs/deployments/install-layout.md`](..
 ## `media_assets`
 
 [`src/media_assets.rs`](src/media_assets.rs): packages existing native media assets, checking them with the runtime's own manifest verifier, so a package the builder makes is one the Engine accepts.
+
+## Decisions
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| `src/main.rs`: Command-line entrypoint | Centralizes the build contract so developers and CI workflows use a unified script rather than remembering crate dependencies. | not recorded |
+| `src/local_ci.rs`: Local-first continuous integration harness | Guarantees that local driver builds match host silicon capabilities automatically. | not recorded |
 
 ## Tested
 

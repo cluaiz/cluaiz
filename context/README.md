@@ -92,8 +92,7 @@ These build the Chat Map from a chat's cards by rules; no words of any language 
 
 `cargo test -p cluaiz-context` on 2026-11-21 (Windows 11): 30 passed.
 
-## Decisions and why
-
+## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | The planner is a pure function of segments and a budget | the same input gives the same plan in any order; property tests over 2,000 random inputs check the budget and protected segments | planning inside the chat handler |

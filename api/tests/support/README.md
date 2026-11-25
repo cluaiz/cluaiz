@@ -10,7 +10,7 @@ One real authenticated loopback HTTP request helper shared by native/audio and e
 - **Platform Support:** OS TCP loopback and Tokio/Reqwest; actual model/platform acceptance is defined by each caller.
 - **Reusability Level:** Test-only; not compiled into production API/CLI paths.
 
-## Architectural Flow
+## How it works
 ```mermaid
 flowchart LR
     A["Acceptance test"] --> B["OS-assigned loopback listener"]
@@ -19,7 +19,7 @@ flowchart LR
     D --> E["Actual status and response body"]
 ```
 
-## API Contract
+## Interface
 - **Function:** `post(router, route, body, caller)` returns HTTP status and text body or the actual transport error.
 - **Dependencies:** Axum, Tokio, Reqwest, serde_json, anyhow. The caller supplies model assets, isolated home, expected outcomes and fixture configuration.
 

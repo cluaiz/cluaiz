@@ -22,7 +22,7 @@ environment, npm packages). `cluaiz <type> install|remove|cache`, CEP `tools.ins
   (Dependencies, Permissions); the Engine side is in
   [docs/engine/tools.md](../../../docs/engine/tools.md).
 
-## Architectural Flow
+## How it works
 
 ```mermaid
 flowchart TD
@@ -44,8 +44,7 @@ flowchart TD
     PLACE -.->|"later, on load"| ENV
 ```
 
-## API Contract (Interface)
-
+## Interface
 - **`plan.rs`:** `Need` (`Required`, `Recommended`, `Optional`; absent = required), `Choice`
   (`Install`, `Ask`, `Suggest`, `Installed`), `PermissionChoice` (`On`, `Off`, `Ask`),
   `mode_of`, `decide_tool`, `decide_permission`, `PlannedTool`, `PlannedPermission`,
@@ -61,8 +60,7 @@ flowchart TD
 - **Dependencies:** `reqwest`, `zip`, `serde_json`, `tokio`, `crate::permissions`,
   `crate::registry`; `uv` or `python` / `python3` and `npm` on the machine for runtimes.
 
-## Deep File Breakdown
-
+## Files
 - `plan.rs`:
   - **Logic:** The decisions, as tables:
     - A dependency: `optional` is only suggested; in `full_access` everything else is installed;
@@ -105,8 +103,7 @@ flowchart TD
   - **Flow:** Prepared when a tool is first loaded (`lib.rs`), not during the install.
   - **Why:** Packages stay out of the user's own Python and Node.
 
-## Failure & Recovery Logic
-
+## Failure and recovery
 - **Registry unreachable / refused / not JSON:** the error says which; nothing is installed.
 - **Download stalls:** abandoned after 60 s without bytes; connect waits up to 30 s.
 - **A file path that leaves the package:** refused before unpacking.
@@ -115,8 +112,7 @@ flowchart TD
 - **Required dependency not approved:** the install stops before any download.
 - **No `uv` or `python`:** the tool's environment is not ready; loading it reports why.
 
-## Decisions and why
-
+## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | The install plan is built and shown before anything is installed | the user sees the tool, its dependencies (`required`, `recommended`, `optional`) and permissions first; a refused required tool installs nothing (test below) | install, then ask |

@@ -21,7 +21,7 @@ The full references are [docs/cmd/commands_reference.md](../docs/cmd/commands_re
 | `ingest`, `storage` | Document ingest; temporary storage of the running server |
 | `config`, `self`, `dev-sync` | `settings.json`; update or uninstall; copy development artifacts |
 
-## Architectural Flow
+## How it works
 
 ```mermaid
 flowchart LR
@@ -88,8 +88,7 @@ the build prints the error and goes on; the program works without its icon.
 2026-11-21. The CLI commands themselves are exercised in cloud runs (run 8: every local command,
 `test/cloud/runs/2026-11-14-run8-linux-l4/SUMMARY.md`).
 
-## Decisions and why
-
+## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | One binary for the server, the CLI, the agent and the OS sandbox helper | one file to install and update; the Windows sandbox re-runs this same binary as its helper (`run_helper_if_requested` first in `main.rs`) | separate executables |

@@ -55,8 +55,7 @@ Rules for every method:
 - `subscribe()`: a live receiver inside the process (Automation starts flows on it). With nobody subscribed, no live notice is sent.
 - `read_since(after, limit)` / `wait_since(after, limit, wait_ms)`: every notice also goes into a ring of the newest `RING_CAPACITY` (1024) with a sequence number `seq` (from 1 for each Engine run). CEP `system.events` (`api/src/cep/methods/system.rs`) reads it by cursor and long-polls up to `MAX_WAIT_MS` (30000 ms), so a client outside the process sees loads it did not start. Reference: [`system.events`](../docs/api/cep/system/system/system.events.md).
 
-## Decisions and why
-
+## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | The protocol crate knows nothing about HTTP, models or Engine state | one method set serves HTTP, the C ABI and MCP; the crate's tests need no CUDA build | protocol code inside `api` |

@@ -101,8 +101,7 @@ Machine runs with real models (speed, memory, platforms) are recorded in
 **Build rule:** build the Engine with `cargo build -p cmd` only. A build of another package or of the
 whole workspace can rebuild llama.cpp with CUDA (about 25 minutes on the dev machine).
 
-## Decisions and why
-
+## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | Upper layers reach models only through `runtime` | one owner decides what is resident in memory; two callers loading separately would load a model twice | each handler holding its own backend handle |

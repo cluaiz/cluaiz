@@ -19,12 +19,11 @@ through this folder, so they send and read the same.
   in `mod.rs` and used by `cmd`.
 - **User guide:** [docs/engine/providers.md](../../../docs/engine/providers.md).
 
-## Architectural Flow
+## How it works
 
 ![A chat to a cloud provider: the model name picks the provider, its differences shape the body, the reply stream is decoded into the same blocks as an installed model](../../../docs/assets/engine/provider-call.png)
 
-## API Contract (Interface)
-
+## Interface
 - **Re-exported from `mod.rs`:**
   - Chat: `open`, `Opened`, `Opening`, `Room`, `ProviderRun` (`chat.rs`); `chat_body`,
     `ChatParts`, `Sampling`, `Thinking`, `ThinkMode`, `Effort` (`request.rs`).
@@ -44,13 +43,11 @@ through this folder, so they send and read the same.
   (`HostResponse`, `ContextReport`), `cluaiz_security` (default chat model), `cluaiz_models`
   (installed registry, so an installed model of the same name wins).
 
-## Deep File Breakdown
-
+## Files
 - `mod.rs`:
   - **Logic:** Declares the files, re-exports the API, picks the provider target a request names.
   - **Flow:** `target_for_model` reads providers.json; no model or `auto` means the default chat
     model when that is a provider's; an installed model with the same name wins.
-  - **Why:** One place decides whether a request goes to a provider, for every route.
 - `compat.rs`:
   - **Logic:** `Compat` holds one field per difference from the OpenAI format: thinking format
     (`ThinkingFormat`: OpenAI, Gemini, Qwen, QwenTemplate, Nvidia, Zai, DeepSeek, OpenRouter,
@@ -58,8 +55,6 @@ through this folder, so they send and read the same.
     stream, call id form (`IdForm`), `reasoning_content` on calls, wire format (`Wire`).
   - **Flow:** `Compat::of(target)` detects from the base URL, then applies `compat` from
     providers.json field by field.
-  - **Why:** A provider the Engine does not know still gets the plain OpenAI format; each quirk
-    is read in exactly one place (`request.rs`, `history.rs` or `stream.rs`).
 - `history.rs`:
   - **Logic:** The Engine's conversation (with `<tool_call>` text) as OpenAI `messages` with
     `tool_calls`.
@@ -67,33 +62,28 @@ through this folder, so they send and read the same.
     signature); calls another model made keep only names and arguments; then the provider's id
     form, `reasoning_content` on call messages (DeepSeek), no null `content`.
     `drop_oldest_turn` removes the oldest whole turn when a request does not fit.
-  - **Why:** Models reject call histories they did not write in their own form.
 - `request.rs`:
   - **Logic:** `chat_body` writes samplers, the answer limit, tools, the answer schema and
     thinking. `Thinking::of(mode, budget)` maps `on`/`off`/`auto` and a budget to a mode and an
     effort level. `add_thinking` writes thinking in the provider's own field;
     `drop_thinking_off` removes every "do not think" field again.
   - **Flow:** Same function for the server and the terminal.
-  - **Why:** One request builder, so both paths send identical requests.
 - `anthropic.rs`:
   - **Logic:** The Anthropic Messages request and its stream (Claude API, Bedrock, Vertex AI).
   - **Flow:** System prompt as its own field; calls as `tool_use`, results as `tool_result` in one
     user message; `max_tokens` always set; thinking as `adaptive` with `output_config.effort`;
     thinking blocks go back with their `signature` before that answer's calls.
-  - **Why:** The format differs from OpenAI in every part; it is kept apart.
 - `http.rs`:
   - **Logic:** One shared `reqwest` client; `Auth` decides how the key is sent (Bearer,
     `api-key`, `x-api-key`, Google token, Entra token, AWS signature, none).
   - **Flow:** `request` builds a request for a target with its auth; `send` sends it with the
     provider's timeouts.
-  - **Why:** The key goes only to the provider's own URL in its auth header, never into a log.
 - `google.rs`, `aws.rs`, `azure.rs`:
   - **Logic:** Sign-ins without a key: Google Application Default Credentials (service account
     JWT, user login refresh, `gcloud`), AWS Signature Version 4 (env, credentials file,
     `aws configure export-credentials`), Microsoft Entra (service principal, `az`).
   - **Flow:** Tokens are kept and renewed five minutes before they end; AWS signs each request
     with its method, URL, headers and body, region and service told from the host.
-  - **Why:** Vertex AI, Bedrock and Azure are used with the person's cloud login, not a pasted key.
 - `chat.rs`:
   - **Logic:** `open` sends a chat request until it is answered or cannot be. `ProviderRun` is a
     provider model as the model of the Engine's own chat (`dispatch`, `dispatch_prepared`).
@@ -103,8 +93,6 @@ through this folder, so they send and read the same.
     model cannot stop thinking; leave out an optional field the provider refuses; wait and retry
     rate limits and busy answers. The stream is read on a spawned task; thinking is passed on as
     it comes (also with thinking off), and an answer with nothing in it is asked for once more.
-  - **Why:** The caller gets either a stream or one clear error; every wait ends when the person
-    cancels.
 - `stream.rs`:
   - **Logic:** `Decoder::read` turns one SSE `data:` line into `Read::Piece` (thinking, text, a
     call being written), `Read::Done`, `Read::Error` or `Read::Nothing`; `finish` gives the calls
@@ -113,14 +101,11 @@ through this folder, so they send and read the same.
     `<thought>` text or Claude thinking blocks; calls in pieces (OpenAI, Groq) or whole (Gemini);
     usage in the last event, every event (Gemini) or `x_groq`. `sse_lines` keeps a character
     split across chunks whole.
-  - **Why:** Every provider's stream ends up in one form the Engine already handles.
 - `errors.rs`:
   - **Logic:** `classify(status, body)` gives a `Failure` (Key, NoModel, RateLimited, Quota,
     ContextFull, Busy, Other); `error_message` and `send_error` write one sentence that names the
     provider and what to do; `refused_field`, `tool_call_refused`, `refused_calls`,
     `thinking_required` recognise refusals that `open` can fix.
-  - **Why:** The kind decides between retry, change and giving up; the text never holds the key
-    (`redact`).
 - `retry.rs`:
   - **Logic:** `wait_after`: a rate limit waits the provider's `Retry-After` (else 4 s, then 8 s),
     never more than 20 s; a busy provider waits 1 s, then 3 s; at most 2 more tries.
@@ -151,8 +136,7 @@ through this folder, so they send and read the same.
     DeepSeek, OpenRouter, Claude, errors, empty answers) replayed through `Decoder`, plus request
     and history checks.
 
-## Failure & Recovery Logic
-
+## Failure and recovery
 - **Key refused (401/403):** not retried; the message names the provider and the key's source.
 - **Model not served to this key (404):** not retried; the message says the list may show it
   anyway and points to `cluaiz provider models`.
@@ -168,6 +152,21 @@ through this folder, so they send and read the same.
   nothing is asked for once more.
 - **Cancel:** every wait and every stream read checks the cancel flag; dropping the response ends
   the request at the provider.
+
+## Decisions
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| `mod.rs`: Declares the files, re-exports the API, picks the provider target a request names | One place decides whether a request goes to a provider, for every route. | not recorded |
+| `compat.rs`: `Compat` holds one field per difference from the OpenAI format | A provider the Engine does not know still gets the plain OpenAI format; each quirk is read in exactly one place (`request.rs`, `history.rs` or `stream.rs`). | not recorded |
+| `history.rs`: The Engine's conversation (with `<tool_call>` text) as OpenAI `messages` with `tool_calls` | Models reject call histories they did not write in their own form. | not recorded |
+| `request.rs`: `chat_body` writes samplers, the answer limit, tools, the answer schema and thinking | One request builder, so both paths send identical requests. | not recorded |
+| `anthropic.rs`: The Anthropic Messages request and its stream (Claude API, Bedrock, Vertex AI) | The format differs from OpenAI in every part; it is kept apart. | not recorded |
+| `http.rs`: One shared `reqwest` client | The key goes only to the provider's own URL in its auth header, never into a log. | not recorded |
+| `google.rs`: Sign-ins without a key | Vertex AI, Bedrock and Azure are used with the person's cloud login, not a pasted key. | not recorded |
+| `chat.rs`: `open` sends a chat request until it is answered or cannot be | The caller gets either a stream or one clear error; every wait ends when the person cancels. | not recorded |
+| `stream.rs`: `Decoder::read` turns one SSE `data:` line into `Read::Piece` (thinking, text, a call being written), `Read::Done`, `Read::Error` or `Read::Nothing` | Every provider's stream ends up in one form the Engine already handles. | not recorded |
+| `errors.rs`: `classify(status, body)` gives a `Failure` (Key, NoModel, RateLimited, Quota, ContextFull, Busy, Other) | The kind decides between retry, change and giving up; the text never holds the key (`redact`). | not recorded |
 
 ## Tests
 

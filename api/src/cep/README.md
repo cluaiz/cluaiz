@@ -20,7 +20,7 @@ registry, dispatcher, principals and scopes, approvals, tasks, discovery, audit)
   front matter of each page and `openrpc.json` are generated from this registry by
   `api/tests/cep_docs.rs`.
 
-## Architectural Flow
+## How it works
 
 ```mermaid
 flowchart LR
@@ -47,8 +47,7 @@ flowchart LR
     METH --> ROUTES
 ```
 
-## API Contract (Interface)
-
+## Interface
 - **`mod.rs`:** `CallCtx { state: Arc<AppState> }` (what a method gets besides its params),
   `CepEngine`, `engine()` (registry + extensions + approval store with a 5-minute answer time +
   task store: 8 running per caller, kept 1 hour by default, 24 hours at most + audit file),
@@ -64,8 +63,7 @@ flowchart LR
 - **Dependencies:** `cluaiz-cep`, `axum`, `serde_json`, `cluaiz_security` (audit, tokens,
   permission.json), and the Engine crates each group calls.
 
-## Deep File Breakdown
-
+## Files
 - `http.rs`: `POST /v1/cep`, a request or a batch. Behind the auth middleware like every route,
   so the owner's `api_auth.required` decides who gets here; whoever does is the owner.
 - `mcp.rs`: `POST /mcp`, the Engine as an MCP server (Streamable HTTP, JSON responses). A tool
@@ -102,8 +100,7 @@ flowchart LR
   | `workspace.rs` | `workspace.get`, `set`, `index`, `item`, `memory`, `remember`, `forget` | The workspace folder and a project's agent files (`AGENTS.md`, `.agents/`) |
   | `chat/` | `chat.cancel`, `skip_reasoning`, `tools`, `set_tools`, `telemetry`, `import_app` | Control of running chats (`ACTIVE_STREAMS`), their tools and telemetry; `app_import.rs`: read-only import of the App's existing chats into the Engine's event logs (opt-in, never writes to the App's folders) |
 
-## Failure & Recovery Logic
-
+## Failure and recovery
 - **Bad params:** `-32602 invalid_params` with the field; each method lists its own errors in its
   `Meta`, and they appear on its docs page.
 - **Scope or roots:** `forbidden`, or an approval request the owner answers within 5 minutes.

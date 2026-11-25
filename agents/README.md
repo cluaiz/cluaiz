@@ -18,7 +18,7 @@ confinement, chat memory and notes, and a project's agent files (`AGENTS.md`, `.
   `cmd` or any inference backend: the model is reached through the `Agent` trait that the caller
   implements (`src/turn.rs`).
 
-## Architectural flow: one agent turn
+## How it works: one agent turn
 
 ![One agent turn: message, tool search, schemas, model; approval, run in the OS sandbox, results back to the model](../docs/assets/engine/agent-turn.png)
 
@@ -52,8 +52,7 @@ own README:
 Live checks through the Engine: tool routing and tool-call format in
 [`test/context-runtime/`](../test/context-runtime/README.md) (results from October 2026, not rerun since).
 
-## Decisions and why
-
+## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | The turn loop talks to the model only through the `Agent` trait | the API chat and the terminal agent share one loop; neither the crate nor its tests need a model backend | a loop per front end |

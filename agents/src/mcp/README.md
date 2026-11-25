@@ -18,12 +18,11 @@ and `cluaiz mcp-server`.)
 - **Reusability Level:** Internal to `cluaiz-agents`; used by `ToolsEngine`, tool search (tool
   lists) and the API chat.
 
-## Architectural Flow
+## How it works
 
 ![MCP server process: started on the first call, reused, stopped after 10 idle minutes or when more than 4 run; restarted after 1 s then 2 s; unavailable after 3 crashes in 10 minutes](../../../docs/assets/engine/mcp-server-life.png)
 
-## API Contract (Interface)
-
+## Interface
 - **`client.rs`:** `McpClient::{list_tools, call_tool, get_cached_tools, clear_tool_cache,
   stop_server, is_unavailable}`; `Job` (Windows job object, a no-op elsewhere).
 - **`manifest.rs`:** `McpManifest`, `McpDiscovery`, `McpActivation`, `McpExecution`,
@@ -32,8 +31,7 @@ and `cluaiz mcp-server`.)
 - **Dependencies:** `tokio` (process, timers), `serde_json`, `crate::execution::environment`
   (`for_tool`), `crate::tool_env`; `windows-sys` for the job object.
 
-## Deep File Breakdown
-
+## Files
 - `manifest.rs`: reads the server's `package.json`: how to start it (`command`, `args`), its
   fixed `execution.env`, discovery and activation fields.
 - `client.rs`:
@@ -52,8 +50,7 @@ and `cluaiz mcp-server`.)
   - **Why:** Reusing one process per server keeps calls fast; the limits keep idle servers from
     holding memory.
 
-## Failure & Recovery Logic
-
+## Failure and recovery
 - **Server exits on its own (a crash):** recorded; it is started again after 1 s, then 2 s; after
   3 crashes within 10 minutes it is not started until the window passes, and
   `is_unavailable` is true (the tool is offered as unavailable).
@@ -63,8 +60,7 @@ and `cluaiz mcp-server`.)
   process itself is confined by the OS sandbox where it is enabled (Technical Specification above);
   with `os_sandbox: off`, or on Windows in `auto`, it runs with the user's rights.
 
-## Decisions and why
-
+## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | One long-lived process per server, reused for every call | starting `npx` / `uvx` servers takes seconds (the first start may download a package) | a process per call |

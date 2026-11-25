@@ -20,7 +20,7 @@ same.
 - **User reference:** [docs/reference/terminal-commands.md](../../../docs/reference/terminal-commands.md),
   [docs/cmd/commands_reference.md](../../../docs/cmd/commands_reference.md).
 
-## Architectural Flow
+## How it works
 
 ```mermaid
 flowchart LR
@@ -48,8 +48,7 @@ flowchart LR
     MAIN --> REMOTE --> SRV --> SERVE
 ```
 
-## API Contract (Interface)
-
+## Interface
 - **Entry points** (called from `main.rs`): `run::execute(RunArgs, verbose)`,
   `pull::execute`, `list::execute`, `show::execute`, `rm::execute`, `status::execute`,
   `bench::execute`, `config_cmd::execute`, `ingest::execute(path)`,
@@ -65,8 +64,7 @@ flowchart LR
 - **Dependencies:** `clap`, `color_eyre`, `colored`, `reqwest`, `tokio`, `cluaiz_models`,
   `cluaiz_core`, `cluaiz_plan`, `cluaiz_agents`, `cluaiz_api::providers`, `cluaiz_security`.
 
-## Deep File Breakdown
-
+## Files
 - `mod.rs`: declares the files.
 - `help.rs`:
   - **Logic:** The banner and the commands in groups, with clap's own descriptions so they never
@@ -84,7 +82,6 @@ flowchart LR
   - **Logic:** The download flow shared by `pull` and `run`: `cluaiz_models::resolve` (shared
     with the API), what will be downloaded, the variant prompt, the `--all` file picker, then
     `ModelDownloader::install`. Ends with the command to run the model.
-  - **Why:** No questions when `CLUAIZ_NONINTERACTIVE` is set or stdin is not a terminal.
 - `list.rs`, `show.rs`, `rm.rs`, `models.rs`: installed models from the registry; `show` reads
   the GGUF and prints the plan the model would get now (nothing is loaded; `-v` adds every key
   and the planner banner); `rm` deletes the folder and the registry entry; `models.rs` maps a
@@ -127,8 +124,7 @@ flowchart LR
   checks every file; models and settings stay); `self uninstall` removes the Cluaiz home, the
   program folder and the PATH entry (`--keep-models`, `-y`).
 
-## Failure & Recovery Logic
-
+## Failure and recovery
 - **No server running** for `ps`, `flow`, `mcp-server`, `storage`: the request fails with
   `<method> at <url> failed: …` (`server.rs`); a CEP error comes back as
   `<method>: <message> (code N)`. Nothing is changed.
@@ -140,3 +136,9 @@ flowchart LR
 - **Install plan refused:** a required dependency not approved stops the install before
   anything is downloaded.
 - **Self update fails:** the installer's own checks stop it; the installed version stays.
+
+## Decisions
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| `pull.rs`: The download flow shared by `pull` and `run` | No questions when `CLUAIZ_NONINTERACTIVE` is set or stdin is not a terminal. | not recorded |

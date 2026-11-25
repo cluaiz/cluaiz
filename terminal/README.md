@@ -16,12 +16,11 @@ and a bounded transcript projection. Execution stays in the caller.
 - **Platform boundary:** Cross-platform terminal APIs. Automated backend tests do not establish
   native keyboard/font behavior on every OS. The ignored preview requires a real interactive TTY.
 
-## Architectural flow
+## How it works
 
 ![The terminal screen draws and edits text; the agent runs the model and tools, gets send, stop, approve or exit from the screen and gives back what really happened](../docs/assets/engine/terminal-screen.png)
 
-## API contract
-
+## Interface
 - `App::new(Metadata, Limits)` initializes display state. Metadata is supplied by the client;
   there is no model discovery or hidden settings/home-directory lookup.
 - `App::handle(Event) -> Action` handles UI input. The client must process Submit/Cancel/Exit;
@@ -167,8 +166,7 @@ do not constitute a full Engine/CLI native build or API regression pass.
 `cargo test -p cluaiz-terminal` on 2026-11-21 (Windows 11): unit 2 passed; integration 10 and 37 passed;
 2 ignored (the interactive terminal tests above, run by hand one at a time).
 
-## Decisions and why
-
+## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | Presentation only; execution stays in the caller (`cmd/src/agent/terminal.rs`) | the library can be tested without a model or tools, and the agent loop stays in one place (`agents/src/turn.rs`) | a terminal app that runs tools itself |

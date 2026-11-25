@@ -75,8 +75,7 @@ graph TD
 `cargo test -p cluaiz-core` on 2026-11-22 (Windows 11): 59 passed (settings, thinking budget, managed prompts,
 media buffers, tool-call form, providers).
 
-## Decisions and why
-
+## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | Settings cached in memory (`Settings::current`) | every request reads settings; a file read per request is wasted work | read `settings.json` each time |

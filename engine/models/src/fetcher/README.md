@@ -18,12 +18,11 @@ everywhere.
 - **Crate overview:** [engine/models/README.md](../../README.md) (catalogue resolution,
   download preview, ONNX graph rules).
 
-## Architectural Flow
+## How it works
 
 ![cluaiz pull: resolve the model id to a repository and variant, plan the files, download with resume, check the package, write the installed ID to the registry; cluaiz list shows that ID](../../../../docs/assets/get-started/model-download.png)
 
-## API Contract (Interface)
-
+## Interface
 - **Resolution (`resolve.rs`):** `resolve(model_id, all, &dyn ResolveUi) -> Resolved`;
   `Resolved` (on disk already / installed under an id / a `DownloadPlan`); `ResolveStep` (what
   to show: resolving, repo found, not in catalog, catalog failed, scanning, tag matched…);
@@ -50,16 +49,11 @@ everywhere.
 - **Dependencies:** `reqwest`, `tokio`, `serde_json`, the crate's `registry/`, `capabilities`
   and `ModelManifest` / `ModelCatalog`.
 
-## Deep File Breakdown
-
+## Files
 - `resolve.rs`:
   - **Logic:** Splits an optional `:TAG`. A short id that is neither installed nor in the local
     roster is looked up in the online catalog; then the repo is scanned for variants, the tag is
     matched, or the caller chooses (a prompt in the terminal, `FirstVariant` over the API).
-  - **Why:** With nobody to ask, the default is Q4_K_M, else the smallest variant: the first one
-    listed can be the largest, and a script should not start that download. A free pick of files
-    (`--all`) is refused without someone to choose. A tag naming a quantization this build cannot
-    read (`PTQ1_0`) is refused before any download, with the variants that load.
 - `client.rs`:
   - **Logic:** Catalog resolution: one bounded request with the model id and, for `name:tag`,
     the base id as a fallback. Not found, rate limit, client rejection and service failure stay
@@ -69,8 +63,6 @@ everywhere.
     quantization, multi-shard GGUF sets, ONNX precision), and builds the URL of each asset at the
     manifest's revision. GGUF variants whose quantization the bundled llama.cpp cannot read are left
     out (`split_unloadable`).
-  - **Why:** prism-ml's Bonsai repos hold `PQ2_0` and `PTQ1_0` files from their llama.cpp fork next
-    to a `Q2_0` file; the smallest (`PTQ1_0`) was offered and failed only at load, after the download.
 - `asset_bundler.rs`:
   - **Logic:** Which companion files a variant needs: config and tokenizer files, the `mmproj`
     projector, MTP and helper GGUFs; PyTorch weights are recognised and left out; the bundle's
@@ -98,8 +90,7 @@ everywhere.
   when the model's own repository does not have it.
 - `package_tests/bundles.rs`: bundle tests for manifest-owned packages.
 
-## Failure & Recovery Logic
-
+## Failure and recovery
 - **Connection dropped:** resumes from the `.part` with `Range`; no total timeout, since a large
   file on a slow link takes longer than any fixed limit.
 - **User stops (`tasks.cancel`, Ctrl+C):** `ABORTED`; the `.part` stays, so the next pull
@@ -110,6 +101,13 @@ everywhere.
 - **Primary file or ONNX assets missing after download:** nothing is registered; the error names
   the missing assets.
 - **Nobody to ask:** the default variant, never a free file pick.
+
+## Decisions
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| `resolve.rs`: Splits an optional `:TAG` | With nobody to ask, the default is Q4_K_M, else the smallest variant: the first one listed can be the largest, and a script should not start that download. A free pick of files (`--all`) is refused without someone to choose. A tag naming a quantization this build cannot read (`PTQ1_0`) is refused before any download, with the variants that load. | not recorded |
+| `hf_hub.rs`: Reads a repository's file tree and metadata, groups files into variants (by quantization, multi-shard GGUF sets, ONNX precision), and builds the URL of each... | prism-ml's Bonsai repos hold `PQ2_0` and `PTQ1_0` files from their llama.cpp fork next to a `Q2_0` file; the smallest (`PTQ1_0`) was offered and failed only at load, after the download. | not recorded |
 
 ## Tests
 

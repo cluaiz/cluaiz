@@ -15,7 +15,7 @@ an installed model) and the ONNX runtime (family).
 - **Reusability Level:** The one definition of model kinds and file grouping in
   `cluaiz-models`.
 
-## Architectural Flow
+## How it works
 
 ```mermaid
 flowchart LR
@@ -35,8 +35,7 @@ flowchart LR
     STT --> OUT2
 ```
 
-## API Contract (Interface)
-
+## Interface
 - **`classifier.rs`:** `UniversalModelClassifier::classify(pipeline_tag, tags) ->
   ClassificationResult { slot, category, supported_tasks, capabilities, tts_family }`.
 - **`tags.rs`:** `HF_TAGS_CHAT`, `HF_TAGS_INGEST`, `HF_TAGS_EMBEDDING`, `HF_TAGS_TTS`,
@@ -54,14 +53,12 @@ flowchart LR
   `is_subcomponent_file`, `is_primary_entrypoint`, …).
 - **Export Type:** Public Rust API of `cluaiz-models`.
 
-## Deep File Breakdown
-
+## Files
 - `classifier.rs`:
   - **Logic:** Checks the declared tags in a fixed order: TTS, STT, embedding (also the plain
     `embedding` / `embeddings` tags), ingest, then chat. A model that declares nothing is a chat
     model. Names of models and files are never read; the TTS family comes from the registry
     entry or the graph when the model loads.
-  - **Why:** A name like "whisper-chat" must not decide what a model does.
 - `tags.rs`: the Hugging Face pipeline tags that mean each slot, as data.
 - `rules.rs`: the tasks a slot or a category offers, and the capability flags.
 - `quantization.rs`: recognises quantization names (`Q4_K_M`, `IQ3_XXS`, `fp16`, …) in file
@@ -75,12 +72,17 @@ flowchart LR
   (graphs, voices, tokens, configs), which file is the entry point, and which ONNX files are the
   same model at another precision or a different scale.
 
-## Failure & Recovery Logic
-
+## Failure and recovery
 - **No tags at all:** chat slot.
 - **Unknown speech package:** `Unknown` / `GenericOnnx*` family; the runtime then checks the
   graph's inputs before loading.
 - **File that matches no pattern:** treated as its own file, not grouped.
+
+## Decisions
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| `classifier.rs`: Checks the declared tags in a fixed order | A name like "whisper-chat" must not decide what a model does. | not recorded |
 
 ## Tests
 

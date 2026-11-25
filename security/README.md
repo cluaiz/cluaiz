@@ -15,7 +15,7 @@ file. It enforces nothing itself: each check runs where the call is made, and re
   `cluaiz-cep` (the `Audit` trait and `AuditEntry` it implements), `serde`/`serde_json`, `chrono`
   (audit timestamps), `uuid` (new API keys).
 
-## Architectural flow
+## How it works
 
 ![permission.json has the file and a server copy loaded at boot; the CLI writes only the file, CEP writes both](../docs/assets/engine/permission-copies.png)
 
@@ -30,8 +30,7 @@ Two copies of the settings exist at run time:
   so a running server keeps its token setting until it restarts (recorded in run 29,
   `test/cloud/runs/2026-11-21-run29-docs-first-api-request/`).
 
-## API contract
-
+## Interface
 | Construct | Kind | What it is |
 |---|---|---|
 | `PermissionSchema` | struct, serde | The whole `permission.json`. Every field has a serde default, so an old or partial file loads |
@@ -79,8 +78,7 @@ Automation webhooks write the same lines (`automation/host/src/webhook.rs:43`).
 {"ts":"2026-10-25T10:30:00.000Z","principal":"owner","method":"fs.write","scope":"write","params_sha256":"9f2c…","code":null,"ms":3}
 ```
 
-## Deep file breakdown
-
+## Files
 - `src/permission_schema.rs`
   - **Logic:** serde struct with a default function per field; `load` / `save` against
     `EnvironmentManager::current().config_dir()/permission.json`.
@@ -99,8 +97,7 @@ Automation webhooks write the same lines (`automation/host/src/webhook.rs:43`).
     SHA-256 lets two identical calls be matched without storing them.
 - `src/lib.rs`: module list and re-exports.
 
-## Decisions and why
-
+## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | Data here, enforcement at the call site | Each check needs its own context (the HTTP request in `auth.rs`, the tool entry in `agents`, the CEP scope in `cep/`); one crate for all checks would depend on all of them | A central `check(...)` API in this crate |

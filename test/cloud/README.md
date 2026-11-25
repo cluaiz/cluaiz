@@ -54,8 +54,7 @@ keeps its disk with the build and the models, so `start` continues; `delete` rem
 - Usernames, keys and the VPS address are removed (`<user>`, `<key>`, `<vps>`) before a commit.
 - `SUMMARY.md` ends with what the run does not prove.
 
-## Decisions and why
-
+## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | Spot VMs that stop themselves | GPU VMs cost money per hour; a forgotten VM stops after `MAX_RUN` | on-demand VMs |

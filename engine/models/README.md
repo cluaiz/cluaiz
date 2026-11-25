@@ -125,8 +125,7 @@ flowchart LR
 Hugging Face file or an installed model). Integration files: `download_preview.rs`,
 `media_capabilities.rs`, `package_install.rs`, `real_geometry.rs`, `registry_resolution.rs`.
 
-## Decisions and why
-
+## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | Saved catalogue data is authoritative, blank values included | a console edit must not be replaced by a probe or an import (project rule, catalogue data authority) | refresh from Hugging Face on every read |

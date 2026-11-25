@@ -88,8 +88,7 @@ From section 5.5 of the plan:
 
 A result that does not pass is recorded as such; Auto stays off and nothing public changes.
 
-## Decisions and why
-
+## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | llama-bench gets the placement Cluaiz planned | the comparison is the same placement, as in run 14 (`ssd_same_settings.sh`) | llama.cpp's `--fit` (a different placement; measured in run 13) |

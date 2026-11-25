@@ -12,7 +12,7 @@ Exercise actual file/search/edit/command and approval behavior with temporary fi
 - **Dependencies:** Existing tool executor, tempfile, Tokio and the display permission channel.
 - **Platform:** The command-failure case uses the executor's platform shell; other cases use Rust I/O.
 
-## Architectural flow
+## How it works
 
 ```mermaid
 flowchart LR

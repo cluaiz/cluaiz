@@ -101,8 +101,7 @@ results that exist come from other scripts: run 6 (clean cloud machines, `cluaiz
 [`../cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md`](../cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md)),
 run 7 (Linux CPU VM) and runs 15-19 (1 vCPU VPS), all in [`../cloud/BENCHMARKS.md`](../cloud/BENCHMARKS.md).
 
-## Decisions and why
-
+## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | Installs with the website's command, not a local build | it tests what a user gets, including pack selection | test a developer build only (`CPU_TEST_EXE` still allows it) |

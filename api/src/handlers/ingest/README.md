@@ -14,7 +14,7 @@ model processing share the same source and media owners used elsewhere in the En
 - **Platform:** Portable Rust orchestration; PDF/OCR and selected-model execution depend on the packaged native assets and runtime backend. This transport change is exercised on Windows; it is not new cross-platform model certification.
 - **Reusability:** Document parsing stays in `cluaiz_media`; vectors stay in `EmbeddingExecutor`; generative model execution stays in the existing runtime host.
 
-## Architectural flow
+## How it works
 
 ```mermaid
 flowchart TD

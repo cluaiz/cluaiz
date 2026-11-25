@@ -18,7 +18,7 @@ servers and `system.exec` run through here.
 - **Note on the name:** "Sandbox" means checked and limited, not isolated: a command runs with
   the user's rights. Only WebAssembly plugins are closed in (`plugins/`).
 
-## Architectural Flow
+## How a command runs
 
 ```mermaid
 flowchart LR
@@ -42,7 +42,7 @@ flowchart LR
     RUN --> PROC --> RES
 ```
 
-## API Contract (Interface)
+## Interface
 
 - **`policy.rs`:** `ExecutionPolicy::evaluate(command, cwd, SecurityMode) -> PolicyDecision`
   (`Allow`, `AskConfirmation { reason, command }`, `Deny { reason }`); `chains(command)`.
@@ -60,7 +60,7 @@ flowchart LR
 - **Dependencies:** `tokio` (process, time, watch), `portable-pty` (ConPTY / pty),
   `cluaiz_agents::registry::SecurityMode`.
 
-## Deep File Breakdown
+## Files
 
 - `policy.rs`:
   - **Logic:** In order: (1) a hard-denied destructive pattern anywhere in the line → `Deny`, in
@@ -104,7 +104,7 @@ flowchart LR
   the last half are kept, the middle is cut, on character boundaries; and a sentence for
   well-known exit codes and for a cancel.
 
-## Failure & Recovery Logic
+## Failure and recovery
 
 - **Destructive command:** denied before anything runs, in every mode, also with `--yes`.
 - **Needs confirmation without a person to ask** (piped stdin, no approval channel): the caller
@@ -207,6 +207,18 @@ workspace sat under `/var/folders` and the deny named that spelling while Seatbe
 `/private/var/folders`, and `git add` stopped on the unreadable `~/.gitconfig`. Both fixed above (both
 spellings in every rule, no global git config); `seatbelt_rules_name_the_resolved_path_too` checks the
 first, 27 unit tests pass on Windows 11. The macOS rerun is the proof still to come.
+
+## Decisions
+
+| Decision | Why (evidence) | Alternative not taken |
+|---|---|---|
+| A read-only start (`ls`, `git status`) runs without approval only when the line does not chain | `chains` catches `;`, `\|`, `&`, redirects, backticks, `$(` and new lines: a read-only start says nothing about the rest of the line | trust the first word |
+| Timeout and cancel kill the whole process tree (`taskkill /T /F`, `kill -9 -<pgid>`) | killing only the shell leaves its children running | kill the shell only |
+| stdout and stderr are read on plain threads | tokio's child pipes ended the whole program on Windows | tokio pipes |
+| Windows confinement: an AppContainer helper, as Jan does | our policy is a few roots and one network switch | Codex's restricted-token backend with sandbox users and firewall rules |
+| An ACL entry is written only when the folder does not have it yet | an inheritable entry walks the whole tree (seconds on a project with `target/`) | write it every time |
+| A workspace that is the home folder or above it is not confined (auto warns, required refuses) | granting it would rewrite the ACL of every file in the profile | confine it anyway |
+| Output capped at 50 KiB stdout and 20 KiB stderr, start and end kept | a huge output must not fill the model's context | keep everything, or only the start |
 
 ## Tested
 

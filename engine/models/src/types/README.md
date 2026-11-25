@@ -12,7 +12,7 @@ caller (API chat, terminal, providers).
 - **Platform Support:** Any.
 - **Reusability Level:** Imported across the Engine (`cluaiz_models::*`).
 
-## Architectural Flow
+## How it works
 
 ```mermaid
 flowchart LR
@@ -29,8 +29,7 @@ flowchart LR
     DNA --> CHAT
 ```
 
-## API Contract (Interface)
-
+## Interface
 - **`manifest.rs`:** `ModelManifest`, `ModelAsset`, `InstallationModel`, `InstallationFile`,
   `ModelRegistry` / `ModelRegistryEntry` (`primary_path`, `size_bytes`, `find(query)`), serde
   defaults (`default_bit_depth`, `default_context`, `default_category`).
@@ -43,8 +42,7 @@ flowchart LR
   `KernelSignature`, `StreamingReasoningFilter::{new, reset_turn, process_token, flush_final}`.
 - **Export Type:** Public Rust API.
 
-## Deep File Breakdown
-
+## Files
 - `manifest.rs`:
   - **Logic:** A manifest lists a model's files; the weight file to load is the one marked
     primary, else the first listed file that exists. `ModelRegistry::find(query)` gives the exact
@@ -61,15 +59,18 @@ flowchart LR
   - **Flow:** `new(start_tag, end_tag, prompt_starts_in_think, disabled)`: with `disabled` it
     passes everything as answer (a model with no thinking tags); a prompt that already opened
     the block starts inside it; without known tags it recognises a leading `<tag>` / `[tag]`.
-  - **Why:** One filter for every path, so thinking never leaks into the answer in one place
-    and not in another.
 
-## Failure & Recovery Logic
-
+## Failure and recovery
 - **Primary file missing:** `primary_path()` is `None`; the registry drops or refuses the entry.
 - **Thinking left open at the end:** `flush_final` returns what was buffered; the engine closes
   the block once so the model answers outside it.
 - **A tag split across tokens:** held back until it is whole or proven not to be a tag.
+
+## Decisions
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| `dna.rs`: `separate_reasoning(text, start, end)` splits a finished answer into thinking and answer with the model's own tags | One filter for every path, so thinking never leaks into the answer in one place and not in another. | not recorded |
 
 ## Tests
 
