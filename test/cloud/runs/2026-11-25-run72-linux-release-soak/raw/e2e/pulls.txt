@@ -1,0 +1,5 @@
+== pulls
+unsloth/Qwen3.5-0.8B-GGUF:Q4_K_M exit 0 7s   │ 🆔 Registered ID:  qwen3.5-0.8b-gguf-Q4_K_M
+ggml-org/embeddinggemma-300M-GGUF exit 0 3s   │ 🆔 Registered ID:  embeddinggemma-300m-gguf-Q8_0
+onnx-community/Kokoro-82M-v1.0-ONNX:uint8 exit 0 17s   │ 🆔 Registered ID:  kokoro-82m-v1.0-onnx-UINT8
+onnx-community/moonshine-tiny-ONNX:int8 exit 0 3s   │ 🆔 Registered ID:  moonshine-tiny-onnx-INT8

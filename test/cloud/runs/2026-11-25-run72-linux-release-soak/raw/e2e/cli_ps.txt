@@ -1,0 +1,4 @@
+$ cluaiz ps
+MODEL                                     PLACEMENT     NGL   CONTEXT        VRAM  PID
+qwen3.5-0.8b-gguf-Q4_K_M                  GpuOnly        -1     16384     1.18 GB  322607
+exit=0

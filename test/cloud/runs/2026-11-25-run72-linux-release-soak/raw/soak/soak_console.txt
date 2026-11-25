@@ -1,0 +1,2 @@
+seed=7201 passed=210 failed=39 raw=/home/<user>/run72/soak
+soak exit 1

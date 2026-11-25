@@ -1,0 +1,3 @@
+$ cluaiz config path
+/home/<user>/run72/home/config/settings.json
+exit=0

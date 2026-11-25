@@ -1,0 +1,9 @@
+$ cluaiz flow save (answer y)
+This flow needs these permissions:
+  {
+  "models": [
+    "*"
+  ]
+}
+Allow them? [y/N] saved run49-check (user) at ~/run72/home/flows/run49-check.flow.yaml
+exit=0

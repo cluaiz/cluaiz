@@ -1,0 +1,6 @@
+PASS chat_tools                             HTTP 200, call get_weather {"city":"Paris"}
+FAIL chat_vision                            red 448x448 PNG: {'text_first': (200, 'The tool response indicates that there is no rule named "image" in the system. The available rules are "math" and "filesystem". Since the image is not a rule, I cannot use the read_item tool to analyze it.\n\nHowever, I can directly answer your question based on the visual information. The image'), 'image_first': (200, "The image you've provided is a solid red color.")}
+PASS vision_tools_call                      HTTP 200, call get_weather {"city":"Paris"}, content '\n'
+PASS json_schema_with_tools                 HTTP 200, parsed {'age': 36, 'name': 'Ada'}
+PASS long_input_option_b                    3/3 real answers, marker 3/3, secs [127.7, 127.6, 127.5]
+== 4/5 passed

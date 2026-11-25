@@ -1,0 +1,27 @@
+
+  ⚙️ [cluaiz] Initializing Kernel for 'unsloth/Qwen3.5-0.8B-GGUF:Q4_K_M'...
+  🔍 Scanning HuggingFace Hub for 'unsloth/Qwen3.5-0.8B-GGUF'...
+  ⚡ Direct Quantization Tag Matched: ':Q4_K_M' -> Qwen3.5-0.8B-Q4_K_M.gguf (0.74 GB)
+  📡 Fetching precise metadata...
+
+  📋 Model Metadata Summary:
+    ├─ 🆔 ID: qwen3.5-0.8b-gguf-Q4_K_M
+    ├─ 📦 Format: GGUF
+    ├─ 🏷️  Precision / Quant Tag: Q4_K_M
+    ├─ 🧠 Architecture: qwen35
+    ├─ 📁 Category: chat
+    ├─ 🧩 Parameters: 0.8B
+    ├─ 💾 Total Download Size: 0.74 GB
+    └─ 📁 Files to Download (2 files):
+       ├─ ⚖️  Qwen3.5-0.8B-Q4_K_M.gguf
+       └─ ⚖️  mmproj-F16.gguf
+   ├─ [1/2] Downloading Qwen3.5-0.8B-Q4_K_M.gguf
+   ├─ [2/2] Downloading mmproj-F16.gguf
+
+  ✅ Model downloaded and registered successfully!
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  qwen3.5-0.8b-gguf-Q4_K_M
+  │ 📁 Vault Path:     /home/<user>/run72/home/models/chat/qwen3.5-0.8b-gguf-Q4_K_M
+  │ 🚀 Run Command:   cluaiz run qwen3.5-0.8b-gguf-Q4_K_M
+  └─────────────────────────────────────────────────────────────┘
+

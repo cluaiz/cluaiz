@@ -1,0 +1,22 @@
+{"event": "setup", "seed": 7201, "minutes": 120.0, "users": 4, "restart_every": 2, "excluded": "", "model": "qwen3.5-0.8b-gguf-Q4_K_M", "exe": "/home/<user>/cluaiz-rel/dist/cluaiz-0.1.0-linux-x64/cluaiz", "time": 1795557786.3613195}
+{"event": "engine_started", "pid": 329230, "time": 1795557786.8661053}
+{"event": "engine_stopped", "time": 1795558537.1058373}
+{"event": "engine_started", "pid": 331933, "time": 1795558537.6087883}
+{"event": "engine_stopped", "time": 1795559288.9097035}
+{"event": "engine_started", "pid": 334205, "time": 1795559289.4126577}
+{"event": "engine_stopped", "time": 1795560051.0461617}
+{"event": "engine_started", "pid": 336433, "time": 1795560051.5490432}
+{"event": "engine_stopped", "time": 1795560801.4282472}
+{"event": "engine_started", "pid": 338597, "time": 1795560801.9309642}
+{"event": "engine_stopped", "time": 1795561550.5355139}
+{"event": "engine_started", "pid": 340737, "time": 1795561551.038377}
+{"event": "engine_stopped", "time": 1795562208.8662481}
+{"event": "engine_started", "pid": 342644, "time": 1795562209.3691714}
+{"event": "engine_stopped", "time": 1795562915.9062986}
+{"event": "engine_started", "pid": 344671, "time": 1795562916.4091547}
+{"event": "engine_stopped", "time": 1795563733.4656339}
+{"event": "engine_started", "pid": 347022, "time": 1795563733.9685116}
+{"event": "engine_stopped", "time": 1795564481.4325042}
+{"event": "engine_started", "pid": 349123, "time": 1795564481.935297}
+{"event": "finished", "passed": 210, "failed": 39, "sweeps": 20, "time": 1795565056.1470006}
+{"event": "engine_stopped", "time": 1795565056.3111446}

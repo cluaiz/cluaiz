@@ -1,0 +1,7 @@
+flow: cluaiz.flow/1
+name: run49-check
+steps:
+  - id: pause
+    wait: { for: 8s }
+  - id: answer
+    ask: "What is 5+5? Answer with the number only."

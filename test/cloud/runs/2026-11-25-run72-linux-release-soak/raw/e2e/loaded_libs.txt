@@ -1,0 +1,11 @@
+/home/<user>/cluaiz-rel/dist/cluaiz-0.1.0-linux-x64/libcublas.so.13
+/home/<user>/cluaiz-rel/dist/cluaiz-0.1.0-linux-x64/libcublasLt.so.13
+/home/<user>/cluaiz-rel/dist/cluaiz-0.1.0-linux-x64/libcudart.so.13
+/home/<user>/cluaiz-rel/dist/cluaiz-0.1.0-linux-x64/libggml-base.so.1.0.0
+/home/<user>/cluaiz-rel/dist/cluaiz-0.1.0-linux-x64/libggml-cpu-cascadelake.so
+/home/<user>/cluaiz-rel/dist/cluaiz-0.1.0-linux-x64/libggml-cuda.so
+/home/<user>/cluaiz-rel/dist/cluaiz-0.1.0-linux-x64/libggml.so.1.0.0
+/home/<user>/cluaiz-rel/dist/cluaiz-0.1.0-linux-x64/libgomp.so.1
+/home/<user>/cluaiz-rel/dist/cluaiz-0.1.0-linux-x64/libllama-common.so.1.0.0
+/home/<user>/cluaiz-rel/dist/cluaiz-0.1.0-linux-x64/libllama.so.1.0.0
+/home/<user>/cluaiz-rel/dist/cluaiz-0.1.0-linux-x64/libmtmd.so.1.0.0

@@ -1,0 +1,74 @@
+== hardware
+CPU(s):                                  8
+Model name:                              Intel(R) Xeon(R) CPU @ 2.20GHz
+               total        used        free      shared  buff/cache   available
+Mem:           32099        1110       11137          15       20180       30988
+Swap:              0           0           0
+Tue Nov 24 21:47:36 2026       
++-----------------------------------------------------------------------------------------+
+| NVIDIA-SMI 620.70.06              KMD Version: 620.70.06     CUDA UMD Version: 13.5     |
++-----------------------------------------+------------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id          Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |           Memory-Usage | GPU-Util  Compute M. |
+|                                         |                        |               MIG M. |
+|=========================================+========================+======================|
+|   0  NVIDIA L4                      On  |   00000000:00:03.0 Off |                    0 |
+| N/A   41C    P8             16W /   72W |       0MiB /  23034MiB |      0%      Default |
+|                                         |                        |                  N/A |
++-----------------------------------------+------------------------+----------------------+
+
++-----------------------------------------------------------------------------------------+
+| Processes:                                                                              |
+|  GPU   GI   CI              PID   Type   Process name                        GPU Memory |
+|        ID   ID                                                               Usage      |
+|=========================================================================================|
+|  No running processes found                                                             |
++-----------------------------------------------------------------------------------------+
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/nvme0n1p1  148G  126G   16G  90% /
+== os
+Debian GNU/Linux 13 (trixie)
+ldd (Debian GLIBC 2.41-12+deb13u5) 2.41
+6.12.117+deb13-cloud-amd64
+== binary
+06fbf0913421123d066594e0e76632702f1cb70e327f932597b09edf82012916  /home/<user>/cluaiz-rel/dist/cluaiz-0.1.0-linux-x64/cluaiz
+total 738632
+drwxrwxr-x 2 <user> <user>      4096 Nov 24 21:45 .
+drwxrwxr-x 3 <user> <user>      4096 Nov 24 21:45 ..
+-rw-rw-r-- 1 <user> <user>     11338 Nov 24 21:45 LICENSE
+-rw-rw-r-- 1 <user> <user>      2711 Nov 24 21:45 THIRD_PARTY_NOTICES.md
+-rwxrwxr-x 1 <user> <user>  81450960 Nov 24 21:45 cluaiz
+-rw-r--r-- 1 <user> <user>  54198912 Nov 24 21:45 libcublas.so.13
+-rw-r--r-- 1 <user> <user> 508260928 Nov 24 21:45 libcublasLt.so.13
+-rw-r--r-- 1 <user> <user>    773920 Nov 24 21:45 libcudart.so.13
+lrwxrwxrwx 1 <user> <user>        17 Nov 24 21:45 libggml-base.so -> libggml-base.so.1
+lrwxrwxrwx 1 <user> <user>        21 Nov 24 21:45 libggml-base.so.1 -> libggml-base.so.1.0.0
+-rw-r--r-- 1 <user> <user>    928912 Nov 24 21:45 libggml-base.so.1.0.0
+-rw-r--r-- 1 <user> <user>   1449440 Nov 24 21:45 libggml-cpu-alderlake.so
+-rw-r--r-- 1 <user> <user>   1645224 Nov 24 21:45 libggml-cpu-cannonlake.so
+-rw-r--r-- 1 <user> <user>   1661312 Nov 24 21:45 libggml-cpu-cascadelake.so
+-rw-r--r-- 1 <user> <user>   1661480 Nov 24 21:45 libggml-cpu-cooperlake.so
+-rw-r--r-- 1 <user> <user>   1453536 Nov 24 21:45 libggml-cpu-haswell.so
+-rw-r--r-- 1 <user> <user>   1661312 Nov 24 21:45 libggml-cpu-icelake.so
+-rw-r--r-- 1 <user> <user>   1385032 Nov 24 21:45 libggml-cpu-ivybridge.so
+-rw-r--r-- 1 <user> <user>   1380936 Nov 24 21:45 libggml-cpu-piledriver.so
+-rw-r--r-- 1 <user> <user>   1362480 Nov 24 21:45 libggml-cpu-sandybridge.so
+-rw-r--r-- 1 <user> <user>   1931496 Nov 24 21:45 libggml-cpu-sapphirerapids.so
+-rw-r--r-- 1 <user> <user>   1645224 Nov 24 21:45 libggml-cpu-skylakex.so
+-rw-r--r-- 1 <user> <user>   1035656 Nov 24 21:45 libggml-cpu-sse42.so
+-rw-r--r-- 1 <user> <user>   1015296 Nov 24 21:45 libggml-cpu-x64.so
+-rw-r--r-- 1 <user> <user>   1661480 Nov 24 21:45 libggml-cpu-zen4.so
+-rw-r--r-- 1 <user> <user>  75190088 Nov 24 21:45 libggml-cuda.so
+lrwxrwxrwx 1 <user> <user>        12 Nov 24 21:45 libggml.so -> libggml.so.1
+lrwxrwxrwx 1 <user> <user>        16 Nov 24 21:45 libggml.so.1 -> libggml.so.1.0.0
+-rw-r--r-- 1 <user> <user>     51320 Nov 24 21:45 libggml.so.1.0.0
+-rw-r--r-- 1 <user> <user>    348056 Nov 24 21:45 libgomp.so.1
+lrwxrwxrwx 1 <user> <user>        20 Nov 24 21:45 libllama-common.so -> libllama-common.so.1
+lrwxrwxrwx 1 <user> <user>        24 Nov 24 21:45 libllama-common.so.1 -> libllama-common.so.1.0.0
+-rw-r--r-- 1 <user> <user>   6420920 Nov 24 21:45 libllama-common.so.1.0.0
+lrwxrwxrwx 1 <user> <user>        13 Nov 24 21:45 libllama.so -> libllama.so.1
+lrwxrwxrwx 1 <user> <user>        17 Nov 24 21:45 libllama.so.1 -> libllama.so.1.0.0
+-rw-r--r-- 1 <user> <user>   5516704 Nov 24 21:45 libllama.so.1.0.0
+lrwxrwxrwx 1 <user> <user>        12 Nov 24 21:45 libmtmd.so -> libmtmd.so.1
+lrwxrwxrwx 1 <user> <user>        16 Nov 24 21:45 libmtmd.so.1 -> libmtmd.so.1.0.0
+-rw-r--r-- 1 <user> <user>   2264976 Nov 24 21:45 libmtmd.so.1.0.0

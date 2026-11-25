@@ -1,0 +1,42 @@
+PASS health                                 HTTP 200
+PASS auth_required                          api_auth.required=False (default, not changed); HTTP 200 without a token
+PASS v1_models                              HTTP 200, 4 models, chat model listed: True
+PASS chat_basic                             HTTP 200, content '4', usage {'completion_tokens': 1, 'completion_tokens_details': {'reasoning_tokens': 0}, 'model_load_ms': 18, 'prompt_tokens': 875, 'time_to_first_token_ms': 61, 'tokens_per_second': 14.93, 'total_time_ms': 67, 'total_tokens': 876}
+PASS chat_stream_usage                      HTTP 200, 7 chunks, text 'Hello!', usage chunk True, ends [DONE] True
+PASS chat_stop_string                       HTTP 200, content '1, 2, 3, 4, ', finish stop
+PASS chat_stop_list                         HTTP 200, content '1, 2, 3, 4, 5, 6, '
+PASS chat_max_completion_tokens             HTTP 200, completion_tokens 5, finish length
+PASS chat_refuses_n2_logprobs               n=2 HTTP 400, logprobs HTTP 400
+PASS chat_logit_bias                        'Yes'=9175 'No'=2665; plain 'No'; Yes +100 'YesYesYesYesYesYesYesYes'; No -100 'Yes'; unknown id HTTP 400
+PASS chat_tools                             HTTP 200, call get_weather {"city":"Paris"}
+PASS chat_approval_mode                     strict HTTP 200, bogus HTTP 400, global mode after: sandboxed
+FAIL chat_vision                            red 448x448 PNG: {'text_first': (200, 'The tool response indicates that there is no rule named "image" in the system. The available rules are "math" and "filesystem". Since the image is not a rule, I cannot use the read_item tool to analyze it.\n\nHowever, I can directly answer your question based on the visual information. The image'), 'image_first': (200, "The image you've provided is a solid red color.")}
+PASS chat_multiturn_cache                   turn 1 prompt 1459 TTFT 901 ms; turn 2 prompt 1513 TTFT 89 ms (the serve log line '[Context] prompt N tokens (M from the cache)' is the proof)
+PASS embeddings                             HTTP 200, dims [768, 768]
+PASS tts_speech                             HTTP 200, WAV 171644 bytes in audio_data (documented JSON reply)
+PASS stt_transcription                      HTTP 200, text 'The quick brown fox jumps over the lazy dog.'
+PASS ingest_text                            HTTP 200
+PASS ollama_version                         HTTP 200 {'version': '0.1.0'}
+PASS ollama_tags                            HTTP 200, 4 models, chat parameter_size 752.39M
+PASS ollama_show                            known HTTP 200 details {'families': ['qwen35'], 'family': 'qwen35', 'format': 'gguf', 'parameter_size': '752.39M', 'parent_model': '', 'quantization_level': 'Q4_K_M'}; unknown HTTP 404
+PASS ollama_chat                            HTTP 200, content '6', done True
+PASS ollama_chat_stream                     HTTP 200, 10 NDJSON lines, last done True
+PASS ollama_generate                        HTTP 200, response 'The capital of France is **Paris**.\n\nIt is the largest city in France'
+PASS ollama_embed                           HTTP 200, 1 x 768
+PASS ollama_ps                              HTTP 200, [('qwen3.5-0.8b-gguf-Q4_K_M', 1178981423, 16384)]
+PASS cep_system_reads                       18/18 answered; errors: {}
+PASS cep_live_port                          engine.api_port 8013, saved 8000, live 8013
+PASS cep_system_events                      55 events, latest_seq 55; empty long poll waited 1.5 s; a poll during activity returned 1 new events after 1.0 s: ['task.done']
+PASS cep_config_roundtrip                   cleanup_policy 'Immediate' written back unchanged
+PASS vision_tools_call                      HTTP 200, call get_weather {"city":"Paris"}, content '\n'
+PASS json_schema_think_off                  HTTP 200, parsed {'age': 36, 'name': 'Ada'}
+PASS json_schema_think_on                   HTTP 200, parsed {'age': 36, 'name': 'Ada'}, reasoning 285 chars
+PASS json_object_think_off                  HTTP 200, parsed {'name': 'Ada', 'age': 36}
+PASS json_schema_stream_think_on            HTTP 200, parsed {'age': 36, 'name': 'Ada'}, reasoning 286 chars, [DONE] True
+PASS json_schema_with_tools                 HTTP 200, parsed {'age': 36, 'name': 'Ada'}
+PASS think_on_reasoning                     HTTP 200, content '51', reasoning 45 chars, finish stop
+PASS think_on_stream                        HTTP 200, content '51', reasoning 1871 chars, [DONE] True
+PASS tools_stream_call                      HTTP 200, calls ['get_weather'] args '{"city":"Paris"}', content '', [DONE] True
+PASS long_input_option_b                    3/3 real answers, marker 3/3, secs [10.5, 10.6, 10.6]
+PASS ollama_chat_format_schema              HTTP 200, parsed {'age': 36, 'name': 'Ada'}
+== 40/41 passed

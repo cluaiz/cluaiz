@@ -1,0 +1,4 @@
+$ cluaiz flow validate /home/<user>/run72/scripts/run49-check.flow.yaml
+valid /home/<user>/run72/scripts/run49-check.flow.yaml
+  permissions it needs: {"models":["*"]}
+exit=0

@@ -1,0 +1,3 @@
+$ cluaiz model set-vector embeddinggemma-300m-gguf-Q8_0
+Active vector model: embeddinggemma-300m-gguf-Q8_0
+exit=0

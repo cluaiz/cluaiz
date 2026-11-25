@@ -1,0 +1,4 @@
+$ cluaiz flow run run49-check
+run run_9ac020ca4205 started
+succeeded in 17524 ms, 2 steps
+exit=0

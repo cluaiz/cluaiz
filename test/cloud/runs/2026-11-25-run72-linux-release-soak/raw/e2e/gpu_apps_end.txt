@@ -1,0 +1,2 @@
+pid, used_gpu_memory [MiB]
+322607, 2048 MiB

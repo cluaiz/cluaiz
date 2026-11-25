@@ -1,0 +1,8 @@
+$ cluaiz bench qwen3.5-0.8b-gguf-Q4_K_M -p 64 -n 16 -r 1
+running pp64 on Full GPU (1 runs)...
+running tg16 on Full GPU (1 runs)...
+| model | size | params | placement | ngl | n_ctx | test | t/s |
+| ----- | ---: | -----: | --------- | --: | ----: | ---: | --: |
+| qwen35 0.8B Q4_K - Medium | 0.49 GiB | 0.75 B | Full GPU | -1 | 16384 | pp64 | 5205.24 ± 0.00 |
+| qwen35 0.8B Q4_K - Medium | 0.49 GiB | 0.75 B | Full GPU | -1 | 16384 | tg16 | 257.91 ± 0.00 |
+exit=0

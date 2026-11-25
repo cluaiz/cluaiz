@@ -1,0 +1,8 @@
+2026-11-24T21:48:06.553580Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+║   • Mode            : Full GPU
+║   • Reason         : Full GPU: weights 0.49 + KV 0.21 + buffers 0.49 = 1.18 GB vs usable VRAM 21.63 GB
+║   • Full GPU         [FITS]     VRAM  1.18 GB | RAM  0.19 GB | weights 0.49 + KV 0.21 + buffers 0.49 = 1.18 GB vs usable VRAM 21.63 GB
+2026-11-24T21:50:21.681898Z  INFO 🧾 [API] Turn 'chatcmpl-e46c4c71efef4407a06bcf5b7ca286d5' stopped at step/repeat limit (max_steps=100): asking once more for a final answer without tools
+2026-11-24T21:50:32.281084Z  INFO 🧾 [API] Turn 'chatcmpl-241228f9efaa46d4bfd5954973fd66eb' stopped at step/repeat limit (max_steps=100): asking once more for a final answer without tools
+2026-11-24T21:50:42.870926Z  INFO 🧾 [API] Turn 'chatcmpl-cfca6b0f9cb04f5ca71a1d02bc9db0ea' stopped at step/repeat limit (max_steps=100): asking once more for a final answer without tools

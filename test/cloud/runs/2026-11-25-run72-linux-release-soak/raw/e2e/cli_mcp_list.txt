@@ -1,0 +1,7 @@
+$ cluaiz mcp list
+
+  📦 [Cluaiz Tools] Installed MCP:
+    🔹 filesystem (v1.0.0) [ENABLED] | Mode: MANUAL | Lifespan: 3 turns
+       ↳ Triggers: ["read file", "write file", "list directory", "search files"]
+
+exit=0
