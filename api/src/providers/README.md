@@ -126,6 +126,9 @@ through this folder, so they send and read the same.
     sends a TTS model's request to the official `generateContent` endpoint instead. It does this only
     for the exact `https://generativelanguage.googleapis.com/v1beta[/openai]` base; any other URL
     (for example one from a catalogue) never receives the key this way.
+    An answer without audio is a 502 that names Gemini's `finishReason` (or the prompt's
+    `blockReason`), and a warning logs it with the first text part Gemini sent instead (at most 200
+    characters; only response fields, never the key).
   - **Model records:** a listed model keeps its `kind` and catalogue `metadata` (inputs, outputs,
     price and similar). Metadata cannot change the upstream URL or the key. A model with no saved
     kind is returned with `kind: null`, not "chat", so a TTS model saved without a kind no longer

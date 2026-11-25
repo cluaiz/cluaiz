@@ -64,12 +64,52 @@ pub(super) async fn generate(
     }
     let value: Value = serde_json::from_slice(&bytes)
         .map_err(|_| provider_error(target, 502, "Gemini returned invalid speech JSON".into()))?;
-    let result = value
+    let Some(result) = value
         .pointer("/candidates/0/content/parts")
         .and_then(Value::as_array)
         .and_then(|parts| parts.iter().find_map(|part| part.get("inlineData")))
-        .ok_or_else(|| provider_error(target, 502, "Gemini returned no speech audio".into()))?;
+    else {
+        let (reason, text) = no_audio_reason(&value);
+        tracing::warn!(
+            provider = %target.provider,
+            model = %target.model,
+            reason = %reason,
+            text = text.as_deref().unwrap_or(""),
+            "Gemini returned no speech audio"
+        );
+        return Err(provider_error(target, 502, format!("Gemini returned no speech audio ({reason})")));
+    };
     decode(result, limits).map_err(|message| provider_error(target, 502, message))
+}
+
+/// Longest text part kept in the log line when Gemini answers without audio
+const NO_AUDIO_TEXT_CHARS: usize = 200;
+
+/// Why a Gemini answer has no audio: its `finishReason` (or the prompt's `blockReason` when it
+/// sent no candidate), and the first text part it sent instead, cut to [`NO_AUDIO_TEXT_CHARS`].
+/// Only response fields are read; the request and its key are not part of it.
+fn no_audio_reason(value: &Value) -> (String, Option<String>) {
+    let candidate = value.pointer("/candidates/0");
+    let reason = match (
+        candidate.and_then(|c| c.get("finishReason")).and_then(Value::as_str),
+        value.pointer("/promptFeedback/blockReason").and_then(Value::as_str),
+    ) {
+        (Some(finish), _) => format!("finishReason: {finish}"),
+        (None, Some(block)) => format!("blockReason: {block}"),
+        (None, None) => "no finishReason".to_string(),
+    };
+    let text = candidate
+        .and_then(|c| c.pointer("/content/parts"))
+        .and_then(Value::as_array)
+        .and_then(|parts| parts.iter().find_map(|part| part.get("text").and_then(Value::as_str)))
+        .map(|text| {
+            let mut cut: String = text.chars().take(NO_AUDIO_TEXT_CHARS).collect();
+            if text.chars().count() > NO_AUDIO_TEXT_CHARS {
+                cut.push('…');
+            }
+            cut
+        });
+    (reason, text)
 }
 
 fn decode(data: &Value, limits: MediaLimits) -> Result<Vec<u8>, String> {
@@ -118,6 +158,22 @@ fn decode(data: &Value, limits: MediaLimits) -> Result<Vec<u8>, String> {
 mod tests {
     use super::*;
     use cluaiz_core::providers::Provider;
+
+    #[test]
+    fn test_gemini_no_audio_reason_names_finish_reason_and_text() {
+        let long = "x".repeat(NO_AUDIO_TEXT_CHARS + 50);
+        let (reason, text) = no_audio_reason(&json!({"candidates":[{"finishReason":"OTHER",
+            "content":{"parts":[{"text":long}]}}]}));
+        assert_eq!(reason, "finishReason: OTHER");
+        let text = text.expect("text part");
+        assert_eq!(text.chars().count(), NO_AUDIO_TEXT_CHARS + 1);
+        assert!(text.ends_with('…'));
+        assert_eq!(
+            no_audio_reason(&json!({"promptFeedback":{"blockReason":"SAFETY"}})),
+            ("blockReason: SAFETY".to_string(), None)
+        );
+        assert_eq!(no_audio_reason(&json!({})), ("no finishReason".to_string(), None));
+    }
 
     #[test]
     fn test_gemini_speech_endpoint_uses_official_host_only() {
