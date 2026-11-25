@@ -206,6 +206,7 @@ Not included yet: the OCR pack and a persistent vector index. Details:
 | `cep_call` / `cep_free` (C ABI) | The same CEP messages for apps that embed the engine |
 
 Reference: [`docs/api/README.md`](docs/api/README.md) and [`docs/api/cep/README.md`](docs/api/cep/README.md).
+Every docs page and folder README, each with one line on what it is: [`docs/index.md`](docs/index.md).
 
 ### Tools, agents and security
 
