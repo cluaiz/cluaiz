@@ -109,6 +109,7 @@ pub fn render_history(
         append_client_calls(&mut message);
         let mut steps = Vec::new();
         if message.role.eq_ignore_ascii_case("user") {
+            media_first(&mut message.content);
             let text = message.content.text_content();
             let seen = occurrences.entry(trimmed(&original.content)).or_insert(0);
             let key = cluaiz_agents::turn_key(&text, *seen);
@@ -215,6 +216,17 @@ fn append_client_calls(message: &mut ExternalMessage) {
         MessageContent::Text(text) => *text = format!("{text}
 {blocks}"),
         MessageContent::Array(parts) => parts.push(super::types::ContentPart::Text { text: blocks }),
+    }
+}
+
+/// Puts a user message's attachments (image, audio, video, file) in front of its text parts, each
+/// group in the client's order, the words unchanged. The Engine's block (tool hint, notes) is put in
+/// front later, so the model reads: block, media, the user's text. With Engine tools installed,
+/// Qwen3.5-0.8B answered "text, image" with a tool call or "cannot see the image" (run 76: 0/10;
+/// image first 10/10). Media in front of the block (media, block, text) was tried too: 0/30.
+fn media_first(content: &mut MessageContent) {
+    if let MessageContent::Array(parts) = content {
+        parts.sort_by_key(|part| matches!(part, super::types::ContentPart::Text { .. }));
     }
 }
 
