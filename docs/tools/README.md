@@ -10,8 +10,8 @@ Checks for the Engine docs. Not shown on the website (only pages listed in `docs
 | [`make_images.py`](make_images.py) | Turns each figure into an HTML page (cards are HTML so text wraps, arrows are SVG), renders it in headless Chrome or Edge through Playwright and saves a PNG into `docs/assets/<topic>/`. Warns when a card's text does not fit (`TEXT OVERFLOWS`). Needs `pip install playwright pillow` and Chrome, Edge or `playwright install chromium` |
 | [`figures.py`](figures.py) | Every figure as a layout: cards with an icon, decision diamonds, frames, arrows, header and footer, in CSS pixels on a 1096 px canvas. A new figure is one function added to `FIGURES` |
 | [`icons/`](icons/) | The Lucide icons the figures use (ISC licence, `icons/LICENSE`) |
-| [`check_docs.py`](check_docs.py) | Every page in `docs/registry.json` exists and slugs are unique; every relative link and `#heading` anchor in `docs/**/*.md`, `README.md` and every folder README (outside `target`, `.agent`, `llama.cpp`) resolves; no page links a local machine path; `docs/index.*` is up to date (and counts files without metadata, report only). No network, no dependencies |
-| [`build_index.py`](build_index.py) | Writes [`docs/index.json`](../index.json) and [`docs/index.md`](../index.md): one row per git-tracked docs page and folder README with title, description, kind, path and whether the file has its own metadata (docs front matter `title`/`description`, README top comment `<!-- name: ... description: ... -->`). Without metadata it takes the first heading and paragraph. Run it after adding, moving or describing a page; `--check` exits 1 when the files are stale |
+| [`check_docs.py`](check_docs.py) | Every page in `docs/registry.json` exists and slugs are unique; every relative link and `#heading` anchor in `docs/**/*.md`, `README.md` and every folder README (outside `target`, `.agent`, `llama.cpp`) resolves; no page links a local machine path; `docs/index.*` is up to date and every page and folder README has its name and description. No network, no dependencies |
+| [`build_index.py`](build_index.py) | Writes [`docs/index.json`](../index.json) and [`docs/index.md`](../index.md): one row per git-tracked docs page and folder README with title, description, kind, path and whether the file has its own metadata (the top comment `<!-- name: ... description: ... -->`; generated CEP pages use their front matter `method`/`summary`). Without metadata it takes the first heading and paragraph. Run it after adding, moving or describing a page; `--check` exits 1 when the files are stale |
 
 Images: `python docs/tools/make_images.py` redraws all of them; `python docs/tools/make_images.py kv-reuse` redraws
 the ones whose file name contains that text. Rules: black, white and greys only (the cluaiz.com theme, owner
@@ -27,8 +27,8 @@ CI: `.github/workflows/docs-check.yml` runs it when `docs/` or any `README.md` c
 
 Decisions:
 - The index is generated from the files, never hand-written, and the check fails when it is stale, so it cannot drift.
-  It lists only git-tracked files, so it is the same on every machine and in CI. Missing metadata is reported, not
-  failed, until every file has it (146 of 274 on 2026-11-25). `registry.json` stays the website navigation; the
+  It lists only git-tracked files, so it is the same on every machine and in CI. Since 2026-11-25 every one of the 274
+  files has its name and description, and a file without them fails the check. `registry.json` stays the website navigation; the
   index is the full list for readers, AI agents and a later site map.
 - Figures are HTML rendered by a browser, not drawn with Pillow: text wraps and fonts render properly,
   and a figure is a short layout instead of pixel arithmetic. The cost is a browser at build time; the PNGs
