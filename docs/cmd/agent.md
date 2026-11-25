@@ -8,6 +8,12 @@ plain words; the model reads files, searches them, edits them and runs commands 
 you what it found or changed. Everything runs on your machine with the models you installed: no
 account, no cloud, no data leaves the computer.
 
+![A terminal in an empty folder: cluaiz agent with qwen3.5-4b-gguf-Q4_K_M and -y is asked to create hello.py that prints Hello from Cluaiz and run it; it calls write_file (hello.py, 1 line), then run_command python hello.py (output Hello from Cluaiz, exit 0), then answers Done and lists the changed file](../assets/engine/agent.gif)
+
+Recorded with Cluaiz 0.1.0 and Qwen3.5-4B Q4_K_M on a Windows laptop (RTX 3050 4 GB), `--ui plain`, shown at
+2x speed (the task took 46 s in a timed run). `-y` allows the changes without asking; without it each change
+asks first, as below. Script: `docs/tools/gifs/agent.tape`.
+
 ```text
 >>> calc.py prints the wrong average. Find the bug, fix it, and run it to check.
 ● Read calc.py
