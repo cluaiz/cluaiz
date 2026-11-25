@@ -173,7 +173,7 @@ Unknown top-level fields are rejected. There is no `dimensions` override, base64
   {
     "model": "bge_m3-unknown-onnx-fp32",
     "input": [
-      "Cluaiz high-performance local AI runtime",
+      "Cluaiz runs AI models on your own machine",
       "Semantic similarity search in vector database"
     ]
   }
