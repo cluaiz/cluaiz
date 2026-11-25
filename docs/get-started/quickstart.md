@@ -101,6 +101,8 @@ cluaiz --version
 cluaiz status          # the CPU, GPU and memory the planner sees
 ```
 
+![A terminal: cluaiz status prints the OS (Windows 11), the CPU (Ryzen 7 7435HS, 8 cores, 16 threads), free RAM, the GPU (RTX 3050 laptop, 4 GB VRAM) and the CUDA backend](../assets/get-started/status.gif)
+
 Download a model and make it the default chat model:
 
 ```bash

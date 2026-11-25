@@ -67,7 +67,12 @@ curl http://localhost:8000/v1/chat/completions \
 - The reply has OpenAI's fields plus Cluaiz's own (`context_report`: how the context was planned). OpenAI
   client libraries ignore fields they do not know.
 
-PowerShell has its own `curl` alias; use `curl.exe` with the same arguments, or `Invoke-RestMethod`.
+PowerShell has its own `curl` alias; use `curl.exe` with the same arguments, or `Invoke-RestMethod`:
+
+![A PowerShell terminal: curl.exe checks /health on port 8011, then Invoke-RestMethod posts a chat request for qwen3.5-0.8b-gguf-Q4_K_M with think_mode off, and the answer content prints Paris](../assets/get-started/api-request.gif)
+
+Recorded with Cluaiz 0.1.0 and Qwen3.5-0.8B Q4_K_M on a test home whose port is 8011
+(`docs/tools/gifs/api-request.tape`).
 
 ## 4. Stream the answer
 
