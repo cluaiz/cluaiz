@@ -198,6 +198,8 @@ each run into phases by the time-stamped logs).
 
 ## Native text embedding boundary
 
+In short: turns text into one normalized vector with a GGUF embedding model, using the model's own pooling and width.
+
 `native::embedding::EmbeddingModel` takes an embedding-enabled `NativeLlama`, retaining its existing model/context destructor. It queries native pooling and output width rather than selecting a model by name. Mean, CLS and last-token sequence pooling are accepted; no-pooling, reranking and encoder-decoder models return an error. Whole-sequence evaluation uses the existing RAII batch and tokenizer; inputs beyond the active sequence limit are rejected without truncation. Sequence output is copied before the next native operation and normalized through `cluaiz_core::contracts::normalize_embedding`. This boundary alone does not wire the HTTP endpoint or certify arbitrary GGUF exports.
 
 ```mermaid
@@ -212,6 +214,8 @@ graph LR
 The opt-in `tests/embedding.rs` fixture takes external model paths/text, checks repeated and distinct inputs, one supplied semantic ranking, normalized finite output, oversize refusal and recovery. This is selected-model acceptance, not general retrieval quality or GPU/platform certification. Speech integration additionally accepts `CLUAIZ_TTS_TEST_GPU_LAYERS` and `CLUAIZ_TTS_TEST_CODEC_GPU` for actual split-placement PCM/tempo/cancellation/recovery checks; neither is a production setting.
 
 ## GGUF speech ownership
+
+In short: text to speech with a GGUF speech model (experimental). It has its own model and context, never borrows the chat model, and streams new audio samples as they are made.
 
 ```mermaid
 graph LR
@@ -231,6 +235,8 @@ The opt-in `speech_stream` integration test accepts `CLUAIZ_TTS_TEST_THREADS` (i
 
 ## Native reasoning control
 
+In short: how thinking is limited and ended: the thinking budget, a gentle close at a line end, skip on request, and `stop` strings.
+
 - **Tags and budget:** actual template/model tags and the existing context-aware token budget configure the upstream sampler. A prompt already inside reasoning starts counting immediately; otherwise the gate waits for a real start sequence. No model-name rules or fixed reasoning tags are used.
 - **Ownership:** `SafeSampler` owns a composed chain: the reasoning gate precedes the existing already-prefilled user chain. The borrowed `ReasoningHandle` is used only on that generation thread while the root lives. Root destruction frees both samplers once. Initialization errors leave the old chain with its caller.
 - **Auto effort:** after each answer of at least 32 tokens the stream keeps its decode speed (`NativeLlama.decode_per_second`, from `llama.timings()`), and the next Auto request gets that speed times 180 s as its thinking ceiling, between 1,024 tokens and High's share of the room (`ThinkingBudget::limit`). The first answer after a load has no speed and uses High's share. The ceiling only stops a long thought: the model still ends easy ones itself. Measured (Qwen3-0.6B Q4_K_M on the Windows dev machine's GPU, 16k context, 2026-11-21, run 30): 174-180 t/s gives about 31,000 tokens, so the room share (about 11,970) applied; the model used 285, 1,749 and 1,176 thinking tokens on three questions and ended each itself. The log line `Auto thinking ceiling` names the number and its reason.
@@ -246,6 +252,8 @@ The opt-in `speech_stream` integration test accepts `CLUAIZ_TTS_TEST_THREADS` (i
 
 ## Multimodal linkage contract
 
+In short: how llama.cpp's image and audio library (mtmd) is built and linked into the program, and what fails the build.
+
 - **Build inputs:** `build.rs` reads this checkout's `mtmd-helper.h`, including `mtmd.h`, `llama.h` and ggml headers. It generates the allowlisted C API into `OUT_DIR`; no generated binding file is committed.
 - **Build dependencies:** bindgen requires a discoverable libclang installation in addition to the existing CMake/C++ toolchain. `LIBCLANG_PATH` can point to its library directory. Cross builds require the target's headers/sysroot as well.
 - **Static targets:** `LLAMA_BUILD_MTMD=ON`, `BUILD_SHARED_LIBS=OFF`. Cargo explicitly links `mtmd` and its `vendor-hash` dependency alongside the existing llama/ggml libraries. Header-only vendor dependencies are compiled into mtmd.
@@ -257,6 +265,8 @@ The opt-in `speech_stream` integration test accepts `CLUAIZ_TTS_TEST_THREADS` (i
 
 ## Paired projector lifecycle
 
+In short: the image or audio encoder (projector) is loaded next to its model, reused while it fits, and freed before the model.
+
 - **Ownership:** `NativeSession` consumes a loaded `NativeLlama`. Its optional projector field precedes the model field, so the native projector and callback state are freed before their model. Native model pointers are not exposed mutably through this owner.
 - **Reuse identity:** canonical projector path, size/modified time, actual encoder threads, GPU preference, RAM/VRAM buffer settings and weight/workspace estimates. Per-request decoded size is excluded, so a different image size alone does not reload the encoder. A different load identity unloads the previous projector before new allocations. Under host-RAM pressure, the idle projector is reclaimed before a fresh admission attempt; Chat model placement/context/KV remain unchanged. Stat checks cannot detect a same-size/same-time content replacement; metadata is checked again after load.
 - **Budget:** `cluaiz_plan::media_budget` reuses existing safety-buffer policies against freshly queried free memory after old-projector unload. Unknown/zero free memory is not replaced by a stale cached value. Host cost includes weights, workspace and retained decoded copies; GPU cost also includes weights/workspace plus its safety buffer. CPU placement is chosen when the GPU estimate does not fit.
@@ -267,6 +277,8 @@ The opt-in `speech_stream` integration test accepts `CLUAIZ_TTS_TEST_THREADS` (i
 - **Lifecycle tests:** an ignored Rust test takes `CLUAIZ_MEDIA_MODEL` and `CLUAIZ_MEDIA_PROJECTOR`. It loads real weights on CPU and checks support against package declarations, same-session reuse, changed-thread reload, unload, missing file and paired drop. No complete native-leak/OOM assertion is made.
 
 ## Prepared media generation contract
+
+In short: how an image or audio request is turned into model input in the right order, how tools and JSON output work on it, and what was proven with real files.
 
 - **Interface:** `NativeSession::stream_prepared` consumes `ChatEnvelope<Vec<PreparedPart>>`, the output token budget, the loaded model's `StructuralDNA`, request settings and a streaming consumer. It requires a successfully loaded paired projector. Source resolution stays in `cluaiz_media`; this native adapter receives decoded buffers only.
 - **Audio:** common `prepare_mono` and `resample_linear` prepare finite PCM F32 at the encoder's queried rate. Channel mixing retains amplitude without automatic peak normalization. The native constructor copies samples; the pinned implementation uses a checked 32-bit sample count internally. The adapter does not duplicate audio decoding or implement the model's learned encoder.
@@ -708,3 +720,13 @@ grows, and MTP can lose, when:
 | Auto effort on a slow CPU | the speed rule is unit-tested (5 t/s gives the 1,024 floor, 36 t/s gives 6,480) but not run on a real CPU-only machine | a CPU-only run (the planned 8 GB cloud VM) reading the `Auto thinking ceiling` log line |
 | Live API contract proof for MTP usage | A model with working MTP is needed to exercise both response modes | Run the ignored `mtp_contract` test with a model path and fresh isolated home |
 | Prompt cache under load | measured with one request at a time only; run 40's 4-at-once gap is not rerun with it on, and the 4 unit tests in `prompt_cache.rs` were not run (the llama suite is not run on the dev machine) | run 40's ticket test with `CLUAIZ_PROMPT_CACHE_MB` set, and the unit tests in CI |
+
+## Where the open items are
+
+Each topic keeps its own Pending table next to the facts it is about:
+[projector VRAM and text parts](#prepared-media-generation-contract),
+[RAM prompt cache](#ram-prompt-cache-off-by-default),
+[MoE expert prefetch](#moe-expert-prefetch-llamacpp-fork-off-unless-the-plan-sets-a-cap),
+[load prefetch skip](#load-prefetch-skip-for-cpu-mapped-weights-llamacpp-fork-off-unless-the-plan-turns-it-on),
+[MTP](#pending). Speed gaps against llama.cpp that are not closed: the Windows CPU prompt gap (5%, run 54) and
+pp2048 on disk-read models (inside the run-to-run spread, run 59), both above.

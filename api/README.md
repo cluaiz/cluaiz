@@ -9,6 +9,17 @@ Engine-specific method, all behind the bearer-token check. The chat pipeline its
 [`src/handlers/chat/`](src/handlers/chat/README.md), CEP in [`src/cep/`](src/cep/README.md), model
 providers in [`src/providers/`](src/providers/README.md).
 
+| Topic | Section |
+|---|---|
+| Which route does what | [Route map](#route-map-srcroutesrs-2026-11-21) |
+| How a chat model is planned (`system.plan`) | [Chat planner reference](#chat-planner-reference) |
+| Skipping thinking while it runs | [Live reasoning control](#live-reasoning-control) |
+| Images, audio, video and documents in a request | [Attachment client examples](#attachment-client-examples), [Native image/audio chat contract](#native-imageaudio-chat-contract), [Native document API contract](#native-document-api-contract) |
+| Speech and embeddings with ONNX models | [ONNX audio API reference](#onnx-audio-api-reference), [ONNX embedding API reference](#onnx-embedding-api-reference) |
+| What each model can do | [Model capability reporting](#model-capability-reporting), [ONNX task capability and readiness reference](#onnx-task-capability-and-readiness-reference) |
+| Proof runs with real models | the "Executed ... acceptance" sections |
+| Files, tests, decisions, open items | [Source files](#source-files), [Tests](#tests), [Decisions](#decisions), [Pending](#pending) |
+
 An explicit local OS transport can serve the same router with
 `cluaiz serve --native-endpoint <local-pipe-or-socket>`, without a TCP listener.
 Its mandatory session authentication, framing, lifecycle and platform limits are

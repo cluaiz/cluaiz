@@ -1856,7 +1856,7 @@
  },
  {
   "title": "test/context-runtime",
-  "description": "A labelled set of 165 user messages for the tool matcher, in English, Hinglish and Devanagari.",
+  "description": "Tests of the chat context against a running Engine: tool routing (165 labelled messages), KV cache correctness, long sessions, memory, tool-call format, journeys, speed and chat templates.",
   "kind": "readme",
   "path": "test/context-runtime/README.md",
   "metadata": true

@@ -1,7 +1,24 @@
 <!-- name: test/context-runtime
-description: A labelled set of 165 user messages for the tool matcher, in English, Hinglish and Devanagari. -->
+description: Tests of the chat context against a running Engine: tool routing (165 labelled messages), KV cache correctness, long sessions, memory, tool-call format, journeys, speed and chat templates. -->
 
-# Tool routing test set (`test/context-runtime/`)
+# Context runtime tests (`test/context-runtime/`)
+
+Python scripts that test the chat context against a running, isolated Engine. Last state and open items:
+[State on 2026-11-21](#state-on-2026-11-21), [Pending](#pending).
+
+| Script | What it checks | Section |
+|---|---|---|
+| `calibrate.py` + `routing_set.jsonl` | which tools the matcher suggests for 165 labelled messages | below, and [results](#results-without-word-lists-2026-10-27) |
+| `kv_equality.py` | the KV cache gives the same answer after an edit | [KV correctness](#kv-correctness-after-an-edit-kv_equalitypy) |
+| `long_session.py` | a long tool session, and equality after compaction | [Long tool session](#long-tool-session-and-equality-after-compaction-long_sessionpy) |
+| `memory_suite.py`, `memory_journeys.py` | long-chat memory and recall | [Long-chat memory](#long-chat-memory-memory_suitepy), [Memory journeys](#memory-journeys-memory_journeyspy) |
+| `embed_eval.py` | optional embeddings for tool matching | [Optional embeddings](#optional-embeddings-embed_evalpy-p53-step-1) |
+| `tool_calls.py` | the tool-call format a model writes | [Tool-call format](#tool-call-format-tool_callspy-p61) |
+| `journeys.py` | user journeys like the App's | [Journeys](#journeys-journeyspy-plan-102-j-suite) |
+| `perf.py` | speed and memory | [Speed and memory](#speed-and-memory-perfpy-plan-102-perf) |
+| `template_check.py` | chat templates render as the model expects | [Chat templates](#chat-templates-template_checkpy-plan-p23) |
+
+## Tool routing set
 
 ![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/cloud/runs and BENCHMARKS.md](../../docs/assets/contributing/test-kinds.png)
 
