@@ -21,10 +21,6 @@ The AI engine where models, voice, vision, memory, tools, agents and workflows w
   <a href="https://linkedin.com/company/cluaiz"><b>LinkedIn</b></a>
 </p>
 
-<p align="center">
-  <img src="docs/assets/engine/tour.gif" alt="One terminal on a laptop with a 4 GB GPU: cluaiz list shows two chat models, an embedding model, a speech-to-text and a text-to-speech model; cluaiz show plans Qwen3.5-4B as 18 of 32 blocks on the GPU and the rest in RAM; a chat request with a receipt image answers coffee, croissant and orange juice for a total of 10.50; a sentence is turned into speech and read back word for word; cluaiz ingest turns a Word file into three text chunks" width="100%">
-</p>
-
 > [!NOTE]
 > v0.1.0 is a pre-release. Settings, APIs and file layout can still change before the stable release.
 
