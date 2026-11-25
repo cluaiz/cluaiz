@@ -190,11 +190,13 @@ pub async fn execute_streaming_loop(
             return;
         }
         let client_call = turn.client_call.is_some();
+        turn.settle().await;
+        let budget_spent = turn.budget_spent;
         turn.flush();
         for data in std::iter::from_fn(|| chunks.try_recv().ok()) {
             yield Ok::<_, Infallible>(Event::default().data(data));
         }
-        let overall_token_count = turn.token_count;
+        let overall_token_count = turn.token_count.max(turn.generated);
         let reasoning_tokens_count = turn.reasoning_tokens;
         let first_ttft_ms = turn.first_token_ms;
         let visible_answer = std::mem::take(&mut turn.visible_answer);
@@ -205,6 +207,9 @@ pub async fn execute_streaming_loop(
         let context_report = ctx.last_context(&state_clone.host).await;
         let finish_reason = if client_call {
             "tool_calls"
+        } else if budget_spent {
+            // The client's token limit ran out across the tool steps
+            "length"
         } else {
             context_report.as_ref().map_or("stop", |report| report.finish_reason())
         };

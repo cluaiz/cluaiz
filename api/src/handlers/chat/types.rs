@@ -395,9 +395,11 @@ pub fn generate_model_header_info() -> Vec<Value> {
 }
 
 impl ExternalChatRequest {
-    /// The answer limit: `max_tokens`, else OpenAI's newer `max_completion_tokens`
+    /// The answer limit: OpenAI's `max_completion_tokens`, else the deprecated `max_tokens`
+    /// (OpenAI prefers the newer field when both are sent). It is one budget for the whole turn,
+    /// tool steps included (`ApiTurn::generate`)
     pub fn answer_limit(&self) -> Option<usize> {
-        self.max_tokens.or(self.max_completion_tokens)
+        self.max_completion_tokens.or(self.max_tokens)
     }
 
     /// The first OpenAI field an installed model cannot honour (field name, message), so the
@@ -514,7 +516,7 @@ mod openai_field_tests {
     #[test]
     fn max_completion_tokens_is_the_answer_limit_unless_max_tokens_is_sent() {
         assert_eq!(parse(r#","max_completion_tokens":5"#).answer_limit(), Some(5));
-        assert_eq!(parse(r#","max_completion_tokens":5,"max_tokens":9"#).answer_limit(), Some(9));
+        assert_eq!(parse(r#","max_completion_tokens":5,"max_tokens":9"#).answer_limit(), Some(5));
         assert_eq!(parse("").answer_limit(), None);
     }
 

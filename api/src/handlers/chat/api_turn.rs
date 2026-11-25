@@ -60,6 +60,18 @@ pub struct ApiTurn<'a> {
     pub calls_off: bool,
     /// The next generation is the last one, without tools (see `prepare_final_answer`)
     final_answer: bool,
+    /// The client's token limit (`max_completion_tokens` / `max_tokens`) as one budget for the
+    /// whole turn: each step gets only what is left. None when the client sent no limit
+    budget: Option<usize>,
+    /// Tokens generated in all finished steps, call text included (counted against `budget`; usage
+    /// reports it, `token_count` counts only the shown tokens). See [`ApiTurn::settle`]
+    pub generated: usize,
+    /// Tokens streamed in the current step (a lower bound when the engine report is missing)
+    step_tokens: usize,
+    /// The current step is not yet in `generated`
+    uncounted: bool,
+    /// The budget ran out before the turn ended: the answer ends with finish_reason "length"
+    pub budget_spent: bool,
 }
 
 impl<'a> ApiTurn<'a> {
@@ -109,6 +121,11 @@ impl<'a> ApiTurn<'a> {
             token_count: 0,
             reasoning_tokens: 0,
             first_token_ms: 0,
+            budget: request.answer_limit().and(ctx.validated_max_tokens),
+            generated: 0,
+            step_tokens: 0,
+            uncounted: true,
+            budget_spent: false,
         }
     }
 
@@ -184,6 +201,19 @@ impl<'a> ApiTurn<'a> {
         }
     }
 
+    /// Adds the last step to `generated`: the engine's own count (the native path does not stream
+    /// a call's tokens), at least the tokens streamed. Called before the next step and at the end
+    pub async fn settle(&mut self) {
+        if !std::mem::take(&mut self.uncounted) {
+            return;
+        }
+        let reported = self.ctx.last_context(&self.state.host).await.map_or(0, |r| (r.n_tokens + r.shifted_tokens).saturating_sub(r.prompt_tokens));
+        self.generated += reported.max(std::mem::take(&mut self.step_tokens));
+        if self.budget.is_some_and(|budget| self.generated >= budget) {
+            self.budget_spent = true;
+        }
+    }
+
     /// A generated token: shown as answer or reasoning text (streaming)
     fn show_token(&mut self, token: &str) {
         self.token_count += 1;
@@ -223,15 +253,29 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
             None => {
                 // The next step renders the conversation with the calls made so far
                 self.think_filter.reset_turn(false);
+                self.settle().await;
+                let max_tokens = match self.budget {
+                    Some(budget) if self.generated >= budget => {
+                        // Spent in earlier steps: the turn ends with the text so far (a call in it already ran)
+                        tracing::info!("🧮 [API] Step {step}: the token limit ({budget}) is spent; ending the turn");
+                        self.budget_spent = true;
+                        self.last_raw = self.last_raw.split(cluaiz_core::tool_calls::OPEN).next().unwrap_or_default().to_owned();
+                        return Ok(Generated::Answer { said: String::new(), calls: Vec::new() });
+                    }
+                    Some(budget) => budget - self.generated,
+                    None => self.ctx.validated_max_tokens.unwrap_or(DEFAULT_MAX_TOKENS),
+                };
                 let prompt = if self.final_answer {
                     self.tool_turns.final_answer(self.ctx)
                 } else {
                     tracing::info!("🔄 [API] Step {step}: generating again with the tool result");
                     self.tool_turns.continuation(self.ctx)
                 };
-                self.ctx
-                    .dispatch(&self.state.host, Some(&prompt), self.ctx.validated_max_tokens.unwrap_or(DEFAULT_MAX_TOKENS))
-                    .await
+                let response = self.ctx
+                    .dispatch(&self.state.host, Some(&prompt), max_tokens)
+                    .await;
+                self.uncounted = true;
+                response
             }
         };
         let mut rx = match response {
@@ -270,6 +314,7 @@ impl cluaiz_agents::turn::Agent for ApiTurn<'_> {
                 anyhow::bail!(error.to_owned());
             }
             text.push_str(&token);
+            self.step_tokens += 1;
             if let (Some(content), _) = answer_filter.process_token(&token) {
                 answer.push_str(&content);
             }

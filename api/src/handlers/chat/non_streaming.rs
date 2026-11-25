@@ -32,6 +32,8 @@ pub async fn execute_non_streaming(
     };
     // A client-run call ends the answer: OpenAI `tool_calls`, finish_reason "tool_calls"
     let client_call = turn.client_call.take();
+    turn.settle().await;
+    let budget_spent = turn.budget_spent;
     let calls_off = turn.calls_off;
     // Still `StepLimit` after the final no-tools answer (`ApiTurn::prepare_final_answer`): that answer made a call
     // too, which was not run, so only the text before it is the answer. Whole, its
@@ -78,6 +80,9 @@ pub async fn execute_non_streaming(
     let context_report = ctx.last_context(&state.host).await;
     let finish_reason = if client_call.is_some() {
         "tool_calls"
+    } else if budget_spent {
+        // The client's token limit ran out across the tool steps
+        "length"
     } else {
         context_report.as_ref().map_or("stop", |report| report.finish_reason())
     };
@@ -96,7 +101,7 @@ pub async fn execute_non_streaming(
 
     // OpenAI sends `usage` with every non-streaming answer: the engine's own token counts
     let counts = super::turn_end::TurnCounts {
-        completion_tokens: turn.token_count,
+        completion_tokens: turn.token_count.max(turn.generated),
         reasoning_tokens: turn.reasoning_tokens,
         first_token_ms: turn.first_token_ms,
     };
