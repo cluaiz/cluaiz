@@ -26,33 +26,17 @@ The AI engine where models, voice, vision, memory, tools, agents and workflows w
 
 ## What Cluaiz is
 
-<p align="center">
-<b>One engine. Every kind of intelligence. Your rules.</b>
-</p>
+**One engine. Every kind of intelligence. Your rules.**
 
-<p align="center">
-Models that think, see, listen, speak and remember.<br>
-Files, pages and pictures, turned into meaning you can search.<br>
-On your desk or in the cloud, in the language your apps already speak.
-</p>
+Models that think, see, listen, speak and remember, behind one OpenAI- and Ollama-compatible API, on your machine
+or in the cloud. Files, pages and pictures become text and vectors you can search. Before every load the engine
+measures the machine and places the model: layers on the GPU where speed matters, the rest in RAM, and MoE experts
+streamed from the disk when memory runs out. Windows, macOS or Linux, with a GPU or without one.
 
-<p align="center">
-Any machine, measured before every load:<br>
-the GPU for what must be fast, memory for what comes next, the disk for what can wait.<br>
-Windows, Mac or Linux, with a GPU or without one.
-</p>
-
-<p align="center">
-Agents that act, and ask before they touch.<br>
-Tools and skills that teach it something new.<br>
-Flows that carry the steps, so you do not have to.
-</p>
-
-<p align="center">
-Memory that keeps only what you confirm.<br>
-Every action inside the limits you set, and a record of all it did.<br>
-It fits your machine, works where you are, and grows with what you build.
-</p>
+Agents read, edit and run commands, and ask before they touch. Skills, plugins and MCP servers teach it something
+new, and flows carry the steps so you do not have to. Memory keeps only what you confirm, every action stays inside
+the limits you set, and an audit log records all of it. It fits your machine, works where you are, and grows with
+what you build.
 
 ## What you can do with it
 
