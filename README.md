@@ -97,6 +97,8 @@ cluaiz run unsloth/Qwen3-4B-GGUF
 cluaiz run unsloth/Qwen3-4B-GGUF "Explain a KV cache in two sentences."
 ```
 
+![cluaiz list, then cluaiz run with Qwen3.5-0.8B answers "Tokyo is the capital of Japan."](docs/assets/get-started/first-run.gif)
+
 **3. Let it work in a folder:** the agent reads, searches and edits files and runs commands there, asking
 before every change ([guide](docs/cmd/agent.md)):
 
@@ -104,6 +106,8 @@ before every change ([guide](docs/cmd/agent.md)):
 cd path/to/your/project
 cluaiz agent -m qwen3-4b-gguf-Q4_K_M
 ```
+
+![cluaiz agent with Qwen3.5-4B writes hello.py, runs it and reports the changed file (2x speed)](docs/assets/engine/agent.gif)
 
 **4. See what the planner chooses** on this machine before loading:
 
