@@ -1,0 +1,82 @@
+{"model": "qwen17", "event": "start", "repository": "unsloth/Qwen3-1.7B-GGUF:Q4_K_M"}
+{"model": "qwen17", "event": "model", "setup": "A", "model_id": "qwen3-1.7b-gguf-Q4_K_M", "file": "Qwen3-1.7B-Q4_K_M.gguf", "bytes": "1107409472", "sha256": "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897"}
+{"model": "qwen17", "event": "model", "setup": "B", "model_id": "qwen3-1.7b-gguf-Q4_K_M", "file": "Qwen3-1.7B-Q4_K_M.gguf", "bytes": "1107409472", "sha256": "b139949c5bd74937ad8ed8c8cf3d9ffb1e99c866c823204dc42c0d91fa181897"}
+{"model": "qwen17", "event": "pass", "setup": "A", "think": "off", "rows": "40"}
+{"model": "qwen17", "event": "pass", "setup": "B", "think": "off", "rows": "40"}
+{"model": "qwen17", "event": "pass", "setup": "C", "think": "off", "rows": "40"}
+{"model": "qwen17", "event": "pass", "setup": "A", "think": "on", "rows": "40"}
+{"model": "qwen17", "event": "pass", "setup": "B", "think": "on", "rows": "40"}
+{"model": "qwen17", "event": "pass", "setup": "C", "think": "on", "rows": "40"}
+{"model": "qwen17", "event": "complete"}
+{"model": "qwen17", "event": "removed_test_model", "setup": "A"}
+{"model": "qwen17", "event": "removed_test_model", "setup": "B"}
+{"model": "qwen4", "event": "start", "repository": "unsloth/Qwen3-4B-GGUF:Q4_K_M"}
+{"model": "qwen4", "event": "model", "setup": "A", "model_id": "qwen3-4b-gguf-Q4_K_M", "file": "Qwen3-4B-Q4_K_M.gguf", "bytes": "2497281312", "sha256": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a"}
+{"model": "qwen4", "event": "model", "setup": "B", "model_id": "qwen3-4b-gguf-Q4_K_M", "file": "Qwen3-4B-Q4_K_M.gguf", "bytes": "2497281312", "sha256": "f6f851777709861056efcdad3af01da38b31223a3ba26e61a4f8bf3a2195813a"}
+{"model": "qwen4", "event": "pass", "setup": "A", "think": "off", "rows": "40"}
+{"model": "qwen4", "event": "pass", "setup": "B", "think": "off", "rows": "40"}
+{"model": "qwen4", "event": "pass", "setup": "C", "think": "off", "rows": "40"}
+{"model": "qwen4", "event": "pass", "setup": "A", "think": "on", "rows": "40"}
+{"model": "qwen4", "event": "pass", "setup": "B", "think": "on", "rows": "40"}
+{"model": "qwen4", "event": "pass", "setup": "C", "think": "on", "rows": "40"}
+{"model": "qwen4", "event": "complete"}
+{"model": "qwen4", "event": "removed_test_model", "setup": "A"}
+{"model": "qwen4", "event": "removed_test_model", "setup": "B"}
+{"model": "qwen3508", "event": "start", "repository": "unsloth/Qwen3.5-0.8B-GGUF:Q4_K_M"}
+{"model": "qwen3508", "event": "removed_test_model", "setup": "A"}
+{"model": "qwen3508", "event": "error", "error": "expected one GGUF, found 2"}
+{"model": "qwen352", "event": "start", "repository": "unsloth/Qwen3.5-2B-GGUF:Q4_K_M"}
+{"model": "qwen352", "event": "removed_test_model", "setup": "A"}
+{"model": "qwen352", "event": "error", "error": "expected one GGUF, found 2"}
+{"model": "lfm17", "event": "start", "repository": "LiquidAI/LFM3-1.7B-GGUF:Q4_K_M"}
+{"model": "lfm17", "event": "model", "setup": "A", "model_id": "lfm3-1.7b-gguf-Q4_K_M", "file": "LFM3-1.7B-Q4_K_M.gguf", "bytes": "1099627808", "sha256": "3793e1e6e2266919d6e015287221b41100175a98eddaba92e111aed3b05c93c4"}
+{"model": "lfm17", "event": "model", "setup": "B", "model_id": "lfm3-1.7b-gguf-Q4_K_M", "file": "LFM3-1.7B-Q4_K_M.gguf", "bytes": "1099627808", "sha256": "3793e1e6e2266919d6e015287221b41100175a98eddaba92e111aed3b05c93c4"}
+{"model": "lfm17", "event": "pass", "setup": "A", "think": "off", "rows": "40"}
+{"model": "lfm17", "event": "pass", "setup": "B", "think": "off", "rows": "40"}
+{"model": "lfm17", "event": "pass", "setup": "C", "think": "off", "rows": "40"}
+{"model": "lfm17", "event": "complete"}
+{"model": "lfm17", "event": "removed_test_model", "setup": "A"}
+{"model": "lfm17", "event": "removed_test_model", "setup": "B"}
+{"model": "llama1", "event": "start", "repository": "bartowski/Llama-3.2-1B-Instruct-GGUF:Q4_K_M"}
+{"model": "llama1", "event": "model", "setup": "A", "model_id": "llama-3.2-1b-instruct-gguf-Q4_K_M", "file": "Llama-3.2-1B-Instruct-Q4_K_M.gguf", "bytes": "807694464", "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"}
+{"model": "llama1", "event": "model", "setup": "B", "model_id": "llama-3.2-1b-instruct-gguf-Q4_K_M", "file": "Llama-3.2-1B-Instruct-Q4_K_M.gguf", "bytes": "807694464", "sha256": "6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83"}
+{"model": "llama1", "event": "pass", "setup": "A", "think": "off", "rows": "40"}
+{"model": "llama1", "event": "pass", "setup": "B", "think": "off", "rows": "40"}
+{"model": "llama1", "event": "pass", "setup": "C", "think": "off", "rows": "40"}
+{"model": "llama1", "event": "complete"}
+{"model": "llama1", "event": "removed_test_model", "setup": "A"}
+{"model": "llama1", "event": "removed_test_model", "setup": "B"}
+{"model": "llama3", "event": "start", "repository": "bartowski/Llama-3.2-3B-Instruct-GGUF:Q4_K_M"}
+{"model": "llama3", "event": "model", "setup": "A", "model_id": "llama-3.2-3b-instruct-gguf-Q4_K_M", "file": "Llama-3.2-3B-Instruct-Q4_K_M.gguf", "bytes": "2019377696", "sha256": "6c1a2b41161032677be168d354123594c0e6e67d2b9227c84f296ad037c728ff"}
+{"model": "llama3", "event": "model", "setup": "B", "model_id": "llama-3.2-3b-instruct-gguf-Q4_K_M", "file": "Llama-3.2-3B-Instruct-Q4_K_M.gguf", "bytes": "2019377696", "sha256": "6c1a2b41161032677be168d354123594c0e6e67d2b9227c84f296ad037c728ff"}
+{"model": "llama3", "event": "pass", "setup": "A", "think": "off", "rows": "40"}
+{"model": "llama3", "event": "pass", "setup": "B", "think": "off", "rows": "40"}
+{"model": "llama3", "event": "pass", "setup": "C", "think": "off", "rows": "40"}
+{"model": "llama3", "event": "complete"}
+{"model": "llama3", "event": "removed_test_model", "setup": "A"}
+{"model": "llama3", "event": "removed_test_model", "setup": "B"}
+{"model": "gemma1", "event": "start", "repository": "ggml-org/gemma-3-1b-it-GGUF:Q4_K_M"}
+{"model": "gemma1", "event": "model", "setup": "A", "model_id": "gemma-3-1b-it-gguf-Q4_K_M", "file": "gemma-3-1b-it-Q4_K_M.gguf", "bytes": "806058240", "sha256": "8ccc5cd1f1b3602548715ae25a66ed73fd5dc68a210412eea643eb20eb75a135"}
+{"model": "gemma1", "event": "model", "setup": "B", "model_id": "gemma-3-1b-it-gguf-Q4_K_M", "file": "gemma-3-1b-it-Q4_K_M.gguf", "bytes": "806058240", "sha256": "8ccc5cd1f1b3602548715ae25a66ed73fd5dc68a210412eea643eb20eb75a135"}
+{"model": "gemma1", "event": "pass", "setup": "A", "think": "off", "rows": "40"}
+{"model": "gemma1", "event": "pass", "setup": "B", "think": "off", "rows": "40"}
+{"model": "gemma1", "event": "pass", "setup": "C", "think": "off", "rows": "40"}
+{"model": "gemma1", "event": "complete"}
+{"model": "gemma1", "event": "removed_test_model", "setup": "A"}
+{"model": "gemma1", "event": "removed_test_model", "setup": "B"}
+{"model": "smol3", "event": "start", "repository": "ggml-org/SmolLM3-3B-GGUF:Q4_K_M"}
+{"model": "smol3", "event": "model", "setup": "A", "model_id": "smollm3-3b-gguf-Q4_K_M", "file": "SmolLM3-Q4_K_M.gguf", "bytes": "1915305312", "sha256": "8334b850b7bd46238c16b0c550df2138f0889bf433809008cc17a8b05761863e"}
+{"model": "smol3", "event": "model", "setup": "B", "model_id": "smollm3-3b-gguf-Q4_K_M", "file": "SmolLM3-Q4_K_M.gguf", "bytes": "1915305312", "sha256": "8334b850b7bd46238c16b0c550df2138f0889bf433809008cc17a8b05761863e"}
+{"model": "smol3", "event": "pass", "setup": "A", "think": "off", "rows": "40"}
+{"model": "smol3", "event": "pass", "setup": "B", "think": "off", "rows": "40"}
+{"model": "smol3", "event": "pass", "setup": "C", "think": "off", "rows": "40"}
+{"model": "smol3", "event": "pass", "setup": "A", "think": "on", "rows": "40"}
+{"model": "smol3", "event": "pass", "setup": "B", "think": "on", "rows": "40"}
+{"model": "smol3", "event": "pass", "setup": "C", "think": "on", "rows": "40"}
+{"model": "smol3", "event": "complete"}
+{"model": "smol3", "event": "removed_test_model", "setup": "A"}
+{"model": "smol3", "event": "removed_test_model", "setup": "B"}
+{"model": "qwen3508", "event": "start", "repository": "unsloth/Qwen3.5-0.8B-GGUF:Q4_K_M"}
+{"model": "qwen3508", "event": "model", "setup": "A", "model_id": "qwen3.5-0.8b-gguf-Q4_K_M", "file": "Qwen3.5-0.8B-Q4_K_M.gguf", "bytes": "532517120", "sha256": "bd258782e35f7f458f8aced1adc053e6e92e89bc735ba3be89d38a06121dc517"}
+{"model": "qwen3508", "event": "model", "setup": "B", "model_id": "qwen3.5-0.8b-gguf-Q4_K_M", "file": "Qwen3.5-0.8B-Q4_K_M.gguf", "bytes": "532517120", "sha256": "bd258782e35f7f458f8aced1adc053e6e92e89bc735ba3be89d38a06121dc517"}
+{"model": "qwen3508", "event": "pass", "setup": "A", "think": "off", "rows": "40"}

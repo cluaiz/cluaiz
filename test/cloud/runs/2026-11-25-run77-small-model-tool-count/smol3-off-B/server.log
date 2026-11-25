@@ -1,0 +1,538 @@
+2026-11-25T05:06:53.035143Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-25T05:06:53.072071Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-25T05:06:56.762417Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+Starting the Cluaiz API server on http://localhost:8013 ...
+2026-11-25T05:06:56.763067Z  INFO 🔒 [Auth] Initialized local session secret at /home/<vps>/run77/home/<vps>
+2026-11-25T05:06:56.981899Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-25T05:06:57.000423Z  INFO 🌐 Cluaiz API Server running on http://<vps>:8013
+2026-11-25T05:06:57.040112Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:06:57.509995Z  INFO 📐 [EngineHost] llama.cpp dry run, full GPU at 4096 tokens: model 1.78 + context 0.15 + compute 0.26 = 2.19 GB vs estimate 2.17 GB (+0.02) in 405 ms
+2026-11-25T05:06:57.529477Z  INFO
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : smollm3-3b-gguf-Q4_K_M
+║   • Architecture    : smollm3 | 36 layers | heads 16 | KV heads 4 | head size K 128 / V 128 | dense
+║   • Weights         : file 1.92 GB (as Hugging Face counts it) | input embeddings 0.20 GB (always CPU) | output head 0.20 GB | vocab 128256
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 65536 tokens
+║   • Active context  : 16384 tokens, KV Kv16 (Auto: 16384 tokens, KV Kv16, buffer 0.45 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 21.90 of 22.49 GB | buffer kept free 0.45 GB (card-sized gap: 0.15 GB reserve + 0.30 GB for the GPU pool, model not measured on this machine yet; estimate corrected by llama.cpp's dry run +0.02 GB)
+║   • RAM             : free 29.84 of 31.35 GB | Cluaiz may use 28.42 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 36 on GPU, 0 in RAM (of 36)
+║   • VRAM            : 3.17 GB (weights + KV 1.12 + logits)
+║   • RAM             : 0.20 GB (incl. KV 0.00)
+║   • Reason         : Full GPU: weights 1.78 + KV 1.12 + buffers 0.27 = 3.17 GB vs usable VRAM 21.63 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  3.17 GB | RAM  0.20 GB | weights 1.78 + KV 1.12 + buffers 0.27 = 3.17 GB vs usable VRAM 21.63 GB
+║   • GPU + RAM split  [FITS]     VRAM  3.09 GB | RAM  0.28 GB | 35 / 36 blocks + output head on GPU (3.09 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  3.15 GB | weights 1.78 + KV 1.12 + logits 0.24 = 3.15 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-25T05:06:57.530291Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-25T05:06:57.530617Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 4, n_threads_batch = 4
+2026-11-25T05:06:57.530644Z  INFO 🧬 [Native-Llama] Loading model: /home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf | ctx: 16384 tokens
+2026-11-25T05:06:58.295575Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M"
+2026-11-25T05:06:58.299410Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-11-25T05:06:58.299446Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-11-25T05:06:58.299475Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16384 tokens
+2026-11-25T05:06:58.299496Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-25T05:06:58.299511Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-25T05:06:58.299536Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-25T05:06:58.299553Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 4/4
+2026-11-25T05:06:58.299574Z  INFO 🔮 [MTP] MTP asked for, but this model has no multi-token-prediction layers: decoding without it
+2026-11-25T05:06:58.471030Z  INFO 🔍 [EngineHost] VRAM planned 3.17 GB, taken 3.21 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-25T05:06:58.471343Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf
+2026-11-25T05:06:58.496499Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.71 ms
+2026-11-25T05:06:58.504397Z  INFO ⏱️ [Preflight] 1464 ms total | model load 1447 ms | registry + template + tags 7 ms | skills + tools 7 ms | rest 1 ms
+2026-11-25T05:06:58.510562Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:06:58.511512Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4386 bytes) in 0 ms
+2026-11-25T05:06:58.584886Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:06:58.896324Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:06:58.896370Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 959 tokens in 126 ms (7615.46 t/s) | generation 26 tokens in 242 ms (107.40 t/s)
+2026-11-25T05:06:58.896404Z  INFO 🧠 [Context] prompt 959 tokens (0 from the cache) | context 985 of 16384 | stop eos
+2026-11-25T05:06:58.991563Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:06:59.010735Z  INFO 📏 [EngineHost] The loaded model now takes +0.05 GB over its estimate; learned for its next load
+2026-11-25T05:06:59.012662Z  INFO 🧮 [Tokens] Conversation 126 tokens (2 messages) counted in 0.14 ms
+2026-11-25T05:06:59.014701Z  INFO ⏱️ [Preflight] 23 ms total | model load 19 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:06:59.017455Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:06:59.018450Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4386 bytes) in 0 ms
+2026-11-25T05:06:59.035478Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:06:59.301106Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:06:59.301144Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 17 tokens in 21 ms (798.76 t/s) | generation 27 tokens in 244 ms (110.51 t/s)
+2026-11-25T05:06:59.301163Z  INFO 🧠 [Context] prompt 958 tokens (941 from the cache) | context 985 of 16384 | stop eos
+2026-11-25T05:06:59.395494Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:06:59.415833Z  INFO 🧮 [Tokens] Conversation 124 tokens (2 messages) counted in 0.12 ms
+2026-11-25T05:06:59.417763Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:06:59.420526Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:06:59.421472Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4372 bytes) in 0 ms
+2026-11-25T05:06:59.430976Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:06:59.742469Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:06:59.742509Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 15 tokens in 14 ms (1094.01 t/s) | generation 32 tokens in 288 ms (110.97 t/s)
+2026-11-25T05:06:59.742529Z  INFO 🧠 [Context] prompt 956 tokens (941 from the cache) | context 988 of 16384 | stop eos
+2026-11-25T05:06:59.846396Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:06:59.866349Z  INFO 🧮 [Tokens] Conversation 129 tokens (2 messages) counted in 0.13 ms
+2026-11-25T05:06:59.868283Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:06:59.871147Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:06:59.872089Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4383 bytes) in 0 ms
+2026-11-25T05:06:59.881453Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:00.173929Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:00.173965Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 20 tokens in 14 ms (1429.39 t/s) | generation 30 tokens in 270 ms (110.91 t/s)
+2026-11-25T05:07:00.173985Z  INFO 🧠 [Context] prompt 961 tokens (941 from the cache) | context 991 of 16384 | stop eos
+2026-11-25T05:07:00.277768Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:00.297705Z  INFO 🧮 [Tokens] Conversation 124 tokens (2 messages) counted in 0.13 ms
+2026-11-25T05:07:00.299647Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:00.302530Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:00.303496Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4377 bytes) in 0 ms
+2026-11-25T05:07:00.312889Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:00.501576Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:00.501614Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 15 tokens in 14 ms (1108.73 t/s) | generation 19 tokens in 172 ms (110.62 t/s)
+2026-11-25T05:07:00.501634Z  INFO 🧠 [Context] prompt 956 tokens (941 from the cache) | context 975 of 16384 | stop eos
+2026-11-25T05:07:00.595870Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:00.616405Z  INFO 🧮 [Tokens] Conversation 125 tokens (2 messages) counted in 0.12 ms
+2026-11-25T05:07:00.618329Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:00.621135Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:00.622151Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4371 bytes) in 0 ms
+2026-11-25T05:07:00.631446Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:00.952202Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:00.952240Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 16 tokens in 14 ms (1179.42 t/s) | generation 33 tokens in 298 ms (110.87 t/s)
+2026-11-25T05:07:00.952260Z  INFO 🧠 [Context] prompt 957 tokens (941 from the cache) | context 990 of 16384 | stop eos
+2026-11-25T05:07:01.046536Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:01.098753Z  INFO 🧮 [Tokens] Conversation 128 tokens (2 messages) counted in 0.17 ms
+2026-11-25T05:07:01.100713Z  INFO ⏱️ [Preflight] 54 ms total | model load 50 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:01.103599Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:01.104557Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4391 bytes) in 0 ms
+2026-11-25T05:07:01.113904Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:02.149933Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:02.149973Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 19 tokens in 14 ms (1365.73 t/s) | generation 108 tokens in 981 ms (110.05 t/s)
+2026-11-25T05:07:02.149993Z  INFO 🧠 [Context] prompt 960 tokens (941 from the cache) | context 1068 of 16384 | stop eos
+2026-11-25T05:07:02.253909Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:02.273931Z  INFO 🧮 [Tokens] Conversation 132 tokens (2 messages) counted in 0.15 ms
+2026-11-25T05:07:02.275964Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:02.278882Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:02.279832Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4385 bytes) in 0 ms
+2026-11-25T05:07:02.289143Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:02.630203Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:02.630243Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 23 tokens in 14 ms (1639.58 t/s) | generation 35 tokens in 317 ms (110.43 t/s)
+2026-11-25T05:07:02.630264Z  INFO 🧠 [Context] prompt 964 tokens (941 from the cache) | context 999 of 16384 | stop eos
+2026-11-25T05:07:02.724429Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:02.744245Z  INFO 🧮 [Tokens] Conversation 129 tokens (2 messages) counted in 0.14 ms
+2026-11-25T05:07:02.746181Z  INFO ⏱️ [Preflight] 22 ms total | model load 17 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:02.748973Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:02.749938Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4384 bytes) in 0 ms
+2026-11-25T05:07:02.759260Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:03.109809Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:03.109849Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 20 tokens in 14 ms (1437.81 t/s) | generation 36 tokens in 326 ms (110.40 t/s)
+2026-11-25T05:07:03.109898Z  INFO 🧠 [Context] prompt 961 tokens (941 from the cache) | context 997 of 16384 | stop eos
+2026-11-25T05:07:03.204230Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:03.224707Z  INFO 🧮 [Tokens] Conversation 125 tokens (2 messages) counted in 0.12 ms
+2026-11-25T05:07:03.226729Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:03.229603Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:03.230636Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4371 bytes) in 0 ms
+2026-11-25T05:07:03.239915Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:03.570706Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:03.570744Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 16 tokens in 14 ms (1181.51 t/s) | generation 34 tokens in 308 ms (110.52 t/s)
+2026-11-25T05:07:03.570763Z  INFO 🧠 [Context] prompt 957 tokens (941 from the cache) | context 991 of 16384 | stop eos
+2026-11-25T05:07:03.664931Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:03.684789Z  INFO 🧮 [Tokens] Conversation 130 tokens (2 messages) counted in 0.13 ms
+2026-11-25T05:07:03.686718Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:03.689490Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:03.690509Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4379 bytes) in 0 ms
+2026-11-25T05:07:03.699843Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:03.983959Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:03.983997Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 21 tokens in 14 ms (1506.35 t/s) | generation 29 tokens in 263 ms (110.43 t/s)
+2026-11-25T05:07:03.984016Z  INFO 🧠 [Context] prompt 962 tokens (941 from the cache) | context 991 of 16384 | stop eos
+2026-11-25T05:07:04.078450Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:04.098641Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.14 ms
+2026-11-25T05:07:04.100696Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:04.103653Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:04.104621Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4394 bytes) in 0 ms
+2026-11-25T05:07:04.113994Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:04.407753Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:04.407791Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 22 tokens in 14 ms (1568.96 t/s) | generation 30 tokens in 272 ms (110.41 t/s)
+2026-11-25T05:07:04.407825Z  INFO 🧠 [Context] prompt 963 tokens (941 from the cache) | context 993 of 16384 | stop eos
+2026-11-25T05:07:04.502028Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:04.521719Z  INFO 🧮 [Tokens] Conversation 129 tokens (2 messages) counted in 0.14 ms
+2026-11-25T05:07:04.523688Z  INFO ⏱️ [Preflight] 22 ms total | model load 17 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:04.526585Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:04.527534Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4385 bytes) in 0 ms
+2026-11-25T05:07:04.536847Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:04.839945Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:04.839983Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 20 tokens in 14 ms (1439.16 t/s) | generation 31 tokens in 281 ms (110.42 t/s)
+2026-11-25T05:07:04.840003Z  INFO 🧠 [Context] prompt 961 tokens (941 from the cache) | context 992 of 16384 | stop eos
+2026-11-25T05:07:04.934260Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:04.954529Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.14 ms
+2026-11-25T05:07:04.954919Z  INFO 🧰 [Tools] Suggested: filesystem Title ["create", "a", "at"]
+2026-11-25T05:07:04.956691Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T05:07:04.959595Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:04.960555Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4355 bytes) in 0 ms
+2026-11-25T05:07:04.971095Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:05.257339Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:05.257377Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 42 tokens in 17 ms (2455.71 t/s) | generation 29 tokens in 263 ms (110.41 t/s)
+2026-11-25T05:07:05.257397Z  INFO 🧠 [Context] prompt 952 tokens (910 from the cache) | context 981 of 16384 | stop eos
+2026-11-25T05:07:05.351668Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:05.370450Z  INFO 📏 [EngineHost] The loaded model now takes +0.05 GB over its estimate; learned for its next load
+2026-11-25T05:07:05.372402Z  INFO 🧮 [Tokens] Conversation 130 tokens (2 messages) counted in 0.14 ms
+2026-11-25T05:07:05.374397Z  INFO ⏱️ [Preflight] 23 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:05.377310Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:05.378337Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4384 bytes) in 0 ms
+2026-11-25T05:07:05.389099Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:05.675756Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:05.675794Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 52 tokens in 18 ms (2962.79 t/s) | generation 29 tokens in 263 ms (110.35 t/s)
+2026-11-25T05:07:05.675814Z  INFO 🧠 [Context] prompt 962 tokens (910 from the cache) | context 991 of 16384 | stop eos
+2026-11-25T05:07:05.770232Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:05.790799Z  INFO 🧮 [Tokens] Conversation 124 tokens (2 messages) counted in 0.13 ms
+2026-11-25T05:07:05.791194Z  INFO 🧰 [Tools] Suggested: filesystem Title ["find", "file", "about"]
+2026-11-25T05:07:05.792897Z  INFO ⏱️ [Preflight] 23 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T05:07:05.796015Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:05.796977Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4342 bytes) in 0 ms
+2026-11-25T05:07:05.807135Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:06.046415Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:06.046453Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 35 tokens in 16 ms (2127.14 t/s) | generation 24 tokens in 218 ms (110.13 t/s)
+2026-11-25T05:07:06.046473Z  INFO 🧠 [Context] prompt 945 tokens (910 from the cache) | context 969 of 16384 | stop eos
+2026-11-25T05:07:06.140748Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:06.160674Z  INFO 🧮 [Tokens] Conversation 125 tokens (2 messages) counted in 0.13 ms
+2026-11-25T05:07:06.161001Z  INFO 🧰 [Tools] Suggested: filesystem Card ["search", "for", "file", "about"]
+2026-11-25T05:07:06.164375Z  INFO ⏱️ [Preflight] 24 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 2 ms
+2026-11-25T05:07:06.165139Z  INFO 🔌 [McpClient] Starting MCP server 'filesystem' in "/home/<vps>/run77/home/<vps>": npx ["-y", "@modelcontextprotocol/server-filesystem@2.2.0", "."]
+2026-11-25T05:07:06.165678Z  WARN Commands are not OS-confined here (bubblewrap not found at /usr/bin/bwrap or /bin/bwrap, or it cannot create namespaces here (WSL1, a container, or unprivileged user namespaces turned off; Ubuntu 23.10 and later need an AppArmor profile for /usr/bin/bwrap, see docs/engine/permission.md)); the allow/ask/deny policy still applies
+2026-11-25T05:07:06.172182Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:06.173191Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (5637 bytes) in 0 ms
+2026-11-25T05:07:06.188219Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:06.441239Z  INFO 🔍 [API] Tool call: tools 'find_tools' (sub_func: None) with payload: {"query":"PDF files about taxes"}
+2026-11-25T05:07:06.441581Z  INFO 🔎 [Tools] find_tools("PDF files about taxes")
+2026-11-25T05:07:06.442119Z  INFO ✅ [API] Tool 'find_tools' done (317 chars)
+2026-11-25T05:07:06.442198Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-25T05:07:06.450371Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:06.450411Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 383 tokens in 53 ms (7241.86 t/s) | generation 22 tokens in 208 ms (105.74 t/s)
+2026-11-25T05:07:06.450430Z  INFO 🧠 [Context] prompt 1289 tokens (906 from the cache) | context 1311 of 16384 | stop eos
+2026-11-25T05:07:06.453957Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:06.455088Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (6129 bytes) in 0 ms
+2026-11-25T05:07:06.468367Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:07.338302Z  INFO 🔥 [Tools] Prewarmed MCP 'filesystem' (11 functions) in 1173 ms
+2026-11-25T05:07:08.986121Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 89 tokens in 22 ms (4050.24 t/s) | generation 256 tokens in 2393 ms (106.99 t/s)
+2026-11-25T05:07:08.986160Z  INFO 🧠 [Context] prompt 1400 tokens (1311 from the cache) | context 1656 of 16384 | stop limit
+2026-11-25T05:07:09.090622Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:09.112219Z  INFO 🧮 [Tokens] Conversation 129 tokens (2 messages) counted in 0.18 ms
+2026-11-25T05:07:09.115603Z  INFO 🧰 [Tools] Suggested: filesystem Title ["file", "for"]
+2026-11-25T05:07:09.117323Z  INFO ⏱️ [Preflight] 27 ms total | model load 19 ms | registry + template + tags 2 ms | skills + tools 4 ms | rest 1 ms
+2026-11-25T05:07:09.120290Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:09.121225Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4369 bytes) in 0 ms
+2026-11-25T05:07:09.131425Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:09.380433Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:09.380477Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 44 tokens in 17 ms (2649.64 t/s) | generation 25 tokens in 227 ms (110.15 t/s)
+2026-11-25T05:07:09.380498Z  INFO 🧠 [Context] prompt 950 tokens (906 from the cache) | context 975 of 16384 | stop eos
+2026-11-25T05:07:09.475004Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:09.494797Z  INFO 🧮 [Tokens] Conversation 125 tokens (2 messages) counted in 0.17 ms
+2026-11-25T05:07:09.495149Z  INFO 🧰 [Tools] Suggested: filesystem Title ["find", "file", "that"]
+2026-11-25T05:07:09.496810Z  INFO ⏱️ [Preflight] 22 ms total | model load 17 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T05:07:09.499586Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:09.500512Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4351 bytes) in 0 ms
+2026-11-25T05:07:09.509887Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:09.690189Z  INFO 🔍 [API] Tool call: tools 'find_tools' (sub_func: None) with payload: {"query":"parser"}
+2026-11-25T05:07:09.690381Z  INFO 🔎 [Tools] find_tools("parser")
+2026-11-25T05:07:09.690635Z  INFO ✅ [API] Tool 'find_tools' done (112 chars)
+2026-11-25T05:07:09.690671Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-25T05:07:09.699453Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 16 tokens in 14 ms (1174.05 t/s) | generation 19 tokens in 173 ms (110.14 t/s)
+2026-11-25T05:07:09.699487Z  INFO 🧠 [Context] prompt 946 tokens (930 from the cache) | context 965 of 16384 | stop cancel
+2026-11-25T05:07:09.702724Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:09.703860Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4623 bytes) in 0 ms
+2026-11-25T05:07:09.714152Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:10.141081Z  INFO 🔍 [API] Tool call: tools 'load_tool' (sub_func: None) with payload: {"id":"filesystem"}
+2026-11-25T05:07:10.147330Z  INFO 📦 [Tools] load_tool("filesystem") -> Some("filesystem")
+2026-11-25T05:07:10.148520Z  INFO ✅ [API] Tool 'load_tool' done (6138 chars)
+2026-11-25T05:07:10.148568Z  INFO 🔄 [API] Step 2: generating again with the tool result
+2026-11-25T05:07:10.150364Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:10.150398Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 39 tokens in 17 ms (2247.06 t/s) | generation 44 tokens in 405 ms (108.65 t/s)
+2026-11-25T05:07:10.150418Z  INFO 🧠 [Context] prompt 1004 tokens (965 from the cache) | context 1048 of 16384 | stop eos
+2026-11-25T05:07:10.158372Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:10.160315Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (18232 bytes) in 0 ms
+2026-11-25T05:07:10.646313Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:11.168193Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:11.168231Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 3105 tokens in 484 ms (6419.33 t/s) | generation 48 tokens in 486 ms (98.71 t/s)
+2026-11-25T05:07:11.168251Z  INFO 🧠 [Context] prompt 3941 tokens (836 from the cache) | context 3989 of 16384 | stop eos
+2026-11-25T05:07:11.272505Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:11.292883Z  INFO 🧮 [Tokens] Conversation 125 tokens (2 messages) counted in 0.15 ms
+2026-11-25T05:07:11.293218Z  INFO 🧰 [Tools] Suggested: filesystem Title ["search", "for"]
+2026-11-25T05:07:11.294939Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:11.297840Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:11.298901Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4348 bytes) in 0 ms
+2026-11-25T05:07:11.310290Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:11.507389Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:11.507427Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 110 tokens in 21 ms (5132.75 t/s) | generation 19 tokens in 174 ms (109.49 t/s)
+2026-11-25T05:07:11.507447Z  INFO 🧠 [Context] prompt 946 tokens (836 from the cache) | context 965 of 16384 | stop eos
+2026-11-25T05:07:11.601653Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:11.621422Z  INFO 🧮 [Tokens] Conversation 134 tokens (2 messages) counted in 0.18 ms
+2026-11-25T05:07:11.621819Z  INFO 🧰 [Tools] Suggested: filesystem Title ["with", "you", "at", "file"]
+2026-11-25T05:07:11.623622Z  INFO ⏱️ [Preflight] 22 ms total | model load 17 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:11.626493Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:11.627429Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4379 bytes) in 0 ms
+2026-11-25T05:07:11.637690Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:12.008612Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:12.008656Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 25 tokens in 16 ms (1583.88 t/s) | generation 38 tokens in 344 ms (110.32 t/s)
+2026-11-25T05:07:12.008677Z  INFO 🧠 [Context] prompt 955 tokens (930 from the cache) | context 993 of 16384 | stop eos
+2026-11-25T05:07:12.103098Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:12.123317Z  INFO 🧮 [Tokens] Conversation 134 tokens (2 messages) counted in 0.22 ms
+2026-11-25T05:07:12.123768Z  INFO 🧰 [Tools] Suggested: filesystem Title ["an", "to", "file"]
+2026-11-25T05:07:12.125647Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:12.128537Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:12.129475Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4380 bytes) in 0 ms
+2026-11-25T05:07:12.139311Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:12.462198Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:12.462236Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 25 tokens in 15 ms (1631.75 t/s) | generation 33 tokens in 299 ms (110.44 t/s)
+2026-11-25T05:07:12.462256Z  INFO 🧠 [Context] prompt 955 tokens (930 from the cache) | context 988 of 16384 | stop eos
+2026-11-25T05:07:12.556650Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:12.576953Z  INFO 🧮 [Tokens] Conversation 139 tokens (2 messages) counted in 0.20 ms
+2026-11-25T05:07:12.577458Z  INFO 🧰 [Tools] Suggested: filesystem Card ["write", "to", "with", "and", "them", "it", "s", "at", "file"]
+2026-11-25T05:07:12.579466Z  INFO ⏱️ [Preflight] 23 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:12.579980Z  INFO 🔥 [Tools] Prewarmed MCP 'filesystem' (11 functions) in 0 ms
+2026-11-25T05:07:12.582361Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:12.583290Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4468 bytes) in 0 ms
+2026-11-25T05:07:12.594223Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:12.778882Z  INFO 🔍 [API] Tool call: tools 'load_tool' (sub_func: None) with payload: {"id":"filesystem"}
+2026-11-25T05:07:12.785659Z  INFO 📦 [Tools] load_tool("filesystem") -> Some("filesystem")
+2026-11-25T05:07:12.786872Z  INFO ✅ [API] Tool 'load_tool' done (6138 chars)
+2026-11-25T05:07:12.786913Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-25T05:07:12.788132Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 74 tokens in 19 ms (3889.41 t/s) | generation 19 tokens in 173 ms (110.01 t/s)
+2026-11-25T05:07:12.788166Z  INFO 🧠 [Context] prompt 984 tokens (910 from the cache) | context 1003 of 16384 | stop cancel
+2026-11-25T05:07:12.796326Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:12.798121Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (18077 bytes) in 0 ms
+2026-11-25T05:07:13.276429Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:14.018423Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:14.018462Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 3085 tokens in 473 ms (6524.16 t/s) | generation 69 tokens in 701 ms (98.44 t/s)
+2026-11-25T05:07:14.018485Z  INFO 🧠 [Context] prompt 3921 tokens (836 from the cache) | context 3990 of 16384 | stop eos
+2026-11-25T05:07:14.122803Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:14.143758Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.15 ms
+2026-11-25T05:07:14.144184Z  INFO 🧰 [Tools] Suggested: filesystem Title ["file"]
+2026-11-25T05:07:14.145970Z  INFO ⏱️ [Preflight] 23 ms total | model load 19 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:14.148946Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:14.149936Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4350 bytes) in 0 ms
+2026-11-25T05:07:14.161299Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:14.433468Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:14.433506Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 112 tokens in 21 ms (5230.96 t/s) | generation 27 tokens in 245 ms (110.05 t/s)
+2026-11-25T05:07:14.433525Z  INFO 🧠 [Context] prompt 948 tokens (836 from the cache) | context 975 of 16384 | stop eos
+2026-11-25T05:07:14.527746Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:14.547490Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.16 ms
+2026-11-25T05:07:14.549534Z  INFO ⏱️ [Preflight] 22 ms total | model load 17 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:14.552467Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:14.553415Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4386 bytes) in 0 ms
+2026-11-25T05:07:14.563475Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:15.012078Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:15.012117Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 49 tokens in 17 ms (2904.91 t/s) | generation 46 tokens in 417 ms (110.25 t/s)
+2026-11-25T05:07:15.012137Z  INFO 🧠 [Context] prompt 959 tokens (910 from the cache) | context 1005 of 16384 | stop eos
+2026-11-25T05:07:15.115912Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:15.136066Z  INFO 🧮 [Tokens] Conversation 128 tokens (2 messages) counted in 0.14 ms
+2026-11-25T05:07:15.138101Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:15.141081Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:15.142129Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4382 bytes) in 0 ms
+2026-11-25T05:07:15.151564Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:15.941792Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:15.941830Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 19 tokens in 14 ms (1369.17 t/s) | generation 82 tokens in 746 ms (109.86 t/s)
+2026-11-25T05:07:15.941890Z  INFO 🧠 [Context] prompt 960 tokens (941 from the cache) | context 1042 of 16384 | stop eos
+2026-11-25T05:07:16.045938Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:16.066761Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.15 ms
+2026-11-25T05:07:16.068826Z  INFO ⏱️ [Preflight] 23 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:16.071775Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:16.072744Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4389 bytes) in 0 ms
+2026-11-25T05:07:16.082194Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:16.272819Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"name":"meeting reminder"}
+2026-11-25T05:07:16.273064Z  INFO 📚 [Project] read_item({"name":"meeting reminder"}) -> 77 chars
+2026-11-25T05:07:16.273115Z  INFO ✅ [API] Tool 'read_item' done (77 chars)
+2026-11-25T05:07:16.273154Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-25T05:07:16.281839Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:16.281903Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 22 tokens in 14 ms (1573.45 t/s) | generation 20 tokens in 182 ms (109.97 t/s)
+2026-11-25T05:07:16.281929Z  INFO 🧠 [Context] prompt 963 tokens (941 from the cache) | context 983 of 16384 | stop eos
+2026-11-25T05:07:16.285063Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:16.286248Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4634 bytes) in 0 ms
+2026-11-25T05:07:16.296218Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:16.635140Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:16.635178Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 30 tokens in 16 ms (1829.16 t/s) | generation 34 tokens in 313 ms (108.52 t/s)
+2026-11-25T05:07:16.635199Z  INFO 🧠 [Context] prompt 1013 tokens (983 from the cache) | context 1047 of 16384 | stop eos
+2026-11-25T05:07:16.739111Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:16.759292Z  INFO 🧮 [Tokens] Conversation 128 tokens (2 messages) counted in 0.15 ms
+2026-11-25T05:07:16.761380Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:16.764310Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:16.765243Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4391 bytes) in 0 ms
+2026-11-25T05:07:16.774637Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:18.696949Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:18.696990Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 19 tokens in 14 ms (1365.92 t/s) | generation 200 tokens in 1829 ms (109.33 t/s)
+2026-11-25T05:07:18.697011Z  INFO 🧠 [Context] prompt 960 tokens (941 from the cache) | context 1160 of 16384 | stop eos
+2026-11-25T05:07:18.801089Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:18.821653Z  INFO 🧮 [Tokens] Conversation 134 tokens (2 messages) counted in 0.17 ms
+2026-11-25T05:07:18.822064Z  INFO 🧰 [Tools] Suggested: filesystem Title ["know", "that", "file"]
+2026-11-25T05:07:18.823821Z  INFO ⏱️ [Preflight] 23 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:18.826711Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:18.827666Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4372 bytes) in 0 ms
+2026-11-25T05:07:18.837886Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:19.200650Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:19.200688Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 45 tokens in 17 ms (2686.57 t/s) | generation 37 tokens in 336 ms (110.18 t/s)
+2026-11-25T05:07:19.200709Z  INFO 🧠 [Context] prompt 955 tokens (910 from the cache) | context 992 of 16384 | stop eos
+2026-11-25T05:07:19.295052Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:19.314976Z  INFO 🧮 [Tokens] Conversation 128 tokens (2 messages) counted in 0.14 ms
+2026-11-25T05:07:19.316975Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:19.319831Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:19.320780Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4387 bytes) in 0 ms
+2026-11-25T05:07:19.330997Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:20.047713Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:20.047752Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 50 tokens in 17 ms (2958.58 t/s) | generation 74 tokens in 674 ms (109.76 t/s)
+2026-11-25T05:07:20.047772Z  INFO 🧠 [Context] prompt 960 tokens (910 from the cache) | context 1034 of 16384 | stop eos
+2026-11-25T05:07:20.151675Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:20.171910Z  INFO 🧮 [Tokens] Conversation 132 tokens (2 messages) counted in 0.16 ms
+2026-11-25T05:07:20.174051Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:20.176883Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:20.177823Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4397 bytes) in 0 ms
+2026-11-25T05:07:20.187291Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:20.835348Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:20.835388Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 23 tokens in 14 ms (1636.43 t/s) | generation 67 tokens in 611 ms (109.71 t/s)
+2026-11-25T05:07:20.835407Z  INFO 🧠 [Context] prompt 964 tokens (941 from the cache) | context 1031 of 16384 | stop eos
+2026-11-25T05:07:20.939285Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:20.959838Z  INFO 🧮 [Tokens] Conversation 129 tokens (2 messages) counted in 0.14 ms
+2026-11-25T05:07:20.961781Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:20.964659Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:20.965597Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4378 bytes) in 0 ms
+2026-11-25T05:07:20.974938Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:21.345204Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:21.345244Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 20 tokens in 14 ms (1437.92 t/s) | generation 38 tokens in 345 ms (110.15 t/s)
+2026-11-25T05:07:21.345264Z  INFO 🧠 [Context] prompt 961 tokens (941 from the cache) | context 999 of 16384 | stop eos
+2026-11-25T05:07:21.448989Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:21.469553Z  INFO 🧮 [Tokens] Conversation 126 tokens (2 messages) counted in 0.11 ms
+2026-11-25T05:07:21.471463Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:21.474326Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:21.475282Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4368 bytes) in 0 ms
+2026-11-25T05:07:21.484577Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:21.779033Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:21.779071Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 17 tokens in 14 ms (1232.24 t/s) | generation 30 tokens in 272 ms (110.10 t/s)
+2026-11-25T05:07:21.779091Z  INFO 🧠 [Context] prompt 958 tokens (941 from the cache) | context 988 of 16384 | stop eos
+2026-11-25T05:07:21.882848Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:21.903317Z  INFO 🧮 [Tokens] Conversation 125 tokens (2 messages) counted in 0.13 ms
+2026-11-25T05:07:21.903724Z  INFO 🧰 [Tools] Suggested: filesystem Title ["write", "a", "about"]
+2026-11-25T05:07:21.905439Z  INFO ⏱️ [Preflight] 23 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T05:07:21.908300Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:21.909237Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4340 bytes) in 0 ms
+2026-11-25T05:07:21.919111Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:22.943036Z  INFO 🔍 [API] Tool call: tools 'read_tool_file' (sub_func: None) with payload: {"id":"filesystem","path":"./autumn_haiku.txt"}
+2026-11-25T05:07:22.943534Z  INFO 📄 [Tools] read_tool_file("filesystem", "./autumn_haiku.txt") -> 199 chars
+2026-11-25T05:07:22.943584Z  INFO ✅ [API] Tool 'read_tool_file' done (199 chars)
+2026-11-25T05:07:22.943616Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-25T05:07:22.952482Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 36 tokens in 16 ms (2221.40 t/s) | generation 107 tokens in 977 ms (109.48 t/s)
+2026-11-25T05:07:22.952516Z  INFO 🧠 [Context] prompt 946 tokens (910 from the cache) | context 1053 of 16384 | stop cancel
+2026-11-25T05:07:22.955756Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:22.956910Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4734 bytes) in 0 ms
+2026-11-25T05:07:22.967959Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:25.448773Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 94 tokens in 23 ms (4092.12 t/s) | generation 256 tokens in 2357 ms (108.62 t/s)
+2026-11-25T05:07:25.448811Z  INFO 🧠 [Context] prompt 1040 tokens (946 from the cache) | context 1296 of 16384 | stop limit
+2026-11-25T05:07:25.552919Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:25.573373Z  INFO 🧮 [Tokens] Conversation 124 tokens (2 messages) counted in 0.12 ms
+2026-11-25T05:07:25.575349Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:25.578312Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:25.579284Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4373 bytes) in 0 ms
+2026-11-25T05:07:25.589420Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:25.886342Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:25.886383Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 46 tokens in 17 ms (2761.93 t/s) | generation 30 tokens in 273 ms (109.98 t/s)
+2026-11-25T05:07:25.886419Z  INFO 🧠 [Context] prompt 956 tokens (910 from the cache) | context 986 of 16384 | stop eos
+2026-11-25T05:07:25.990329Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:26.011477Z  INFO 🧮 [Tokens] Conversation 126 tokens (2 messages) counted in 0.16 ms
+2026-11-25T05:07:26.013526Z  INFO ⏱️ [Preflight] 23 ms total | model load 19 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:26.016529Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:26.017491Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4386 bytes) in 0 ms
+2026-11-25T05:07:26.026928Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:26.322306Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"skill","name":"translate"}
+2026-11-25T05:07:26.322483Z  INFO 📚 [Project] read_item({"kind":"skill","name":"translate"}) -> 70 chars
+2026-11-25T05:07:26.322519Z  INFO ✅ [API] Tool 'read_item' done (70 chars)
+2026-11-25T05:07:26.322544Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-25T05:07:26.331479Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:26.331515Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 17 tokens in 14 ms (1226.46 t/s) | generation 31 tokens in 282 ms (109.90 t/s)
+2026-11-25T05:07:26.331535Z  INFO 🧠 [Context] prompt 958 tokens (941 from the cache) | context 989 of 16384 | stop eos
+2026-11-25T05:07:26.334772Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:26.335903Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4655 bytes) in 0 ms
+2026-11-25T05:07:26.345967Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:27.061649Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:27.061694Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 29 tokens in 16 ms (1791.45 t/s) | generation 73 tokens in 673 ms (108.41 t/s)
+2026-11-25T05:07:27.061714Z  INFO 🧠 [Context] prompt 1018 tokens (989 from the cache) | context 1091 of 16384 | stop eos
+2026-11-25T05:07:27.165664Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:27.185698Z  INFO 🧮 [Tokens] Conversation 124 tokens (2 messages) counted in 0.13 ms
+2026-11-25T05:07:27.187717Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:27.190597Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:27.191518Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4375 bytes) in 0 ms
+2026-11-25T05:07:27.200914Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:27.788963Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:27.789005Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 15 tokens in 14 ms (1110.12 t/s) | generation 61 tokens in 554 ms (110.19 t/s)
+2026-11-25T05:07:27.789024Z  INFO 🧠 [Context] prompt 956 tokens (941 from the cache) | context 1017 of 16384 | stop eos
+2026-11-25T05:07:27.892914Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:27.913542Z  INFO 🧮 [Tokens] Conversation 125 tokens (2 messages) counted in 0.14 ms
+2026-11-25T05:07:27.915606Z  INFO ⏱️ [Preflight] 23 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:27.918639Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:27.919580Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4382 bytes) in 0 ms
+2026-11-25T05:07:27.929018Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:28.147810Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:28.147850Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 16 tokens in 14 ms (1176.99 t/s) | generation 22 tokens in 200 ms (109.81 t/s)
+2026-11-25T05:07:28.147869Z  INFO 🧠 [Context] prompt 957 tokens (941 from the cache) | context 979 of 16384 | stop eos
+2026-11-25T05:07:28.251671Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:28.271859Z  INFO 🧮 [Tokens] Conversation 125 tokens (2 messages) counted in 0.13 ms
+2026-11-25T05:07:28.273848Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:28.276722Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:28.277658Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4378 bytes) in 0 ms
+2026-11-25T05:07:28.287035Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:28.590774Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:28.590810Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 16 tokens in 14 ms (1174.83 t/s) | generation 31 tokens in 282 ms (110.02 t/s)
+2026-11-25T05:07:28.590831Z  INFO 🧠 [Context] prompt 957 tokens (941 from the cache) | context 988 of 16384 | stop eos
+2026-11-25T05:07:28.694736Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:28.715048Z  INFO 🧮 [Tokens] Conversation 126 tokens (2 messages) counted in 0.13 ms
+2026-11-25T05:07:28.716965Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T05:07:28.719841Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:28.720785Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4378 bytes) in 0 ms
+2026-11-25T05:07:28.730043Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:28.977503Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"skill","name":"synonym"}
+2026-11-25T05:07:28.977745Z  INFO 📚 [Project] read_item({"kind":"skill","name":"synonym"}) -> 68 chars
+2026-11-25T05:07:28.977798Z  INFO ✅ [API] Tool 'read_item' done (68 chars)
+2026-11-25T05:07:28.977836Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-25T05:07:28.986687Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:28.986720Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 17 tokens in 14 ms (1233.58 t/s) | generation 26 tokens in 237 ms (109.93 t/s)
+2026-11-25T05:07:28.986741Z  INFO 🧠 [Context] prompt 958 tokens (941 from the cache) | context 984 of 16384 | stop eos
+2026-11-25T05:07:28.989921Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:28.991059Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4622 bytes) in 0 ms
+2026-11-25T05:07:29.000994Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:29.483934Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:29.483974Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 30 tokens in 16 ms (1869.28 t/s) | generation 49 tokens in 451 ms (108.59 t/s)
+2026-11-25T05:07:29.483994Z  INFO 🧠 [Context] prompt 1014 tokens (984 from the cache) | context 1063 of 16384 | stop eos
+2026-11-25T05:07:29.587920Z  INFO 🤖 [API] Model override requested. Resolved 'smollm3-3b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/smollm3-3b-gguf-Q4_K_M/SmolLM3-Q4_K_M.gguf"
+2026-11-25T05:07:29.608114Z  INFO 🧮 [Tokens] Conversation 121 tokens (2 messages) counted in 0.08 ms
+2026-11-25T05:07:29.609980Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T05:07:29.612874Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:29.613833Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (4351 bytes) in 0 ms
+2026-11-25T05:07:29.623141Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:29.861162Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"skill","name":"math"}
+2026-11-25T05:07:29.861537Z  INFO 📚 [Project] read_item({"kind":"skill","name":"math"}) -> 1274 chars
+2026-11-25T05:07:29.861588Z  INFO ✅ [API] Tool 'read_item' done (1274 chars)
+2026-11-25T05:07:29.861623Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-25T05:07:29.870364Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:29.870418Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 12 tokens in 13 ms (895.92 t/s) | generation 25 tokens in 228 ms (109.86 t/s)
+2026-11-25T05:07:29.870439Z  INFO 🧠 [Context] prompt 953 tokens (941 from the cache) | context 978 of 16384 | stop eos
+2026-11-25T05:07:29.873720Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:29.874917Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (5798 bytes) in 0 ms
+2026-11-25T05:07:29.889211Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:30.583062Z  INFO 🔍 [API] Tool call: plugin 'math' (sub_func: Some("math_evaluate")) with payload: {"expression":"6*7","precision":0}
+2026-11-25T05:07:30.583933Z  INFO ⚡ [PluginExecutor] Executing plugin binary at: "/home/<vps>/run77/home/<vps>/plugins/math/math.wasm"
+2026-11-25T05:07:30.592079Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 362 tokens in 54 ms (6723.63 t/s) | generation 67 tokens in 629 ms (106.52 t/s)
+2026-11-25T05:07:30.592112Z  INFO 🧠 [Context] prompt 1340 tokens (978 from the cache) | context 1407 of 16384 | stop cancel
+2026-11-25T05:07:34.389523Z  INFO ✅ [API] Tool 'math' done (70 chars)
+2026-11-25T05:07:34.389755Z  INFO 🔄 [API] Step 2: generating again with the tool result
+2026-11-25T05:07:34.394059Z  INFO 🧰 [NativeTools] The template does not render tools; they go inline
+2026-11-25T05:07:34.395392Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (6049 bytes) in 0 ms
+2026-11-25T05:07:34.407295Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:07:34.556167Z  INFO 🛑 [NativeStream] EOG reached for token=128012. Gracefully terminating generation.
+2026-11-25T05:07:34.556207Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 63 tokens in 17 ms (3615.08 t/s) | generation 14 tokens in 131 ms (106.88 t/s)
+2026-11-25T05:07:34.556228Z  INFO 🧠 [Context] prompt 1403 tokens (1340 from the cache) | context 1417 of 16384 | stop eos

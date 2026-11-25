@@ -465,6 +465,22 @@
     "leaked": 0,
     "math": null
   },
+  "qwen3508-off-A": {
+    "correct": 34,
+    "obvious": 21,
+    "indirect": 5,
+    "no_tool": 8,
+    "wrong_no_tool": 0,
+    "median_s": 1.73,
+    "steps_total": 0,
+    "steps_max": 0,
+    "loop_prompts": 0,
+    "repeated_calls": 0,
+    "repeat_limit_prompts": 0,
+    "http_errors": 0,
+    "leaked": 0,
+    "math": null
+  },
   "qwen4-off-A": {
     "correct": 37,
     "obvious": 22,
@@ -574,6 +590,117 @@
     "repeat_limit_prompts": 0,
     "http_errors": 0,
     "leaked": 0,
+    "math": null
+  },
+  "smol3-off-A": {
+    "correct": 35,
+    "obvious": 23,
+    "indirect": 7,
+    "no_tool": 5,
+    "wrong_no_tool": 3,
+    "median_s": 0.3,
+    "steps_total": 2,
+    "steps_max": 2,
+    "loop_prompts": 1,
+    "repeated_calls": 1,
+    "repeat_limit_prompts": 0,
+    "http_errors": 0,
+    "leaked": 0,
+    "math": null
+  },
+  "smol3-off-B": {
+    "correct": 24,
+    "obvious": 18,
+    "indirect": 1,
+    "no_tool": 5,
+    "wrong_no_tool": 3,
+    "median_s": 0.365,
+    "steps_total": 8,
+    "steps_max": 2,
+    "loop_prompts": 0,
+    "repeated_calls": 0,
+    "repeat_limit_prompts": 0,
+    "http_errors": 0,
+    "leaked": 8,
+    "math": {
+      "seconds": 4.97,
+      "steps": 2,
+      "engine_calls": [
+        "tools 'read_item' (sub_func: None)",
+        "plugin 'math' (sub_func: Some(\"math_evaluate\"))"
+      ],
+      "content": "The result of the math expression 6*7 is 42."
+    }
+  },
+  "smol3-off-C": {
+    "correct": 33,
+    "obvious": 23,
+    "indirect": 7,
+    "no_tool": 3,
+    "wrong_no_tool": 5,
+    "median_s": 0.315,
+    "steps_total": 1,
+    "steps_max": 1,
+    "loop_prompts": 0,
+    "repeated_calls": 0,
+    "repeat_limit_prompts": 0,
+    "http_errors": 0,
+    "leaked": 1,
+    "math": null
+  },
+  "smol3-on-A": {
+    "correct": 35,
+    "obvious": 23,
+    "indirect": 8,
+    "no_tool": 4,
+    "wrong_no_tool": 4,
+    "median_s": 3.54,
+    "steps_total": 1,
+    "steps_max": 1,
+    "loop_prompts": 0,
+    "repeated_calls": 0,
+    "repeat_limit_prompts": 0,
+    "http_errors": 0,
+    "leaked": 1,
+    "math": null
+  },
+  "smol3-on-B": {
+    "correct": 28,
+    "obvious": 19,
+    "indirect": 3,
+    "no_tool": 6,
+    "wrong_no_tool": 2,
+    "median_s": 4.33,
+    "steps_total": 6,
+    "steps_max": 2,
+    "loop_prompts": 0,
+    "repeated_calls": 0,
+    "repeat_limit_prompts": 0,
+    "http_errors": 0,
+    "leaked": 10,
+    "math": {
+      "seconds": 1.15,
+      "steps": 1,
+      "engine_calls": [
+        "tools 'read_item' (sub_func: None)"
+      ],
+      "content": "To calculate the result of 6*7, I will use the `math_evaluate` function with the expression \"6*7\" and a precision of 0. The result is:\n\n{\"name\": \"math_evaluate\", \"arguments\": {\"expression\": \"6*7\", \"precision\": 0}}\n\nThe result is 42.0."
+    }
+  },
+  "smol3-on-C": {
+    "correct": 32,
+    "obvious": 23,
+    "indirect": 6,
+    "no_tool": 3,
+    "wrong_no_tool": 5,
+    "median_s": 3.97,
+    "steps_total": 2,
+    "steps_max": 2,
+    "loop_prompts": 1,
+    "repeated_calls": 1,
+    "repeat_limit_prompts": 0,
+    "http_errors": 0,
+    "leaked": 3,
     "math": null
   }
 }

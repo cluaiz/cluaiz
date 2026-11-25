@@ -1,6 +1,6 @@
 # Run 77: tool count and small models (partial, 2026-11-25)
 
-This is an incomplete test record. Seven of the ten requested models have complete local raw records. SmolLM3 was running on the VM when remote access was lost; its completion and scores are **?**. Qwen3.5 0.8B and 2B were downloaded, but the first runner mistook their main GGUF plus vision projector for two main files and stopped before scoring. The file selector is corrected in `run_matrix.py`; those two models still need to run. Do not quote this run as a complete model-size threshold.
+This is an incomplete test record. Eight of the ten requested models have complete local raw records: SmolLM3 (6 passes) was collected from the VM on 2026-11-26. Qwen3.5 0.8B has one complete pass (off-A) with the corrected main-GGUF selector; its off-B pass was stopped at 27 / 40 rows and is not counted, and Qwen3.5 2B did not run. SmolLM3 and Qwen3.5 0.8B ran with the same VM binary as the other models (SHA-256 `7f5d6908...3e07f76a`, built from `f8d6b4b2`); between the first models and these the VM kernel moved from 6.12.117 to 6.12.118 and the NVIDIA module was rebuilt for it. Do not quote this run as a complete model-size threshold.
 
 ## Machine, build and method
 
@@ -24,8 +24,10 @@ All files below were registered through `cluaiz pull` in each isolated home, and
 | Llama 3.2 1B | `bartowski/Llama-3.2-1B-Instruct-GGUF` | `Llama-3.2-1B-Instruct-Q4_K_M.gguf` | 807694464 | `6f85a640a97cf2bf5b8e764087b1e83da0fdb51d7c9fab7d0fece9385611df83` |
 | Llama 3.2 3B | `bartowski/Llama-3.2-3B-Instruct-GGUF` | `Llama-3.2-3B-Instruct-Q4_K_M.gguf` | 2019377696 | `6c1a2b41161032677be168d354123594c0e6e67d2b9227c84f296ad037c728ff` |
 | Gemma 3 1B | `ggml-org/gemma-3-1b-it-GGUF` | `gemma-3-1b-it-Q4_K_M.gguf` | 806058240 | `8ccc5cd1f1b3602548715ae25a66ed73fd5dc68a210412eea643eb20eb75a135` |
+| SmolLM3 3B | `ggml-org/SmolLM3-3B-GGUF` | `SmolLM3-Q4_K_M.gguf` | 1915305312 | `8334b850b7bd46238c16b0c550df2138f0889bf433809008cc17a8b05761863e` |
+| Qwen3.5 0.8B | `unsloth/Qwen3.5-0.8B-GGUF` | `Qwen3.5-0.8B-Q4_K_M.gguf` | 532517120 | `bd258782e35f7f458f8aced1adc053e6e92e89bc735ba3be89d38a06121dc517` |
 
-## Strict scores from 30 complete passes
+## Strict scores from 37 complete passes
 
 The model names abbreviate Qwen3 as `qwen`, LFM3 as `lfm`, Llama 3.2 as `llama`, and Gemma 3 as `gemma`. `B2` is the valid Qwen 0.6B B rerun. Wrong no-tool counts any client or Engine call on the eight prompts needing no tool. Loop prompts count identical internal calls repeated within a request. Median is observed seconds per request, including warm/cold effects; it is not a speed comparison against another runtime.
 
@@ -61,6 +63,13 @@ The model names abbreviate Qwen3 as `qwen`, LFM3 as `lfm`, Llama 3.2 as `llama`,
 | qwen4-on-A | 38 | 23 | 7 | 8 | 0 | 0 | 0 | 2.83 |
 | qwen4-on-B | 39 | 24 | 8 | 7 | 1 | 0 | 0 | 3.04 |
 | qwen4-on-C | 36 | 23 | 6 | 7 | 1 | 0 | 0 | 3.12 |
+| qwen3508-off-A | 34 | 21 | 5 | 8 | 0 | 0 | 0 | 1.73 |
+| smol3-off-A | 35 | 23 | 7 | 5 | 3 | 1 | 2 | 0.30 |
+| smol3-off-B | 24 | 18 | 1 | 5 | 3 | 0 | 8 | 0.37 |
+| smol3-off-C | 33 | 23 | 7 | 3 | 5 | 0 | 1 | 0.32 |
+| smol3-on-A | 35 | 23 | 8 | 4 | 4 | 0 | 1 | 3.54 |
+| smol3-on-B | 28 | 19 | 3 | 6 | 2 | 0 | 6 | 4.33 |
+| smol3-on-C | 32 | 23 | 6 | 3 | 5 | 1 | 2 | 3.97 |
 
 ## What the raw replies show
 
@@ -77,4 +86,4 @@ There is no universal parameter-size boundary in these seven models. On this bui
 
 From a VM test directory with the same source build and registered GGUF, use `python3 matrix_probe.py --exe <binary> --home <isolated-home> --out <raw-dir> --model <id> --setup A|B|C --think on|off`. The script starts its own isolated server on port 8013. `run_matrix.py` pulls, runs and removes models sequentially from run77 homes. `python3 analyze.py` recomputes `metrics.json` and the table. These scripts are test-only; they do not modify Engine source.
 
-Pending: collect and validate SmolLM3 off/on output; rerun Qwen3.5 0.8B and 2B with the corrected main-GGUF selector; record end RAM/VRAM; rerun `analyze.py`; decide whether this one-pass evidence merits an Engine tool-budget change in a separate code task. The last VM command was not executed because automatic approval review reported a usage limit. The existing SSH session then became unavailable. This is an access limit, not a measured model failure. No final model-size recommendation is claimed yet.
+Pending: Qwen3.5 0.8B off-B/C and on-A/B/C, and all of Qwen3.5 2B (resume on the VM with `python3 run_matrix.py qwen3508 qwen352` after deleting `raw/qwen3508-*`); end RAM/VRAM. SmolLM3 setup B scored lower than A both ways (off 35 -> 24, on 35 -> 28) without loops (0 loop prompts, 8 and 6 steps), so its drop is not the `read_item` loop seen with Llama. The Engine changes this run led to (small-model tool rule `6b054f19`, repeat guard `5fd0977d`) are measured in runs 79-81, not here.
