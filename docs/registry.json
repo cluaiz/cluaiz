@@ -1,24 +1,26 @@
 [
   {
     "id": "get-started",
-    "title": "🚀 Get Started",
+    "title": "Get Started",
     "groups": [
       {
-        "group": "Overview",
+        "group": "Start here",
         "pages": [
-          { "slug": "welcome", "title": "🌟 Welcome", "file_path": "docs/get-started/welcome.md" },
-          { "slug": "introduction", "title": "📖 Introduction", "file_path": "docs/get-started/introduction.md" },
-          { "slug": "architecture", "title": "📡 System Architecture", "file_path": "docs/get-started/architecture.md" },
-          { "slug": "model-downloading", "title": "📥 Model Downloading", "file_path": "docs/get-started/model-downloading.md" },
-          { "slug": "coming-from-ollama", "title": "🦙 Coming from Ollama", "file_path": "docs/get-started/coming-from-ollama.md" }
-        ]
-      },
-      {
-        "group": "Quickstart",
-        "pages": [
-          { "slug": "quickstart", "title": "⚡ Quickstart", "file_path": "docs/get-started/quickstart.md" },
-          { "slug": "first-api-request", "title": "🔌 Your first API request", "file_path": "docs/get-started/first-api-request.md" },
-          { "slug": "troubleshooting", "title": "🩺 Troubleshooting", "file_path": "docs/get-started/troubleshooting.md" }
+          {
+            "slug": "welcome",
+            "title": "🌟 Welcome",
+            "file_path": "docs/get-started/welcome.md"
+          },
+          {
+            "slug": "introduction",
+            "title": "📖 Introduction",
+            "file_path": "docs/get-started/introduction.md"
+          },
+          {
+            "slug": "quickstart",
+            "title": "⚡ Quickstart",
+            "file_path": "docs/get-started/quickstart.md"
+          }
         ]
       }
     ]
@@ -30,396 +32,1212 @@
       {
         "group": "All features",
         "pages": [
-          { "slug": "features", "title": "🗂️ All Engine Features", "file_path": "docs/reference/features.md" }
-        ]
-      }
-    ]
-  },
-  {
-    "id": "api",
-    "title": "🔌 API",
-    "groups": [
-      {
-        "group": "Overview",
-        "pages": [
-          { "slug": "api-overview", "title": "📡 API Overview", "file_path": "docs/api/README.md" },
-          { "slug": "cep", "title": "🔗 CEP (Cluaiz Engine Protocol)", "file_path": "docs/api/cep/README.md" }
-        ]
-      },
-      {
-        "group": "Chat",
-        "pages": [
-          {"slug": "chat-completions", "title": "POST /v1/chat/completions", "file_path": "docs/api/inference/chat_completions.md"},
-          {"slug": "openai-compatibility", "title": "OpenAI compatibility", "file_path": "docs/api/inference/openai_compatibility.md"}
-        ]
-      },
-      {
-        "group": "TTS",
-        "pages": [
-          {"slug": "audio-speech", "title": "POST /v1/audio/speech", "file_path": "docs/api/inference/audio_speech.md"}
-        ]
-      },
-      {
-        "group": "STT",
-        "pages": [
-          {"slug": "audio-transcriptions", "title": "POST /v1/audio/transcriptions", "file_path": "docs/api/inference/audio_transcriptions.md"}
-        ]
-      },
-      {
-        "group": "Embeddings",
-        "pages": [
-          {"slug": "embeddings", "title": "POST /v1/embeddings", "file_path": "docs/api/inference/embeddings.md"}
-        ]
-      },
-      {
-        "group": "Ingest",
-        "pages": [
-          {"slug": "ingest", "title": "POST /v1/ingest", "file_path": "docs/api/inference/ingest.md"}
-        ]
-      },
-      {
-        "group": "Models",
-        "pages": [
-          {"slug": "list-models", "title": "GET /v1/models", "file_path": "docs/api/models/list_models.md"},
-          {"slug": "show-model", "title": "POST /api/show", "file_path": "docs/api/models/show_model.md"},
-          {"slug": "pull-model", "title": "POST /api/pull", "file_path": "docs/api/models/pull_model.md"}
-        ]
-      },
-      {
-        "group": "System",
-        "pages": [
-          {"slug": "health", "title": "GET /health", "file_path": "docs/api/system/health.md"}
-        ]
-      },
-      {
-        "group": "AI & Inference Core",
-        "pages": [
-          { "slug": "cep-ai-inference", "title": "Index", "file_path": "docs/api/cep/ai-inference/README.md" },
-          { "slug": "cep-chat-cancel", "title": "chat.cancel", "file_path": "docs/api/cep/ai-inference/chat/chat.cancel.md" },
-          { "slug": "cep-chat-import-app", "title": "chat.import_app", "file_path": "docs/api/cep/ai-inference/chat/chat.import_app.md" },
-          { "slug": "cep-chat-set-tools", "title": "chat.set_tools", "file_path": "docs/api/cep/ai-inference/chat/chat.set_tools.md" },
-          { "slug": "cep-chat-skip-reasoning", "title": "chat.skip_reasoning", "file_path": "docs/api/cep/ai-inference/chat/chat.skip_reasoning.md" },
-          { "slug": "cep-chat-telemetry", "title": "chat.telemetry", "file_path": "docs/api/cep/ai-inference/chat/chat.telemetry.md" },
-          { "slug": "cep-chat-tools", "title": "chat.tools", "file_path": "docs/api/cep/ai-inference/chat/chat.tools.md" },
-          { "slug": "cep-audio-languages", "title": "audio.languages", "file_path": "docs/api/cep/ai-inference/audio/audio.languages.md" },
-          { "slug": "cep-audio-run", "title": "audio.run", "file_path": "docs/api/cep/ai-inference/audio/audio.run.md" },
-          { "slug": "cep-audio-voices", "title": "audio.voices", "file_path": "docs/api/cep/ai-inference/audio/audio.voices.md" },
-          { "slug": "cep-memory-overview", "title": "memory: overview", "file_path": "docs/api/cep/ai-inference/memory/README.md" },
-          { "slug": "cep-memory-delete", "title": "memory.delete", "file_path": "docs/api/cep/ai-inference/memory/memory.delete.md" },
-          { "slug": "cep-memory-events", "title": "memory.events", "file_path": "docs/api/cep/ai-inference/memory/memory.events.md" },
-          { "slug": "cep-memory-export", "title": "memory.export", "file_path": "docs/api/cep/ai-inference/memory/memory.export.md" },
-          { "slug": "cep-memory-grants", "title": "memory.grants", "file_path": "docs/api/cep/ai-inference/memory/memory.grants.md" },
-          { "slug": "cep-memory-import", "title": "memory.import", "file_path": "docs/api/cep/ai-inference/memory/memory.import.md" },
-          { "slug": "cep-memory-index", "title": "memory.index", "file_path": "docs/api/cep/ai-inference/memory/memory.index.md" },
-          { "slug": "cep-memory-item", "title": "memory.item", "file_path": "docs/api/cep/ai-inference/memory/memory.item.md" },
-          { "slug": "cep-memory-revoke-grants", "title": "memory.revoke_grants", "file_path": "docs/api/cep/ai-inference/memory/memory.revoke_grants.md" },
-          { "slug": "cep-memory-search", "title": "memory.search", "file_path": "docs/api/cep/ai-inference/memory/memory.search.md" },
-          { "slug": "cep-notes-confirm", "title": "notes.confirm", "file_path": "docs/api/cep/ai-inference/notes/notes.confirm.md" },
-          { "slug": "cep-notes-create", "title": "notes.create", "file_path": "docs/api/cep/ai-inference/notes/notes.create.md" },
-          { "slug": "cep-notes-invalidate", "title": "notes.invalidate", "file_path": "docs/api/cep/ai-inference/notes/notes.invalidate.md" },
-          { "slug": "cep-notes-list", "title": "notes.list", "file_path": "docs/api/cep/ai-inference/notes/notes.list.md" },
-          { "slug": "cep-notes-pin", "title": "notes.pin", "file_path": "docs/api/cep/ai-inference/notes/notes.pin.md" },
-          { "slug": "cep-notes-move", "title": "notes.move", "file_path": "docs/api/cep/ai-inference/notes/notes.move.md" },
-          { "slug": "cep-prompts-get", "title": "prompts.get", "file_path": "docs/api/cep/ai-inference/prompts/prompts.get.md" },
-          { "slug": "cep-prompts-history", "title": "prompts.history", "file_path": "docs/api/cep/ai-inference/prompts/prompts.history.md" },
-          { "slug": "cep-prompts-list", "title": "prompts.list", "file_path": "docs/api/cep/ai-inference/prompts/prompts.list.md" },
-          { "slug": "cep-prompts-reset", "title": "prompts.reset", "file_path": "docs/api/cep/ai-inference/prompts/prompts.reset.md" },
-          { "slug": "cep-prompts-set", "title": "prompts.set", "file_path": "docs/api/cep/ai-inference/prompts/prompts.set.md" },
-          { "slug": "cep-context-overview", "title": "context: overview", "file_path": "docs/api/cep/ai-inference/context/README.md" },
-          { "slug": "cep-context-jobs", "title": "context.jobs", "file_path": "docs/api/cep/ai-inference/context/context.jobs.md" },
-          { "slug": "cep-context-preview", "title": "context.preview", "file_path": "docs/api/cep/ai-inference/context/context.preview.md" },
-          { "slug": "cep-context-report", "title": "context.report", "file_path": "docs/api/cep/ai-inference/context/context.report.md" },
-          { "slug": "cep-context-reports", "title": "context.reports", "file_path": "docs/api/cep/ai-inference/context/context.reports.md" },
-          { "slug": "cep-kv-clear", "title": "kv.clear", "file_path": "docs/api/cep/ai-inference/kv/kv.clear.md" },
-          { "slug": "cep-kv-delete", "title": "kv.delete", "file_path": "docs/api/cep/ai-inference/kv/kv.delete.md" },
-          { "slug": "cep-kv-status", "title": "kv.status", "file_path": "docs/api/cep/ai-inference/kv/kv.status.md" }
-        ]
-      },
-      {
-        "group": "Agents, MCP & Tools",
-        "pages": [
-          { "slug": "cep-agents-tools", "title": "Index", "file_path": "docs/api/cep/agents-tools/README.md" },
-          { "slug": "cep-tools-cache", "title": "tools.cache", "file_path": "docs/api/cep/agents-tools/tools/tools.cache.md" },
-          { "slug": "cep-tools-call", "title": "tools.call", "file_path": "docs/api/cep/agents-tools/tools/tools.call.md" },
-          { "slug": "cep-tools-clear-cache", "title": "tools.clear_cache", "file_path": "docs/api/cep/agents-tools/tools/tools.clear_cache.md" },
-          { "slug": "cep-tools-discover", "title": "tools.discover", "file_path": "docs/api/cep/agents-tools/tools/tools.discover.md" },
-          { "slug": "cep-tools-files", "title": "tools.files", "file_path": "docs/api/cep/agents-tools/tools/tools.files.md" },
-          { "slug": "cep-tools-get-settings", "title": "tools.get_settings", "file_path": "docs/api/cep/agents-tools/tools/tools.get_settings.md" },
-          { "slug": "cep-tools-install", "title": "tools.install", "file_path": "docs/api/cep/agents-tools/tools/tools.install.md" },
-          { "slug": "cep-tools-list", "title": "tools.list", "file_path": "docs/api/cep/agents-tools/tools/tools.list.md" },
-          { "slug": "cep-tools-open-file", "title": "tools.open_file", "file_path": "docs/api/cep/agents-tools/tools/tools.open_file.md" },
-          { "slug": "cep-tools-read-file", "title": "tools.read_file", "file_path": "docs/api/cep/agents-tools/tools/tools.read_file.md" },
-          { "slug": "cep-tools-remove", "title": "tools.remove", "file_path": "docs/api/cep/agents-tools/tools/tools.remove.md" },
-          { "slug": "cep-tools-set-settings", "title": "tools.set_settings", "file_path": "docs/api/cep/agents-tools/tools/tools.set_settings.md" },
-          { "slug": "cep-tools-write-file", "title": "tools.write_file", "file_path": "docs/api/cep/agents-tools/tools/tools.write_file.md" },
-          { "slug": "cep-approvals-approve", "title": "approvals.approve", "file_path": "docs/api/cep/agents-tools/approvals/approvals.approve.md" },
-          { "slug": "cep-approvals-list", "title": "approvals.list", "file_path": "docs/api/cep/agents-tools/approvals/approvals.list.md" },
-          { "slug": "cep-approvals-reject", "title": "approvals.reject", "file_path": "docs/api/cep/agents-tools/approvals/approvals.reject.md" }
-        ]
-      },
-      {
-        "group": "Filesystem & Workspace",
-        "pages": [
-          { "slug": "cep-filesystem", "title": "Index", "file_path": "docs/api/cep/filesystem/README.md" },
-          { "slug": "cep-fs-copy", "title": "fs.copy", "file_path": "docs/api/cep/filesystem/fs/fs.copy.md" },
-          { "slug": "cep-fs-delete", "title": "fs.delete", "file_path": "docs/api/cep/filesystem/fs/fs.delete.md" },
-          { "slug": "cep-fs-list", "title": "fs.list", "file_path": "docs/api/cep/filesystem/fs/fs.list.md" },
-          { "slug": "cep-fs-mkdir", "title": "fs.mkdir", "file_path": "docs/api/cep/filesystem/fs/fs.mkdir.md" },
-          { "slug": "cep-fs-pick-folder", "title": "fs.pick_folder", "file_path": "docs/api/cep/filesystem/fs/fs.pick_folder.md" },
-          { "slug": "cep-fs-read", "title": "fs.read", "file_path": "docs/api/cep/filesystem/fs/fs.read.md" },
-          { "slug": "cep-fs-rename", "title": "fs.rename", "file_path": "docs/api/cep/filesystem/fs/fs.rename.md" },
-          { "slug": "cep-fs-write", "title": "fs.write", "file_path": "docs/api/cep/filesystem/fs/fs.write.md" },
-          { "slug": "cep-workspace-forget", "title": "workspace.forget", "file_path": "docs/api/cep/filesystem/workspace/workspace.forget.md" },
-          { "slug": "cep-workspace-get", "title": "workspace.get", "file_path": "docs/api/cep/filesystem/workspace/workspace.get.md" },
-          { "slug": "cep-workspace-index", "title": "workspace.index", "file_path": "docs/api/cep/filesystem/workspace/workspace.index.md" },
-          { "slug": "cep-workspace-item", "title": "workspace.item", "file_path": "docs/api/cep/filesystem/workspace/workspace.item.md" },
-          { "slug": "cep-workspace-memory", "title": "workspace.memory", "file_path": "docs/api/cep/filesystem/workspace/workspace.memory.md" },
-          { "slug": "cep-workspace-remember", "title": "workspace.remember", "file_path": "docs/api/cep/filesystem/workspace/workspace.remember.md" },
-          { "slug": "cep-workspace-set", "title": "workspace.set", "file_path": "docs/api/cep/filesystem/workspace/workspace.set.md" }
-        ]
-      },
-      {
-        "group": "Models & Engine Vault",
-        "pages": [
-          { "slug": "cep-models", "title": "Index", "file_path": "docs/api/cep/models/README.md" },
-          { "slug": "cep-models-discard", "title": "models.discard", "file_path": "docs/api/cep/models/models/models.discard.md" },
-          { "slug": "cep-models-download", "title": "models.download", "file_path": "docs/api/cep/models/models/models.download.md" },
-          { "slug": "cep-models-embedding-room", "title": "models.embedding_room", "file_path": "docs/api/cep/models/models/models.embedding_room.md" },
-          { "slug": "cep-models-inspect", "title": "models.inspect", "file_path": "docs/api/cep/models/models/models.inspect.md" },
-          { "slug": "cep-models-list", "title": "models.list", "file_path": "docs/api/cep/models/models/models.list.md" },
-          { "slug": "cep-models-load", "title": "models.load", "file_path": "docs/api/cep/models/models/models.load.md" },
-          { "slug": "cep-models-load-history", "title": "models.load_history", "file_path": "docs/api/cep/models/models/models.load_history.md" },
-          { "slug": "cep-models-remove", "title": "models.remove", "file_path": "docs/api/cep/models/models/models.remove.md" },
-          { "slug": "cep-providers-list", "title": "providers.list", "file_path": "docs/api/cep/models/providers/providers.list.md" },
-          { "slug": "cep-providers-models", "title": "providers.models", "file_path": "docs/api/cep/models/providers/providers.models.md" },
-          { "slug": "cep-providers-remove", "title": "providers.remove", "file_path": "docs/api/cep/models/providers/providers.remove.md" },
-          { "slug": "cep-providers-set", "title": "providers.set", "file_path": "docs/api/cep/models/providers/providers.set.md" },
-          { "slug": "cep-providers-test", "title": "providers.test", "file_path": "docs/api/cep/models/providers/providers.test.md" }
-        ]
-      },
-      {
-        "group": "System & Infrastructure",
-        "pages": [
-          { "slug": "cep-system", "title": "Index", "file_path": "docs/api/cep/system/README.md" },
-          { "slug": "cep-system-audit", "title": "system.audit", "file_path": "docs/api/cep/system/system/system.audit.md" },
-          { "slug": "cep-system-events", "title": "system.events", "file_path": "docs/api/cep/system/system/system.events.md" },
-          { "slug": "cep-system-exec", "title": "system.exec", "file_path": "docs/api/cep/system/system/system.exec.md" },
-          { "slug": "cep-system-info", "title": "system.info", "file_path": "docs/api/cep/system/system/system.info.md" },
-          { "slug": "cep-system-live", "title": "system.live", "file_path": "docs/api/cep/system/system/system.live.md" },
-          { "slug": "cep-system-plan", "title": "system.plan", "file_path": "docs/api/cep/system/system/system.plan.md" },
-          { "slug": "cep-system-ps", "title": "system.ps", "file_path": "docs/api/cep/system/system/system.ps.md" },
-          { "slug": "cep-system-update-check", "title": "system.update_check", "file_path": "docs/api/cep/system/system/system.update_check.md" },
-          { "slug": "cep-config-get", "title": "config.get", "file_path": "docs/api/cep/system/config/config.get.md" },
-          { "slug": "cep-config-set", "title": "config.set", "file_path": "docs/api/cep/system/config/config.set.md" },
-          { "slug": "cep-storage-clean", "title": "storage.clean", "file_path": "docs/api/cep/system/storage/storage.clean.md" },
-          { "slug": "cep-storage-status", "title": "storage.status", "file_path": "docs/api/cep/system/storage/storage.status.md" },
-          { "slug": "cep-tokens-create", "title": "tokens.create", "file_path": "docs/api/cep/system/tokens/tokens.create.md" },
-          { "slug": "cep-tokens-list", "title": "tokens.list", "file_path": "docs/api/cep/system/tokens/tokens.list.md" },
-          { "slug": "cep-tokens-revoke", "title": "tokens.revoke", "file_path": "docs/api/cep/system/tokens/tokens.revoke.md" },
-          { "slug": "cep-tasks-cancel", "title": "tasks.cancel", "file_path": "docs/api/cep/system/tasks/tasks.cancel.md" },
-          { "slug": "cep-tasks-get", "title": "tasks.get", "file_path": "docs/api/cep/system/tasks/tasks.get.md" },
-          { "slug": "cep-tasks-list", "title": "tasks.list", "file_path": "docs/api/cep/system/tasks/tasks.list.md" },
-          { "slug": "cep-tasks-result", "title": "tasks.result", "file_path": "docs/api/cep/system/tasks/tasks.result.md" },
-          { "slug": "cep-rpc-discover", "title": "rpc.discover", "file_path": "docs/api/cep/system/rpc/rpc.discover.md" }
-        ]
-      }
-    ]
-  },
-  {
-    "id": "reference-manual",
-    "title": "📚 Reference Manual",
-    "groups": [
-      {
-        "group": "Reference Index",
-        "pages": [
-          { "slug": "reference-index", "title": "📚 Master Reference", "file_path": "docs/reference/index.md" },
-          { "slug": "c-pointer-fii", "title": "🔌 C-Pointer Specifications", "file_path": "docs/reference/c-pointer-fii.md" },
-          { "slug": "dictionary", "title": "📖 System Dictionary", "file_path": "docs/reference/dictionary.md" }
-        ]
-      },
-      {
-        "group": "CLI Reference",
-        "pages": [
-          { "slug": "terminal-commands", "title": "💻 Core CLI Manual", "file_path": "docs/reference/terminal-commands.md" }
-        ]
-      },
-      {
-        "group": "HTTP API Reference",
-        "pages": [
-          { "slug": "api-index", "title": "📡 Unified API Reference", "file_path": "docs/reference/api.md" }
-        ]
-      },
-      {
-        "group": "Configuration Profiles",
-        "pages": [
-          { "slug": "engine-configuration", "title": "⚙️ Engine Configurations", "file_path": "docs/reference/engine-configuration.md" }
-        ]
-      },
-      {
-        "group": "Automation Reference",
-        "pages": [
-          { "slug": "automation-reference", "title": "⚙️ Automation Reference", "file_path": "docs/reference/automation.md" }
+          {
+            "slug": "features",
+            "title": "🗂️ All Engine Features",
+            "file_path": "docs/reference/features.md"
+          }
         ]
       }
     ]
   },
   {
     "id": "cli-tui",
-    "title": "💻 CLI & TUI",
+    "title": "Use Cluaiz",
     "groups": [
       {
-        "group": "TUI Dashboard",
+        "group": "Terminal and agent",
         "pages": [
-          { "slug": "tui-dashboard", "title": "🧿 TUI Dashboard", "file_path": "docs/cmd/tui.md" }
+          {
+            "slug": "terminal-chat",
+            "title": "💬 Terminal Chat",
+            "file_path": "docs/cmd/chat.md"
+          },
+          {
+            "slug": "tui-dashboard",
+            "title": "🧿 TUI Dashboard",
+            "file_path": "docs/cmd/tui.md"
+          },
+          {
+            "slug": "coding-agent",
+            "title": "🤖 Coding Agent",
+            "file_path": "docs/cmd/agent.md"
+          }
         ]
       },
       {
-        "group": "Command Manual",
+        "group": "Your first flow",
         "pages": [
-          { "slug": "cli-manual", "title": "⚙️ CLI Manual", "file_path": "docs/cmd/manual.md" },
-          { "slug": "commands-reference", "title": "📋 Commands Reference", "file_path": "docs/cmd/commands_reference.md" },
-          { "slug": "terminal-chat", "title": "💬 Terminal Chat", "file_path": "docs/cmd/chat.md" },
-          { "slug": "coding-agent", "title": "🤖 Coding Agent", "file_path": "docs/cmd/agent.md" }
-        ]
-      }
-    ]
-  },
-  {
-    "id": "engine-deep-dive",
-    "title": "🧠 Engine Deep Dive",
-    "groups": [
-      {
-        "group": "Core Engine",
-        "pages": [
-          { "slug": "llm-optimization-deep", "title": "🚀 Load & Speed Settings", "file_path": "docs/engine/llm_optimization.md" },
-          { "slug": "api-old", "title": "📡 Axum API Details", "file_path": "docs/engine/api.md" },
-          { "slug": "dual-engine-architecture", "title": "⚙️ llama.cpp & ONNX Runtime", "file_path": "docs/engine/dual_engine_architecture.md" },
-          { "slug": "prefix-caching-architecture", "title": "⚡ KV Cache Reuse", "file_path": "docs/engine/prefix_caching_architecture.md" },
-          { "slug": "permission", "title": "🔒 permission.json", "file_path": "docs/engine/permission.md" },
-          { "slug": "providers", "title": "🔗 Model Providers", "file_path": "docs/engine/providers.md" },
-          { "slug": "tools-permissions", "title": "🧰 Tools: Permissions and Environment", "file_path": "docs/engine/tools.md" },
-          { "slug": "moe-ssd-streaming", "title": "🧩 MoE Models on Small GPUs", "file_path": "docs/engine/moe_ssd_streaming.md" },
-          { "slug": "system-control", "title": "⚙️ Hardware Profile", "file_path": "docs/engine/system_control.md" }
+          {
+            "slug": "automation-guide",
+            "title": "🧭 Your First Flows",
+            "file_path": "docs/automation/guide.md"
+          },
+          {
+            "slug": "automation",
+            "title": "⚙️ Cluaiz Automation",
+            "file_path": "docs/automation/README.md"
+          },
+          {
+            "slug": "automation-examples",
+            "title": "📋 Flow Examples",
+            "file_path": "docs/automation/examples.md"
+          }
         ]
       },
       {
-        "group": "Architecture & FFI",
+        "group": "Models and migration",
         "pages": [
-          { "slug": "unified-brain-ffi", "title": "🔌 C Library (FFI)", "file_path": "docs/architecture/unified-brain-ffi.md" },
-          { "slug": "registry-web-integration", "title": "🏛️ Registry Web Specs", "file_path": "docs/architecture/registry-web-integration.md" }
+          {
+            "slug": "model-downloading",
+            "title": "📥 Model Downloading",
+            "file_path": "docs/get-started/model-downloading.md"
+          },
+          {
+            "slug": "coming-from-ollama",
+            "title": "🦙 Coming from Ollama",
+            "file_path": "docs/get-started/coming-from-ollama.md"
+          }
         ]
       }
     ]
   },
   {
-    "id": "architecture-topics",
-    "title": "⚙️ Architecture",
+    "id": "build-with-cluaiz",
+    "title": "Build with Cluaiz",
     "groups": [
       {
-        "group": "Core Architecture",
+        "group": "First API request",
         "pages": [
-          { "slug": "security-and-auth-architecture", "title": "🛡️ Security & Auth Architecture", "file_path": "docs/architecture/security-and-auth-architecture.md" },
-          { "slug": "hardware-troubleshooting", "title": "🚨 Hardware Troubleshooting", "file_path": "docs/architecture/hardware-troubleshooting.md" },
-          { "slug": "cli-architecture", "title": "💻 CLI Architecture (old draft)", "file_path": "docs/architecture/cli-architecture.md" },
-          { "slug": "cli-deep-audit", "title": "🔍 CLI Audit (old)", "file_path": "docs/architecture/cli-deep-audit.md" },
-          { "slug": "cli-process-design", "title": "⚙️ CLI Process Design (old draft)", "file_path": "docs/architecture/cli-process-design.md" }
+          {
+            "slug": "first-api-request",
+            "title": "🔌 Your first API request",
+            "file_path": "docs/get-started/first-api-request.md"
+          }
         ]
-      }
-    ]
-  },
-  {
-    "id": "automation",
-    "title": "⚙️ Automation",
-    "groups": [
+      },
       {
-        "group": "Overview",
+        "group": "Tools and providers",
         "pages": [
-          { "slug": "automation", "title": "⚙️ Cluaiz Automation", "file_path": "docs/automation/README.md" },
-          { "slug": "automation-guide", "title": "🧭 Your First Flows", "file_path": "docs/automation/guide.md" },
-          { "slug": "automation-examples", "title": "📋 Flow Examples", "file_path": "docs/automation/examples.md" }
+          {
+            "slug": "tool-calling",
+            "title": "Call your own functions",
+            "file_path": "docs/engine/tool-calling.md"
+          },
+          {
+            "slug": "tools-permissions",
+            "title": "🧰 Tools: Permissions and Environment",
+            "file_path": "docs/engine/tools.md"
+          },
+          {
+            "slug": "providers",
+            "title": "🔗 Model Providers",
+            "file_path": "docs/engine/providers.md"
+          }
         ]
       },
       {
         "group": "Flows",
         "pages": [
-          { "slug": "automation-file", "title": "📄 The Flow File", "file_path": "docs/automation/file.md" },
-          { "slug": "automation-triggers", "title": "⏰ Triggers", "file_path": "docs/automation/triggers.md" },
-          { "slug": "automation-events", "title": "📣 Events", "file_path": "docs/automation/events.md" },
-          { "slug": "automation-webhooks", "title": "🪝 Webhooks", "file_path": "docs/automation/webhooks.md" },
-          { "slug": "automation-expressions", "title": "🧮 Expressions", "file_path": "docs/automation/expressions.md" },
-          { "slug": "automation-references", "title": "🔗 References", "file_path": "docs/automation/references.md" },
-          { "slug": "automation-validation", "title": "✅ Validation", "file_path": "docs/automation/validation.md" }
+          {
+            "slug": "automation-file",
+            "title": "📄 The Flow File",
+            "file_path": "docs/automation/file.md"
+          },
+          {
+            "slug": "automation-triggers",
+            "title": "⏰ Triggers",
+            "file_path": "docs/automation/triggers.md"
+          },
+          {
+            "slug": "automation-events",
+            "title": "📣 Events",
+            "file_path": "docs/automation/events.md"
+          },
+          {
+            "slug": "automation-webhooks",
+            "title": "🪝 Webhooks",
+            "file_path": "docs/automation/webhooks.md"
+          },
+          {
+            "slug": "automation-expressions",
+            "title": "🧮 Expressions",
+            "file_path": "docs/automation/expressions.md"
+          },
+          {
+            "slug": "automation-references",
+            "title": "🔗 References",
+            "file_path": "docs/automation/references.md"
+          },
+          {
+            "slug": "automation-validation",
+            "title": "✅ Validation",
+            "file_path": "docs/automation/validation.md"
+          }
         ]
       },
       {
         "group": "Steps",
         "pages": [
-          { "slug": "automation-steps", "title": "🧩 Steps", "file_path": "docs/automation/steps/README.md" },
-          { "slug": "automation-step-ask", "title": "`ask`", "file_path": "docs/automation/steps/ask.md" },
-          { "slug": "automation-step-agent", "title": "`agent`", "file_path": "docs/automation/steps/agent.md" },
-          { "slug": "automation-step-tool", "title": "`tool`", "file_path": "docs/automation/steps/tool.md" },
-          { "slug": "automation-step-call", "title": "`call`", "file_path": "docs/automation/steps/call.md" },
-          { "slug": "automation-step-code", "title": "`code`", "file_path": "docs/automation/steps/code.md" },
-          { "slug": "automation-step-run", "title": "`run`", "file_path": "docs/automation/steps/run.md" },
-          { "slug": "automation-step-approve", "title": "`approve`", "file_path": "docs/automation/steps/approve.md" },
-          { "slug": "automation-step-wait", "title": "`wait`", "file_path": "docs/automation/steps/wait.md" },
-          { "slug": "automation-step-set", "title": "`set`", "file_path": "docs/automation/steps/set.md" },
-          { "slug": "automation-step-if", "title": "`if`", "file_path": "docs/automation/steps/if.md" },
-          { "slug": "automation-step-switch", "title": "`switch`", "file_path": "docs/automation/steps/switch.md" },
-          { "slug": "automation-step-each", "title": "`each`", "file_path": "docs/automation/steps/each.md" },
-          { "slug": "automation-step-repeat", "title": "`repeat`", "file_path": "docs/automation/steps/repeat.md" },
-          { "slug": "automation-step-parallel", "title": "`parallel`", "file_path": "docs/automation/steps/parallel.md" },
-          { "slug": "automation-step-emit-return-fail", "title": "`emit`, `return`, `fail`", "file_path": "docs/automation/steps/emit-return-fail.md" }
+          {
+            "slug": "automation-steps",
+            "title": "🧩 Steps",
+            "file_path": "docs/automation/steps/README.md"
+          },
+          {
+            "slug": "automation-step-ask",
+            "title": "`ask`",
+            "file_path": "docs/automation/steps/ask.md"
+          },
+          {
+            "slug": "automation-step-agent",
+            "title": "`agent`",
+            "file_path": "docs/automation/steps/agent.md"
+          },
+          {
+            "slug": "automation-step-tool",
+            "title": "`tool`",
+            "file_path": "docs/automation/steps/tool.md"
+          },
+          {
+            "slug": "automation-step-call",
+            "title": "`call`",
+            "file_path": "docs/automation/steps/call.md"
+          },
+          {
+            "slug": "automation-step-code",
+            "title": "`code`",
+            "file_path": "docs/automation/steps/code.md"
+          },
+          {
+            "slug": "automation-step-run",
+            "title": "`run`",
+            "file_path": "docs/automation/steps/run.md"
+          },
+          {
+            "slug": "automation-step-approve",
+            "title": "`approve`",
+            "file_path": "docs/automation/steps/approve.md"
+          },
+          {
+            "slug": "automation-step-wait",
+            "title": "`wait`",
+            "file_path": "docs/automation/steps/wait.md"
+          },
+          {
+            "slug": "automation-step-set",
+            "title": "`set`",
+            "file_path": "docs/automation/steps/set.md"
+          },
+          {
+            "slug": "automation-step-if",
+            "title": "`if`",
+            "file_path": "docs/automation/steps/if.md"
+          },
+          {
+            "slug": "automation-step-switch",
+            "title": "`switch`",
+            "file_path": "docs/automation/steps/switch.md"
+          },
+          {
+            "slug": "automation-step-each",
+            "title": "`each`",
+            "file_path": "docs/automation/steps/each.md"
+          },
+          {
+            "slug": "automation-step-repeat",
+            "title": "`repeat`",
+            "file_path": "docs/automation/steps/repeat.md"
+          },
+          {
+            "slug": "automation-step-parallel",
+            "title": "`parallel`",
+            "file_path": "docs/automation/steps/parallel.md"
+          },
+          {
+            "slug": "automation-step-emit-return-fail",
+            "title": "`emit`, `return`, `fail`",
+            "file_path": "docs/automation/steps/emit-return-fail.md"
+          }
         ]
       },
       {
         "group": "Running Flows",
         "pages": [
-          { "slug": "automation-runs", "title": "📜 Runs and Records", "file_path": "docs/automation/runs.md" },
-          { "slug": "automation-errors", "title": "🔁 Errors and Retries", "file_path": "docs/automation/errors.md" },
-          { "slug": "automation-limits", "title": "📏 Limits and Concurrency", "file_path": "docs/automation/limits.md" },
-          { "slug": "automation-permissions", "title": "🔐 Permissions and Security", "file_path": "docs/automation/permissions.md" }
-        ]
-      },
-      {
-        "group": "Methods (CEP)",
-        "pages": [
-          { "slug": "automation-methods", "title": "🔗 Automation Methods", "file_path": "docs/automation/methods/README.md" },
-          { "slug": "cep-flows-disable", "title": "flows.disable", "file_path": "docs/automation/methods/flows.disable.md" },
-          { "slug": "cep-flows-draft", "title": "flows.draft", "file_path": "docs/automation/methods/flows.draft.md" },
-          { "slug": "cep-flows-enable", "title": "flows.enable", "file_path": "docs/automation/methods/flows.enable.md" },
-          { "slug": "cep-flows-explain", "title": "flows.explain", "file_path": "docs/automation/methods/flows.explain.md" },
-          { "slug": "cep-flows-fix", "title": "flows.fix", "file_path": "docs/automation/methods/flows.fix.md" },
-          { "slug": "cep-flows-get", "title": "flows.get", "file_path": "docs/automation/methods/flows.get.md" },
-          { "slug": "cep-flows-list", "title": "flows.list", "file_path": "docs/automation/methods/flows.list.md" },
-          { "slug": "cep-flows-nodes", "title": "flows.nodes", "file_path": "docs/automation/methods/flows.nodes.md" },
-          { "slug": "cep-flows-remove", "title": "flows.remove", "file_path": "docs/automation/methods/flows.remove.md" },
-          { "slug": "cep-flows-rerun-from", "title": "flows.rerun_from", "file_path": "docs/automation/methods/flows.rerun_from.md" },
-          { "slug": "cep-flows-run", "title": "flows.run", "file_path": "docs/automation/methods/flows.run.md" },
-          { "slug": "cep-flows-run-get", "title": "flows.run_get", "file_path": "docs/automation/methods/flows.run_get.md" },
-          { "slug": "cep-flows-runs", "title": "flows.runs", "file_path": "docs/automation/methods/flows.runs.md" },
-          { "slug": "cep-flows-save", "title": "flows.save", "file_path": "docs/automation/methods/flows.save.md" },
-          { "slug": "cep-flows-schema", "title": "flows.schema", "file_path": "docs/automation/methods/flows.schema.md" },
-          { "slug": "cep-flows-validate", "title": "flows.validate", "file_path": "docs/automation/methods/flows.validate.md" }
+          {
+            "slug": "automation-runs",
+            "title": "📜 Runs and Records",
+            "file_path": "docs/automation/runs.md"
+          },
+          {
+            "slug": "automation-errors",
+            "title": "🔁 Errors and Retries",
+            "file_path": "docs/automation/errors.md"
+          },
+          {
+            "slug": "automation-limits",
+            "title": "📏 Limits and Concurrency",
+            "file_path": "docs/automation/limits.md"
+          },
+          {
+            "slug": "automation-permissions",
+            "title": "🔐 Permissions and Security",
+            "file_path": "docs/automation/permissions.md"
+          }
         ]
       }
     ]
   },
   {
     "id": "deployments",
-    "title": "🚀 Deployment",
+    "title": "Deploy & Troubleshoot",
     "groups": [
       {
         "group": "Platform Matrix",
         "pages": [
-          { "slug": "platforms", "title": "🌌 Platform Support Matrix", "file_path": "docs/deployments/platforms.md" },
-          { "slug": "install-layout", "title": "📂 What Gets Installed Where", "file_path": "docs/deployments/install-layout.md" }
+          {
+            "slug": "platforms",
+            "title": "🌌 Platform Support Matrix",
+            "file_path": "docs/deployments/platforms.md"
+          },
+          {
+            "slug": "install-layout",
+            "title": "📂 What Gets Installed Where",
+            "file_path": "docs/deployments/install-layout.md"
+          }
+        ]
+      },
+      {
+        "group": "Troubleshooting",
+        "pages": [
+          {
+            "slug": "troubleshooting",
+            "title": "🩺 Troubleshooting",
+            "file_path": "docs/get-started/troubleshooting.md"
+          },
+          {
+            "slug": "hardware-troubleshooting",
+            "title": "🚨 Hardware Troubleshooting",
+            "file_path": "docs/architecture/hardware-troubleshooting.md"
+          }
         ]
       },
       {
         "group": "Release Workflows",
         "pages": [
-          { "slug": "cicd", "title": "⛓️ Release Workflows", "file_path": "docs/deployments/cicd.md" }
+          {
+            "slug": "cicd",
+            "title": "⛓️ Release Workflows",
+            "file_path": "docs/deployments/cicd.md"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "api",
+    "title": "API reference",
+    "groups": [
+      {
+        "group": "Chat, voice and embeddings",
+        "pages": [
+          {
+            "slug": "chat-completions",
+            "title": "POST /v1/chat/completions",
+            "file_path": "docs/api/inference/chat_completions.md"
+          },
+          {
+            "slug": "openai-compatibility",
+            "title": "OpenAI compatibility",
+            "file_path": "docs/api/inference/openai_compatibility.md"
+          },
+          {
+            "slug": "audio-speech",
+            "title": "POST /v1/audio/speech",
+            "file_path": "docs/api/inference/audio_speech.md"
+          },
+          {
+            "slug": "audio-transcriptions",
+            "title": "POST /v1/audio/transcriptions",
+            "file_path": "docs/api/inference/audio_transcriptions.md"
+          },
+          {
+            "slug": "embeddings",
+            "title": "POST /v1/embeddings",
+            "file_path": "docs/api/inference/embeddings.md"
+          },
+          {
+            "slug": "ingest",
+            "title": "POST /v1/ingest",
+            "file_path": "docs/api/inference/ingest.md"
+          }
+        ]
+      },
+      {
+        "group": "HTTP API and CEP",
+        "pages": [
+          {
+            "slug": "api-overview",
+            "title": "📡 API Overview",
+            "file_path": "docs/api/README.md"
+          },
+          {
+            "slug": "cep",
+            "title": "🔗 CEP (Cluaiz Engine Protocol)",
+            "file_path": "docs/api/cep/README.md"
+          }
+        ]
+      },
+      {
+        "group": "Model endpoints",
+        "pages": [
+          {
+            "slug": "list-models",
+            "title": "GET /v1/models",
+            "file_path": "docs/api/models/list_models.md"
+          },
+          {
+            "slug": "show-model",
+            "title": "POST /api/show",
+            "file_path": "docs/api/models/show_model.md"
+          },
+          {
+            "slug": "pull-model",
+            "title": "POST /api/pull",
+            "file_path": "docs/api/models/pull_model.md"
+          }
+        ]
+      },
+      {
+        "group": "Health endpoint",
+        "pages": [
+          {
+            "slug": "health",
+            "title": "GET /health",
+            "file_path": "docs/api/system/health.md"
+          }
+        ]
+      },
+      {
+        "group": "AI & Inference Core",
+        "pages": [
+          {
+            "slug": "cep-ai-inference",
+            "title": "Index",
+            "file_path": "docs/api/cep/ai-inference/README.md"
+          },
+          {
+            "slug": "cep-chat-cancel",
+            "title": "chat.cancel",
+            "file_path": "docs/api/cep/ai-inference/chat/chat.cancel.md"
+          },
+          {
+            "slug": "cep-chat-import-app",
+            "title": "chat.import_app",
+            "file_path": "docs/api/cep/ai-inference/chat/chat.import_app.md"
+          },
+          {
+            "slug": "cep-chat-set-tools",
+            "title": "chat.set_tools",
+            "file_path": "docs/api/cep/ai-inference/chat/chat.set_tools.md"
+          },
+          {
+            "slug": "cep-chat-skip-reasoning",
+            "title": "chat.skip_reasoning",
+            "file_path": "docs/api/cep/ai-inference/chat/chat.skip_reasoning.md"
+          },
+          {
+            "slug": "cep-chat-telemetry",
+            "title": "chat.telemetry",
+            "file_path": "docs/api/cep/ai-inference/chat/chat.telemetry.md"
+          },
+          {
+            "slug": "cep-chat-tools",
+            "title": "chat.tools",
+            "file_path": "docs/api/cep/ai-inference/chat/chat.tools.md"
+          },
+          {
+            "slug": "cep-audio-languages",
+            "title": "audio.languages",
+            "file_path": "docs/api/cep/ai-inference/audio/audio.languages.md"
+          },
+          {
+            "slug": "cep-audio-run",
+            "title": "audio.run",
+            "file_path": "docs/api/cep/ai-inference/audio/audio.run.md"
+          },
+          {
+            "slug": "cep-audio-voices",
+            "title": "audio.voices",
+            "file_path": "docs/api/cep/ai-inference/audio/audio.voices.md"
+          },
+          {
+            "slug": "cep-memory-overview",
+            "title": "memory: overview",
+            "file_path": "docs/api/cep/ai-inference/memory/README.md"
+          },
+          {
+            "slug": "cep-memory-delete",
+            "title": "memory.delete",
+            "file_path": "docs/api/cep/ai-inference/memory/memory.delete.md"
+          },
+          {
+            "slug": "cep-memory-events",
+            "title": "memory.events",
+            "file_path": "docs/api/cep/ai-inference/memory/memory.events.md"
+          },
+          {
+            "slug": "cep-memory-export",
+            "title": "memory.export",
+            "file_path": "docs/api/cep/ai-inference/memory/memory.export.md"
+          },
+          {
+            "slug": "cep-memory-grants",
+            "title": "memory.grants",
+            "file_path": "docs/api/cep/ai-inference/memory/memory.grants.md"
+          },
+          {
+            "slug": "cep-memory-import",
+            "title": "memory.import",
+            "file_path": "docs/api/cep/ai-inference/memory/memory.import.md"
+          },
+          {
+            "slug": "cep-memory-index",
+            "title": "memory.index",
+            "file_path": "docs/api/cep/ai-inference/memory/memory.index.md"
+          },
+          {
+            "slug": "cep-memory-item",
+            "title": "memory.item",
+            "file_path": "docs/api/cep/ai-inference/memory/memory.item.md"
+          },
+          {
+            "slug": "cep-memory-revoke-grants",
+            "title": "memory.revoke_grants",
+            "file_path": "docs/api/cep/ai-inference/memory/memory.revoke_grants.md"
+          },
+          {
+            "slug": "cep-memory-search",
+            "title": "memory.search",
+            "file_path": "docs/api/cep/ai-inference/memory/memory.search.md"
+          },
+          {
+            "slug": "cep-notes-confirm",
+            "title": "notes.confirm",
+            "file_path": "docs/api/cep/ai-inference/notes/notes.confirm.md"
+          },
+          {
+            "slug": "cep-notes-create",
+            "title": "notes.create",
+            "file_path": "docs/api/cep/ai-inference/notes/notes.create.md"
+          },
+          {
+            "slug": "cep-notes-invalidate",
+            "title": "notes.invalidate",
+            "file_path": "docs/api/cep/ai-inference/notes/notes.invalidate.md"
+          },
+          {
+            "slug": "cep-notes-list",
+            "title": "notes.list",
+            "file_path": "docs/api/cep/ai-inference/notes/notes.list.md"
+          },
+          {
+            "slug": "cep-notes-pin",
+            "title": "notes.pin",
+            "file_path": "docs/api/cep/ai-inference/notes/notes.pin.md"
+          },
+          {
+            "slug": "cep-notes-move",
+            "title": "notes.move",
+            "file_path": "docs/api/cep/ai-inference/notes/notes.move.md"
+          },
+          {
+            "slug": "cep-prompts-get",
+            "title": "prompts.get",
+            "file_path": "docs/api/cep/ai-inference/prompts/prompts.get.md"
+          },
+          {
+            "slug": "cep-prompts-history",
+            "title": "prompts.history",
+            "file_path": "docs/api/cep/ai-inference/prompts/prompts.history.md"
+          },
+          {
+            "slug": "cep-prompts-list",
+            "title": "prompts.list",
+            "file_path": "docs/api/cep/ai-inference/prompts/prompts.list.md"
+          },
+          {
+            "slug": "cep-prompts-reset",
+            "title": "prompts.reset",
+            "file_path": "docs/api/cep/ai-inference/prompts/prompts.reset.md"
+          },
+          {
+            "slug": "cep-prompts-set",
+            "title": "prompts.set",
+            "file_path": "docs/api/cep/ai-inference/prompts/prompts.set.md"
+          },
+          {
+            "slug": "cep-context-overview",
+            "title": "context: overview",
+            "file_path": "docs/api/cep/ai-inference/context/README.md"
+          },
+          {
+            "slug": "cep-context-jobs",
+            "title": "context.jobs",
+            "file_path": "docs/api/cep/ai-inference/context/context.jobs.md"
+          },
+          {
+            "slug": "cep-context-preview",
+            "title": "context.preview",
+            "file_path": "docs/api/cep/ai-inference/context/context.preview.md"
+          },
+          {
+            "slug": "cep-context-report",
+            "title": "context.report",
+            "file_path": "docs/api/cep/ai-inference/context/context.report.md"
+          },
+          {
+            "slug": "cep-context-reports",
+            "title": "context.reports",
+            "file_path": "docs/api/cep/ai-inference/context/context.reports.md"
+          },
+          {
+            "slug": "cep-kv-clear",
+            "title": "kv.clear",
+            "file_path": "docs/api/cep/ai-inference/kv/kv.clear.md"
+          },
+          {
+            "slug": "cep-kv-delete",
+            "title": "kv.delete",
+            "file_path": "docs/api/cep/ai-inference/kv/kv.delete.md"
+          },
+          {
+            "slug": "cep-kv-status",
+            "title": "kv.status",
+            "file_path": "docs/api/cep/ai-inference/kv/kv.status.md"
+          }
+        ]
+      },
+      {
+        "group": "Agents, MCP & Tools",
+        "pages": [
+          {
+            "slug": "cep-agents-tools",
+            "title": "Index",
+            "file_path": "docs/api/cep/agents-tools/README.md"
+          },
+          {
+            "slug": "cep-tools-cache",
+            "title": "tools.cache",
+            "file_path": "docs/api/cep/agents-tools/tools/tools.cache.md"
+          },
+          {
+            "slug": "cep-tools-call",
+            "title": "tools.call",
+            "file_path": "docs/api/cep/agents-tools/tools/tools.call.md"
+          },
+          {
+            "slug": "cep-tools-clear-cache",
+            "title": "tools.clear_cache",
+            "file_path": "docs/api/cep/agents-tools/tools/tools.clear_cache.md"
+          },
+          {
+            "slug": "cep-tools-discover",
+            "title": "tools.discover",
+            "file_path": "docs/api/cep/agents-tools/tools/tools.discover.md"
+          },
+          {
+            "slug": "cep-tools-files",
+            "title": "tools.files",
+            "file_path": "docs/api/cep/agents-tools/tools/tools.files.md"
+          },
+          {
+            "slug": "cep-tools-get-settings",
+            "title": "tools.get_settings",
+            "file_path": "docs/api/cep/agents-tools/tools/tools.get_settings.md"
+          },
+          {
+            "slug": "cep-tools-install",
+            "title": "tools.install",
+            "file_path": "docs/api/cep/agents-tools/tools/tools.install.md"
+          },
+          {
+            "slug": "cep-tools-list",
+            "title": "tools.list",
+            "file_path": "docs/api/cep/agents-tools/tools/tools.list.md"
+          },
+          {
+            "slug": "cep-tools-open-file",
+            "title": "tools.open_file",
+            "file_path": "docs/api/cep/agents-tools/tools/tools.open_file.md"
+          },
+          {
+            "slug": "cep-tools-read-file",
+            "title": "tools.read_file",
+            "file_path": "docs/api/cep/agents-tools/tools/tools.read_file.md"
+          },
+          {
+            "slug": "cep-tools-remove",
+            "title": "tools.remove",
+            "file_path": "docs/api/cep/agents-tools/tools/tools.remove.md"
+          },
+          {
+            "slug": "cep-tools-set-settings",
+            "title": "tools.set_settings",
+            "file_path": "docs/api/cep/agents-tools/tools/tools.set_settings.md"
+          },
+          {
+            "slug": "cep-tools-write-file",
+            "title": "tools.write_file",
+            "file_path": "docs/api/cep/agents-tools/tools/tools.write_file.md"
+          },
+          {
+            "slug": "cep-approvals-approve",
+            "title": "approvals.approve",
+            "file_path": "docs/api/cep/agents-tools/approvals/approvals.approve.md"
+          },
+          {
+            "slug": "cep-approvals-list",
+            "title": "approvals.list",
+            "file_path": "docs/api/cep/agents-tools/approvals/approvals.list.md"
+          },
+          {
+            "slug": "cep-approvals-reject",
+            "title": "approvals.reject",
+            "file_path": "docs/api/cep/agents-tools/approvals/approvals.reject.md"
+          }
+        ]
+      },
+      {
+        "group": "Filesystem & Workspace",
+        "pages": [
+          {
+            "slug": "cep-filesystem",
+            "title": "Index",
+            "file_path": "docs/api/cep/filesystem/README.md"
+          },
+          {
+            "slug": "cep-fs-copy",
+            "title": "fs.copy",
+            "file_path": "docs/api/cep/filesystem/fs/fs.copy.md"
+          },
+          {
+            "slug": "cep-fs-delete",
+            "title": "fs.delete",
+            "file_path": "docs/api/cep/filesystem/fs/fs.delete.md"
+          },
+          {
+            "slug": "cep-fs-list",
+            "title": "fs.list",
+            "file_path": "docs/api/cep/filesystem/fs/fs.list.md"
+          },
+          {
+            "slug": "cep-fs-mkdir",
+            "title": "fs.mkdir",
+            "file_path": "docs/api/cep/filesystem/fs/fs.mkdir.md"
+          },
+          {
+            "slug": "cep-fs-pick-folder",
+            "title": "fs.pick_folder",
+            "file_path": "docs/api/cep/filesystem/fs/fs.pick_folder.md"
+          },
+          {
+            "slug": "cep-fs-read",
+            "title": "fs.read",
+            "file_path": "docs/api/cep/filesystem/fs/fs.read.md"
+          },
+          {
+            "slug": "cep-fs-rename",
+            "title": "fs.rename",
+            "file_path": "docs/api/cep/filesystem/fs/fs.rename.md"
+          },
+          {
+            "slug": "cep-fs-write",
+            "title": "fs.write",
+            "file_path": "docs/api/cep/filesystem/fs/fs.write.md"
+          },
+          {
+            "slug": "cep-workspace-forget",
+            "title": "workspace.forget",
+            "file_path": "docs/api/cep/filesystem/workspace/workspace.forget.md"
+          },
+          {
+            "slug": "cep-workspace-get",
+            "title": "workspace.get",
+            "file_path": "docs/api/cep/filesystem/workspace/workspace.get.md"
+          },
+          {
+            "slug": "cep-workspace-index",
+            "title": "workspace.index",
+            "file_path": "docs/api/cep/filesystem/workspace/workspace.index.md"
+          },
+          {
+            "slug": "cep-workspace-item",
+            "title": "workspace.item",
+            "file_path": "docs/api/cep/filesystem/workspace/workspace.item.md"
+          },
+          {
+            "slug": "cep-workspace-memory",
+            "title": "workspace.memory",
+            "file_path": "docs/api/cep/filesystem/workspace/workspace.memory.md"
+          },
+          {
+            "slug": "cep-workspace-remember",
+            "title": "workspace.remember",
+            "file_path": "docs/api/cep/filesystem/workspace/workspace.remember.md"
+          },
+          {
+            "slug": "cep-workspace-set",
+            "title": "workspace.set",
+            "file_path": "docs/api/cep/filesystem/workspace/workspace.set.md"
+          }
+        ]
+      },
+      {
+        "group": "Models & Engine Vault",
+        "pages": [
+          {
+            "slug": "cep-models",
+            "title": "Index",
+            "file_path": "docs/api/cep/models/README.md"
+          },
+          {
+            "slug": "cep-models-discard",
+            "title": "models.discard",
+            "file_path": "docs/api/cep/models/models/models.discard.md"
+          },
+          {
+            "slug": "cep-models-download",
+            "title": "models.download",
+            "file_path": "docs/api/cep/models/models/models.download.md"
+          },
+          {
+            "slug": "cep-models-embedding-room",
+            "title": "models.embedding_room",
+            "file_path": "docs/api/cep/models/models/models.embedding_room.md"
+          },
+          {
+            "slug": "cep-models-inspect",
+            "title": "models.inspect",
+            "file_path": "docs/api/cep/models/models/models.inspect.md"
+          },
+          {
+            "slug": "cep-models-list",
+            "title": "models.list",
+            "file_path": "docs/api/cep/models/models/models.list.md"
+          },
+          {
+            "slug": "cep-models-load",
+            "title": "models.load",
+            "file_path": "docs/api/cep/models/models/models.load.md"
+          },
+          {
+            "slug": "cep-models-load-history",
+            "title": "models.load_history",
+            "file_path": "docs/api/cep/models/models/models.load_history.md"
+          },
+          {
+            "slug": "cep-models-remove",
+            "title": "models.remove",
+            "file_path": "docs/api/cep/models/models/models.remove.md"
+          },
+          {
+            "slug": "cep-providers-list",
+            "title": "providers.list",
+            "file_path": "docs/api/cep/models/providers/providers.list.md"
+          },
+          {
+            "slug": "cep-providers-models",
+            "title": "providers.models",
+            "file_path": "docs/api/cep/models/providers/providers.models.md"
+          },
+          {
+            "slug": "cep-providers-remove",
+            "title": "providers.remove",
+            "file_path": "docs/api/cep/models/providers/providers.remove.md"
+          },
+          {
+            "slug": "cep-providers-set",
+            "title": "providers.set",
+            "file_path": "docs/api/cep/models/providers/providers.set.md"
+          },
+          {
+            "slug": "cep-providers-test",
+            "title": "providers.test",
+            "file_path": "docs/api/cep/models/providers/providers.test.md"
+          }
+        ]
+      },
+      {
+        "group": "System & Infrastructure",
+        "pages": [
+          {
+            "slug": "cep-system",
+            "title": "Index",
+            "file_path": "docs/api/cep/system/README.md"
+          },
+          {
+            "slug": "cep-system-audit",
+            "title": "system.audit",
+            "file_path": "docs/api/cep/system/system/system.audit.md"
+          },
+          {
+            "slug": "cep-system-events",
+            "title": "system.events",
+            "file_path": "docs/api/cep/system/system/system.events.md"
+          },
+          {
+            "slug": "cep-system-exec",
+            "title": "system.exec",
+            "file_path": "docs/api/cep/system/system/system.exec.md"
+          },
+          {
+            "slug": "cep-system-info",
+            "title": "system.info",
+            "file_path": "docs/api/cep/system/system/system.info.md"
+          },
+          {
+            "slug": "cep-system-live",
+            "title": "system.live",
+            "file_path": "docs/api/cep/system/system/system.live.md"
+          },
+          {
+            "slug": "cep-system-plan",
+            "title": "system.plan",
+            "file_path": "docs/api/cep/system/system/system.plan.md"
+          },
+          {
+            "slug": "cep-system-ps",
+            "title": "system.ps",
+            "file_path": "docs/api/cep/system/system/system.ps.md"
+          },
+          {
+            "slug": "cep-system-update-check",
+            "title": "system.update_check",
+            "file_path": "docs/api/cep/system/system/system.update_check.md"
+          },
+          {
+            "slug": "cep-config-get",
+            "title": "config.get",
+            "file_path": "docs/api/cep/system/config/config.get.md"
+          },
+          {
+            "slug": "cep-config-set",
+            "title": "config.set",
+            "file_path": "docs/api/cep/system/config/config.set.md"
+          },
+          {
+            "slug": "cep-storage-clean",
+            "title": "storage.clean",
+            "file_path": "docs/api/cep/system/storage/storage.clean.md"
+          },
+          {
+            "slug": "cep-storage-status",
+            "title": "storage.status",
+            "file_path": "docs/api/cep/system/storage/storage.status.md"
+          },
+          {
+            "slug": "cep-tokens-create",
+            "title": "tokens.create",
+            "file_path": "docs/api/cep/system/tokens/tokens.create.md"
+          },
+          {
+            "slug": "cep-tokens-list",
+            "title": "tokens.list",
+            "file_path": "docs/api/cep/system/tokens/tokens.list.md"
+          },
+          {
+            "slug": "cep-tokens-revoke",
+            "title": "tokens.revoke",
+            "file_path": "docs/api/cep/system/tokens/tokens.revoke.md"
+          },
+          {
+            "slug": "cep-tasks-cancel",
+            "title": "tasks.cancel",
+            "file_path": "docs/api/cep/system/tasks/tasks.cancel.md"
+          },
+          {
+            "slug": "cep-tasks-get",
+            "title": "tasks.get",
+            "file_path": "docs/api/cep/system/tasks/tasks.get.md"
+          },
+          {
+            "slug": "cep-tasks-list",
+            "title": "tasks.list",
+            "file_path": "docs/api/cep/system/tasks/tasks.list.md"
+          },
+          {
+            "slug": "cep-tasks-result",
+            "title": "tasks.result",
+            "file_path": "docs/api/cep/system/tasks/tasks.result.md"
+          },
+          {
+            "slug": "cep-rpc-discover",
+            "title": "rpc.discover",
+            "file_path": "docs/api/cep/system/rpc/rpc.discover.md"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "reference-manual",
+    "title": "Reference",
+    "groups": [
+      {
+        "group": "Reference index",
+        "pages": [
+          {
+            "slug": "reference-index",
+            "title": "📚 Master Reference",
+            "file_path": "docs/reference/index.md"
+          },
+          {
+            "slug": "dictionary",
+            "title": "📖 System Dictionary",
+            "file_path": "docs/reference/dictionary.md"
+          },
+          {
+            "slug": "api-index",
+            "title": "📡 Unified API Reference",
+            "file_path": "docs/reference/api.md"
+          }
+        ]
+      },
+      {
+        "group": "CLI commands",
+        "pages": [
+          {
+            "slug": "cli-manual",
+            "title": "⚙️ CLI Manual",
+            "file_path": "docs/cmd/manual.md"
+          },
+          {
+            "slug": "commands-reference",
+            "title": "📋 Commands Reference",
+            "file_path": "docs/cmd/commands_reference.md"
+          },
+          {
+            "slug": "terminal-commands",
+            "title": "💻 Core CLI Manual",
+            "file_path": "docs/reference/terminal-commands.md"
+          }
+        ]
+      },
+      {
+        "group": "Configuration Profiles",
+        "pages": [
+          {
+            "slug": "engine-configuration",
+            "title": "⚙️ Engine Configurations",
+            "file_path": "docs/reference/engine-configuration.md"
+          }
+        ]
+      },
+      {
+        "group": "Automation Reference",
+        "pages": [
+          {
+            "slug": "automation-reference",
+            "title": "⚙️ Automation Reference",
+            "file_path": "docs/reference/automation.md"
+          }
+        ]
+      },
+      {
+        "group": "Methods (CEP)",
+        "pages": [
+          {
+            "slug": "automation-methods",
+            "title": "🔗 Automation Methods",
+            "file_path": "docs/automation/methods/README.md"
+          },
+          {
+            "slug": "cep-flows-disable",
+            "title": "flows.disable",
+            "file_path": "docs/automation/methods/flows.disable.md"
+          },
+          {
+            "slug": "cep-flows-draft",
+            "title": "flows.draft",
+            "file_path": "docs/automation/methods/flows.draft.md"
+          },
+          {
+            "slug": "cep-flows-enable",
+            "title": "flows.enable",
+            "file_path": "docs/automation/methods/flows.enable.md"
+          },
+          {
+            "slug": "cep-flows-explain",
+            "title": "flows.explain",
+            "file_path": "docs/automation/methods/flows.explain.md"
+          },
+          {
+            "slug": "cep-flows-fix",
+            "title": "flows.fix",
+            "file_path": "docs/automation/methods/flows.fix.md"
+          },
+          {
+            "slug": "cep-flows-get",
+            "title": "flows.get",
+            "file_path": "docs/automation/methods/flows.get.md"
+          },
+          {
+            "slug": "cep-flows-list",
+            "title": "flows.list",
+            "file_path": "docs/automation/methods/flows.list.md"
+          },
+          {
+            "slug": "cep-flows-nodes",
+            "title": "flows.nodes",
+            "file_path": "docs/automation/methods/flows.nodes.md"
+          },
+          {
+            "slug": "cep-flows-remove",
+            "title": "flows.remove",
+            "file_path": "docs/automation/methods/flows.remove.md"
+          },
+          {
+            "slug": "cep-flows-rerun-from",
+            "title": "flows.rerun_from",
+            "file_path": "docs/automation/methods/flows.rerun_from.md"
+          },
+          {
+            "slug": "cep-flows-run",
+            "title": "flows.run",
+            "file_path": "docs/automation/methods/flows.run.md"
+          },
+          {
+            "slug": "cep-flows-run-get",
+            "title": "flows.run_get",
+            "file_path": "docs/automation/methods/flows.run_get.md"
+          },
+          {
+            "slug": "cep-flows-runs",
+            "title": "flows.runs",
+            "file_path": "docs/automation/methods/flows.runs.md"
+          },
+          {
+            "slug": "cep-flows-save",
+            "title": "flows.save",
+            "file_path": "docs/automation/methods/flows.save.md"
+          },
+          {
+            "slug": "cep-flows-schema",
+            "title": "flows.schema",
+            "file_path": "docs/automation/methods/flows.schema.md"
+          },
+          {
+            "slug": "cep-flows-validate",
+            "title": "flows.validate",
+            "file_path": "docs/automation/methods/flows.validate.md"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "engine-deep-dive",
+    "title": "Engine Internals",
+    "groups": [
+      {
+        "group": "Architecture and security",
+        "pages": [
+          {
+            "slug": "architecture",
+            "title": "📡 System Architecture",
+            "file_path": "docs/get-started/architecture.md"
+          },
+          {
+            "slug": "security-and-auth-architecture",
+            "title": "🛡️ Security & Auth Architecture",
+            "file_path": "docs/architecture/security-and-auth-architecture.md"
+          },
+          {
+            "slug": "dual-engine-architecture",
+            "title": "⚙️ llama.cpp & ONNX Runtime",
+            "file_path": "docs/engine/dual_engine_architecture.md"
+          },
+          {
+            "slug": "api-old",
+            "title": "📡 Axum API Details",
+            "file_path": "docs/engine/api.md"
+          },
+          {
+            "slug": "permission",
+            "title": "🔒 permission.json",
+            "file_path": "docs/engine/permission.md"
+          },
+          {
+            "slug": "system-control",
+            "title": "⚙️ Hardware Profile",
+            "file_path": "docs/engine/system_control.md"
+          }
+        ]
+      },
+      {
+        "group": "Runtime and memory",
+        "pages": [
+          {
+            "slug": "llm-optimization-deep",
+            "title": "🚀 Load & Speed Settings",
+            "file_path": "docs/engine/llm_optimization.md"
+          },
+          {
+            "slug": "prefix-caching-architecture",
+            "title": "⚡ KV Cache Reuse",
+            "file_path": "docs/engine/prefix_caching_architecture.md"
+          },
+          {
+            "slug": "moe-ssd-streaming",
+            "title": "🧩 MoE Models on Small GPUs",
+            "file_path": "docs/engine/moe_ssd_streaming.md"
+          }
+        ]
+      },
+      {
+        "group": "Architecture & FFI",
+        "pages": [
+          {
+            "slug": "unified-brain-ffi",
+            "title": "🔌 C Library (FFI)",
+            "file_path": "docs/architecture/unified-brain-ffi.md"
+          },
+          {
+            "slug": "registry-web-integration",
+            "title": "🏛️ Registry Web Specs",
+            "file_path": "docs/architecture/registry-web-integration.md"
+          }
+        ]
+      },
+      {
+        "group": "C interface",
+        "pages": [
+          {
+            "slug": "c-pointer-fii",
+            "title": "🔌 C-Pointer Specifications",
+            "file_path": "docs/reference/c-pointer-fii.md"
+          }
+        ]
+      },
+      {
+        "group": "CLI design archive",
+        "pages": [
+          {
+            "slug": "cli-architecture",
+            "title": "💻 CLI Architecture (old draft)",
+            "file_path": "docs/architecture/cli-architecture.md"
+          },
+          {
+            "slug": "cli-deep-audit",
+            "title": "🔍 CLI Audit (old)",
+            "file_path": "docs/architecture/cli-deep-audit.md"
+          },
+          {
+            "slug": "cli-process-design",
+            "title": "⚙️ CLI Process Design (old draft)",
+            "file_path": "docs/architecture/cli-process-design.md"
+          }
         ]
       }
     ]
