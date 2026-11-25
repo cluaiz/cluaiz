@@ -1219,26 +1219,6 @@
             "file_path": "docs/reference/c-pointer-fii.md"
           }
         ]
-      },
-      {
-        "group": "CLI design archive",
-        "pages": [
-          {
-            "slug": "cli-architecture",
-            "title": "💻 CLI Architecture (old draft)",
-            "file_path": "docs/architecture/cli-architecture.md"
-          },
-          {
-            "slug": "cli-deep-audit",
-            "title": "🔍 CLI Audit (old)",
-            "file_path": "docs/architecture/cli-deep-audit.md"
-          },
-          {
-            "slug": "cli-process-design",
-            "title": "⚙️ CLI Process Design (old draft)",
-            "file_path": "docs/architecture/cli-process-design.md"
-          }
-        ]
       }
     ]
   }

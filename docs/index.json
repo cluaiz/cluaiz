@@ -833,27 +833,6 @@
   "metadata": true
  },
  {
-  "title": "CLI architecture (old design draft)",
-  "description": "Historical April 2026 design for an earlier terminal console; it does not describe the current cluaiz program.",
-  "kind": "docs",
-  "path": "docs/architecture/cli-architecture.md",
-  "metadata": true
- },
- {
-  "title": "CLI audit (old, April 2026)",
-  "description": "Historical April 2026 audit of an earlier terminal console; it does not describe the current cluaiz program.",
-  "kind": "docs",
-  "path": "docs/architecture/cli-deep-audit.md",
-  "metadata": true
- },
- {
-  "title": "CLI process design (old design draft)",
-  "description": "Historical April 2026 process design for an earlier terminal console; it does not describe the current cluaiz program.",
-  "kind": "docs",
-  "path": "docs/architecture/cli-process-design.md",
-  "metadata": true
- },
- {
   "title": "Hardware troubleshooting and VRAM",
   "description": "Common hardware limits when running the Engine and the settings that help.",
   "kind": "docs",
