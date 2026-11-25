@@ -38,13 +38,12 @@ new, and flows carry the steps so you do not have to. Memory keeps only what you
 the limits you set, and an audit log records all of it. It fits your machine, works where you are, and grows with
 what you build.
 
-## One system, three parts
+## Works with
 
-| | What it is |
-| :--- | :--- |
-| **[Engine](https://github.com/cluaiz/cluaiz)** (this repository) | The `cluaiz` program: models, API, agent, tools and flows |
-| **[App](https://github.com/cluaiz/cluaiz-app)** | The desktop app. It talks to a running `cluaiz serve`, so a model is loaded once |
-| **[Tools](https://github.com/cluaiz/cluaiz-tools)** | The registry of skills, plugins and MCP servers that the Engine installs. It takes pull requests |
+- **[Cluaiz App](https://github.com/cluaiz/cluaiz-app):** the desktop app. It talks to a running `cluaiz serve`, so
+  a model is loaded once.
+- **[Cluaiz Tools](https://github.com/cluaiz/cluaiz-tools):** the registry of skills, plugins and MCP servers that
+  the Engine installs. It takes pull requests.
 
 ## What you can do with it
 
