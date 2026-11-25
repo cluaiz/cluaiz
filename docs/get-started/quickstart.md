@@ -1,21 +1,21 @@
 <!-- name: Quickstart
 description: Install Cluaiz with one command and run your first model. -->
 
-# Quickstart Guide
+# Quickstart
 
 ![The installer puts the core (the cluaiz program and CPU builds of llama.cpp) and one GPU pack chosen from the GPU: NVIDIA gets CUDA 13 or 12, AMD and Intel Arc get Vulkan, Apple Silicon uses Metal in the core, otherwise CPU only; every file is checked against SHA256SUMS.txt](../assets/get-started/install-packs.png)
 
-This guide details the deployment pathways to install, bootstrap, and execute cluaiz natively on your workstation. The runtime can be deployed via a single-line automated installer or compiled manually from source.
+Install Cluaiz with one command, download a model and ask it something. You can also build it from source.
 
 Cluaiz is one native program: it needs no Docker and no Python.
 
 ---
 
-## 1. Single-Command Native Installation
+## 1. Install with one command
 
 The recommended method to deploy the node is using the official single-line automated installation scripts. These scripts analyze your host operating system, configure local workspaces, fetch target architecture libraries, and register path variables automatically.
 
-### Windows Installation
+### Windows
 
 Execute this command inside a standard or Administrator **PowerShell** prompt:
 
@@ -30,7 +30,7 @@ powershell -c "irm https://cluaiz.com/install.ps1 | iex"
 
 ---
 
-### Linux & macOS Installation
+### Linux and macOS
 
 Execute this command inside any **Bash**-compliant terminal:
 
@@ -62,16 +62,16 @@ On Windows the update installer opens in its own window once the command exits (
 
 ---
 
-## 2. Manual From-Source Compilation
+## 2. Build from source
 
 For developers and contributors who want to configure custom target compilation flags, cluaiz can be built manually from source:
 
-### System Prerequisites
+### What you need
 Ensure your local machine has the following tools installed and registered in your PATH:
 *   **Compiler:** Rust Toolchain (v1.75 or later).
 *   **Linkers:** C++ build compilers (GCC/Clang on Unix/macOS, MSVC C++ Build Tools on Windows).
 
-### Compilation Sequence
+### Build
 1.  **Clone the Repository:**
     ```bash
     git clone https://github.com/cluaiz/cluaiz.git
@@ -92,7 +92,7 @@ Ensure your local machine has the following tools installed and registered in yo
 
 ---
 
-## 3. First Steps
+## 3. First steps
 
 Open a new terminal (so the updated PATH is read) and check the install:
 

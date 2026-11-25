@@ -1,7 +1,7 @@
 <!-- name: Welcome to the Cluaiz docs
 description: Start page of the Cluaiz Engine docs, with links to each part. -->
 
-# Welcome to cluaiz Documentation
+# Welcome to the Cluaiz docs
 
 Cluaiz is the AI engine where models, voice, vision, memory, tools, agents and workflows work as one.
 It runs language, speech, vision and embedding models on your own computer or server, can use cloud
