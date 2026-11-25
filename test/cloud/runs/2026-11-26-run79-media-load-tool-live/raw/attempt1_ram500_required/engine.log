@@ -1,0 +1,85 @@
+2026-11-25T19:30:44.858031Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-25T19:30:45.587370Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-25T19:30:47.535312Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+Starting the Cluaiz API server on http://localhost:8013 ...
+2026-11-25T19:30:47.537663Z  INFO 🔒 [Auth] Initialized local session secret at C:\Users\<user>\AppData\Local\cluaiz-test\run79home\session.token
+2026-11-25T19:30:47.839722Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-25T19:30:47.882321Z  INFO 🌐 Cluaiz API Server running on http://127.0.0.1:8013
+2026-11-25T19:30:48.396050Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-2b-mtp-gguf-Q4_K_M' to "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M\\Qwen3.5-2B-Q4_K_M.gguf"
+2026-11-25T19:30:48.559412Z  INFO
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3.5-2b-mtp-gguf-Q4_K_M
+║   • Architecture    : qwen35 | 25 layers | heads 8 | KV heads 2 | head size K 256 / V 256 | dense | hybrid: 7 attention layers with a KV cache, 18 linear-attention layers with a 1.1 MB state
+║   • Weights         : file 1.33 GB (as Hugging Face counts it) | input embeddings 0.39 GB (always CPU) | output head 0.39 GB | vocab 248320
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 4096 tokens, KV Kv4 (Auto: 4096 tokens with KV Kv4 + buffer 0.48 GB, to stay on the GPU (16384 tokens with KV Kv16 did not fit))
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA GeForce RTX 3050 A Laptop GPU | free 2.20 of 4.00 GB | buffer kept free 0.48 GB (tight gap: 0.48 GB instead of 0.53 GB, because the usual gap would put less of the model on the GPU; a load that fails steps back one placement)
+║   • RAM             : free 3.78 of 23.69 GB | Cluaiz may use 2.60 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 4096 | KV Kv4 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 25 on GPU, 0 in RAM (of 25)
+║   • VRAM            : 1.71 GB (weights + KV 0.03 + logits)
+║   • RAM             : 0.39 GB (incl. KV 0.00)
+║   • Reason         : Full GPU: weights 1.23 + KV 0.03 + buffers 0.45 = 1.71 GB vs usable VRAM 1.72 GB; 0.48 GB of VRAM kept free instead of 0.53 GB: with the usual gap it would be GPU + RAM split
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  1.71 GB | RAM  0.39 GB | weights 1.23 + KV 0.03 + buffers 0.45 = 1.71 GB vs usable VRAM 1.72 GB
+║   • GPU + RAM split  [FITS]     VRAM  1.68 GB | RAM  0.43 GB | 24 / 25 blocks + output head on GPU (1.68 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  1.74 GB | weights 1.23 + KV 0.03 + logits 0.47 = 1.74 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 8 / batch 8 | flash attention Auto | KV setting Auto -> used Kv4 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-25T19:30:48.561874Z  INFO 🔮 [MTP] Auto: off (its memory would not fit next to this placement)
+2026-11-25T19:30:48.563461Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 8, n_threads_batch = 8
+2026-11-25T19:30:48.563558Z  INFO 🧬 [Native-Llama] Loading model: C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\models\chat\qwen3.5-2b-mtp-gguf-Q4_K_M\Qwen3.5-2B-Q4_K_M.gguf | ctx: 4096 tokens
+2026-11-25T19:30:49.559632Z  WARN [llama.cpp] model has unused tensor blk.24.attn_norm.weight (size = 8192 bytes) -- ignoring
+2026-11-25T19:30:49.559826Z  WARN [llama.cpp] model has unused tensor blk.24.post_attention_norm.weight (size = 8192 bytes) -- ignoring
+2026-11-25T19:30:49.559956Z  WARN [llama.cpp] model has unused tensor blk.24.attn_q.weight (size = 4718592 bytes) -- ignoring
+2026-11-25T19:30:49.560025Z  WARN [llama.cpp] model has unused tensor blk.24.attn_k.weight (size = 589824 bytes) -- ignoring
+2026-11-25T19:30:49.560085Z  WARN [llama.cpp] model has unused tensor blk.24.attn_v.weight (size = 860160 bytes) -- ignoring
+2026-11-25T19:30:49.560191Z  WARN [llama.cpp] model has unused tensor blk.24.attn_output.weight (size = 2359296 bytes) -- ignoring
+2026-11-25T19:30:49.560256Z  WARN [llama.cpp] model has unused tensor blk.24.attn_q_norm.weight (size = 1024 bytes) -- ignoring
+2026-11-25T19:30:49.560379Z  WARN [llama.cpp] model has unused tensor blk.24.attn_k_norm.weight (size = 1024 bytes) -- ignoring
+2026-11-25T19:30:49.560460Z  WARN [llama.cpp] model has unused tensor blk.24.ffn_gate.weight (size = 7077888 bytes) -- ignoring
+2026-11-25T19:30:49.560528Z  WARN [llama.cpp] model has unused tensor blk.24.ffn_down.weight (size = 10321920 bytes) -- ignoring
+2026-11-25T19:30:49.560754Z  WARN [llama.cpp] model has unused tensor blk.24.ffn_up.weight (size = 7077888 bytes) -- ignoring
+2026-11-25T19:30:49.560893Z  WARN [llama.cpp] model has unused tensor blk.24.nextn.eh_proj.weight (size = 8912896 bytes) -- ignoring
+2026-11-25T19:30:49.561006Z  WARN [llama.cpp] model has unused tensor blk.24.nextn.enorm.weight (size = 8192 bytes) -- ignoring
+2026-11-25T19:30:49.561107Z  WARN [llama.cpp] model has unused tensor blk.24.nextn.hnorm.weight (size = 8192 bytes) -- ignoring
+2026-11-25T19:30:49.561271Z  WARN [llama.cpp] model has unused tensor blk.24.nextn.shared_head_norm.weight (size = 8192 bytes) -- ignoring
+2026-11-25T19:30:51.862835Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M"
+2026-11-25T19:30:51.891221Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-11-25T19:30:51.891303Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-11-25T19:30:51.891363Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 4096 tokens
+2026-11-25T19:30:51.891782Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-25T19:30:51.891845Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-25T19:30:51.891900Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-25T19:30:51.891944Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 8/8
+2026-11-25T19:30:52.518718Z  INFO 🔍 [EngineHost] VRAM planned 1.71 GB, taken 1.79 GB | n_ctx planned 4096 created 4096 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-25T19:30:52.527588Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\models\chat\qwen3.5-2b-mtp-gguf-Q4_K_M\Qwen3.5-2B-Q4_K_M.gguf
+2026-11-25T19:30:52.708606Z  INFO 🧮 [Tokens] Conversation 134 tokens (2 messages) counted in 6.17 ms
+2026-11-25T19:30:52.745369Z  INFO 🧰 [Tools] Suggested: math Card ["is", "use", "the", "math"]
+2026-11-25T19:30:52.750631Z  INFO 🪶 [Tools] Small model (1942653248 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:30:52.857273Z  INFO ⏱️ [Preflight] 4466 ms total | model load 4086 ms | registry + template + tags 118 ms | skills + tools 53 ms | rest 102 ms
+2026-11-25T19:30:53.931165Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-2b-mtp-gguf-Q4_K_M' to "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M\\Qwen3.5-2B-Q4_K_M.gguf"
+2026-11-25T19:30:54.019983Z  INFO 🧮 [Tokens] Conversation 134 tokens (2 messages) counted in 0.16 ms
+2026-11-25T19:30:54.021137Z  INFO 🧰 [Tools] Suggested: math Card ["is", "use", "the", "math"]
+2026-11-25T19:30:54.022102Z  INFO 🪶 [Tools] Small model (1942653248 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:30:54.053027Z  INFO ⏱️ [Preflight] 126 ms total | model load 70 ms | registry + template + tags 14 ms | skills + tools 2 ms | rest 30 ms
+2026-11-25T19:30:55.095904Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-2b-mtp-gguf-Q4_K_M' to "C:/Users/<user>/AppData/Local/Temp/claude/6c30a0ef6fee852f/8b8b6806-071f-4fe0-86dc-c1c89edfc47b/scratchpad/home-mtp\\models\\chat\\qwen3.5-2b-mtp-gguf-Q4_K_M\\Qwen3.5-2B-Q4_K_M.gguf"
+2026-11-25T19:30:55.126631Z  INFO 🧮 [Tokens] Conversation 134 tokens (2 messages) counted in 0.17 ms
+2026-11-25T19:30:55.157065Z  INFO 🧰 [Tools] Suggested: math Card ["is", "use", "the", "math"]; filesystem Title ["is", "use", "the", "tool", "file"]
+2026-11-25T19:30:55.216377Z  INFO 🪶 [Tools] Small model (1942653248 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:30:55.245356Z  INFO ⏱️ [Preflight] 154 ms total | model load 14 ms | registry + template + tags 13 ms | skills + tools 91 ms | rest 27 ms
