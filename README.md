@@ -32,9 +32,14 @@ The AI engine where models, voice, vision, memory, tools, agents and workflows w
 
 <p align="center">
 Models that think, see, listen, speak and remember.<br>
-A machine of any size, measured before every load:<br>
+Files, pages and pictures, turned into meaning you can search.<br>
+On your desk or in the cloud, in the language your apps already speak.
+</p>
+
+<p align="center">
+Any machine, measured before every load:<br>
 the GPU for what must be fast, memory for what comes next, the disk for what can wait.<br>
-On your desk or in the cloud, one voice for every app.
+Windows, Mac or Linux, with a GPU or without one.
 </p>
 
 <p align="center">
@@ -45,7 +50,7 @@ Flows that carry the steps, so you do not have to.
 
 <p align="center">
 Memory that keeps only what you confirm.<br>
-Every action inside the limits you set.<br>
+Every action inside the limits you set, and a record of all it did.<br>
 It fits your machine, works where you are, and grows with what you build.
 </p>
 
