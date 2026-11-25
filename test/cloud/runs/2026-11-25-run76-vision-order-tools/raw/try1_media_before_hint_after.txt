@@ -1,0 +1,49 @@
+0 probe L1_text_first 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1012 7.6s
+1 probe L2_image_first 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1012 5.6s
+2 probe L3_text_image_text 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1022 5.7s
+3 run L1_text_first 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1012 5.6s
+4 run L2_image_first 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1012 5.5s
+5 run L3_text_image_text 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1022 5.7s
+6 run W1_text_first 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1022 3.0s
+7 run L2_image_first 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1012 6.0s
+8 run L3_text_image_text 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1022 5.7s
+9 run L1_text_first 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1012 5.5s
+10 run W2_image_first 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1012 3.1s
+11 run L3_text_image_text 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1022 5.7s
+12 run L1_text_first 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1012 5.7s
+13 run L2_image_first 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1012 5.5s
+14 run W3_text_image_text 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1012 3.1s
+15 run L1_text_first 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1012 4.7s
+16 run L2_image_first 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1012 5.6s
+17 run L3_text_image_text 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1022 5.9s
+18 run W1_text_first 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1022 3.0s
+19 run L2_image_first 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1012 6.0s
+20 run L3_text_image_text 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1022 5.8s
+21 run L1_text_first 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1012 5.8s
+22 run W2_image_first 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1012 3.1s
+23 run L3_text_image_text 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1022 5.9s
+24 run L1_text_first 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1012 5.7s
+25 run L2_image_first 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1012 6.0s
+26 run W3_text_image_text 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1012 3.1s
+27 run L1_text_first 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1012 5.8s
+28 run L2_image_first 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1012 5.7s
+29 run L3_text_image_text 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1022 5.7s
+30 run W1_text_first 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1022 3.1s
+31 run L2_image_first 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1012 6.0s
+32 run L3_text_image_text 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1022 5.5s
+33 run L1_text_first 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1012 5.5s
+34 run W2_image_first 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1012 3.1s
+35 run L3_text_image_text 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1022 5.6s
+36 run L1_text_first 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1012 5.6s
+37 run L2_image_first 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1012 5.6s
+38 run W3_text_image_text 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1012 3.1s
+39 run L1_text_first 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1012 5.9s
+40 run L2_image_first 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1012 5.6s
+41 run L3_text_image_text 200 pass=False content='The tool response indicates that there is no rule or workflow named "color" in the system. The avail' tool_calls=[] prompt_tokens=1022 5.5s
+42 run W1_text_first 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1022 3.1s
+SCORE after L1_text_first 0/10
+SCORE after L2_image_first 0/10
+SCORE after L3_text_image_text 0/10
+SCORE after W1_text_first 4/4
+SCORE after W2_image_first 3/3
+SCORE after W3_text_image_text 3/3

@@ -1,0 +1,49 @@
+0 probe L1_text_first 200 pass=False content='The tool response indicates that there is no rule named "image" in the system. The available rules a' tool_calls=[] prompt_tokens=1012 8.6s
+1 probe L2_image_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 14.0s
+2 probe L3_text_image_text 200 pass=True content='The picture shows a solid red color.' tool_calls=[] prompt_tokens=1123 11.7s
+3 run L1_text_first 200 pass=False content='The tool response indicates that there is no rule named "image" in the system. The available rules a' tool_calls=[] prompt_tokens=1012 6.0s
+4 run L2_image_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 13.9s
+5 run L3_text_image_text 200 pass=True content='The picture shows a solid red color.' tool_calls=[] prompt_tokens=1123 11.8s
+6 run W1_text_first 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=961 3.2s
+7 run L2_image_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 13.7s
+8 run L3_text_image_text 200 pass=True content='The picture shows a solid red color.' tool_calls=[] prompt_tokens=1123 11.6s
+9 run L1_text_first 200 pass=False content='The tool response indicates that there is no rule named "image" in the system. The available rules a' tool_calls=[] prompt_tokens=1012 5.8s
+10 run W2_image_first 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1012 3.1s
+11 run L3_text_image_text 200 pass=True content='The picture shows a solid red color.' tool_calls=[] prompt_tokens=1123 11.6s
+12 run L1_text_first 200 pass=False content='The tool response indicates that there is no rule named "image" in the system. The available rules a' tool_calls=[] prompt_tokens=1012 5.8s
+13 run L2_image_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 14.5s
+14 run W3_text_image_text 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1138 3.4s
+15 run L1_text_first 200 pass=False content='The tool response indicates that there is no rule named "image" in the system. The available rules a' tool_calls=[] prompt_tokens=1012 5.9s
+16 run L2_image_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 13.7s
+17 run L3_text_image_text 200 pass=True content='The picture shows a solid red color.' tool_calls=[] prompt_tokens=1123 11.5s
+18 run W1_text_first 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1123 3.1s
+19 run L2_image_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 13.8s
+20 run L3_text_image_text 200 pass=True content='The picture shows a solid red color.' tool_calls=[] prompt_tokens=1123 11.4s
+21 run L1_text_first 200 pass=False content='The tool response indicates that there is no rule named "image" in the system. The available rules a' tool_calls=[] prompt_tokens=1012 5.6s
+22 run W2_image_first 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1012 3.2s
+23 run L3_text_image_text 200 pass=True content='The picture shows a solid red color.' tool_calls=[] prompt_tokens=1123 11.4s
+24 run L1_text_first 200 pass=False content='The tool response indicates that there is no rule named "image" in the system. The available rules a' tool_calls=[] prompt_tokens=1012 5.7s
+25 run L2_image_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 13.2s
+26 run W3_text_image_text 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1138 3.0s
+27 run L1_text_first 200 pass=False content='The tool response indicates that there is no rule named "image" in the system. The available rules a' tool_calls=[] prompt_tokens=1012 5.8s
+28 run L2_image_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 13.6s
+29 run L3_text_image_text 200 pass=True content='The picture shows a solid red color.' tool_calls=[] prompt_tokens=1123 11.2s
+30 run W1_text_first 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1123 3.1s
+31 run L2_image_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 12.8s
+32 run L3_text_image_text 200 pass=True content='The picture shows a solid red color.' tool_calls=[] prompt_tokens=1123 10.8s
+33 run L1_text_first 200 pass=False content='The tool response indicates that there is no rule named "image" in the system. The available rules a' tool_calls=[] prompt_tokens=1012 5.2s
+34 run W2_image_first 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1012 3.1s
+35 run L3_text_image_text 200 pass=True content='The picture shows a solid red color.' tool_calls=[] prompt_tokens=1123 12.1s
+36 run L1_text_first 200 pass=False content='The tool response indicates that there is no rule named "image" in the system. The available rules a' tool_calls=[] prompt_tokens=1012 6.2s
+37 run L2_image_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 14.6s
+38 run W3_text_image_text 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1138 3.4s
+39 run L1_text_first 200 pass=False content='The tool response indicates that there is no rule named "image" in the system. The available rules a' tool_calls=[] prompt_tokens=1012 6.3s
+40 run L2_image_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 15.0s
+41 run L3_text_image_text 200 pass=True content='The picture shows a solid red color.' tool_calls=[] prompt_tokens=1123 12.2s
+42 run W1_text_first 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1123 3.3s
+SCORE before L1_text_first 0/10
+SCORE before L2_image_first 10/10
+SCORE before L3_text_image_text 10/10
+SCORE before W1_text_first 4/4
+SCORE before W2_image_first 3/3
+SCORE before W3_text_image_text 3/3

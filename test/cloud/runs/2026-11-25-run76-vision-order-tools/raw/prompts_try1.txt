@@ -1,0 +1,28 @@
+[cluaiz-media-0-0]<tools_hint>
+Before a task that fits a rule, workflow or skill of the project's index, call read_item with its name and follow it.
+</tools_hint>
+What colour is this image? One word.
+-----
+[cluaiz-media-0-0]<tools_hint>
+Before a task that fits a rule, workflow or skill of the project's index, call read_item with its name and follow it.
+</tools_hint>
+What colour is this image? One word.
+-----
+[cluaiz-media-1-0]<tools_hint>
+Before a task that fits a rule, workflow or skill of the project's index, call read_item with its name and follow it.
+</tools_hint>
+What colour is this image? One word.
+
+<user_query>
+What colour is this image? One word.
+</user_query>
+<tool_call>
+{"arguments":{"kind":"rule","name":"color"},"name":"read_item"}
+</tool_call>
+<tool_response>
+{"name": "read_item", "content": {"output":"read_item: there is nothing named 'color'. Names: math, filesystem"}}
+</tool_response>
+
+
+Review the tool response(s) above. If sufficient information exists to fully answer the user query, synthesize the final response. Otherwise, continue and generate the next tool call as needed.
+-----

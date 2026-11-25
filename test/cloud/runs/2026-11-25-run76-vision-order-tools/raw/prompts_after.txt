@@ -1,0 +1,25 @@
+<tools_hint>
+Before a task that fits a rule, workflow or skill of the project's index, call read_item with its name and follow it.
+</tools_hint>[cluaiz-media-0-0]What colour is this image? One word.
+-----
+<tools_hint>
+Before a task that fits a rule, workflow or skill of the project's index, call read_item with its name and follow it.
+</tools_hint>[cluaiz-media-0-0]What colour is this image? One word.
+-----
+<tools_hint>
+Before a task that fits a rule, workflow or skill of the project's index, call read_item with its name and follow it.
+</tools_hint>[cluaiz-media-1-0]What colour is this image? One word.
+
+<user_query>
+What colour is this image? One word.
+</user_query>
+<tool_call>
+{"arguments":{"id":".","path":"."},"name":"read_tool_file"}
+</tool_call>
+<tool_response>
+{"name": "read_tool_file", "content": {"output":"No switched-on tool has the id \".\"."}}
+</tool_response>
+
+
+Review the tool response(s) above. If sufficient information exists to fully answer the user query, synthesize the final response. Otherwise, continue and generate the next tool call as needed.
+-----

@@ -1,0 +1,49 @@
+0 probe L1_text_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 15.2s
+1 probe L2_image_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 13.6s
+2 probe L3_text_image_text 200 pass=True content='The picture shows a red square.\n\n**Answer:** Red' tool_calls=[] prompt_tokens=1368 27.8s
+3 run L1_text_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 13.3s
+4 run L2_image_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 13.2s
+5 run L3_text_image_text 200 pass=True content='The picture shows a red square.\n\n**Answer:** Red' tool_calls=[] prompt_tokens=1368 27.4s
+6 run W1_text_first 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1368 3.1s
+7 run L2_image_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 14.0s
+8 run L3_text_image_text 200 pass=True content='The picture shows a red square.\n\n**Answer:** Red' tool_calls=[] prompt_tokens=1368 29.7s
+9 run L1_text_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 13.6s
+10 run W2_image_first 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1138 3.1s
+11 run L3_text_image_text 200 pass=True content='The picture shows a red square.\n\n**Answer:** Red' tool_calls=[] prompt_tokens=1368 28.5s
+12 run L1_text_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 13.4s
+13 run L2_image_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 13.7s
+14 run W3_text_image_text 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1138 3.1s
+15 run L1_text_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 13.2s
+16 run L2_image_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 13.8s
+17 run L3_text_image_text 200 pass=True content='The picture shows a red square.\n\n**Answer:** Red' tool_calls=[] prompt_tokens=1368 27.6s
+18 run W1_text_first 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1368 3.1s
+19 run L2_image_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 13.9s
+20 run L3_text_image_text 200 pass=True content='The picture shows a red square.\n\n**Answer:** Red' tool_calls=[] prompt_tokens=1368 29.6s
+21 run L1_text_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 14.0s
+22 run W2_image_first 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1138 3.2s
+23 run L3_text_image_text 200 pass=True content='The picture shows a red square.\n\n**Answer:** Red' tool_calls=[] prompt_tokens=1368 28.7s
+24 run L1_text_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 14.8s
+25 run L2_image_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 15.7s
+26 run W3_text_image_text 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1138 3.4s
+27 run L1_text_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 15.9s
+28 run L2_image_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 13.4s
+29 run L3_text_image_text 200 pass=True content='The picture shows a red square.\n\n**Answer:** Red' tool_calls=[] prompt_tokens=1368 32.0s
+30 run W1_text_first 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1368 4.0s
+31 run L2_image_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 16.2s
+32 run L3_text_image_text 200 pass=True content='The picture shows a red square.\n\n**Answer:** Red' tool_calls=[] prompt_tokens=1368 30.1s
+33 run L1_text_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 13.5s
+34 run W2_image_first 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1138 3.2s
+35 run L3_text_image_text 200 pass=True content='The picture shows a red square.\n\n**Answer:** Red' tool_calls=[] prompt_tokens=1368 33.3s
+36 run L1_text_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 16.8s
+37 run L2_image_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 18.5s
+38 run W3_text_image_text 200 pass=True content='\n' tool_calls=['get_weather'] prompt_tokens=1138 26.7s
+39 run L1_text_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 31.4s
+40 run L2_image_first 200 pass=True content='The image is red.' tool_calls=[] prompt_tokens=1138 17.0s
+41 run L3_text_image_text 500 pass=False content='' tool_calls=[] prompt_tokens=None 28.8s
+42 run W1_text_first 500 pass=False content='' tool_calls=[] prompt_tokens=None 0.9s
+SCORE after L1_text_first 10/10
+SCORE after L2_image_first 10/10
+SCORE after L3_text_image_text 9/10
+SCORE after W1_text_first 3/4
+SCORE after W2_image_first 3/3
+SCORE after W3_text_image_text 3/3
