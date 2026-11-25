@@ -27,6 +27,11 @@ params:
     req: true
     desc: "OpenAI-compatible base URL, such as `https://api.example.com/v1`"
     example: "https://api.example.com/v1"
+  - name: "model_updates"
+    type: "object | null"
+    req: false
+    desc: "Update individual models. A null entry removes that model."
+    example: null
   - name: "models"
     type: "object | null"
     req: false
@@ -65,7 +70,7 @@ response: |
           {
             "context": 32768,
             "id": "model-name",
-            "kind": "chat",
+            "kind": null,
             "model": "myapi/model-name"
           }
         ],

@@ -12,6 +12,11 @@ owner_only: false
 destructive: false
 idempotent: false
 params:
+  - name: "kind"
+    type: "string | null"
+    req: false
+    desc: "Kind for a model whose saved record does not specify one."
+    example: null
   - name: "model"
     type: "string | null"
     req: false

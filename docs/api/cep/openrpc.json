@@ -127,11 +127,17 @@
           },
           "kind": {
             "default": null,
-            "description": "What the model does: \"chat\" (default), \"embedding\", \"tts\" or \"stt\"",
+            "description": "What the model does: \"chat\", \"embedding\", \"tts\" or \"stt\". Leave out to retain the saved kind.",
             "type": [
               "string",
               "null"
             ]
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "default": {},
+            "description": "Model details and defaults from the catalogue. They cannot select the upstream destination.",
+            "type": "object"
           }
         },
         "type": "object"
@@ -4000,6 +4006,83 @@
     {
       "errors": [
         {
+          "code": -32602,
+          "data": {
+            "type": "invalid_params"
+          },
+          "message": "Neither `model` nor `all: true` was given, or both were"
+        }
+      ],
+      "examples": [
+        {
+          "name": "example",
+          "params": [
+            {
+              "name": "model",
+              "value": "qwen3-4b-instruct-2507-gguf-Q4_K_M"
+            }
+          ],
+          "result": {
+            "name": "result",
+            "value": {
+              "busy": [],
+              "unloaded": [
+                {
+                  "kind": "chat",
+                  "model": "qwen3-4b-instruct-2507-gguf-Q4_K_M"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "name": "models.unload",
+      "paramStructure": "by-name",
+      "params": [
+        {
+          "name": "all",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "true unloads every loaded model: the chat model and the embedding, speech and ONNX\nresidents (default false)",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        {
+          "name": "model",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "The loaded model's id (as `system.ps` or `models.list` shows it); give this or `all`",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      ],
+      "result": {
+        "name": "result",
+        "schema": {
+          "title": "AnyValue"
+        }
+      },
+      "summary": "Unloads a loaded model now (`model`), or every loaded model (`all: true`): the chat model as `keep_alive: 0` does, an embedding, speech or ONNX model when no request is using it (`busy` otherwise). A model that is not loaded is no error",
+      "x-cep": {
+        "destructive": false,
+        "execution": "sync",
+        "idempotent": true,
+        "mcp": true,
+        "owner_only": false,
+        "scope": "write"
+      }
+    },
+    {
+      "errors": [
+        {
           "code": -32004,
           "data": {
             "type": "note_not_found"
@@ -5125,7 +5208,7 @@
                   {
                     "context": 32768,
                     "id": "model-name",
-                    "kind": "chat",
+                    "kind": null,
                     "model": "myapi/model-name"
                   }
                 ],
@@ -5169,6 +5252,27 @@
           "schema": {
             "description": "OpenAI-compatible base URL, such as `https://api.example.com/v1`",
             "type": "string"
+          }
+        },
+        {
+          "name": "model_updates",
+          "required": false,
+          "schema": {
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ModelParams"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "description": "Update individual models. A null entry removes that model.",
+            "type": [
+              "object",
+              "null"
+            ]
           }
         },
         {
@@ -5260,6 +5364,18 @@
       "name": "providers.test",
       "paramStructure": "by-name",
       "params": [
+        {
+          "name": "kind",
+          "required": false,
+          "schema": {
+            "default": null,
+            "description": "Kind for a model whose saved record does not specify one.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
         {
           "name": "model",
           "required": false,
