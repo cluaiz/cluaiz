@@ -3,7 +3,17 @@ description: The Rust layer over the llama.cpp fork: GGUF chat, embeddings, spee
 
 # llama.cpp backend (`engine/llama/`)
 
-Direct Rust API wrapping custom `llama.cpp` C/C++ memory. Compiled as an `rlib` to eliminate dual-static memory copies between Exe and DLL.
+The Rust layer over the Cluaiz fork of llama.cpp. It loads GGUF models and runs chat (text, images, audio),
+embeddings and speech, with llama.cpp's own chat templates, tool-call grammar, samplers and thinking control.
+It is compiled into the `cluaiz` program as an `rlib`, so there is one copy of llama.cpp in memory, not one in
+the program and one in a DLL.
+
+Read by topic: [Components](#components) (which file does what), [Boundary with llama.cpp](#boundary-with-llamacpp),
+[log lines](#llamacpp-log-lines), [RAM prompt cache](#ram-prompt-cache-off-by-default),
+[MoE expert prefetch](#moe-expert-prefetch-llamacpp-fork-off-unless-the-plan-sets-a-cap),
+[MTP speculative decoding](#mtp-speculative-decoding-experimental), and two speed investigations against
+llama.cpp ([Windows](#why-cluaiz-was-slower-than-llamacpp-on-windows-2026-11-23),
+[disk-read models](#why-cluaiz-bench-prompt-speed-was-below-llama-bench-on-a-model-read-from-the-disk-2026-11-24)).
 
 `native::speech::SpeechPlacement` accepts the runtime-selected layer count, independent projector device, KV/operation offload flags, generation/batch threads and mmap preference. Explicit CPU mode disables all GPU use. `planning_settings` and `backbone_workspace_bytes` share this owner's fixed context/batch/F16 layout with admission; codec workspace stays in the media policy. Successful `SpeechTimings` separate preparation, frame generation, native codec decoding and output (including consumer backpressure), excluding model load. These measurements are diagnostic, not realtime or peak-memory guarantees.
 
@@ -54,7 +64,7 @@ graph TD
 | [`native/load_steps.rs`](src/native/load_steps.rs) | What a chat-model load is doing, for an observer set on the loading thread (`observe`): weights read in percent (llama.cpp's `progress_callback`, set only when someone observes), a fallback llama.cpp's own load took, context creation, warmup. Used by `engine/runtime` load events. |
 | [`native/tokenizer.rs`](src/native/tokenizer.rs) | One native tokenizer (`VocabHandle`) for chat and embedding contexts. |
 | [`native/media_tests.rs`](src/native/media_tests.rs) | Tests of the media owners. |
-| [`ffi/chat.rs`](src/ffi/chat.rs) | Narrow C ABI to `chat_bridge.cpp` for native tool calls: llama.cpp's common chat layer renders tools in the model's own format (`ChatTools::apply`), gives the lazy tool-call grammar, parses the output (`ChatParser::parse`, partial too) and turns a JSON schema into a grammar (`json_schema_grammar`). The request also carries `tool_choice` (parsed with llama.cpp's `common_chat_tool_choice_parse_oaicompat`) and, with tools, the answer's `json_schema` (`inputs.json_schema`), so llama.cpp builds one grammar for the answer and the calls. A strict (not lazy) grammar from the template is fed the template's generation prompt first, as `common_sampler_init` does for tool-call grammars. |
+| [`ffi/chat.rs`](src/ffi/chat.rs) | Narrow C ABI to `chat_bridge.cpp` for native tool calls: llama.cpp's common chat layer renders tools in the model's own format (`ChatTools::apply`), gives the lazy tool-call grammar, parses the output (`ChatParser::parse`, partial too) and turns a JSON schema into a grammar (`json_schema_grammar`). The request also carries `tool_choice` (parsed with llama.cpp's `common_chat_tool_choice_parse_oaicompat`). The answer's `json_schema` goes with the tools only when no tool is callable (`tool_choice: "none"`); while tools are callable it is left out so calls work (since 2026-11-25, run 73, see "Answer constraint while tools are callable" below). A strict (not lazy) grammar from the template is fed the template's generation prompt first, as `common_sampler_init` does for tool-call grammars. |
 | [`native/speculative.rs`](src/native/speculative.rs), [`ffi/speculative_bridge.cpp`](src/ffi/speculative_bridge.cpp) | MTP speculative decoding, experimental. Settings `optimization.mtp`: `auto` (default: the runtime's load rules, then a guard in each answer that stops guessing where it is slower), `on`, `off` (load flag `--mtp`; `CLUAIZ_MTP=on` / `off` forces it on or off for tests (also `1`/`true`/`yes`, `0`/`false`/`no`; other values are logged and ignored); `CLUAIZ_MTP_DRAFT` = guesses per step, default 3 as llama-server; `CLUAIZ_MTP_PMIN` = least drafter probability, default 0). A model with NextN layers (Qwen3.5 / 3.6, GLM-4.5+, DeepSeek-V3, ...) is loaded with `load_mtp`; llama.cpp's own `draft-mtp` drafter (`common_speculative`) guesses the next tokens on an MTP context; `stream.rs` decodes the token and its guesses in one batch and keeps a guess only when the target's sampler picks it, so the answer is the target's. The drafter sees every target decode (prompt chunks too). Media prompts do not draft; a context shift stops drafting for that answer. Its memory is not in the load plan yet (Auto turns MTP off when it would not fit next to the plan). |
 | [`moe_override.rs`](src/moe_override.rs) | `--n-cpu-moe N`: the routed experts of the first N blocks stay in RAM (a CPU buffer), everything else of those blocks (attention, shared weights, KV) on the GPU; the same tensor overrides llama.cpp builds (`CpuMoeOverrides`). |
 

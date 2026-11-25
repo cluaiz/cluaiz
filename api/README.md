@@ -3,7 +3,11 @@ description: The Engine's HTTP and SSE server (Axum): routes, auth, CEP, provide
 
 # HTTP API server (`api/`)
 
-Direct Axum HTTP and Server-Sent Events (SSE) server for Cluaiz.
+The Engine's HTTP server (Axum, with Server-Sent Events for streaming). It serves the OpenAI-style routes
+(chat, models, embeddings, audio), Ollama's routes, `/v1/ingest`, and `/v1/cep` plus `/mcp` for every
+Engine-specific method, all behind the bearer-token check. The chat pipeline itself is in
+[`src/handlers/chat/`](src/handlers/chat/README.md), CEP in [`src/cep/`](src/cep/README.md), model
+providers in [`src/providers/`](src/providers/README.md).
 
 An explicit local OS transport can serve the same router with
 `cluaiz serve --native-endpoint <local-pipe-or-socket>`, without a TCP listener.
@@ -23,7 +27,6 @@ models, embeddings, audio), Ollama's (`/api/chat`, `/api/generate`, `/api/embed`
 take, and their answer back into Ollama's shape; the official Ollama Python library worked against them
 in run 36.
 
-![The HTTP routes: clients pass the auth check, then chat, models, embeddings and speech, or CEP for every Engine-specific method](../docs/assets/api/route-map.png)
 
 ## Chat planner reference
 
