@@ -26,7 +26,7 @@ The AI engine where models, voice, vision, memory, tools, agents and workflows w
 
 ## What Cluaiz is
 
-**One engine. Every kind of intelligence. Your rules.**
+**One engine. Every kind of intelligence.**
 
 Models that think, see, listen, speak and remember, behind one OpenAI-compatible API, on your machine
 or in the cloud. Files, pages and pictures become text and vectors you can search. Before every load the engine
