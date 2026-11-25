@@ -26,17 +26,28 @@ The AI engine where models, voice, vision, memory, tools, agents and workflows w
 
 ## What Cluaiz is
 
-**One engine. Every kind of model. Your rules.**
+<p align="center">
+<b>One engine. Every kind of intelligence. Your rules.</b>
+</p>
 
-Models that think, see, listen, speak and remember, in one engine, behind one API. It measures your GPU and RAM
-before every load and fits the model to what is free, so a 26B model runs on a 4 GB laptop GPU. On your machine or
-through a cloud provider, your app talks to it the same way.
+<p align="center">
+Models that think, see, listen, speak and remember.<br>
+A machine of any size, measured before every load:<br>
+the GPU for what must be fast, memory for what comes next, the disk for what can wait.<br>
+On your desk or in the cloud, one voice for every app.
+</p>
 
-Give it a folder, and the agent reads, edits and runs, asking before each change. Give it a skill, a plugin or an
-MCP server, and it can do more. Give it a flow, and it runs the steps for you.
+<p align="center">
+Agents that act, and ask before they touch.<br>
+Tools and skills that teach it something new.<br>
+Flows that carry the steps, so you do not have to.
+</p>
 
-Everything stays under your rules: what it may touch, what it must ask first, what it keeps as memory.
-Built on [llama.cpp](https://github.com/ggml-org/llama.cpp) and ONNX Runtime, written in Rust.
+<p align="center">
+Memory that keeps only what you confirm.<br>
+Every action inside the limits you set.<br>
+It fits your machine, works where you are, and grows with what you build.
+</p>
 
 ## What you can do with it
 
@@ -58,7 +69,7 @@ Every feature with its status and the test run that checked it: [features](docs/
 
 ## Why Cluaiz
 
-- **llama.cpp's speed, without the setup.** On the same model file and placement, generation is equal to official
+- **Full speed, without the tuning.** On the same model file and placement, generation is equal to official
   llama.cpp on the GPU, on a GPU + RAM split and on the CPU, with one exception listed in the
   [benchmarks](docs/reference/benchmarks.md). The planner chooses the GPU layers, context and KV cache for you; `cluaiz show` prints why, and every value can still
   be set by hand with llama.cpp's flag names.
@@ -126,6 +137,9 @@ curl http://127.0.0.1:8000/v1/chat/completions \
 The full walk-through: [quick start](docs/get-started/quickstart.md).
 
 ## Speed
+
+Under the hood, GGUF models run on [llama.cpp](https://github.com/ggml-org/llama.cpp) and speech and vision models on
+ONNX Runtime, inside an engine written in Rust ([architecture](docs/get-started/architecture.md)).
 
 Same model file, same placement, same settings, Cluaiz against official llama.cpp's `llama-bench`:
 
