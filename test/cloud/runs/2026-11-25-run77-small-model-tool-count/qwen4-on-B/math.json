@@ -1,0 +1,197 @@
+{
+  "status": 200,
+  "seconds": 1.48,
+  "steps": 0,
+  "engine_calls": [],
+  "reply": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "The result of 6 multiplied by 7 is 42.",
+          "reasoning_content": "Okay, the user asked 6*7. That's a math problem. I need to use the math skill to evaluate it. The math skill can handle arithmetic expressions, so I'll call the math function with the numbers 6 and 7. The result should be 42. Let me make sure there's no unit conversion needed here, but since it's just multiplication, the answer is straightforward. I'll return the result as 42.",
+          "role": "assistant"
+        }
+      }
+    ],
+    "context_report": {
+      "plan": {
+        "available_tokens": 12801,
+        "compaction": null,
+        "history_mode": "recent",
+        "messages_over_budget": 0,
+        "n_ctx": 16384,
+        "needs_compaction": false,
+        "notes": {
+          "system": [],
+          "with_message": []
+        },
+        "policy": {
+          "auto_load": "off",
+          "compact_at_pct": 85,
+          "compact_to_pct": 60,
+          "cross_chat": "ask",
+          "evidence_cap_pct": 15,
+          "indexer": "auto",
+          "margin_pct": 2,
+          "mcp_prewarm": "on",
+          "notes": "ask",
+          "notes_change": "ask",
+          "notes_history_days": 0,
+          "notes_match": "auto",
+          "notes_max": 3,
+          "notes_recall_pct": 50,
+          "notes_similar_pct": 50,
+          "project_files": "on",
+          "recent_turns_min": 2,
+          "suggestions_cap_pct": 5,
+          "tool_format": "native"
+        },
+        "project": {
+          "budget_chars": 16384,
+          "chars": 546,
+          "parts": [
+            {
+              "chars": 177,
+              "kind": "skill",
+              "name": "math",
+              "placement": "index",
+              "total": 164
+            },
+            {
+              "chars": 148,
+              "kind": "skill",
+              "name": "filesystem",
+              "placement": "index",
+              "total": 125
+            }
+          ],
+          "problems": [],
+          "read_item": true,
+          "root": "/home/<vps>/run77/home/<vps>",
+          "with_message": [],
+          "workflow": null
+        },
+        "protected_tokens": 184,
+        "recall": null,
+        "reserve": {
+          "answer": 1536,
+          "margin": 327,
+          "thinking": 1536
+        },
+        "task": null,
+        "used_tokens": 0
+      },
+      "timing": {
+        "count_ms": 0,
+        "ingest_ms": 0,
+        "matcher_ms": 0.13,
+        "model_load_ms": 18,
+        "plan_ms": 0,
+        "preflight_ms": 21,
+        "recall_ms": 0,
+        "registry_template_ms": 1,
+        "render_ms": 0,
+        "tools_ms": 0
+      },
+      "tools": {
+        "auto_loaded": null,
+        "bound": [],
+        "conversation_tokens": 121,
+        "estimate": "load costs and load room are estimated from characters",
+        "events": [],
+        "format": "native",
+        "hint_tokens": 35,
+        "load_room_tokens": 13116,
+        "loaded_in_chat": [],
+        "meta_tools": true,
+        "search_offered": false,
+        "suggested": [],
+        "system_tools_tokens": 28,
+        "template_tools_tokens": 638,
+        "token_counts": "tokenizer"
+      }
+    },
+    "created": 1795581787,
+    "engine": {
+      "context": {
+        "cache_n": 1106,
+        "cause": "edit",
+        "dropped_messages": 0,
+        "dropped_tokens": 0,
+        "edit_at": 1106,
+        "kv_reuse": "prefix",
+        "n_ctx": 16384,
+        "n_tokens": 1225,
+        "processed_tokens": 8,
+        "prompt_tokens": 1114,
+        "reused_chunk_tokens": 0,
+        "shifted_tokens": 0,
+        "stop": "eos",
+        "truncated": false
+      },
+      "load": {
+        "cache_type": "Kv16",
+        "n_cpu_moe": 0,
+        "n_ctx": 16384,
+        "n_gpu_layers": -1,
+        "offload_kqv": true,
+        "op_offload": true,
+        "placement": "GpuOnly",
+        "planner": "Full GPU: weights 2.32 + KV 2.25 + buffers 0.32 = 4.89 GB vs usable VRAM 21.88 GB",
+        "settings": {
+          "flash_attn": "Auto",
+          "n_batch": 512,
+          "n_threads": 4,
+          "n_threads_batch": 4,
+          "n_ubatch": 512,
+          "use_mmap": true
+        },
+        "total_layers": 36
+      },
+      "thinking": {
+        "budget_tokens": 10300,
+        "capped": false,
+        "effort": "auto",
+        "ended_by": "model",
+        "used_tokens": 95
+      },
+      "timings": {
+        "predicted_ms": 1366.959,
+        "predicted_n": 111,
+        "predicted_per_second": 81.20214285871046,
+        "prompt_ms": 23.163,
+        "prompt_n": 8,
+        "prompt_per_second": 345.3784052152139
+      }
+    },
+    "id": "chatcmpl-454ac78e364042d1a204faacb0af666e",
+    "model": "qwen3-4b-gguf-Q4_K_M",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 110,
+      "completion_tokens_details": {
+        "reasoning_tokens": 94
+      },
+      "model_load_ms": 18,
+      "prompt_tokens": 1114,
+      "time_to_first_token_ms": 36,
+      "tokens_per_second": 77.3,
+      "total_time_ms": 1459,
+      "total_tokens": 1224
+    }
+  },
+  "log_lines": [
+    "2026-11-25T04:43:05.655675Z  INFO \ud83e\udd16 [API] Model override requested. Resolved 'qwen3-4b-gguf-Q4_K_M' to \"/home/<vps>/run77/home/<vps>/chat/qwen3-4b-gguf-Q4_K_M/Qwen3-4B-Q4_K_M.gguf\"",
+    "2026-11-25T04:43:05.675497Z  INFO \ud83e\uddee [Tokens] Conversation 121 tokens (2 messages) counted in 0.07 ms",
+    "2026-11-25T04:43:05.677237Z  INFO \u23f1\ufe0f [Preflight] 21 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 0 ms | rest 0 ms",
+    "2026-11-25T04:43:05.702691Z  INFO \ud83e\uddf0 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)",
+    "2026-11-25T04:43:05.702741Z  INFO \ud83c\udfb2 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.",
+    "2026-11-25T04:43:05.702794Z  INFO \ud83e\udde0 [NativeStream] Auto thinking ceiling 10300 tokens (80.8 t/s for up to 180 s, room 13734)",
+    "2026-11-25T04:43:07.132217Z  INFO \ud83d\uded1 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.",
+    "2026-11-25T04:43:07.132318Z  INFO \ud83e\uddf0 [NativeTools] Parsed 0 call(s): []",
+    "2026-11-25T04:43:07.132342Z  INFO \u23f1\ufe0f [NativeStream] llama.cpp timings: prompt 8 tokens in 23 ms (345.38 t/s) | generation 111 tokens in 1367 ms (81.20 t/s)",
+    "2026-11-25T04:43:07.132361Z  INFO \ud83e\udde0 [Context] prompt 1114 tokens (1106 from the cache) | context 1225 of 16384 | stop eos"
+  ]
+}

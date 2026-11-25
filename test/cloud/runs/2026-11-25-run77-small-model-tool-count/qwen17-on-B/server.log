@@ -1,0 +1,702 @@
+2026-11-25T04:29:51.309867Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-25T04:29:51.347286Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-25T04:29:55.032567Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+Starting the Cluaiz API server on http://localhost:8013 ...
+2026-11-25T04:29:55.033289Z  INFO 🔒 [Auth] Initialized local session secret at /home/<vps>/run77/home/<vps>
+2026-11-25T04:29:55.254603Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-25T04:29:55.272976Z  INFO 🌐 Cluaiz API Server running on http://<vps>:8013
+2026-11-25T04:29:55.334148Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:29:55.410080Z  INFO
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3-1.7b-gguf-Q4_K_M
+║   • Architecture    : qwen3 | 28 layers | heads 16 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 1.11 GB (as Hugging Face counts it) | input embeddings 0.24 GB (always CPU) | output head 0.24 GB | vocab 151936
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 40960 tokens
+║   • Active context  : 16384 tokens, KV Kv16 (Auto: 16384 tokens, KV Kv16, buffer 0.20 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 22.08 of 22.49 GB | buffer kept free 0.20 GB (measured: GPU pool +0.05 GB + 0.15 GB reserve (GPU used by nothing else); estimate corrected by llama.cpp's dry run +0.02 GB)
+║   • RAM             : free 30.01 of 31.35 GB | Cluaiz may use 28.45 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 28 on GPU, 0 in RAM (of 28)
+║   • VRAM            : 3.09 GB (weights + KV 1.75 + logits)
+║   • RAM             : 0.24 GB (incl. KV 0.00)
+║   • Reason         : Full GPU: weights 1.03 + KV 1.75 + buffers 0.31 = 3.09 GB vs usable VRAM 21.89 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  3.09 GB | RAM  0.24 GB | weights 1.03 + KV 1.75 + buffers 0.31 = 3.09 GB vs usable VRAM 21.89 GB
+║   • GPU + RAM split  [FITS]     VRAM  2.99 GB | RAM  0.33 GB | 27 / 28 blocks + output head on GPU (2.99 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  3.07 GB | weights 1.03 + KV 1.75 + logits 0.29 = 3.07 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-25T04:29:55.410828Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-25T04:29:55.411150Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 4, n_threads_batch = 4
+2026-11-25T04:29:55.411182Z  INFO 🧬 [Native-Llama] Loading model: /home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf | ctx: 16384 tokens
+2026-11-25T04:29:55.653270Z  WARN [llama.cpp] load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+2026-11-25T04:29:56.033281Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M"
+2026-11-25T04:29:56.041401Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-11-25T04:29:56.041435Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-11-25T04:29:56.041462Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16384 tokens
+2026-11-25T04:29:56.041489Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-25T04:29:56.041507Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-25T04:29:56.041533Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-25T04:29:56.041559Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 4/4
+2026-11-25T04:29:56.041588Z  INFO 🔮 [MTP] MTP asked for, but this model has no multi-token-prediction layers: decoding without it
+2026-11-25T04:29:56.201622Z  INFO 🔍 [EngineHost] VRAM planned 3.09 GB, taken 3.31 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-25T04:29:56.201971Z  WARN ⚠️ [EngineHost] Took 3.31 GB VRAM, more than plan + buffer (3.28 GB): Windows may move the rest to shared GPU memory
+2026-11-25T04:29:56.202038Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf
+2026-11-25T04:29:56.231056Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.74 ms
+2026-11-25T04:29:56.239080Z  INFO ⏱️ [Preflight] 905 ms total | model load 884 ms | registry + template + tags 12 ms | skills + tools 7 ms | rest 1 ms
+2026-11-25T04:29:56.343280Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:29:56.343346Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:29:56.343410Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10296 tokens (High's share of room 13728; no speed measured yet)
+2026-11-25T04:29:57.922427Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:29:57.922757Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-25T04:29:57.922817Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1120 tokens in 97 ms (11543.65 t/s) | generation 158 tokens in 943 ms (167.62 t/s)
+2026-11-25T04:29:57.922848Z  INFO 🧠 [Context] prompt 1120 tokens (0 from the cache) | context 1278 of 16384 | stop eos
+2026-11-25T04:29:58.027533Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:29:58.045625Z  INFO 📏 [EngineHost] The loaded model now takes +0.23 GB over its estimate; learned for its next load
+2026-11-25T04:29:58.047563Z  INFO 🧮 [Tokens] Conversation 126 tokens (2 messages) counted in 0.14 ms
+2026-11-25T04:29:58.049448Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T04:29:58.075717Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:29:58.075764Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:29:58.075828Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10296 tokens (167.6 t/s for up to 180 s, room 13729)
+2026-11-25T04:29:59.892818Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:29:59.893127Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-25T04:29:59.893159Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 13 tokens in 18 ms (703.58 t/s) | generation 165 tokens in 979 ms (168.52 t/s)
+2026-11-25T04:29:59.893178Z  INFO 🧠 [Context] prompt 1119 tokens (1106 from the cache) | context 1284 of 16384 | stop eos
+2026-11-25T04:29:59.997377Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:00.017771Z  INFO 🧮 [Tokens] Conversation 124 tokens (2 messages) counted in 0.13 ms
+2026-11-25T04:30:00.019743Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:30:00.036365Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:00.036413Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:00.036467Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10298 tokens (168.5 t/s for up to 180 s, room 13731)
+2026-11-25T04:30:04.388631Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:04.389004Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-25T04:30:04.389038Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 11 tokens in 9 ms (1243.36 t/s) | generation 548 tokens in 3330 ms (164.57 t/s)
+2026-11-25T04:30:04.389059Z  INFO 🧠 [Context] prompt 1117 tokens (1106 from the cache) | context 1665 of 16384 | stop eos
+2026-11-25T04:30:04.493188Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:04.513626Z  INFO 🧮 [Tokens] Conversation 129 tokens (2 messages) counted in 0.12 ms
+2026-11-25T04:30:04.515625Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:30:04.532447Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:04.532495Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:04.532547Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10294 tokens (164.6 t/s for up to 180 s, room 13726)
+2026-11-25T04:30:07.639201Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:07.639540Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-25T04:30:07.639572Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 16 tokens in 9 ms (1779.76 t/s) | generation 361 tokens in 2180 ms (165.62 t/s)
+2026-11-25T04:30:07.639591Z  INFO 🧠 [Context] prompt 1122 tokens (1106 from the cache) | context 1483 of 16384 | stop eos
+2026-11-25T04:30:07.743803Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:07.763834Z  INFO 🧮 [Tokens] Conversation 124 tokens (2 messages) counted in 0.11 ms
+2026-11-25T04:30:07.765727Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:30:07.782365Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:07.782415Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:07.782469Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10298 tokens (165.6 t/s for up to 180 s, room 13731)
+2026-11-25T04:30:09.640330Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:09.640630Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-25T04:30:09.640664Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 11 tokens in 9 ms (1246.74 t/s) | generation 177 tokens in 1054 ms (167.88 t/s)
+2026-11-25T04:30:09.640691Z  INFO 🧠 [Context] prompt 1117 tokens (1106 from the cache) | context 1294 of 16384 | stop eos
+2026-11-25T04:30:09.744824Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:09.764855Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.12 ms
+2026-11-25T04:30:09.766786Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:30:09.783612Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:09.783659Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:09.783719Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10296 tokens (167.9 t/s for up to 180 s, room 13728)
+2026-11-25T04:30:12.062641Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:12.063017Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["convert_currency"]
+2026-11-25T04:30:12.063067Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 14 tokens in 9 ms (1575.69 t/s) | generation 196 tokens in 1170 ms (167.46 t/s)
+2026-11-25T04:30:12.063097Z  INFO 🧠 [Context] prompt 1120 tokens (1106 from the cache) | context 1316 of 16384 | stop eos
+2026-11-25T04:30:12.167279Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:12.206550Z  INFO 🧮 [Tokens] Conversation 129 tokens (2 messages) counted in 0.15 ms
+2026-11-25T04:30:12.208506Z  INFO ⏱️ [Preflight] 41 ms total | model load 37 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:30:12.225166Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:12.225213Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:12.225267Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10294 tokens (167.5 t/s for up to 180 s, room 13726)
+2026-11-25T04:30:15.363622Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:15.364041Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["convert_currency"]
+2026-11-25T04:30:15.364084Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 16 tokens in 9 ms (1789.11 t/s) | generation 326 tokens in 1965 ms (165.91 t/s)
+2026-11-25T04:30:15.364115Z  INFO 🧠 [Context] prompt 1122 tokens (1106 from the cache) | context 1448 of 16384 | stop eos
+2026-11-25T04:30:15.468203Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:15.487997Z  INFO 🧮 [Tokens] Conversation 134 tokens (2 messages) counted in 0.12 ms
+2026-11-25T04:30:15.489945Z  INFO ⏱️ [Preflight] 22 ms total | model load 17 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:30:15.507224Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:15.507281Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:15.507365Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10290 tokens (165.9 t/s for up to 180 s, room 13721)
+2026-11-25T04:30:18.107563Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:18.107895Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["convert_currency"]
+2026-11-25T04:30:18.107928Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 21 tokens in 9 ms (2255.40 t/s) | generation 233 tokens in 1399 ms (166.55 t/s)
+2026-11-25T04:30:18.107948Z  INFO 🧠 [Context] prompt 1127 tokens (1106 from the cache) | context 1360 of 16384 | stop eos
+2026-11-25T04:30:18.212022Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:18.232300Z  INFO 🧮 [Tokens] Conversation 130 tokens (2 messages) counted in 0.15 ms
+2026-11-25T04:30:18.234247Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:30:18.251261Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:18.251308Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:18.251362Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10293 tokens (166.5 t/s for up to 180 s, room 13725)
+2026-11-25T04:30:20.521176Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:20.521509Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["convert_currency"]
+2026-11-25T04:30:20.521542Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 17 tokens in 9 ms (1878.66 t/s) | generation 187 tokens in 1115 ms (167.72 t/s)
+2026-11-25T04:30:20.521561Z  INFO 🧠 [Context] prompt 1123 tokens (1106 from the cache) | context 1310 of 16384 | stop eos
+2026-11-25T04:30:20.625635Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:20.646210Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.11 ms
+2026-11-25T04:30:20.648038Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T04:30:20.664615Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:20.664668Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:20.664721Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10296 tokens (167.7 t/s for up to 180 s, room 13728)
+2026-11-25T04:30:23.205907Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:23.206232Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["convert_currency"]
+2026-11-25T04:30:23.206265Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 14 tokens in 9 ms (1572.86 t/s) | generation 231 tokens in 1385 ms (166.78 t/s)
+2026-11-25T04:30:23.206284Z  INFO 🧠 [Context] prompt 1120 tokens (1106 from the cache) | context 1351 of 16384 | stop eos
+2026-11-25T04:30:23.310263Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:23.331152Z  INFO 🧮 [Tokens] Conversation 132 tokens (2 messages) counted in 0.12 ms
+2026-11-25T04:30:23.333068Z  INFO ⏱️ [Preflight] 23 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T04:30:23.351150Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:23.351196Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:23.351249Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10292 tokens (166.8 t/s for up to 180 s, room 13723)
+2026-11-25T04:30:25.708115Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:25.708442Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["create_reminder"]
+2026-11-25T04:30:25.708498Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 19 tokens in 9 ms (2080.37 t/s) | generation 216 tokens in 1297 ms (166.54 t/s)
+2026-11-25T04:30:25.708518Z  INFO 🧠 [Context] prompt 1125 tokens (1106 from the cache) | context 1341 of 16384 | stop eos
+2026-11-25T04:30:25.812957Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:25.834100Z  INFO 🧮 [Tokens] Conversation 133 tokens (2 messages) counted in 0.15 ms
+2026-11-25T04:30:25.836097Z  INFO ⏱️ [Preflight] 23 ms total | model load 19 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:30:25.853012Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:25.853063Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:25.853119Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10291 tokens (166.5 t/s for up to 180 s, room 13722)
+2026-11-25T04:30:28.210351Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:28.210681Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["create_reminder"]
+2026-11-25T04:30:28.210716Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 20 tokens in 9 ms (2179.60 t/s) | generation 213 tokens in 1277 ms (166.84 t/s)
+2026-11-25T04:30:28.210736Z  INFO 🧠 [Context] prompt 1126 tokens (1106 from the cache) | context 1339 of 16384 | stop eos
+2026-11-25T04:30:28.314780Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:28.334837Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.13 ms
+2026-11-25T04:30:28.336792Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T04:30:28.353513Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:28.353561Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:28.353620Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10293 tokens (166.8 t/s for up to 180 s, room 13724)
+2026-11-25T04:30:30.532464Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:30.532783Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["create_reminder"]
+2026-11-25T04:30:30.532815Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 18 tokens in 9 ms (1979.76 t/s) | generation 191 tokens in 1141 ms (167.35 t/s)
+2026-11-25T04:30:30.532833Z  INFO 🧠 [Context] prompt 1124 tokens (1106 from the cache) | context 1315 of 16384 | stop eos
+2026-11-25T04:30:30.636963Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:30.657323Z  INFO 🧮 [Tokens] Conversation 133 tokens (2 messages) counted in 0.14 ms
+2026-11-25T04:30:30.657692Z  INFO 🧰 [Tools] Suggested: filesystem Title ["create", "a", "at"]
+2026-11-25T04:30:30.659599Z  INFO ⏱️ [Preflight] 23 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T04:30:30.677974Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:30.678020Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:30.678072Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10299 tokens (167.3 t/s for up to 180 s, room 13733)
+2026-11-25T04:30:32.714217Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:32.714532Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["create_reminder"]
+2026-11-25T04:30:32.714565Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 40 tokens in 12 ms (3339.73 t/s) | generation 170 tokens in 1011 ms (168.19 t/s)
+2026-11-25T04:30:32.714602Z  INFO 🧠 [Context] prompt 1115 tokens (1075 from the cache) | context 1285 of 16384 | stop eos
+2026-11-25T04:30:32.818648Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:32.837726Z  INFO 📏 [EngineHost] The loaded model now takes +0.23 GB over its estimate; learned for its next load
+2026-11-25T04:30:32.839721Z  INFO 🧮 [Tokens] Conversation 132 tokens (2 messages) counted in 0.14 ms
+2026-11-25T04:30:32.841638Z  INFO ⏱️ [Preflight] 23 ms total | model load 19 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:30:32.860261Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:32.860308Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:32.860361Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10292 tokens (168.2 t/s for up to 180 s, room 13723)
+2026-11-25T04:30:35.638657Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:35.638987Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["create_reminder"]
+2026-11-25T04:30:35.639023Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 50 tokens in 13 ms (3875.37 t/s) | generation 282 tokens in 1698 ms (166.04 t/s)
+2026-11-25T04:30:35.639043Z  INFO 🧠 [Context] prompt 1125 tokens (1075 from the cache) | context 1407 of 16384 | stop eos
+2026-11-25T04:30:35.743211Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:35.763819Z  INFO 🧮 [Tokens] Conversation 124 tokens (2 messages) counted in 0.13 ms
+2026-11-25T04:30:35.764144Z  INFO 🧰 [Tools] Suggested: filesystem Title ["find", "file", "about"]
+2026-11-25T04:30:35.765768Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T04:30:35.783936Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:35.783985Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:35.784038Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10306 tokens (166.0 t/s for up to 180 s, room 13742)
+2026-11-25T04:30:37.842497Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:37.842815Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["search_files"]
+2026-11-25T04:30:37.842849Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 31 tokens in 11 ms (2717.87 t/s) | generation 233 tokens in 1400 ms (166.44 t/s)
+2026-11-25T04:30:37.842868Z  INFO 🧠 [Context] prompt 1106 tokens (1075 from the cache) | context 1339 of 16384 | stop eos
+2026-11-25T04:30:37.947013Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:37.967702Z  INFO 🧮 [Tokens] Conversation 125 tokens (2 messages) counted in 0.13 ms
+2026-11-25T04:30:37.968031Z  INFO 🧰 [Tools] Suggested: filesystem Card ["search", "for", "file", "about"]
+2026-11-25T04:30:37.971410Z  INFO ⏱️ [Preflight] 24 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 2 ms
+2026-11-25T04:30:37.972197Z  INFO 🔌 [McpClient] Starting MCP server 'filesystem' in "/home/<vps>/run77/home/<vps>": npx ["-y", "@modelcontextprotocol/server-filesystem@2.2.0", "."]
+2026-11-25T04:30:37.972787Z  WARN Commands are not OS-confined here (bubblewrap not found at /usr/bin/bwrap or /bin/bwrap, or it cannot create namespaces here (WSL1, a container, or unprivileged user namespaces turned off; Ubuntu 23.10 and later need an AppArmor profile for /usr/bin/bwrap, see docs/engine/permission.md)); the allow/ask/deny policy still applies
+2026-11-25T04:30:38.000218Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:38.000272Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:38.000335Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10046 tokens (166.4 t/s for up to 180 s, room 13395)
+2026-11-25T04:30:39.134670Z  INFO 🔥 [Tools] Prewarmed MCP 'filesystem' (11 functions) in 1162 ms
+2026-11-25T04:30:40.159313Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:40.159656Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["search_files"]
+2026-11-25T04:30:40.159690Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 382 tokens in 32 ms (11820.40 t/s) | generation 204 tokens in 1260 ms (161.86 t/s)
+2026-11-25T04:30:40.159709Z  INFO 🧠 [Context] prompt 1453 tokens (1071 from the cache) | context 1657 of 16384 | stop eos
+2026-11-25T04:30:40.264045Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:40.284893Z  INFO 🧮 [Tokens] Conversation 129 tokens (2 messages) counted in 0.17 ms
+2026-11-25T04:30:40.288397Z  INFO 🧰 [Tools] Suggested: filesystem Title ["file", "for"]
+2026-11-25T04:30:40.290209Z  INFO ⏱️ [Preflight] 26 ms total | model load 18 ms | registry + template + tags 2 ms | skills + tools 4 ms | rest 1 ms
+2026-11-25T04:30:40.308144Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:40.308191Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:40.308257Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10302 tokens (161.9 t/s for up to 180 s, room 13737)
+2026-11-25T04:30:41.834168Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:41.834472Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["search_files"]
+2026-11-25T04:30:41.834504Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 40 tokens in 11 ms (3504.47 t/s) | generation 146 tokens in 866 ms (168.58 t/s)
+2026-11-25T04:30:41.834523Z  INFO 🧠 [Context] prompt 1111 tokens (1071 from the cache) | context 1257 of 16384 | stop eos
+2026-11-25T04:30:41.938787Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:41.959680Z  INFO 🧮 [Tokens] Conversation 125 tokens (2 messages) counted in 0.16 ms
+2026-11-25T04:30:41.960029Z  INFO 🧰 [Tools] Suggested: filesystem Title ["find", "file", "that"]
+2026-11-25T04:30:41.961719Z  INFO ⏱️ [Preflight] 23 ms total | model load 19 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T04:30:41.978552Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:41.978601Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:41.978654Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10305 tokens (168.6 t/s for up to 180 s, room 13741)
+2026-11-25T04:30:44.279466Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:44.279814Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["search_files"]
+2026-11-25T04:30:44.279848Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 12 tokens in 9 ms (1348.92 t/s) | generation 242 tokens in 1451 ms (166.75 t/s)
+2026-11-25T04:30:44.279867Z  INFO 🧠 [Context] prompt 1107 tokens (1095 from the cache) | context 1349 of 16384 | stop eos
+2026-11-25T04:30:44.384045Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:44.404384Z  INFO 🧮 [Tokens] Conversation 125 tokens (2 messages) counted in 0.14 ms
+2026-11-25T04:30:44.404726Z  INFO 🧰 [Tools] Suggested: filesystem Title ["search", "for"]
+2026-11-25T04:30:44.406392Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T04:30:44.423211Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:44.423259Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:44.423313Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10305 tokens (166.7 t/s for up to 180 s, room 13741)
+2026-11-25T04:30:46.045787Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:46.046126Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["search_files"]
+2026-11-25T04:30:46.046160Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 12 tokens in 9 ms (1348.01 t/s) | generation 167 tokens in 992 ms (168.35 t/s)
+2026-11-25T04:30:46.046207Z  INFO 🧠 [Context] prompt 1107 tokens (1095 from the cache) | context 1274 of 16384 | stop eos
+2026-11-25T04:30:46.150255Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:46.170285Z  INFO 🧮 [Tokens] Conversation 134 tokens (2 messages) counted in 0.19 ms
+2026-11-25T04:30:46.170674Z  INFO 🧰 [Tools] Suggested: filesystem Title ["with", "you", "at", "file"]
+2026-11-25T04:30:46.172406Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:30:46.189181Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:46.189228Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:46.189280Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10299 tokens (168.4 t/s for up to 180 s, room 13732)
+2026-11-25T04:30:48.769784Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:48.770134Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["send_email"]
+2026-11-25T04:30:48.770167Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 21 tokens in 9 ms (2292.08 t/s) | generation 221 tokens in 1323 ms (167.08 t/s)
+2026-11-25T04:30:48.770186Z  INFO 🧠 [Context] prompt 1116 tokens (1095 from the cache) | context 1337 of 16384 | stop eos
+2026-11-25T04:30:48.874304Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:48.894364Z  INFO 🧮 [Tokens] Conversation 134 tokens (2 messages) counted in 0.18 ms
+2026-11-25T04:30:48.894768Z  INFO 🧰 [Tools] Suggested: filesystem Title ["an", "to", "file"]
+2026-11-25T04:30:48.896479Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:30:48.913240Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:48.913288Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:48.913341Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10299 tokens (167.1 t/s for up to 180 s, room 13732)
+2026-11-25T04:30:51.184311Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:51.184649Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["send_email"]
+2026-11-25T04:30:51.184683Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 21 tokens in 9 ms (2284.84 t/s) | generation 199 tokens in 1188 ms (167.55 t/s)
+2026-11-25T04:30:51.184702Z  INFO 🧠 [Context] prompt 1116 tokens (1095 from the cache) | context 1315 of 16384 | stop eos
+2026-11-25T04:30:51.288817Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:51.308820Z  INFO 🧮 [Tokens] Conversation 140 tokens (2 messages) counted in 0.20 ms
+2026-11-25T04:30:51.309262Z  INFO 🧰 [Tools] Suggested: filesystem Card ["write", "to", "with", "and", "them", "it", "s", "at", "file"]
+2026-11-25T04:30:51.311167Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:30:51.311601Z  INFO 🔥 [Tools] Prewarmed MCP 'filesystem' (11 functions) in 0 ms
+2026-11-25T04:30:51.330570Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:51.330624Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:51.330678Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10275 tokens (167.5 t/s for up to 180 s, room 13700)
+2026-11-25T04:30:54.498018Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:54.498398Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["send_email"]
+2026-11-25T04:30:54.498432Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 73 tokens in 14 ms (5074.38 t/s) | generation 275 tokens in 1655 ms (166.21 t/s)
+2026-11-25T04:30:54.498452Z  INFO 🧠 [Context] prompt 1148 tokens (1075 from the cache) | context 1423 of 16384 | stop eos
+2026-11-25T04:30:54.603481Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:54.623718Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.15 ms
+2026-11-25T04:30:54.624070Z  INFO 🧰 [Tools] Suggested: filesystem Title ["file"]
+2026-11-25T04:30:54.625817Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:30:54.643499Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:54.643546Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:54.643599Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10304 tokens (166.2 t/s for up to 180 s, room 13739)
+2026-11-25T04:30:56.483598Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:56.483924Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["send_email"]
+2026-11-25T04:30:56.483957Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 34 tokens in 11 ms (3028.95 t/s) | generation 133 tokens in 785 ms (169.32 t/s)
+2026-11-25T04:30:56.483976Z  INFO 🧠 [Context] prompt 1109 tokens (1075 from the cache) | context 1242 of 16384 | stop eos
+2026-11-25T04:30:56.588061Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:56.608116Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.16 ms
+2026-11-25T04:30:56.610116Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:30:56.628170Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:56.628216Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:56.628305Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10296 tokens (169.3 t/s for up to 180 s, room 13728)
+2026-11-25T04:30:58.906636Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:30:58.906970Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-25T04:30:58.907003Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 45 tokens in 12 ms (3717.47 t/s) | generation 241 tokens in 1444 ms (166.87 t/s)
+2026-11-25T04:30:58.907022Z  INFO 🧠 [Context] prompt 1120 tokens (1075 from the cache) | context 1361 of 16384 | stop eos
+2026-11-25T04:30:59.011083Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:30:59.032032Z  INFO 🧮 [Tokens] Conversation 129 tokens (2 messages) counted in 0.13 ms
+2026-11-25T04:30:59.033945Z  INFO ⏱️ [Preflight] 23 ms total | model load 19 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:30:59.051095Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:30:59.051145Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:30:59.051205Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10294 tokens (166.9 t/s for up to 180 s, room 13726)
+2026-11-25T04:31:02.572345Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:31:02.572715Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-25T04:31:02.572749Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 16 tokens in 9 ms (1791.51 t/s) | generation 431 tokens in 2609 ms (165.23 t/s)
+2026-11-25T04:31:02.572768Z  INFO 🧠 [Context] prompt 1122 tokens (1106 from the cache) | context 1553 of 16384 | stop eos
+2026-11-25T04:31:02.573314Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"skill","name":"math"}
+2026-11-25T04:31:02.573737Z  INFO 📚 [Project] read_item({"kind":"skill","name":"math"}) -> 1274 chars
+2026-11-25T04:31:02.573800Z  INFO ✅ [API] Tool 'read_item' done (1274 chars)
+2026-11-25T04:31:02.573847Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-25T04:31:02.597866Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:31:02.597920Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:31:02.597981Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10001 tokens (165.2 t/s for up to 180 s, room 13335)
+2026-11-25T04:31:05.789312Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:31:05.789689Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["convert_currency"]
+2026-11-25T04:31:05.789722Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 391 tokens in 35 ms (11310.38 t/s) | generation 322 tokens in 2001 ms (160.93 t/s)
+2026-11-25T04:31:05.789741Z  INFO 🧠 [Context] prompt 1513 tokens (1122 from the cache) | context 1835 of 16384 | stop eos
+2026-11-25T04:31:05.894182Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:31:05.914549Z  INFO 🧮 [Tokens] Conversation 133 tokens (2 messages) counted in 0.14 ms
+2026-11-25T04:31:05.916496Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:31:05.933372Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:31:05.933420Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:31:05.933473Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10291 tokens (160.9 t/s for up to 180 s, room 13722)
+2026-11-25T04:31:07.903073Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:31:07.903384Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["create_reminder"]
+2026-11-25T04:31:07.903418Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 20 tokens in 9 ms (2181.98 t/s) | generation 167 tokens in 992 ms (168.34 t/s)
+2026-11-25T04:31:07.903438Z  INFO 🧠 [Context] prompt 1126 tokens (1106 from the cache) | context 1293 of 16384 | stop eos
+2026-11-25T04:31:08.007443Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:31:08.027928Z  INFO 🧮 [Tokens] Conversation 128 tokens (2 messages) counted in 0.14 ms
+2026-11-25T04:31:08.029961Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:31:08.047265Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:31:08.047316Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:31:08.047371Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10295 tokens (168.3 t/s for up to 180 s, room 13727)
+2026-11-25T04:31:12.133207Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:31:12.133579Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-25T04:31:12.133613Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 15 tokens in 9 ms (1636.84 t/s) | generation 512 tokens in 3109 ms (164.67 t/s)
+2026-11-25T04:31:12.133634Z  INFO 🧠 [Context] prompt 1121 tokens (1106 from the cache) | context 1633 of 16384 | stop eos
+2026-11-25T04:31:12.134113Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"skill","name":"budget_notes"}
+2026-11-25T04:31:12.134317Z  INFO 📚 [Project] read_item({"kind":"skill","name":"budget_notes"}) -> 73 chars
+2026-11-25T04:31:12.134358Z  INFO ✅ [API] Tool 'read_item' done (73 chars)
+2026-11-25T04:31:12.134390Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-25T04:31:12.153666Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:31:12.153721Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:31:12.153778Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10253 tokens (164.7 t/s for up to 180 s, room 13671)
+2026-11-25T04:31:13.786226Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:31:13.786548Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["search_files"]
+2026-11-25T04:31:13.786580Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 56 tokens in 12 ms (4502.69 t/s) | generation 141 tokens in 841 ms (167.63 t/s)
+2026-11-25T04:31:13.786599Z  INFO 🧠 [Context] prompt 1177 tokens (1121 from the cache) | context 1318 of 16384 | stop eos
+2026-11-25T04:31:13.890820Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:31:13.910813Z  INFO 🧮 [Tokens] Conversation 134 tokens (2 messages) counted in 0.17 ms
+2026-11-25T04:31:13.911193Z  INFO 🧰 [Tools] Suggested: filesystem Title ["know", "that", "file"]
+2026-11-25T04:31:13.912883Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:31:13.930538Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:31:13.930585Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:31:13.930638Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10299 tokens (167.6 t/s for up to 180 s, room 13732)
+2026-11-25T04:31:16.770705Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:31:16.771024Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["send_email"]
+2026-11-25T04:31:16.771056Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 41 tokens in 12 ms (3538.14 t/s) | generation 266 tokens in 1593 ms (166.93 t/s)
+2026-11-25T04:31:16.771075Z  INFO 🧠 [Context] prompt 1116 tokens (1075 from the cache) | context 1382 of 16384 | stop eos
+2026-11-25T04:31:16.875157Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:31:16.896204Z  INFO 🧮 [Tokens] Conversation 128 tokens (2 messages) counted in 0.14 ms
+2026-11-25T04:31:16.898292Z  INFO ⏱️ [Preflight] 23 ms total | model load 19 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:31:16.916165Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:31:16.916213Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:31:16.916266Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10295 tokens (166.9 t/s for up to 180 s, room 13727)
+2026-11-25T04:31:19.870062Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:31:19.870387Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-25T04:31:19.870420Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 46 tokens in 12 ms (3906.58 t/s) | generation 339 tokens in 2041 ms (166.06 t/s)
+2026-11-25T04:31:19.870439Z  INFO 🧠 [Context] prompt 1121 tokens (1075 from the cache) | context 1460 of 16384 | stop eos
+2026-11-25T04:31:19.974640Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:31:19.995086Z  INFO 🧮 [Tokens] Conversation 134 tokens (2 messages) counted in 0.15 ms
+2026-11-25T04:31:19.997138Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:31:20.013959Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:31:20.014005Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:31:20.014058Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10290 tokens (166.1 t/s for up to 180 s, room 13721)
+2026-11-25T04:31:22.471239Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:31:22.471575Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["convert_currency"]
+2026-11-25T04:31:22.471608Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 21 tokens in 9 ms (2291.58 t/s) | generation 226 tokens in 1352 ms (167.16 t/s)
+2026-11-25T04:31:22.471635Z  INFO 🧠 [Context] prompt 1127 tokens (1106 from the cache) | context 1353 of 16384 | stop eos
+2026-11-25T04:31:22.575899Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:31:22.595888Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.12 ms
+2026-11-25T04:31:22.597816Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:31:22.614492Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:31:22.614538Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:31:22.614604Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10293 tokens (167.2 t/s for up to 180 s, room 13724)
+2026-11-25T04:31:25.100498Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:31:25.100824Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["create_reminder"]
+2026-11-25T04:31:25.100858Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 18 tokens in 9 ms (1977.15 t/s) | generation 182 tokens in 1081 ms (168.39 t/s)
+2026-11-25T04:31:25.100877Z  INFO 🧠 [Context] prompt 1124 tokens (1106 from the cache) | context 1306 of 16384 | stop eos
+2026-11-25T04:31:25.204878Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:31:25.225105Z  INFO 🧮 [Tokens] Conversation 128 tokens (2 messages) counted in 0.10 ms
+2026-11-25T04:31:25.227051Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T04:31:25.243798Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:31:25.243844Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:31:25.243897Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10295 tokens (168.4 t/s for up to 180 s, room 13727)
+2026-11-25T04:31:27.705467Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:31:27.705809Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-25T04:31:27.705843Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 15 tokens in 9 ms (1687.48 t/s) | generation 274 tokens in 1643 ms (166.75 t/s)
+2026-11-25T04:31:27.705885Z  INFO 🧠 [Context] prompt 1121 tokens (1106 from the cache) | context 1395 of 16384 | stop eos
+2026-11-25T04:31:27.706330Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"skill","name":"math"}
+2026-11-25T04:31:27.706737Z  INFO 📚 [Project] read_item({"kind":"skill","name":"math"}) -> 1274 chars
+2026-11-25T04:31:27.706801Z  INFO ✅ [API] Tool 'read_item' done (1274 chars)
+2026-11-25T04:31:27.706847Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-25T04:31:27.730037Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:31:27.730084Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:31:27.730146Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10002 tokens (166.8 t/s for up to 180 s, room 13336)
+2026-11-25T04:31:30.647635Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:31:30.647973Z  INFO 🧰 [NativeTools] Parsed 2 call(s): ["read_item", "read_item"]
+2026-11-25T04:31:30.648007Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 391 tokens in 34 ms (11481.76 t/s) | generation 241 tokens in 1489 ms (161.81 t/s)
+2026-11-25T04:31:30.648027Z  INFO 🧠 [Context] prompt 1512 tokens (1121 from the cache) | context 1753 of 16384 | stop eos
+2026-11-25T04:31:30.648424Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"skill","name":"math"}
+2026-11-25T04:31:30.648784Z  INFO 📚 [Project] read_item({"kind":"skill","name":"math"}) -> 1274 chars
+2026-11-25T04:31:30.648831Z  INFO ✅ [API] Tool 'read_item' done (1274 chars)
+2026-11-25T04:31:30.648868Z  INFO 🔄 [API] Step 2: generating again with the tool result
+2026-11-25T04:31:30.674674Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:31:30.674723Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:31:30.674791Z  INFO 🧠 [NativeStream] Auto thinking ceiling 9708 tokens (161.8 t/s for up to 180 s, room 12945)
+2026-11-25T04:31:33.215656Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:31:33.215966Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-25T04:31:33.215997Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 391 tokens in 35 ms (11252.77 t/s) | generation 268 tokens in 1705 ms (157.21 t/s)
+2026-11-25T04:31:33.216016Z  INFO 🧠 [Context] prompt 1903 tokens (1512 from the cache) | context 2171 of 16384 | stop eos
+2026-11-25T04:31:33.216219Z  INFO 🔄 [API] Step 3: generating again with the tool result
+2026-11-25T04:31:33.240757Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:31:33.240819Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:31:33.240891Z  INFO 🧠 [NativeStream] Auto thinking ceiling 9653 tokens (157.2 t/s for up to 180 s, room 12871)
+2026-11-25T04:31:37.143283Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:31:37.143632Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-25T04:31:37.143664Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 74 tokens in 14 ms (5122.88 t/s) | generation 464 tokens in 2989 ms (155.22 t/s)
+2026-11-25T04:31:37.143683Z  INFO 🧠 [Context] prompt 1977 tokens (1903 from the cache) | context 2441 of 16384 | stop eos
+2026-11-25T04:31:37.143946Z  INFO 🔁 [API] Turn 'chatcmpl-81cb97c4ad954a3b896de2a5a72056ce' stopped at step/repeat limit (max_steps=100)
+2026-11-25T04:31:37.248169Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:31:37.268297Z  INFO 🧮 [Tokens] Conversation 125 tokens (2 messages) counted in 0.13 ms
+2026-11-25T04:31:37.268674Z  INFO 🧰 [Tools] Suggested: filesystem Title ["write", "a", "about"]
+2026-11-25T04:31:37.270401Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:31:37.288076Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:31:37.288124Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:31:37.288186Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10305 tokens (155.2 t/s for up to 180 s, room 13741)
+2026-11-25T04:31:39.600670Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:31:39.600995Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-25T04:31:39.601030Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 32 tokens in 11 ms (2906.98 t/s) | generation 250 tokens in 1497 ms (166.96 t/s)
+2026-11-25T04:31:39.601049Z  INFO 🧠 [Context] prompt 1107 tokens (1075 from the cache) | context 1357 of 16384 | stop eos
+2026-11-25T04:31:39.601487Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"rule","name":"rule"}
+2026-11-25T04:31:39.601666Z  INFO 📚 [Project] read_item({"kind":"rule","name":"rule"}) -> 65 chars
+2026-11-25T04:31:39.601703Z  INFO ✅ [API] Tool 'read_item' done (65 chars)
+2026-11-25T04:31:39.601733Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-25T04:31:39.620740Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:31:39.620795Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:31:39.620848Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10265 tokens (167.0 t/s for up to 180 s, room 13687)
+2026-11-25T04:31:43.371169Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:31:43.371530Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-25T04:31:43.371577Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 54 tokens in 12 ms (4355.19 t/s) | generation 467 tokens in 2839 ms (164.49 t/s)
+2026-11-25T04:31:43.371601Z  INFO 🧠 [Context] prompt 1161 tokens (1107 from the cache) | context 1628 of 16384 | stop eos
+2026-11-25T04:31:43.371990Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"skill","name":"math"}
+2026-11-25T04:31:43.372361Z  INFO 📚 [Project] read_item({"kind":"skill","name":"math"}) -> 1274 chars
+2026-11-25T04:31:43.372411Z  INFO ✅ [API] Tool 'read_item' done (1274 chars)
+2026-11-25T04:31:43.372446Z  INFO 🔄 [API] Step 2: generating again with the tool result
+2026-11-25T04:31:43.396510Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:31:43.396559Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:31:43.396620Z  INFO 🧠 [NativeStream] Auto thinking ceiling 9972 tokens (164.5 t/s for up to 180 s, room 13296)
+2026-11-25T04:31:48.025567Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:31:48.025961Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-25T04:31:48.025995Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 391 tokens in 35 ms (11210.18 t/s) | generation 579 tokens in 3642 ms (158.96 t/s)
+2026-11-25T04:31:48.026015Z  INFO 🧠 [Context] prompt 1552 tokens (1161 from the cache) | context 2131 of 16384 | stop eos
+2026-11-25T04:31:48.026493Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"skill","name":"math"}
+2026-11-25T04:31:48.026841Z  INFO 📚 [Project] read_item({"kind":"skill","name":"math"}) -> 1274 chars
+2026-11-25T04:31:48.026890Z  INFO ✅ [API] Tool 'read_item' done (1274 chars)
+2026-11-25T04:31:48.026925Z  INFO 🔄 [API] Step 3: generating again with the tool result
+2026-11-25T04:31:48.053662Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:31:48.053710Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:31:48.053783Z  INFO 🧠 [NativeStream] Auto thinking ceiling 9678 tokens (159.0 t/s for up to 180 s, room 12905)
+2026-11-25T04:31:50.110199Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:31:50.110343Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T04:31:50.110373Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 391 tokens in 35 ms (11071.47 t/s) | generation 295 tokens in 1890 ms (156.07 t/s)
+2026-11-25T04:31:50.110392Z  INFO 🧠 [Context] prompt 1943 tokens (1552 from the cache) | context 2238 of 16384 | stop eos
+2026-11-25T04:31:50.215072Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:31:50.235327Z  INFO 🧮 [Tokens] Conversation 124 tokens (2 messages) counted in 0.11 ms
+2026-11-25T04:31:50.237212Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T04:31:50.255137Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:31:50.255185Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:31:50.255237Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10298 tokens (156.1 t/s for up to 180 s, room 13731)
+2026-11-25T04:31:51.987706Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:31:51.987844Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T04:31:51.987873Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 42 tokens in 12 ms (3612.28 t/s) | generation 266 tokens in 1600 ms (166.29 t/s)
+2026-11-25T04:31:51.987893Z  INFO 🧠 [Context] prompt 1117 tokens (1075 from the cache) | context 1383 of 16384 | stop eos
+2026-11-25T04:31:52.092296Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:31:52.112905Z  INFO 🧮 [Tokens] Conversation 126 tokens (2 messages) counted in 0.15 ms
+2026-11-25T04:31:52.114943Z  INFO ⏱️ [Preflight] 23 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:31:52.131672Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:31:52.131722Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:31:52.131776Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10296 tokens (166.3 t/s for up to 180 s, room 13729)
+2026-11-25T04:31:53.380203Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:31:53.380329Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T04:31:53.380353Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 13 tokens in 9 ms (1463.14 t/s) | generation 192 tokens in 1151 ms (166.77 t/s)
+2026-11-25T04:31:53.380372Z  INFO 🧠 [Context] prompt 1119 tokens (1106 from the cache) | context 1311 of 16384 | stop eos
+2026-11-25T04:31:53.484570Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:31:53.505062Z  INFO 🧮 [Tokens] Conversation 124 tokens (2 messages) counted in 0.12 ms
+2026-11-25T04:31:53.507066Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:31:53.523725Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:31:53.523774Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:31:53.523828Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10298 tokens (166.8 t/s for up to 180 s, room 13731)
+2026-11-25T04:31:57.121941Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:31:57.122137Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T04:31:57.122168Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 11 tokens in 9 ms (1247.73 t/s) | generation 545 tokens in 3320 ms (164.14 t/s)
+2026-11-25T04:31:57.122238Z  INFO 🧠 [Context] prompt 1117 tokens (1106 from the cache) | context 1662 of 16384 | stop eos
+2026-11-25T04:31:57.227701Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:31:57.248817Z  INFO 🧮 [Tokens] Conversation 125 tokens (2 messages) counted in 0.14 ms
+2026-11-25T04:31:57.250875Z  INFO ⏱️ [Preflight] 23 ms total | model load 19 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:31:57.267912Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:31:57.267963Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:31:57.268022Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10297 tokens (164.1 t/s for up to 180 s, room 13730)
+2026-11-25T04:31:59.378633Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:31:59.378948Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-25T04:31:59.378984Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 12 tokens in 9 ms (1354.10 t/s) | generation 210 tokens in 1256 ms (167.21 t/s)
+2026-11-25T04:31:59.379003Z  INFO 🧠 [Context] prompt 1118 tokens (1106 from the cache) | context 1328 of 16384 | stop eos
+2026-11-25T04:31:59.379495Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"rule","name":"rule"}
+2026-11-25T04:31:59.379696Z  INFO 📚 [Project] read_item({"kind":"rule","name":"rule"}) -> 65 chars
+2026-11-25T04:31:59.379738Z  INFO ✅ [API] Tool 'read_item' done (65 chars)
+2026-11-25T04:31:59.379769Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-25T04:31:59.398843Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:31:59.398891Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:31:59.398944Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10257 tokens (167.2 t/s for up to 180 s, room 13676)
+2026-11-25T04:32:04.742960Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:32:04.743355Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-25T04:32:04.743388Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 54 tokens in 12 ms (4348.18 t/s) | generation 696 tokens in 4279 ms (162.64 t/s)
+2026-11-25T04:32:04.743408Z  INFO 🧠 [Context] prompt 1172 tokens (1118 from the cache) | context 1868 of 16384 | stop eos
+2026-11-25T04:32:04.743866Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"rule","name":"recursion"}
+2026-11-25T04:32:04.744046Z  INFO 📚 [Project] read_item({"kind":"rule","name":"recursion"}) -> 70 chars
+2026-11-25T04:32:04.744084Z  INFO ✅ [API] Tool 'read_item' done (70 chars)
+2026-11-25T04:32:04.744113Z  INFO 🔄 [API] Step 2: generating again with the tool result
+2026-11-25T04:32:04.764198Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:32:04.764264Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:32:04.764319Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10215 tokens (162.6 t/s for up to 180 s, room 13620)
+2026-11-25T04:32:05.538130Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:32:05.538241Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T04:32:05.538265Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 56 tokens in 12 ms (4501.25 t/s) | generation 118 tokens in 711 ms (165.86 t/s)
+2026-11-25T04:32:05.538284Z  INFO 🧠 [Context] prompt 1228 tokens (1172 from the cache) | context 1346 of 16384 | stop eos
+2026-11-25T04:32:05.642719Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:32:05.662574Z  INFO 🧮 [Tokens] Conversation 125 tokens (2 messages) counted in 0.12 ms
+2026-11-25T04:32:05.664491Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:32:05.681034Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:32:05.681081Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:32:05.681133Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10297 tokens (165.9 t/s for up to 180 s, room 13730)
+2026-11-25T04:32:07.848816Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:32:07.848967Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T04:32:07.848996Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 12 tokens in 9 ms (1348.62 t/s) | generation 332 tokens in 2003 ms (165.72 t/s)
+2026-11-25T04:32:07.849015Z  INFO 🧠 [Context] prompt 1118 tokens (1106 from the cache) | context 1450 of 16384 | stop eos
+2026-11-25T04:32:07.953377Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:32:07.973640Z  INFO 🧮 [Tokens] Conversation 126 tokens (2 messages) counted in 0.12 ms
+2026-11-25T04:32:07.975572Z  INFO ⏱️ [Preflight] 22 ms total | model load 18 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T04:32:07.992214Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:32:07.992261Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:32:07.992313Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10296 tokens (165.7 t/s for up to 180 s, room 13729)
+2026-11-25T04:32:09.547297Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:32:09.547428Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T04:32:09.547452Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 13 tokens in 9 ms (1459.20 t/s) | generation 239 tokens in 1437 ms (166.32 t/s)
+2026-11-25T04:32:09.547476Z  INFO 🧠 [Context] prompt 1119 tokens (1106 from the cache) | context 1358 of 16384 | stop eos
+2026-11-25T04:32:09.651626Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-1.7b-gguf-Q4_K_M' to "/home/<vps>/run77/home/<vps>/chat/qwen3-1.7b-gguf-Q4_K_M/Qwen3-1.7B-Q4_K_M.gguf"
+2026-11-25T04:32:09.672415Z  INFO 🧮 [Tokens] Conversation 121 tokens (2 messages) counted in 0.07 ms
+2026-11-25T04:32:09.674190Z  INFO ⏱️ [Preflight] 22 ms total | model load 19 ms | registry + template + tags 1 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T04:32:09.693987Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:32:09.694038Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:32:09.694092Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10300 tokens (166.3 t/s for up to 180 s, room 13734)
+2026-11-25T04:32:11.397787Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:32:11.398106Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-25T04:32:11.398139Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 8 tokens in 11 ms (696.44 t/s) | generation 158 tokens in 936 ms (168.84 t/s)
+2026-11-25T04:32:11.398158Z  INFO 🧠 [Context] prompt 1114 tokens (1106 from the cache) | context 1272 of 16384 | stop eos
+2026-11-25T04:32:11.398614Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"skill","name":"math"}
+2026-11-25T04:32:11.398941Z  INFO 📚 [Project] read_item({"kind":"skill","name":"math"}) -> 1274 chars
+2026-11-25T04:32:11.398989Z  INFO ✅ [API] Tool 'read_item' done (1274 chars)
+2026-11-25T04:32:11.399023Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-25T04:32:11.422133Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:32:11.422182Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:32:11.422241Z  INFO 🧠 [NativeStream] Auto thinking ceiling 10007 tokens (168.8 t/s for up to 180 s, room 13343)
+2026-11-25T04:32:15.066195Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:32:15.066566Z  INFO 🧰 [NativeTools] Parsed 3 call(s): ["read_item", "read_item", "read_item"]
+2026-11-25T04:32:15.066611Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 391 tokens in 34 ms (11533.24 t/s) | generation 233 tokens in 1435 ms (162.33 t/s)
+2026-11-25T04:32:15.066632Z  INFO 🧠 [Context] prompt 1505 tokens (1114 from the cache) | context 1738 of 16384 | stop eos
+2026-11-25T04:32:15.067012Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"skill","name":"math"}
+2026-11-25T04:32:15.067344Z  INFO 📚 [Project] read_item({"kind":"skill","name":"math"}) -> 1274 chars
+2026-11-25T04:32:15.067394Z  INFO ✅ [API] Tool 'read_item' done (1274 chars)
+2026-11-25T04:32:15.067432Z  INFO 🔄 [API] Step 2: generating again with the tool result
+2026-11-25T04:32:15.093339Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:32:15.093391Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:32:15.093478Z  INFO 🧠 [NativeStream] Auto thinking ceiling 9714 tokens (162.3 t/s for up to 180 s, room 12952)
+2026-11-25T04:32:17.296171Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:32:17.296483Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-25T04:32:17.296515Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 391 tokens in 35 ms (11121.86 t/s) | generation 207 tokens in 1314 ms (157.58 t/s)
+2026-11-25T04:32:17.296534Z  INFO 🧠 [Context] prompt 1896 tokens (1505 from the cache) | context 2103 of 16384 | stop eos
+2026-11-25T04:32:17.297000Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"skill","name":"math_evaluate"}
+2026-11-25T04:32:17.297233Z  INFO 📚 [Project] read_item({"kind":"skill","name":"math_evaluate"}) -> 74 chars
+2026-11-25T04:32:17.297285Z  INFO ✅ [API] Tool 'read_item' done (74 chars)
+2026-11-25T04:32:17.297326Z  INFO 🔄 [API] Step 3: generating again with the tool result
+2026-11-25T04:32:17.321738Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:32:17.321787Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:32:17.321874Z  INFO 🧠 [NativeStream] Auto thinking ceiling 9670 tokens (157.6 t/s for up to 180 s, room 12894)
+2026-11-25T04:32:19.746447Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:32:19.746840Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-25T04:32:19.746882Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 58 tokens in 13 ms (4437.30 t/s) | generation 252 tokens in 1606 ms (156.86 t/s)
+2026-11-25T04:32:19.746909Z  INFO 🧠 [Context] prompt 1954 tokens (1896 from the cache) | context 2206 of 16384 | stop eos
+2026-11-25T04:32:19.747330Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"skill","name":"math"}
+2026-11-25T04:32:19.747660Z  INFO 📚 [Project] read_item({"kind":"skill","name":"math"}) -> 1274 chars
+2026-11-25T04:32:19.747708Z  INFO ✅ [API] Tool 'read_item' done (1274 chars)
+2026-11-25T04:32:19.747738Z  INFO 🔄 [API] Step 4: generating again with the tool result
+2026-11-25T04:32:19.777345Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:32:19.777411Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:32:19.777529Z  INFO 🧠 [NativeStream] Auto thinking ceiling 9377 tokens (156.9 t/s for up to 180 s, room 12503)
+2026-11-25T04:32:22.252309Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:32:22.252615Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-25T04:32:22.252652Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 391 tokens in 36 ms (10916.30 t/s) | generation 238 tokens in 1562 ms (152.38 t/s)
+2026-11-25T04:32:22.252679Z  INFO 🧠 [Context] prompt 2345 tokens (1954 from the cache) | context 2583 of 16384 | stop eos
+2026-11-25T04:32:22.253102Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"skill","name":"math_evaluate"}
+2026-11-25T04:32:22.253293Z  INFO 📚 [Project] read_item({"kind":"skill","name":"math_evaluate"}) -> 74 chars
+2026-11-25T04:32:22.253332Z  INFO ✅ [API] Tool 'read_item' done (74 chars)
+2026-11-25T04:32:22.253362Z  INFO 🔄 [API] Step 5: generating again with the tool result
+2026-11-25T04:32:22.281170Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:32:22.281219Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:32:22.281299Z  INFO 🧠 [NativeStream] Auto thinking ceiling 9333 tokens (152.4 t/s for up to 180 s, room 12445)
+2026-11-25T04:32:25.069172Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:32:25.069499Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-25T04:32:25.069530Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 58 tokens in 13 ms (4321.59 t/s) | generation 280 tokens in 1859 ms (150.61 t/s)
+2026-11-25T04:32:25.069561Z  INFO 🧠 [Context] prompt 2403 tokens (2345 from the cache) | context 2683 of 16384 | stop eos
+2026-11-25T04:32:25.070010Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"skill","name":"math_evaluate"}
+2026-11-25T04:32:25.070208Z  INFO 📚 [Project] read_item({"kind":"skill","name":"math_evaluate"}) -> 74 chars
+2026-11-25T04:32:25.070247Z  INFO ✅ [API] Tool 'read_item' done (74 chars)
+2026-11-25T04:32:25.070277Z  INFO 🔄 [API] Step 6: generating again with the tool result
+2026-11-25T04:32:25.099157Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:32:25.099206Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:32:25.099286Z  INFO 🧠 [NativeStream] Auto thinking ceiling 9290 tokens (150.6 t/s for up to 180 s, room 12387)
+2026-11-25T04:32:27.863735Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:32:27.864065Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-25T04:32:27.864097Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 58 tokens in 13 ms (4318.69 t/s) | generation 283 tokens in 1887 ms (149.96 t/s)
+2026-11-25T04:32:27.864117Z  INFO 🧠 [Context] prompt 2461 tokens (2403 from the cache) | context 2744 of 16384 | stop eos
+2026-11-25T04:32:27.864598Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"skill","name":"math"}
+2026-11-25T04:32:27.864930Z  INFO 📚 [Project] read_item({"kind":"skill","name":"math"}) -> 1274 chars
+2026-11-25T04:32:27.864980Z  INFO ✅ [API] Tool 'read_item' done (1274 chars)
+2026-11-25T04:32:27.865011Z  INFO 🔄 [API] Step 7: generating again with the tool result
+2026-11-25T04:32:27.898886Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:32:27.898934Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:32:27.899038Z  INFO 🧠 [NativeStream] Auto thinking ceiling 8997 tokens (150.0 t/s for up to 180 s, room 11996)
+2026-11-25T04:32:29.726614Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:32:29.726925Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-25T04:32:29.726959Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 391 tokens in 37 ms (10550.74 t/s) | generation 139 tokens in 945 ms (147.16 t/s)
+2026-11-25T04:32:29.726978Z  INFO 🧠 [Context] prompt 2852 tokens (2461 from the cache) | context 2991 of 16384 | stop eos
+2026-11-25T04:32:29.727294Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"skill","name":"math_evaluate"}
+2026-11-25T04:32:29.727469Z  INFO 📚 [Project] read_item({"kind":"skill","name":"math_evaluate"}) -> 74 chars
+2026-11-25T04:32:29.727507Z  INFO ✅ [API] Tool 'read_item' done (74 chars)
+2026-11-25T04:32:29.727533Z  INFO 🔄 [API] Step 8: generating again with the tool result
+2026-11-25T04:32:29.759631Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:32:29.759683Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:32:29.759773Z  INFO 🧠 [NativeStream] Auto thinking ceiling 8953 tokens (147.2 t/s for up to 180 s, room 11938)
+2026-11-25T04:32:32.919856Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:32:32.920183Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-25T04:32:32.920215Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 58 tokens in 14 ms (4216.65 t/s) | generation 324 tokens in 2230 ms (145.29 t/s)
+2026-11-25T04:32:32.920235Z  INFO 🧠 [Context] prompt 2910 tokens (2852 from the cache) | context 3234 of 16384 | stop eos
+2026-11-25T04:32:32.920684Z  INFO 🔍 [API] Tool call: tools 'read_item' (sub_func: None) with payload: {"kind":"skill","name":"math_evaluate"}
+2026-11-25T04:32:32.920867Z  INFO 📚 [Project] read_item({"kind":"skill","name":"math_evaluate"}) -> 74 chars
+2026-11-25T04:32:32.920907Z  INFO ✅ [API] Tool 'read_item' done (74 chars)
+2026-11-25T04:32:32.920940Z  INFO 🔄 [API] Step 9: generating again with the tool result
+2026-11-25T04:32:32.954551Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:32:32.954636Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:32:32.954728Z  INFO 🧠 [NativeStream] Auto thinking ceiling 8910 tokens (145.3 t/s for up to 180 s, room 11880)
+2026-11-25T04:32:36.208879Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:32:36.209216Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-25T04:32:36.209249Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 58 tokens in 14 ms (4220.64 t/s) | generation 335 tokens in 2313 ms (144.82 t/s)
+2026-11-25T04:32:36.209268Z  INFO 🧠 [Context] prompt 2968 tokens (2910 from the cache) | context 3303 of 16384 | stop eos
+2026-11-25T04:32:36.209495Z  INFO 🔄 [API] Step 10: generating again with the tool result
+2026-11-25T04:32:36.244032Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T04:32:36.244082Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T04:32:36.244176Z  INFO 🧠 [NativeStream] Auto thinking ceiling 8853 tokens (144.8 t/s for up to 180 s, room 11804)
+2026-11-25T04:32:42.777831Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T04:32:42.778259Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_item"]
+2026-11-25T04:32:42.778293Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 76 tokens in 15 ms (4971.22 t/s) | generation 759 tokens in 5356 ms (141.70 t/s)
+2026-11-25T04:32:42.778312Z  INFO 🧠 [Context] prompt 3044 tokens (2968 from the cache) | context 3803 of 16384 | stop eos
+2026-11-25T04:32:42.778530Z  INFO 🔁 [API] Turn 'chatcmpl-c9c4485f95754b46a47e49f93c9a2547' stopped at step/repeat limit (max_steps=100)

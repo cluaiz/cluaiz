@@ -5,6 +5,7 @@ Each run has its folder in `runs/` with a `SUMMARY.md` and the raw logs. Models 
 ## Platforms
 | Run | Date | OS | CPU / RAM | GPU | Build | Unit tests | Calls | Result |
 |---|---|---|---|---|---|---|---|---|
+| [77](runs/2026-11-25-run77-small-model-tool-count/) | 2026-11-25 | Linux VM, isolated home/port 8013 | 31 GiB RAM | NVIDIA L4 23 GiB | dev `cargo build -p cmd`, source `f8d6b4b2`, binary SHA-256 `7f5d6908...952c3e07`; Q4_K_M GGUF | - | **Partial:** 7/10 models, 30 complete 40-prompt passes; 5 client tools (A), client + contextual Engine tools (B), 20 client tools (C), temperature 0 | Qwen3 4B thinking on A/B/C: 38/40, 39/40, 36/40; Llama 3.2 1B off: 32/40, 6/40, 19/40; B had 29 loop prompts and 414 steps. Qwen3.5 and SmolLM3 results pending because VM access was interrupted; no global size cutoff established. |
 | [3](runs/2026-10-27-run3-linux-cpu/SUMMARY.md) | 2026-10-27 | Ubuntu 24.04 | Xeon 2.8 GHz, 8 vCPU / 31 GiB | none | ✅ 19 min | 366 / 366 | 21 / 25, then Whisper fixed | ✅ after `95165aa` |
 | [1](runs/2026-10-27-run1-linux-t4/) | 2026-10-27 | Ubuntu 22.04 | 8 vCPU / 52 GiB | T4 16 GB | ❌ link: ONNX Runtime needs glibc ≥ 2.38 | - | - | moved to 24.04 |
 | 1 (again) | - | Ubuntu 24.04 | | T4 16 GB | | | | not run yet (Spot T4 reclaimed within minutes, 3 tries) |

@@ -1,0 +1,455 @@
+2026-11-25T05:00:21.032717Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-25T05:00:21.070410Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-25T05:00:24.780288Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+Starting the Cluaiz API server on http://localhost:8013 ...
+2026-11-25T05:00:24.780825Z  INFO 🔒 [Auth] Initialized local session secret at /home/<vps>/run77/homeA/session.token
+2026-11-25T05:00:25.010258Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-25T05:00:25.029026Z  INFO 🌐 Cluaiz API Server running on http://<vps>:8013
+2026-11-25T05:00:25.039058Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:25.548906Z  INFO 📐 [EngineHost] llama.cpp dry run, full GPU at 4096 tokens: model 0.74 + context 0.03 + compute 0.51 = 1.28 GB vs estimate 1.26 GB (+0.02) in 445 ms
+2026-11-25T05:00:25.568829Z  INFO
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : gemma-3-1b-it-gguf-Q4_K_M
+║   • Architecture    : gemma3 | 26 layers | heads 4 | KV heads 1 | head size K 256 / V 256, sliding window 512 on 22 layers | dense
+║   • Weights         : file 0.81 GB (as Hugging Face counts it) | input embeddings 0.30 GB (always CPU) | output head 0.30 GB | vocab 262144
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 32768 tokens
+║   • Active context  : 16384 tokens, KV Kv16 (Auto: 16384 tokens, KV Kv16, buffer 0.45 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 21.90 of 22.49 GB | buffer kept free 0.45 GB (card-sized gap: 0.15 GB reserve + 0.30 GB for the GPU pool, model not measured on this machine yet; estimate corrected by llama.cpp's dry run +0.02 GB)
+║   • RAM             : free 29.73 of 31.35 GB | Cluaiz may use 28.31 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 26 on GPU, 0 in RAM (of 26)
+║   • VRAM            : 1.35 GB (weights + KV 0.08 + logits)
+║   • RAM             : 0.30 GB (incl. KV 0.00)
+║   • Reason         : Full GPU: weights 0.74 + KV 0.08 + buffers 0.52 = 1.35 GB vs usable VRAM 21.63 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  1.35 GB | RAM  0.30 GB | weights 0.74 + KV 0.08 + buffers 0.52 = 1.35 GB vs usable VRAM 21.63 GB
+║   • GPU + RAM split  [FITS]     VRAM  1.33 GB | RAM  0.32 GB | 25 / 26 blocks + output head on GPU (1.33 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  1.33 GB | weights 0.74 + KV 0.08 + logits 0.50 = 1.33 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-25T05:00:25.569483Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-25T05:00:25.569798Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 4, n_threads_batch = 4
+2026-11-25T05:00:25.569823Z  INFO 🧬 [Native-Llama] Loading model: /home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf | ctx: 16384 tokens
+2026-11-25T05:00:25.808775Z  WARN [llama.cpp] load: control-looking token:    212 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+2026-11-25T05:00:26.100078Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M"
+2026-11-25T05:00:26.103681Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16384 tokens
+2026-11-25T05:00:26.103717Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-25T05:00:26.103733Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-25T05:00:26.103753Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-25T05:00:26.103770Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 4/4
+2026-11-25T05:00:26.103791Z  INFO 🔮 [MTP] MTP asked for, but this model has no multi-token-prediction layers: decoding without it
+2026-11-25T05:00:26.245577Z  INFO 🔍 [EngineHost] VRAM planned 1.35 GB, taken 1.39 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-25T05:00:26.245913Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf
+2026-11-25T05:00:26.265478Z  INFO 🧮 [Tokens] Conversation 10 tokens (1 messages) counted in 0.28 ms
+2026-11-25T05:00:26.270923Z  INFO ⏱️ [Preflight] 1232 ms total | model load 1222 ms | registry + template + tags 3 ms | skills + tools 5 ms | rest 0 ms
+2026-11-25T05:00:26.274849Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1754 bytes) in 0 ms
+2026-11-25T05:00:26.329057Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:26.329126Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:26.577345Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:26.577459Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:26.577488Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 435 tokens in 48 ms (9100.42 t/s) | generation 44 tokens in 207 ms (212.10 t/s)
+2026-11-25T05:00:26.577508Z  INFO 🧠 [Context] prompt 435 tokens (0 from the cache) | context 479 of 16384 | stop eos
+2026-11-25T05:00:26.682036Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:26.700559Z  INFO 📏 [EngineHost] The loaded model now takes +0.04 GB over its estimate; learned for its next load
+2026-11-25T05:00:26.701405Z  INFO 🧮 [Tokens] Conversation 8 tokens (1 messages) counted in 0.25 ms
+2026-11-25T05:00:26.702097Z  INFO ⏱️ [Preflight] 20 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:26.703000Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1754 bytes) in 0 ms
+2026-11-25T05:00:26.721416Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:26.721464Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:26.936196Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:26.936284Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:26.936308Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 13 tokens in 15 ms (887.37 t/s) | generation 39 tokens in 179 ms (218.39 t/s)
+2026-11-25T05:00:26.936326Z  INFO 🧠 [Context] prompt 433 tokens (420 from the cache) | context 472 of 16384 | stop eos
+2026-11-25T05:00:27.040133Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:27.059289Z  INFO 🧮 [Tokens] Conversation 6 tokens (1 messages) counted in 0.22 ms
+2026-11-25T05:00:27.059925Z  INFO ⏱️ [Preflight] 20 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:27.060852Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1740 bytes) in 0 ms
+2026-11-25T05:00:27.083660Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:27.083711Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:27.259753Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:27.259839Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:27.259863Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 11 tokens in 17 ms (637.20 t/s) | generation 32 tokens in 147 ms (217.69 t/s)
+2026-11-25T05:00:27.259882Z  INFO 🧠 [Context] prompt 431 tokens (420 from the cache) | context 463 of 16384 | stop eos
+2026-11-25T05:00:27.363714Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:27.382361Z  INFO 🧮 [Tokens] Conversation 10 tokens (1 messages) counted in 0.22 ms
+2026-11-25T05:00:27.383028Z  INFO ⏱️ [Preflight] 19 ms total | model load 17 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:27.383933Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1751 bytes) in 0 ms
+2026-11-25T05:00:27.401917Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:27.401965Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:27.674312Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:27.674406Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:27.674444Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 15 tokens in 14 ms (1062.93 t/s) | generation 50 tokens in 228 ms (219.03 t/s)
+2026-11-25T05:00:27.674464Z  INFO 🧠 [Context] prompt 435 tokens (420 from the cache) | context 485 of 16384 | stop eos
+2026-11-25T05:00:27.778344Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:27.796989Z  INFO 🧮 [Tokens] Conversation 6 tokens (1 messages) counted in 0.22 ms
+2026-11-25T05:00:27.797639Z  INFO ⏱️ [Preflight] 19 ms total | model load 17 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:27.798560Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1745 bytes) in 0 ms
+2026-11-25T05:00:27.815731Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:27.815780Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:27.991485Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:27.991571Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:27.991594Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 11 tokens in 13 ms (830.82 t/s) | generation 32 tokens in 147 ms (218.02 t/s)
+2026-11-25T05:00:27.991613Z  INFO 🧠 [Context] prompt 431 tokens (420 from the cache) | context 463 of 16384 | stop eos
+2026-11-25T05:00:28.095372Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:28.114579Z  INFO 🧮 [Tokens] Conversation 9 tokens (1 messages) counted in 0.21 ms
+2026-11-25T05:00:28.115259Z  INFO ⏱️ [Preflight] 20 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:28.116179Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1739 bytes) in 0 ms
+2026-11-25T05:00:28.134420Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:28.134477Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:28.353999Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:28.354084Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:28.354107Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 14 tokens in 14 ms (983.91 t/s) | generation 40 tokens in 183 ms (218.57 t/s)
+2026-11-25T05:00:28.354126Z  INFO 🧠 [Context] prompt 434 tokens (420 from the cache) | context 474 of 16384 | stop eos
+2026-11-25T05:00:28.458069Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:28.501792Z  INFO 🧮 [Tokens] Conversation 11 tokens (1 messages) counted in 0.27 ms
+2026-11-25T05:00:28.502508Z  INFO ⏱️ [Preflight] 44 ms total | model load 42 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:28.503453Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1759 bytes) in 0 ms
+2026-11-25T05:00:28.521503Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:28.521554Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:28.924869Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:28.924972Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:28.924996Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 16 tokens in 14 ms (1129.31 t/s) | generation 74 tokens in 337 ms (219.71 t/s)
+2026-11-25T05:00:28.925015Z  INFO 🧠 [Context] prompt 436 tokens (420 from the cache) | context 510 of 16384 | stop eos
+2026-11-25T05:00:29.029116Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:29.048856Z  INFO 🧮 [Tokens] Conversation 15 tokens (1 messages) counted in 0.24 ms
+2026-11-25T05:00:29.049577Z  INFO ⏱️ [Preflight] 20 ms total | model load 19 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:29.050594Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1753 bytes) in 0 ms
+2026-11-25T05:00:29.068947Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:29.069000Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:29.292676Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:29.292760Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:29.292785Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 20 tokens in 14 ms (1392.56 t/s) | generation 41 tokens in 188 ms (218.67 t/s)
+2026-11-25T05:00:29.292804Z  INFO 🧠 [Context] prompt 440 tokens (420 from the cache) | context 481 of 16384 | stop eos
+2026-11-25T05:00:29.396554Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:29.415622Z  INFO 🧮 [Tokens] Conversation 11 tokens (1 messages) counted in 0.24 ms
+2026-11-25T05:00:29.416258Z  INFO ⏱️ [Preflight] 20 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:29.417147Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1752 bytes) in 0 ms
+2026-11-25T05:00:29.435146Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:29.435195Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:29.658676Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:29.658759Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:29.658784Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 16 tokens in 14 ms (1132.74 t/s) | generation 41 tokens in 187 ms (218.81 t/s)
+2026-11-25T05:00:29.658816Z  INFO 🧠 [Context] prompt 436 tokens (420 from the cache) | context 477 of 16384 | stop eos
+2026-11-25T05:00:29.762952Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:29.781394Z  INFO 🧮 [Tokens] Conversation 9 tokens (1 messages) counted in 0.20 ms
+2026-11-25T05:00:29.782084Z  INFO ⏱️ [Preflight] 19 ms total | model load 17 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:29.783016Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1739 bytes) in 0 ms
+2026-11-25T05:00:29.801004Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:29.801055Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:30.024870Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:30.024954Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:30.024978Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 14 tokens in 14 ms (995.17 t/s) | generation 41 tokens in 187 ms (218.72 t/s)
+2026-11-25T05:00:30.024996Z  INFO 🧠 [Context] prompt 434 tokens (420 from the cache) | context 475 of 16384 | stop eos
+2026-11-25T05:00:30.128839Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:30.147733Z  INFO 🧮 [Tokens] Conversation 14 tokens (1 messages) counted in 0.21 ms
+2026-11-25T05:00:30.148362Z  INFO ⏱️ [Preflight] 19 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:30.149250Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1747 bytes) in 0 ms
+2026-11-25T05:00:30.167470Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:30.167520Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:30.343213Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:30.343296Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:30.343320Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 19 tokens in 14 ms (1330.35 t/s) | generation 32 tokens in 147 ms (217.68 t/s)
+2026-11-25T05:00:30.343338Z  INFO 🧠 [Context] prompt 439 tokens (420 from the cache) | context 471 of 16384 | stop eos
+2026-11-25T05:00:30.447106Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:30.466804Z  INFO 🧮 [Tokens] Conversation 15 tokens (1 messages) counted in 0.27 ms
+2026-11-25T05:00:30.467434Z  INFO ⏱️ [Preflight] 20 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:30.468335Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1762 bytes) in 0 ms
+2026-11-25T05:00:30.486586Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:30.486636Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:30.673108Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:30.673195Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:30.673219Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 20 tokens in 14 ms (1395.67 t/s) | generation 34 tokens in 156 ms (218.04 t/s)
+2026-11-25T05:00:30.673237Z  INFO 🧠 [Context] prompt 440 tokens (420 from the cache) | context 474 of 16384 | stop eos
+2026-11-25T05:00:30.777079Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:30.797328Z  INFO 🧮 [Tokens] Conversation 13 tokens (1 messages) counted in 0.25 ms
+2026-11-25T05:00:30.798098Z  INFO ⏱️ [Preflight] 21 ms total | model load 19 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:30.799055Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1753 bytes) in 0 ms
+2026-11-25T05:00:30.817391Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:30.817443Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:30.998996Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:30.999082Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:30.999105Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 18 tokens in 14 ms (1255.41 t/s) | generation 33 tokens in 152 ms (217.66 t/s)
+2026-11-25T05:00:30.999124Z  INFO 🧠 [Context] prompt 438 tokens (420 from the cache) | context 471 of 16384 | stop eos
+2026-11-25T05:00:31.102914Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:31.121647Z  INFO 🧮 [Tokens] Conversation 15 tokens (1 messages) counted in 0.24 ms
+2026-11-25T05:00:31.122386Z  INFO ⏱️ [Preflight] 19 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:31.123325Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1758 bytes) in 0 ms
+2026-11-25T05:00:31.142162Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:31.142221Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:31.324661Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:31.324751Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:31.324775Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 20 tokens in 15 ms (1376.84 t/s) | generation 33 tokens in 152 ms (216.66 t/s)
+2026-11-25T05:00:31.324795Z  INFO 🧠 [Context] prompt 440 tokens (420 from the cache) | context 473 of 16384 | stop eos
+2026-11-25T05:00:31.428714Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:31.448168Z  INFO 🧮 [Tokens] Conversation 14 tokens (1 messages) counted in 0.23 ms
+2026-11-25T05:00:31.448802Z  INFO ⏱️ [Preflight] 20 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:31.449774Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1752 bytes) in 0 ms
+2026-11-25T05:00:31.468041Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:31.468093Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:31.650626Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:31.650716Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:31.650740Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 19 tokens in 14 ms (1330.81 t/s) | generation 33 tokens in 152 ms (216.60 t/s)
+2026-11-25T05:00:31.650759Z  INFO 🧠 [Context] prompt 439 tokens (420 from the cache) | context 472 of 16384 | stop eos
+2026-11-25T05:00:31.754768Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:31.773720Z  INFO 🧮 [Tokens] Conversation 6 tokens (1 messages) counted in 0.23 ms
+2026-11-25T05:00:31.774420Z  INFO ⏱️ [Preflight] 20 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:31.775364Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1745 bytes) in 0 ms
+2026-11-25T05:00:31.792659Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:31.792709Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:31.947094Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:31.947179Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:31.947202Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 11 tokens in 13 ms (826.01 t/s) | generation 28 tokens in 129 ms (217.02 t/s)
+2026-11-25T05:00:31.947221Z  INFO 🧠 [Context] prompt 431 tokens (420 from the cache) | context 459 of 16384 | stop eos
+2026-11-25T05:00:32.051123Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:32.071107Z  INFO 🧮 [Tokens] Conversation 7 tokens (1 messages) counted in 0.23 ms
+2026-11-25T05:00:32.071791Z  INFO ⏱️ [Preflight] 21 ms total | model load 19 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:32.072729Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1749 bytes) in 0 ms
+2026-11-25T05:00:32.090424Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:32.090475Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:32.244955Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:32.245040Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:32.245063Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 12 tokens in 14 ms (873.93 t/s) | generation 28 tokens in 129 ms (217.20 t/s)
+2026-11-25T05:00:32.245082Z  INFO 🧠 [Context] prompt 432 tokens (420 from the cache) | context 460 of 16384 | stop eos
+2026-11-25T05:00:32.348746Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:32.367454Z  INFO 🧮 [Tokens] Conversation 10 tokens (1 messages) counted in 0.30 ms
+2026-11-25T05:00:32.368079Z  INFO ⏱️ [Preflight] 19 ms total | model load 17 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:32.368979Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1772 bytes) in 0 ms
+2026-11-25T05:00:32.387086Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:32.387134Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:32.509343Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:32.509441Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:32.509464Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 15 tokens in 14 ms (1058.80 t/s) | generation 22 tokens in 102 ms (216.41 t/s)
+2026-11-25T05:00:32.509483Z  INFO 🧠 [Context] prompt 435 tokens (420 from the cache) | context 457 of 16384 | stop eos
+2026-11-25T05:00:32.613329Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:32.632907Z  INFO 🧮 [Tokens] Conversation 7 tokens (1 messages) counted in 0.24 ms
+2026-11-25T05:00:32.633555Z  INFO ⏱️ [Preflight] 20 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:32.634511Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1754 bytes) in 0 ms
+2026-11-25T05:00:32.651742Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:32.651790Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:32.774300Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:32.774387Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:32.774410Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 12 tokens in 13 ms (900.29 t/s) | generation 22 tokens in 102 ms (216.03 t/s)
+2026-11-25T05:00:32.774429Z  INFO 🧠 [Context] prompt 432 tokens (420 from the cache) | context 454 of 16384 | stop eos
+2026-11-25T05:00:32.878287Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:32.897426Z  INFO 🧮 [Tokens] Conversation 7 tokens (1 messages) counted in 0.25 ms
+2026-11-25T05:00:32.898094Z  INFO ⏱️ [Preflight] 20 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:32.899024Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1751 bytes) in 0 ms
+2026-11-25T05:00:32.916280Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:32.916331Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:33.038637Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:33.038726Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:33.038749Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 12 tokens in 13 ms (899.75 t/s) | generation 22 tokens in 102 ms (216.34 t/s)
+2026-11-25T05:00:33.038768Z  INFO 🧠 [Context] prompt 432 tokens (420 from the cache) | context 454 of 16384 | stop eos
+2026-11-25T05:00:33.142635Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:33.161958Z  INFO 🧮 [Tokens] Conversation 17 tokens (1 messages) counted in 0.33 ms
+2026-11-25T05:00:33.162603Z  INFO ⏱️ [Preflight] 20 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:33.163525Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1782 bytes) in 0 ms
+2026-11-25T05:00:33.182508Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:33.182558Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:33.454155Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:33.454243Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:33.454267Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 22 tokens in 15 ms (1468.13 t/s) | generation 50 tokens in 228 ms (219.12 t/s)
+2026-11-25T05:00:33.454285Z  INFO 🧠 [Context] prompt 442 tokens (420 from the cache) | context 492 of 16384 | stop eos
+2026-11-25T05:00:33.558121Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:33.577553Z  INFO 🧮 [Tokens] Conversation 17 tokens (1 messages) counted in 0.32 ms
+2026-11-25T05:00:33.578234Z  INFO ⏱️ [Preflight] 20 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:33.579149Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1783 bytes) in 0 ms
+2026-11-25T05:00:33.597791Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:33.597842Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:33.805684Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:33.805786Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:33.805812Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 22 tokens in 15 ms (1504.27 t/s) | generation 38 tokens in 174 ms (218.06 t/s)
+2026-11-25T05:00:33.805831Z  INFO 🧠 [Context] prompt 442 tokens (420 from the cache) | context 480 of 16384 | stop eos
+2026-11-25T05:00:33.909665Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:33.928201Z  INFO 🧮 [Tokens] Conversation 25 tokens (1 messages) counted in 0.31 ms
+2026-11-25T05:00:33.928825Z  INFO ⏱️ [Preflight] 19 ms total | model load 17 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:33.929747Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1796 bytes) in 0 ms
+2026-11-25T05:00:33.949520Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:33.949572Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:34.178751Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:34.178842Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:34.178865Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 30 tokens in 16 ms (1914.24 t/s) | generation 42 tokens in 192 ms (218.70 t/s)
+2026-11-25T05:00:34.178884Z  INFO 🧠 [Context] prompt 450 tokens (420 from the cache) | context 492 of 16384 | stop eos
+2026-11-25T05:00:34.282695Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:34.301557Z  INFO 🧮 [Tokens] Conversation 11 tokens (1 messages) counted in 0.23 ms
+2026-11-25T05:00:34.302217Z  INFO ⏱️ [Preflight] 19 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:34.303149Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1753 bytes) in 0 ms
+2026-11-25T05:00:34.321317Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:34.321366Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:34.496863Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:34.496947Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:34.496970Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 16 tokens in 14 ms (1128.19 t/s) | generation 32 tokens in 147 ms (217.98 t/s)
+2026-11-25T05:00:34.496989Z  INFO 🧠 [Context] prompt 436 tokens (420 from the cache) | context 468 of 16384 | stop eos
+2026-11-25T05:00:34.600769Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:34.619609Z  INFO 🧮 [Tokens] Conversation 9 tokens (1 messages) counted in 0.24 ms
+2026-11-25T05:00:34.620274Z  INFO ⏱️ [Preflight] 19 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:34.621207Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1754 bytes) in 0 ms
+2026-11-25T05:00:34.639427Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:34.639476Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:34.815445Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:34.815533Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:34.815556Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 14 tokens in 14 ms (983.84 t/s) | generation 32 tokens in 147 ms (217.39 t/s)
+2026-11-25T05:00:34.815575Z  INFO 🧠 [Context] prompt 434 tokens (420 from the cache) | context 466 of 16384 | stop eos
+2026-11-25T05:00:34.919338Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:34.938007Z  INFO 🧮 [Tokens] Conversation 10 tokens (1 messages) counted in 0.26 ms
+2026-11-25T05:00:34.938648Z  INFO ⏱️ [Preflight] 19 ms total | model load 17 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:34.939560Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1750 bytes) in 0 ms
+2026-11-25T05:00:34.957706Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:34.957756Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:35.133264Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:35.133348Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:35.133374Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 15 tokens in 14 ms (1056.11 t/s) | generation 32 tokens in 147 ms (217.99 t/s)
+2026-11-25T05:00:35.133393Z  INFO 🧠 [Context] prompt 435 tokens (420 from the cache) | context 467 of 16384 | stop eos
+2026-11-25T05:00:35.237192Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:35.256499Z  INFO 🧮 [Tokens] Conversation 16 tokens (1 messages) counted in 0.24 ms
+2026-11-25T05:00:35.257192Z  INFO ⏱️ [Preflight] 20 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:35.258139Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1757 bytes) in 0 ms
+2026-11-25T05:00:35.276458Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:35.276507Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:35.436058Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:35.436144Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:35.436182Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 21 tokens in 14 ms (1453.49 t/s) | generation 29 tokens in 133 ms (217.46 t/s)
+2026-11-25T05:00:35.436201Z  INFO 🧠 [Context] prompt 441 tokens (420 from the cache) | context 470 of 16384 | stop eos
+2026-11-25T05:00:35.540261Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:35.559902Z  INFO 🧮 [Tokens] Conversation 10 tokens (1 messages) counted in 0.25 ms
+2026-11-25T05:00:35.560548Z  INFO ⏱️ [Preflight] 20 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:35.561454Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1759 bytes) in 0 ms
+2026-11-25T05:00:35.579496Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:35.579544Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:35.733950Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:35.734033Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:35.734056Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 15 tokens in 14 ms (1062.47 t/s) | generation 28 tokens in 129 ms (217.38 t/s)
+2026-11-25T05:00:35.734075Z  INFO 🧠 [Context] prompt 435 tokens (420 from the cache) | context 463 of 16384 | stop eos
+2026-11-25T05:00:35.837890Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:35.857355Z  INFO 🧮 [Tokens] Conversation 18 tokens (1 messages) counted in 0.29 ms
+2026-11-25T05:00:35.858016Z  INFO ⏱️ [Preflight] 20 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:35.858946Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1775 bytes) in 0 ms
+2026-11-25T05:00:35.877365Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:35.877414Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:36.107500Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:36.107642Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:36.107672Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 23 tokens in 15 ms (1584.46 t/s) | generation 42 tokens in 193 ms (218.03 t/s)
+2026-11-25T05:00:36.107698Z  INFO 🧠 [Context] prompt 443 tokens (420 from the cache) | context 485 of 16384 | stop eos
+2026-11-25T05:00:36.212421Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:36.232590Z  INFO 🧮 [Tokens] Conversation 10 tokens (1 messages) counted in 0.27 ms
+2026-11-25T05:00:36.233279Z  INFO ⏱️ [Preflight] 21 ms total | model load 19 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:36.234432Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1755 bytes) in 0 ms
+2026-11-25T05:00:36.253027Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:36.253086Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:36.434232Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:36.434318Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:36.434342Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 15 tokens in 14 ms (1037.92 t/s) | generation 33 tokens in 151 ms (218.05 t/s)
+2026-11-25T05:00:36.434361Z  INFO 🧠 [Context] prompt 435 tokens (420 from the cache) | context 468 of 16384 | stop eos
+2026-11-25T05:00:36.538156Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:36.557433Z  INFO 🧮 [Tokens] Conversation 16 tokens (1 messages) counted in 0.28 ms
+2026-11-25T05:00:36.558088Z  INFO ⏱️ [Preflight] 20 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:36.559030Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1765 bytes) in 0 ms
+2026-11-25T05:00:36.577510Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:36.577559Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:36.796239Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:36.796329Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:36.796353Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 21 tokens in 15 ms (1447.98 t/s) | generation 40 tokens in 183 ms (218.25 t/s)
+2026-11-25T05:00:36.796372Z  INFO 🧠 [Context] prompt 441 tokens (420 from the cache) | context 481 of 16384 | stop eos
+2026-11-25T05:00:36.900263Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:36.919196Z  INFO 🧮 [Tokens] Conversation 13 tokens (1 messages) counted in 0.21 ms
+2026-11-25T05:00:36.919849Z  INFO ⏱️ [Preflight] 19 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:36.920756Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1746 bytes) in 0 ms
+2026-11-25T05:00:36.939151Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:36.939207Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:37.115215Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:37.115309Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:37.115333Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 18 tokens in 14 ms (1263.51 t/s) | generation 32 tokens in 147 ms (217.40 t/s)
+2026-11-25T05:00:37.115364Z  INFO 🧠 [Context] prompt 438 tokens (420 from the cache) | context 470 of 16384 | stop eos
+2026-11-25T05:00:37.219148Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:37.238224Z  INFO 🧮 [Tokens] Conversation 10 tokens (1 messages) counted in 0.20 ms
+2026-11-25T05:00:37.238905Z  INFO ⏱️ [Preflight] 20 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:37.239829Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1736 bytes) in 0 ms
+2026-11-25T05:00:37.258154Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:37.258204Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:37.433993Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:37.434080Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:37.434105Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 15 tokens in 14 ms (1051.16 t/s) | generation 32 tokens in 147 ms (217.74 t/s)
+2026-11-25T05:00:37.434123Z  INFO 🧠 [Context] prompt 435 tokens (420 from the cache) | context 467 of 16384 | stop eos
+2026-11-25T05:00:37.537893Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:37.556870Z  INFO 🧮 [Tokens] Conversation 7 tokens (1 messages) counted in 0.21 ms
+2026-11-25T05:00:37.557507Z  INFO ⏱️ [Preflight] 20 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:37.558484Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1743 bytes) in 0 ms
+2026-11-25T05:00:37.575795Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:37.575844Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:37.687777Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:37.687855Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:37.687878Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 12 tokens in 13 ms (895.86 t/s) | generation 20 tokens in 93 ms (215.57 t/s)
+2026-11-25T05:00:37.687897Z  INFO 🧠 [Context] prompt 432 tokens (420 from the cache) | context 452 of 16384 | stop eos
+2026-11-25T05:00:37.791707Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:37.810335Z  INFO 🧮 [Tokens] Conversation 6 tokens (1 messages) counted in 0.20 ms
+2026-11-25T05:00:37.810968Z  INFO ⏱️ [Preflight] 19 ms total | model load 17 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:37.811874Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1741 bytes) in 0 ms
+2026-11-25T05:00:37.828956Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:37.829016Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:38.010392Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:38.010477Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:38.010501Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 11 tokens in 13 ms (830.69 t/s) | generation 33 tokens in 152 ms (217.71 t/s)
+2026-11-25T05:00:38.010519Z  INFO 🧠 [Context] prompt 431 tokens (420 from the cache) | context 464 of 16384 | stop eos
+2026-11-25T05:00:38.114216Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:38.133073Z  INFO 🧮 [Tokens] Conversation 8 tokens (1 messages) counted in 0.25 ms
+2026-11-25T05:00:38.133697Z  INFO ⏱️ [Preflight] 19 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:38.134620Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1754 bytes) in 0 ms
+2026-11-25T05:00:38.152774Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:38.152823Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:38.312740Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 13 tokens in 14 ms (918.99 t/s) | generation 29 tokens in 133 ms (217.28 t/s)
+2026-11-25T05:00:38.312774Z  INFO 🧠 [Context] prompt 433 tokens (420 from the cache) | context 462 of 16384 | stop cancel
+2026-11-25T05:00:38.411166Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:38.429729Z  INFO 🧮 [Tokens] Conversation 6 tokens (1 messages) counted in 0.21 ms
+2026-11-25T05:00:38.430411Z  INFO ⏱️ [Preflight] 19 ms total | model load 17 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:38.431302Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1743 bytes) in 0 ms
+2026-11-25T05:00:38.448530Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:38.448580Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:38.576159Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:38.576243Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:38.576267Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 11 tokens in 13 ms (826.45 t/s) | generation 23 tokens in 106 ms (216.63 t/s)
+2026-11-25T05:00:38.576285Z  INFO 🧠 [Context] prompt 431 tokens (420 from the cache) | context 454 of 16384 | stop eos
+2026-11-25T05:00:38.679973Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:38.699695Z  INFO 🧮 [Tokens] Conversation 6 tokens (1 messages) counted in 0.23 ms
+2026-11-25T05:00:38.700355Z  INFO ⏱️ [Preflight] 20 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:38.701282Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1750 bytes) in 0 ms
+2026-11-25T05:00:38.718485Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:38.718535Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:38.841030Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:38.841114Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:38.841137Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 11 tokens in 13 ms (824.22 t/s) | generation 22 tokens in 102 ms (216.04 t/s)
+2026-11-25T05:00:38.841155Z  INFO 🧠 [Context] prompt 431 tokens (420 from the cache) | context 453 of 16384 | stop eos
+2026-11-25T05:00:38.944861Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:38.964324Z  INFO 🧮 [Tokens] Conversation 7 tokens (1 messages) counted in 0.22 ms
+2026-11-25T05:00:38.964978Z  INFO ⏱️ [Preflight] 20 ms total | model load 18 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:38.965921Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1746 bytes) in 0 ms
+2026-11-25T05:00:38.983100Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:38.983148Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:39.158822Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:39.158910Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:39.158933Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 12 tokens in 13 ms (897.13 t/s) | generation 32 tokens in 147 ms (217.88 t/s)
+2026-11-25T05:00:39.158952Z  INFO 🧠 [Context] prompt 432 tokens (420 from the cache) | context 464 of 16384 | stop eos
+2026-11-25T05:00:39.262703Z  INFO 🤖 [API] Model override requested. Resolved 'gemma-3-1b-it-gguf-Q4_K_M' to "/home/<vps>/run77/homeA/models/chat/gemma-3-1b-it-gguf-Q4_K_M/gemma-3-1b-it-Q4_K_M.gguf"
+2026-11-25T05:00:39.281245Z  INFO 🧮 [Tokens] Conversation 8 tokens (1 messages) counted in 0.21 ms
+2026-11-25T05:00:39.281911Z  INFO ⏱️ [Preflight] 19 ms total | model load 17 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 0 ms
+2026-11-25T05:00:39.282807Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (1746 bytes) in 0 ms
+2026-11-25T05:00:39.301026Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-25T05:00:39.301077Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-25T05:00:39.428936Z  INFO 🛑 [NativeStream] EOG reached for token=106. Gracefully terminating generation.
+2026-11-25T05:00:39.429018Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T05:00:39.429056Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 13 tokens in 14 ms (917.11 t/s) | generation 23 tokens in 106 ms (216.17 t/s)
+2026-11-25T05:00:39.429075Z  INFO 🧠 [Context] prompt 433 tokens (420 from the cache) | context 456 of 16384 | stop eos
