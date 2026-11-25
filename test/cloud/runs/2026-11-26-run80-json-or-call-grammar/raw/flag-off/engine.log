@@ -1,0 +1,547 @@
+<engine-start>
+2026-11-25T19:54:55.398060Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-25T19:54:56.008965Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-25T19:54:56.013042Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+Starting the Cluaiz API server on http://localhost:8013 ...
+2026-11-25T19:54:56.015554Z  INFO 🔒 [Auth] Initialized local session secret at <engine-home>\session.token
+2026-11-25T19:54:56.237317Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-25T19:54:56.267746Z  INFO 🌐 Cluaiz API Server running on http://<ip>:8013
+2026-11-25T19:54:56.388675Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-25T19:54:56.552986Z  INFO
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3-0.6b-gguf-Q4_K_M
+║   • Architecture    : qwen3 | 28 layers | heads 16 | KV heads 8 | head size K 128 / V 128 | dense
+║   • Weights         : file 0.40 GB (as Hugging Face counts it) | input embeddings 0.12 GB (always CPU) | output head 0.12 GB | vocab 151936
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 40960 tokens
+║   • Active context  : 16128 tokens, KV Kv8 (Auto: 16128 tokens with KV Kv8 + buffer 0.57 GB, to stay on the GPU (16384 tokens with KV Kv16 did not fit))
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA GeForce RTX 3050 A Laptop GPU | free 2.16 of 4.00 GB | buffer kept free 0.57 GB (measured: GPU pool +0.37 GB + 0.20 GB reserve; estimate corrected by llama.cpp's dry run +0.01 GB)
+║   • RAM             : free 6.70 of 23.69 GB | Cluaiz may use 5.51 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 16128 | KV Kv8 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 28 on GPU, 0 in RAM (of 28)
+║   • VRAM            : 1.58 GB (weights + KV 0.92 + logits)
+║   • RAM             : 0.12 GB (incl. KV 0.00)
+║   • Reason         : Full GPU: weights 0.36 + KV 0.92 + buffers 0.30 = 1.58 GB vs usable VRAM 1.59 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  1.58 GB | RAM  0.12 GB | weights 0.36 + KV 0.92 + buffers 0.30 = 1.58 GB vs usable VRAM 1.59 GB
+║   • GPU + RAM split  [FITS]     VRAM  1.54 GB | RAM  0.16 GB | 27 / 28 blocks + output head on GPU (1.54 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  1.57 GB | weights 0.36 + KV 0.92 + logits 0.29 = 1.57 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 8 / batch 8 | flash attention Auto | KV setting Auto -> used Kv8 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-25T19:54:56.554378Z  INFO 🔮 [MTP] Auto: off (its memory would not fit next to this placement)
+2026-11-25T19:54:56.556092Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 8, n_threads_batch = 8
+2026-11-25T19:54:56.556179Z  INFO 🧬 [Native-Llama] Loading model: C:\Users\<user>\AppData\Local\Temp\claude\6c30a0ef6fee852f\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\scratchpad\api-home\models\chat\qwen3-0.6b-gguf-Q4_K_M\Qwen3-0.6B-Q4_K_M.gguf | ctx: 16128 tokens
+2026-11-25T19:54:56.923396Z  WARN [llama.cpp] load: control-looking token: 128247 '</s>' was not control-type; this is probably a bug in the model. its type will be overridden
+2026-11-25T19:54:57.643090Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M"
+2026-11-25T19:54:57.661417Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-11-25T19:54:57.661481Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-11-25T19:54:57.661515Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16128 tokens
+2026-11-25T19:54:57.661559Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-25T19:54:57.661582Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-25T19:54:57.661619Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-25T19:54:57.661726Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 8/8
+2026-11-25T19:54:57.934304Z  INFO 🔍 [EngineHost] VRAM planned 1.58 GB, taken 1.62 GB | n_ctx planned 16128 created 16128 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-25T19:54:57.935861Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: C:\Users\<user>\AppData\Local\Temp\claude\6c30a0ef6fee852f\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\scratchpad\api-home\models\chat\qwen3-0.6b-gguf-Q4_K_M\Qwen3-0.6B-Q4_K_M.gguf
+2026-11-25T19:54:57.991071Z  INFO 🧮 [Tokens] Conversation 119 tokens (2 messages) counted in 0.67 ms
+2026-11-25T19:54:57.998857Z  INFO 🪶 [Tools] Small model (596049920 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:54:58.001913Z  INFO ⏱️ [Preflight] 1617 ms total | model load 1575 ms | registry + template + tags 25 ms | skills + tools 9 ms | rest 1 ms
+2026-11-25T19:54:58.103316Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:54:58.103436Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636498
+2026-11-25T19:54:58.157248Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T19:54:58.157321Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 577 tokens in 83 ms (6933.85 t/s) | generation 4 tokens in 48 ms (83.17 t/s)
+2026-11-25T19:54:58.157355Z  INFO 🧠 [Context] prompt 577 tokens (0 from the cache) | context 581 of 16128 | stop limit
+2026-11-25T19:54:58.469345Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-25T19:54:58.511534Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.20 ms
+2026-11-25T19:54:58.513102Z  INFO 🪶 [Tools] Small model (596049920 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:54:58.515697Z  INFO ⏱️ [Preflight] 51 ms total | model load 28 ms | registry + template + tags 13 ms | skills + tools 3 ms | rest 1 ms
+2026-11-25T19:54:58.553485Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:54:58.553581Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:54:58.553672Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636498
+2026-11-25T19:55:00.265610Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:55:00.266019Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["find_tools"]
+2026-11-25T19:55:00.266075Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 124 tokens in 28 ms (4391.25 t/s) | generation 20 tokens in 158 ms (126.68 t/s)
+2026-11-25T19:55:00.266113Z  INFO 🧠 [Context] prompt 644 tokens (520 from the cache) | context 664 of 16128 | stop eos
+2026-11-25T19:55:00.266717Z  INFO 🔍 [API] Tool call: tools 'find_tools' (sub_func: None) with payload: {"query":"tools"}
+2026-11-25T19:55:00.268969Z  INFO 🔎 [Tools] find_tools("tools")
+2026-11-25T19:55:00.269383Z  INFO ✅ [API] Tool 'find_tools' done (153 chars)
+2026-11-25T19:55:00.269510Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-25T19:55:00.303332Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:55:00.303424Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:55:00.303515Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636500
+2026-11-25T19:55:01.563113Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:55:01.563655Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["load_tool"]
+2026-11-25T19:55:01.563728Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 76 tokens in 25 ms (3077.55 t/s) | generation 19 tokens in 140 ms (136.07 t/s)
+2026-11-25T19:55:01.563780Z  INFO 🧠 [Context] prompt 716 tokens (640 from the cache) | context 735 of 16128 | stop eos
+2026-11-25T19:55:01.563854Z  INFO 🔍 [API] Tool call: tools 'load_tool' (sub_func: None) with payload: {"id":"filesystem"}
+2026-11-25T19:55:01.568780Z  INFO 🔌 [McpClient] Starting MCP server 'filesystem' in "<engine-home>\\workspace": npx ["-y", "@modelcontextprotocol/server-filesystem@2.2.0", "."]
+2026-11-25T19:55:01.596834Z  WARN Commands are not OS-confined here (on Windows auto mode does not confine, because tools such as Node.js and a per-user Python cannot start inside an AppContainer; confine with `cluaiz permission os-sandbox required`); the allow/ask/deny policy still applies
+2026-11-25T19:55:13.650599Z  INFO 📦 [Tools] load_tool("filesystem") -> Some("filesystem")
+2026-11-25T19:55:13.653190Z  INFO ✅ [API] Tool 'load_tool' done (6547 chars)
+2026-11-25T19:55:13.653299Z  INFO 🔄 [API] Step 2: generating again with the tool result
+2026-11-25T19:55:14.462008Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:55:14.462102Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:55:14.462229Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636514
+2026-11-25T19:55:16.389860Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:55:16.390239Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_file_info"]
+2026-11-25T19:55:16.390299Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 3738 tokens in 762 ms (4908.61 t/s) | generation 21 tokens in 185 ms (113.70 t/s)
+2026-11-25T19:55:16.390344Z  INFO 🧠 [Context] prompt 4313 tokens (575 from the cache) | context 4334 of 16128 | stop eos
+2026-11-25T19:55:16.393992Z  INFO 🔍 [API] Tool call: mcp 'filesystem' (sub_func: Some("get_file_info")) with payload: {"path":"README.md"}
+2026-11-25T19:57:16.403913Z  WARN ⏱️ [API] Confirmation timed out for tool 'filesystem'
+2026-11-25T19:57:16.404547Z  INFO 🔄 [API] Step 3: generating again with the tool result
+2026-11-25T19:57:16.520878Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:57:16.520970Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:57:16.521061Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636636
+2026-11-25T19:57:17.052660Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:57:17.052885Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T19:57:17.052947Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 79 tokens in 336 ms (235.05 t/s) | generation 30 tokens in 248 ms (121.00 t/s)
+2026-11-25T19:57:17.052992Z  INFO 🧠 [Context] prompt 4388 tokens (4309 from the cache) | context 4418 of 16128 | stop eos
+2026-11-25T19:57:17.884061Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-25T19:57:17.915276Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-25T19:57:17.921324Z  INFO 🪶 [Tools] Small model (596049920 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:57:17.922584Z  INFO ⏱️ [Preflight] 42 ms total | model load 17 ms | registry + template + tags 13 ms | skills + tools 6 ms | rest 0 ms
+2026-11-25T19:57:17.957586Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:57:17.957675Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:57:17.957760Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636637
+2026-11-25T19:57:19.378612Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:57:19.379027Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["find_tools"]
+2026-11-25T19:57:19.379101Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 69 tokens in 27 ms (2566.30 t/s) | generation 21 tokens in 145 ms (144.77 t/s)
+2026-11-25T19:57:19.379142Z  INFO 🧠 [Context] prompt 644 tokens (575 from the cache) | context 665 of 16128 | stop eos
+2026-11-25T19:57:19.379249Z  INFO 🔍 [API] Tool call: tools 'find_tools' (sub_func: None) with payload: {"query":"get_weather"}
+2026-11-25T19:57:19.379422Z  INFO 🔎 [Tools] find_tools("get_weather")
+2026-11-25T19:57:19.379689Z  INFO ✅ [API] Tool 'find_tools' done (153 chars)
+2026-11-25T19:57:19.379746Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-25T19:57:19.420281Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:57:19.420451Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:57:19.420577Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636639
+2026-11-25T19:57:21.757954Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:57:21.758372Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_tool_file"]
+2026-11-25T19:57:21.758441Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 77 tokens in 30 ms (2536.06 t/s) | generation 34 tokens in 360 ms (94.38 t/s)
+2026-11-25T19:57:21.758493Z  INFO 🧠 [Context] prompt 717 tokens (640 from the cache) | context 751 of 16128 | stop eos
+2026-11-25T19:57:21.759376Z  INFO 🔍 [API] Tool call: tools 'read_tool_file' (sub_func: None) with payload: {"id":"get_weather","path":"C:\temp\tools\tools.json"}
+2026-11-25T19:57:21.762176Z  INFO 📄 [Tools] read_tool_file("get_weather", "C:	emp	ools	ools.json") -> 45 chars
+2026-11-25T19:57:21.762285Z  INFO ✅ [API] Tool 'read_tool_file' done (45 chars)
+2026-11-25T19:57:21.762360Z  INFO 🔄 [API] Step 2: generating again with the tool result
+2026-11-25T19:57:21.797063Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:57:21.797150Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:57:21.797228Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636641
+2026-11-25T19:57:23.601699Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:57:23.602098Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["load_tool"]
+2026-11-25T19:57:23.602152Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 62 tokens in 48 ms (1281.68 t/s) | generation 20 tokens in 640 ms (31.23 t/s)
+2026-11-25T19:57:23.602192Z  INFO 🧠 [Context] prompt 775 tokens (713 from the cache) | context 795 of 16128 | stop eos
+2026-11-25T19:57:23.602549Z  INFO 🔍 [API] Tool call: tools 'load_tool' (sub_func: None) with payload: {"id":"get_weather"}
+2026-11-25T19:57:23.606084Z  INFO 📦 [Tools] load_tool("get_weather") -> None
+2026-11-25T19:57:23.606195Z  INFO ✅ [API] Tool 'load_tool' done (80 chars)
+2026-11-25T19:57:23.606298Z  INFO 🔄 [API] Step 3: generating again with the tool result
+2026-11-25T19:57:23.636559Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:57:23.636640Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:57:23.636787Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636643
+2026-11-25T19:57:25.670523Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:57:25.670922Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["load_tool"]
+2026-11-25T19:57:25.670995Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 55 tokens in 100 ms (550.35 t/s) | generation 19 tokens in 621 ms (30.60 t/s)
+2026-11-25T19:57:25.671055Z  INFO 🧠 [Context] prompt 826 tokens (771 from the cache) | context 845 of 16128 | stop eos
+2026-11-25T19:57:25.671182Z  INFO 🔍 [API] Tool call: tools 'load_tool' (sub_func: None) with payload: {"id":"math"}
+2026-11-25T19:57:25.676915Z  INFO 📦 [Tools] load_tool("math") -> Some("math")
+2026-11-25T19:57:25.678212Z  INFO ✅ [API] Tool 'load_tool' done (2841 chars)
+2026-11-25T19:57:25.678388Z  INFO 🔄 [API] Step 4: generating again with the tool result
+2026-11-25T19:57:26.024183Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:57:26.024288Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:57:26.024393Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636646
+2026-11-25T19:57:28.075127Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:57:28.075559Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["math_evaluate"]
+2026-11-25T19:57:28.075624Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1514 tokens in 365 ms (4149.76 t/s) | generation 29 tokens in 238 ms (121.73 t/s)
+2026-11-25T19:57:28.075676Z  INFO 🧠 [Context] prompt 2089 tokens (575 from the cache) | context 2118 of 16128 | stop eos
+2026-11-25T19:57:28.079203Z  INFO 🔍 [API] Tool call: plugin 'math' (sub_func: Some("math_evaluate")) with payload: {"expression":"170!","precision":10}
+2026-11-25T19:57:28.081085Z  INFO ⚡ [PluginExecutor] Executing plugin binary at: "<engine-home>\\tools\\plugins\\math\\math.wasm"
+2026-11-25T19:57:33.042159Z  INFO ✅ [API] Tool 'math' done (474 chars)
+2026-11-25T19:57:33.042665Z  INFO 🔄 [API] Step 5: generating again with the tool result
+2026-11-25T19:57:33.096562Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:57:33.096665Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:57:33.096777Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636653
+2026-11-25T19:57:34.001439Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T19:57:34.001524Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 422 tokens in 341 ms (1237.08 t/s) | generation 77 tokens in 536 ms (143.57 t/s)
+2026-11-25T19:57:34.001566Z  INFO 🧠 [Context] prompt 2507 tokens (2085 from the cache) | context 2584 of 16128 | stop limit
+2026-11-25T19:57:34.827637Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-25T19:57:34.853975Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-25T19:57:34.855440Z  INFO 🪶 [Tools] Small model (596049920 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:57:34.856686Z  INFO ⏱️ [Preflight] 32 ms total | model load 14 ms | registry + template + tags 11 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T19:57:34.892616Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:57:34.892717Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:57:34.892797Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636654
+2026-11-25T19:57:36.827094Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:57:36.827424Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["find_tools"]
+2026-11-25T19:57:36.827504Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 69 tokens in 26 ms (2654.56 t/s) | generation 25 tokens in 185 ms (134.83 t/s)
+2026-11-25T19:57:36.827554Z  INFO 🧠 [Context] prompt 644 tokens (575 from the cache) | context 669 of 16128 | stop eos
+2026-11-25T19:57:36.827726Z  INFO 🔍 [API] Tool call: tools 'find_tools' (sub_func: None) with payload: {"query":"tool for fetching fictional person information"}
+2026-11-25T19:57:36.827969Z  INFO 🔎 [Tools] find_tools("tool for fetching fictional person information")
+2026-11-25T19:57:36.828639Z  INFO ✅ [API] Tool 'find_tools' done (153 chars)
+2026-11-25T19:57:36.828722Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-25T19:57:36.863570Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:57:36.863663Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:57:36.863773Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636656
+2026-11-25T19:57:38.649477Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:57:38.650170Z  INFO 🔍 [API] Tool call: tools 'load_tool' (sub_func: None) with payload: {"id":"tool for fetching fictional person information"}
+2026-11-25T19:57:38.650352Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["load_tool"]
+2026-11-25T19:57:38.650467Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 81 tokens in 36 ms (2275.86 t/s) | generation 24 tokens in 276 ms (86.98 t/s)
+2026-11-25T19:57:38.650522Z  INFO 🧠 [Context] prompt 721 tokens (640 from the cache) | context 745 of 16128 | stop eos
+2026-11-25T19:57:38.652604Z  INFO 📦 [Tools] load_tool("tool for fetching fictional person information") -> None
+2026-11-25T19:57:38.652676Z  INFO ✅ [API] Tool 'load_tool' done (115 chars)
+2026-11-25T19:57:38.652748Z  INFO 🔄 [API] Step 2: generating again with the tool result
+2026-11-25T19:57:38.685197Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:57:38.685292Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:57:38.685476Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636658
+2026-11-25T19:57:41.480191Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:57:41.480637Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_tool_file"]
+2026-11-25T19:57:41.480705Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 63 tokens in 46 ms (1371.80 t/s) | generation 30 tokens in 848 ms (35.39 t/s)
+2026-11-25T19:57:41.480753Z  INFO 🧠 [Context] prompt 780 tokens (717 from the cache) | context 810 of 16128 | stop eos
+2026-11-25T19:57:41.480897Z  INFO 🔍 [API] Tool call: tools 'read_tool_file' (sub_func: None) with payload: {"id":"tool for fetching fictional person information","path":"."}
+2026-11-25T19:57:41.483416Z  INFO 📄 [Tools] read_tool_file("tool for fetching fictional person information", ".") -> 80 chars
+2026-11-25T19:57:41.483503Z  INFO ✅ [API] Tool 'read_tool_file' done (80 chars)
+2026-11-25T19:57:41.483590Z  INFO 🔄 [API] Step 3: generating again with the tool result
+2026-11-25T19:57:41.522826Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:57:41.522932Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:57:41.523018Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636661
+2026-11-25T19:57:41.874754Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:57:41.874949Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T19:57:41.874995Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 62 tokens in 108 ms (572.35 t/s) | generation 27 tokens in 245 ms (109.98 t/s)
+2026-11-25T19:57:41.875032Z  INFO 🧠 [Context] prompt 838 tokens (776 from the cache) | context 865 of 16128 | stop eos
+2026-11-25T19:57:42.699297Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-25T19:57:42.729246Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-25T19:57:42.730594Z  INFO 🪶 [Tools] Small model (596049920 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:57:42.731965Z  INFO ⏱️ [Preflight] 36 ms total | model load 20 ms | registry + template + tags 9 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T19:57:42.787566Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:57:42.787636Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:57:42.787703Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636662
+2026-11-25T19:57:42.898778Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:57:42.899021Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T19:57:42.899063Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 4 tokens in 47 ms (85.01 t/s) | generation 16 tokens in 101 ms (158.74 t/s)
+2026-11-25T19:57:42.899091Z  INFO 🧠 [Context] prompt 644 tokens (640 from the cache) | context 660 of 16128 | stop eos
+2026-11-25T19:57:43.725883Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-25T19:57:43.762256Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-25T19:57:43.763755Z  INFO 🪶 [Tools] Small model (596049920 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:57:43.765747Z  INFO ⏱️ [Preflight] 44 ms total | model load 23 ms | registry + template + tags 13 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T19:57:43.778904Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:57:43.779004Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:57:43.779101Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636663
+2026-11-25T19:57:43.890985Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:57:43.891661Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T19:57:43.891743Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 18 tokens in 102 ms (176.93 t/s)
+2026-11-25T19:57:43.891790Z  INFO 🧠 [Context] prompt 644 tokens (643 from the cache) | context 661 of 16128 | stop eos
+2026-11-25T19:57:44.732354Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-25T19:57:44.755874Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-25T19:57:44.757228Z  INFO 🪶 [Tools] Small model (596049920 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:57:44.758674Z  INFO ⏱️ [Preflight] 30 ms total | model load 13 ms | registry + template + tags 9 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T19:57:44.769739Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:57:44.769817Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:57:44.769887Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636664
+2026-11-25T19:57:44.865245Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:57:44.865572Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T19:57:44.865636Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 16 tokens in 89 ms (179.10 t/s)
+2026-11-25T19:57:44.865695Z  INFO 🧠 [Context] prompt 644 tokens (643 from the cache) | context 659 of 16128 | stop eos
+2026-11-25T19:57:45.690726Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-25T19:57:45.716698Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-25T19:57:45.718250Z  INFO 🪶 [Tools] Small model (596049920 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:57:45.719441Z  INFO ⏱️ [Preflight] 32 ms total | model load 16 ms | registry + template + tags 9 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T19:57:45.729221Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:57:45.729294Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:57:45.729369Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636665
+2026-11-25T19:57:47.368388Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:57:47.368852Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["find_tools"]
+2026-11-25T19:57:47.368908Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 23 tokens in 153 ms (150.68 t/s)
+2026-11-25T19:57:47.369014Z  INFO 🧠 [Context] prompt 644 tokens (643 from the cache) | context 666 of 16128 | stop eos
+2026-11-25T19:57:47.369096Z  INFO 🔍 [API] Tool call: tools 'find_tools' (sub_func: None) with payload: {"query":"fictitious person"}
+2026-11-25T19:57:47.371617Z  INFO 🔎 [Tools] find_tools("fictitious person")
+2026-11-25T19:57:47.371983Z  INFO ✅ [API] Tool 'find_tools' done (123 chars)
+2026-11-25T19:57:47.372067Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-25T19:57:47.404183Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:57:47.404264Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:57:47.404350Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636667
+2026-11-25T19:57:48.700219Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:57:48.700576Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["load_tool"]
+2026-11-25T19:57:48.700636Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 67 tokens in 31 ms (2140.03 t/s) | generation 19 tokens in 208 ms (91.33 t/s)
+2026-11-25T19:57:48.700682Z  INFO 🧠 [Context] prompt 707 tokens (640 from the cache) | context 726 of 16128 | stop eos
+2026-11-25T19:57:48.700823Z  INFO 🔍 [API] Tool call: tools 'load_tool' (sub_func: None) with payload: {"id":"math"}
+2026-11-25T19:57:48.704263Z  INFO 📦 [Tools] load_tool("math") -> Some("math")
+2026-11-25T19:57:48.705789Z  INFO ✅ [API] Tool 'load_tool' done (2841 chars)
+2026-11-25T19:57:48.705884Z  INFO 🔄 [API] Step 2: generating again with the tool result
+2026-11-25T19:57:48.988673Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:57:48.988766Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:57:48.988882Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636668
+2026-11-25T19:57:51.114669Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:57:51.115083Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["math_evaluate"]
+2026-11-25T19:57:51.115168Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1395 tokens in 299 ms (4671.43 t/s) | generation 30 tokens in 225 ms (133.12 t/s)
+2026-11-25T19:57:51.115223Z  INFO 🧠 [Context] prompt 1970 tokens (575 from the cache) | context 2000 of 16128 | stop eos
+2026-11-25T19:57:51.119072Z  INFO 🔍 [API] Tool call: plugin 'math' (sub_func: Some("math_evaluate")) with payload: {"expression":"10 + 5","precision":2}
+2026-11-25T19:57:51.121080Z  INFO ⚡ [PluginExecutor] Executing plugin binary at: "<engine-home>\\tools\\plugins\\math\\math.wasm"
+2026-11-25T19:57:55.999726Z  INFO ✅ [API] Tool 'math' done (76 chars)
+2026-11-25T19:57:56.000346Z  INFO 🔄 [API] Step 3: generating again with the tool result
+2026-11-25T19:57:56.060433Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:57:56.060523Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:57:56.060614Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636676
+2026-11-25T19:57:56.573165Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:57:56.573408Z  INFO 🧰 [NativeTools] A call without its opening tag: math_evaluate
+2026-11-25T19:57:56.573580Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T19:57:56.573637Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 75 tokens in 333 ms (225.41 t/s) | generation 28 tokens in 204 ms (137.58 t/s)
+2026-11-25T19:57:56.573690Z  INFO 🧠 [Context] prompt 2041 tokens (1966 from the cache) | context 2069 of 16128 | stop eos
+2026-11-25T19:57:56.577128Z  INFO 🔍 [API] Tool call: plugin 'math' (sub_func: Some("math_evaluate")) with payload: {"expression":"10 + 5","precision":2}
+2026-11-25T19:57:56.579375Z  INFO ⚡ [PluginExecutor] Executing plugin binary at: "<engine-home>\\tools\\plugins\\math\\math.wasm"
+2026-11-25T19:58:01.449257Z  INFO ✅ [API] Tool 'math' done (76 chars)
+2026-11-25T19:58:01.449870Z  INFO 🔄 [API] Step 4: generating again with the tool result
+2026-11-25T19:58:01.491327Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:58:01.491420Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:58:01.491511Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636681
+2026-11-25T19:58:01.927703Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:58:01.927955Z  INFO 🧰 [NativeTools] A call without its opening tag: math_evaluate
+2026-11-25T19:58:01.928135Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T19:58:01.928197Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 75 tokens in 237 ms (316.94 t/s) | generation 28 tokens in 200 ms (139.72 t/s)
+2026-11-25T19:58:01.928249Z  INFO 🧠 [Context] prompt 2112 tokens (2037 from the cache) | context 2140 of 16128 | stop eos
+2026-11-25T19:58:01.931515Z  INFO 🔍 [API] Tool call: plugin 'math' (sub_func: Some("math_evaluate")) with payload: {"expression":"10 * 5","precision":2}
+2026-11-25T19:58:01.933805Z  INFO ⚡ [PluginExecutor] Executing plugin binary at: "<engine-home>\\tools\\plugins\\math\\math.wasm"
+2026-11-25T19:58:06.844291Z  INFO ✅ [API] Tool 'math' done (76 chars)
+2026-11-25T19:58:06.844910Z  INFO 🔄 [API] Step 5: generating again with the tool result
+2026-11-25T19:58:06.887788Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:58:06.887876Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:58:06.887955Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636686
+2026-11-25T19:58:09.360241Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:58:09.360644Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["math_evaluate"]
+2026-11-25T19:58:09.360712Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 75 tokens in 250 ms (300.10 t/s) | generation 30 tokens in 247 ms (121.28 t/s)
+2026-11-25T19:58:09.360757Z  INFO 🧠 [Context] prompt 2183 tokens (2108 from the cache) | context 2213 of 16128 | stop eos
+2026-11-25T19:58:09.364140Z  INFO 🔍 [API] Tool call: plugin 'math' (sub_func: Some("math_evaluate")) with payload: {"expression":"10 * 5","precision":2}
+2026-11-25T19:58:09.366401Z  INFO ⚡ [PluginExecutor] Executing plugin binary at: "<engine-home>\\tools\\plugins\\math\\math.wasm"
+2026-11-25T19:58:14.415058Z  INFO ✅ [API] Tool 'math' done (76 chars)
+2026-11-25T19:58:14.415647Z  INFO 🔄 [API] Step 6: generating again with the tool result
+2026-11-25T19:58:14.464151Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:58:14.464232Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:58:14.464330Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636694
+2026-11-25T19:58:14.933249Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:58:14.933472Z  INFO 🧰 [NativeTools] A call without its opening tag: math_evaluate
+2026-11-25T19:58:14.933629Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T19:58:14.933682Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 75 tokens in 279 ms (268.46 t/s) | generation 28 tokens in 197 ms (141.88 t/s)
+2026-11-25T19:58:14.933720Z  INFO 🧠 [Context] prompt 2254 tokens (2179 from the cache) | context 2282 of 16128 | stop eos
+2026-11-25T19:58:14.934065Z  INFO 🔄 [API] Step 7: generating again with the tool result
+2026-11-25T19:58:14.988834Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:58:14.988919Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:58:14.988998Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636694
+2026-11-25T19:58:15.094474Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T19:58:15.094565Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 84 tokens in 27 ms (3072.42 t/s) | generation 13 tokens in 96 ms (136.02 t/s)
+2026-11-25T19:58:15.094612Z  INFO 🧠 [Context] prompt 2334 tokens (2250 from the cache) | context 2347 of 16128 | stop limit
+2026-11-25T19:58:15.922889Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-25T19:58:15.959089Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-25T19:58:15.960451Z  INFO 🪶 [Tools] Small model (596049920 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:58:15.962044Z  INFO ⏱️ [Preflight] 42 ms total | model load 25 ms | registry + template + tags 10 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T19:58:15.992239Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:58:15.992327Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:58:15.992473Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636695
+2026-11-25T19:58:17.459815Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:58:17.460214Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["find_tools"]
+2026-11-25T19:58:17.460279Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 69 tokens in 22 ms (3068.17 t/s) | generation 23 tokens in 168 ms (137.27 t/s)
+2026-11-25T19:58:17.460331Z  INFO 🧠 [Context] prompt 644 tokens (575 from the cache) | context 667 of 16128 | stop eos
+2026-11-25T19:58:17.460486Z  INFO 🔍 [API] Tool call: tools 'find_tools' (sub_func: None) with payload: {"query":"fictitious_person"}
+2026-11-25T19:58:17.460692Z  INFO 🔎 [Tools] find_tools("fictitious_person")
+2026-11-25T19:58:17.461071Z  INFO ✅ [API] Tool 'find_tools' done (123 chars)
+2026-11-25T19:58:17.461150Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-25T19:58:17.494702Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:58:17.494793Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:58:17.494889Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636697
+2026-11-25T19:58:18.789224Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:58:18.789616Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["load_tool"]
+2026-11-25T19:58:18.789669Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 67 tokens in 29 ms (2280.62 t/s) | generation 19 tokens in 193 ms (98.59 t/s)
+2026-11-25T19:58:18.789706Z  INFO 🧠 [Context] prompt 707 tokens (640 from the cache) | context 726 of 16128 | stop eos
+2026-11-25T19:58:18.789901Z  INFO 🔍 [API] Tool call: tools 'load_tool' (sub_func: None) with payload: {"id":"math"}
+2026-11-25T19:58:18.794497Z  INFO 📦 [Tools] load_tool("math") -> Some("math")
+2026-11-25T19:58:18.795777Z  INFO ✅ [API] Tool 'load_tool' done (2841 chars)
+2026-11-25T19:58:18.795873Z  INFO 🔄 [API] Step 2: generating again with the tool result
+2026-11-25T19:58:19.156921Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:58:19.157003Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:58:19.157089Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636699
+2026-11-25T19:58:21.408070Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:58:21.408484Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["math_evaluate"]
+2026-11-25T19:58:21.408549Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1395 tokens in 375 ms (3716.18 t/s) | generation 29 tokens in 230 ms (126.15 t/s)
+2026-11-25T19:58:21.408600Z  INFO 🧠 [Context] prompt 1970 tokens (575 from the cache) | context 1999 of 16128 | stop eos
+2026-11-25T19:58:21.412247Z  INFO 🔍 [API] Tool call: plugin 'math' (sub_func: Some("math_evaluate")) with payload: {"expression":"sqrt(144) * 25"}
+2026-11-25T19:58:21.414402Z  INFO ⚡ [PluginExecutor] Executing plugin binary at: "<engine-home>\\tools\\plugins\\math\\math.wasm"
+2026-11-25T19:58:26.999230Z  INFO ✅ [API] Tool 'math' done (83 chars)
+2026-11-25T19:58:26.999789Z  INFO 🔄 [API] Step 3: generating again with the tool result
+2026-11-25T19:58:27.096706Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:58:27.096811Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:58:27.096909Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636707
+2026-11-25T19:58:27.663660Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:58:27.664015Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T19:58:27.664079Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 78 tokens in 337 ms (231.57 t/s) | generation 36 tokens in 270 ms (133.16 t/s)
+2026-11-25T19:58:27.664121Z  INFO 🧠 [Context] prompt 2044 tokens (1966 from the cache) | context 2080 of 16128 | stop eos
+2026-11-25T19:58:28.493231Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-25T19:58:28.524165Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.04 ms
+2026-11-25T19:58:28.525524Z  INFO 🪶 [Tools] Small model (596049920 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:58:28.526674Z  INFO ⏱️ [Preflight] 38 ms total | model load 17 ms | registry + template + tags 13 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T19:58:28.556304Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:58:28.556392Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:58:28.556468Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636708
+2026-11-25T19:58:31.392969Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:58:31.393493Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["find_tools"]
+2026-11-25T19:58:31.393600Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 69 tokens in 23 ms (3046.22 t/s) | generation 30 tokens in 251 ms (119.60 t/s)
+2026-11-25T19:58:31.393666Z  INFO 🔍 [API] Tool call: tools 'find_tools' (sub_func: None) with payload: {"query":"find a tool that can retrieve information about a fictional person"}
+2026-11-25T19:58:31.393683Z  INFO 🧠 [Context] prompt 644 tokens (575 from the cache) | context 674 of 16128 | stop eos
+2026-11-25T19:58:31.395873Z  INFO 🔎 [Tools] find_tools("find a tool that can retrieve information about a fictional person")
+2026-11-25T19:58:31.396496Z  INFO ✅ [API] Tool 'find_tools' done (317 chars)
+2026-11-25T19:58:31.396584Z  INFO 🔄 [API] Step 1: generating again with the tool result
+2026-11-25T19:58:31.437039Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:58:31.437132Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:58:31.437223Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636711
+2026-11-25T19:58:34.703246Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:58:34.703679Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["read_tool_file"]
+2026-11-25T19:58:34.703743Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 125 tokens in 53 ms (2352.37 t/s) | generation 29 tokens in 739 ms (39.25 t/s)
+2026-11-25T19:58:34.703787Z  INFO 🧠 [Context] prompt 765 tokens (640 from the cache) | context 794 of 16128 | stop eos
+2026-11-25T19:58:34.703962Z  INFO 🔍 [API] Tool call: tools 'read_tool_file' (sub_func: None) with payload: {"id":"math","path":"instructions/math/learn"}
+2026-11-25T19:58:34.708724Z  INFO 📄 [Tools] read_tool_file("math", "instructions/math/learn") -> 192 chars
+2026-11-25T19:58:34.708858Z  INFO ✅ [API] Tool 'read_tool_file' done (192 chars)
+2026-11-25T19:58:34.708954Z  INFO 🔄 [API] Step 2: generating again with the tool result
+2026-11-25T19:58:34.740395Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:58:34.740474Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:58:34.740550Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636714
+2026-11-25T19:58:34.996367Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:58:34.996699Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T19:58:34.996763Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 94 tokens in 137 ms (685.48 t/s) | generation 16 tokens in 127 ms (126.06 t/s)
+2026-11-25T19:58:34.996811Z  INFO 🧠 [Context] prompt 855 tokens (761 from the cache) | context 871 of 16128 | stop eos
+2026-11-25T19:58:35.826104Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-25T19:58:35.862159Z  INFO 🧮 [Tokens] Conversation 131 tokens (2 messages) counted in 0.03 ms
+2026-11-25T19:58:35.863658Z  INFO 🪶 [Tools] Small model (596049920 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:58:35.864938Z  INFO ⏱️ [Preflight] 43 ms total | model load 24 ms | registry + template + tags 11 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T19:58:35.891505Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:58:35.891592Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:58:35.891678Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636715
+2026-11-25T19:58:35.978838Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:58:35.979120Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T19:58:35.979185Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 4 tokens in 19 ms (207.03 t/s) | generation 12 tokens in 77 ms (154.90 t/s)
+2026-11-25T19:58:35.979228Z  INFO 🧠 [Context] prompt 644 tokens (640 from the cache) | context 656 of 16128 | stop eos
+2026-11-25T19:58:36.504713Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-25T19:58:36.527101Z  INFO 🧮 [Tokens] Conversation 119 tokens (2 messages) counted in 0.03 ms
+2026-11-25T19:58:36.528364Z  INFO 🪶 [Tools] Small model (596049920 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:58:36.529535Z  INFO ⏱️ [Preflight] 28 ms total | model load 13 ms | registry + template + tags 9 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T19:58:36.560806Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:58:36.560893Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636716
+2026-11-25T19:58:36.598584Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-25T19:58:36.598669Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 57 tokens in 25 ms (2264.51 t/s) | generation 4 tokens in 33 ms (121.40 t/s)
+2026-11-25T19:58:36.598722Z  INFO 🧠 [Context] prompt 577 tokens (520 from the cache) | context 581 of 16128 | stop limit
+2026-11-25T19:58:36.918425Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-25T19:58:36.951461Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.15 ms
+2026-11-25T19:58:36.952908Z  INFO 🪶 [Tools] Small model (596049920 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:58:36.954208Z  INFO ⏱️ [Preflight] 40 ms total | model load 18 ms | registry + template + tags 13 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T19:58:37.001050Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:58:37.001151Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:58:37.001248Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636717
+2026-11-25T19:58:38.462261Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:58:38.462657Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-25T19:58:38.462784Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 120 tokens in 34 ms (3520.40 t/s) | generation 19 tokens in 155 ms (122.41 t/s)
+2026-11-25T19:58:38.462848Z  INFO 🧠 [Context] prompt 640 tokens (520 from the cache) | context 659 of 16128 | stop eos
+2026-11-25T19:58:39.292344Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-25T19:58:39.329642Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.03 ms
+2026-11-25T19:58:39.331092Z  INFO 🪶 [Tools] Small model (596049920 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:58:39.332386Z  INFO ⏱️ [Preflight] 43 ms total | model load 25 ms | registry + template + tags 11 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T19:58:39.343854Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:58:39.343917Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:58:39.343974Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636719
+2026-11-25T19:58:40.631258Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:58:40.631650Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-25T19:58:40.631712Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 20 tokens in 250 ms (79.89 t/s)
+2026-11-25T19:58:40.631763Z  INFO 🧠 [Context] prompt 640 tokens (639 from the cache) | context 659 of 16128 | stop eos
+2026-11-25T19:58:41.471337Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-25T19:58:41.510932Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.03 ms
+2026-11-25T19:58:41.512301Z  INFO 🪶 [Tools] Small model (596049920 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:58:41.513497Z  INFO ⏱️ [Preflight] 46 ms total | model load 28 ms | registry + template + tags 11 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T19:58:41.523484Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:58:41.523685Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:58:41.523885Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636721
+2026-11-25T19:58:43.196243Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:58:43.196640Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-25T19:58:43.196708Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 20 tokens in 605 ms (33.07 t/s)
+2026-11-25T19:58:43.196759Z  INFO 🧠 [Context] prompt 640 tokens (639 from the cache) | context 659 of 16128 | stop eos
+2026-11-25T19:58:44.044909Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-25T19:58:44.088485Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.04 ms
+2026-11-25T19:58:44.089823Z  INFO 🪶 [Tools] Small model (596049920 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:58:44.091103Z  INFO ⏱️ [Preflight] 50 ms total | model load 29 ms | registry + template + tags 13 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T19:58:44.103800Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:58:44.103889Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:58:44.103971Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636724
+2026-11-25T19:58:45.925329Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:58:45.925749Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-25T19:58:45.925815Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 20 tokens in 672 ms (29.77 t/s)
+2026-11-25T19:58:45.925865Z  INFO 🧠 [Context] prompt 640 tokens (639 from the cache) | context 659 of 16128 | stop eos
+2026-11-25T19:58:46.772943Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-25T19:58:46.798878Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.04 ms
+2026-11-25T19:58:46.800584Z  INFO 🪶 [Tools] Small model (596049920 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:58:46.801929Z  INFO ⏱️ [Preflight] 33 ms total | model load 13 ms | registry + template + tags 12 ms | skills + tools 2 ms | rest 0 ms
+2026-11-25T19:58:46.817200Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:58:46.817333Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:58:46.817446Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636726
+2026-11-25T19:58:48.811618Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:58:48.812035Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-25T19:58:48.812095Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 20 tokens in 699 ms (28.62 t/s)
+2026-11-25T19:58:48.812134Z  INFO 🧠 [Context] prompt 640 tokens (639 from the cache) | context 659 of 16128 | stop eos
+2026-11-25T19:58:49.642381Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-25T19:58:49.682308Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.03 ms
+2026-11-25T19:58:49.683901Z  INFO 🪶 [Tools] Small model (596049920 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:58:49.685106Z  INFO ⏱️ [Preflight] 47 ms total | model load 28 ms | registry + template + tags 11 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T19:58:49.696952Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:58:49.697032Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:58:49.697149Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636729
+2026-11-25T19:58:51.687504Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:58:51.687919Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-25T19:58:51.687991Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 20 tokens in 678 ms (29.49 t/s)
+2026-11-25T19:58:51.688037Z  INFO 🧠 [Context] prompt 640 tokens (639 from the cache) | context 659 of 16128 | stop eos
+2026-11-25T19:58:52.513831Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-25T19:58:52.546938Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.04 ms
+2026-11-25T19:58:52.548343Z  INFO 🪶 [Tools] Small model (596049920 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:58:52.549843Z  INFO ⏱️ [Preflight] 39 ms total | model load 18 ms | registry + template + tags 14 ms | skills + tools 1 ms | rest 1 ms
+2026-11-25T19:58:52.563210Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:58:52.563363Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:58:52.563447Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636732
+2026-11-25T19:58:54.343066Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:58:54.343501Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-25T19:58:54.343598Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 20 tokens in 401 ms (49.88 t/s)
+2026-11-25T19:58:54.343647Z  INFO 🧠 [Context] prompt 640 tokens (639 from the cache) | context 659 of 16128 | stop eos
+2026-11-25T19:58:55.180607Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-25T19:58:55.219085Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.03 ms
+2026-11-25T19:58:55.220446Z  INFO 🪶 [Tools] Small model (596049920 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:58:55.221749Z  INFO ⏱️ [Preflight] 44 ms total | model load 27 ms | registry + template + tags 11 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T19:58:55.231147Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:58:55.231225Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:58:55.231298Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636735
+2026-11-25T19:58:56.747363Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:58:56.747833Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-25T19:58:56.747920Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 20 tokens in 264 ms (75.88 t/s)
+2026-11-25T19:58:56.747971Z  INFO 🧠 [Context] prompt 640 tokens (639 from the cache) | context 659 of 16128 | stop eos
+2026-11-25T19:58:57.573009Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-25T19:58:57.600950Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.07 ms
+2026-11-25T19:58:57.602478Z  INFO 🪶 [Tools] Small model (596049920 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:58:57.604189Z  INFO ⏱️ [Preflight] 35 ms total | model load 16 ms | registry + template + tags 11 ms | skills + tools 2 ms | rest 1 ms
+2026-11-25T19:58:57.615942Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:58:57.616021Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:58:57.616105Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636737
+2026-11-25T19:58:59.371836Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:58:59.372284Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-25T19:58:59.372357Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 20 tokens in 651 ms (30.71 t/s)
+2026-11-25T19:58:59.372410Z  INFO 🧠 [Context] prompt 640 tokens (639 from the cache) | context 659 of 16128 | stop eos
+2026-11-25T19:59:00.219170Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3-0.6b-gguf-Q4_K_M' to "C:\\Users\\<user>\\AppData\\Local\\Temp\\claude\\6c30a0ef6fee852f\\8b8b6806-071f-4fe0-86dc-c1c89edfc47b\\scratchpad\\api-home\\models\\chat\\qwen3-0.6b-gguf-Q4_K_M\\Qwen3-0.6B-Q4_K_M.gguf"
+2026-11-25T19:59:00.243394Z  INFO 🧮 [Tokens] Conversation 127 tokens (2 messages) counted in 0.03 ms
+2026-11-25T19:59:00.244696Z  INFO 🪶 [Tools] Small model (596049920 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-25T19:59:00.245850Z  INFO ⏱️ [Preflight] 30 ms total | model load 13 ms | registry + template + tags 10 ms | skills + tools 1 ms | rest 0 ms
+2026-11-25T19:59:00.255832Z  INFO 📐 [NativeStream] JSON schema with callable tools: the answer is not constrained, so calls stay possible
+2026-11-25T19:59:00.255960Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-25T19:59:00.256058Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795636740
+2026-11-25T19:59:01.950634Z  INFO 🛑 [NativeStream] EOG reached for token=151645. Gracefully terminating generation.
+2026-11-25T19:59:01.951235Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["get_weather"]
+2026-11-25T19:59:01.951314Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 1 tokens in 0 ms (0.00 t/s) | generation 20 tokens in 665 ms (30.08 t/s)
+2026-11-25T19:59:01.951347Z  INFO 🧠 [Context] prompt 640 tokens (639 from the cache) | context 659 of 16128 | stop eos

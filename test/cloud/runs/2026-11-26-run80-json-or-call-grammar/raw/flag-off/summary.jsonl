@@ -1,0 +1,2 @@
+{"case": "f_json_schema_with_tool", "exe": "debug", "valid": 3, "n": 10, "constrained_log": 0, "median_s": 7.056, "prompt_n": [1, 4, 62, 78, 79, 84, 94, 422]}
+{"case": "f2_schema_tool_weather_question", "exe": "debug", "valid": 10, "n": 10, "constrained_log": 0, "median_s": 1.808, "prompt_n": [1, 120]}
