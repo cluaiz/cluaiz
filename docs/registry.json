@@ -36,6 +36,11 @@
             "slug": "features",
             "title": "🗂️ All Engine Features",
             "file_path": "docs/reference/features.md"
+          },
+          {
+            "slug": "benchmarks",
+            "title": "📊 Benchmarks",
+            "file_path": "docs/reference/benchmarks.md"
           }
         ]
       }

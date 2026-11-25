@@ -1386,6 +1386,13 @@
   "metadata": true
  },
  {
+  "title": "Benchmarks",
+  "description": "Cluaiz against official llama.cpp and Ollama on the same model files and placements: the short answer, then every table with its run.",
+  "kind": "docs",
+  "path": "docs/reference/benchmarks.md",
+  "metadata": true
+ },
+ {
   "title": "C library and FFI memory rules",
   "description": "Memory and pointer rules for calling the Engine's C library; how to build it, as releases do not include it yet.",
   "kind": "docs",

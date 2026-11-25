@@ -52,4 +52,16 @@ flowchart TD
 * The planner reads the [hardware profile](../engine/system_control.md) and the model size and
   chooses the GPU layers and context size.
 
-More: [ARCHITECTURE.md](../../ARCHITECTURE.md).
+## When a load does not fit or fails
+
+| Situation | What the engine does |
+| :--- | :--- |
+| The model does not fit any placement | The planner refuses before loading and says how much is missing (free memory, lower the context, or a smaller quantization). |
+| The planner's estimate is off | llama.cpp's own dry run corrects the estimate once per model; after a load, the measured VRAM is kept as a learned margin for the next plan. |
+| llama.cpp cannot allocate the planned GPU layers | The load is retried with fewer GPU layers, then on the CPU if the model fits the free RAM; the response reports the fallback. |
+| A load would page the model from the disk without end | A CPU load larger than the free RAM is refused instead of thrashing the SSD (MoE experts are the exception the planner chooses on purpose). |
+| The user sets placement or memory values | They are passed to llama.cpp as they are; the planner only reports its estimate. |
+| A GPU pack or driver is missing | ggml skips that backend and the model runs on the CPU. |
+
+More: [ARCHITECTURE.md](../../ARCHITECTURE.md), and the crate list with each crate's README in
+[`engine/README.md`](../../engine/README.md).
