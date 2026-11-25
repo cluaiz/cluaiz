@@ -100,7 +100,8 @@ No HTTP request is needed for the local CLI path. There is one EngineHost for th
   Canonical paths prevent a symlink from being mistaken for an inside-workspace target.
 - Changes require approval unless the caller explicitly enabled a session grant. The prompt names
   the actual operation; instructions preserve case. `/ask` clears earlier tool grants.
-- Incomplete calls and token-limit tool answers return errors without executing them. A failed
+- Incomplete calls are not executed. A call cut by the token limit is not run: the reply is the text
+  before it (since 2026-11-25, run 73). A failed
   shell command stays a failed tool result with its real exit code. Cancellation cannot undo an
   already completed external action.
 - A closed UI denies a pending approval. Screen setup/draw failures restore modes through the

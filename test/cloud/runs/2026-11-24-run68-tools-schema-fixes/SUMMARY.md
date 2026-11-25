@@ -57,7 +57,7 @@ only Engine functions -> those left out (logged); `tool_choice` -> `inputs.tool_
 | d GBNF yes/no, no tools | 10 / 10 | 10 / 10 |
 | e get_weather, required, weather question | 10 / 0 (lazy) | 10 / 10 (strict) |
 | f json_schema + get_weather (auto) | 6 / 0 | 10 / 10 |
-| f2 json_schema + get_weather, weather question | 10 / 0 (calls) | 10 / 10 (calls) |
+| f2 json_schema + get_weather, weather question | 10 / 0, 10 / 10 calls | 10 / 10, but 0 / 10 calls: the model wrote the schema's JSON instead of calling (raw `after2/results.jsonl`; corrected 2026-11-25, fixed in run 73) |
 | j json_schema + only Engine functions (session_id: remember, forget) | 0 / 0 (called remember, answered text) | 10 / 10 |
 | g GBNF + get_weather (after: expect 400) | HTTP 200, `Yes.` outside grammar | HTTP 400 10 / 10 |
 | g2 GBNF + only Engine functions | 0 / 0 (`Yes.`) | 10 / 10, log "Engine's own functions are left out" |
