@@ -120,6 +120,13 @@ cluaiz serve                                       # the API for other apps
 
 With a default chat model set, plain `cluaiz` in a terminal opens the agent in the current folder.
 
+![A terminal: cluaiz list shows qwen3.5-0.8b-gguf-Q4_K_M (chat, gguf, 0.69 GiB); cluaiz run with --think off --temp 0 asks "What is the capital of Japan? One short sentence." and the model answers "Tokyo is the capital of Japan."](../assets/get-started/first-run.gif)
+
+Recorded with Cluaiz 0.1.0 on a Windows laptop (RTX 3050) and Qwen3.5-0.8B Q4_K_M:
+`cluaiz list`, then `cluaiz run qwen3.5-0.8b-gguf-Q4_K_M --think off --temp 0 "What is the capital of Japan? One short sentence."`.
+`--think off` skips the model's thinking for a short answer. To make the recording again:
+`docs/tools/gifs/first-run.tape`.
+
 *   [Terminal chat (`cluaiz run`)](../cmd/chat.md): formatted answers, chat commands, options.
 *   [Coding agent (`cluaiz agent`)](../cmd/agent.md): tools, what it asks before doing, limits.
 *   [Command reference](../cmd/commands_reference.md): every command.
