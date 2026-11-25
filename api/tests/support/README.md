@@ -3,6 +3,8 @@ description: Test helper: one real authenticated loopback HTTP request shared by
 
 # API test transport helper (`api/tests/support/`)
 
+A small test helper: it sends one real HTTP request, with the auth token, to a server started by the test on this machine.
+
 One real authenticated loopback HTTP request helper shared by native/audio and embedding acceptance tests.
 
 ## At a glance

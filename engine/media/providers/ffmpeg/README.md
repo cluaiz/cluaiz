@@ -3,6 +3,8 @@ description: The optional FFmpeg video decoder provider and how to build it agai
 
 # FFmpeg video provider (`engine/media/providers/ffmpeg/`)
 
+The optional video decoder: it reads a video with FFmpeg and gives frames, with their times, to the media code. It is built separately and loaded only when a video is sent.
+
 The single native video demux/frame-decode owner. It emits timestamped RGB frame views to shared media and
 never invokes a model or an external command.
 

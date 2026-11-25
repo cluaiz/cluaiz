@@ -3,6 +3,8 @@ description: Isolated acceptance of the shared native video decoder package. -->
 
 # Video decoder package test (`test/media_regression/video_spike/`)
 
+A separate test that the optional video decoder package loads and decodes real H264 frames.
+
 Isolated SDK and lazy-package acceptance for the shared native decoder. No test command is added to production
 CLI binaries.
 

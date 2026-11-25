@@ -3,6 +3,8 @@ description: Attachment API acceptance through a real CLI executable in a privat
 
 # Media release acceptance (`test/media_regression/`)
 
+Release tests for images, audio, video and documents sent to the API, run through a real `cluaiz` program in a private home.
+
 Exercise attachment APIs through an actual separately supplied CLI executable. This complements library and
 in-process router tests; it does not replace App or installer acceptance.
 

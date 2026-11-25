@@ -3,6 +3,8 @@ description: The CEP methods that control skills, plugins, MCP servers and compo
 
 # CEP tool controls (`api/src/cep/methods/tools/`)
 
+The CEP methods that list, install, remove and configure tools (skills, plugins, MCP servers). They are thin adapters over the existing tool system in `agents/`.
+
 P3.6 moves skill/plugin/MCP and component controls to thirteen typed CEP methods. This is an API cutover using
 the existing tool system.
 

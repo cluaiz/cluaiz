@@ -3,6 +3,8 @@ description: Builds only what changed across the core binary and the GPU driver 
 
 # Modular builder (`tools/cluaiz-builder/`)
 
+A developer tool that rebuilds only what changed: the core program or one GPU driver pack.
+
 Orchestrates granular compilation across the single-binary core and hardware-adaptive dynamic drivers without
 compiling unused dependencies.
 

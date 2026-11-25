@@ -3,6 +3,8 @@ description: Opt-in read-only audits of model package graphs in a temporary fold
 
 # Model package tests (`engine/models/tests/`)
 
+Opt-in tests that read real model packages (without changing them) in a temporary folder.
+
 Opt-in read-only graph audits and genuine missing-helper completion in a separately owned temporary package.
 
 ## At a glance

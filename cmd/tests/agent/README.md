@@ -3,6 +3,8 @@ description: Regression tests of the terminal agent's file, search, edit, comman
 
 # Terminal agent tool tests (`cmd/tests/agent/`)
 
+Tests of the terminal agent's tools (read, search, edit, run a command, ask for approval) on temporary files.
+
 Exercise actual file/search/edit/command and approval behavior with temporary files.
 
 ## At a glance

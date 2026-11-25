@@ -3,6 +3,8 @@ description: The versioned C ABI shared by the optional video decoder and the me
 
 # Video decoder ABI (`engine/media/src/video/`)
 
+The fixed C interface between the optional video decoder and the media code, so both are compiled from the same definition.
+
 `abi.rs` owns the exact versioned C layout shared by the optional decoder and shared-media consumer. It
 contains actual interface definitions, not forwarding imports.
 
