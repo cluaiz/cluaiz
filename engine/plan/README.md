@@ -3,7 +3,9 @@ description: The load planner: decides where a model's layers, KV cache and expe
 
 # Load planner (`engine/plan/`)
 
-Pure mathematical negotiation and placement engine for Cluaiz.
+Before a model loads, the planner decides where it goes: how many layers on the GPU and how many in RAM, the
+context size, the KV cache type, and for MoE models where the experts go. It only calculates from the model file
+and the free memory (`engine/hardware`); it loads nothing itself.
 
 ## Architecture
 

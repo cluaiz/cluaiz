@@ -3,8 +3,9 @@ description: ONNX speech to text and text to speech: model families, required fi
 
 # ONNX speech (`engine/onnx/src/audio/`)
 
-ONNX STT model preprocessing/graphs and multi-family TTS orchestration. Input source reading, codec decoding
-and PCM preparation are shared through cluaiz-media.
+Speech with ONNX models: speech to text (Whisper, Moonshine) and text to speech (Kokoro, Piper and
+experimental families). Reading and decoding the audio file is done by `engine/media`; this folder prepares the
+model's input and runs the model.
 
 ![Text goes through reading preparation and a TTS family adapter (Kokoro, Piper, Supertonic, Chatterbox, CosyVoice, Matcha, OmniVoice) to a WAV; audio is decoded and prepared for Whisper](../../../../docs/assets/engine/speech-pipeline.png)
 

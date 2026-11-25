@@ -3,9 +3,9 @@ description: Shared media preparation: bounded sources, format detection, image 
 
 # Media preparation (`engine/media/`)
 
-Shared bounded source preparation, extensible format detection, owned temporary assets, image-to-RGB8 and
-audio-to-PCM F32 decoding, and model-independent document text extraction/chunking. Core remains the sole
-owner of decoded-buffer and settings/limit contracts.
+Gets images, audio and documents ready for a model: reads a file, URL or base64 with size limits, detects the
+format, decodes images to RGB pixels and audio to PCM samples, and pulls text out of PDFs and Office files.
+Both backends (llama.cpp and ONNX Runtime) use it, so no file is decoded twice in two ways.
 
 ![One SourceResolver reads a local path, URL or base64 with size limits; shared decoders give images, audio, document text or video frames to the model](../../docs/assets/engine/media-sources.png)
 

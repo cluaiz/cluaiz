@@ -5,7 +5,9 @@ description: Model files: downloading from Hugging Face, the installed registry 
 
 ![cluaiz pull: model id, resolve, plan the files, download with resume, check, registry, cluaiz list](../../docs/assets/get-started/model-download.png)
 
-Unified Model Subsystem for Cluaiz: HuggingFace model downloading, registry/vault tracking, multi-modal taxonomy, and single GGUF reader.
+Everything about model files: downloading from Hugging Face (`cluaiz pull`), the list of installed models and
+their folders, telling what kind of model a file is (chat, embedding, speech) from what it declares, and the
+one GGUF header reader.
 
 ## Architecture
 

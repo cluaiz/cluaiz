@@ -5,7 +5,9 @@ description: The runtime host: loads, shares and unloads models for chat, ONNX t
 
 ![EngineHost loads models into llama.cpp and ONNX Runtime and unloads idle speech and embedding models first when memory is short](../../docs/assets/engine/two-runtimes.png)
 
-Model execution supervisor with separate chat, ONNX-task and GGUF-speech owners.
+The host that loads, shares and unloads models: one chat model at a time, plus ONNX models (speech, vision,
+embeddings) and GGUF speech models, each with its own owner. When memory is short it unloads idle speech and
+embedding models first. Everything above `engine/` reaches a model only through this host.
 
 ## Speech admission and shared load transitions
 
