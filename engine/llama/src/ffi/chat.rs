@@ -124,3 +124,37 @@ pub fn json_schema_grammar(schema: &Value) -> Result<String> {
     let out = unsafe { take_json(cluaiz_json_schema_grammar(schema.as_ptr())) }?;
     out["grammar"].as_str().map(str::to_string).ok_or_else(|| anyhow!("no grammar"))
 }
+
+/// The grammar spec for "a tool call OR JSON matching `schema`" (OpenAI's `response_format` with
+/// tools), from `tool_apply`, the render with tools whose lazy grammar and parser the request uses.
+/// llama.cpp keeps only the schema when both are given (chat-auto-parser-generator.cpp
+/// `build_parser`), so it renders the same request again without tools to get its strict schema
+/// grammar (thinking block included), and the tool-call rules join it where the answer starts
+/// (`cluaiz_core::grammar::answer_or_tool_call`). Strict: the spec holds the schema render's
+/// `generation_prompt`, which `cluaiz_tool_grammar_init` feeds first, as for a template grammar.
+pub fn json_or_call_spec(tools: &ChatTools, tool_apply: &Value, schema: &Value) -> Result<Value> {
+    if tool_apply["grammar_lazy"].as_bool() != Some(true) {
+        bail!("the tool-call grammar is not lazy");
+    }
+    if !cluaiz_core::grammar::triggers_allow_merge(&tool_apply["triggers"]) {
+        bail!("the call format's triggers are not plain tags, so a call and a JSON answer cannot be told apart");
+    }
+    let tool_gbnf = tool_apply["grammar"].as_str().filter(|g| !g.is_empty()).ok_or_else(|| anyhow!("no tool-call grammar"))?;
+    let mut request = tool_apply["request"].clone();
+    let fields = request.as_object_mut().ok_or_else(|| anyhow!("the render has no request"))?;
+    fields.remove("tools");
+    fields.remove("tool_choice");
+    fields.insert("json_schema".into(), schema.clone());
+    let mut spec = tools.apply(&request)?;
+    if spec["grammar_lazy"].as_bool() != Some(false) {
+        bail!("the schema render gave no strict grammar");
+    }
+    if spec["generation_prompt"] != tool_apply["generation_prompt"] {
+        bail!("the renders with and without tools end differently");
+    }
+    let schema_gbnf = spec["grammar"].as_str().filter(|g| !g.is_empty()).ok_or_else(|| anyhow!("no schema grammar"))?;
+    let merged = cluaiz_core::grammar::answer_or_tool_call(schema_gbnf, tool_gbnf).map_err(|e| anyhow!(e))?;
+    spec["grammar"] = Value::String(merged);
+    spec["triggers"] = Value::Array(Vec::new());
+    Ok(spec)
+}

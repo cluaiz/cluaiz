@@ -302,8 +302,8 @@ pub(crate) fn stream_tokens_with_media(
             && llama.chat_tools_for(dna.chat_template.as_deref()).is_some();
         // The answer's JSON schema goes into the template call, with or without tools, as llama-server
         // passes response_format (server-common.cpp `inputs.json_schema`): llama.cpp then builds one
-        // strict grammar for the thinking block, the answer and any calls
-        // (common/chat-auto-parser-generator.cpp). Without it, a model that opens thinking itself
+        // strict grammar for the thinking block and the answer; with a schema it leaves the calls out
+        // (common/chat-auto-parser-generator.cpp `build_parser`). Without it, a model that opens thinking itself
         // (Qwen3: the prompt does not hold the start tag) had the schema grammar from its first token
         // and could not think. A GBNF grammar with tools is refused by the API.
         // Not while tools can be called (owner decision, 2026-11-25): llama.cpp's one strict grammar
@@ -872,18 +872,43 @@ pub(crate) fn stream_tokens_with_media(
                 .map_err(|e| tracing::warn!("⚠️ [NativeTools] {}; calls are read as <tool_call> blocks only", e))
                 .ok()
         });
+        // Opt-in (CLUAIZ_JSON_TOOLS_GRAMMAR=on), not yet measured: response_format with callable tools
+        // as "a tool call OR JSON matching the schema" (OpenAI), one strict grammar joined from
+        // llama.cpp's two (`ffi::chat::json_or_call_spec`). Off: the answer is not constrained, as
+        // the owner decided on 2026-11-25 (above, `tools_callable`)
+        let json_or_call_on = std::env::var("CLUAIZ_JSON_TOOLS_GRAMMAR").is_ok_and(|v| v == "on" || v == "1");
+        let mut json_or_call = match (&native_apply, &native_parser, &req_output) {
+            (Some(apply), Some(_), Some(cluaiz_core::OutputConstraint::JsonSchema(schema))) if tools_callable && json_or_call_on => {
+                llama.chat_tools(dna.chat_template.as_deref()).and_then(|tools| {
+                    crate::ffi::chat::json_or_call_spec(tools, apply, schema)
+                        .map_err(|e| tracing::warn!("⚠️ [NativeStream] No call-or-JSON grammar ({}); the answer is not constrained", e))
+                        .ok()
+                })
+            }
+            _ => None,
+        };
         let mut tool_grammar = match (&native_apply, &native_parser) {
-            (Some(apply), Some(_)) => crate::ffi::chat::tool_grammar(vocab, apply),
+            (Some(apply), Some(_)) => {
+                let joined = json_or_call.as_ref().map_or(std::ptr::null_mut(), |spec| crate::ffi::chat::tool_grammar(vocab, spec));
+                if json_or_call.is_some() && joined.is_null() {
+                    tracing::warn!("⚠️ [NativeStream] llama.cpp could not parse the call-or-JSON grammar; the answer is not constrained");
+                    json_or_call = None;
+                }
+                if joined.is_null() { crate::ffi::chat::tool_grammar(vocab, apply) } else { joined }
+            }
             _ => std::ptr::null_mut(),
         };
-        // A strict grammar from the template: the answer's JSON schema and the calls together, or
-        // tool_choice "required". Like llama.cpp's common_sampler it applies from the first token,
-        // thinking included (the grammar has the thinking block in it), and starts after the
+        // A strict grammar from the template: the answer's JSON schema, or tool_choice "required",
+        // or the call-or-JSON grammar. Like llama.cpp's common_sampler it applies from the first
+        // token, thinking included (the grammar has the thinking block in it), and starts after the
         // generation prompt (`cluaiz_tool_grammar_init` feeds it those tokens)
         let template_strict = !tool_grammar.is_null()
-            && native_apply.as_ref().is_some_and(|apply| apply["grammar_lazy"].as_bool() == Some(false));
+            && (json_or_call.is_some()
+                || native_apply.as_ref().is_some_and(|apply| apply["grammar_lazy"].as_bool() == Some(false)));
         let mut grammar_lazy = !template_strict;
-        if template_strict && template_schema.is_some() {
+        if json_or_call.is_some() {
+            info!("📐 [NativeStream] JSON schema with callable tools: the answer is a tool call or the schema's JSON, one grammar (CLUAIZ_JSON_TOOLS_GRAMMAR)");
+        } else if template_strict && template_schema.is_some() {
             if native_tools.is_some() {
                 info!("📐 [NativeStream] Answer constrained by a JSON schema grammar, in one grammar with the tool calls (llama.cpp)");
             } else {
