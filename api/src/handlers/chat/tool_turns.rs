@@ -131,6 +131,9 @@ impl ToolTurns {
             envelope["pivot_prompt"] = json!(format!("{text}\n{note}\n"));
             // `media_continuation` and the provider dispatch then leave the tools out
             envelope[super::preflight::FINAL_ANSWER_PIVOT] = json!(true);
+            if let Some(fields) = envelope.as_object_mut() {
+                fields.remove(MEDIA_PIVOT_TOOLS);
+            }
             return format!("[PIVOT_CONTINUE]{envelope}");
         }
         let mut envelope: Value =
@@ -164,7 +167,7 @@ impl ToolTurns {
             history.push_str(&cluaiz_agents::ToolsEngine::format_tool_response_raw(&step.name, &step.result));
             history.push_str("\n\n");
         }
-        let envelope = json!({
+        let mut envelope = json!({
             "pivot_prompt": format!(
                 "<user_query>\n{}\n</user_query>\n{}\nReview the tool response(s) above. If sufficient information exists to fully answer the user query, synthesize the final response. Otherwise, continue and generate the next tool call as needed.\n",
                 ctx.initial_user_query, history
@@ -175,9 +178,18 @@ impl ToolTurns {
             "reasoning_effort": &ctx.active_reasoning_effort,
             "reasoning_budget_message": &ctx.reasoning_budget_message
         });
+        // Functions of tools loaded in this answer: `media_continuation` adds them to the media
+        // envelope's tools, as `continuation` does on the text path. Without them the model only
+        // sees `load_tool` again and calls it until the repeat limit (run 73)
+        if !self.loaded_functions.is_empty() {
+            envelope[MEDIA_PIVOT_TOOLS] = json!(self.loaded_functions);
+        }
         format!("[PIVOT_CONTINUE]{}", envelope)
     }
 }
+
+/// Field of a media pivot that holds the functions of tools loaded in this answer
+pub const MEDIA_PIVOT_TOOLS: &str = "tools";
 
 /// Function schemas without repeats (by function name), first one kept
 pub fn unique_functions(schemas: Vec<Value>) -> Vec<Value> {

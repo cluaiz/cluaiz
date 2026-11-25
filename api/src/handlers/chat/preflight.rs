@@ -1507,7 +1507,12 @@ impl PreparedChatContext {
         if let Some(run) = &self.provider {
             if let Some(prepared) = &self.prepared_media {
                 // A provider takes its tools from the start prompt: the final answer gets none
-                let start = if is_final_answer_pivot(pivot) { without_tools(&self.start_prompt) } else { self.start_prompt.clone() };
+                // and other steps also get the functions of tools loaded in this answer (`ToolTurns::media_pivot`)
+                let start = if is_final_answer_pivot(pivot) {
+                    without_tools(&self.start_prompt)
+                } else {
+                    with_loaded_functions(&self.start_prompt, pivot)
+                };
                 return match media_continuation(prepared, pivot) {
                     Ok(prepared) => run.dispatch_prepared(prepared, &start, &self.active_think_mode, self.active_reasoning_effort, Arc::clone(&self.cancel_signal)).await,
                     Err(error) => cluaiz_runtime::HostResponse::Error(error.to_string()),
@@ -1632,6 +1637,42 @@ fn without_tools(prompt: &str) -> String {
     envelope.to_string()
 }
 
+/// The functions of tools loaded in this answer, carried by a media pivot (`ToolTurns::media_pivot`)
+fn loaded_functions(pivot: &serde_json::Value) -> Vec<serde_json::Value> {
+    pivot
+        .get(super::tool_turns::MEDIA_PIVOT_TOOLS)
+        .and_then(serde_json::Value::as_array)
+        .cloned()
+        .unwrap_or_default()
+}
+
+/// `tools` after the request's own: the functions of tools loaded in this answer (no repeats)
+fn add_loaded_functions(tools: Option<&serde_json::Value>, loaded: Vec<serde_json::Value>) -> Option<serde_json::Value> {
+    let own = tools.and_then(serde_json::Value::as_array).cloned().unwrap_or_default();
+    if loaded.is_empty() {
+        return tools.cloned();
+    }
+    Some(serde_json::Value::Array(super::tool_turns::unique_functions([own, loaded].concat())))
+}
+
+/// A provider's start prompt with the functions of tools loaded in this answer added to its tools
+fn with_loaded_functions(prompt: &str, pivot: Option<&str>) -> String {
+    let loaded = pivot
+        .and_then(|pivot| serde_json::from_str::<serde_json::Value>(pivot.strip_prefix("[PIVOT_CONTINUE]").unwrap_or(pivot)).ok())
+        .map(|pivot| loaded_functions(&pivot))
+        .unwrap_or_default();
+    if loaded.is_empty() {
+        return prompt.to_string();
+    }
+    let Ok(mut envelope) = serde_json::from_str::<serde_json::Value>(prompt) else {
+        return prompt.to_string();
+    };
+    if let Some(tools) = add_loaded_functions(envelope.get("tools"), loaded) {
+        envelope["tools"] = tools;
+    }
+    envelope.to_string()
+}
+
 /// Regenerate full multimodal context; text-only KV pivot reuse cannot represent media embeddings.
 pub fn media_continuation(
     prepared: &cluaiz_core::ChatEnvelope<Vec<cluaiz_core::media::PreparedPart>>,
@@ -1650,6 +1691,11 @@ pub fn media_continuation(
         }
         let value: serde_json::Value =
             serde_json::from_str(pivot.strip_prefix("[PIVOT_CONTINUE]").unwrap_or(pivot))?;
+        // A tool loaded with `load_tool` in this answer can be called in the next step, as on the
+        // text path (`ToolTurns::continuation`); the final answer above has no tools
+        if !value_is_final_answer(pivot) {
+            continued.tools = add_loaded_functions(continued.tools.as_ref(), loaded_functions(&value));
+        }
         let text = value
             .get("pivot_prompt")
             .and_then(|value| value.as_str())
@@ -1786,5 +1832,77 @@ mod usage_option_tests {
         assert!(!wants_usage(Some(&json!({ "include_usage": "true" }))));
         assert!(!wants_usage(Some(&json!({}))));
         assert!(!wants_usage(None));
+    }
+}
+
+#[cfg(test)]
+mod media_tool_step_tests {
+    use super::{media_continuation, with_loaded_functions};
+    use cluaiz_core::{media::PreparedPart, ChatEnvelope, ChatMessage};
+    use serde_json::{json, Value};
+
+    fn function(name: &str) -> Value {
+        json!({ "type": "function", "function": { "name": name, "parameters": { "type": "object" } } })
+    }
+
+    fn names(tools: Option<&Value>) -> Vec<String> {
+        tools
+            .and_then(Value::as_array)
+            .map(|tools| tools.iter().filter_map(|t| t.pointer("/function/name")?.as_str().map(str::to_string)).collect())
+            .unwrap_or_default()
+    }
+
+    fn image_request() -> ChatEnvelope<Vec<PreparedPart>> {
+        ChatEnvelope {
+            messages: vec![ChatMessage { role: "user".into(), content: vec![PreparedPart::Text { text: "What is 2+2 and the image colour?".into() }] }],
+            samplers: Default::default(),
+            think_mode: "off".into(),
+            reasoning_effort: Default::default(),
+            reasoning_budget_message: None,
+            chat_template_kwargs: None,
+            grammar: None,
+            response_format: None,
+            tools: Some(json!([function("load_tool")])),
+            tool_choice: Some("required".into()),
+            stop: Vec::new(),
+            logit_bias: Vec::new(),
+        }
+    }
+
+    /// Run 73: after `load_tool("math")` on an image request the next step did not list the math
+    /// functions, so the model called `load_tool` again until the repeat limit
+    #[test]
+    fn media_step_after_load_tool_lists_the_loaded_functions() {
+        let pivot = format!(
+            "[PIVOT_CONTINUE]{}",
+            json!({ "pivot_prompt": "Loaded tool math.", "tools": [function("math_evaluate"), function("load_tool")] })
+        );
+        let continued = media_continuation(&image_request(), Some(&pivot)).unwrap();
+        assert_eq!(names(continued.tools.as_ref()), ["load_tool", "math_evaluate"]);
+        assert_eq!(continued.tool_choice, None);
+
+        // A provider takes its tools from the start prompt: the loaded functions are added there too
+        let start = json!({ "messages": [], "tools": [function("load_tool")] }).to_string();
+        let start: Value = serde_json::from_str(&with_loaded_functions(&start, Some(&pivot))).unwrap();
+        assert_eq!(names(start.get("tools")), ["load_tool", "math_evaluate"]);
+    }
+
+    #[test]
+    fn media_step_without_loaded_tools_keeps_the_request_tools() {
+        let pivot = format!("[PIVOT_CONTINUE]{}", json!({ "pivot_prompt": "Result: 4." }));
+        let continued = media_continuation(&image_request(), Some(&pivot)).unwrap();
+        assert_eq!(names(continued.tools.as_ref()), ["load_tool"]);
+        let start = json!({ "messages": [], "tools": [function("load_tool")] }).to_string();
+        assert_eq!(with_loaded_functions(&start, Some(&pivot)), start);
+    }
+
+    #[test]
+    fn media_final_answer_offers_no_tools_even_with_loaded_ones() {
+        let pivot = format!(
+            "[PIVOT_CONTINUE]{}",
+            json!({ "pivot_prompt": "Answer now.", "final_answer": true, "tools": [function("math_evaluate")] })
+        );
+        let continued = media_continuation(&image_request(), Some(&pivot)).unwrap();
+        assert!(continued.tools.is_none());
     }
 }
