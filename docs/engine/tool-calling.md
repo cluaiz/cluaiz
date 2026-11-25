@@ -1,7 +1,5 @@
----
-title: Call your own functions (tool calling)
-description: Give the model your functions in an OpenAI-style request; the Engine returns the call, you run it and send the result back for the final answer.
----
+<!-- name: Call your own functions (tool calling)
+description: Give the model your functions in an OpenAI-style request; the Engine returns the call, you run it and send the result back for the final answer. -->
 
 # Call your own functions
 
