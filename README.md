@@ -38,6 +38,14 @@ new, and flows carry the steps so you do not have to. Memory keeps only what you
 the limits you set, and an audit log records all of it. It fits your machine, works where you are, and grows with
 what you build.
 
+## One system, three parts
+
+| | What it is |
+| :--- | :--- |
+| **[Engine](https://github.com/cluaiz/cluaiz)** (this repository) | The `cluaiz` program: models, API, agent, tools and flows |
+| **[App](https://github.com/cluaiz/cluaiz-app)** | The desktop app. It talks to a running `cluaiz serve`, so a model is loaded once |
+| **[Tools](https://github.com/cluaiz/cluaiz-tools)** | The registry of skills, plugins and MCP servers that the Engine installs. It takes pull requests |
+
 ## What you can do with it
 
 | | What you get | Read more |
@@ -100,11 +108,10 @@ Update with `cluaiz self update`; remove with `cluaiz self uninstall`.
 repository; it is downloaded on first use.
 
 ```bash
-cluaiz pull qwen3.6:35b-a3b
-cluaiz run qwen3.6:35b-a3b "Explain a KV cache in two sentences."
+cluaiz run qwen3.8:27b "Explain a KV cache in two sentences."
 ```
 
-On a smaller machine, `qwen3.5:4b` or `qwen3.5:0.8b`.
+Other models from the catalogue work the same way, for example `gemma-4:26b`.
 
 **3. Let the agent work in a folder:** `cluaiz agent`, from inside the folder.
 
@@ -120,7 +127,7 @@ cluaiz serve
 curl http://127.0.0.1:8000/v1/chat/completions \
   -H "Authorization: Bearer $(cat ~/.cluaiz/session.token)" \
   -H "Content-Type: application/json" \
-  -d '{"model": "qwen3.6-35b-a3b-gguf-Q4_K_M", "messages": [{"role": "user", "content": "Hello"}]}'
+  -d '{"model": "<model id from cluaiz list>", "messages": [{"role": "user", "content": "Hello"}]}'
 ```
 
 `cluaiz list` shows the installed model IDs, `cluaiz token show` the API token, and `cluaiz --help` every command.
@@ -135,7 +142,7 @@ Same model file, same placement, same settings, Cluaiz against official llama.cp
 
 | | Result |
 | :--- | :--- |
-| Generation (GPU, GPU + RAM split, CPU) | Equal, within the run-to-run noise; one exception: Ternary-Bonsai Q2_0 on a 1 vCPU server, 13-20% slower |
+| Generation (GPU, GPU + RAM split, CPU) | Equal, within the run-to-run noise; one exception: a 2-bit model on a 1 vCPU server, 13-20% slower |
 | Prompt, fully on the GPU | Equal on an RTX 3050 laptop and a Tesla T4; llama.cpp up to 11% faster on an L4 |
 | Prompt, split across GPU and RAM | Up to 1.6x faster through the chat API on the T4 (even prompt chunks); equal with `cluaiz bench` |
 
@@ -166,14 +173,9 @@ ROCm/HIP, OpenVINO, SYCL and CANN builds are not part of the release yet. Packag
 | Fix a problem | [Troubleshooting](docs/get-started/troubleshooting.md) |
 | Find any page | [Docs index](docs/index.md) |
 
-## Ecosystem and community
+## Community
 
-- [cluaiz-app](https://github.com/cluaiz/cluaiz-app): the desktop app. It talks to a running `cluaiz serve`, so a
-  model is loaded once.
-- [cluaiz-tools](https://github.com/cluaiz/cluaiz-tools): the registry of skills, plugins and MCP servers. It takes
-  pull requests.
-- Questions, bugs and ideas: [issues](https://github.com/cluaiz/cluaiz/issues) or
-  [Discord](https://discord.gg/mab8kBURz).
+Questions, bugs and ideas: [issues](https://github.com/cluaiz/cluaiz/issues) or [Discord](https://discord.gg/mab8kBURz).
 
 ## License
 
