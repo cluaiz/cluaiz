@@ -115,9 +115,19 @@ async fn repeat_until_and_its_limit() {
 async fn waiting_does_not_count_toward_the_run_timeout() {
     let b = bench(TestHost::default());
     let f = json!({ "flow": "cluaiz.flow/1", "name": "test", "limits": { "timeout": "200ms" }, "steps": [{ "wait": { "for": "500ms" } }, { "set": { "after": true } }] });
+    let started = Instant::now();
     let done = run(&b, f).await;
+    let wall_ms = started.elapsed().as_millis() as u64;
     assert_eq!(done.status, RunStatus::Succeeded, "{:?}", done.error);
-    assert!(done.running_ms < 200, "running time {} counts the wait", done.running_ms);
+    // The run's running time is its wall time minus the 500 ms wait. A fixed ceiling (< 200 ms)
+    // failed on a slow CI runner (254 ms of journal writes); this holds at any machine speed and
+    // still fails when the wait is counted (running time then equals the wall time). 50 ms covers
+    // millisecond rounding of the two clocks.
+    assert!(
+        done.running_ms + 500 <= wall_ms + 50,
+        "running time {} ms counts the wait (wall time {wall_ms} ms, wait 500 ms)",
+        done.running_ms
+    );
     let busy = json!({ "flow": "cluaiz.flow/1", "name": "test", "limits": { "timeout": "200ms" }, "steps": [{ "tool": "mcp:x/slow", "timeout": "5s" }] });
     let b = bench(slow(800));
     assert_eq!(run(&b, busy).await.error.unwrap().kind, "limit");
