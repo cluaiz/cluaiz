@@ -131,19 +131,88 @@ pub trait Agent: Send {
     }
 }
 
-/// Consecutive identical calls before a warning is returned instead of re-running the call
-pub const REPEAT_WARN_THRESHOLD: usize = 3;
-/// Consecutive identical calls that end the turn as stuck (`Ended::StepLimit`)
-pub const REPEAT_STOP_THRESHOLD: usize = 4;
+/// Identical calls (same name, same arguments) since the last new call: the second one is not run,
+/// its result is the first one's again with the managed prompt `agent.call_repeated`
+pub const REPEAT_REUSE_AT: usize = 2;
+/// Identical calls since the last new call that end the steps as stuck (`Ended::StepLimit`); the
+/// front end can then ask for a final answer without tools ([`Agent::prepare_final_answer`])
+pub const REPEAT_STOP_AT: usize = 3;
 /// Unusable answers in a row the model is asked to correct; the next one ends the turn
 pub const MOST_CORRECTIONS: usize = 2;
 
+/// A call's identity for repeat detection: the name (trimmed, lower case) and the arguments as
+/// canonical JSON (object keys sorted, no whitespace), so `{"b":1, "a":2}` and `{"a":2,"b":1}` are
+/// the same call. Arguments that are not JSON compare as their trimmed text.
 fn call_signature(call: &ToolCall) -> (String, String) {
     let canonical_args = serde_json::from_str::<serde_json::Value>(&call.arguments)
         .ok()
-        .and_then(|v| serde_json::to_string(&v).ok())
+        .and_then(|v| serde_json::to_string(&sorted_keys(v)).ok())
         .unwrap_or_else(|| call.arguments.trim().to_owned());
     (call.name.trim().to_ascii_lowercase(), canonical_args)
+}
+
+/// The value with every object's keys in sorted order, whatever map type serde_json was built with
+fn sorted_keys(value: serde_json::Value) -> serde_json::Value {
+    match value {
+        serde_json::Value::Object(map) => {
+            let mut pairs: Vec<(String, serde_json::Value)> = map.into_iter().collect();
+            pairs.sort_by(|a, b| a.0.cmp(&b.0));
+            serde_json::Value::Object(pairs.into_iter().map(|(k, v)| (k, sorted_keys(v))).collect())
+        }
+        serde_json::Value::Array(items) => serde_json::Value::Array(items.into_iter().map(sorted_keys).collect()),
+        other => other,
+    }
+}
+
+/// What the repeat guard decides for one call
+#[derive(Debug, PartialEq, Eq)]
+enum Repeat {
+    /// Run the call
+    Run,
+    /// Do not run it: the earlier identical call's result
+    Reuse(String),
+    /// Do not run it: the turn is stuck; the earlier result (if any) goes with the stop
+    Stop(Option<String>),
+}
+
+/// Repeated identical calls within one turn. Counts start again after every call the turn had not
+/// seen before (progress: a new call may change what an earlier one returns, e.g. a file read after
+/// an edit), so a coding agent's read, edit, read again still runs the second read. Calls the model
+/// only alternates between are caught: in run 77 Llama 3.2 1B called `read_item` with `celsius`
+/// and `fahrenheit` in turn for 100 steps, and the old back-to-back count never got past 2.
+#[derive(Default)]
+struct Repeats {
+    /// Every call signature seen in this turn
+    seen: std::collections::HashSet<(String, String)>,
+    /// Since the last new call: how often each signature came, and its last result
+    since_new: std::collections::HashMap<(String, String), (usize, Option<String>)>,
+}
+
+impl Repeats {
+    fn check(&mut self, sig: &(String, String)) -> Repeat {
+        if self.seen.insert(sig.clone()) {
+            self.since_new.clear();
+        }
+        let entry = self.since_new.entry(sig.clone()).or_insert((0, None));
+        entry.0 += 1;
+        match (entry.0, &entry.1) {
+            (n, earlier) if n >= REPEAT_STOP_AT => Repeat::Stop(earlier.clone()),
+            (n, Some(earlier)) if n >= REPEAT_REUSE_AT => Repeat::Reuse(earlier.clone()),
+            _ => Repeat::Run,
+        }
+    }
+
+    /// The result of a call that ran, for an identical call that may follow
+    fn ran(&mut self, sig: &(String, String), result: &str) {
+        if let Some(entry) = self.since_new.get_mut(sig) {
+            entry.1 = Some(result.to_owned());
+        }
+    }
+}
+
+/// The result of a call that is not run because it repeats an earlier one (`agent.call_repeated`)
+fn repeated_note(name: &str, earlier: &str) -> String {
+    cluaiz_core::prompts::render("agent.call_repeated", &[("name", name), ("result", earlier)])
 }
 
 /// Runs one turn: at most `max_steps` generations (`0` = unlimited, guarded by repeat detection).
@@ -169,8 +238,7 @@ pub async fn run<A: Agent>(agent: &mut A, max_steps: usize) -> anyhow::Result<En
 /// The steps of a turn, up to its ending or the step or repeat limit
 async fn steps<A: Agent>(agent: &mut A, max_steps: usize) -> anyhow::Result<Ended> {
     let limit = if max_steps == 0 { usize::MAX } else { max_steps };
-    let mut last_sig: Option<(String, String)> = None;
-    let mut repeat_count: usize = 0;
+    let mut repeats = Repeats::default();
     let mut corrections: usize = 0;
 
     for step in 0..limit {
@@ -196,25 +264,26 @@ async fn steps<A: Agent>(agent: &mut A, max_steps: usize) -> anyhow::Result<Ende
                 return Ok(Ended::Stopped(said));
             }
             let sig = call_signature(call);
-            if last_sig.as_ref() == Some(&sig) {
-                repeat_count += 1;
-            } else {
-                last_sig = Some(sig);
-                repeat_count = 1;
-            }
-            if repeat_count >= REPEAT_STOP_THRESHOLD {
-                return Ok(Ended::StepLimit);
-            }
-            if repeat_count == REPEAT_WARN_THRESHOLD {
-                let warn = format!(
-                    "Repeated identical tool call '{}' {} times in a row with the same arguments. Do not repeat this call; move to the next step or provide your final answer.",
-                    call.name, REPEAT_WARN_THRESHOLD
-                );
-                agent.record_result(call, &warn);
-                continue;
+            match repeats.check(&sig) {
+                Repeat::Run => {}
+                Repeat::Reuse(earlier) => {
+                    tracing::info!("🔁 [Turn] Step {step}: '{}' repeats an earlier call with the same arguments; not run again, its earlier result is returned", call.name);
+                    agent.record_result(call, &repeated_note(&call.name, &earlier));
+                    continue;
+                }
+                Repeat::Stop(earlier) => {
+                    // The call gets a result too, so the conversation the final answer reads has
+                    // no call without a result
+                    tracing::info!("🛑 [Turn] Step {step}: '{}' with the same arguments came {REPEAT_STOP_AT} times; tool steps stop here", call.name);
+                    agent.record_result(call, &repeated_note(&call.name, earlier.as_deref().unwrap_or_default()));
+                    return Ok(Ended::StepLimit);
+                }
             }
             match agent.call(call).await {
-                CallRun::Done(result) => agent.record_result(call, &result),
+                CallRun::Done(result) => {
+                    repeats.ran(&sig, &result);
+                    agent.record_result(call, &result);
+                }
                 CallRun::Client => return Ok(Ended::ClientCall { said, call: call.clone() }),
                 CallRun::Stop => return Ok(Ended::Stopped(said)),
             }
@@ -344,12 +413,11 @@ mod tests {
             answer("1", &["stuck"]),
             answer("2", &["stuck"]),
             answer("3", &["stuck"]),
-            answer("4", &["stuck"]),
             answer("still", &["stuck"]),
         ]);
         agent.final_answer = true;
         assert_eq!(run(&mut agent, 0).await.unwrap(), Ended::StepLimit);
-        assert_eq!(agent.log.iter().filter(|l| *l == "call stuck").count(), 2);
+        assert_eq!(agent.log.iter().filter(|l| *l == "call stuck").count(), 1);
         assert_eq!(agent.log.last().map(String::as_str), Some("generate 0"), "{:?}", agent.log);
     }
 
@@ -376,19 +444,81 @@ mod tests {
         assert_eq!(run(&mut agent, 0).await.unwrap(), Ended::Answered("final report".into()));
     }
 
+    fn call_with(name: &str, arguments: &str) -> ToolCall {
+        ToolCall { name: name.into(), arguments: arguments.into(), raw: format!("<call {name} {arguments}>") }
+    }
+
+    fn answer_with(said: &str, calls: &[(&str, &str)]) -> Generated {
+        Generated::Answer { said: said.into(), calls: calls.iter().map(|(n, a)| call_with(n, a)).collect() }
+    }
+
+    #[test]
+    fn the_call_signature_ignores_key_order_whitespace_and_name_case() {
+        let a = call_with("read_item", r#"{"kind":"memory","properties":{"unit":"celsius","city":"Paris"}}"#);
+        let b = call_with(" Read_Item ", "{ \"properties\" : { \"city\": \"Paris\", \"unit\": \"celsius\" },\n  \"kind\": \"memory\" }");
+        assert_eq!(call_signature(&a), call_signature(&b));
+        let c = call_with("read_item", r#"{"kind":"memory","properties":{"unit":"fahrenheit","city":"Paris"}}"#);
+        assert_ne!(call_signature(&a), call_signature(&c));
+        // Not JSON: the trimmed text
+        assert_eq!(call_signature(&call_with("x", " not json ")).1, "not json");
+    }
+
+    #[test]
+    fn the_second_identical_call_reuses_and_the_third_stops() {
+        let mut repeats = Repeats::default();
+        let sig = call_signature(&call_with("read_item", r#"{"a":1,"b":2}"#));
+        assert_eq!(repeats.check(&sig), Repeat::Run);
+        repeats.ran(&sig, "first result");
+        let same = call_signature(&call_with("read_item", r#"{ "b": 2, "a": 1 }"#));
+        assert_eq!(repeats.check(&same), Repeat::Reuse("first result".into()));
+        assert_eq!(repeats.check(&same), Repeat::Stop(Some("first result".into())));
+    }
+
+    #[test]
+    fn a_new_call_starts_the_counts_again() {
+        let mut repeats = Repeats::default();
+        let read = call_signature(&call_with("read_file", r#"{"path":"a.rs"}"#));
+        let edit = |n: u32| call_signature(&call_with("edit_file", &format!(r#"{{"path":"a.rs","text":"{n}"}}"#)));
+        for n in 0..5 {
+            assert_eq!(repeats.check(&read), Repeat::Run, "read {n} after an edit runs again");
+            repeats.ran(&read, &format!("content {n}"));
+            assert_eq!(repeats.check(&edit(n)), Repeat::Run);
+            repeats.ran(&edit(n), "ok");
+        }
+    }
+
     #[tokio::test]
-    async fn consecutive_identical_calls_warn_on_third_and_stop_on_fourth() {
+    async fn identical_calls_run_once_reuse_once_and_stop_on_the_third() {
         let mut agent = script(vec![
             answer("1", &["stuck_tool"]),
             answer("2", &["stuck_tool"]),
             answer("3", &["stuck_tool"]),
-            answer("4", &["stuck_tool"]),
+            answer("never", &[]),
         ]);
         assert_eq!(run(&mut agent, 0).await.unwrap(), Ended::StepLimit);
-        // The tool itself is only executed twice; the 3rd records a warning and the 4th stops
-        let executed_calls = agent.log.iter().filter(|l| *l == "call stuck_tool").count();
-        assert_eq!(executed_calls, 2);
-        assert!(agent.log.iter().any(|l| l.contains("Repeated identical tool call 'stuck_tool' 3 times")));
+        // The tool runs once; the 2nd gets the 1st result back marked as a repeat; the 3rd stops
+        assert_eq!(agent.log.iter().filter(|l| *l == "call stuck_tool").count(), 1);
+        let results: Vec<&String> = agent.log.iter().filter(|l| l.starts_with("result stuck_tool")).collect();
+        assert_eq!(results.len(), 3, "every call has a result: {:?}", agent.log);
+        assert_eq!(results[0], "result stuck_tool stuck_tool ok");
+        assert!(results[1] != results[0] && results[1].contains("stuck_tool ok"), "{}", results[1]);
+        assert_eq!(agent.log.iter().filter(|l| l.starts_with("generate")).count(), 3);
+    }
+
+    #[tokio::test]
+    async fn calls_that_alternate_are_caught_too() {
+        // Run 77, Llama 3.2 1B: read_item with celsius, celsius, fahrenheit, celsius, ... for 100 steps
+        let c = ("read_item", r#"{"kind":"memory","name":"get_weather","properties":{"city":"Paris","unit":"celsius"}}"#);
+        let f = ("read_item", r#"{"kind":"memory","name":"get_weather","properties":{"city":"Paris","unit":"fahrenheit"}}"#);
+        let order = [c, c, f, c, f, c, f, c, f, c];
+        let mut agent = script(order.iter().enumerate().map(|(i, call)| answer_with(&i.to_string(), &[*call])).collect());
+        agent.final_answer = true;
+        agent.answers.truncate(7);
+        agent.answers.push_back(answer("Paris weather is not in the results", &[]));
+        assert_eq!(run(&mut agent, 100).await.unwrap(), Ended::Answered("Paris weather is not in the results".into()));
+        // c runs, c reused, f new (counts start again), c runs, f reused, c reused, f third: stop
+        assert_eq!(agent.log.iter().filter(|l| *l == "call read_item").count(), 3, "{:?}", agent.log);
+        assert_eq!(agent.log.iter().filter(|l| l.starts_with("generate")).count(), 8, "7 steps and the final answer");
     }
 
     fn unusable(said: &str, problem: Unusable) -> Generated {
