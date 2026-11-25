@@ -26,12 +26,17 @@ The AI engine where models, voice, vision, memory, tools, agents and workflows w
 
 ## What Cluaiz is
 
-Cluaiz is one program, `cluaiz`, that runs AI models on your own hardware or through cloud providers. Chat, vision,
-speech, transcription and embeddings run in the same engine, behind the same API. Apps, scripts and agents get
-memory, tools and workflows on top of those models, with every action under your permission.
+**One engine. Every kind of model. Your rules.**
 
-It is built on [llama.cpp](https://github.com/ggml-org/llama.cpp) for GGUF models and ONNX Runtime for speech and
-vision models, and written in Rust.
+Models that think, see, listen, speak and remember, in one engine, behind one API. It measures your GPU and RAM
+before every load and fits the model to what is free, so a 26B model runs on a 4 GB laptop GPU. On your machine or
+through a cloud provider, your app talks to it the same way.
+
+Give it a folder, and the agent reads, edits and runs, asking before each change. Give it a skill, a plugin or an
+MCP server, and it can do more. Give it a flow, and it runs the steps for you.
+
+Everything stays under your rules: what it may touch, what it must ask first, what it keeps as memory.
+Built on [llama.cpp](https://github.com/ggml-org/llama.cpp) and ONNX Runtime, written in Rust.
 
 ## What you can do with it
 
