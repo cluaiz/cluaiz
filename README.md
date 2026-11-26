@@ -42,24 +42,6 @@ what you build.
 - **[Cluaiz Tools](https://github.com/cluaiz/cluaiz-tools):** the registry of skills, plugins and MCP servers that
   the Engine installs. It takes pull requests.
 
-## What you can do with it
-
-| | What you get | Read more |
-| :--- | :--- | :--- |
-| **Chat** | Text chat with tool calls and thinking models, streaming or not | [Chat](docs/api/inference/chat_completions.md) |
-| **Vision and audio in chat** | Images, audio, video frames and documents in a message, with a model that has a vision or audio projector | [Chat attachments](docs/api/inference/chat_completions.md) |
-| **Speech and transcription** | Text-to-speech (Kokoro and other ONNX families) and speech-to-text (Whisper, Moonshine) | [Speech](docs/api/inference/audio_speech.md), [Transcriptions](docs/api/inference/audio_transcriptions.md) |
-| **Embeddings and documents** | Text and image vectors; PDF, DOCX, text and code turned into text, chunks or vectors, with or without a model | [Embeddings](docs/api/inference/embeddings.md), [Ingest](docs/api/inference/ingest.md) |
-| **Big models on small machines** | A planner measures free GPU memory and RAM on every load and picks the placement, context size and KV cache type; MoE experts can sit in RAM | [Placement](docs/engine/llm_optimization.md), [MoE](docs/engine/moe_ssd_streaming.md) |
-| **Cloud models the same way** | Any OpenAI-compatible provider used as `<provider>/<model>`, with the Engine's memory and tools | [Providers](docs/engine/providers.md) |
-| **Your existing apps** | OpenAI-compatible routes, plus CEP (JSON-RPC 2.0) over HTTP, MCP or a C library for everything engine-specific | [API](docs/api/README.md), [CEP](docs/api/cep/README.md) |
-| **A coding agent** | `cluaiz agent` reads, searches and edits files and runs commands in a folder, asking before each change | [Agent](docs/cmd/agent.md) |
-| **Tools** | Skills, plugins and MCP servers from the [cluaiz-tools](https://github.com/cluaiz/cluaiz-tools) registry, with permission levels, approvals and an audit log | [Tools](docs/engine/tools.md) |
-| **Memory and projects** | Project rules, notes kept between conversations that become memory only when you confirm them, and a view of what reached the model | [Chat memory](docs/api/inference/chat_completions.md) |
-| **Workflows** | Reusable flows the engine runs (schedules and triggers are in progress) | [Automation](docs/automation/README.md) |
-
-Every feature with its status and the test run that checked it: [features](docs/reference/features.md).
-
 ## Why Cluaiz
 
 - **Full speed, without the tuning.** On the same model file and placement, generation is equal to official
@@ -80,6 +62,24 @@ Every feature with its status and the test run that checked it: [features](docs/
 - **You stay in control.** Agents act in a sandboxed mode by default, ask before changes outside the workspace,
   and every write, command and admin call goes to an audit log. WebAssembly plugins run with no file access and
   only the network they declare.
+
+## What you can do with it
+
+| | What you get | Read more |
+| :--- | :--- | :--- |
+| **Chat** | Text chat with tool calls and thinking models, streaming or not | [Chat](docs/api/inference/chat_completions.md) |
+| **Vision and audio in chat** | Images, audio, video frames and documents in a message, with a model that has a vision or audio projector | [Chat attachments](docs/api/inference/chat_completions.md) |
+| **Speech and transcription** | Text-to-speech (Kokoro and other ONNX families) and speech-to-text (Whisper, Moonshine) | [Speech](docs/api/inference/audio_speech.md), [Transcriptions](docs/api/inference/audio_transcriptions.md) |
+| **Embeddings and documents** | Text and image vectors; PDF, DOCX, text and code turned into text, chunks or vectors, with or without a model | [Embeddings](docs/api/inference/embeddings.md), [Ingest](docs/api/inference/ingest.md) |
+| **Big models on small machines** | A planner measures free GPU memory and RAM on every load and picks the placement, context size and KV cache type; MoE experts can sit in RAM | [Placement](docs/engine/llm_optimization.md), [MoE](docs/engine/moe_ssd_streaming.md) |
+| **Cloud models the same way** | Any OpenAI-compatible provider used as `<provider>/<model>`, with the Engine's memory and tools | [Providers](docs/engine/providers.md) |
+| **Your existing apps** | OpenAI-compatible routes, plus CEP (JSON-RPC 2.0) over HTTP, MCP or a C library for everything engine-specific | [API](docs/api/README.md), [CEP](docs/api/cep/README.md) |
+| **A coding agent** | `cluaiz agent` reads, searches and edits files and runs commands in a folder, asking before each change | [Agent](docs/cmd/agent.md) |
+| **Tools** | Skills, plugins and MCP servers from the [cluaiz-tools](https://github.com/cluaiz/cluaiz-tools) registry, with permission levels, approvals and an audit log | [Tools](docs/engine/tools.md) |
+| **Memory and projects** | Project rules, notes kept between conversations that become memory only when you confirm them, and a view of what reached the model | [Chat memory](docs/api/inference/chat_completions.md) |
+| **Workflows** | Reusable flows the engine runs (schedules and triggers are in progress) | [Automation](docs/automation/README.md) |
+
+Every feature with its status and the test run that checked it: [features](docs/reference/features.md).
 
 ## Quick start
 
