@@ -24,7 +24,9 @@ Against Ollama 0.40.16 with the same GGUF files: generation was equal where the 
 Ollama generated 14-23% slower than Cluaiz with the same settings and could not load Llama 3.2 3B
 ([run 16](../../test/cloud/runs/2026-11-16-run16-vps-ollama/SUMMARY.md)).
 
-## A 26B model on a 4 GB laptop GPU
+## A 26B model on a 4 GB laptop GPU (older run, before the expert prefetch)
+
+For the current SSD streaming result (expert prefetch on) see the MoE row in the short answer above (run 48).
 
 Gemma 4 26B A4B (MoE, IQ4_XS, 14.2 GB model file) on an RTX 3050 Laptop with 4 GB VRAM and 24 GB RAM: attention
 on the GPU, experts in RAM, and the experts that do not fit RAM read from the memory-mapped model file on the disk

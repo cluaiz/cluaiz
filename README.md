@@ -45,9 +45,10 @@ what you build.
   as it is right now: on an L4, 14 of 16 models loaded within 0.09 GB of the planned VRAM
   ([run 21](test/cloud/runs/2026-11-18-run21-l4-planner/SUMMARY.md)). A model that cannot fit is refused with the
   amount missing, and a load that fails steps back to fewer GPU layers instead of crashing.
-- **A 26B model on a 4 GB laptop GPU.** Gemma 4 26B A4B (MoE, 14.2 GB file) ran at 16.7 tokens/s in `cluaiz bench`
-  and 11-13 tokens/s in chat on an RTX 3050 with 4 GB VRAM: attention on the GPU, experts in RAM, the rest read from
-  the disk ([run 20](test/cloud/runs/2026-11-16-run20-laptop-moe-disk/SUMMARY.md)).
+- **A MoE model larger than VRAM + RAM, streamed from the SSD.** Qwen3.6 35B A3B (18.2 GB file) on an L4 with
+  8 GB VRAM free and a 12 GB RAM limit: Cluaiz generated 19.8-25.1 tokens/s on chat and long prompts with its MoE
+  cache and expert prefetch, against 9.1-11.0 for llama.cpp at its defaults (about 2.2x) and 15.9-20.7 for llama.cpp
+  with its own MoE cache ([run 48](test/cloud/runs/2026-11-23-run48-l4-fair-baselines/SUMMARY.md)).
 - **One engine for chat, voice, vision and embeddings.** Chat, vision, speech, transcription and embeddings share one process, one
   model store and one API, so an app does not wire up a separate server for each.
 - **Works with what you already use.** Any OpenAI client can point at Cluaiz, and MCP clients such as Claude
