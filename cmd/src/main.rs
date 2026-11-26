@@ -273,6 +273,25 @@ fn open_log_file() -> Option<std::fs::File> {
     std::fs::OpenOptions::new().create(true).append(true).open(path).ok()
 }
 
+/// The console level asked for in CLUAIZ_LOG_LEVEL; an unknown value is ignored with a note on stderr
+fn console_level_from_env() -> Option<tracing_subscriber::filter::LevelFilter> {
+    use tracing_subscriber::filter::LevelFilter;
+    let value = std::env::var("CLUAIZ_LOG_LEVEL").ok()?;
+    let level = match value.trim().to_ascii_lowercase().as_str() {
+        "off" | "none" => LevelFilter::OFF,
+        "error" => LevelFilter::ERROR,
+        "warn" | "warning" => LevelFilter::WARN,
+        "info" => LevelFilter::INFO,
+        "debug" => LevelFilter::DEBUG,
+        "trace" => LevelFilter::TRACE,
+        _ => {
+            eprintln!("CLUAIZ_LOG_LEVEL={value} is not one of off, error, warn, info, debug, trace; ignored");
+            return None;
+        }
+    };
+    Some(level)
+}
+
 /// Engine logs (tracing) go to the log file, and to stderr with -v / for `serve`. stdout stays the
 /// command's own output.
 fn init_logging(verbose: u8, serving: bool, screen: bool) {
@@ -282,6 +301,12 @@ fn init_logging(verbose: u8, serving: bool, screen: bool) {
         (0, true) | (1, _) => LevelFilter::INFO,
         _ => LevelFilter::DEBUG,
     } };
+    // CLUAIZ_LOG_LEVEL (off, error, warn, info, debug) sets the console level, e.g. a quieter `serve`
+    // (like llama-server's --log-verbosity); the log file keeps its level. -v / -vv still raise it.
+    let console = match (screen, verbose, console_level_from_env()) {
+        (false, 0, Some(level)) => level,
+        _ => console,
+    };
     crate::ui::spinner::logs_on_stderr(console != LevelFilter::OFF);
     let file_level = if verbose >= 2 { LevelFilter::DEBUG } else { LevelFilter::INFO };
     // ONNX Runtime reports every memory-arena step at INFO; below -vv only its warnings are kept

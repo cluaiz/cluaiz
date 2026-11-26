@@ -23,7 +23,11 @@ llama.cpp's names (`llama-cli`, `llama-bench`); chat commands follow `ollama run
 | `cluaiz dev-sync`, `skill/plugin/mcp install` | Development sync and component installation |
 
 `-v` on any command shows engine logs on stderr (`-vv` debug). The full log is always in
-`~/.cluaiz/cluaiz_Core.log` (appended; restarted after 20 MiB).
+`~/.cluaiz/cluaiz_Core.log` (appended; restarted after 20 MiB). `serve` logs `info` on stderr; without
+`-v`, `CLUAIZ_LOG_LEVEL` (`off`, `error`, `warn`, `info`, `debug`, `trace`) sets that console level, so a
+server can run quieter (the same idea as llama-server's `--log-verbosity`). The log file keeps its level; an
+unknown value is ignored with a note. An env var was chosen over a new `-q` flag so that whatever starts
+`serve` (a service file, a script) can set it without changing its command line.
 
 ## `agent`
 

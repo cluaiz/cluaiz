@@ -74,6 +74,8 @@ command and subcommand at once; `cluaiz help <command> all` lists one command's.
   `/v1/audio/transcriptions`, `/v1/ingest`, `/v1/models`, `/api/tags`, `/api/pull`, `/health`,
   CEP `POST /v1/cep` and MCP `/mcp`. See [API](../api/README.md).
 * `--native-endpoint <pipe>`: a local pipe or socket instead of a TCP port.
+* Engine logs go to the console at `info`. A quieter console: `CLUAIZ_LOG_LEVEL=warn` (or `off`, `error`,
+  `info`, `debug`, `trace`); the log file keeps its level. `-v` / `-vv` override it.
 
 ### `cluaiz mcp-server`
 * MCP over stdio for MCP clients (`"command": "cluaiz", "args": ["mcp-server"]`), backed by the
