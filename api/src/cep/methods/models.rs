@@ -449,21 +449,8 @@ pub fn register(registry: &mut Registry<CallCtx>) {
         ),
         |ctx: CallCtx, call: Call, params: ModelParams| async move {
             let (entry, directory) = selected(&ctx, call, params.model, None, true).await?;
-            let loaded = ctx.state.host.active_model_path.lock().await.clone();
-            if loaded
-                .and_then(|path| Path::new(&path).canonicalize().ok())
-                .is_some_and(|path| path.starts_with(&directory))
-            {
-                ctx.state.host.unload_model().await;
-            }
-            worker(move || {
-                cluaiz_runtime::vram_use::forget_model(&entry.id);
-                crate::handlers::chat::semantic::forget_model(&entry.id);
-                let directory = cluaiz_models::ModelDownloader::uninstall(&entry.id)
-                    .map_err(|error| CepError::unavailable("model_remove_failed", error))?;
-                Ok(json!({"model":entry.id,"dir":roots::display(&directory)}))
-            })
-            .await
+            let directory = remove_installed(&ctx.state, entry.clone(), &directory).await?;
+            Ok(json!({"model":entry.id,"dir":roots::display(&directory)}))
         },
     );
     registry.add(
@@ -526,7 +513,32 @@ pub fn register(registry: &mut Registry<CallCtx>) {
     );
 }
 
-fn validate_id(model: &str) -> Result<(), CepError> {
+/// Removes an installed model: unloads it first when it is the loaded chat model, forgets its saved
+/// VRAM use and semantic vectors, then deletes its folder and registry entry (as `cluaiz rm` does).
+/// The one delete path of CEP `models.remove` and Ollama's `DELETE /api/delete`.
+pub(crate) async fn remove_installed(
+    state: &crate::AppState,
+    entry: ModelRegistryEntry,
+    directory: &Path,
+) -> Result<PathBuf, CepError> {
+    let directory = directory.canonicalize().unwrap_or_else(|_| directory.to_path_buf());
+    let loaded = state.host.active_model_path.lock().await.clone();
+    if loaded
+        .and_then(|path| Path::new(&path).canonicalize().ok())
+        .is_some_and(|path| path.starts_with(&directory))
+    {
+        state.host.unload_model().await;
+    }
+    worker(move || {
+        cluaiz_runtime::vram_use::forget_model(&entry.id);
+        crate::handlers::chat::semantic::forget_model(&entry.id);
+        cluaiz_models::ModelDownloader::uninstall(&entry.id)
+            .map_err(|error| CepError::unavailable("model_remove_failed", error))
+    })
+    .await
+}
+
+pub(crate) fn validate_id(model: &str) -> Result<(), CepError> {
     if model.trim().is_empty() || model.contains("..") || model.contains(['/', '\\', '\0']) {
         return Err(roots::invalid(
             "model",

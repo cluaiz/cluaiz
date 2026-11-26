@@ -7,7 +7,7 @@ use axum::{
     extract::{DefaultBodyLimit, Request},
     middleware::{from_fn, Next},
     response::Response,
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 use std::sync::Arc;
@@ -18,6 +18,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .allow_methods([
             axum::http::Method::GET,
             axum::http::Method::POST,
+            axum::http::Method::DELETE,
             axum::http::Method::OPTIONS,
         ])
         .allow_headers([
@@ -64,6 +65,7 @@ pub fn build_api_router(state: Arc<AppState>) -> Router {
         .route("/api/tags", get(handlers::models::tags))
         .route("/api/show", post(handlers::models::show))
         .route("/api/pull", post(handlers::models::pull_model))
+        .route("/api/delete", delete(handlers::models::delete_model))
         // MCP server over the CEP registry
         .route("/mcp", post(crate::cep::mcp::handle))
         .layer(axum::middleware::from_fn_with_state(

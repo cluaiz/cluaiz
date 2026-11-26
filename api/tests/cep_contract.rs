@@ -57,7 +57,8 @@ fn test_route_table_is_the_standard_routes_and_cep() {
     let mut expected = vec![
         "/health", "/v1/cep", "/mcp",
         "/v1/chat/completions", "/api/chat", "/v1/ingest", "/v1/embeddings", "/v1/audio/speech", "/v1/audio/transcriptions",
-        "/v1/models", "/api/tags", "/api/pull",
+        "/v1/models", "/api/tags", "/api/pull", "/api/delete",
+        "/api/generate", "/api/embed", "/api/version", "/api/ps", "/api/show",
     ];
     expected.sort_unstable();
     assert_eq!(routes, expected);

@@ -152,6 +152,56 @@ fn ollama_error(status: StatusCode, message: String) -> Response {
     (status, Json(json!({ "error": message }))).into_response()
 }
 
+/// `DELETE /api/delete` body (Ollama's `DeleteRequest`, `api/types.go`): `model`, or the older `name`
+#[derive(Debug, Deserialize)]
+pub struct DeletePayload {
+    #[serde(default)]
+    pub model: String,
+    #[serde(default)]
+    pub name: String,
+}
+
+/// DELETE /api/delete (Ollama): removes an installed model through the code CEP `models.remove` and
+/// `cluaiz rm` use (the loaded chat model is unloaded first). 200 with an empty body on success, 404
+/// when the model is not installed, as Ollama answers.
+pub async fn delete_model(State(state): State<Arc<AppState>>, body: axum::body::Bytes) -> Response {
+    use crate::cep::methods::models as remove;
+    if body.iter().all(u8::is_ascii_whitespace) {
+        return ollama_error(StatusCode::BAD_REQUEST, "missing request body".into());
+    }
+    let payload: DeletePayload = match serde_json::from_slice(&body) {
+        Ok(payload) => payload,
+        Err(error) => return ollama_error(StatusCode::BAD_REQUEST, error.to_string()),
+    };
+    let model = if payload.model.trim().is_empty() { payload.name } else { payload.model }.trim().to_string();
+    if model.is_empty() {
+        return ollama_error(StatusCode::BAD_REQUEST, "model is required".into());
+    }
+    let failed = |error: cluaiz_cep::CepError| {
+        let status = match error.code {
+            cluaiz_cep::error::NOT_FOUND => StatusCode::NOT_FOUND,
+            cluaiz_cep::error::CONFLICT => StatusCode::CONFLICT,
+            cluaiz_cep::error::INVALID_PARAMS => StatusCode::BAD_REQUEST,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
+        };
+        ollama_error(status, error.message)
+    };
+    if let Err(error) = crate::providers::refuse_provider_model(&model, "this route").and_then(|_| remove::validate_id(&model)) {
+        return failed(error);
+    }
+    let lookup = model.clone();
+    let entry = match tokio::task::spawn_blocking(move || InstalledStateRegistry::find(&lookup)).await {
+        Ok(Some(entry)) => entry,
+        Ok(None) => return ollama_error(StatusCode::NOT_FOUND, format!("model '{model}' not found")),
+        Err(error) => return ollama_error(StatusCode::INTERNAL_SERVER_ERROR, error.to_string()),
+    };
+    let directory = std::path::PathBuf::from(&entry.local_dir);
+    match remove::remove_installed(&state, entry, &directory).await {
+        Ok(_) => StatusCode::OK.into_response(),
+        Err(error) => failed(error),
+    }
+}
+
 /// POST /api/show (Ollama): an installed model's GGUF header (the data CEP `models.inspect`
 /// reads) in Ollama's `ShowResponse` shape (`server/routes.go`, `GetModelInfo`). Nothing is loaded.
 pub async fn show(body: axum::body::Bytes) -> Response {

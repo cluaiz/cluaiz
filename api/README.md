@@ -33,7 +33,7 @@ per-extension authorization boundary.
 
 New Engine features are CEP methods, not new HTTP routes; the HTTP routes are OpenAI's (chat,
 models, embeddings, audio), Ollama's (`/api/chat`, `/api/generate`, `/api/embed`, `/api/ps`, `/api/tags`,
-`/api/show`, `/api/pull`, `/api/version`), `/health` and `/v1/ingest`. The Ollama chat, generate and embed routes
+`/api/show`, `/api/pull`, `DELETE /api/delete`, `/api/version`), `/health` and `/v1/ingest`. The Ollama chat, generate and embed routes
 (`handlers/ollama.rs`) turn Ollama's request into the OpenAI request the chat and embeddings handlers
 take, and their answer back into Ollama's shape; the official Ollama Python library worked against them
 in run 36.
@@ -302,7 +302,7 @@ graph TD
 
 | Module | Responsibility |
 |---|---|
-| [`handlers/`](src/handlers/) | The HTTP routes other than CEP: chat (`/v1/chat/completions`), Ollama (`/api/chat`, `/api/generate`, `/api/embed`, `/api/version` in `ollama.rs`), models (`/v1/models`, `/api/tags`, `/api/show`, `/api/pull`), `/v1/embeddings`, `/v1/audio/speech`, `/v1/audio/transcriptions`, `/v1/ingest`, `/health` (`src/routes.rs:32-68`). |
+| [`handlers/`](src/handlers/) | The HTTP routes other than CEP: chat (`/v1/chat/completions`), Ollama (`/api/chat`, `/api/generate`, `/api/embed`, `/api/version` in `ollama.rs`), models (`/v1/models`, `/api/tags`, `/api/show`, `/api/pull`, `DELETE /api/delete`), `/v1/embeddings`, `/v1/audio/speech`, `/v1/audio/transcriptions`, `/v1/ingest`, `/health` (`src/routes.rs:32-68`). |
 | [`utils/`](src/utils/) | HTTP response wrappers, error encoders, and SSE streamers. |
 | [`lib.rs`](src/lib.rs) | Starts the server. `forward_load_events` passes the runtime's live chat-model load notices (`cluaiz_runtime::load_events`) to the Engine event bus as `model.load_started`, `model.load_step`, `model.load_retry`, `model.loaded`, `model.load_failed`, `model.load_refused` and `model.unloaded`, so Automation, other listeners and CEP `system.events` (the event ring read by cursor) see loads started anywhere (chat, CLI, flows). |
 
@@ -406,7 +406,7 @@ flowchart LR
 |---|---|
 | [`src/boot.rs`](src/boot.rs) | One start for every way the Engine runs: the HTTP / native-pipe daemon (`boot`) and the in-process C library (`boot_in_process`, for `cep_call`) |
 | [`src/state.rs`](src/state.rs) | `AppState`: the `EngineHost`, the open workspace folder (at start the empty `<Cluaiz home>/workspace`, made on first start; not the home itself, whose token and config the file tools would see; a client sends its project folder again with `workspace.set` after a restart; `workspace.set` refuses the Cluaiz home itself), the session token for local clients, `permission.json` in RAM, and the CEP engine |
-| [`src/routes.rs`](src/routes.rs) | The HTTP routes: the OpenAI routes, Ollama's routes (`handlers/ollama.rs`, `/api/tags`, `/api/show`, `/api/pull`), `/health`, `/v1/ingest`, and CEP (`/v1/cep`, `/mcp`); request body limits (`inline_body_bytes`) |
+| [`src/routes.rs`](src/routes.rs) | The HTTP routes: the OpenAI routes, Ollama's routes (`handlers/ollama.rs`, `/api/tags`, `/api/show`, `/api/pull`, `DELETE /api/delete`), `/health`, `/v1/ingest`, and CEP (`/v1/cep`, `/mcp`); request body limits (`inline_body_bytes`) |
 | [`src/update.rs`](src/update.rs) | Is a newer release out: one request to the GitHub releases list of `cluaiz/cluaiz` (pre-releases included), the same source the installers read; used by `cluaiz self update` and `system.update_check` |
 | [`src/url_resolver.rs`](src/url_resolver.rs) | A URL (http, `data:` base64, or file) as a local temporary file for attachments |
 | [`src/utils/slots.rs`](src/utils/slots.rs) | The model path of a slot (the active chat or vector model in `permission.json`) or of a model id, and capability notes in the log before a request |
@@ -442,7 +442,7 @@ Route behaviour is also exercised by every cloud run (`test/benchmarks/`).
 | Item | Why it matters | Needs |
 |---|---|---|
 | `n` > 1 and `logprobs` are not supported on an installed model; since 2026-11-22 they are refused with HTTP 400 naming the field instead of being ignored (`stop` and `max_completion_tokens` work since run 34, `logit_bias` on GGUF models since 2026-11-23) | OpenAI clients that need them get an error, not the result they asked for | pass them to llama.cpp (see `handlers/chat/README.md`, Pending) |
-| Ollama's model-management routes (`/api/create`, `/api/copy`, `/api/delete`, `/api/push`) are not there; `/api/show` sends no tensor list (`verbose`) and no `capabilities` | tools that manage models through Ollama's API get 404; clients that read `capabilities` see none | CEP `models.remove` covers delete; tensor type names need the ggml type table; capabilities need a mapping from the package capabilities |
+| Ollama's `/api/create`, `/api/copy` and `/api/push` are not there (`/api/delete` is since 2026-11-26; `/api/copy` needs a registry alias, and today every installed model owns its folder, so a copy that shares it would lose its files when the other is deleted); `/api/show` sends no tensor list (`verbose`) and no `capabilities` | tools that manage models through Ollama's API get 404; clients that read `capabilities` see none | `/api/create` and `/api/push` need a Modelfile and a registry; tensor type names need the ggml type table; capabilities need a mapping from the package capabilities |
 | ONNX models show `parameter_size: Unknown` in `/api/tags`, `/api/show`, `/api/ps` (GGUF models get the counted size since 2026-11-22) | Ollama clients show no size class for speech models | a parameter count from the ONNX initializers |
 | `api` tests not in CI and not rerun since the October acceptance sections | the dated results may not hold for the current code | a CI job with the CPU backend, or a recorded run |
 | This README mixes reference text and dated acceptance logs | a reader cannot tell current behaviour from history | move the dated logs to run folders in `test/cloud/runs/` |

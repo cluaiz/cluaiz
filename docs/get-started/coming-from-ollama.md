@@ -73,9 +73,10 @@ from the Engine's own counts.
 | `GET /api/tags` | the installed models; `modified_at` is the model file's change time (run 35) |
 | `POST /api/show` | an installed model's details, GGUF header (`model_info`) and chat template, without loading it; no tensor list and no `capabilities` yet ([Show a model](../api/models/show_model.md)) |
 | `POST /api/pull` | Ollama's request ([Pull a model](../api/models/pull_model.md)) |
+| `DELETE /api/delete` | `{"model": "..."}` (or the older `"name"`): removes the model's folder and registry entry as `cluaiz rm` and CEP `models.remove` do, and unloads it first when it is the loaded model. 200 with an empty body; 404 when it is not installed |
 | `GET /api/version` | this Engine's version (`0.1.0`), not an Ollama version |
 | `GET /api/ps` | the chat model the server has loaded; `size_vram` is the VRAM its plan was given (planned, not read from the driver), `context_length` the planned context (run 37) |
-| `/api/embeddings` (the old route), `/api/create`, `/api/copy`, `/api/delete`, `/api/push` | not there (HTTP 404). Use `cluaiz rm` or CEP `models.remove` |
+| `/api/embeddings` (the old route), `/api/create`, `/api/copy`, `/api/push` | not there (HTTP 404). `/api/copy` needs a registry alias, which the Engine does not have |
 
 **With an OpenAI library:** send OpenAI requests to `POST /v1/chat/completions` with the base URL
 `http://localhost:8000/v1` ([OpenAI compatibility](../api/inference/openai_compatibility.md)).

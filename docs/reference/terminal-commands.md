@@ -71,7 +71,8 @@ command and subcommand at once; `cluaiz help <command> all` lists one command's.
 ### `cluaiz serve`
 * Starts the HTTP API on the host and port in `permission.json` (default port 8000).
 * Routes: `/v1/chat/completions`, `/api/chat`, `/api/generate`, `/api/embed`, `/v1/embeddings`, `/v1/audio/speech`,
-  `/v1/audio/transcriptions`, `/v1/ingest`, `/v1/models`, `/api/tags`, `/api/pull`, `/health`,
+  `/v1/audio/transcriptions`, `/v1/ingest`, `/v1/models`, `/api/tags`, `/api/pull`, `/api/show`, `/api/ps`,
+  `/api/version`, `/api/delete`, `/health`,
   CEP `POST /v1/cep` and MCP `/mcp`. See [API](../api/README.md).
 * `--native-endpoint <pipe>`: a local pipe or socket instead of a TCP port.
 * Engine logs go to the console at `info`. A quieter console: `CLUAIZ_LOG_LEVEL=warn` (or `off`, `error`,
