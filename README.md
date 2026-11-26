@@ -21,9 +21,6 @@ The AI engine where models, voice, vision, memory, tools, agents and workflows w
   <a href="https://linkedin.com/company/cluaiz"><b>LinkedIn</b></a>
 </p>
 
-> [!NOTE]
-> v0.1.0 is a pre-release. Settings, APIs and file layout can still change before the stable release.
-
 ## What Cluaiz is
 
 **One engine. Every kind of intelligence.**
@@ -144,6 +141,7 @@ Same model file, same placement, same settings, Cluaiz against official llama.cp
 | Generation (GPU, GPU + RAM split, CPU) | Equal, within the run-to-run noise; one exception: a 2-bit model on a 1 vCPU server, 13-20% slower |
 | Prompt, fully on the GPU | Equal on an RTX 3050 laptop and a Tesla T4; llama.cpp up to 11% faster on an L4 |
 | Prompt, split across GPU and RAM | Up to 1.6x faster through the chat API on the T4 (even prompt chunks); equal with `cluaiz bench` |
+| MoE model larger than VRAM + RAM (Qwen3.6 35B A3B, L4 with 8 GB VRAM free, 12 GB RAM) | Generation 1.7-2.3x faster than llama.cpp at its defaults, and 1.2-1.4x faster than llama.cpp with its own MoE cache ([run 48](test/cloud/runs/2026-11-23-run48-l4-fair-baselines/SUMMARY.md)) |
 
 Every table, machine and run: [benchmarks](docs/reference/benchmarks.md).
 
