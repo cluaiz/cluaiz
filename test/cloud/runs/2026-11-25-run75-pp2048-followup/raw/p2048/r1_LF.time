@@ -1,0 +1,23 @@
+	Command being timed: "/home/<user>/fork-bench-build/bin/llama-bench -m /home/<user>/ch-run23/models/chat/qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS/Qwen3.6-35B-A3B-UD-IQ4_XS.gguf -ngl 99 -ncmoe 41 -ctk f16 -ctv f16 -fa auto -t 4 -p 2048 -n 0 -r 2 --progress -o md"
+	User time (seconds): 38.54
+	System time (seconds): 39.55
+	Percent of CPU this job got: 14%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 9:03.98
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 12637532
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 1192636
+	Minor (reclaiming a frame) page faults: 676820
+	Voluntary context switches: 1307905
+	Involuntary context switches: 26828
+	Swaps: 0
+	File system inputs: 73119880
+	File system outputs: 8
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 4096
+	Exit status: 0
