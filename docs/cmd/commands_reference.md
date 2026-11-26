@@ -130,6 +130,11 @@ cluaiz provider test myapi model-name
 
 A WebAssembly (`.wasm`) plugin runs inside the Engine with an instruction and a memory limit, no files and no programs; its only network is `cluaiz.http_fetch` to the https hosts it declares. Any other plugin runs as a child process inside the OS sandbox (`os_sandbox`): your home folder and secrets are hidden and its own folder is read-only. On Windows, `auto` mode does not confine it; `required` does ([How a plugin runs](../../agents/src/plugins/README.md)).
 
+An MCP server is reached in one of two ways, set in the `execution` block of the package's `package.json`:
+
+* **Program (stdio):** `"execution": {"command": "npx", "args": ["-y", "some-mcp-server"]}`. The Engine starts it and keeps it running.
+* **HTTP (Streamable HTTP):** `"execution": {"url": "https://example.com/mcp", "headers": {"Authorization": "Bearer ${EXAMPLE_TOKEN}"}}`. The Engine connects to the URL and opens a session. `${EXAMPLE_TOKEN}` is a setting the package declares in `env`; set it with `cluaiz mcp config <id>` so the token is not written in the package file. If `url` is set, `command` is not used. Servers that need OAuth, or that only speak the older HTTP+SSE transport, are not supported yet ([details](../../agents/src/mcp/README.md)).
+
 ```bash
 cluaiz plugin install cluaiz-search
 cluaiz plugin ls

@@ -1,6 +1,7 @@
-//! MCP client over stdio. Like other MCP hosts, each server runs as one long-lived process:
-//! it is initialized once and then serves any number of requests on the same connection, so
-//! several servers and several calls per answer reuse their running processes.
+//! MCP client over stdio or Streamable HTTP. Like other MCP hosts, each server is initialized once
+//! and then serves any number of requests on the same connection: a stdio server is one long-lived
+//! process, an HTTP server one session (`http.rs`). Several servers and several calls per answer
+//! reuse what is already running.
 
 use anyhow::{anyhow, Result};
 use std::collections::HashMap;
@@ -13,6 +14,7 @@ use std::time::{Duration, Instant};
 use serde_json::{json, Value};
 use tokio::sync::{oneshot, Mutex, RwLock};
 use tokio::time::timeout;
+use super::http::HttpSession;
 use super::manifest::McpManifestParser;
 use once_cell::sync::Lazy;
 
@@ -101,7 +103,7 @@ static MCP_TOOL_CACHE: Lazy<Arc<RwLock<HashMap<PathBuf, Vec<Value>>>>> = Lazy::n
 });
 
 /// Running servers, keyed by their package folder.
-static SESSIONS: Lazy<Mutex<HashMap<PathBuf, Arc<McpSession>>>> = Lazy::new(|| Mutex::new(HashMap::new()));
+static SESSIONS: Lazy<Mutex<HashMap<PathBuf, Running>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 /// When each server exited without being stopped (for the restart backoff and "unavailable")
 static CRASHES: Lazy<std::sync::Mutex<HashMap<PathBuf, Vec<Instant>>>> = Lazy::new(Default::default);
 /// Crashes counted within this window
@@ -144,7 +146,7 @@ fn program_path(command: &str) -> PathBuf {
 }
 
 /// `file://` URI of a local folder, as MCP roots expect.
-fn file_uri(path: &Path) -> String {
+pub(super) fn file_uri(path: &Path) -> String {
     let mut text = path.to_string_lossy().replace('\\', "/");
     for (raw, encoded) in [("%", "%25"), (" ", "%20"), ("#", "%23"), ("?", "%3F")] {
         text = text.replace(raw, encoded);
@@ -188,7 +190,7 @@ impl McpSession {
         let exec = manifest.execution
             .ok_or_else(|| anyhow!("No execution configuration found for MCP in {:?}", mcp_dir))?;
         if exec.command.trim().is_empty() {
-            return Err(anyhow!("MCP execution command is empty for {:?}", mcp_dir));
+            return Err(anyhow!("MCP execution needs a command or a url for {:?}", mcp_dir));
         }
 
         let workspace = crate::ToolsEngine::workspace_dir();
@@ -385,14 +387,119 @@ impl McpSession {
     }
 }
 
+/// A running server of either kind; everything outside `start_server` and `request` treats them alike.
+#[derive(Clone)]
+enum Running {
+    Stdio(Arc<McpSession>),
+    Http(Arc<HttpSession>),
+}
+
+impl Running {
+    fn name(&self) -> &str {
+        match self {
+            Running::Stdio(s) => &s.name,
+            Running::Http(s) => &s.name,
+        }
+    }
+    fn alive(&self) -> bool {
+        match self {
+            Running::Stdio(s) => s.alive.load(Ordering::SeqCst),
+            Running::Http(s) => s.alive.load(Ordering::SeqCst),
+        }
+    }
+    fn workspace(&self) -> &Path {
+        match self {
+            Running::Stdio(s) => &s.workspace,
+            Running::Http(s) => s.workspace(),
+        }
+    }
+    fn idle_for(&self) -> Duration {
+        match self {
+            Running::Stdio(s) => s.idle_for(),
+            Running::Http(s) => s.idle_for(),
+        }
+    }
+    fn stop(&self) {
+        match self {
+            Running::Stdio(s) => s.stop(),
+            Running::Http(s) => s.stop(),
+        }
+    }
+    fn warm(&self) -> &AtomicBool {
+        match self {
+            Running::Stdio(s) => &s.warm,
+            Running::Http(s) => &s.warm,
+        }
+    }
+    async fn request(&self, method: &str, params: Value, limit: Duration) -> Result<Value> {
+        match self {
+            Running::Stdio(s) => s.request(method, params, limit).await,
+            Running::Http(s) => s.request(method, params, limit).await,
+        }
+    }
+}
+
+/// Starts the server a package describes: an HTTP session when its `execution` has a `url`,
+/// otherwise the stdio process named by `command`.
+async fn start_server(mcp_dir: &Path) -> Result<Running> {
+    let manifest = McpManifestParser::parse_file(&mcp_dir.join("package.json"))
+        .ok_or_else(|| anyhow!("Failed to parse MCP package.json in {:?}", mcp_dir))?;
+    let Some(url) = manifest.execution.as_ref().and_then(|exec| exec.url.clone()) else {
+        return Ok(Running::Stdio(McpSession::start(mcp_dir).await?));
+    };
+    let exec = manifest.execution.unwrap_or_default();
+    if !exec.command.trim().is_empty() {
+        tracing::warn!("⚠️ [McpClient] '{}' has both a url and a command; the url is used", manifest.name);
+    }
+    // `${NAME}` in a header value comes from the settings the package names in `env`, as for a stdio server
+    let values = if exec.headers.values().any(|v| v.contains("${")) {
+        let mut values = exec.env.clone();
+        values.extend(user_env(mcp_dir, &cluaiz_core::EnvironmentManager::current().config_dir()));
+        values
+    } else {
+        HashMap::new()
+    };
+    let headers = exec.headers.iter()
+        .map(|(key, value)| Ok((key.clone(), expand_values(value, &values)
+            .map_err(|name| anyhow!("MCP server '{}': header '{}' needs the setting {}, which has no value", manifest.name, key, name))?)))
+        .collect::<Result<HashMap<_, _>>>()?;
+    tracing::info!("🔌 [McpClient] Connecting to MCP server '{}' over HTTP", manifest.name);
+    // The server's tool list changed: the next listing asks it again
+    let changed_dir = mcp_dir.to_path_buf();
+    let on_list_changed: Arc<dyn Fn() + Send + Sync> = Arc::new(move || {
+        let dir = changed_dir.clone();
+        tokio::spawn(async move {
+            MCP_TOOL_CACHE.write().await.remove(&dir);
+            let _ = std::fs::remove_file(tools_list_cache(&dir));
+        });
+    });
+    let session = HttpSession::connect(&manifest.name, &url, &headers, crate::ToolsEngine::workspace_dir(), on_list_changed, START_TIMEOUT).await?;
+    Ok(Running::Http(session))
+}
+
+/// `value` with each `${NAME}` replaced from `values`; `Err(NAME)` for a name without a value
+fn expand_values(value: &str, values: &HashMap<String, String>) -> std::result::Result<String, String> {
+    let mut out = String::new();
+    let mut rest = value;
+    while let Some(start) = rest.find("${") {
+        let Some(len) = rest[start + 2..].find('}') else { break };
+        let name = &rest[start + 2..start + 2 + len];
+        out.push_str(&rest[..start]);
+        out.push_str(values.get(name).ok_or_else(|| name.to_string())?);
+        rest = &rest[start + 3 + len..];
+    }
+    out.push_str(rest);
+    Ok(out)
+}
+
 /// The running server for `mcp_dir`, started (or restarted after an exit or a workspace
 /// change) when needed.
-async fn session_for(mcp_dir: &Path) -> Result<Arc<McpSession>> {
+async fn session_for(mcp_dir: &Path) -> Result<Running> {
     start_idle_reaper();
     let workspace = crate::ToolsEngine::workspace_dir();
     let mut sessions = SESSIONS.lock().await;
     if let Some(existing) = sessions.get(mcp_dir) {
-        if existing.alive.load(Ordering::SeqCst) && existing.workspace == workspace {
+        if existing.alive() && existing.workspace() == workspace {
             return Ok(existing.clone());
         }
         existing.stop();
@@ -404,7 +511,7 @@ async fn session_for(mcp_dir: &Path) -> Result<Arc<McpSession>> {
             break;
         };
         if let Some(stopped) = sessions.remove(&oldest) {
-            tracing::info!("🔌 [McpClient] Stopping '{}' to stay within {} running servers", stopped.name, MAX_RUNNING);
+            tracing::info!("🔌 [McpClient] Stopping '{}' to stay within {} running servers", stopped.name(), MAX_RUNNING);
             stopped.stop();
         }
     }
@@ -418,7 +525,7 @@ async fn session_for(mcp_dir: &Path) -> Result<Arc<McpSession>> {
         Some(wait) if !wait.is_zero() => tokio::time::sleep(wait).await,
         Some(_) => {}
     }
-    let session = McpSession::start(mcp_dir).await?;
+    let session = start_server(mcp_dir).await?;
     sessions.insert(mcp_dir.to_path_buf(), session.clone());
     Ok(session)
 }
@@ -432,12 +539,12 @@ fn start_idle_reaper() {
             let mut sessions = SESSIONS.blocking_lock();
             let idle: Vec<PathBuf> = sessions
                 .iter()
-                .filter(|(_, session)| session.idle_for() >= IDLE_STOP || !session.alive.load(Ordering::SeqCst))
+                .filter(|(_, session)| session.idle_for() >= IDLE_STOP || !session.alive())
                 .map(|(dir, _)| dir.clone())
                 .collect();
             for dir in idle {
                 if let Some(session) = sessions.remove(&dir) {
-                    tracing::info!("🔌 [McpClient] Stopping idle MCP server '{}'", session.name);
+                    tracing::info!("🔌 [McpClient] Stopping idle MCP server '{}'", session.name());
                     session.stop();
                 }
             }
@@ -538,10 +645,10 @@ impl McpClient {
             check_exposed(&exposed, tool_name, &arguments)?;
         }
         let session = session_for(mcp_dir).await?;
-        let limit = if session.warm.load(Ordering::SeqCst) { REQUEST_TIMEOUT } else { START_TIMEOUT };
+        let limit = if session.warm().load(Ordering::SeqCst) { REQUEST_TIMEOUT } else { START_TIMEOUT };
         let result = session.request("tools/call", json!({ "name": tool_name, "arguments": arguments }), limit).await
             .map_err(|e| anyhow!("MCP tool error: {}", e))?;
-        session.warm.store(true, Ordering::SeqCst);
+        session.warm().store(true, Ordering::SeqCst);
 
         // A tool-level failure is a result with `isError: true` (MCP spec).
         if result.get("isError").and_then(|e| e.as_bool()) == Some(true) {
@@ -657,6 +764,14 @@ mod tests {
         .unwrap();
         assert_eq!(user_env(&dir, &root), HashMap::from([("WANTED".to_string(), "1".to_string())]));
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn header_values_expand_named_settings() {
+        let values = HashMap::from([("TOKEN".to_string(), "abc".to_string())]);
+        assert_eq!(expand_values("Bearer ${TOKEN}", &values).unwrap(), "Bearer abc");
+        assert_eq!(expand_values("plain", &values).unwrap(), "plain");
+        assert_eq!(expand_values("${OTHER}", &values), Err("OTHER".to_string()));
     }
 
     #[test]

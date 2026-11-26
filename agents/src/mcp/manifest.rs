@@ -49,6 +49,12 @@ pub struct McpExecution {
     pub args: Vec<String>,
     #[serde(default)]
     pub env: HashMap<String, String>,
+    /// An HTTP server: the MCP endpoint (Streamable HTTP). When set, `command` and `args` are not used.
+    #[serde(default)]
+    pub url: Option<String>,
+    /// Headers sent with every request to `url`; `${NAME}` in a value is replaced by the setting `NAME`
+    #[serde(default)]
+    pub headers: HashMap<String, String>,
 }
 
 fn default_command() -> String {
@@ -91,8 +97,17 @@ impl McpManifestParser {
                     }
                 }
             }
+            exec.url = exec_obj.get("url").and_then(|u| u.as_str()).map(str::trim).filter(|u| !u.is_empty()).map(str::to_string);
+            if let Some(headers) = exec_obj.get("headers").and_then(|h| h.as_object()) {
+                for (k, v) in headers {
+                    if let Some(val_str) = v.as_str() {
+                        exec.headers.insert(k.clone(), val_str.to_string());
+                    }
+                }
+            }
         }
-        if exec.command.is_empty() {
+        // A url means an HTTP server: the stdio fallbacks below do not apply
+        if exec.command.is_empty() && exec.url.is_none() {
             if let Some(versions) = val.get("versions").and_then(|v| v.as_object()) {
                 if let Some(first_ver) = versions.values().next() {
                     if let Some(cmd) = first_ver.get("command").and_then(|c| c.as_str()) {
@@ -114,12 +129,40 @@ impl McpManifestParser {
                 }
             }
         }
-        if exec.command.is_empty() {
+        if exec.command.is_empty() && exec.url.is_none() {
             if let Some(cmd) = val.get("command").and_then(|c| c.as_str()) {
                 exec.command = cmd.to_string();
             }
         }
         manifest.execution = Some(exec);
         Some(manifest)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn parse(json: &str) -> McpExecution {
+        let path = std::env::temp_dir().join(format!("cluaiz-manifest-{}.json", uuid::Uuid::new_v4()));
+        std::fs::write(&path, json).unwrap();
+        let manifest = McpManifestParser::parse_file(&path).unwrap();
+        let _ = std::fs::remove_file(&path);
+        manifest.execution.unwrap()
+    }
+
+    #[test]
+    fn url_form_and_command_form_are_told_apart() {
+        let http = parse(r#"{"id":"a","execution":{"url":"https://x.test/mcp","headers":{"Authorization":"Bearer ${TOKEN}"}}}"#);
+        assert_eq!(http.url.as_deref(), Some("https://x.test/mcp"));
+        assert_eq!(http.headers["Authorization"], "Bearer ${TOKEN}");
+        assert!(http.command.is_empty());
+
+        let stdio = parse(r#"{"id":"b","execution":{"command":"npx","args":["-y","x"]}}"#);
+        assert!(stdio.url.is_none());
+        assert_eq!(stdio.command, "npx");
+
+        // An empty url is no url
+        assert!(parse(r#"{"id":"c","execution":{"url":"  ","command":"node"}}"#).url.is_none());
     }
 }
