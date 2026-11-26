@@ -39,7 +39,7 @@ what you build.
 
 - **Full speed, without the tuning.** On the same model file and placement, generation is equal to official
   llama.cpp on the GPU, on a GPU + RAM split and on the CPU, with one exception listed in the
-  [benchmarks](docs/reference/benchmarks.md). The planner chooses the GPU layers, context and KV cache for you;
+  [benchmarks](test/benchmarks/README.md). The planner chooses the GPU layers, context and KV cache for you;
   `cluaiz show` prints why, and every value can still be set by hand.
 - **It measures before it loads.** Free GPU memory and RAM are read on every load, so the plan matches the machine
   as it is right now: on an L4, 14 of 16 models loaded within 0.09 GB of the planned VRAM
@@ -48,7 +48,7 @@ what you build.
 - **A MoE model larger than VRAM + RAM, streamed from the SSD.** Qwen3.6 35B A3B (18.2 GB file) on an L4 with
   8 GB VRAM free and a 12 GB RAM limit: Cluaiz generated 19.8-25.1 tokens/s on chat and long prompts with its MoE
   cache and expert prefetch, against 9.1-11.0 for llama.cpp at its defaults (about 2.2x) and 15.9-20.7 for llama.cpp
-  with its own MoE cache ([run 48](test/cloud/runs/2026-11-23-run48-l4-fair-baselines/SUMMARY.md)).
+  with its own MoE cache ([SSD streaming benchmark](test/benchmarks/ssd-streaming-moe.md)).
 - **One engine for chat, voice, vision and embeddings.** Chat, vision, speech, transcription and embeddings share one process, one
   model store and one API, so an app does not wire up a separate server for each.
 - **Works with what you already use.** Any OpenAI client can point at Cluaiz, and MCP clients such as Claude
@@ -142,9 +142,9 @@ Same model file, same placement, same settings, Cluaiz against official llama.cp
 | Generation (GPU, GPU + RAM split, CPU) | Equal, within the run-to-run noise; one exception: a 2-bit model on a 1 vCPU server, 13-20% slower |
 | Prompt, fully on the GPU | Equal on an RTX 3050 laptop and a Tesla T4; llama.cpp up to 11% faster on an L4 |
 | Prompt, split across GPU and RAM | Up to 1.6x faster through the chat API on the T4 (even prompt chunks); equal with `cluaiz bench` |
-| MoE model larger than VRAM + RAM (Qwen3.6 35B A3B, L4 with 8 GB VRAM free, 12 GB RAM) | Generation 1.7-2.3x faster than llama.cpp at its defaults, and 1.2-1.4x faster than llama.cpp with its own MoE cache ([run 48](test/cloud/runs/2026-11-23-run48-l4-fair-baselines/SUMMARY.md)) |
+| MoE model larger than VRAM + RAM (Qwen3.6 35B A3B, L4 with 8 GB VRAM free, 12 GB RAM) | Generation 1.7-2.3x faster than llama.cpp at its defaults, and 1.2-1.4x faster than llama.cpp with its own MoE cache ([SSD streaming benchmark](test/benchmarks/ssd-streaming-moe.md)) |
 
-Every table, machine and run: [benchmarks](docs/reference/benchmarks.md).
+Every table, machine and run: [benchmarks](test/benchmarks/README.md).
 
 ## Supported hardware
 
