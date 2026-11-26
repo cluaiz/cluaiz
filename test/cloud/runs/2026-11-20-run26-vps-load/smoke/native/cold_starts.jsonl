@@ -1,8 +1,0 @@
-{"ts": "2026-11-20T14:46:17", "mode": "native", "engine": "cluaiz", "model": "qwen3-0.6b", "server_ready_s": 1.079, "ok": true}
-{"ts": "2026-11-20T14:47:13", "mode": "native", "engine": "cluaiz", "model": "none", "server_ready_s": 0.568, "ok": true}
-{"ts": "2026-11-20T14:48:33", "mode": "native", "engine": "cluaiz", "model": "kokoro", "server_ready_s": 0.559, "ok": true}
-{"ts": "2026-11-20T14:49:46", "mode": "native", "engine": "cluaiz", "model": "qwen3-0.6b", "server_ready_s": 0.555, "ok": true}
-{"ts": "2026-11-20T14:51:18", "mode": "native", "engine": "ollama", "model": "qwen3-0.6b", "server_ready_s": 0.561, "ok": true}
-{"ts": "2026-11-20T14:52:14", "mode": "native", "engine": "ollama", "model": "none", "server_ready_s": 0.589, "ok": true}
-{"ts": "2026-11-20T14:53:41", "mode": "native", "engine": "llama", "model": "qwen3-0.6b", "server_ready_s": 2.116, "ok": true}
-{"ts": "2026-11-20T14:54:37", "mode": "native", "engine": "llama", "model": "embed-gemma", "server_ready_s": 1.601, "ok": true}

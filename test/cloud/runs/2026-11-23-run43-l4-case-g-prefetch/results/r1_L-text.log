@@ -1,4 +1,0 @@
-| code | prompt 31 tok 1.47 t/s | gen 237 tok 6.01 t/s |
-| chat | prompt 33 tok 6.17 t/s | gen 204 tok 11.11 t/s |
-| list | prompt 34 tok 7.54 t/s | gen 242 tok 8.43 t/s |
-| long | prompt 804 tok 25.75 t/s | gen 128 tok 8.93 t/s |

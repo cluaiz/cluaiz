@@ -3,7 +3,7 @@ description: Runs every installed GGUF chat model in every placement mode agains
 
 # Chat model regression (`test/engine_regression/`)
 
-![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/cloud/runs and BENCHMARKS.md](../../docs/assets/contributing/test-kinds.png)
+![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/benchmarks with raw logs in test/cloud/runs](../../docs/assets/contributing/test-kinds.png)
 
 ## What it does
 
@@ -45,8 +45,8 @@ is the cold one), `--max-tokens` (64), `--allow-big`, `--min-ratio`.
 
 ## Results
 
-[`RESULTS.md`](RESULTS.md): the dev laptop, 2026-10-12. Cloud regression runs use the same script
-through `test/cloud/remote/regression_tests.sh` (runs 5 and 9 in `test/cloud/BENCHMARKS.md`).
+[`RESULTS.md`](../benchmarks/README.md): the dev laptop, 2026-10-12. Cloud regression runs use the same script
+through `test/cloud/remote/regression_tests.sh` (runs 5 and 9 in `test/benchmarks/`).
 
 ## Pending
 

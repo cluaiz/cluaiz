@@ -103,7 +103,7 @@ The cache is counted in the plan's VRAM, so the learned pool gap and the load re
 
 ### Where the numbers come from
 
-[Run 13](../../test/cloud/runs/2026-11-15-run13-moe-cache/SUMMARY.md) used official llama.cpp
+[Run 13](../../test/benchmarks/ssd-streaming-moe.md#run-13) used official llama.cpp
 `b54752d` on an L4 GPU. Generation, tokens/s:
 
 | Model | GPU | `--fit`, no cache | With the cache |
@@ -289,7 +289,7 @@ shown as 0 kept free: it only removes the margin, it never adds VRAM.
 ## Tests
 
 `cargo test -p cluaiz-plan` on 2026-11-24 (Windows 11): 63 passed, 1 ignored (`tests/real_models.rs`, needs installed
-models). Real loads: runs 11, 12, 21 (L4), 17, 20 (laptop), 15-19 (VPS) in `test/cloud/BENCHMARKS.md`.
+models). Real loads: runs 11, 12, 21 (L4), 17, 20 (laptop), 15-19 (VPS) in `test/benchmarks/`.
 
 ## Pending
 

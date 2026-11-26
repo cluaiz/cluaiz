@@ -47,7 +47,7 @@ The llama, onnx, runtime, api and cmd tests run on developer machines and inside
 
 | Path | What it tests | How it runs | State (2026-11-21) |
 |---|---|---|---|
-| [`cloud/`](cloud/README.md) | every recorded machine run: VM helper, remote scripts, `runs/`, `BENCHMARKS.md` | `test/cloud/vm.sh`, scripts copied to the VM | active; runs 1-31 |
+| [`cloud/`](cloud/README.md) | VM helper, remote scripts, `runs/` (raw logs per run) | `test/cloud/vm.sh`, scripts copied to the VM | active; runs 1-31 |
 | [`context-runtime/`](context-runtime/README.md) | tool routing set, KV equality after edits, long sessions and compaction, memory, tool-call format, chat templates, speed | Python against a running isolated server | active; results inside its README |
 | [`engine_regression/`](engine_regression/README.md) | every installed GGUF chat model x placement (auto, gpu, split, cpu): answer not empty, no control-token leak, speed against llama-bench | `python test/engine_regression/run.py [--llama-bench ...] [--report ...]` | active; used by cloud regression runs |
 | [`cep/`](cep/wave_b/README.md) | CEP journeys (`journeys.py`), MCP over HTTP and stdio (`mcp_journey.py`), the C library through Python ctypes (`ffi_python.py`), and `wave_b/` file, system, model and tool contracts | each script starts its own server: `--exe --home [--port 8011]` | active |
@@ -63,10 +63,11 @@ The llama, onnx, runtime, api and cmd tests run on developer machines and inside
 
 ## How a run is recorded
 
-Every test on a real machine gets a folder `test/cloud/runs/<date>-runN-<what>/` with a `SUMMARY.md`
-(machine, build, settings, results, what it does not prove), the raw output files and the script that
-produced them, and one row in [`cloud/BENCHMARKS.md`](cloud/BENCHMARKS.md). Usernames and keys are
-removed from recorded files (`<user>`, `<key>`). Details: [`cloud/README.md`](cloud/README.md).
+Every test is written up in [`benchmarks/`](benchmarks/README.md): one file per test type with only the latest
+results (machine, build, settings, commands, every number, charts, what it does not prove). The raw logs and the
+script of each run stay in `test/cloud/runs/<date>-runN-<what>/` (no `.md` files there). When a newer run covers
+the same case, the old numbers and the old run folder are deleted. Usernames and keys are removed from recorded
+files (`<user>`, `<key>`). Details: [`cloud/README.md`](cloud/README.md).
 
 ## Decisions
 | Decision | Why | Alternative not taken |

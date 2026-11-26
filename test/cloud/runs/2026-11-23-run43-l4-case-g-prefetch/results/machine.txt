@@ -1,9 +1,0 @@
-Linux <vps> 6.12.117+deb13-cloud-amd64 #1 SMP PREEMPT_DYNAMIC Debian 6.12.117-1 (2026-11-12) x86_64 GNU/Linux
-8
-               total        used        free      shared  buff/cache   available
-Mem:           32099        1089       25135           0        6155       31010
-Swap:              0           0           0
-name, memory.total [MiB], memory.used [MiB], driver_version
-NVIDIA L4, 23034 MiB, 0 MiB, 620.70.06
-Filesystem      Size  Used Avail Use% Mounted on
-/dev/nvme0n1p1  148G  110G   32G  78% /

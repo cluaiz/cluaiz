@@ -106,9 +106,9 @@ numbers come from CEP `system.live`.
 
 Result on 2026-11-22 (Windows 11): 8 passed, 1 ignored. On that machine `Get-CimInstance Win32_PhysicalMemory` gave two modules with `Speed` 4800 and `ConfiguredClockSpeed` 4800.
 
-Real machines: every run in [`test/cloud/BENCHMARKS.md`](../../test/cloud/BENCHMARKS.md) loads models
+Real machines: every run in [`test/benchmarks/`](../../test/benchmarks/README.md) loads models
 through these numbers. The macOS RAM formula and the backend GPUs come from the M5 Mac run
-[`test/mac/runs/2026-10-28-m5-air-16gb/`](../../test/mac/runs/2026-10-28-m5-air-16gb/SUMMARY.md) (free RAM read
+[`test/mac/runs/2026-10-28-m5-air-16gb/`](../../test/benchmarks/release-and-platforms.md#mac-m5) (free RAM read
 as 0.00-0.75 GB of 16 GB, Metal unused; fixed in `07cf30fa`, not rerun on a real Mac since). Not tested anywhere: AMD or Intel GPUs
 through Vulkan on Windows.
 

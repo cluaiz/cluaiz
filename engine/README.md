@@ -96,7 +96,7 @@ or hardware):
 | runtime | 23 | 0 | 0 | not run here (depends on both backends) |
 
 Machine runs with real models (speed, memory, platforms) are recorded in
-[`test/cloud/BENCHMARKS.md`](../test/cloud/BENCHMARKS.md), one folder per run in `test/cloud/runs/`.
+[`test/benchmarks/`](../test/benchmarks/README.md), raw logs per run in `test/cloud/runs/`.
 
 **Build rule:** build the Engine with `cargo build -p cmd` only. A build of another package or of the
 whole workspace can rebuild llama.cpp with CUDA (about 25 minutes on the dev machine).

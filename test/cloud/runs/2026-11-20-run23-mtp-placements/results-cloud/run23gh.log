@@ -1,6 +1,0 @@
-[05:07:02] pull unsloth/Qwen3.5-2B-MTP-GGUF:Q4_K_M exit 0
-[05:07:03] pull unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-IQ4_XS exit 0
-[05:07:03] MoE id: qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS
-[05:07:23] start G_moe_vram8_ram12: qwen3.6-35b-a3b-mtp-gguf-UD-IQ4_XS -r 1
-[05:18:49] end G_moe_vram8_ram12 exit 0
-[05:18:51] start H_dense_cpu_ram1400: qwen3.5-2b-mtp-gguf-Q4_K_M --n-gpu-layers 0 -r 1

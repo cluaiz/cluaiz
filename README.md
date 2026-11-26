@@ -43,7 +43,7 @@ what you build.
   `cluaiz show` prints why, and every value can still be set by hand.
 - **It measures before it loads.** Free GPU memory and RAM are read on every load, so the plan matches the machine
   as it is right now: on an L4, 14 of 16 models loaded within 0.09 GB of the planned VRAM
-  ([run 21](test/cloud/runs/2026-11-18-run21-l4-planner/SUMMARY.md)). A model that cannot fit is refused with the
+  ([run 21](test/benchmarks/planner-and-vram.md#run-21)). A model that cannot fit is refused with the
   amount missing, and a load that fails steps back to fewer GPU layers instead of crashing.
 - **A MoE model larger than VRAM + RAM, streamed from the SSD.** Qwen3.6 35B A3B (18.2 GB file) on an L4 with
   8 GB VRAM free and a 12 GB RAM limit: Cluaiz generated 19.8-25.1 tokens/s on chat and long prompts with its MoE
@@ -151,9 +151,9 @@ Every table, machine and run: [benchmarks](test/benchmarks/README.md).
 | Hardware | Backend | Tested on |
 | :--- | :--- | :--- |
 | **NVIDIA GPU**, Windows and Linux | CUDA 12 / CUDA 13 pack | RTX 3050 Laptop 4 GB (Windows 11), Tesla T4 16 GB (Ubuntu 24.04), L4 23 GB (Debian 13) |
-| **Apple Silicon**, macOS 14+ | Metal | MacBook Air M5 16 GB ([run](test/mac/runs/2026-10-28-m5-air-16gb/SUMMARY.md)), virtual M1 on macOS 15 |
+| **Apple Silicon**, macOS 14+ | Metal | MacBook Air M5 16 GB ([run](test/benchmarks/release-and-platforms.md#mac-m5)), virtual M1 on macOS 15 |
 | **AMD Radeon, Intel Arc**, Windows and Linux | Vulkan pack | Built, not yet run on this hardware |
-| **x86-64 CPU** (SSE4.2 to AVX-512) | CPU, best build picked at start | Ryzen 7 7435HS, Xeon with AVX-512 / AMX, EPYC VPS with 1 vCPU and 3.8 GB RAM ([run](test/cloud/runs/2026-11-16-run19-vps-deep/SUMMARY.md)) |
+| **x86-64 CPU** (SSE4.2 to AVX-512) | CPU, best build picked at start | Ryzen 7 7435HS, Xeon with AVX-512 / AMX, EPYC VPS with 1 vCPU and 3.8 GB RAM ([run](test/benchmarks/release-and-platforms.md#run-19)) |
 | **ARM64 Linux** | CPU (NEON and newer) | AWS Graviton2, Ubuntu 24.04 |
 
 ROCm/HIP, OpenVINO, SYCL and CANN builds are not part of the release yet. Packages and every run:

@@ -148,7 +148,7 @@ graph LR
 ## Tests
 
 23 unit tests (`src/`); no `tests/` folder. `cluaiz-runtime` links both backends, so the tests were not
-run on 2026-11-21. Every cloud run loads models through this crate (`test/cloud/BENCHMARKS.md`).
+run on 2026-11-21. Every cloud run loads models through this crate (`test/benchmarks/`).
 
 ## Pending
 

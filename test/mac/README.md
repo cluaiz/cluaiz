@@ -3,7 +3,7 @@ description: Mac test on Apple Silicon: Cluaiz against plain llama.cpp with the 
 
 # Mac test on Apple Silicon (`test/mac/`)
 
-![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/cloud/runs and BENCHMARKS.md](../../docs/assets/contributing/test-kinds.png)
+![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/benchmarks with raw logs in test/cloud/runs](../../docs/assets/contributing/test-kinds.png)
 
 Runs Cluaiz on a Mac with Apple Silicon and compares it with plain llama.cpp on the same model files and the
 same settings. It takes about an hour and needs one command; all results are packed into one archive.
@@ -130,10 +130,10 @@ below it if the Mac is not used for Cluaiz afterwards.
 
 | Run | Machine | Result | Follow-up |
 |---|---|---|---|
-| [`runs/2026-10-28-m5-air-16gb/`](runs/2026-10-28-m5-air-16gb/SUMMARY.md) | MacBook Air M5, 16 GB, release v0.1.0 | install and chat worked; speed matched plain llama.cpp at the same settings (Qwen3-4B generation 22.7-24.6 vs 22.1-22.5 t/s), but the Engine never used the Metal GPU, read free RAM as 0.00-0.75 GB and refused Auto placement (HTTP 500) | fixed in `07cf30fa` (2026-10-29): Metal devices from llama.cpp's backends (`HardwareProber::set_backend_gpus`), free RAM as Activity Monitor counts it (`macos_available_ram`), HTTP 503 when nothing fits; see [`engine/hardware/README.md`](../../engine/hardware/README.md) |
+| [`runs/2026-10-28-m5-air-16gb/`](../benchmarks/release-and-platforms.md#mac-m5) | MacBook Air M5, 16 GB, release v0.1.0 | install and chat worked; speed matched plain llama.cpp at the same settings (Qwen3-4B generation 22.7-24.6 vs 22.1-22.5 t/s), but the Engine never used the Metal GPU, read free RAM as 0.00-0.75 GB and refused Auto placement (HTTP 500) | fixed in `07cf30fa` (2026-10-29): Metal devices from llama.cpp's backends (`HardwareProber::set_backend_gpus`), free RAM as Activity Monitor counts it (`macos_available_ram`), HTTP 503 when nothing fits; see [`engine/hardware/README.md`](../../engine/hardware/README.md) |
 
 After the fix, macOS ran only on a virtual GitHub macOS 15 runner (Apple M1, no real GPU) in run 6
-([`../cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md`](../cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md)).
+([`../cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md`](../benchmarks/release-and-platforms.md#run-6)).
 The Metal path of `07cf30fa` has not been run on a real Mac.
 
 ## Decisions
@@ -148,5 +148,4 @@ The Metal path of `07cf30fa` has not been run on a real Mac.
 | Item | Why it matters | Needs |
 |---|---|---|
 | A real-Mac run after `07cf30fa` | Metal use, the macOS free-RAM formula and Auto placement are fixed in code but unmeasured on hardware | `mac_test.sh` on an Apple Silicon Mac |
-| The Mac run is not in `test/cloud/BENCHMARKS.md` | runs are listed in two places | a row there linking this folder |
 | The macOS OS sandbox (`sandbox-exec`) | built, never run on a Mac (Windows run 27, Linux run 28 only) | the same real-Mac run with `agents/tests/os_sandbox_real.rs` |

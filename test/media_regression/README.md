@@ -8,7 +8,7 @@ Release tests for images, audio, video and documents sent to the API, run throug
 Exercise attachment APIs through an actual separately supplied CLI executable. This complements library and
 in-process router tests; it does not replace App or installer acceptance.
 
-![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/cloud/runs and BENCHMARKS.md](../../docs/assets/contributing/test-kinds.png)
+![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/benchmarks with raw logs in test/cloud/runs](../../docs/assets/contributing/test-kinds.png)
 
 ## At a glance
 

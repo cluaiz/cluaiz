@@ -1394,7 +1394,7 @@
  },
  {
   "title": "Benchmarks",
-  "description": "Cluaiz against official llama.cpp and Ollama on the same model files and placements: the short answer, then every table with its run.",
+  "description": "Where the benchmark results live: one file per test type with only the latest result.",
   "kind": "docs",
   "path": "docs/reference/benchmarks.md",
   "metadata": true
@@ -1813,6 +1813,13 @@
   "metadata": true
  },
  {
+  "title": "test/benchmarks",
+  "description": "Every test of the Engine written up, one file per test type, latest results only, with links to the raw logs.",
+  "kind": "readme",
+  "path": "test/benchmarks/README.md",
+  "metadata": true
+ },
+ {
   "title": "test/cep/waveb",
   "description": "Tests of the fs, workspace, system, storage, models and tools CEP methods.",
   "kind": "readme",
@@ -1831,20 +1838,6 @@
   "description": "Measures the MoE expert prefetch and forced GPU cache on a model larger than RAM against official llama.cpp.",
   "kind": "readme",
   "path": "test/cloud/remote/ssd_prefetch/README.md",
-  "metadata": true
- },
- {
-  "title": "Run 26: small VPS under load",
-  "description": "Run 26 results on a 1 vCPU, 4 GB VPS next to a web app and PostgreSQL: Cluaiz, llama.cpp and Ollama compared.",
-  "kind": "readme",
-  "path": "test/cloud/runs/2026-11-20-run26-vps-load/README.md",
-  "metadata": true
- },
- {
-  "title": "Cluaiz on small Linux servers",
-  "description": "Every measurement of Cluaiz on 1-2 vCPU, 4-8 GB Linux servers without a GPU, often next to a website.",
-  "kind": "readme",
-  "path": "test/cloud/runs/2026-11-22-run40-cluaiz-ollama-website/README.md",
   "metadata": true
  },
  {

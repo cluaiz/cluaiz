@@ -1,1 +1,0 @@
-{"label": "before_client_tools", "case": "marker", "model": "qwen3.5-0.8b-gguf-Q4_K_M", "stream": false, "n": 3, "real_answers": 0, "with_expected": 0, "step_limit": 0, "final_no_tools_turn": 0, "final_still_called": 0, "steps_total": 0, "steps_max": 0, "median_s": 2.89, "total_s": 10.0}

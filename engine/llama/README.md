@@ -515,7 +515,7 @@ in [`llama.cpp/CLUAIZ_PATCHES.md`](llama.cpp/CLUAIZ_PATCHES.md)). Rust: the decl
 | A thread-local setter, set and reset around the load | no field in `llama_model_params` (the Rust mirror would drift on every merge); the load runs `init_mappings` on the calling thread, so a concurrent load on another thread is not affected | a global flag (a second load at the same time would inherit it) |
 | The build fails when the call is gone | a merge that drops the line would silently turn the skip off | a runtime check |
 
-**Measured** (run 61, `test/cloud/runs/2026-11-24-run61-laptop-lazy-load/SUMMARY.md`; Windows laptop, RTX 3050
+**Measured** (run 61, `test/benchmarks/ssd-streaming-moe.md`, run 61; Windows laptop, RTX 3050
 4 GB, Gemma 4 26B A4B IQ4_XS 14.2 GB, free RAM 8.0-13.9 GB before each run, release build, `-p 512 -n 128 -r 1`,
 `--n-cpu-moe 30`, 9 rotated pairs with and without `CLUAIZ_LAZY_HOST_WEIGHTS=on`): the fork logged `11797 MiB of
 CPU-mapped weights left out of the load prefetch` (every expert). Medians: load 8.0 -> 4.3 s, disk read during the
@@ -547,9 +547,9 @@ the compile. `CLUAIZ_LAZY_HOST_WEIGHTS=off` turns it off for every load.
   `mtp_mode`) and a guard in each answer stops guessing where it is slower (`native/stream.rs`, "MTP
   guard"); `on` and `off` force it (load flag `--mtp`; `CLUAIZ_MTP=on` forces on for tests, without
   the guard, and `CLUAIZ_MTP=off` forces off). Measuring tool `cluaiz bench <model> --mtp-compare` (off, on and auto per round).
-  Records: runs [22](../../test/cloud/runs/2026-11-19-run22-laptop-mtp/SUMMARY.md),
-  [23](../../test/cloud/runs/2026-11-20-run23-mtp-placements/SUMMARY.md),
-  [24](../../test/cloud/runs/2026-11-20-run24-mtp-auto/SUMMARY.md).
+  Records: runs [22](../../test/benchmarks/mtp.md),
+  [23](../../test/benchmarks/mtp.md),
+  [24](../../test/benchmarks/mtp.md#run-24).
 - **Files:** `native/speculative.rs` (Rust owner `MtpDrafter`), `ffi/speculative_bridge.cpp` (C ABI),
   `native/stream.rs` (prefill hook, draft and check in the generation loop), `native/core.rs` (load),
   `native/sampler.rs` (`sample_token_at`).
@@ -598,7 +598,7 @@ graph LR
 
 ### Measured
 
-Full record with raw logs, answers and scripts: [run 22](../../test/cloud/runs/2026-11-19-run22-laptop-mtp/SUMMARY.md).
+Full record with raw logs, answers and scripts: [run 22](../../test/benchmarks/mtp.md).
 
 RTX 3050 Laptop 4 GB, Windows, CUDA. `unsloth/Qwen3.5-2B-MTP-GGUF` Q4_K_M (NextN inside the file),
 `n_gpu_layers 99`, context 4096, temperature 0, `/v1/chat/completions`, three runs after one warm-up.
@@ -667,7 +667,7 @@ What these runs show:
   changed in 2 (split, CPU `p_min` 0.5).
 
 Placements, MoE and the SSD on an L4 and the laptop, with off and on alternated per round:
-[run 23](../../test/cloud/runs/2026-11-20-run23-mtp-placements/SUMMARY.md). In short: the MoE 35B-A3B
+[run 23](../../test/benchmarks/mtp.md). In short: the MoE 35B-A3B
 gained on every prompt with all weights on the GPU (1.21-1.73x) but lost on prose with its experts
 in RAM (0.70x) and on every prompt with experts read from the SSD (0.63-0.98x); the dense 2B lost on
 prose in every placement; MTP cost 19-34% of the prompt speed on the GPU.

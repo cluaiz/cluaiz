@@ -276,7 +276,7 @@ $noPf = @($all['C-pf'] | Where-Object { -not $_.prefetch }).Count
 $noCache = @(@($all['C-cache']) + @($all['C-pf']) | Where-Object { -not $_.cache }).Count
 if ($noCache) { $md.Add("WARNING: $noCache C-cache/C-pf runs show no 'MoE cache size' line: the planner gave no MoE cache, so those rows measure no cache and no prefetch.") }
 if ($noPf) { $md.Add("WARNING: $noPf C-pf runs show no prefetch line: the prefetch did not run there.") }
-$md.Add("Run 20 reference: test/cloud/runs/2026-11-16-run20-laptop-moe-disk/SUMMARY.md (round 1 there: 13.66 and 14.35 t/s).")
+$md.Add("Run 20 reference: run 20, laptop (round 1 there: 13.66 and 14.35 t/s; run 20 replaced by runs 42 and 44 in test/benchmarks/ssd-streaming-moe.md).")
 [IO.File]::WriteAllLines("$Out\results.md", $md)
 Step "done: $Out\results.md"
 

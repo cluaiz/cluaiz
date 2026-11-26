@@ -1,9 +1,0 @@
-
-model                   mode   result   engine pp/tg      llama.cpp pp/tg   notes
-qwen3.5-9b-gguf-Q4_K_M  auto   PASS     2326 / 43.7       2478 / 43.7       
-qwen3.5-9b-gguf-Q4_K_M  gpu    PASS     2354 / 43.8       2496 / 43.9       
-qwen3.5-9b-gguf-Q4_K_M  split  PASS     466 / 9.5         393 / 9.7         
-qwen3.5-9b-gguf-Q4_K_M  cpu    PASS     27 / 4.9          27 / 5.1          
-
-4 passed, 0 failed, 0 skipped / not fitting
-report written: /home/Aryan/results-regression/RESULTS_l4r11_qwen3.5-9b.md

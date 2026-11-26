@@ -3,7 +3,7 @@ description: CPU test on a Windows PC without a graphics card: install, chat, sp
 
 # CPU test on Windows (`test/cpu/`)
 
-![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/cloud/runs and BENCHMARKS.md](../../docs/assets/contributing/test-kinds.png)
+![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/benchmarks with raw logs in test/cloud/runs](../../docs/assets/contributing/test-kinds.png)
 
 Installs the newest release with the website's command and tests it on the CPU: chat, speed and memory on small
 models, the coding agent, plugins and skills, speech, embeddings and a document. It needs one command, takes
@@ -98,8 +98,8 @@ Remove-Item -Recurse -Force ~\cluaiz-cputest
 
 None: no result archive of this script is in the repository (searched `test/` on 2026-11-21). CPU-only
 results that exist come from other scripts: run 6 (clean cloud machines, `cluaiz bench`,
-[`../cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md`](../cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md)),
-run 7 (Linux CPU VM) and runs 15-19 (1 vCPU VPS), all in [`../cloud/BENCHMARKS.md`](../cloud/BENCHMARKS.md).
+[`../cloud/runs/2026-11-09-run6-cpu-os-matrix/RESULTS.md`](../benchmarks/release-and-platforms.md#run-6)),
+run 7 (Linux CPU VM) and runs 15-19 (1 vCPU VPS), all in [`../benchmarks/`](../benchmarks/README.md).
 
 ## Decisions
 | Decision | Why | Alternative not taken |

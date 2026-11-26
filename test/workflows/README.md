@@ -3,7 +3,7 @@ description: Linters for the GitHub workflows and Python tests of the release an
 
 # Workflow and installer checks (`test/workflows/`)
 
-![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/cloud/runs and BENCHMARKS.md](../../docs/assets/contributing/test-kinds.png)
+![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/benchmarks with raw logs in test/cloud/runs](../../docs/assets/contributing/test-kinds.png)
 
 Two kinds of scripts: linters that check `.github/workflows/*.yml` before a push (`run-actionlint.ps1`,
 `run-act.ps1`), and Python tests of the release launcher and the installer scripts. Only

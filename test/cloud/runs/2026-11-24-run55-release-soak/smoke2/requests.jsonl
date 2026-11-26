@@ -1,2 +1,0 @@
-{"time": 1795485838.491534, "method": "POST", "path": "/v1/chat/completions", "body": "{bad json"}
-{"time": 1795485838.5007608, "method": "POST", "path": "/v1/chat/completions", "body": {"model": "qwen3.5-0.8b-gguf-Q4_K_M", "messages": [{"role": "user", "content": "Count from one to twenty."}], "temperature": 0, "max_tokens": 48, "think_mode": "off", "max_completion_tokens": 5}}

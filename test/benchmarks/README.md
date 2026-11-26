@@ -1,16 +1,26 @@
-# Benchmarks
+<!-- name: test/benchmarks
+description: Every test of the Engine written up, one file per test type, latest results only, with links to the raw logs. -->
 
-One file per test type. Each file holds only the latest result for that type and links only to the run that
-produced it. When a newer run replaces a result, the file is updated and the old numbers are removed.
+# Benchmarks and test results
 
-| Test type | File | Latest run |
-|---|---|---|
-| MoE model larger than VRAM + RAM, experts streamed from the SSD | [ssd-streaming-moe.md](ssd-streaming-moe.md) | run 48 (generation), run 75 (prompt) |
-| Same model, same placement, same settings as llama.cpp (GPU and GPU + RAM split) | [same-settings-gpu.md](same-settings-gpu.md) | runs 5, 9, 17 |
-| CPU only | [cpu.md](cpu.md) | runs 15, 16, 54 |
-| MTP (multi-token prediction) | [mtp.md](mtp.md) | run 24 |
-| Planner: planned VRAM against VRAM taken | [planner.md](planner.md) | run 21 |
-| Against Ollama | [ollama.md](ollama.md) | runs 10, 16 |
+Every test of the Engine is written up here, one file per test type, with only the latest results: setup,
+method, commands, every number, charts, what it proves and what it does not, and at the end the link to the run
+folder with the raw logs and scripts. Run folders (`test/cloud/runs/`) hold only logs, raw results and scripts.
+When a newer run covers the same case, the old numbers and the old run folder are deleted. Images and GIFs go in
+[`assets/`](assets/).
 
-Speeds are llama.cpp's own timings in tokens per second (t/s); higher is better. Each run folder in
-`test/cloud/runs/` has the commands, settings and raw logs.
+| Test type | File |
+|---|---|
+| MoE models larger than VRAM + RAM: SSD streaming, MoE cache, expert prefetch | [ssd-streaming-moe.md](ssd-streaming-moe.md) |
+| Speed against official llama.cpp with the same settings | [speed-vs-llamacpp.md](speed-vs-llamacpp.md) |
+| Against Ollama, LM Studio and llama.cpp as servers, and next to a website | [vs-ollama-and-load.md](vs-ollama-and-load.md) |
+| Planner and VRAM | [planner-and-vram.md](planner-and-vram.md) |
+| MTP | [mtp.md](mtp.md) |
+| Release builds on every platform | [release-and-platforms.md](release-and-platforms.md) |
+| Tool calls, tool loops, JSON schema, small models | [tools-and-agents.md](tools-and-agents.md) |
+| OpenAI and Ollama API compatibility | [api-compatibility.md](api-compatibility.md) |
+| Thinking | [thinking.md](thinking.md) |
+| OS sandbox | [os-sandbox.md](os-sandbox.md) |
+| Workflows | [workflows.md](workflows.md) |
+
+Speeds are llama.cpp's own timings in tokens per second (t/s); higher is better.

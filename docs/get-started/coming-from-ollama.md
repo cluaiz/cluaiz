@@ -7,7 +7,7 @@ If you use Ollama today, most of what you know carries over: the same kind of mo
 run by llama.cpp), the same command names, and Ollama's own chat, generate, embed and model routes,
 so the Ollama libraries work by pointing them at the Engine. This page lists what is the same, what
 is different, and what to change. The API behaviour was checked with the official Ollama Python
-library in [run 36](../../test/cloud/runs/2026-11-21-run36-ollama-library/SUMMARY.md) (library 0.6.1,
+library in [run 36](../../test/benchmarks/api-compatibility.md#run-36) (library 0.6.1,
 Engine 0.1.0, Windows, Qwen3-0.6B).
 
 ![Ollama commands and routes next to their Cluaiz equivalents: the commands map one to one; /api/chat, /api/generate, /api/embed, /api/tags, /api/pull and /api/version answer in Ollama's shape; /api/ps and /api/show are not there; a Modelfile becomes settings.json and request fields](../assets/get-started/from-ollama.png)

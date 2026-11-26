@@ -1,3 +1,0 @@
-{"ts": "2026-11-20T14:56:29", "mode": "docker", "engine": "cluaiz", "model": "qwen3-0.6b", "server_ready_s": 1.426, "ok": true}
-{"ts": "2026-11-20T14:57:26", "mode": "docker", "engine": "ollama", "model": "qwen3-0.6b", "server_ready_s": 2.025, "ok": true}
-{"ts": "2026-11-20T14:58:23", "mode": "docker", "engine": "llama", "model": "qwen3-0.6b", "server_ready_s": 1.828, "ok": true}

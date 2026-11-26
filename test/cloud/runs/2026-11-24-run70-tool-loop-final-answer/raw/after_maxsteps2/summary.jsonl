@@ -1,1 +1,0 @@
-{"label": "after_maxsteps2", "case": "marker", "model": "qwen3.5-0.8b-gguf-Q4_K_M", "stream": false, "n": 5, "real_answers": 5, "with_expected": 3, "step_limit": 5, "final_no_tools_turn": 5, "final_still_called": 0, "steps_total": 5, "steps_max": 1, "median_s": 7.13, "total_s": 44.6}

@@ -34,7 +34,7 @@ the RAM the planner sees gets no cache by default: there the disk limits generat
 slower than the placement without it in run 13. `CLUAIZ_MOE_CACHE=off` turns the cache off.
 
 Rules and numbers: [engine/plan/README.md](../../engine/plan/README.md#moe-gpu-cache), test record:
-[run 13](../../test/cloud/runs/2026-11-15-run13-moe-cache/SUMMARY.md).
+[run 13](../../test/benchmarks/ssd-streaming-moe.md#run-13).
 
 ## Expert prefetch
 
@@ -77,11 +77,11 @@ VRAM free, RAM capped at 12 GB so the experts are read from the SSD, 4 threads, 
 These results are from one machine, one model and one setup. They do not say the prefetch helps on other
 hardware.
 
-Test records: [run 48](../../test/cloud/runs/2026-11-23-run48-l4-fair-baselines/SUMMARY.md) (main),
-[run 43](../../test/cloud/runs/2026-11-23-run43-l4-case-g-prefetch/SUMMARY.md),
-[run 45](../../test/cloud/runs/2026-11-23-run45-l4-case-g-pp/SUMMARY.md),
-[run 44](../../test/cloud/runs/2026-11-23-run44-laptop-prefetch-low-ram/SUMMARY.md),
-[run 42](../../test/cloud/runs/2026-11-23-run42-laptop-prefetch-ab/SUMMARY.md). Rule and decisions:
+Test records: [run 48](../../test/benchmarks/ssd-streaming-moe.md#run-48) (main),
+[run 43](../../test/benchmarks/ssd-streaming-moe.md),
+[run 45](../../test/benchmarks/ssd-streaming-moe.md),
+[run 44](../../test/benchmarks/ssd-streaming-moe.md#run-44),
+[run 42](../../test/benchmarks/ssd-streaming-moe.md#run-42). Rule and decisions:
 [engine/plan/README.md](../../engine/plan/README.md#moe-expert-prefetch-llamacpp-fork-auto-on-only-for-the-measured-shape).
 
 ## Not built

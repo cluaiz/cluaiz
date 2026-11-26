@@ -78,7 +78,7 @@ STT input preparation directly imports shared source/audio/resample functions. O
 
 69 unit tests and `tests/media_integration.rs`; 11 are ignored (need model files or a GPU provider).
 `onnx-engine` builds ONNX Runtime, so the tests were not run on 2026-11-21. Speech and embeddings
-were measured in cloud runs (voice and embedding table in `test/cloud/BENCHMARKS.md`).
+were measured in cloud runs (voice and embedding table in `test/benchmarks/`).
 
 ## Pending
 

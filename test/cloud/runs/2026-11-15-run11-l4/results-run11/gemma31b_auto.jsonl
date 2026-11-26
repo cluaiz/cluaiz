@@ -1,6 +1,0 @@
-{"placement": "GpuOnly", "n_gpu_layers": -1, "n_ctx": 4096, "gen_tps": 12.627120267660114, "prompt_tps": 111.3562782257233}
-20160 MiB, 23034 MiB
-{"placement": "GpuOnly", "n_gpu_layers": -1, "n_ctx": 4096, "gen_tps": 12.79489712566003, "prompt_tps": 99.93354419311157}
-20160 MiB, 23034 MiB
-{"placement": "GpuOnly", "n_gpu_layers": -1, "n_ctx": 4096, "gen_tps": 12.806608502709878, "prompt_tps": 110.78987908076054}
-20160 MiB, 23034 MiB

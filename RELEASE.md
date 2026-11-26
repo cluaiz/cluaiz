@@ -39,7 +39,7 @@ GGUF models run through Cluaiz's pinned llama.cpp backend. Multimodal models als
 
 | Family | Capability | Status |
 |:---|:---|:---|
-| Llama 3.2, Qwen3, Bonsai, Gemma 3, Gemma 4, Mistral Small 3.2 | Text generation | Tested in the benchmarks ([laptop](test/engine_regression/RESULTS.md), [Tesla T4](test/cloud/runs/2026-10-28-run5-linux-t4-regression/RESULTS.md)): Llama 3.2 3B, Qwen3 4B, Bonsai 4B / 8B / 27B, Gemma 3 12B, Gemma 4 E4B / 26B A4B (MoE) / 31B, Mistral Small 3.2 24B |
+| Llama 3.2, Qwen3, Bonsai, Gemma 3, Gemma 4, Mistral Small 3.2 | Text generation | Tested in the benchmarks ([laptop](test/benchmarks/README.md), [Tesla T4](test/benchmarks/speed-vs-llamacpp.md#run-5)): Llama 3.2 3B, Qwen3 4B, Bonsai 4B / 8B / 27B, Gemma 3 12B, Gemma 4 E4B / 26B A4B (MoE) / 31B, Mistral Small 3.2 24B |
 | Gemma 4 E4B | Chat, image understanding, audio input and sampled video frames | Selected package tested |
 | Qwen2.5-Omni 3B | Image, audio and sampled video input | Q4_K_M with its projector tested on the CPU |
 | BGE | Text embeddings | Selected package tested |
@@ -187,7 +187,7 @@ The APIs provide **OpenAI-style compatibility with documented extensions**. Spee
 
 ## Validation and limitations
 
-Recorded acceptance covers selected Windows packages for chat/media input, speech, document extraction and embeddings, and text generation on Linux (Tesla T4, [run](test/cloud/runs/2026-10-28-run5-linux-t4-regression/RESULTS.md)) and macOS (Apple M5, [run](test/mac/runs/2026-10-28-m5-air-16gb/SUMMARY.md)). It does not certify every model export, language, platform or device. See [acceptance tests](test/media_regression/README.md) and [historical benchmarks](test/engine_regression/RESULTS.md) for scope and reproduction.
+Recorded acceptance covers selected Windows packages for chat/media input, speech, document extraction and embeddings, and text generation on Linux (Tesla T4, [run](test/benchmarks/speed-vs-llamacpp.md#run-5)) and macOS (Apple M5, [run](test/benchmarks/release-and-platforms.md#mac-m5)). It does not certify every model export, language, platform or device. See [acceptance tests](test/media_regression/README.md) and [historical benchmarks](test/benchmarks/README.md) for scope and reproduction.
 
 Not currently included: the OCR pack in the release packages, general ONNX generative chat/vision, image/video generation, GGUF transcription through the STT endpoint, and a built-in persistent RAG index.
 

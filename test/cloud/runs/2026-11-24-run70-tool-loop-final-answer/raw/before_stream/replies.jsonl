@@ -1,3 +1,0 @@
-{"i": 0, "body_chars": 7540, "reply": {"content": "", "reasoning_content": "", "client_tool_calls": [], "finish_reason": "stop", "engine_tool_deltas": ["find_tools", "load_tool", "filesystem", "filesystem", "filesystem"]}}
-{"i": 1, "body_chars": 7725, "reply": {"content": "", "reasoning_content": "", "client_tool_calls": [], "finish_reason": "stop", "engine_tool_deltas": ["find_tools", "load_tool", "filesystem", "filesystem", "filesystem"]}}
-{"i": 2, "body_chars": 7910, "reply": {"content": "", "reasoning_content": "", "client_tool_calls": [], "finish_reason": "stop", "engine_tool_deltas": ["find_tools", "load_tool", "filesystem", "filesystem", "filesystem"]}}

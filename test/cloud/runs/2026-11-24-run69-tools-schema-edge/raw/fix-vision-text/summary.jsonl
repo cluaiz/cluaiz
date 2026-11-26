@@ -1,3 +1,0 @@
-{"case": "k3v_schema_think", "exe": "bin-fix", "valid": 10, "n": 10, "constrained_log": 10, "reasoning_nonempty": 10, "finish_reasons": {"stop": 10}, "median_s": 23.795}
-{"case": "k3v_schema_tool_think", "exe": "bin-fix", "valid": 10, "n": 10, "constrained_log": 10, "reasoning_nonempty": 10, "finish_reasons": {"stop": 10}, "median_s": 5.836}
-{"case": "s1_txt_tool_stream", "exe": "bin-fix", "valid": 10, "n": 10, "constrained_log": 0, "reasoning_nonempty": 0, "finish_reasons": {"tool_calls": 10}, "median_s": 3.271}

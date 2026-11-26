@@ -71,7 +71,7 @@ test/cloud/vm.sh ssh l4-prefetch "CLUAIZ=~/cluaiz/target/release/cluaiz nohup ba
 ```
 
 Back on the dev machine: `test/cloud/vm.sh get l4-prefetch results-ssd-prefetch test/cloud/runs/<date>-runN-ssd-prefetch/`,
-write `SUMMARY.md` from the raw files, add a `BENCHMARKS.md` row, `test/cloud/vm.sh delete l4-prefetch`.
+write the results into `test/benchmarks/ssd-streaming-moe.md` from the raw files (skill `test-records`), `test/cloud/vm.sh delete l4-prefetch`.
 The `vm.sh create` arguments follow `vm.sh`'s usage line (`<name> <machine> <gpu-type|none>`); the GPU type
 `nvidia-l4` is not written in any earlier run record, so check it against the GCP accelerator list first.
 
@@ -158,8 +158,8 @@ powershell -ExecutionPolicy Bypass -File test\cloud\remote\ssd_prefetch\run_pref
 
 Output goes to `%LOCALAPPDATA%\cluaiz-test\prefetch-laptop-<time>\` (`-Out` changes it), the isolated home
 to `%LOCALAPPDATA%\cluaiz-test\prefetch-home-<same name>\` (`-CluaizHome`). No server is started, so no
-port is used. Copy the output folder to `test/cloud/runs/<date>-runN-*/results/` and write its
-`SUMMARY.md`.
+port is used. Copy the output folder to `test/cloud/runs/<date>-runN-*/results/` and write the results into
+`test/benchmarks/ssd-streaming-moe.md`.
 
 Checked (2026-11-23, format only, not speed numbers): with OLMoE-1B-7B Q4_K_M (`-Rounds 1 -Reps 1
 -Prompt 64 -Gen 16 -NCpuMoe 16`) every config ran with exit 0, every file above was written, and

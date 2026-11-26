@@ -1,4 +1,0 @@
-| model | size | params | placement | ngl | n_ctx | test | t/s |
-| ----- | ---: | -----: | --------- | --: | ----: | ---: | --: |
-| gemma4 26B.A4B IQ4_XS - 4.25 bpw | 13.21 GiB | 25.23 B | MoE split (attention on GPU, experts in RAM) | -1 | 1024 | pp512 | 171.75 ± 78.14 |
-| gemma4 26B.A4B IQ4_XS - 4.25 bpw | 13.21 GiB | 25.23 B | MoE split (attention on GPU, experts in RAM) | -1 | 1024 | tg128 | 16.33 ± 0.40 |

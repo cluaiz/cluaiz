@@ -14,7 +14,7 @@ claims in READMEs and docs point to a run here.
 
 ## Flow of one run
 
-![Cloud run: vm.sh create, build, test, vm.sh get, run folder, BENCHMARKS row, vm.sh delete](../../docs/assets/contributing/cloud-run.png)
+![Cloud run: vm.sh create, build, test, vm.sh get, run folder, test/benchmarks file, vm.sh delete](../../docs/assets/contributing/cloud-run.png)
 
 `vm.sh` creates Spot VMs (`--provisioning-model=SPOT --instance-termination-action=STOP
 --max-run-duration`), tries the zones in `ZONES` in order and remembers the zone per VM. A stopped VM
@@ -25,8 +25,7 @@ keeps its disk with the build and the models, so `start` continues; `delete` rem
 | Path | What it is |
 |---|---|
 | `vm.sh` | create / start / stop / ssh / put / get / delete / list for Spot VMs |
-| `BENCHMARKS.md` | one row per run (platform table), then chat speed and voice/embedding tables |
-| `runs/<date>-runN-<what>/` | one folder per run: `SUMMARY.md`, raw output, the script used |
+| `runs/<date>-runN-<what>/` | one folder per run: raw logs, raw results and the script used, no `.md` files; the write-up is in `test/benchmarks/<test-type>.md` |
 | `remote/linux_build.sh`, `linux_tests.sh` | standard build and test on a fresh Ubuntu Deep Learning VM |
 | `remote/checks.py` | every chat model (short and long prompt), speech round trip, embeddings, GGUF speech, mixed rounds |
 | `remote/regression_tests.sh`, `regression_all.sh` | `test/engine_regression/run.py` on a VM, one model at a time so a stopped Spot VM keeps finished reports |
@@ -50,16 +49,18 @@ keeps its disk with the build and the models, so `start` continues; `delete` rem
   response), not counted by the client.
 - A comparison with another tool uses the same machine, GGUF file, context, placement and prompt, and
   says which settings differ.
-- Raw output is saved to files while the test runs; the summary is written from those files.
+- Raw output is saved to files in the run folder while the test runs; the results are written into
+  `test/benchmarks/<test-type>.md` from those files. When a newer run covers the same case, the old numbers
+  and the old run folder are deleted.
 - Usernames, keys and the VPS address are removed (`<user>`, `<key>`, `<vps>`) before a commit.
-- `SUMMARY.md` ends with what the run does not prove.
+- Each benchmark section ends with what the run does not prove and a link to the run folder.
 
 ## Decisions
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | Spot VMs that stop themselves | GPU VMs cost money per hour; a forgotten VM stops after `MAX_RUN` | on-demand VMs |
 | One model per step in long scripts (`regression_all.sh`) | a Spot reclaim mid-run would lose all results; finished models keep their reports | one long loop |
-| Every run in its own folder with its script | a later reader can rerun it or check what exactly was measured | one shared results file |
+| Every run in its own folder with its logs and script; one write-up file per test type in `test/benchmarks/` with only the latest results | a reader finds everything in one file; doubters check the logs; no duplicate or outdated numbers | a `SUMMARY.md` per run plus a list of all runs (used until 2026-11-26) |
 
 ## Pending
 
@@ -67,5 +68,4 @@ keeps its disk with the build and the models, so `start` continues; `delete` rem
 |---|---|---|
 | llama.cpp has no row in run 40's GCP results | `llama-server` needed `libgomp1`, which the fresh image lacked (now in `gcp_setup.sh`); Docker was not run | rerun `remote/vps26/run40.sh` on a fresh VM after `gcp_setup.sh` |
 | `remote/vram_hog.py` and `remote/mtp23/vram_hog.py` are identical | two copies drift | keep one; `mtp23/run23.sh` and `run24.sh` call `$HERE/vram_hog.py`, so first check how `mtp23/` is copied to the VM |
-| The Mac run is in `test/mac/runs/`, not here | runs are in two places (`BENCHMARKS.md` links it as "Mac 1" since 2026-11-22) | move it here, if one place is wanted |
 | A CPU-only run on an 8 GB VM for the Auto thinking ceiling | the slow-machine path is unit-tested only (runs 30-31 were on a GPU) | the planned VM run |

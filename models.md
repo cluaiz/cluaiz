@@ -65,7 +65,7 @@ These are family names and exact GGUF architecture IDs from the bundled backend.
 | Hunyuan / ERNIE | Hunyuan and ERNIE IDs in the full inventory below | Backend available |
 | Other current/earlier families | OLMo, Falcon, Plamo, Jais, Mamba, RWKV, StarCoder, GPT-NeoX and others | Full architecture inventory below |
 
-Text generation was also measured with Mistral Small 3.2 24B. The measured packages and speeds are in the [laptop](test/engine_regression/RESULTS.md) and [Tesla T4](test/cloud/runs/2026-10-28-run5-linux-t4-regression/RESULTS.md) results.
+Text generation was also measured with Mistral Small 3.2 24B. The measured packages and speeds are in the [laptop](test/benchmarks/README.md) and [Tesla T4](test/benchmarks/speed-vs-llamacpp.md#run-5) results.
 
 Fine-tune names are not separate architecture guarantees. A Qwen-derived reasoning model uses the architecture stored in its export; it does not become a new runtime family because its repository name changes. Base models can generate text, while conversational behavior also depends on instruction tuning and a suitable chat template.
 
@@ -89,7 +89,7 @@ These examples come from the bundled backend's model/conversion references and e
 
 `B` refers to billions of parameters; `M` to millions. MoE names may show total and active parameter counts. Quantized file size, peak memory and inference speed are separate properties.
 
-Sources: [conversion families](engine/llama/llama.cpp/conversion/), [multimodal examples](engine/llama/llama.cpp/docs/multimodal.md), [backend quick start](engine/llama/llama.cpp/README.md), [recorded chat regression](test/engine_regression/RESULTS.md).
+Sources: [conversion families](engine/llama/llama.cpp/conversion/), [multimodal examples](engine/llama/llama.cpp/docs/multimodal.md), [backend quick start](engine/llama/llama.cpp/README.md), [recorded chat regression](test/benchmarks/README.md).
 
 ## GGUF vision, OCR and audio understanding
 
@@ -324,6 +324,6 @@ Input encoders, speaker encoders and speech generators serve different roles. An
 | Documents and selected-model processing | [`/v1/ingest`](docs/api/inference/ingest.md) |
 | Overall release scope | [Release reference](RELEASE.md) |
 
-Tested entries refer to recorded selected-package results, including Windows acceptance on October 20–21, 2026 and earlier chat/Kokoro records. This documentation update does not add a new inference test. Reproduction lives in [media acceptance](test/media_regression/README.md), [selected-model ingest tests](api/tests/ingest_models.rs) and [historical chat regression](test/engine_regression/RESULTS.md).
+Tested entries refer to recorded selected-package results, including Windows acceptance on October 20–21, 2026 and earlier chat/Kokoro records. This documentation update does not add a new inference test. Reproduction lives in [media acceptance](test/media_regression/README.md), [selected-model ingest tests](api/tests/ingest_models.rs) and [historical chat regression](test/benchmarks/README.md).
 
 Current gaps include general ONNX generative chat/vision, image/video generation, GGUF STT on the dedicated transcription route, untested package/device combinations and the experimental speech integrations noted above.

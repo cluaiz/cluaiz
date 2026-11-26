@@ -1,8 +1,0 @@
-{"case": "v_img_tool", "exe": "after2", "valid": 3, "n": 3, "constrained_log": 0, "median_s": 5.273, "prompt_n": [13, 482]}
-{"case": "c_json_schema", "exe": "after2", "valid": 3, "n": 3, "constrained_log": 3, "median_s": 0.293, "prompt_n": [1, 22]}
-{"case": "e_tool_required", "exe": "after2", "valid": 3, "n": 3, "constrained_log": 3, "median_s": 0.269, "prompt_n": [1, 157]}
-{"case": "f_json_schema_with_tool", "exe": "after2", "valid": 3, "n": 3, "constrained_log": 3, "median_s": 0.323, "prompt_n": [1, 161]}
-{"case": "g_grammar_with_tool", "exe": "after2", "valid": 3, "n": 3, "constrained_log": 0, "median_s": 0.041, "prompt_n": []}
-{"case": "g2_grammar_engine_functions", "exe": "after2", "valid": 3, "n": 3, "constrained_log": 3, "median_s": 0.22, "prompt_n": [1, 4]}
-{"case": "j_schema_engine_functions", "exe": "after2", "valid": 3, "n": 3, "constrained_log": 3, "median_s": 0.381, "prompt_n": [1, 4]}
-{"case": "i_named_get_time", "exe": "after2", "valid": 3, "n": 3, "constrained_log": 3, "median_s": 0.224, "prompt_n": [1, 157]}

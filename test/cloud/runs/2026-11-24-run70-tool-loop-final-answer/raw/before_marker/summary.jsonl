@@ -1,1 +1,0 @@
-{"label": "before_marker", "case": "marker", "model": "qwen3.5-0.8b-gguf-Q4_K_M", "stream": false, "n": 10, "real_answers": 0, "with_expected": 0, "step_limit": 10, "final_no_tools_turn": 0, "final_still_called": 0, "steps_total": 50, "steps_max": 5, "median_s": 206.44, "total_s": 2062.5}

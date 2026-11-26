@@ -1,8 +1,0 @@
-2040 MHz, 37.04 W, 74.06, 14424 MiB
-Mem:           32099        1316        2003           8       29150       30782
-2040 MHz, 37.85 W, 75.59, 14424 MiB
-2040 MHz, 29.44 W, 55.00, 14424 MiB
-Mem:           32099        1021       31023           8         430       31078
-cgroup 0::/system.slice/run-p1811-i2111.scope memory.max 12884901888
-major faults 288078, read 101865 MiB from disk
-2040 MHz, 31.85 W, 64.59, 14424 MiB

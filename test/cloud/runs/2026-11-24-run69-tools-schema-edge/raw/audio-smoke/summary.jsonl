@@ -1,2 +1,0 @@
-{"case": "a5_audio_tool", "exe": "bin-base", "valid": 1, "n": 1, "constrained_log": 0, "reasoning_nonempty": 0, "finish_reasons": {"stop": 1}, "median_s": 2.199}
-{"case": "a5_audio_notool", "exe": "bin-base", "valid": 1, "n": 1, "constrained_log": 0, "reasoning_nonempty": 0, "finish_reasons": {"stop": 1}, "median_s": 0.939}

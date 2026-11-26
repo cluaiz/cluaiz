@@ -1,1 +1,0 @@
-{"ts": "2026-11-20T20:49:34", "mode": "native", "engine": "ollama", "model": "qwen3-0.6b", "killed_pids": [1981014], "auto_restarted_after_5s": true, "in_flight_ok": 4, "in_flight_lost": 0}

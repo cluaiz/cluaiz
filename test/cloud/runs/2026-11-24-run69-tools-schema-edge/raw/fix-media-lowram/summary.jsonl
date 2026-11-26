@@ -1,2 +1,0 @@
-{"case": "s1_img_tool_stream", "exe": "bin-fix", "valid": 0, "n": 10, "constrained_log": 0, "reasoning_nonempty": 0, "finish_reasons": {"None": 10}, "median_s": 0.069}
-{"case": "t2_img_tool_think", "exe": "bin-fix", "valid": 0, "n": 10, "constrained_log": 0, "reasoning_nonempty": 0, "finish_reasons": {"None": 10}, "median_s": 0.065}

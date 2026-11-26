@@ -1,9 +1,0 @@
-
-model                 mode   result   engine pp/tg      llama.cpp pp/tg   notes
-gpt-oss-20b-gguf-FP4  auto   FAIL     2666 / 81.5                         control token in answer: '<|start|>'; control token in answer: '<|start|>'; control token in reasoning: '<|channel|>'
-gpt-oss-20b-gguf-FP4  gpu    FAIL     2767 / 81.5                         control token in answer: '<|start|>'; control token in answer: '<|start|>'; control token in reasoning: '<|channel|>'
-gpt-oss-20b-gguf-FP4  split  FAIL     265 / 16.5                          control token in answer: '<|start|>'; control token in answer: '<|start|>'; control token in reasoning: '<|channel|>'
-gpt-oss-20b-gguf-FP4  cpu    FAIL     21 / 8.2                            control token in answer: '<|start|>'; control token in answer: '<|start|>'; control token in reasoning: '<|channel|>'
-
-0 passed, 4 failed, 0 skipped / not fitting
-report written: /home/Aryan/results-regression/RESULTS_l4r11_gpt-oss-20b.md

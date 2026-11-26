@@ -20,7 +20,7 @@ Python scripts that test the chat context against a running, isolated Engine. La
 
 ## Tool routing set
 
-![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/cloud/runs and BENCHMARKS.md](../../docs/assets/contributing/test-kinds.png)
+![Two kinds of tests: cargo test (unit and contract tests, no server) and the test/ folder (journeys against a started server, model regressions, Mac, CPU and cloud scripts), recorded in test/benchmarks with raw logs in test/cloud/runs](../../docs/assets/contributing/test-kinds.png)
 
 `routing_set.jsonl` holds 165 labelled user messages for the tool matcher
 (`agents/src/tool_search.rs`): English, Hinglish and Devanagari; direct requests, paraphrases,

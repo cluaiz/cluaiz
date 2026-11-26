@@ -428,7 +428,7 @@ native package) and unit tests in `src/` (providers 49, chat handlers 20, CEP me
 
 `api` links the runtime and both backends, so these tests build llama.cpp and ONNX Runtime; they were not
 run on 2026-11-21. The dated "Executed ... acceptance" sections above are from 2026-10-14 and 2026-10-15.
-Route behaviour is also exercised by every cloud run (`test/cloud/BENCHMARKS.md`).
+Route behaviour is also exercised by every cloud run (`test/benchmarks/`).
 
 ## Decisions
 | Decision | Why | Alternative not taken |

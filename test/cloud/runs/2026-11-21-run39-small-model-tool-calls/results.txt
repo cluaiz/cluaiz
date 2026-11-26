@@ -1,8 +1,0 @@
-## qwen3-0.6b-gguf-Q4_K_M: 27/40 correct, median 2.04 s per request
-   call: {'correct': 18, 'no_call': 2, 'wrong_args': 4}
-   pick: {'no_call': 6, 'correct': 1, 'wrong_args': 1}
-   none: {'correct': 8}
-## qwen3-0.6b-gguf-Q4_K_M:think: 34/40 correct, median 3.56 s per request
-   call: {'correct': 20, 'wrong_args': 4}
-   pick: {'correct': 7, 'no_call': 1}
-   none: {'correct': 7, 'wrong_call': 1}

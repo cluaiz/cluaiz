@@ -1,9 +1,0 @@
-=== Report #0 ===
-Here is a summary of the incident report in exactly 5 short lines:
-
-- Service: Payments API experienced high latency and HTTP 5xx error rates across worker nodes.
-- Symptoms: Peak resource impact included high resident memory, CPU time competition, and latency spikes.
-- Peak Resource Impact: Resident memory climbed to 2110 MB, and background compaction jobs competed with interactive API traffic for CPU time.
-- Root Cause Clues: Engineers inspected kernel page cache pressure, connection pool wait queues, and lock contention metrics across primary and replica hosts.
-- Mitigations: Temporary rate limits, raising pool timeouts, isolating long-running exports, and scheduling automated regression checks were implemented to reduce tail latency.
-

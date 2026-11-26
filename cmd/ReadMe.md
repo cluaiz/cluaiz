@@ -86,7 +86,7 @@ the build prints the error and goes on; the program works without its icon.
 
 `cmd` links every backend, so these tests build llama.cpp and ONNX Runtime; they were not run on
 2026-11-21. The CLI commands themselves are exercised in cloud runs (run 8: every local command,
-`test/cloud/runs/2026-11-14-run8-linux-l4/SUMMARY.md`).
+`test/benchmarks/release-and-platforms.md`, run 8).
 
 ## Decisions
 | Decision | Why | Alternative not taken |

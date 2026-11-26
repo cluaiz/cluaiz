@@ -755,7 +755,7 @@ def test_kinds() -> Fig:
     f.card("dir", 576, 0, 520, 140, "test/ folder", "Journeys against a started server, model regressions, Mac, CPU and cloud scripts",
            "folder", "light", chips=["isolated home", "port 8011"])
     f.card("dev", 0, 220, 520, 110, "Developer machine", "Runs both before a commit", "monitor", "white")
-    f.card("runs", 576, 220, 520, 110, "Recorded runs", "`test/cloud/runs/<date>-runN/` and a row in BENCHMARKS.md", "history", "white", strong=True)
+    f.card("runs", 576, 220, 520, 110, "Recorded runs", "one file per test type in test/benchmarks/, raw logs in test/cloud/runs/", "history", "white", strong=True)
     f.edge("cargo", "dev", "b", "t")
     f.edge("dir", "dev", "b", "t", oa=0.25, ob=0.8)
     f.edge("dir", "runs", "b", "t", oa=0.6, ob=0.6)
@@ -769,8 +769,8 @@ def cloud_run() -> Fig:
             "A Spot VM is created for one run, the results come back with their raw output, and the VM is deleted.", height=316)
     top = [("create", "vm.sh create", "Spot VM; stops itself after 3 h", "cloud"), ("put", "vm.sh put", "The remote scripts", "send"),
            ("build", "Build", "`remote/linux_build.sh`", "wrench"), ("test", "Test", "`linux_tests.sh` or a run script", "flask-conical")]
-    bottom = [("get", "vm.sh get", "Results back to the laptop", "download"), ("folder", "Run folder", "SUMMARY.md, raw output, the script", "folder"),
-              ("bench", "BENCHMARKS.md", "One row per run", "list"), ("del", "vm.sh delete", "VM and disk removed", "circle-x")]
+    bottom = [("get", "vm.sh get", "Results back to the laptop", "download"), ("folder", "Run folder", "Raw logs and the script, no .md", "folder"),
+              ("bench", "test/benchmarks/", "Latest results per test type", "list"), ("del", "vm.sh delete", "VM and disk removed", "circle-x")]
     for i, (id, t, x, ic) in enumerate(top):
         f.card(id, i * 282, 0, 250, 112, t, x, ic, "light", num=i + 1)
     for i, (id, t, x, ic) in enumerate(bottom):
