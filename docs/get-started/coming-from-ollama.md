@@ -35,7 +35,7 @@ Cluaiz does not read Ollama's model store. Download the model again with `cluaiz
 to `~/.cluaiz/models` (or `<CLUAIZ_HOME>/models`). A stopped download continues where it stopped.
 
 The installed ID is not the repository name: `cluaiz list` prints it, for example
-`qwen3-0.6b-gguf-Q4_K_M` (the model of run 33). Use that ID as `model` in API calls. More: [Model
+`qwen3-0.6b-gguf-Q4_K_M`. Use that ID as `model` in API calls. More: [Model
 downloading](model-downloading.md).
 
 ## Server address

@@ -207,7 +207,7 @@ pub(crate) fn project(
 }
 
 /// MTP for this load: 0 = off, 1 = on, 2 = on with the per-answer guard (llama `stream.rs`, "MTP
-/// guard"). A model without MTP layers loads without it whatever this says. Auto follows run 23
+/// guard"). A model without MTP layers loads without it whatever this says. Auto follows the MTP runs of 2026-11-20 (run 24)
 /// (`test/cloud/runs/2026-11-20-run23-mtp-placements`), first rule that applies:
 /// 1. experts read from the disk: off (every prompt was slower, 0.63-0.98x);
 /// 2. a `cluaiz bench --mtp-compare` result for this model and placement: on when generation was at
@@ -239,7 +239,7 @@ fn mtp_auto(model_path: &str, plan: &ExecutionPlan, settings: &ActiveUserSetting
         return (0, "the model file could not be read for the MTP rules");
     };
     // MTP's memory is not in the plan yet: off when it would not fit next to the planned placement.
-    // Run 23 measured +0.11-0.19 GB (dense 2B, 0.05 GB per block) and +0.45-0.71 GB (MoE 35B-A3B,
+    // Measured on 2026-11-20: +0.11-0.19 GB (dense 2B, 0.05 GB per block) and +0.45-0.71 GB (MoE 35B-A3B,
     // 0.44 GB per block): about 1.6 blocks of weights plus 0.15 GB of context and buffers.
     let block_gb = geometry.file_size_bytes as f64 / 1e9 / geometry.block_count.max(1) as f64;
     let mtp_gb = 1.6 * block_gb + 0.15;

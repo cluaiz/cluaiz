@@ -1,4 +1,0 @@
-free RAM MiB before: 8032
-exit code: 0
-seconds: 29.7
-free RAM MiB after: 8658

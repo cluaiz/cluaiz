@@ -39,7 +39,7 @@ pub async fn execute_non_streaming(
     // too, which was not run, so only the text before it is the answer. Whole, its
     // `<tool_call>…</tool_call>` block would be taken as a reasoning block by `separate_reasoning`
     // (any leading `<tag>…</tag>`), so the call came back as `reasoning_content` with an empty
-    // answer (run 52 `long_input`, run 57)
+    // answer (found in a soak on 2026-11-23)
     let unrun_call = matches!(ended, cluaiz_agents::turn::Ended::StepLimit);
     let final_raw_text = if client_call.is_some() || unrun_call {
         turn.last_raw.split(cluaiz_core::tool_calls::OPEN).next().unwrap_or_default().to_string()

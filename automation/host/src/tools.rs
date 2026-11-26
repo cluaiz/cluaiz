@@ -36,7 +36,7 @@ struct Offered {
 /// Enabled flows with an enabled `tool` trigger, valid, with their permissions confirmed. A
 /// project's flow hides the user's flow of the same name. The catalog snapshot (every method and
 /// tool) is read only when some flow has such a trigger: a chat request asks for this list each
-/// time, and on a 1 vCPU server the snapshot cost about 60 ms of every request (run 26).
+/// time, and on a 1 vCPU server the snapshot cost about 60 ms of every request (measured 2026-11-20).
 async fn offered(service: &Service) -> Option<(Vec<Offered>, Snapshot)> {
     let store = service.store().await;
     let mut candidates = Vec::new();

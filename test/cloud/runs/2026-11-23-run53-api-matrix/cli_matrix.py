@@ -31,7 +31,7 @@ def main():
                CLUAIZ_NONINTERACTIVE="1", NO_COLOR="1")
     chat = "qwen3.5-0.8b-gguf-Q4_K_M"
     vector = "embeddinggemma-300m-gguf-Q8_0"
-    flow = REPO / "test/cloud/runs/2026-11-23-run49-release-e2e/run49-check.flow.yaml"
+    flow = REPO / "test/cloud/remote/probes/run49-check.flow.yaml"
     sample = args.home / "ingest-sample.md"
     sample.write_text("# Release test\n\nThe check number is 4917.\n", encoding="utf-8")
     (args.home / "workspace").mkdir(exist_ok=True)

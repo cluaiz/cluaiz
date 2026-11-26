@@ -11,17 +11,13 @@ placement. Method: section 5 of `.agent/plans/engine/ssd-streaming/01-research-a
 
 ## At a glance
 
-- **Status:** `run_prefetch.sh` has not been run on its real model. `run_prefetch_laptop.ps1` ran in runs 42
-  and 44. `run_case_g.sh` (run 23 case G with the cache and the prefetch; `CONFIGS` picks configurations,
-  tables by `summarize_case_g.py`) ran in run 43 (`test/cloud/runs/2026-11-23-run43-l4-case-g-prefetch/`).
-  Results so far decide the prefetch's Auto rule (`engine/plan/src/expert_prefetch.rs`): on only for a MoE
-  cache of at least 20% of the experts on Linux (run 43 faster), off for small caches (run 44 slower).
-  Run 46 (`test/cloud/runs/2026-11-23-run46-laptop-prefetch-auto/`) could not rebuild run 44's shape.
-  Run 48 (`test/cloud/runs/2026-11-23-run48-l4-fair-baselines/`) ran the serve and bench additions below,
-  tables by `summarize_fair.py`.
-- **Platform:** `run_prefetch.sh`: the L4 VM of runs 11, 13 and 14 (GCP `g2-standard-8`: L4 22.5 GB,
+- **Status:** `run_prefetch.sh` has not been run on its real model. `run_prefetch_laptop.ps1` ran in run 44
+  (and the lazy-load configs in run 61); `run_case_g.sh` ran in run 48 (tables by `summarize_fair.py`);
+  `pp_gap.sh` ran in run 75. Results and the prefetch's Auto rule (`engine/plan/src/expert_prefetch.rs`: on
+  only for a MoE cache of at least 20% of the experts on Linux): `test/benchmarks/ssd-streaming-moe.md`.
+- **Platform:** `run_prefetch.sh`: the L4 VM of runs 13 and 48 (GCP `g2-standard-8`: L4 22.5 GB,
   4 cores / 8 threads, 31 GB RAM), Ubuntu or Debian with CUDA, Linux only (`/proc/diskstats`,
-  `drop_caches`). `run_prefetch_laptop.ps1`: the Windows laptop of run 20 (see its section below).
+  `drop_caches`). `run_prefetch_laptop.ps1`: the RTX 3050 Windows laptop (see its section below).
 
 ## Flow
 
@@ -109,7 +105,7 @@ Not checked: the build, the pull, `drop_caches`, the sampler, iostat, llama-serv
 build, `-lm dio` on the official build, the time the whole run takes (expected to fit in `vm.sh`'s 3 h
 `MAX_RUN`; not measured).
 
-## Windows laptop script (`run_prefetch_laptop.ps1`): run 20 repeated with the prefetch
+## Windows laptop script (`run_prefetch_laptop.ps1`): the laptop MoE test with the prefetch
 
 Repeats the alternated comparison of `test/cloud/runs/2026-11-16-run20-laptop-moe-disk/` (Gemma 4 26B A4B
 IQ4_XS, 14,205,004,928 bytes, official llama.cpp `b12428`, 4 GB laptop GPU) and adds the MoE cache and the
@@ -117,8 +113,8 @@ prefetch. PowerShell 5.1, no extra tools.
 
 | Config | Command |
 |---|---|
-| `L` | `llama-bench -m <gguf> -p 512 -n 128 -r 3 -t 8 -ngl 99 -ncmoe 30 -fa 1` (run 20's command; KV f16 is llama-bench's default) |
-| `C` | `cluaiz bench <gguf> -p 512 -n 128 -r 3 -t 8 -c 1024 --flash-attn on --cache-type-k f16 --cache-type-v f16 --n-gpu-layers all --n-cpu-moe 30`, `CLUAIZ_EXPERT_PREFETCH=off` (run 20's command) |
+| `L` | `llama-bench -m <gguf> -p 512 -n 128 -r 3 -t 8 -ngl 99 -ncmoe 30 -fa 1` (the baseline command; KV f16 is llama-bench's default) |
+| `C` | `cluaiz bench <gguf> -p 512 -n 128 -r 3 -t 8 -c 1024 --flash-attn on --cache-type-k f16 --cache-type-v f16 --n-gpu-layers all --n-cpu-moe 30`, `CLUAIZ_EXPERT_PREFETCH=off` (the baseline command) |
 | `C-plan` | the same without `--n-gpu-layers` / `--n-cpu-moe` (the planner's placement), `-vv` |
 | `C-cache` | as `C-plan`, `CLUAIZ_MOE_CACHE=on CLUAIZ_EXPERT_PREFETCH=off` |
 | `C-pf` | as `C-plan`, `CLUAIZ_MOE_CACHE=on CLUAIZ_EXPERT_PREFETCH=on` |
@@ -132,18 +128,18 @@ their baseline with the same placement. Which placement the planner picks for Ge
 not known before the run; the `placement` column of `results.md` shows it for every run.
 
 `-vv` on the planner rows: llama.cpp's info lines (the `MoE cache size` line and the fork's
-`llama_cluaiz_moe_prefetch` counters) reach the log only at debug level. `C` keeps run 20's command
+`llama_cluaiz_moe_prefetch` counters) reach the log only at debug level. `C` keeps the baseline command
 without `-v`.
 
-Before round 1, a warm-up load with run 20's placement (`-p 0 -n 8 -r 1`) lets the new isolated home
-learn the VRAM the model takes, as the first forced load did in run 20 (without it the planner keeps its
+Before round 1, a warm-up load with the baseline placement (`-p 0 -n 8 -r 1`) lets the new isolated home
+learn the VRAM the model takes, as the first forced load did in the first laptop run (without it the planner keeps its
 fixed 1 GB VRAM gap and chose CPU only there). Then 3 rounds, the order rotated each round; the file
-cache is not emptied (that needs a tool such as RAMMap), so rotation is the control, as in run 20.
+cache is not emptied (that needs a tool such as RAMMap), so rotation is the control, as in the first laptop run.
 
 Per run, in the output folder: `<tag>.md` (stdout, the speed table), `<tag>.log` (stderr), `<tag>.engine.log`
 (the part of `cluaiz_Core.log` the run wrote), `<tag>.perf.csv` (`typeperf` every second: free RAM, disk
 read bytes/s and read queue of `_Total`, GPU dedicated memory), `<tag>.info.txt` (free RAM before and
-after, exit code, seconds). `results.md` has one row per run, the median per config, and run 20's
+after, exit code, seconds). `results.md` has one row per run, the median per config, and the baseline's
 numbers (llama.cpp 15.9, Cluaiz 14.9 t/s generation) beside them. It warns when a `C-cache` / `C-pf` run
 shows no MoE cache or a `C-pf` run no prefetch line. The user and machine names in the raw files are
 replaced by `<user>` and `<machine>` at the end.
@@ -167,12 +163,12 @@ Checked (2026-11-23, format only, not speed numbers): with OLMoE-1B-7B Q4_K_M (`
 stopped the script with no output folder.
 
 Not checked: the Gemma run itself and its total time; whether the planner gives Gemma a MoE split with a
-cache on this laptop; the release build (run 20 used `target\release`; this script defaults to the debug
+cache on this laptop; the release build (the first laptop run used `target\release`; this script defaults to the debug
 build `cargo build -p cmd` makes, whose llama.cpp is built with CMake's Release flags, while the Rust code
 is not optimized); cold-cache runs.
 
 `-Set lazy` (run 61, `test/cloud/runs/2026-11-24-run61-laptop-lazy-load/`): the load-prefetch skip
-(`CLUAIZ_LAZY_HOST_WEIGHTS`) and the Windows ask-once expert prefetch. Configs `L`, `C` / `C-lazy` (run 20's
+(`CLUAIZ_LAZY_HOST_WEIGHTS`) and the Windows ask-once expert prefetch. Configs `L`, `C` / `C-lazy` (the baseline's
 placement without / with the skip), `C-plan` / `C-plan-lazy` (the planner's placement), `C-cache` / `C-pf` /
 `C-lazy-pf` (`CLUAIZ_MOE_CACHE=on`, prefetch off / on / on plus the skip); every Cluaiz config runs with `-vv`
 so the log has the load timestamps. `-Only C,C-lazy` keeps only the named configs (one string, split on
@@ -183,7 +179,7 @@ disk GB read in that window and in the whole run (typeperf), pp/tg, placement, M
 prefetch counters; then the median per config. With 0.2-1 GB free RAM a pp512 pass took 11 minutes, so run 61
 used `-Reps 1`.
 
-## `pp_gap.sh` (run 59, the prompt-speed gap)
+## `pp_gap.sh` (the prompt-speed gap, run 75)
 
 Run 48's bench shape (L4, ~8 GB VRAM by `vram_hog.py`, 12 GB cgroup, `--n-cpu-moe 41`, no MoE cache), with a
 sampler that also records the cgroup's `memory.stat` and the process's RSS and major faults, and time-stamped
@@ -194,19 +190,16 @@ memory in the same cgroup, `C-b<N>` `C` with `-b N` and `LFB<N>` `LF` with `-b N
 is 2048, Cluaiz's 512; the micro-batch is 512 on both), `C-nw` `C` with `CLUAIZ_TEST_NO_WARMUP=1` (skips the
 load-time warmup only in a test binary built with that switch, see the pp2048 cause run). Usage on the VM:
 `CLUAIZ=<binary> CLUAIZ_BASE=<binary> PP=512,2048 TG=128 REPS=2 ROUNDS=2 CONFIGS="C CB LF" bash pp_gap.sh <out>`,
-then `python3 analyze_pp_gap.py <out>` for seconds, MiB read, faults and memory per phase. Results and
-causes: `test/cloud/runs/2026-11-24-run59-l4-pp-gap/`. Use `--mtp off` where MTP must stay off: the harness's
-`CLUAIZ_MTP=off` was not read by the binaries of runs 48 and 59 (fixed later in `native::speculative::env_override`).
+then `python3 analyze_pp_gap.py <out>` for seconds, MiB read, faults and memory per phase. Results:
+`test/benchmarks/ssd-streaming-moe.md` (run 75). Use `--mtp off` where MTP must stay off.
 
 ## Run 48 additions to `run_case_g.sh` (fair baselines and the prompt-speed gap)
 
-Run 43 compared Cluaiz with the MoE cache and the prefetch against llama.cpp without its cache, and loaded
-Cluaiz once per prompt while llama-server loaded once. Run 45 found Cluaiz 9-11% behind at pp512 / pp2048.
-These configurations close both gaps on the same VM shape (`CONFIGS` picks them):
+Fair-comparison configurations, one load on each side (`CONFIGS` picks them):
 
 | Config | Tool and flags | Why |
 |---|---|---|
-| `L-serve` | `llama-server -ngl 99 -ncmoe 41 -c 16384 -t 4 -fa auto`, one load | llama.cpp without its MoE cache (run 43's L-text) on the same client as the rows below |
+| `L-serve` | `llama-server -ngl 99 -ncmoe 41 -c 16384 -t 4 -fa auto`, one load | llama.cpp without its MoE cache, on the same client as the rows below |
 | `L-serve-mc` | the same with `--moe-cache-mib 3600 --moe-cache-cpu-share 0.9` (`MC_MIB`, `MC_SHARE`) | llama.cpp with its own upstream MoE cache, the size the Cluaiz planner picks here (3602.69 MiB, 0.9) |
 | `C-serve` | one `cluaiz -vv serve` process (port 8011), prefetch off, planner default | one load for every request, like llama-server |
 | `C-pf-serve` | the same with `CLUAIZ_EXPERT_PREFETCH=on` | the prefetch on one load |
@@ -238,8 +231,8 @@ the real counts are in each answer's `prompt_n`). llama-server and bmoe-server r
 
 | Item | Why it matters | Needs |
 |---|---|---|
-| The run itself | no number exists yet | the owner's yes and the VM cost |
+| `run_prefetch.sh` on gpt-oss-120b | no number exists yet | the owner's yes and the VM cost |
 | Windows laptop run with a MoE cache for the ask-once prefetch | run 61's 9 cache runs got no cache (usable VRAM 2.15 GB) | about 2.7 GB of free VRAM |
-| Windows laptop run with a big MoE cache | runs 42, 44 and 46 had at most 452 MiB of cache on the 4 GB GPU, so Windows has no measurement of the shape where Auto turns the prefetch on (Auto stays off on Windows) | a GPU with more free VRAM, or the 4 GB GPU with nothing else on it |
+| Windows laptop run with a big MoE cache | run 44 had at most 452 MiB of cache on the 4 GB GPU, so Windows has no measurement of the shape where Auto turns the prefetch on (Auto stays off on Windows) | a GPU with more free VRAM, or the 4 GB GPU with nothing else on it |
 | Final pass numbers | the bar above is proposed | the owner |
 | `L-cache` / `L-bench-mc` through llama-bench | a different method from the other rows when llama-server is used | a llama-bench with `--moe-cache-mib`; upstream master `a8f8294` (2026-11-23) has none |

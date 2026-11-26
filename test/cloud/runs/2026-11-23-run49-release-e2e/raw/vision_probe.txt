@@ -1,4 +1,0 @@
-64 image 200 'I cannot identify the color of an image. I am an AI assistant designed to help with tasks like writing code, solving ma prompt_tokens 230
-64 no-image 200 "I cannot see the image you're referring to. I can only access the project folder and its files. Could you please upload prompt_tokens 885
-448 image 200 'I cannot identify the color of an image. I am an AI assistant designed to help with tasks like writing code, solving ma prompt_tokens 241
-448 no-image 200 "I cannot see the image you're referring to. I can only access the project folder and its files. Could you please upload prompt_tokens 885

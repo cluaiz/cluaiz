@@ -1,3 +1,0 @@
-$ cluaiz model set-chat qwen3.5-0.8b-gguf-Q4_K_M
-Active chat model: qwen3.5-0.8b-gguf-Q4_K_M
-exit=0

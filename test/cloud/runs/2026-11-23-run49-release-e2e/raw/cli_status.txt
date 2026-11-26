@@ -1,7 +1,0 @@
-$ cluaiz status
-os        Windows 11 (26300) (x86_64)
-cpu       AMD Ryzen 7 7435HS | 8 cores, 16 threads
-ram       10.92 GB free of 23.69 GB
-gpu 0     NVIDIA GeForce RTX 3050 A Laptop GPU | 2.77 GB free of 4.00 GB VRAM
-backend   CUDA0: NVIDIA GeForce RTX 3050 A Laptop GPU
-exit=0

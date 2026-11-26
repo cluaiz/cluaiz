@@ -1,3 +1,0 @@
-== flow_explain2
-$ /home/Aryan/.cluaiz/bin/cluaiz flow explain vm-hello
-error: flow: flows.explain: there is no flow named vm-hello (code -32004)

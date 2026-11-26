@@ -9,7 +9,7 @@
 //!
 //! Auto ([`auto_on`]; plan `.agent/plans/engine/ssd-streaming/03-prefetch-auto.md`) is on only for the
 //! one shape measured faster: a MoE cache of at least [`ALL_EXPERTS_IN_RAM_FROM`] of the experts, on
-//! Linux (run 43, L4: cache 24.8% of the experts, 1.27-1.43x over the cache alone). It is off for a small
+//! Linux (run 48, L4: cache 24.8% of the experts, 1.23-1.40x over the cache alone). It is off for a small
 //! cache (run 44, Windows laptop: cache 2.2-3.8% of the experts, about half the speed of the cache alone
 //! in the same rounds) and on every platform not measured yet.
 //!
@@ -43,10 +43,9 @@ pub fn cap(setting: FeatureState, env: Option<&str>, moe_cache_bytes: u64, exper
 }
 
 /// Auto's rule. The cache share is the planner's own threshold for "every expert in RAM, the whole VRAM
-/// left as cache" (`crate::moe_cache`), the only branch run 43 measured; a smaller cache comes from the
+/// left as cache" (`crate::moe_cache`), the only branch run 48 measured; a smaller cache comes from the
 /// other branch (at most `BESIDE_LAYERS` = 10% of the experts). A smaller cache misses more (run 44: hit
-/// rate 24-39% against 65-81% in run 43), so the prefetch asks more per upload (15.0-18.6 MiB against 4.8 MiB
-/// per call) for experts the CPU reads right after. Linux only: the one good run used Linux `madvise`;
+/// rate 24-39%), so the prefetch asks more per upload (15.0-18.6 MiB per call) for experts the CPU reads right after. Linux only: the one good run used Linux `madvise`;
 /// Windows was measured only with a small cache, macOS not at all.
 pub fn auto_on(moe_cache_bytes: u64, experts_bytes: u64, linux: bool) -> bool {
     linux
@@ -73,9 +72,9 @@ mod tests {
 
     #[test]
     fn auto_follows_the_measured_shapes() {
-        // run 43 (L4, Linux): Qwen3.6-35B-A3B, cache 3602.69 MiB for 14514.00 MiB of host experts: faster
+        // run 48 (L4, Linux): Qwen3.6-35B-A3B, cache 3602.69 MiB for 14514.00 MiB of host experts: faster
         let (cache, experts) = (3602 * MIB, 14514 * MIB);
-        assert_eq!(cap(FeatureState::Auto, None, cache, experts, true), cache, "run 43 shape");
+        assert_eq!(cap(FeatureState::Auto, None, cache, experts, true), cache, "run 48 shape");
         assert_eq!(cap(FeatureState::Auto, None, cache, experts, false), 0, "not measured off Linux");
         // run 44 (laptop, Windows): Gemma 4 26B A4B, 11797.50 MiB of host experts, caches 258-452 MiB:
         // slower. Off on Linux too: the cache share decides, not only the platform
@@ -84,8 +83,8 @@ mod tests {
                 assert_eq!(cap(FeatureState::Auto, None, cache_mib * MIB, 11797 * MIB, linux), 0, "run 44 shape {cache_mib} MiB");
             }
         }
-        // run 42 (laptop, model fits in RAM): the planner gave no cache, nothing to prefetch
-        assert_eq!(cap(FeatureState::Auto, None, 0, 11797 * MIB, false), 0, "run 42 shape");
+        // laptop, model fits in RAM: the planner gave no cache, nothing to prefetch
+        assert_eq!(cap(FeatureState::Auto, None, 0, 11797 * MIB, false), 0, "laptop shape without a cache");
         // the edge: the planner's share is on, one MiB under it is off
         let edge = (ALL_EXPERTS_IN_RAM_FROM * (10 * GIB) as f64).ceil() as u64;
         assert!(auto_on(edge, 10 * GIB, true));

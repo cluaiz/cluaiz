@@ -1834,6 +1834,13 @@
   "metadata": true
  },
  {
+  "title": "test/cloud/remote/reproduce",
+  "description": "A short, one-command version of runs 19 and 40 (small LLM next to a website on a small VPS); written, not run yet.",
+  "kind": "readme",
+  "path": "test/cloud/remote/reproduce/README.md",
+  "metadata": true
+ },
+ {
   "title": "test/cloud/remote/ssdprefetch",
   "description": "Measures the MoE expert prefetch and forced GPU cache on a model larger than RAM against official llama.cpp.",
   "kind": "readme",

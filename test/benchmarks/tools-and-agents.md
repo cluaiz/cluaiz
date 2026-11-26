@@ -4,24 +4,21 @@
 
 | Area | Latest result | Run |
 |---|---|---|
-| Repeat guard (Llama 3.2 3B, run 77 setup B) | correct 23 -> 33 / 40, loop prompts 11 -> 0, tool steps 248 -> 9 | 81 |
-| JSON schema with tools, opt-in "call or JSON" grammar (Qwen3 0.6B) | valid JSON 3 / 10 off -> 8 / 10 on; weather calls 10 / 10 both | 80 |
-| Image request, math call after `load_tool` | 0 / 3 -> 3 / 3; repeat limit hits 3 / 3 -> 0 / 3 | 79 |
+| Repeat guard (Llama 3.2 3B, 40 prompts, setup B) | 33 / 40 correct, 0 loop prompts, 9 tool steps in 40 requests | 81 |
+| JSON schema with tools (Qwen3 0.6B) | default: weather calls 10 / 10; with `CLUAIZ_JSON_TOOLS_GRAMMAR=on` valid JSON 8 / 10 and weather calls 10 / 10 | 80 |
+| Image request, math call after `load_tool` | 3 / 3 calls, 0 / 3 at the repeat limit | 79 |
 | `max_tokens` as one budget for the whole tool loop | `completion_tokens` within the limit 5 / 5 in every case | 78 |
 | Tool count and small models (partial) | Qwen3 4B 36-39 / 40; Llama 3.2 1B 6-32 / 40 depending on the tool set; no size cutoff proven | 77 |
-| Media before text on image requests with tools | text first 0 / 10 -> 10 / 10 | 76 |
-| Tool loop, cut call, `response_format` / `tool_choice` fixes | cut calls 5 / 5 -> 0 / 5; terminal agent final answer 0 / 3 -> 3 / 3 | 73 |
+| Image and text order with tools | text first 10 / 10, image first 10 / 10, `get_weather` 9 / 9 | 76 |
+| Tool loop limit, cut call, `tool_choice` | cut calls 0 / 5 sent; terminal agent final answer 3 / 3; `tool_choice: none` 0 / 10 calls | 73 |
 
 ```mermaid
 xychart-beta
-    title "Llama 3.2 3B, 40 prompts: before (run 77) and after the repeat guard (run 81)"
+    title "Llama 3.2 3B, 40 prompts with the repeat guard (run 81)"
     x-axis ["correct", "loop prompts", "requests at the limit"]
     y-axis "count" 0 --> 40
-    bar [23, 11, 6]
     bar [33, 0, 1]
 ```
-
-Bars: before first, after second.
 
 Below: every current run of this test type, newest first, in full.
 
@@ -41,14 +38,14 @@ Below: every current run of this test type, newest first, in full.
 
 #### Results (counted with run 77's `analyze.py`)
 
-| | Run 77, L4, build `f8d6b4b2` | Run 81, laptop, build `5fd0977d` |
-|---|---|---|
-| Correct / 40 | 23 | 33 |
-| Loop prompts (same Engine call and payload twice or more) | 11 | 0 |
-| Repeated calls | 163 | 0 |
-| Tool steps, total / max per request | 248 / 99 | 9 / 4 |
-| Requests at the step or repeat limit | 6 | 1 |
-| HTTP errors | 0 | 2 (requests 34 and 39: prompt 3,490 and 3,691 tokens over the 3,328-token context the planner chose for 4 GB VRAM) |
+| | Run 81, laptop, build `5fd0977d` |
+|---|---|
+| Correct / 40 | 33 |
+| Loop prompts (same Engine call and payload twice or more) | 0 |
+| Repeated calls | 0 |
+| Tool steps, total / max per request | 9 / 4 |
+| Requests at the step or repeat limit | 1 |
+| HTTP errors | 2 (requests 34 and 39: prompt 3,490 and 3,691 tokens over the 3,328-token context the planner chose for 4 GB VRAM) |
 
 The new guard fired once (`raw/server.log`): `read_tool_file` with the same arguments was not run again at step 3
 ("its earlier result is returned") and tool steps stopped at step 4 ("came 3 times").
@@ -90,11 +87,11 @@ Logs, raw results and scripts: [`test/cloud/runs/2026-11-26-run81-repeat-guard-l
 |---|---|
 | Machine | Windows 11 laptop, Ryzen 7 7435HS, RTX 3050 Laptop 4 GB |
 | Build | debug `cargo build -p cmd` of `62aa7c52` (includes `3f8e69a4` / `62aa7c52` "opt-in grammar for response_format with tools" and the small-model tool rule), SHA-256 `e0ac1db16b73eb64...` |
-| Server | started by run 68's `fixcheck.py` (unchanged, from its own folder): isolated `CLUAIZ_HOME` (the run 79 test home, no session token), `CLUAIZ_PORT=8013`, `CLUAIZ_HOST=127.0.0.1`; auth settings untouched |
+| Server | started by `test/cloud/remote/probes/fixcheck.py`: isolated `CLUAIZ_HOME` (the run 79 test home, no session token), `CLUAIZ_PORT=8013`, `CLUAIZ_HOST=127.0.0.1`; auth settings untouched |
 | Model | `qwen3-0.6b-gguf-Q4_K_M` (596,049,920 weights, so the small-model rule applied: `read_item` left out, tool search kept) |
-| Cases | run 68's `f_json_schema_with_tool` (person prompt, schema + client `get_weather`; pass = valid schema JSON) and `f2_schema_tool_weather_question` (weather question, schema + `get_weather`; pass = a `get_weather` call or valid schema JSON), n = 10 each, temperature 0.8 (run 65's settings) |
+| Cases | `fixcheck.py`'s `f_json_schema_with_tool` (person prompt, schema + client `get_weather`; pass = valid schema JSON) and `f2_schema_tool_weather_question` (weather question, schema + `get_weather`; pass = a `get_weather` call or valid schema JSON), n = 10 each, temperature 0.8 (run 65's settings) |
 | Switch | `CLUAIZ_JSON_TOOLS_GRAMMAR=off` (default) and `=on`, same binary, same home |
-| Rerun | from the repository root: `FIXCHECK_RUNS=$PWD/test/cloud/runs PYTHONPATH=<run65>:<run64> CLUAIZ_JSON_TOOLS_GRAMMAR=on python -B test/cloud/runs/2026-11-24-run68-tools-schema-fixes/fixcheck.py --exe target/debug/cluaiz.exe --home <isolated-home> --port 8013 --out <dir> --cases f_json_schema_with_tool,f2_schema_tool_weather_question --n 10` |
+| Rerun | from the repository root: `FIXCHECK_RUNS=$PWD/test/cloud/runs CLUAIZ_JSON_TOOLS_GRAMMAR=on python -B test/cloud/remote/probes/fixcheck.py --exe target/debug/cluaiz.exe --home <isolated-home> --port 8013 --out <dir> --cases f_json_schema_with_tool,f2_schema_tool_weather_question --n 10` |
 
 #### Results
 
@@ -116,7 +113,7 @@ What the failures were (`raw/flag-*/results.jsonl`, field `content` and the `Par
 
 - With the switch on, the answer of a request with `response_format` and tools is constrained to "a tool call or the
   schema's JSON": on the person prompt valid JSON went from 3 / 10 to 8 / 10, and on the weather question the calls
-  stayed 10 / 10 (run 68's 0 / 10 calls with a schema-only grammar does not come back).
+  stayed 10 / 10 (a schema-only grammar gave 0 / 10 calls).
 - Off keeps the 2026-11-25 behaviour (calls work, JSON not constrained).
 
 #### What this does not prove
@@ -165,7 +162,7 @@ run checks live that, after `load_tool`, the next step calls the math function.
 | Home | new isolated home `run79home`: `config/` and `tools/` copied from run 73's home (math plugin, filesystem MCP), the three tool paths in `tools_registry.json` rewritten to the new home, `api_port` 8013 in that copy only; no session token copied (the server made its own; it is in no file here) |
 | Server | `cluaiz serve` started by the probe, `CLUAIZ_HOME=<home>`, `CLUAIZ_PORT=8013`, `CLUAIZ_HOST=127.0.0.1`, one server per set, stopped by the probe; auth settings untouched |
 | Model | `qwen3.5-2b-mtp-gguf-Q4_K_M` (Qwen3.5-2B Q4_K_M + `mmproj-F16.gguf`), the same files run 73 used, full GPU |
-| Request | run 64's red PNG + "What is 23 * 19 / 47 * 12 / 315 / 7? Use the math tool.", temperature 0, `think_mode` off, `max_tokens` 256, not streaming |
+| Request | the red PNG of `test/cloud/remote/probes/vision_hint.py` + "What is 23 * 19 / 47 * 12 / 315 / 7? Use the math tool.", temperature 0, `think_mode` off, `max_tokens` 256, not streaming |
 | Cases | `required`: `tool_choice: "required"`, default `max_steps`; `final`: `max_steps: 1`, no `tool_choice`; n = 3 each |
 
 #### Results
@@ -236,10 +233,10 @@ prompt part of the fix); other models or templates; streaming; more than 3 reque
 
 User name replaced by `<user>`; no token or key in any file.
 
-Rerun (needs run 70's `loop_probe.py` and run 64's `vision_hint.py`):
+Rerun (uses `loop_probe.py` from the run 73 folder and `test/cloud/remote/probes/vision_hint.py`):
 
 ```
-PROBE_RUNS=<repo>/test/cloud/runs PYTHONPATH=<repo>/test/cloud/runs/2026-11-24-run70-tool-loop-final-answer \
+PROBE_RUNS=<repo>/test/cloud/runs PYTHONPATH=<repo>/test/cloud/runs/2026-11-25-run73-tool-loop-and-schema-fixes \
 python -B media_tools_probe.py --exe <repo>/target/debug/cluaiz.exe --home <home> --port 8013 --out <dir> --case required --n 3 [--small-model-tools full]
 python -B count_media_calls.py <dir>
 ```
@@ -269,12 +266,12 @@ Fix: 95476879 fix(api): max_completion_tokens wins and the limit is one budget f
 
 #### Results (raw/after_thinkoff.jsonl, think_mode off, 5 requests per case)
 
-| Case | Before (run 72 soak, Linux) | After |
-|---|---|---|
-| max_tokens 48 + tools | completion_tokens 192, finish_reason length (19 / 19 failures) | completion_tokens 48, length, 5 / 5 (0-2 tool steps) |
-| max_tokens 48 + max_completion_tokens 5 | limit 48 used (max_tokens won) | completion_tokens 5, length, 5 / 5 |
-| no limit | - | 142-308 tokens, stop, 5 / 5, 3-5 tool steps (unchanged path) |
-| streaming max_tokens 48 | - | completion_tokens 48, length, 5 / 5 (1-2 tool steps) |
+| Case | After |
+|---|---|
+| max_tokens 48 + tools | completion_tokens 48, length, 5 / 5 (0-2 tool steps) |
+| max_tokens 48 + max_completion_tokens 5 | completion_tokens 5, length, 5 / 5 |
+| no limit | 142-308 tokens, stop, 5 / 5, 3-5 tool steps (unchanged path) |
+| streaming max_tokens 48 | completion_tokens 48, length, 5 / 5 (1-2 tool steps) |
 
 No local before build: target/debug/cluaiz.exe was held by a server on port 8000 started at 09:26 (not
 this run's), so it could not be rebuilt and was not touched. Before numbers are run 72's.
@@ -431,12 +428,12 @@ All layouts failed 0 / 30 (the model called `read_item` for "color"). Reverted. 
 
 #### Results (pass = no tool call and "red" in the reply; weather pass = `get_weather` tool call)
 
-| Layout | before (5c2eeeea) | try 1 | after (0961d0ee) |
-|---|---|---|---|
-| text first | 0 / 10 | 0 / 10 | 10 / 10 |
-| image first | 10 / 10 | 0 / 10 | 10 / 10 |
-| text, image, text | 10 / 10 | 0 / 10 | 9 / 9 (1 x HTTP 500) |
-| get_weather (rotated layouts) | 10 / 10 | 10 / 10 | 9 / 9 (1 x HTTP 500) |
+| Layout | try 1 | after (0961d0ee) |
+|---|---|---|
+| text first | 0 / 10 | 10 / 10 |
+| image first | 0 / 10 | 10 / 10 |
+| text, image, text | 0 / 10 | 9 / 9 (1 x HTTP 500) |
+| get_weather (rotated layouts) | 10 / 10 | 9 / 9 (1 x HTTP 500) |
 
 The 2 HTTP 500 replies in the after run were "Media needs 1279333812 host bytes; live RAM budget is
 1045941862" (free laptop RAM at that moment), not a wrong answer; they are not counted.
@@ -490,25 +487,25 @@ Logs, raw results and scripts: [`test/cloud/runs/2026-11-25-run76-vision-order-t
 
 #### Results
 
-| Fix (commit) | Check | Before | After |
-|---|---|---|---|
-| MTP log line (`cfa597f2`) | `cluaiz bench` Qwen3.5-2B MTP, `CLUAIZ_MTP=off` | `[MTP] Auto: on with the per-answer guard`, no drafter | `[MTP] off by CLUAIZ_MTP (Auto alone: off, its memory would not fit next to this placement)`, no drafter |
-| | `CLUAIZ_MTP=on` | `Auto: on ...` + `Drafting up to 3 tokens` | `[MTP] on by CLUAIZ_MTP (Auto alone: ...)` + `Drafting up to 3 tokens` |
-| Cut native call not sent (`b62e4e3b`) | client `save_note`, `max_tokens` 40, 5 requests | 5 / 5 client calls with cut JSON arguments, `finish_reason: tool_calls` (streaming 5 / 5 too) | 0 / 5 calls, `finish_reason: length`, empty content (streaming the same); log `1 call(s) cut by the token limit` 5 / 5 |
-| | run 70 i = 3, 9 (Engine tools, `max_tokens` 48) | no cut happened (both reached the repeat limit and answered) | identical answers; the run 70 failure did not recur |
-| Terminal agent final answer (`d7748fd1`) | `cluaiz agent --local --max-steps 2`, 6-file sum task, 3 runs | 3 / 3 `Stopped after 2 steps`; result empty (2) or a mid-task sentence (1) | 3 / 3 `Step or repeat limit reached: one last answer ...` notice and a final answer (one says sum 67; the right sum was 153: the 0.8B model read wrong paths) |
-| | API `max_steps: 2`, 5 plain + 5 streaming | 5 / 5 + 5 / 5 final answers | 5 / 5 + 5 / 5, answer text identical 10 / 10 |
-| | `cargo test -p cluaiz-agents --lib turn::` | - | 13 passed (2 new) |
-| response_format with callable tools (`e72069a0`) | run 68 f2: schema + `get_weather`, weather question, x10 | 0 / 10 calls (schema JSON 10 / 10) | 8 / 10 `get_weather` calls (2 empty content) |
-| | c_json_schema / b_json_object / j schema with Engine functions, x10 | 10 / 10 schema JSON | 10 / 10 (constrained log 10 / 10) |
-| | f schema + client tool on the person prompt, x10 | 10 / 10 valid JSON | 0 / 10 (no constraint by decision; the model called or wrote JSON for the Engine's `math` / `read_item`) |
-| | run 69 k3 / c4 schema with thinking and streaming, no client tool, x5 | 5 / 5 | 5 / 5 (reasoning 5 / 5) |
-| | run 69 schema + client tool cases, x5 | 5 / 5 | 3 / 5, 0 / 5, 3 / 5 valid JSON (no constraint) |
-| | run 68 d / e / g / g2 / i / i2, run 69 r6 | as before | unchanged |
-| Image tool steps drop tool_choice (`afb5b8e3`) | red image + math, `tool_choice: required`, x3 | `tool_choice required` strict grammar on all 4 generations and the final answer | only on the first; later steps lazy |
-| tool_choice none (`bbdd9706`) | `get_weather` + `none`, x10 plain and x10 streaming | 10 / 10 client calls in both | 0 / 10 calls; the `<tool_call>` text in `content` 10 / 10 in both |
-| Image final answer without tools (`99a3000a`) | red image + math, `max_steps: 1`, x3 | final generation renders tools and parses `load_tool` 3 / 3 | no tool format line, no call 3 / 3; 2 / 3 answer with the result |
-| Unusable schema keeps the parser (`909a2d2f`) | `$ref` to nothing, thinking on, `tool_choice: none`, x3 | no answer parser 3 / 3 | warning + parser (`Format peg-native`) 3 / 3 |
+| Fix (commit) | Check | After |
+|---|---|---|
+| MTP log line (`cfa597f2`) | `cluaiz bench` Qwen3.5-2B MTP, `CLUAIZ_MTP=off` | `[MTP] off by CLUAIZ_MTP (Auto alone: off, its memory would not fit next to this placement)`, no drafter |
+| | `CLUAIZ_MTP=on` | `[MTP] on by CLUAIZ_MTP (Auto alone: ...)` + `Drafting up to 3 tokens` |
+| Cut native call not sent (`b62e4e3b`) | client `save_note`, `max_tokens` 40, 5 requests | 0 / 5 calls, `finish_reason: length`, empty content (streaming the same); log `1 call(s) cut by the token limit` 5 / 5 |
+| | run 70 i = 3, 9 (Engine tools, `max_tokens` 48) | identical answers; the run 70 failure did not recur |
+| Terminal agent final answer (`d7748fd1`) | `cluaiz agent --local --max-steps 2`, 6-file sum task, 3 runs | 3 / 3 `Step or repeat limit reached: one last answer ...` notice and a final answer (one says sum 67; the right sum was 153: the 0.8B model read wrong paths) |
+| | API `max_steps: 2`, 5 plain + 5 streaming | 5 / 5 + 5 / 5, answer text identical 10 / 10 |
+| | `cargo test -p cluaiz-agents --lib turn::` | 13 passed (2 new) |
+| response_format with callable tools (`e72069a0`) | run 68 f2: schema + `get_weather`, weather question, x10 | 8 / 10 `get_weather` calls (2 empty content) |
+| | c_json_schema / b_json_object / j schema with Engine functions, x10 | 10 / 10 (constrained log 10 / 10) |
+| | f schema + client tool on the person prompt, x10 | 0 / 10 (no constraint by decision; the model called or wrote JSON for the Engine's `math` / `read_item`) |
+| | run 69 k3 / c4 schema with thinking and streaming, no client tool, x5 | 5 / 5 (reasoning 5 / 5) |
+| | run 69 schema + client tool cases, x5 | 3 / 5, 0 / 5, 3 / 5 valid JSON (no constraint) |
+| | run 68 d / e / g / g2 / i / i2, run 69 r6 | unchanged |
+| Image tool steps drop tool_choice (`afb5b8e3`) | red image + math, `tool_choice: required`, x3 | only on the first; later steps lazy |
+| tool_choice none (`bbdd9706`) | `get_weather` + `none`, x10 plain and x10 streaming | 0 / 10 calls; the `<tool_call>` text in `content` 10 / 10 in both |
+| Image final answer without tools (`99a3000a`) | red image + math, `max_steps: 1`, x3 | no tool format line, no call 3 / 3; 2 / 3 answer with the result |
+| Unusable schema keeps the parser (`909a2d2f`) | `$ref` to nothing, thinking on, `tool_choice: none`, x3 | warning + parser (`Format peg-native`) 3 / 3 |
 
 #### Found on the way (not fixed)
 

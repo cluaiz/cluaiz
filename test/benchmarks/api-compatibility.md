@@ -47,13 +47,13 @@ The field is `#[serde(skip)]`, so `/v1/chat/completions` and CEP never set it.
 
 #### Results
 
-| Request | Before | After |
-|---|---:|---:|
-| `/api/chat` "hi", no tools | 921 prompt tokens | 13 prompt tokens ("Hello! How can I help you today?") |
-| same, streamed | 921 | 13 |
-| `/api/chat` with client `get_weather` | `get_weather {"city": "Paris"}`, 987 tokens | same call, 280 tokens |
-| `/v1/chat/completions` "hi" | 921 | 921, rendered prompt byte-identical |
-| `/v1/chat/completions` with `get_weather` | `get_weather {"city":"Paris"}` | same |
+| Request | After |
+|---|---:|
+| `/api/chat` "hi", no tools | 13 prompt tokens ("Hello! How can I help you today?") |
+| same, streamed | 13 |
+| `/api/chat` with client `get_weather` | same call, 280 tokens |
+| `/v1/chat/completions` "hi" | 921, rendered prompt byte-identical |
+| `/v1/chat/completions` with `get_weather` | same |
 
 All 5 checks passed in both runs (`raw/*/results.jsonl`).
 
@@ -98,13 +98,13 @@ Both homes were deleted after the run.
 
 #### Results
 
-| Check | before, in repo | before, outside | after, in repo | after, outside |
-|---|---|---|---|---|
-| `/api/generate` "The capital of France is" | "**Cluaiz** is the AI engine where models, voice, vision,", 4,056 prompt tokens | Paris, 881 | Paris, 17 | Paris, 17 |
-| same, streamed | same as above, 4,056 | Paris, 881 | Paris, 17 | Paris, 17 |
-| `/v1/chat/completions`, same text: project root, prompt tokens | the workspace checkout, 13,193 chars of agent files, 4,056 | the home's `workspace`, 546 chars, 881 | the home's `workspace`, 546 chars, 883 | the home's `workspace`, 546 chars, 881 |
-| `long_input` (1,500 words, think off, 48 tokens) | pass ("The marker is **4917**. This is the **Cluaiz** project identifier...") | fail: content "", `reasoning_content` = `{"arguments":{"path":"."},"name":"read_text_file"}` | fail: content "\n", no `reasoning_content`, 4 tool events | fail: content "\n", no `reasoning_content`, 5 tool events |
-| `chat_tools` (client function) | `get_weather {"city":"Paris"}`, `tool_calls` | same | same | same |
+| Check | after, in repo | after, outside |
+|---|---|---|
+| `/api/generate` "The capital of France is" | Paris, 17 | Paris, 17 |
+| same, streamed | Paris, 17 | Paris, 17 |
+| `/v1/chat/completions`, same text: project root, prompt tokens | the home's `workspace`, 546 chars, 883 | the home's `workspace`, 546 chars, 881 |
+| `long_input` (1,500 words, think off, 48 tokens) | fail: content "\n", no `reasoning_content`, 4 tool events | fail: content "\n", no `reasoning_content`, 5 tool events |
+| `chat_tools` (client function) | same | same |
 
 Raw: `raw/<label>/` (`results.jsonl`, `requests.jsonl`, `responses.jsonl`, `engine.log`); every file is
 under 1 MB. Fix B unit tests: `raw/agents_workspace_tests.txt` (`cargo test -p cluaiz-agents --lib
@@ -194,16 +194,16 @@ Logs, raw results and scripts: [`test/cloud/runs/2026-11-21-run37-ollama-ps/`](.
 Windows 11 (build 26300), Engine 0.1.0 debug build (`cargo build -p cmd`), Qwen3-0.6B Q4_K_M, isolated
 `CLUAIZ_HOME` on port 8011, `ollama` Python library 0.6.1. Script: `probe.py`; output: `results.txt`.
 
-| Call | Run 33 (before, raw HTTP) | Run 36 (after, the library) |
-|---|---|---|
-| `client.chat(...)` | `/api/chat` answered in OpenAI's shape | `content='hello'`, `done=True`, `done_reason=stop`, `eval_count=1`, `prompt_eval_count=19` |
-| `client.chat(..., stream=True)` | SSE in OpenAI's shape | 26 lines of JSON, counting 1 to 5, final `done=True`, `eval_count=25` |
-| `think=True` | `think` ignored | 765 characters in `message.thinking`, answer `2 + 3 = 5.` |
-| `format="json"` | - | `{"city": "Paris"}`, parses as JSON |
-| `client.generate(..., system=...)` | 404 | `response='yes'`, `done=True` |
-| `client.list()` | worked | `['qwen3-0.6b-gguf-Q4_K_M']` |
-| `GET /api/version` | 404 | `{"version":"0.1.0"}` |
-| `client.embed` with a chat model | 404 | HTTP 400 `Selected model does not declare an embedding task`: the same refusal as `/v1/embeddings` |
+| Call | Run 36 (after, the library) |
+|---|---|
+| `client.chat(...)` | `content='hello'`, `done=True`, `done_reason=stop`, `eval_count=1`, `prompt_eval_count=19` |
+| `client.chat(..., stream=True)` | 26 lines of JSON, counting 1 to 5, final `done=True`, `eval_count=25` |
+| `think=True` | 765 characters in `message.thinking`, answer `2 + 3 = 5.` |
+| `format="json"` | `{"city": "Paris"}`, parses as JSON |
+| `client.generate(..., system=...)` | `response='yes'`, `done=True` |
+| `client.list()` | `['qwen3-0.6b-gguf-Q4_K_M']` |
+| `GET /api/version` | `{"version":"0.1.0"}` |
+| `client.embed` with a chat model | HTTP 400 `Selected model does not declare an embedding task`: the same refusal as `/v1/embeddings` |
 
 #### What changed (code)
 
@@ -227,14 +227,14 @@ Logs, raw results and scripts: [`test/cloud/runs/2026-11-21-run36-ollama-library
 Windows 11 (build 26300), Engine 0.1.0 debug build, Qwen3-0.6B Q4_K_M, isolated `CLUAIZ_HOME` on port
 8011. Script: `probe.py`; output: `results.txt`; the unload times are the server's own log lines.
 
-| Request | Run 33 (before) | Run 35 (after) |
-|---|---|---|
-| `GET /api/tags` | `modified_at` always `2026-10-08T00:00:00Z` | `2026-11-21T01:53:27Z`, the model file's change time |
-| `keep_alive: "5m"` | HTTP 422 | HTTP 200; log: unload in 5 minutes |
-| `keep_alive: "30s"` | - | HTTP 200; log: unload in 1 minute (seconds round up) |
-| `keep_alive: "1h"` | - | HTTP 200; log: unload in 60 minutes |
-| `keep_alive: "-1"`, `0`, `5` | - | HTTP 200; no unload, unload after the answer, unload in 5 minutes |
-| `keep_alive: "soon"` | - | HTTP 422 |
+| Request | Run 35 (after) |
+|---|---|
+| `GET /api/tags` | `2026-11-21T01:53:27Z`, the model file's change time |
+| `keep_alive: "5m"` | HTTP 200; log: unload in 5 minutes |
+| `keep_alive: "30s"` | HTTP 200; log: unload in 1 minute (seconds round up) |
+| `keep_alive: "1h"` | HTTP 200; log: unload in 60 minutes |
+| `keep_alive: "-1"`, `0`, `5` | HTTP 200; no unload, unload after the answer, unload in 5 minutes |
+| `keep_alive: "soon"` | HTTP 422 |
 
 #### What changed (code)
 
@@ -259,15 +259,15 @@ Windows 11 (build 26300), Engine 0.1.0 debug build (`cargo build -p cmd`), Qwen3
 `CLUAIZ_HOME` on port 8011, `think_mode: "off"`, `temperature: 0`. The same kind of requests as run 32,
 after the fix. Script: `probe.py`; its output: `results.txt`.
 
-| Request | Run 32 (before) | Run 34 (after) |
-|---|---|---|
-| `"stop": "5"` (a string), count 1 to 10 | HTTP 422 | HTTP 200, answer `1..4`, `finish_reason: stop`, 8 tokens |
-| `"stop": ["5"]` | answer went on to 10 | answer `1..4`, `finish_reason: stop` |
-| `"stop": ["7", "3"]` | - | answer `1, 2`: the first match in the text wins |
-| `"stop": ["5"]`, streaming | - | streamed text `1..4`, `finish_reason: stop` |
-| `"max_completion_tokens": 5` | 576 tokens | 5 tokens, `finish_reason: length` |
-| `max_tokens: 8` and `max_completion_tokens: 3` | - | 8 tokens: `max_tokens` wins |
-| no `stop` (control) | - | `1..10`, 20 tokens |
+| Request | Run 34 (after) |
+|---|---|
+| `"stop": "5"` (a string), count 1 to 10 | HTTP 200, answer `1..4`, `finish_reason: stop`, 8 tokens |
+| `"stop": ["5"]` | answer `1..4`, `finish_reason: stop` |
+| `"stop": ["7", "3"]` | answer `1, 2`: the first match in the text wins |
+| `"stop": ["5"]`, streaming | streamed text `1..4`, `finish_reason: stop` |
+| `"max_completion_tokens": 5` | 5 tokens, `finish_reason: length` |
+| `max_tokens: 8` and `max_completion_tokens: 3` | 8 tokens: `max_tokens` wins |
+| no `stop` (control) | `1..10`, 20 tokens |
 
 #### What changed (code)
 

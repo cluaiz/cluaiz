@@ -1,9 +1,0 @@
-$ cluaiz flow run run49-check
-run run_51bac16f35ad started
-succeeded in 15255 ms, 2 steps
-exit=0
-$ cluaiz flow logs run49-check
-run_51bac16f35ad  succeeded  2026-11-23T11:49:21.098Z  15255 ms
-run_84a466183638  succeeded  2026-11-23T11:37:48.121Z  84660 ms
-run_812d4f889d21  succeeded  2026-11-23T11:24:37.543Z  39906 ms
-exit=0

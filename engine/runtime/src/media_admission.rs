@@ -27,7 +27,7 @@ impl MediaAdmission {
 
     /// Waits in line for the permit, at most `wait`; `None` when the wait ran out. Requests that
     /// arrive while one runs are then served in arrival order (tokio's semaphore is fair) instead
-    /// of refused, as llama-server and Ollama queue them. Run 26 (2026-11-20, 4 GB VPS): with
+    /// of refused, as llama-server and Ollama queue them. On a 4 GB VPS (2026-11-20): with
     /// `try_acquire`, a second concurrent embedding request got HTTP 429, so 2 parallel callers
     /// failed 99.96% of their requests. A waiting request holds only its undecoded input (text, or
     /// attachment bytes within the media byte limit); decoding starts after the permit, so decoded

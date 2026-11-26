@@ -1,3 +1,0 @@
-$ cluaiz flow list
-No flows yet. Save one with `cluaiz flow save <file>`.
-exit=0

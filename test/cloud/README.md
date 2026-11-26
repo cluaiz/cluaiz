@@ -31,15 +31,14 @@ keeps its disk with the build and the models, so `start` continues; `delete` rem
 | `remote/regression_tests.sh`, `regression_all.sh` | `test/engine_regression/run.py` on a VM, one model at a time so a stopped Spot VM keeps finished reports |
 | `remote/release_tests.sh` | a GitHub release on a clean VM through the one-command install |
 | `remote/compare3.py` | Cluaiz, Ollama and LM Studio on one VM with the same GGUF files and prompt |
-| `remote/run11.sh`, `run12.sh`, `features11.py` | runs 11-12 on the L4 VM |
 | `remote/run21_planner.sh`, `multiturn_cache.py`, `vram_hog.py` | run 21: planner release check, cache reuse past a sliding window, another process taking VRAM during a load |
 | `remote/moe_cache_*.sh` | run 13: official llama.cpp's MoE GPU cache and its tuner |
 | `remote/ssd_test.sh`, `ssd_same_settings.sh` | a model bigger than RAM + VRAM; Cluaiz against official llama.cpp with the same settings |
-| `remote/vps_cpu_same_settings.sh`, `vps_run16_ollama.sh`, `vps_run18_features.sh`, `vps19/` | runs 15-19 on a 1 vCPU / 4 GB VPS without a GPU |
-| `remote/mtp23/` | runs 23-24: MTP off, on and Auto in every placement |
-| `remote/vps26/` | run 26: Cluaiz, llama.cpp and Ollama next to a web app and PostgreSQL on the 1 vCPU VPS, native and Docker (`run26.sh`, `workloads.py`, `analyze.py`); `run40.sh` reruns its checks with the engines interleaved, the answer texts saved and the Cluaiz commit recorded; `gcp_setup.sh` prepares a fresh Ubuntu VM, `webapp/` is a Node.js + PostgreSQL website with simulated users (`WEB_USERS`), `compare40.py` writes the tables; `run26.sh --priority nice|cpuweight` (and `--engine-cpus`) start a native engine under `nice -n 19` or with systemd `CPUWeight=10` (run 66), default unchanged |
-| `remote/ssd_prefetch/` | written, not run: the expert prefetch speed proof on the L4 (gpt-oss-120b, official llama-bench baselines, Cluaiz with the MoE cache forced on and the prefetch off / on, page cache dropped before each run, 3 rounds), and `run_prefetch_laptop.ps1`, run 20 repeated on the Windows laptop with the MoE cache and the prefetch (format-checked on OLMoE only); its README has the commands and the proposed pass bar |
-| `remote/warm_tg_gap/run_warm_tg_gap.ps1` | run 47 (Windows laptop): official llama-bench against one or more `cluaiz bench` builds or llama-bench beside other ggml DLLs, same placement, rotated rounds, disk reads and free RAM per run; usage in its header and in `engine/llama/README.md` |
+| `remote/vps_cpu_same_settings.sh`, `vps_run16_ollama.sh`, `vps19/` | runs 15, 16 and 19 on a 1 vCPU / 4 GB VPS without a GPU |
+| `remote/mtp23/` | run 24: MTP off, on and Auto in every placement (`run24.sh`) |
+| `remote/vps26/` | runs 40 and 66: Cluaiz, llama.cpp and Ollama next to a web app and PostgreSQL, native and Docker (`run26.sh`, `workloads.py`, `analyze.py`); `run40.sh` runs the checks with the engines interleaved, the answer texts saved and the Cluaiz commit recorded; `gcp_setup.sh` prepares a fresh Ubuntu VM, `webapp/` is a Node.js + PostgreSQL website with simulated users (`WEB_USERS`), `compare40.py` writes the tables; `run26.sh --priority nice|cpuweight` (and `--engine-cpus`) start a native engine under `nice -n 19` or with systemd `CPUWeight=10` (run 66), default unchanged |
+| `remote/ssd_prefetch/` | the SSD streaming scripts: `run_case_g.sh` (L4, runs 48 and 75 shapes), `pp_gap.sh` (prompt-speed phases, run 75), `run_prefetch_laptop.ps1` (Windows laptop, runs 44 and 61), `run_prefetch.sh` (gpt-oss-120b, not run yet); its README has the commands |
+| `remote/warm_tg_gap/run_warm_tg_gap.ps1` | run 54 (Windows laptop): official llama-bench against one or more `cluaiz bench` builds or llama-bench beside other ggml DLLs, same placement, rotated rounds, disk reads and free RAM per run; usage in its header and in `engine/llama/README.md` |
 | `remote/models*.txt` | model lists the scripts pull |
 
 ## Rules for a run

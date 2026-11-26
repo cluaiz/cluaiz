@@ -103,7 +103,7 @@ The cache is counted in the plan's VRAM, so the learned pool gap and the load re
 
 ### Where the numbers come from
 
-[Run 13](../../test/benchmarks/ssd-streaming-moe.md#run-13) used official llama.cpp
+[Run 13](../../test/benchmarks/ssd-streaming-moe.md) used official llama.cpp
 `b54752d` on an L4 GPU. Generation, tokens/s:
 
 | Model | GPU | `--fit`, no cache | With the cache |
@@ -176,7 +176,7 @@ only decides the number: [`expert_prefetch.rs`](src/expert_prefetch.rs) sets the
 
 | Setting `optimization.expert_prefetch` / `CLUAIZ_EXPERT_PREFETCH` | `expert_prefetch_bytes` |
 |---|---|
-| Auto (default), on Linux, MoE cache at least 20% of the experts (`ALL_EXPERTS_IN_RAM_FROM`) | the MoE cache size (run 43) |
+| Auto (default), on Linux, MoE cache at least 20% of the experts (`ALL_EXPERTS_IN_RAM_FROM`) | the MoE cache size (run 48) |
 | Auto, smaller cache, or not Linux | 0 (run 44: slower with a small cache; Windows and macOS have no positive run) |
 | Off, or the env set to `off` | 0 |
 | On, or the env set to `on`, with a MoE cache in the plan | the MoE cache size |
@@ -187,7 +187,7 @@ The env value wins over the setting; a value other than `on` / `off` is ignored.
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | The value is added to the chosen plan and never takes part in choosing it | the owner's condition: the planner's existing outputs stay identical | a new candidate kind with prefetch |
-| Auto = on only for a cache of at least 20% of the experts, on Linux | run 43 (L4, Linux, cache 3602.69 of 14514.00 MiB = 24.8%): 1.27-1.43x over the cache alone on all 4 prompts. Run 44 (laptop, Windows, caches 258-452 of 11797.50 MiB = 2.2-3.8%): 10.23 and 8.68 t/s against 20.09 and 17.48 for the cache alone in the same rounds. 20% is the planner's own share for "whole VRAM as cache" (`moe_cache::ALL_EXPERTS_IN_RAM_FROM`): run 43 came from that branch, run 44 from the other one (at most 10%). Shares between 3.8% and 24.8% are not measured (?), so the threshold reuses the existing constant instead of a new number | Auto = on whenever there is a cache (run 44 shows it hurts); a threshold on free RAM or disk reads (the planner saw 30 GB free in run 43, it did not know the 12 GB cgroup cap, so no plan-time RAM signal separates the two runs); a run-time guard in the fork (needs a fork rebuild; the plan-time share already separates the two measured runs) |
+| Auto = on only for a cache of at least 20% of the experts, on Linux | run 48 (L4, Linux, cache 3602.69 of 14514.00 MiB = 24.8%): 1.23-1.40x over the same cache without the prefetch on all 4 prompts (10.21 / 25.11 / 18.83 / 19.76 against 7.74 / 21.34 / 13.44 / 16.05 t/s). Run 44 (laptop, Windows, caches 258-452 of 11797.50 MiB = 2.2-3.8%): 10.23 and 8.68 t/s against 20.09 and 17.48 for the cache alone in the same rounds. 20% is the planner's own share for "whole VRAM as cache" (`moe_cache::ALL_EXPERTS_IN_RAM_FROM`): run 43 came from that branch, run 44 from the other one (at most 10%). Shares between 3.8% and 24.8% are not measured (?), so the threshold reuses the existing constant instead of a new number | Auto = on whenever there is a cache (run 44 shows it hurts); a threshold on free RAM or disk reads (the planner saw 30 GB free in run 43, it did not know the 12 GB cgroup cap, so no plan-time RAM signal separates the two runs); a run-time guard in the fork (needs a fork rebuild; the plan-time share already separates the two measured runs) |
 | Cap = the MoE cache size | one upload never fills more than the cache holds, so the prefetch never reads further ahead than the upload that follows it | a fixed number of MiB (no measurement behind any number yet) |
 | No change to "no MoE cache when the model needs the disk" (table above) | run 13 found the cache slower there; a change needs a run with cache plus prefetch against no cache. For that run, `CLUAIZ_MOE_CACHE=on` forces the cache on such a model (see Debugging above) | turning the cache on for disk models now |
 
@@ -195,7 +195,7 @@ The env value wins over the setting; a value other than `on` / `off` is ignored.
 table (882 plans) again with the setting Off and On, and checks that each plan, as JSON without
 the prefetch field, is identical, that Off gives 0 and that Auto gives what `auto_on` says; the table holds
 plans on both sides of the share (52 plans with a MoE cache, 22 of them at 20% or more, 2026-11-23).
-`auto_follows_the_measured_shapes` checks the run 42, 43 and 44 shapes. On 2026-11-23 the rule table was
+`auto_follows_the_measured_shapes` checks the run 44 and 48 shapes and a laptop shape with no cache. On 2026-11-23 the rule table was
 dumped before and after the Auto change (a test kept out of the commit): `rows 882`, `cmp` identical, md5
 `6265d804fe64212f84c332a4338d8069` both, so no placement changed. On 2026-11-22 the rule table was also dumped before
 and after the change (a test kept out of the commit): 882 of 882 plans identical without the new field, the
@@ -289,7 +289,7 @@ shown as 0 kept free: it only removes the margin, it never adds VRAM.
 ## Tests
 
 `cargo test -p cluaiz-plan` on 2026-11-24 (Windows 11): 63 passed, 1 ignored (`tests/real_models.rs`, needs installed
-models). Real loads: runs 11, 12, 21 (L4), 17, 20 (laptop), 15-19 (VPS) in `test/benchmarks/`.
+models). Real loads: runs 10, 21 (L4), 17, 44 (laptop), 15, 16, 19 (VPS) in `test/benchmarks/`.
 
 ## Pending
 
@@ -297,10 +297,10 @@ models). Real loads: runs 11, 12, 21 (L4), 17, 20 (laptop), 15-19 (VPS) in `test
 |---|---|---|
 | Memory estimate for MLA and Kimi-Linear models | run 21 found the estimate off for these | parked with the planner (2026-11-19) until a big-GPU run |
 | Proof that the out-of-memory retry steps down correctly on big models | built, not measured on a big model | the same big-GPU run |
-| First load with other apps holding VRAM (run 20 chose CPU only) | the dry run before every GPU load may have fixed it | a rerun of the run 20 case |
+| First load with other apps holding VRAM (a laptop run on 2026-11-16 chose CPU only) | the dry run before every GPU load may have fixed it | a rerun of that case |
 | Expert prefetch between 4% and 25% cache share, and on Windows with a big cache | Auto is off there because nothing is measured. Run 44's slowdown is explained (run 60): the fork re-asked resident experts every upload and Windows `PrefetchVirtualMemory` costs 43-85 us per MiB of resident pages on the compute thread; the fork now asks each slice once on Windows, which a replay measured at -48-68% prefetch time, but still not faster than no prefetch with resident pages | a laptop A/B with a cache (free VRAM), and a Linux run with a small cache |
 | Load prefetch skip Auto | off: 7-12x slower prompts at 0 MiB free RAM in run 61 | a free-RAM guard, or the skip with the ask-once prefetch on a MoE cache |
-| Prompt speed (pp) with the prefetch | not measured fairly yet (run 43 reloaded per prompt) | the owner's run 45 |
+| Prompt speed (pp) with the prefetch | pp512 equal, pp2048 0.91-0.94x of llama-bench (run 75); cause open | a page-level read trace |
 | Forced MoE cache (`CLUAIZ_MOE_CACHE=on`) on a model read from disk | run 13 measured it slower without prefetch; whether cache + prefetch beats no cache is the question of Phase 0/2 | the L4 script in `test/cloud/remote/` (not run) |
-| Expert prefetch cap | the cache size is a rule, not a measured value; in runs 43 and 44 it never limited anything (4.8 and 15.0-18.6 MiB asked per call against caps of 3602 and 258-452 MiB) | a run that compares a smaller cap |
-| Expert prefetch on macOS, Vulkan, Metal, CPU only | Linux + CUDA (run 43) and Windows + CUDA (runs 44, 46) were run; CPU only and Metal have no MoE cache upload path | runs on those machines; a CPU-only path (eval callback) is a later phase |
+| Expert prefetch cap | the cache size is a rule, not a measured value; in run 44 it never limited anything (15.0-18.6 MiB asked per call against caps of 258-452 MiB) | a run that compares a smaller cap |
+| Expert prefetch on macOS, Vulkan, Metal, CPU only | Linux + CUDA (run 48) and Windows + CUDA (run 44) were run; CPU only and Metal have no MoE cache upload path | runs on those machines; a CPU-only path (eval callback) is a later phase |

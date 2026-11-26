@@ -434,7 +434,7 @@ Route behaviour is also exercised by every cloud run (`test/benchmarks/`).
 | Decision | Why | Alternative not taken |
 |---|---|---|
 | Engine-specific operations are CEP methods on `/v1/cep` (also `/mcp`, the C ABI) | one method set for every transport, with schemas from code and one audit rule (`cep/README.md`) | a REST route per feature |
-| OpenAI routes kept as OpenAI defines them | OpenAI client libraries work by changing the base URL (fields an installed model ignores: run 32; `stop` and `max_completion_tokens` fixed in run 34) | Cluaiz-only routes |
+| OpenAI routes kept as OpenAI defines them | OpenAI client libraries work by changing the base URL (fields an installed model honours or refuses: `docs/api/inference/openai_compatibility.md`, runs 34-37) | Cluaiz-only routes |
 | `/health` answers without a key | uptime checks keep working when API keys are on | protect every route |
 
 ## Pending

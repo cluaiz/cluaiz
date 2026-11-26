@@ -44,8 +44,8 @@ Run your function with those arguments, then send the conversation again with th
 
 The model now answers in `content`.
 
-Recorded in run 68 (Qwen3.5-2B Q4_K_M, RTX 3050 laptop): this request returned this call in 10 of 10
-tries, each in 2.4 to 2.8 s. The weather values in the tool message are only an example.
+Recorded in run 80 (Qwen3-0.6B Q4_K_M, RTX 3050 laptop): a weather question with `get_weather` returned a
+call in 10 of 10 tries. The weather values in the tool message are only an example.
 
 ## Choosing when the model calls
 

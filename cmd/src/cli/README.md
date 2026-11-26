@@ -98,8 +98,7 @@ flowchart LR
   automatic value; `reset` backs the file up first.
 - `ingest.rs`: reads a document or an image with the shared document service and prints its
   chunks; with an embedding model set, also makes vectors. Nothing is stored. Text chunks go through
-  `cluaiz_api::handlers::embeddings::embed_texts`, the same GGUF / ONNX owners as `/v1/embeddings`
-  (until run 49 a GGUF embedding model failed with "This ONNX task owner requires an ONNX package");
+  `cluaiz_api::handlers::embeddings::embed_texts`, the same GGUF / ONNX owners as `/v1/embeddings`;
   image vectors need an ONNX image embedding model.
 - `component.rs`:
   - **Logic:** `skill|plugin|mcp install|list|remove|cache|permission`. `planned_install` builds

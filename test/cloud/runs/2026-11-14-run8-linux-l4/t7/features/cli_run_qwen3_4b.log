@@ -1,3 +1,0 @@
-== cli_run_qwen3_4b
-$ /home/Aryan/.cluaiz/bin/cluaiz run qwen3-4b-gguf-Q4_K_M Name three rivers in India, one line. --local -n 64
-Ganges, Brahmaputra, Godavari.

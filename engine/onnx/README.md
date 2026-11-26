@@ -84,4 +84,4 @@ were measured in cloud runs (voice and embedding table in `test/benchmarks/`).
 
 | Item | Why it matters | Needs |
 |---|---|---|
-| cuDNN loading fix (2026-10-29) not re-run on a Linux GPU | see run 4b | a GPU run |
+| cuDNN loading fix (2026-10-29) not re-run on a Linux GPU | found on a Tesla T4 on 2026-10-28 | a GPU run |

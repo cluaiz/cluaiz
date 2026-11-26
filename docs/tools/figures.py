@@ -721,7 +721,7 @@ def thinking_close() -> Fig:
 
 def openai_fields() -> Fig:
     f = Fig("api/openai-fields.png", "API · OpenAI compatibility", "OpenAI chat fields on an installed model",
-            "stop and max_completion_tokens work since run 34; n was recorded in run 32 (Engine 0.1.0, Qwen3-0.6B). logit_bias reaches provider models only.", height=400)
+            "stop and max_completion_tokens work (run 34, Qwen3-0.6B). logit_bias reaches provider models only.", height=400)
     ok = ["messages, stream", "max_tokens, max_completion_tokens", "stop (a string or a list)", "temperature, top_p, seed",
           "frequency and presence penalty", "response_format (JSON, JSON schema)", "tools, tool_choice", "reasoning_effort"]
     no = [("n", "always one choice"), ("logprobs, top_logprobs", "ignored"), ("logit_bias", "ignored")]

@@ -1,7 +1,0 @@
-2026-11-23T11:36:04.513466Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
-2026-11-23T11:36:05.143659Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
-2026-11-23T11:36:06.813455Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
-Starting the Cluaiz API server on http://localhost:8013 ...
-2026-11-23T11:36:06.816679Z  INFO 🔒 [Auth] Initialized local session secret at C:\Users\<user>\AppData\Local\cluaiz-test\run49-e2e\session.token
-2026-11-23T11:36:07.078520Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
-2026-11-23T11:36:07.165985Z  INFO 🌐 Cluaiz API Server running on http://127.0.0.1:8013

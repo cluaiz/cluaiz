@@ -72,8 +72,8 @@ flowchart TD
    `with` is sent as JSON exactly as resolved. A string `with` is sent as it is.
 3. With `output_schema`, the request carries it as `response_format` (`json_schema`). On an
    installed model, the Engine also holds the answer to the schema while it is generated, so it is
-   well-formed JSON. A step with `tools` gets one grammar for the answer and the calls (since
-   2026-11-24, run 68; before, the schema was not applied while a tool was in the prompt). A provider's model gets the schema in its request; whether it is followed
+   well-formed JSON. With `tools` the calls keep working and the schema is not held by a grammar, as in
+   llama-server; `CLUAIZ_JSON_TOOLS_GRAMMAR=on` holds the answer to "a call or the schema's JSON" (run 80). A provider's model gets the schema in its request; whether it is followed
    depends on the provider, and the answer is checked either way.
 
 ## Output

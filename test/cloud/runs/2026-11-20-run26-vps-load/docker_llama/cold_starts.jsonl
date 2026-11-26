@@ -1,0 +1,5 @@
+{"ts": "2026-11-21T12:47:06", "mode": "docker", "engine": "llama", "model": "qwen3-0.6b", "server_ready_s": 6.228, "ok": true}
+{"ts": "2026-11-21T13:18:43", "mode": "docker", "engine": "llama", "model": "qwen3-1.7b", "server_ready_s": 8.919, "ok": true}
+{"ts": "2026-11-21T13:52:34", "mode": "docker", "engine": "llama", "model": "llama3.2-3b", "server_ready_s": 21.788, "ok": true}
+{"ts": "2026-11-21T14:20:49", "mode": "docker", "engine": "llama", "model": "embed-gemma", "server_ready_s": 4.745, "ok": true}
+{"ts": "2026-11-21T14:58:05", "mode": "docker", "engine": "llama", "model": "qwen3-0.6b+embed-gemma", "server_ready_s": 3.695, "ok": true}

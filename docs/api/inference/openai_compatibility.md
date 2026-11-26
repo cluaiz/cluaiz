@@ -5,9 +5,8 @@ description: Which OpenAI routes and fields the Engine serves, which differ, and
 
 Cluaiz serves OpenAI's chat, models, embeddings and audio routes, so an OpenAI client library works by
 pointing its base URL at the Engine. This page lists which request fields an installed (llama.cpp) model
-honours, which it refuses, and what Cluaiz adds. Everything marked "recorded" was checked in run 32
-(`test/cloud/runs/2026-11-21-run32-openai-compat-probe/`, Engine 0.1.0, Windows, Qwen3-0.6B) or, after the fix, run 34
-(`test/cloud/runs/2026-11-21-run34-openai-stop-and-limit/`).
+honours, which it refuses, and what Cluaiz adds. Everything marked "recorded" was checked on a
+local Qwen3-0.6B ([API compatibility benchmark](../../../test/benchmarks/api-compatibility.md)).
 
 ## Connect a client
 
@@ -23,7 +22,7 @@ print(reply.choices[0].message.content)
 ```
 
 The `model` is the installed ID that `cluaiz list` prints, not the Hugging Face repository name. The
-Python example above was not run in run 32 (the requests there used `curl`).
+Python example above was not run in the recorded checks (they used `curl`).
 
 ## Routes
 
@@ -47,7 +46,7 @@ Python example above was not run in run 32 (the requests there used `curl`).
 | `max_tokens` | yes | limits the answer; thinking has its own budget (`reasoning_effort`) |
 | `temperature`, `top_p`, `frequency_penalty`, `presence_penalty`, `seed` | yes | passed to the sampler |
 | `response_format` | yes | JSON or a JSON schema, enforced by a grammar. With your `tools` (and `tool_choice` not `none`) the schema is not enforced, so calls still work, as in llama-server (run 73) |
-| `tools`, `tool_choice` | yes | `tool_choice`: `auto`, `none` (no Engine tools, no call asked for), `required` (a call is forced) or a named function (only that function, call forced); tools also work with image and audio messages (run 68) |
+| `tools`, `tool_choice` | yes | `tool_choice`: `auto`, `none` (no Engine tools, no call asked for), `required` (a call is forced) or a named function (only that function, call forced); tools also work with image and audio messages (run 76) |
 | `reasoning_effort` | yes | `low`, `medium`, `high`, plus `auto`, `max` or a number of tokens |
 | `stop` | yes (recorded) | a string or an array; the answer ends before the first match, `finish_reason: "stop"` (run 34) |
 | `max_completion_tokens` | yes (recorded) | the answer limit when `max_tokens` is not sent; `max_tokens` wins when both are (run 34) |

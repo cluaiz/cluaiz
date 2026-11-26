@@ -307,7 +307,7 @@ pub(crate) fn stream_tokens_with_media(
         // (Qwen3: the prompt does not hold the start tag) had the schema grammar from its first token
         // and could not think. A GBNF grammar with tools is refused by the API.
         // Not while tools can be called (owner decision, 2026-11-25): llama.cpp's one strict grammar
-        // let small models write the schema's JSON instead of a call (run 68 weather question: 10 / 10
+        // let small models write the schema's JSON instead of a call (weather question on 2026-11-24: 10 / 10
         // get_weather calls before 9dde6a3e, 0 / 10 after, answers like {"age":25,"name":"get_weather"}).
         // With callable tools the answer is not constrained, as before 9dde6a3e.
         let tools_callable = native_tools.is_some() && tool_choice.as_deref() != Some("none");
@@ -1092,7 +1092,7 @@ pub(crate) fn stream_tokens_with_media(
         // decode one token each without guesses and give this answer's plain speed (the drafter still
         // reads each token, so plain is measured a little slow: the guard leans to keeping MTP).
         // Drafting steps are then timed; every GUARD_JUDGE tokens from them, drafting slower than plain
-        // stops MTP for the rest of the answer. A limit on the kept share would not do: run 23 found the
+        // stops MTP for the rest of the answer. A limit on the kept share would not do: a run on 2026-11-20 found the
         // break-even between about 40% kept (MoE, all on the GPU) and 85% (MoE, experts in RAM).
         let guard = mtp.is_some() && llama.mtp_guard;
         let mut guard_plain = GuardSpan::default();
@@ -1509,7 +1509,7 @@ pub(crate) fn stream_tokens_with_media(
                         let content = parsed["content"].as_str().unwrap_or_default();
                         let mut calls = parsed["tool_calls"].as_array().cloned().unwrap_or_default();
                         // Stopped by max_tokens or a full context: llama.cpp's final parse is lenient,
-                        // so a call cut in the middle comes back with half its arguments (run 70:
+                        // so a call cut in the middle comes back with half its arguments (2026-11-24:
                         // `write_file` ran with a cut payload). llama-server returns such calls with
                         // finish_reason "length" and runs nothing (`server-task.cpp`,
                         // `to_json_oaicompat_chat`); here a block sent on is run, so none is sent and

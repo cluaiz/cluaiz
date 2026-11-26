@@ -154,5 +154,5 @@ run on 2026-11-21. Every cloud run loads models through this crate (`test/benchm
 
 | Item | Why it matters | Needs |
 |---|---|---|
-| A CUDA failure inside llama.cpp or cuDNN ends the whole server | runs 4a / 4b; one bad request takes every chat down | isolate the failing load or request (a child process, or catching the abort where llama.cpp allows) |
+| A CUDA failure inside llama.cpp or cuDNN ends the whole server | found on a Tesla T4 on 2026-10-28; one bad request takes every chat down | isolate the failing load or request (a child process, or catching the abort where llama.cpp allows) |
 | Tests not in CI | native build | a CI job with the CPU backend |

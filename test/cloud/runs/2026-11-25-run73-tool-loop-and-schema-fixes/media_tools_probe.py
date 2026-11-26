@@ -22,7 +22,7 @@ from pathlib import Path
 from loop_probe import Server
 
 RUNS = Path(os.environ["PROBE_RUNS"])
-sys.path.insert(0, str(RUNS / "2026-11-24-run64-vision-hint-layouts"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "remote" / "probes"))  # vision_hint.py
 from vision_hint import IMAGE  # noqa: E402  (run 64's red PNG)
 
 MODEL = "qwen3.5-2b-mtp-gguf-Q4_K_M"

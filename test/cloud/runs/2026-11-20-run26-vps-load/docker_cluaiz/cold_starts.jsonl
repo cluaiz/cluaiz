@@ -1,0 +1,5 @@
+{"ts": "2026-11-21T07:29:15", "mode": "docker", "engine": "cluaiz", "model": "qwen3-0.6b", "server_ready_s": 2.031, "ok": true}
+{"ts": "2026-11-21T08:01:09", "mode": "docker", "engine": "cluaiz", "model": "qwen3-1.7b", "server_ready_s": 0.904, "ok": true}
+{"ts": "2026-11-21T08:28:04", "mode": "docker", "engine": "cluaiz", "model": "llama3.2-3b", "server_ready_s": 1.328, "ok": true}
+{"ts": "2026-11-21T08:56:20", "mode": "docker", "engine": "cluaiz", "model": "none", "server_ready_s": 1.416, "ok": true}
+{"ts": "2026-11-21T09:26:29", "mode": "docker", "engine": "cluaiz", "model": "qwen3-0.6b", "server_ready_s": 0.821, "ok": true}

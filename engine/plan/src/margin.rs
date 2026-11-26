@@ -22,7 +22,7 @@ pub const DEVICE_RESERVE_MAX_GB: f64 = 1.0;
 
 /// What the GPU pool may still grow after the load of a model not measured yet, once llama.cpp's dry
 /// run has corrected the estimate (model + context + compute buffers). Measured pool gaps on the
-/// 4 GB laptop: 0.02-0.23 GB (run 20)
+/// 4 GB laptop: 0.02-0.23 GB (measured 2026-11-16)
 pub const UNMEASURED_POOL_GB: f64 = 0.30;
 
 /// Key prefix of a dry-run correction. It is relative to the estimate, so a change to the estimate

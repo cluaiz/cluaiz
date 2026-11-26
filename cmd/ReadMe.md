@@ -85,8 +85,8 @@ the build prints the error and goes on; the program works without its icon.
 | `tests/agent_keyboard.rs` | 1, ignored | `CLUAIZ_KEYBOARD_HOME=<home> cargo test -p cmd --test agent_keyboard -- --ignored --nocapture` |
 
 `cmd` links every backend, so these tests build llama.cpp and ONNX Runtime; they were not run on
-2026-11-21. The CLI commands themselves are exercised in cloud runs (run 8: every local command,
-`test/benchmarks/release-and-platforms.md`, run 8).
+2026-11-21. The CLI commands themselves are exercised in cloud runs (run 72: 26 commands,
+`test/benchmarks/release-and-platforms.md`).
 
 ## Decisions
 | Decision | Why | Alternative not taken |

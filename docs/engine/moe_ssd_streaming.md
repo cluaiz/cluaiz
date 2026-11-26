@@ -27,14 +27,13 @@ code, not Cluaiz code. It keeps the most used experts in VRAM for generation, an
 share of the misses. Cluaiz's part is the planner, which sizes the cache and the CPU share from the free
 VRAM so the user does not set `--moe-cache-mib` by hand.
 
-On an L4 limited to 8 GB the cache made generation 1.3-2.2x faster than llama.cpp's `--fit` placement
-without a cache, and 1.1-1.5x faster at 4 GB (experts mmap'd, as the Engine loads them). These numbers
-compare the cache against no cache; they are not a Cluaiz-against-llama.cpp result. A model larger than
-the RAM the planner sees gets no cache by default: there the disk limits generation, and the cache was
-slower than the placement without it in run 13. `CLUAIZ_MOE_CACHE=off` turns the cache off.
+On an L4 with about 8 GB of VRAM free and 12 GB of RAM (Qwen3.6-35B-A3B, 18.2 GB, experts read from the
+SSD), llama.cpp's own cache made llama-server 1.24-1.89x faster than llama-server without it (run 48). These
+numbers compare llama.cpp with and without the cache; the Cluaiz result is in the next section.
+A model larger than the RAM the planner sees gets no cache by default. `CLUAIZ_MOE_CACHE=off` turns the cache off.
 
 Rules and numbers: [engine/plan/README.md](../../engine/plan/README.md#moe-gpu-cache), test record:
-[run 13](../../test/benchmarks/ssd-streaming-moe.md#run-13).
+[SSD streaming benchmark](../../test/benchmarks/ssd-streaming-moe.md).
 
 ## Expert prefetch
 
@@ -66,22 +65,20 @@ VRAM free, RAM capped at 12 GB so the experts are read from the SSD, 4 threads, 
 - The prefetch adds 1.21-1.43x over llama.cpp with its cache on this setup.
 - BigMoeOnEdge `d02bb94` with its own `--auto` plan generated 4.51 / 10.13 / 6.29 / 4.87 t/s on the same
   machine, so Cluaiz's default was 2.26-4.06x faster. That is BigMoeOnEdge's own default plan, not a tuned
-  one; its flags for the same placement as Cluaiz's did not load the model (run 48 SUMMARY).
+  one; its flags for the same placement as Cluaiz's did not load the model (run 48).
 - Where it does not help: on a Windows laptop with a 4 GB GPU (Gemma 4 26B A4B, little free RAM) the
   cache was only 258-452 MiB and the prefetch slowed generation to 10.23 and 8.68 t/s, against 20.09 and
-  17.48 with the cache alone (run 44). The cause is not known. On the same laptop with enough RAM, no
-  cache fits in the free VRAM, so the prefetch never runs (run 42).
-- Prompt processing: Cluaiz's `cluaiz bench` is about 10% behind llama-bench at 512 and 2048 tokens, equal
-  at 4096; the prefetch does not change it. The cause is not known.
+  17.48 with the cache alone (run 44). The prefetch is off by default on Windows.
+- Prompt processing (run 75): pp512 equal (51.3-51.9 against 52.3-52.4 t/s); pp2048 0.91-0.94x of
+  llama-bench, where Cluaiz reads more from the disk in that phase (6.2 GB against about 5.3 GB). The cause is
+  open.
 
 These results are from one machine, one model and one setup. They do not say the prefetch helps on other
 hardware.
 
-Test records: [run 48](../../test/benchmarks/ssd-streaming-moe.md#run-48) (main),
-[run 43](../../test/benchmarks/ssd-streaming-moe.md),
-[run 45](../../test/benchmarks/ssd-streaming-moe.md),
-[run 44](../../test/benchmarks/ssd-streaming-moe.md#run-44),
-[run 42](../../test/benchmarks/ssd-streaming-moe.md#run-42). Rule and decisions:
+Test records: [run 48](../../test/benchmarks/ssd-streaming-moe.md#run-48),
+[run 75](../../test/benchmarks/ssd-streaming-moe.md#run-75),
+[run 44](../../test/benchmarks/ssd-streaming-moe.md#run-44). Rule and decisions:
 [engine/plan/README.md](../../engine/plan/README.md#moe-expert-prefetch-llamacpp-fork-auto-on-only-for-the-measured-shape).
 
 ## Not built
@@ -98,7 +95,7 @@ Test records: [run 48](../../test/benchmarks/ssd-streaming-moe.md#run-48) (main)
 
 Planned for a later release, not in v0.1.0:
 
-- A measured rule for the prefetch with a small cache and on Windows (run 44's slowdown is not explained).
+- A measured rule for the prefetch with a small cache and on Windows (run 44 was slower with the prefetch).
 - Draft models such as DFlash for speculative decoding. MTP speculative decoding exists but is
   experimental; see [llm_optimization.md](llm_optimization.md#mtp-speculative-decoding-experimental).
 

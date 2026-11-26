@@ -1,3 +1,0 @@
-$ cluaiz config path
-C:\Users\<user>\AppData\Local\cluaiz-test\run49-e2e\config\settings.json
-exit=0

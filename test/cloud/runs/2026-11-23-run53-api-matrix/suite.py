@@ -31,7 +31,7 @@ def main():
     folder = Path(__file__).resolve().parent / "raw"
     journal = Journal(folder, args.home)
     engine = Engine(args, journal)
-    script = REPO / "test/cloud/runs/2026-11-23-run49-release-e2e" / (
+    script = REPO / "test/cloud/remote/probes" / (
         "release_e2e.py" if args.driver == "api" else "tools_checks.py")
     result_file = folder / f"{args.driver}_checks_{args.label}.jsonl"
     journal.write("setup.jsonl", {"exe": str(args.exe), "home": str(args.home),

@@ -12,8 +12,8 @@ Read by topic: [Components](#components) (which file does what), [Boundary with 
 [log lines](#llamacpp-log-lines), [RAM prompt cache](#ram-prompt-cache-off-by-default),
 [MoE expert prefetch](#moe-expert-prefetch-llamacpp-fork-off-unless-the-plan-sets-a-cap),
 [MTP speculative decoding](#mtp-speculative-decoding-experimental), and two speed investigations against
-llama.cpp ([Windows](#why-cluaiz-was-slower-than-llamacpp-on-windows-2026-11-23),
-[disk-read models](#why-cluaiz-bench-prompt-speed-was-below-llama-bench-on-a-model-read-from-the-disk-2026-11-24)).
+llama.cpp ([Windows](#cpu-backends-on-windows-clang-and-llvm-openmp-as-upstream-2026-11-23),
+[disk-read models](#cluaiz-bench-prompt-tokens-and-load-warmup-on-a-model-read-from-the-disk)).
 
 `native::speech::SpeechPlacement` accepts the runtime-selected layer count, independent projector device, KV/operation offload flags, generation/batch threads and mmap preference. Explicit CPU mode disables all GPU use. `planning_settings` and `backbone_workspace_bytes` share this owner's fixed context/batch/F16 layout with admission; codec workspace stays in the media policy. Successful `SpeechTimings` separate preparation, frame generation, native codec decoding and output (including consumer backpressure), excluding model load. These measurements are diagnostic, not realtime or peak-memory guarantees.
 
@@ -68,7 +68,7 @@ graph TD
 | [`native/speculative.rs`](src/native/speculative.rs), [`ffi/speculative_bridge.cpp`](src/ffi/speculative_bridge.cpp) | MTP speculative decoding, experimental. Settings `optimization.mtp`: `auto` (default: the runtime's load rules, then a guard in each answer that stops guessing where it is slower), `on`, `off` (load flag `--mtp`; `CLUAIZ_MTP=on` / `off` forces it on or off for tests (also `1`/`true`/`yes`, `0`/`false`/`no`; other values are logged and ignored); `CLUAIZ_MTP_DRAFT` = guesses per step, default 3 as llama-server; `CLUAIZ_MTP_PMIN` = least drafter probability, default 0). A model with NextN layers (Qwen3.5 / 3.6, GLM-4.5+, DeepSeek-V3, ...) is loaded with `load_mtp`; llama.cpp's own `draft-mtp` drafter (`common_speculative`) guesses the next tokens on an MTP context; `stream.rs` decodes the token and its guesses in one batch and keeps a guess only when the target's sampler picks it, so the answer is the target's. The drafter sees every target decode (prompt chunks too). Media prompts do not draft; a context shift stops drafting for that answer. Its memory is not in the load plan yet (Auto turns MTP off when it would not fit next to the plan). |
 | [`moe_override.rs`](src/moe_override.rs) | `--n-cpu-moe N`: the routed experts of the first N blocks stay in RAM (a CPU buffer), everything else of those blocks (attention, shared weights, KV) on the GPU; the same tensor overrides llama.cpp builds (`CpuMoeOverrides`). |
 
-## Why Cluaiz was slower than llama.cpp on Windows (2026-11-23)
+## CPU backends on Windows: clang and LLVM OpenMP, as upstream (2026-11-23)
 
 **Cause.** llama.cpp's own Windows release builds the CPU backends (`ggml-cpu-*.dll`) and `ggml-base.dll`
 with clang (`cmake/x64-windows-llvm.cmake`, the windows-cpu job of the fork's `.github/workflows/release.yml`,
@@ -76,30 +76,16 @@ with LLVM OpenMP `libomp.dll`); only `ggml-cuda.dll` is built with MSVC. Cluaiz 
 MSVC (Visual Studio generator, `build.rs`), so its CPU backends are MSVC code using MSVC OpenMP
 (`VCOMP140.DLL`). Same source, slower code.
 
-**Proof** (run 47, `test/cloud/runs/2026-11-23-run47-laptop-warm-tg-gap/`, Ryzen 7 7435HS, 8 threads, medians of
-rounds 2 and later). Swap tests: the same exe, only the CPU backend files changed.
-
-| Test | llama-bench | llama-bench + Cluaiz's MSVC CPU DLLs | `cluaiz bench` (MSVC CPU) | `cluaiz bench` + llama.cpp's clang CPU DLLs and libomp.dll |
-|---|---|---|---|---|
-| CPU only, Qwen3-1.7B IQ4_XS, pp512 | 139.24 | 121.18 | 120.99 | 137.34 |
-| CPU only, same, tg128 | 27.20 | 28.09 | 25.73 | 27.64 |
-| MoE split, granite-3.1-3b-a800m IQ4_XS, all experts on the CPU, tg128 (cleanest of three runs) | 39.43 | | 38.43 | 39.70 |
-
-The CPU-only prompt gap is settled; split-mode generation lost 3% to 20% in different runs on a machine shared
-with other programs. The fork's `ggml-cuda.dll` inside official llama-bench lost nothing.
-
-After the fix (run 54, `test/cloud/runs/2026-11-23-run54-windows-llvm-cpu-backends/`, 8 rounds, the quieter of two
-parts): CPU only pp512 llama-bench 136.16, Cluaiz with this build 129.45, Cluaiz MSVC 117.39 (tg128 26.15 /
-25.03 / 24.54); MoE split tg128 37.14 / 34.95 / 32.43. The gap went from 14% to 5% on CPU-only prompts; it is
-not closed: llama.cpp's own clang 20 DLLs reached 137.34 inside Cluaiz in run 47, this clang 22 build 129.45
-(compiler or OpenMP version, not measured).
+**Result** (run 54, `test/benchmarks/speed-vs-llamacpp.md`, 8 rounds, the quieter of two parts): CPU only pp512
+llama-bench 136.16, Cluaiz with this build 129.45 (tg128 26.15 / 25.03); MoE split tg128 37.14 / 34.95. About 5%
+behind on CPU-only prompts (compiler or OpenMP version, not measured).
 
 **Fix (owner's choice, 2026-11-23): upstream's exact setup.** `build.rs` (`build_llvm_cpu_backends`): on
 Windows, after the MSVC build, a second CMake build of the same tree with upstream's toolchain file
 (`cmake/x64-windows-llvm.cmake`: clang, Ninja) and LLVM OpenMP builds `ggml-base` and the CPU variants; they
 replace the MSVC ones beside the exe, with LLVM's `libomp.dll`. `ggml-cuda` and the rest stay MSVC, as upstream.
 `libomp.dll` is required: `ggml-base.dll` imports it, so `cluaiz.exe` does not start without it (exit code
-0xC0000135, run 47). It ships in the core (`.github/scripts/package_core.sh`, notice in
+0xC0000135). It ships in the core (`.github/scripts/package_core.sh`, notice in
 `THIRD_PARTY_NOTICES.md`) and the dev sync copies it (`cmd/src/core/bootstrapper.rs`, prefix `omp`, because the
 sync compares names without their `lib` prefix). Differences from upstream's release, each with its reason:
 - `OpenMP_libomp_LIBRARY` points at LLVM's `lib/libomp.lib`: CMake's own search took Visual Studio's
@@ -137,46 +123,20 @@ powershell -ExecutionPolicy Bypass -File test\cloud\remote\warm_tg_gap\run_warm_
 round-to-round spread of llama-bench. A `target\release\ggml-cpu-haswell.dll` that names `VCOMP140.DLL` is an
 MSVC module.
 
-## Why `cluaiz bench` prompt speed was below llama-bench on a model read from the disk (2026-11-24)
+## `cluaiz bench` prompt tokens and load warmup on a model read from the disk
 
-**Shape.** Run 48 / run 59: GCP L4 with about 8 GB of VRAM left, 12 GB RAM cgroup, Qwen3.6-35B-A3B UD-IQ4_XS
-(experts 14.5 GB, so they are read from the SSD), all experts in RAM (`--n-cpu-moe 41`), no MoE cache, 4 threads.
-`cluaiz bench` was 0.90x of llama-bench (same fork) at pp512.
-
-**Cause 1, fixed: different random tokens.** `NativeLlama::bench` (`src/native/core.rs`) drew its prompt tokens from
-its own xorshift stream; llama-bench draws them from `std::rand()` without `srand`. When the experts come from the
-disk, the tokens decide which experts each batch needs and so how many bytes are read, and each tool repeats its
-own stream in every run. Same binary, only the stream swapped (run 59 part d, 2 rounds): pp512 45.37 / 45.19 with
-the own stream, 48.82 / 49.12 with llama-bench's; pp2048 90.36 / 91.58 against 96.16 / 95.10.
-**Fix:** `bench` now takes its tokens from the C library's `rand()` (the same call as llama-bench on each
-platform), draws no number for the BOS slot and no generation token in a prompt-only run, as llama-bench does.
-Only `cluaiz bench` changes; chat and serve never use this code. Alternative not taken: a seeded Rust copy of
-glibc's generator (it would not match llama-bench on Windows, where `rand()` is MSVC's).
-
-After the fix (run 59 part e, 2 rounds, same session; t/s):
-
-| | pp512 | pp2048 | tg128 |
-|---|---|---|---|
-| before (Engine `03de2c96`) | 45.24 / 45.33 | 90.13 / 91.69 | 11.81 / 11.35 |
-| after (`03de2c96` + this fix) | 49.56 / 50.61 | 92.03 / 86.37 | 12.07 / 10.65 |
-| llama-bench (fork) | 50.76 / 51.13 | 94.83 / 99.59 | 11.79 / 13.04 |
-
-pp512 went from 0.89x to 0.98x of llama-bench. pp2048 is inside the run-to-run spread on both sides (Cluaiz
-86-92, llama-bench 95-108 over runs 48 / 59), so a 5-10% gap there is not proven either way.
-
-**Cause 2, not changed: the load-time warmup.** `NativeLlama::warmup` decodes one full batch at load (so the
-planner learns the GPU pool, `cluaiz_plan::margin`); llama-bench has no load-time warmup. With a test switch that
-skipped it, the major page faults per run doubled to llama-bench's pattern (1.19-1.22 million against 0.50
-million), the first prompt after load took 385 s instead of 195 s (llama-bench's first prompt: 355-361 s), and
-pp512 rose by 1-3 t/s (run 59 parts c and e). The warmup makes the first real prompt about twice as fast on
-this shape, so it stays.
-
-**Not the cause** (run 59): memory left to the page cache (anon 410-440 MiB and file 11.7 GB in both tools), the
-llama.cpp parameters (`n_ctx` aside, the same as llama-bench's; field by field in the run's SUMMARY).
-
-**Test trap found on the way.** `CLUAIZ_MTP=off` did nothing then (the old `native::speculative::requested`
-read only on / 1 / true; since fixed: `env_override` reads off / 0 / false / no as off). Run 48's `-c 4608` and run 59's `-c 2048` loaded MTP through Auto (no stored measurement for that
-context), which explains their slower prompts and larger disk reads. Use `--mtp off` in tests.
+- **Prompt tokens as llama-bench:** `NativeLlama::bench` (`src/native/core.rs`) takes its prompt tokens from the
+  C library's `rand()` (the same call as llama-bench on each platform), draws no number for the BOS slot and no
+  generation token in a prompt-only run. When the experts come from the disk, the tokens decide which experts each
+  batch reads, so both tools must read the same ones. Only `cluaiz bench` uses this code. Alternative not taken: a
+  seeded Rust copy of glibc's generator (it would not match llama-bench on Windows, where `rand()` is MSVC's).
+- **Load warmup stays:** `NativeLlama::warmup` decodes one full batch at load (so the planner learns the GPU pool,
+  `cluaiz_plan::margin`); it makes the first real prompt about twice as fast on this shape. llama-bench has none.
+- **Use `--mtp off` in prompt-speed tests:** Auto can load MTP at a context with no stored measurement, which
+  slows prompts and reads more from the disk.
+- **Current result (run 75, `test/benchmarks/ssd-streaming-moe.md`):** Qwen3.6-35B-A3B UD-IQ4_XS on an L4 with
+  8 GB VRAM left and a 12 GB RAM cgroup: pp512 equal (51.3-51.9 against 52.3-52.4 t/s), pp2048 0.91-0.94x of
+  llama-bench; Cluaiz reads more from the disk in that phase (6.2 GB against about 5.3 GB). The cause is open.
 
 **Rerun:** `test/cloud/remote/ssd_prefetch/pp_gap.sh` (configs and usage in its header; `analyze_pp_gap.py` splits
 each run into phases by the time-stamped logs).
@@ -287,11 +247,10 @@ In short: how an image or audio request is turned into model input in the right 
 - **Text parts:** consecutive text parts of one message are joined with a newline, and none is put next to a media placeholder, as llama-server joins content parts (`concat_content_parts` in the pinned `common/chat.cpp`). Before run 50 they were glued together, so the Engine's `<tools_hint>` block (added in front as its own part) ran straight into the question (`</tools_hint>What colour is this image?`). With the text part before the image, Qwen3.5-0.8B on a CPU projector then answered that it cannot see images (7 of 7 requests on fresh servers); after the change it answered "The image is red." (7 of 7). Image-first requests are unchanged (the image sits between the two texts). Since 2026-11-25 the API also moves a user message's media parts in front of its text parts before it adds that block (`media_first` in `api/src/handlers/chat/context_plan.rs`), so the prompt reads: tool hint, media, the user's text (run 76, Qwen3.5-0.8B with Engine tools installed: 0 / 10 answers about the image before, 10 / 10 after; media in front of the hint was 0 / 30).
 - **Accounting:** aggregate retained media and conservative conversion/copy peaks obey the configured decoded ceiling. Native token and position queries, rather than pixel/sample counts, determine context usage. The larger native count must fit `n_ctx - (max_tokens + 16)`. On overflow, the configured context-shifting policy may remove complete oldest turns using the shared core turn selector, then count the remaining prompt again before learned encoding. The leading system message and the latest user turn/attachments (including its tool continuation) stay intact; Off refuses overflow. Removed native bitmaps are freed and retained IDs still refer to the original uploaded parts. Context reports include removed messages and the measured reduction in occupied positions. A current document/image that cannot fit is refused explicitly with active/input/output counts; no silent content truncation, context increase or multimodal KV shift is used.
 - **Prefill:** the adapter orchestrates pinned native `mtmd_encode_chunk`, `mtmd_helper_decode_image_chunk` and text `mtmd_helper_eval_chunk_single` calls in the original order. Upstream still owns positioning, batching and attention behavior. Post-decode callbacks expose actual processed embedding batches; encoding counts represent native slices associated by copied bitmap IDs with the uploaded part. Last-text-chunk logits enter the existing sampler/reasoning/output loop. Raw bitmap copies are released after prefill; source Arcs needed by API/tool continuations remain owned. Sampler history receives real text tokens, without invented media token IDs.
-- **Answer constraint with tools** (run 68, 2026-11-24; changed 2026-11-25, see the next paragraph but one): a request's `response_format` schema goes into the same template call as the tools (`native/stream.rs`, `template_schema`), as llama-server sets `inputs.json_schema` (`tools/server/server-common.cpp`). llama.cpp then returns one strict grammar, but it holds only the schema: with a response format its parser leaves the tools out (`chat-auto-parser-generator.cpp:116-128`, `build_parser`: `if (has_response_format) ... else if (has_tools ...)`; the specialized parsers in `common/parsers/` return the schema branch first the same way, for example `gpt-oss.cpp:95-101`), so no call can be written. (Corrected 2026-11-26: this paragraph said "either a call or JSON"; the run 68 weather result below, 0 / 10 calls, matches the source.) Like `common_sampler`, such a strict template grammar applies from the first token, thinking included, after the generation prompt was fed to it; a lazy call grammar still sleeps while the model thinks. `tool_choice: "required"` also gives a strict grammar. Before, the constraint was built only when no tool grammar existed (`if tool_grammar.is_null()`, since `ce1372dc`, 2026-10-24), so any tool in the prompt dropped it with no warning. A template whose tool grammar does not take the schema is now logged. Run 68 (laptop, Qwen3-0.6B, temperature 0.8, 10 requests): schema + client tool 6 / 10 valid and 0 / 10 constrained before, 10 / 10 and 10 / 10 after (log: `Answer constrained by a JSON schema grammar, in one grammar with the tool calls`); schema + only the Engine's own functions (`remember`, `forget` with a `session_id`) 0 / 10 before (the model called `remember` and answered in text), 10 / 10 after. `required` on "Say hello": 0 / 10 calls before (`finish_reason: stop`), 2 / 10 after: llama.cpp's required grammar allows text before the call (`content_before_tools`, `chat-auto-parser-generator.cpp:473-474`) and forbids ending without one, so the other 8 ran to `max_tokens` 200 (`finish_reason: length`). Same as llama-server; not changed here.
 - **Answer constraint while tools are callable** (since 2026-11-25, owner decision, run 73): when native tools are present and `tool_choice` is not `"none"`, the schema is left out of the template call (`tools_callable` in `native/stream.rs`), so the answer is not grammar-enforced and calls work. Why: the one strict grammar above let small models write the schema's JSON instead of a call (run 68 weather question: 10 / 10 `get_weather` calls before run 68's change, 0 / 10 after, answers like `{"age":25,"name":"get_weather"}`; run 73: 8 / 10 calls again). llama-server cannot do both in one grammar either. Without the client's tools, the API leaves the Engine's own functions out of a `json_schema` or `json_object` request (`api/src/handlers/chat/preflight.rs`), so the schema still goes to the template and is enforced with thinking kept, as described next. Cost: schema + client tool on a prompt that needs no call went from 10 / 10 valid to 0 / 10 constrained (by design). Log: `JSON schema with callable tools: the answer is not constrained, so calls stay possible`.
 - **Call or JSON, opt-in** (prototype 2026-11-26, not measured yet; off unless `CLUAIZ_JSON_TOOLS_GRAMMAR=on`): with callable tools and a `json_schema`, `ffi::chat::json_or_call_spec` renders the request a second time without tools to get llama.cpp's strict schema grammar (thinking block and optional ```json fence included) and joins the lazy tool-call grammar into its `response-format` rule (`cluaiz_core::grammar::answer_or_tool_call`). The answer is then a tool call or JSON of the schema, as OpenAI's `response_format` with tools behaves; free text is refused. It applies like a strict template grammar (from the first token, after the generation prompt). The parser stays the tool render's, so a call is read as a call and JSON as content. Not used, with a logged reason, when the tool grammar is not lazy (`tool_choice: "required"`), when a call trigger is not a plain tag or starts like JSON (`{`, `[{`; gpt-oss's pattern triggers), when the two renders end in different generation prompts, or when the schema grammar has no `response-format` rule. Design and sources: `.agent/research/2026-11-26-json-plus-tools-grammar.md` (git-ignored). Pending: run 68 / 73 cases with the flag on and off.
-- **Answer constraint without tools, thinking on** (since run 69, 2026-11-24): the `response_format` schema also goes into the template call when there are no tools (`template_schema` in `native/stream.rs`, whenever llama.cpp's parser reads the answer), as llama-server passes `inputs.json_schema` for every chat request (`server-common.cpp:1513`). The template's strict grammar has the thinking block in it (`chat-auto-parser-generator.cpp`, `build_parser`), so the model thinks first and then writes JSON of that shape (log: `Answer constrained by a JSON schema grammar from the template, thinking block included`). Before, a request without tools turned the schema into a bare JSON grammar that was meant to wake after thinking, but it is active from the first token when the prompt does not open the thinking block itself: Qwen3 writes `<think>` as its first token, the grammar refused it, and the model never thought. Run 69 (laptop, Qwen3-0.6B, temperature 0.8, `think_mode: on`, 10 requests per case): `json_schema` valid 10 / 10 both times but reasoning 0 / 10 before, 10 / 10 after; `json_object` 10 / 10 objects but 5 of them empty (`{`, blank lines, `}`) and reasoning 0 / 10 before, 10 / 10 filled objects with reasoning 10 / 10 after; the same streamed 10 / 10 with reasoning after. Thinking off, `json_object` and `json_schema` stay 10 / 10. A Qwen3.5 template opens the thinking block in the prompt, so its schema answers already waited for the end of thinking (10 / 10 with reasoning before). A GBNF `grammar` is not changed: as in llama-server (a user grammar is applied as given, `common/sampling.cpp`, "user-supplied grammars must not be prefilled"), it holds from the first token, so Qwen3-0.6B with `think_mode: on` and a GBNF answered without thinking (10 / 10 answers in the grammar, reasoning 0 / 10, before and after). Media prompts keep the bare grammar (no answer parser there).
-- **Tools on image and audio requests** (since run 68, 2026-11-24): the envelope's function schemas (`ChatEnvelope.tools`) go to the template through llama.cpp's chat layer exactly as for a text request, with the same lazy call grammar and parser; the media parts are markers in the text, as llama-server renders a multimodal request (`oaicompat_chat_params_parse` in `tools/server/server-common.cpp` loads the media into markers, then applies the template with `inputs.tools`). Before, `native/stream.rs` left the tools out whenever the prompt had media (`req_tools.filter(|_| !is_media && !is_pivot)`, from the October native-tools commit `4dc7016b`, when the inline tool form still existed for that case), and the API built the media envelope before it added the tools (`tools: None` in `preflight.rs`). An image request then had no function schemas at all: run 64 measured 415 prompt tokens and 0 / 10 calls with the image against 933 and 10 / 10 without. After the fix (run 68, `test/cloud/runs/2026-11-24-run68-tools-schema-fixes/`, Windows laptop, RTX 3050 4 GB, Qwen3.5-2B Q4_K_M + mmproj-F16, temperature 0, 10 requests per case): image + `get_weather` 0 / 10 calls with 225 prompt tokens before, 10 / 10 with 482 after (log: `[NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)`); the same question without the image 10 / 10 both times (284 tokens); the red-image question without tools 10 / 10 both times. Text-only continuations (pivots) still use the inline form; an image or audio request continues with the envelope's tools, and its final answer at the step limit has none (since 2026-11-25, run 73).
+- **Answer constraint without tools, thinking on** (since 2026-11-24): the `response_format` schema also goes into the template call when there are no tools (`template_schema` in `native/stream.rs`, whenever llama.cpp's parser reads the answer), as llama-server passes `inputs.json_schema` for every chat request (`server-common.cpp:1513`). The template's strict grammar has the thinking block in it (`chat-auto-parser-generator.cpp`, `build_parser`), so the model thinks first and then writes JSON of that shape (log: `Answer constrained by a JSON schema grammar from the template, thinking block included`). Before, a request without tools turned the schema into a bare JSON grammar that was meant to wake after thinking, but it is active from the first token when the prompt does not open the thinking block itself: Qwen3 writes `<think>` as its first token, the grammar refused it, and the model never thought. Run 69 (laptop, Qwen3-0.6B, temperature 0.8, `think_mode: on`, 10 requests per case): `json_schema` valid 10 / 10 both times but reasoning 0 / 10 before, 10 / 10 after; `json_object` 10 / 10 objects but 5 of them empty (`{`, blank lines, `}`) and reasoning 0 / 10 before, 10 / 10 filled objects with reasoning 10 / 10 after; the same streamed 10 / 10 with reasoning after. Thinking off, `json_object` and `json_schema` stay 10 / 10. A Qwen3.5 template opens the thinking block in the prompt, so its schema answers already waited for the end of thinking (10 / 10 with reasoning before). A GBNF `grammar` is not changed: as in llama-server (a user grammar is applied as given, `common/sampling.cpp`, "user-supplied grammars must not be prefilled"), it holds from the first token, so Qwen3-0.6B with `think_mode: on` and a GBNF answered without thinking (10 / 10 answers in the grammar, reasoning 0 / 10, before and after). Media prompts keep the bare grammar (no answer parser there).
+- **Tools on image and audio requests** (since 2026-11-24, run 76): the envelope's function schemas (`ChatEnvelope.tools`) go to the template through llama.cpp's chat layer exactly as for a text request, with the same lazy call grammar and parser; the media parts are markers in the text, as llama-server renders a multimodal request (`oaicompat_chat_params_parse` in `tools/server/server-common.cpp` loads the media into markers, then applies the template with `inputs.tools`). Before, `native/stream.rs` left the tools out whenever the prompt had media (`req_tools.filter(|_| !is_media && !is_pivot)`, from the October native-tools commit `4dc7016b`, when the inline tool form still existed for that case), and the API built the media envelope before it added the tools (`tools: None` in `preflight.rs`). Run 76 (Qwen3.5-0.8B, Engine tools, image requests): `get_weather` called 9 / 9. Text-only continuations (pivots) still use the inline form; an image or audio request continues with the envelope's tools, and its final answer at the step limit has none (since 2026-11-25, run 73).
 - **A call cut by the token limit** (since 2026-11-25, run 73): when a generation with native tools stops at `max_tokens` or a full context (`report.stop == "limit"`), `native/stream.rs` sends no `<tool_call>` block, only the text before the call. llama.cpp's final parse is lenient (`common_chat_peg_parse`, `COMMON_PEG_PARSE_FLAG_LENIENT` also with `is_partial` false), so a call cut in the middle comes back with half its arguments; the API then ran it (run 70: `write_file` got a cut payload, and the next step's template failed on the broken arguments). llama-server returns such a call with `finish_reason: "length"` and runs nothing (`server-task.cpp`, `to_json_oaicompat_chat`: `"length"` unless the stop was a stop word or end of generation). Run 73, client function `save_note` with a long `text` and `max_tokens` 40, 5 requests each: before, 5 / 5 returned a client call with cut JSON arguments and `finish_reason: "tool_calls"` (streaming too); after, 0 / 5 calls, `finish_reason: "length"`, empty content. Not taken from llama-server: it also returns the cut call in `tool_calls`; here nothing tells a client call from an Engine call at this layer, and an Engine call must not run, so none is sent. Log: `[NativeTools] N call(s) cut by the token limit: not sent, nothing runs`.
 - **Cache boundary:** media turns accept no text-only prefix cache and return no prefix token history from `NativeSession`. An existing text-only caller retains its original API and prefill path. Agent continuation and mixed-history cache reuse are not yet integrated.
 - **Budget boundary:** conversion accounting retains the full original source-buffer footprint while native copies coexist, including API-held Arc clones. Rendered text/template allocations and native workspace expansion are covered only by the conservative workspace policy, not measured individually. Caller-supplied workspace estimates are not measured peaks or OS reservations. Source decode/tokenization cancellation latency and GPU/Linux/macOS behavior remain unmeasured.
@@ -369,7 +328,7 @@ shares more tokens with the new one than the current context does, its state is 
 (`llama_state_seq_set_data_ext`) and only the rest is computed. The code is in `stream.rs`, just before the
 common-prefix reuse.
 
-**Why:** run 40 (`test/cloud/runs/2026-11-22-run40-cluaiz-ollama-website/README.md`, Angle 2): with 200
+**Why:** run 40 (`test/benchmarks/vs-ollama-and-load.md`, Angle 2): with 200
 repeated tickets, llama-server reused a whole earlier prompt in 94 of 219 requests (Ollama) and 3,019 of
 6,350 (llama.cpp), while Cluaiz compared only with the last prompt. That was the source of Ollama's lead
 with 4 requests at once.
@@ -433,7 +392,7 @@ re-apply steps is [`llama.cpp/CLUAIZ_PATCHES.md`](llama.cpp/CLUAIZ_PATCHES.md). 
 | The build fails when the call is gone | a merge that drops the call would otherwise turn the feature off without a sign | a runtime check |
 | Advisory, off by default | `llama_prefetch` only logs a warning on failure and the upload then reads as before | treating a failed prefetch as an error |
 | Windows asks each expert slice once per context (`ask_once`) | run 44 asked 173-215 GB per run for 11.8 GB of experts, again and again for resident pages; `PrefetchVirtualMemory` costs about 43 us per MiB in the working set and 85 us per MiB on standby on the calling thread and saves nothing for them (run 60 micro-benchmark). A replay of the call pattern: asked bytes -64%, prefetch time -48-68% (run 60) | a byte cap per step (still re-asks resident pages); a residency check with `QueryWorkingSetEx` (one more call per range, standby pages look not resident) |
-| The fork only obeys the cap; when to prefetch is decided by the planner | one owner per rule: Auto's rule (cache share and platform, runs 43 and 44) lives in `engine/plan/src/expert_prefetch.rs`, so changing it needs no llama.cpp rebuild | a run-time guard in the fork (hit rate or bytes per token); not needed while the plan-time rule separates the measured runs |
+| The fork only obeys the cap; when to prefetch is decided by the planner | one owner per rule: Auto's rule (cache share and platform, runs 48 and 44) lives in `engine/plan/src/expert_prefetch.rs`, so changing it needs no llama.cpp rebuild | a run-time guard in the fork (hit rate or bytes per token); not needed while the plan-time rule separates the measured runs |
 
 **Tested** (2026-11-22, Windows 11, debug build `cargo build -p cmd`, RTX 3050 Laptop 4 GB, CUDA,
 OLMoE-1B-7B-0125-Instruct Q4_K_M 4.2 GB, isolated home on port 8014, the planner's own MoE split: every expert
@@ -589,88 +548,34 @@ graph LR
 | MTP context `n_outputs_max = 1` | The drafter reads one token per step (`common_base_params_to_speculative`). Without it the context kept logits for 512 rows: +0.63 GB on a 248k vocabulary, spill into shared GPU memory, 26 t/s instead of 68 (measured, fixed before the commit) | llama.cpp's default (n_batch outputs) |
 | Draft size 3 (`CLUAIZ_MTP_DRAFT`) | llama-server's default `--spec-draft-n-max 3`; reports show acceptance falls with longer drafts (72% at 3, 83% at 2, 44% at 6 in the sources below) | Larger drafts |
 | No drafting for media prompts and after a context shift | The drafter did not see the media embeddings; after a shift its positions no longer match the target's. Both only lower acceptance, so there is no gain to keep | Feeding media rows to the drafter (not built) |
-| Auto by default: load rules, then a per-answer guard | Run 23: whether MTP gains depends on the model (MoE on the GPU gained on every prompt, dense lost on prose everywhere), the placement (experts in RAM or on the SSD lose) and the text (JSON gains everywhere). No fixed rule by placement is right for all; a stored measurement and a timed guard are. Run 24: auto lost 0.81-1.02x where always-on lost 0.64-0.80x, and kept 1.19-1.66x where on gained 1.21-1.72x | Off by default (no gain for anyone); on by default (up to 39% slower on prose, run 22 split); a kept-share limit (break-even was 40% kept on one setup, 85% on another) |
+| Auto by default: load rules, then a per-answer guard | Run 24, MTP always on: whether MTP gains depends on the model (MoE on the GPU gained on every prompt, the dense 2B lost on prose), the placement (experts in RAM or on the SSD lose) and the text (JSON gains everywhere). No fixed rule by placement is right for all; a stored measurement and a timed guard are. Auto lost 0.81-1.02x where always-on lost 0.64-0.80x, and kept 1.19-1.66x where on gained 1.21-1.72x | Off by default (no gain for anyone); on by default (0.64-0.80x on prose and SSD placements, run 24); a kept-share limit |
 | Guard: 8 plain steps, then drafting timed, compared every 32 drafted tokens; slower stops guessing for the answer | Times the real thing on this machine and answer, so no per-model threshold is needed. The drafter still reads the plain steps, so plain is measured a little slow and the guard leans to keeping MTP | Probing again later in the answer (the drafter's state after a stop is not kept) |
-| Auto load rules: disk reads -> off; MTP memory (1.6 blocks + 0.15 GB, run 23) over the plan's headroom -> off; stored `bench --mtp-compare` result -> on at 5% faster, else off; otherwise on with the guard | Run 23: experts from the SSD lost on every prompt (0.63-0.98x); a model that just fits must not spill because of MTP; a measurement beats any rule | Planner counting MTP memory itself (step 3, parked) |
+| Auto load rules: disk reads -> off; MTP memory (about 1.6 blocks + 0.15 GB, measured 2026-11-20) over the plan's headroom -> off; stored `bench --mtp-compare` result -> on at 5% faster, else off; otherwise on with the guard | Run 24: experts from the SSD lost on every prompt with MTP always on (0.64-0.99x); a model that just fits must not spill because of MTP; a measurement beats any rule | Planner counting MTP memory itself (step 3, parked) |
 | `p_min` 0 (always draft `n_max`); `CLUAIZ_MTP_PMIN` only for tests | llama.cpp's default (`common.h`); 0.5 and 0.75 kept more guesses (74-90%) but were slower than 0 on every prose prompt on the GPU (`bench --mtp-compare` below) | Stopping drafts at low confidence |
 | Timings measured by the stream when MTP drafted (`NativeLlama::mtp_timings`) | llama.cpp counts every decode of more than one token as prompt processing (`llama-context.cpp`, `n_queued_tokens > 1`), so its counters put the checks of guesses into the prompt numbers | llama.cpp's perf counters |
 | Drafted / kept counts in `ContextReport.mtp` | `bench --mtp-compare` and chat API usage read them per generation; verbose `cluaiz run` prints the percentage kept | Log line only |
 
-### Measured
+### Measured (run 24, `test/benchmarks/mtp.md`)
 
-Full record with raw logs, answers and scripts: [run 22](../../test/benchmarks/mtp.md).
+`cluaiz bench <model> --mtp-compare` on a GCP L4 loads MTP off, on and Auto in turn every round on the same pinned
+placement and answers the prompts in `cmd/src/cli/data/bench_mtp_prompts.json` greedily with thinking off
+(`code`, `chat`, `list`, `long`). Models: `unsloth/Qwen3.5-2B-MTP-GGUF` Q4_K_M (dense) and
+`unsloth/Qwen3.6-35B-A3B-MTP-GGUF` UD-IQ4_XS (MoE). Gain over MTP off:
 
-RTX 3050 Laptop 4 GB, Windows, CUDA. `unsloth/Qwen3.5-2B-MTP-GGUF` Q4_K_M (NextN inside the file),
-`n_gpu_layers 99`, context 4096, temperature 0, `/v1/chat/completions`, three runs after one warm-up.
-llama.cpp b12534 (official Windows CUDA 12.4 build) on the same file and settings, run in the same
-hour.
-
-| Run | Without MTP | With MTP | Guesses kept |
+| Case | Placement | MTP on | MTP Auto |
 |---|---|---|---|
-| Cluaiz, 222-token answer | 67.8 t/s | 85.2 t/s | 64% |
-| llama-server b12534 | 66.6 t/s | 82.0 t/s | 145 / 228 |
-| Cluaiz, thinking on (268 tokens) | 66.0 t/s | 95.3 t/s | 75% |
-| Cluaiz, JSON schema answer (39 tokens) | 50.9 t/s | 76.0 t/s | 79% |
+| Dense 2B | Full GPU, four prompts | 0.77-1.38x | 0.81-1.33x |
+| Dense 2B | CPU only | 0.69-1.25x | 0.83-1.23x |
+| MoE 35B A3B | Full GPU | 1.21-1.72x | 1.19-1.66x |
+| MoE 35B A3B | Split (ngl 41) | 1.06-1.66x | 1.15-1.61x |
+| MoE, experts in RAM (8 GB VRAM) | MoE split | 0.70-1.14x | 0.89-1.12x |
+| MoE, experts partly from the SSD | MoE split | 0.64-0.99x | 0.97-1.02x (Auto off from a stored measurement) |
 
-- Text: identical with and without MTP in the six comparisons of this table (byte compare). The
-  `bench --mtp-compare` runs below found two prompts (`chat`, `long`) whose text changed; see "What it does".
-- VRAM after load: 1.83 GB without, 1.96 GB with MTP.
-- Placement changes the text: runs with 22 and 23 GPU layers gave different greedy answers, so text
-  and speed comparisons pin `n_gpu_layers`. llama-server's own plain and MTP answers also differed.
-
-### Measured with `cluaiz bench --mtp-compare` (real prompts, same placement)
-
-`cluaiz bench <model> --mtp-compare` plans once with MTP off, then loads MTP off and on with that exact
-placement and answers each prompt in `cmd/src/cli/data/bench_mtp_prompts.json` greedily with thinking
-off (one warm-up, then `-r` runs; the prompt cache is cleared before every run). Prompts: `code`
-(Python function and explanation, 256 tokens), `chat` (free prose, 256), `list` (ten countries as a
-JSON array, 256), `long` (summary of a 690-word text, 128). Same machine and model as above, context
-4096. Rerun: `CLUAIZ_MTP_DRAFT=<n> CLUAIZ_MTP_PMIN=<p> cluaiz bench qwen3.5-2b-mtp-gguf-Q4_K_M --mtp-compare -r 2`
-(add `--n-gpu-layers 12` or `0` for the split and CPU rows).
-
-Gain = generation t/s with MTP over without (kept share in brackets). Each row is one run of the
-tool; MTP off and on were measured minutes apart:
-
-| Setup | Off t/s | code | chat | list | long |
-|---|---|---|---|---|---|
-| Full GPU, draft 3, run A | 55 | 1.19x (63%) | 0.85x (35%) | 1.49x (90%) | 0.95x (44%) |
-| Full GPU, draft 3, run B | 72 | 1.12x (63%) | 0.81x (35%) | 1.38x (90%) | 0.90x (44%) |
-| Full GPU, draft 1, run A | 56 | 1.16x (82%) | 1.07x (64%) | 1.24x (98%) | 1.09x (74%) |
-| Full GPU, draft 1, run B | 71 | 1.05x (82%) | 0.96x (64%) | 1.14x (98%) | 1.02x (74%) |
-| Full GPU, draft 2, run A | 57 | 1.25x (76%) | 1.01x (52%) | 1.38x (95%) | 1.05x (56%) |
-| Full GPU, draft 2, run B | 71 | 1.17x (76%) | 0.97x (52%) | 1.33x (95%) | 1.00x (56%) |
-| Full GPU, draft 4 | 57 | 1.09x (52%) | 0.84x (28%) | 1.91x (86%) | 1.08x (39%) |
-| Full GPU, draft 3, `p_min` 0.5 | 75 | 1.03x (82%) | 0.76x (74%) | 1.40x (95%) | 0.75x (76%) |
-| Full GPU, draft 3, `p_min` 0.75 | 75 | 0.96x (90%) | 0.70x (90%) | 1.21x (95%) | 0.76x (88%) |
-| Split (`--n-gpu-layers 12`), draft 3 | 30 | 1.10x (62%) | 0.61x (32%) | 1.51x (91%) | 0.85x (33%) |
-| CPU only, draft 3 | 21 | 0.97x (66%) | 0.65x (34%) | 1.30x (90%) | 0.85x (48%) |
-| CPU only, draft 3, `p_min` 0.5 | 22 | 1.04x (77%) | 0.85x (72%) | 1.33x (96%) | 0.92x (75%) |
-| CPU only, draft 3, `p_min` 0.75 | 23 | 1.04x (89%) | 0.82x (89%) | 1.17x (96%) | 0.86x (92%) |
-
-What these runs show:
-
-- The text decides more than anything else: structured output (`list`) gained in every setup (1.14x
-  to 1.91x); free prose (`chat`) lost in most.
-- Fewer guesses per step lose least on prose: draft 1 never fell below 0.96x; draft 3 and 4 fell to
-  0.81-0.85x on prose on the GPU.
-- Split and CPU lose more on prose (0.61x, 0.65x): checking 4 tokens costs more there than on a GPU
-  that holds all weights.
-- `p_min` raised the kept share but not the speed on the GPU: drafts got shorter while each step still
-  paid for the drafter.
-- The same setup gave 55 t/s in run A and 72 t/s in run B (laptop GPU clock, other programs on the
-  GPU), and the gains moved with it: the faster the plain run, the smaller the gain. A difference under
-  about 10% is within this noise; rows from different runs are not compared to each other.
-- Prompt t/s: full GPU, MTP on was not slower on any prompt (`long`: 3689 vs 4011 t/s, run B); CPU only
-  it was up to 12% slower. In the split row the tool printed 0.0 prompt t/s with MTP on, so prompt speed
-  there is unknown (Pending).
-- Text: the same with and without MTP in 23 of 52 prompt pairs; draft 1 kept it in all 8, `list`
-  changed in 2 (split, CPU `p_min` 0.5).
-
-Placements, MoE and the SSD on an L4 and the laptop, with off and on alternated per round:
-[run 23](../../test/benchmarks/mtp.md). In short: the MoE 35B-A3B
-gained on every prompt with all weights on the GPU (1.21-1.73x) but lost on prose with its experts
-in RAM (0.70x) and on every prompt with experts read from the SSD (0.63-0.98x); the dense 2B lost on
-prose in every placement; MTP cost 19-34% of the prompt speed on the GPU.
+- Structured output (`list`) gains in every placement; free prose (`chat`, `long`) loses on the dense model and
+  with experts off the GPU.
+- The guard measures about 40 tokens before it can stop, so slow cases stay at 0.81-0.89x instead of 1.00x, and a
+  gainful case gives up 2-5%.
+- Rerun: `test/cloud/remote/mtp23/run24.sh`.
 
 ### Where MTP is expected to lose (from sources, not all measured here)
 
@@ -730,4 +635,4 @@ Each topic keeps its own Pending table next to the facts it is about:
 [MoE expert prefetch](#moe-expert-prefetch-llamacpp-fork-off-unless-the-plan-sets-a-cap),
 [load prefetch skip](#load-prefetch-skip-for-cpu-mapped-weights-llamacpp-fork-off-unless-the-plan-turns-it-on),
 [MTP](#pending). Speed gaps against llama.cpp that are not closed: the Windows CPU prompt gap (5%, run 54) and
-pp2048 on disk-read models (inside the run-to-run spread, run 59), both above.
+pp2048 on disk-read models (0.91-0.94x, run 75), both above.

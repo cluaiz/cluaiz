@@ -1,0 +1,18 @@
+U1: We are designing a small service called PRJ-100 for inventory sync on a 1 vCPU Linux server. List two main risks in two short sentences.
+A1: 1. **High CPU utilization** due to frequent background processes, risking system instability.  
+2. **Data integrity risks** from unhandled synchronization errors, potentially leading to corruption.
+
+U2: For PRJ-100, assume memory is capped at 3 GB with zero swap. How should we limit queue depth in one short paragraph?
+A2: To limit queue depth in PRJ-100, we should set a maximum queue depth of 10, ensuring that the system remains stable and avoids excessive processing. This approach helps prevent overwhelming the server's resources while maintaining performance.
+
+U3: What single health metric should our monitor check every second for PRJ-100?
+A3: Every second, the monitor should check the CPU utilization to ensure the system remains stable and efficient.
+
+U4: If PRJ-100 restarts after an OOM event, what two state checks should run before accepting traffic again?
+A4: 1. **CPU usage** to ensure the system can handle the restart.  
+2. **Memory usage** to confirm the server has sufficient resources.
+
+U5: Summarize our entire PRJ-100 plan in three bullet points.
+A5: - **Define the objectives**: Establish the goals of inventory synchronization and ensure system stability.  
+- **Outline the steps**: Detail the process for inventory sync, monitoring, and handling OOM events.  
+- **Ensure compliance**: Verify that all configurations and settings meet the requirements.

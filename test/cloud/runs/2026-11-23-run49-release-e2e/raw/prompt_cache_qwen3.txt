@@ -1,3 +1,0 @@
-A 200 TTFT ms 303 prompt 1234 
-B 200 TTFT ms 0 prompt 1231 
-A again 200 TTFT ms 113 prompt 1234 

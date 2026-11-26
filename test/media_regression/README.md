@@ -94,7 +94,7 @@ cargo test -p cluaiz-api --release --offline --test artifact_acceptance embeddin
 ## Recorded results
 
 All four tests of the `artifact_acceptance` target are `#[ignore]` and need an explicit executable,
-model paths and a fresh home. Run 3 (Linux CPU, 2026-10-27) compiled them and listed all four as
+model paths and a fresh home. A Linux CPU run on 2026-10-27 compiled them and listed all four as
 ignored (`test/cloud/runs/2026-10-27-run3-linux-cpu/unit_tests_full.log:940-946`). No checked-in run
 executes them with models (searched `test/cloud/runs/` on 2026-11-21).
 

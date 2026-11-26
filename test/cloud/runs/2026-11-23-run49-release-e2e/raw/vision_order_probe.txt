@@ -1,8 +1,0 @@
-qwen3.5-0.8b-gguf-Q4_K_M text-first 0 200 'I cannot identify the color of an image. I am an AI assistant designed to help with tasks like writing code, solving ma
-qwen3.5-0.8b-gguf-Q4_K_M text-first 1 200 'I cannot identify the color of an image. I am an AI assistant designed to help with tasks like writing code, solving ma
-qwen3.5-0.8b-gguf-Q4_K_M image-first 0 200 'red'
-qwen3.5-0.8b-gguf-Q4_K_M image-first 1 200 'red'
-ternary-bonsai-2-4b-gguf text-first 0 200 'red'
-ternary-bonsai-2-4b-gguf text-first 1 200 'red'
-ternary-bonsai-2-4b-gguf image-first 0 200 'red'
-ternary-bonsai-2-4b-gguf image-first 1 200 'red'

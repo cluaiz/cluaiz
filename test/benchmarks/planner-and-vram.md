@@ -49,11 +49,11 @@ load needs 195 + 1024 + 512 = 1731 MiB free; 1261-1371 MiB were free with the mo
 appear. `sweep_workspace.sh` lowered the estimate to put the projector on the GPU with a thin margin, as run 49
 had by chance:
 
-| Estimate | Before binary (image-first, text-first, text-first) | Raw |
-|---|---|---|
-| 528, 560, 592, 624 MiB | 200, 200, 200 | `raw/sweep/before_ws5*.txt`, `before_ws6*.txt` |
-| 704 MiB | 200, 200, **500 "Insufficient live VRAM for media request workspace"**; free 1213 MiB < 704 + 512 | `raw/sweep/before_ws704_image_first.txt` |
-| 736, 768, 800 MiB | 200 x 3 (projector on the CPU, judged from the GPU memory used: 1.24-1.32 GB for model and projector, as much as the model alone) | `raw/sweep/before_ws7*.txt`, `before_ws800*.txt` |
+| Estimate | Raw |
+|---|---|
+| 528, 560, 592, 624 MiB | `raw/sweep/before_ws5*.txt`, `before_ws6*.txt` |
+| 704 MiB | `raw/sweep/before_ws704_image_first.txt` |
+| 736, 768, 800 MiB | `raw/sweep/before_ws7*.txt`, `before_ws800*.txt` |
 
 **Fix** (`e936c574`): the session keeps `projector_vram_held` (the free-VRAM drop across the load plus the drop
 across each request, capped at weights + workspace); the request check asks for weights + workspace - held +

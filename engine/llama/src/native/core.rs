@@ -292,7 +292,7 @@ impl NativeLlama {
             let bos = llama_cpp::llama_vocab_get_add_bos(vocab).then(|| llama_cpp::llama_vocab_bos(vocab));
             // The same random tokens as llama-bench: the C library's rand(), unseeded (llama-bench calls
             // std::rand() without srand). On a model read from the disk the tokens decide which experts
-            // are read, so another stream reads other bytes: run 59, Qwen3.6-35B-A3B on an L4 with
+            // are read, so another stream reads other bytes: measured 2026-11-24, Qwen3.6-35B-A3B on an L4 with
             // the experts read from the SSD, an own xorshift stream gave 45.3 / 91.0 t/s at pp512 /
             // pp2048 against 49.0 / 95.6 with this one, same binary otherwise
             let random_token = || (c_rand().max(0) as u64 % n_vocab) as i32;

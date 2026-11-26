@@ -47,7 +47,7 @@ The llama, onnx, runtime, api and cmd tests run on developer machines and inside
 
 | Path | What it tests | How it runs | State (2026-11-21) |
 |---|---|---|---|
-| [`cloud/`](cloud/README.md) | VM helper, remote scripts, `runs/` (raw logs per run) | `test/cloud/vm.sh`, scripts copied to the VM | active; runs 1-31 |
+| [`cloud/`](cloud/README.md) | VM helper, remote scripts, `runs/` (raw logs per run) | `test/cloud/vm.sh`, scripts copied to the VM | active |
 | [`context-runtime/`](context-runtime/README.md) | tool routing set, KV equality after edits, long sessions and compaction, memory, tool-call format, chat templates, speed | Python against a running isolated server | active; results inside its README |
 | [`engine_regression/`](engine_regression/README.md) | every installed GGUF chat model x placement (auto, gpu, split, cpu): answer not empty, no control-token leak, speed against llama-bench | `python test/engine_regression/run.py [--llama-bench ...] [--report ...]` | active; used by cloud regression runs |
 | [`cep/`](cep/wave_b/README.md) | CEP journeys (`journeys.py`), MCP over HTTP and stdio (`mcp_journey.py`), the C library through Python ctypes (`ffi_python.py`), and `wave_b/` file, system, model and tool contracts | each script starts its own server: `--exe --home [--port 8011]` | active |

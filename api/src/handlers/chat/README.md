@@ -53,17 +53,17 @@ payload: `turn_end.rs` (with `usage.mtp` when the engine drafted).
 | Decision | Why (evidence) | Alternative not taken |
 |---|---|---|
 | Every budget is decided once in preflight, with real token counts, before generation | the context llama.cpp really created is known only after load | estimating before load |
-| Function schemas go into the `ChatEnvelope` struct (`tools`), not patched into the prompt JSON | an image or audio request is built from the struct; until 2026-11-24 it had no schemas (run 64: 0 / 10 calls with the image, 10 / 10 without) | patching the JSON after the struct is built |
-| At the step or repeat limit, ask once more with no tools and return that as the answer | run 70 (Qwen3.5-0.8B): 0 / 10 answers before, 8 / 10 after; `max_steps: 2` 0 / 5 to 5 / 5; streaming 0 / 3 to 3 / 3 | keep the tools and send `tool_choice: "none"` (keeps the KV cache, but the model still sees the functions it looped on); the owner chose removing them |
-| A call cut by the token limit is not sent; the reply is the text before it with `finish_reason: "length"` | run 70: 2 / 10 replies were half calls shown as text; fixed in run 73 (`engine/llama/README.md`) | sending the half call |
+| Function schemas go into the `ChatEnvelope` struct (`tools`), not patched into the prompt JSON | an image or audio request is built from the struct, so it gets the same schemas (run 76: `get_weather` called 9 / 9 on image requests) | patching the JSON after the struct is built |
+| At the step or repeat limit, ask once more with no tools and return that as the answer | run 73: the terminal agent at `--max-steps 2` gave a final answer 3 / 3; API final answers 5 / 5; run 79: image request with `max_steps: 1` 3 / 3 | keep the tools and send `tool_choice: "none"` (keeps the KV cache, but the model still sees the functions it looped on); the owner chose removing them |
+| A call cut by the token limit is not sent; the reply is the text before it with `finish_reason: "length"` | run 73: cut client calls 0 / 5 sent, `finish_reason` `length` (`engine/llama/README.md`) | sending the half call |
 | `max_completion_tokens` (else `max_tokens`) is one budget for the whole turn; `max_completion_tokens` wins when both are sent | before, every tool step got the full limit again (run 78); OpenAI treats `max_tokens` as deprecated | a limit per step |
 | Media parts of a user message go in front of its text (`media_first`, each group in the client's order) | run 76, Qwen3.5-0.8B with Engine tools, text then image: 0 / 10 answers about the image before, 10 / 10 after | the client's order |
-| `response_format` with callable client tools is not grammar-enforced | one grammar for both let small models write JSON instead of a call (run 73: 0 / 10 calls before, 8 / 10 after); llama-server cannot hold both either | one grammar for schema and calls (run 68's way) |
-| `tool_choice` named function keeps only that client function and leaves the Engine's own out | OpenAI's meaning of a named choice; run 68: 10 / 10 `get_time` calls (0 / 10 before) | llama-server's way (an object falls back to auto) |
+| `response_format` with callable client tools is not grammar-enforced | one grammar for both let small models write JSON instead of a call; llama-server cannot hold both either; an opt-in grammar for "a call or the schema's JSON" is behind `CLUAIZ_JSON_TOOLS_GRAMMAR=on` (run 80: valid JSON 8 / 10, weather calls 10 / 10) | one grammar for schema and calls |
+| `tool_choice` named function keeps only that client function and leaves the Engine's own out | OpenAI's meaning of a named choice | llama-server's way (an object falls back to auto) |
 | A tool loaded with `load_tool` adds its functions to `tools` for the next steps, on image and audio requests too (`media_pivot` carries them, `media_continuation` and the provider start prompt add them) | run 73: on image requests the loaded functions were missing, so the model called `load_tool` again until the repeat limit (3 / 3); OpenAI and llama-server take `tools` with each request, and OpenAI's `tool_search` makes a loaded function callable in the same turn (developers.openai.com/api/docs/guides/function-calling, read 2026-11-26) | listing every installed tool's functions from the start (too many tokens for small models) |
 | A loaded GGUF model under 2 billion weights gets only client tools, bound tools and tool search; `read_item`, memory, notes, `task_update` and flows are left out (`small_model_tools: "lean"`, default; `"full"` turns it off) | run 77 (partial, one pass): Llama 3.2 1B 32 / 40 with client tools only, 6 / 40 with the Engine's context tools (`read_item` on 29 / 40 prompts, 414 steps); Qwen3 0.6B thinking off 27 / 40 to 21 / 40. Not a proven boundary: Llama 3.2 3B looped too, and the setups also differ in route | a fixed tool count for every model; per-model lists |
 | `required` holds only for the first answer | otherwise every step is forced to call until `max_steps` | required on every step |
-| At the limit, only the text before `<tool_call>` is the answer | before run 57 the whole text went to `separate_reasoning`, and its generic fallback took the call as thinking (run 52 `long_input`) | changing the generic fallback in `cluaiz_models::StructuralDNA`, which every reasoning split uses |
+| At the limit, only the text before `<tool_call>` is the answer | otherwise the whole text goes to `separate_reasoning`, and its generic fallback takes the call as thinking | changing the generic fallback in `cluaiz_models::StructuralDNA`, which every reasoning split uses |
 | The system prompt stays the same; per-message hints go into the user turn | keeps the KV cache valid across turns | hints in the system prompt |
 
 ## Request fields checked here
@@ -74,7 +74,7 @@ payload: `turn_end.rs` (with `usage.mtp` when the engine drafted).
 | `logit_bias` | token id string -> -100..100, into llama.cpp's logit-bias sampler; a non-id key, a value out of range, an id past the vocabulary, or any map on a non-GGUF model: 400 `invalid_value`. A provider gets the map unchanged | live 2026-11-23, Qwen3.5-0.8B: `{"57590":-100,"11751":-100}` -> `Lyon`; `{"10025":100}` -> `Blue` 12 times; bad maps -> 400 |
 | `tool_choice` | `"auto"`, `"none"`, `"required"`, `{"type":"function","function":{"name":X}}`; else 400. Image and audio steps drop it after the first answer; with `"none"` a call written anyway comes back as `content` | runs 68, 73 |
 | `response_format` without client tools | the Engine's own functions are left out (`schema_alone`), so the schema holds and thinking is kept | run 73 |
-| `grammar` with client tools | 400 "Cannot use custom grammar constraints with tools." (llama-server's message, `server-common.cpp:1543-1546`); without client tools the Engine's own functions are left out | run 68: 10 / 10 inside the grammar after, 0 / 10 before |
+| `grammar` with client tools | 400 "Cannot use custom grammar constraints with tools." (llama-server's message, `server-common.cpp:1543-1546`); without client tools the Engine's own functions are left out | llama-server's behaviour |
 | `plain_prompt` (only Ollama's `/api/generate`, `/api/chat`; no JSON body can set it) | no notes, no project files, none of the Engine's tools; the client's own functions still go in | run 62 |
 
 ## Tested
@@ -82,8 +82,8 @@ payload: `turn_end.rs` (with `usage.mtp` when the engine drafted).
 - 34 unit tests in this folder (`grep -c '#\[test\]'`, 2026-11-26; 3 for loaded functions on media steps: `media_tool_step_tests` in `preflight.rs`); route tests in `api/tests/` (`reasoning_contract.rs`, `media_contract.rs`,
   `processing_contract.rs`, `mtp_contract.rs`). None run since 2026-11-21: the `api` suite builds both
   native backends (`api/README.md`, Tests).
-- Live runs, each with raw files in `test/cloud/runs/`: thinking budget (runs 30, 31), KV reuse across turns
-  (run 21, `multiturn_cache.py`), tools and schemas (runs 64, 68, 73), final answer at the limit (run 70),
+- Live runs, written up in `test/benchmarks/` with raw files in `test/cloud/runs/`: thinking budget (runs 30, 31), KV reuse across turns
+  (run 21, `multiturn_cache.py`), tools and schemas (runs 73, 80), final answer at the limit (runs 73, 79), repeat guard (run 81),
   token budget (run 78), media first (run 76).
 - Not proved: the final no-tools answer with client `tools` at a limit, on an image request, or with inline
   (non-native) tools (Pending).
@@ -102,8 +102,8 @@ payload: `turn_end.rs` (with `usage.mtp` when the engine drafted).
 | Cancel | `chat.cancel` sets the stream's flag; generation and tool waits stop |
 | Embedding model missing | word matching for notes |
 
-Cost of the final answer at the limit: the tool schemas leave the prompt, so it is processed again (run 70:
-3,784 to 11,339 tokens, 0 from cache; 1.0 to 2.9 s on an RTX 3050 laptop).
+Cost of the final answer at the limit: the tool schemas leave the prompt, so it is processed again without the
+KV cache.
 
 ## Pending
 
@@ -116,7 +116,7 @@ Cost of the final answer at the limit: the tool schemas leave the prompt, so it 
 | `approval_mode` `sandboxed` under global `full_access` does not re-check flows | a chat reads only the flow's precomputed `confirm` | the flow's `changes` in `OfferedTool` |
 | `logprobs` / `top_logprobs` and `n` > 1 on installed models (400 today) | evaluation clients ask for them | logprobs from `llama_get_logits_ith`; one sequence per answer for `n` |
 | `tool_choice`, `n`, `logprobs` not forwarded to providers | a provider could answer them | `api/src/providers/request.rs`, provider `extra` in `preflight.rs` |
-| Final no-tools answer not checked with client `tools` at a limit, on an image request, or with inline tools | run 70 covered native tools on one model | a script for each case; a vision model run |
+| Final no-tools answer not checked with client `tools` at a limit, on an image request, or with inline tools | runs 73 and 79 covered native tools and one image case | a script for each case; a vision model run |
 | Loaded functions on image and audio steps not checked live | the unit tests cover the envelope only | rerun run 73's `media_tools_probe.py` (red image + math) |
 | Small-model tool rule not measured live; the 2 billion line rests on partial run 77 (SmolLM3, Qwen3.5 0.8B and 2B missing) | the line may be wrong for some families | finish run 77, then a before/after run with `small_model_tools` lean and full |
 | Thinking in the first step is not counted in the `max_tokens` budget | a thinking model can use more than the client's limit | count thinking tokens of every step |

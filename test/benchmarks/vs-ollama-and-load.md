@@ -8,9 +8,10 @@
 - **1 vCPU / 3.8 GB VPS (run 16):** Ollama generated 14-23% slower than Cluaiz and could not load Llama 3.2 3B.
 - **Next to a Node.js website with 20 users, 4 GB and 8 GB machines (run 40):** all chat OK; one at a time Cluaiz
   equal (0.6B) or faster (1.7B), 4 at once Ollama about 15% faster (0.6B); Cluaiz about 30% less memory.
+- **1-hour soak on a 1 vCPU VPS next to a web app and PostgreSQL (run 26):** machine memory peak Cluaiz 1,759 MB
+  (32 requests in flight), llama.cpp 1,811 MB and Ollama 2,055 MB (16 in flight); 0 failed chat requests.
 - **Lower CPU priority next to a website (run 66):** website p95 19.3 ms with no change, 10.7 ms with `nice`,
   10.1 ms with `CPUWeight` (alone 7.0 ms); model speed unchanged.
-- **Three tools on the L4 (run 12):** the three bugs of run 11 fixed, speed unchanged.
 
 ```mermaid
 xychart-beta
@@ -246,8 +247,7 @@ method: [run 40](#run-40).
 | [15](speed-vs-llamacpp.md#run-15) | 2026-11-16 | Hostinger VPS: 1 vCPU (AMD EPYC 9354P), 3.8 GB | raw speed, Cluaiz `bench` against `llama-bench`, same settings |
 | [16](vs-ollama-and-load.md#run-16) | 2026-11-16 | same VPS | raw speed with Ollama added; Ollama model loading |
 | [19](release-and-platforms.md#run-19) | 2026-11-16 | same VPS, a website beside it | 9 chat models, speech, bursts, agent, flows, per-second memory |
-| [26](vs-ollama-and-load.md) | 2026-11-20/21 | same VPS, web app + PostgreSQL | ramps 1-32 at once, 1-hour soaks, native and Docker; a host CPU cap fell between engines |
-| [38](vs-ollama-and-load.md) | 2026-11-21 | Windows laptop | rechecks of run 26's two bugs on the fixed code |
+| [26](#run-26) | 2026-11-20/21 | same VPS, web app + PostgreSQL | ramps 1-32 at once, 1-hour soaks, native and Docker; a host CPU cap fell between engines |
 | [40](vs-ollama-and-load.md#run-40) | 2026-11-21/22 | Google Cloud 2 vCPU, 4 GB and 8 GB; Node.js website with 20 users | Cluaiz and Ollama interleaved, two rounds; embeddings and speech at 1, 2, 4 at once |
 | [40, VPS part](../cloud/runs/2026-11-22-run40-cluaiz-ollama-website/hostinger-vps-partial/tables.md.txt) | 2026-11-21 | the run 15 VPS | first attempt of run 40, stopped when the host's CPU credits ran out |
 
@@ -528,6 +528,145 @@ Greyscale charts drawn from the numbers above (scripts `run40_charts.py` and `ru
 
 Logs, raw results and scripts: [`test/cloud/runs/2026-11-22-run40-cluaiz-ollama-website/`](../cloud/runs/2026-11-22-run40-cluaiz-ollama-website/)
 
+<a id="run-26"></a>
+
+## Run 26 (2026-11-20)
+
+Run by Gemini; this summary was rewritten from the raw files in this folder. An earlier summary said Cluaiz
+was 2.6x faster. That was wrong: the host capped the CPU partway through, after Cluaiz's native stage
+(section "The CPU cap"). Both Cluaiz bugs found here are fixed; run 40 shows 0 refused requests.
+
+| | |
+|---|---|
+| Machine | VPS, 1 vCPU (AMD EPYC 9354P), 3,915 MB RAM, no swap, no GPU, Ubuntu 24.04 (`*/manifest.json`) |
+| Neighbour app | a small web app with PostgreSQL, checked once a second in every phase (`remote/vps26/neighbour_app.py`) |
+| Engines | Cluaiz 0.1.0 pre-release, a build from before `fe21984c` (sha256 in the manifest, commit not recorded); official llama.cpp `b12428`; Ollama 0.40.16. Native under `systemd-run` (memory limit 3,515 MB), and Docker |
+| Settings, all engines | 1 thread, context 4096, Q8_0 KV cache, one slot, temperature 0 |
+| Models | Qwen3 0.6B, Qwen3 1.7B, Llama 3.2 3B (Q4_K_M); EmbeddingGemma 300M Q8_0; Kokoro TTS and Moonshine STT (Cluaiz only) |
+| Load | 5-minute steps at 1, 2, 4, 8, 16, 32 requests at once; then 1-hour soaks |
+| Scripts | `test/cloud/remote/vps26/`; per-stage tables in each folder's `analysis.md`; large engine logs are gzipped |
+
+Folders: `smoke/` (first short pass), `native_*`, `docker_*` (ramps), `soak_*` (1 hour each). The
+conclusion and the list of what to fix: [README.md](vs-ollama-and-load.md#run-26).
+
+#### The CPU cap
+
+The provider's panel showed the VPS at 100% CPU for about four hours, then a 40% cap for the rest of the
+run. llama.cpp prints its own speed per request, in both llama-server and Cluaiz logs, so the cap shows in
+the data. Qwen3 0.6B generation, median:
+
+| Stage (start, UTC) | Engine | Generation t/s |
+|---|---|---:|
+| smoke (11-20 14:46) | llama.cpp / Ollama / Cluaiz | 35.8 / 35.3 / 36.3 |
+| native (11-20 16:43) | Cluaiz | 35.9 |
+| native (11-20 20:17) | Ollama | 13.9 (its first step at 20:22 matched Cluaiz: 0.651 s against 0.645 s per request; from 20:27 on it was capped) |
+| native (11-20 23:50) | llama.cpp | 12.2 |
+| Docker (11-21 07:28) | Cluaiz | 12.7 |
+
+So the native ramps compare Cluaiz at full CPU with llama.cpp and Ollama under the cap; their speed and
+"break" levels are not comparable. Everything from 11-20 about 20:25 UTC on ran under the same cap.
+
+#### Comparable results (all under the cap)
+
+**1-hour chat soak, Qwen3 1.7B, ticket labels as JSON:**
+
+| Engine | Requests in flight | OK | Machine memory peak | Engine anonymous memory peak | Neighbour app failures |
+|---|---:|---|---:|---:|---|
+| Cluaiz | 32 | 1,048 / 1,048 | 1,759 MB | 1,139 MB | 1 of 3,560 checks |
+| llama.cpp | 16 | 1,073 / 1,073 | 1,811 MB | 1,147 MB | 0 of 3,509 |
+| Ollama | 16 | 1,102 / 1,102 | 2,055 MB | 1,554 MB | 0 of 3,490 |
+
+Generation speed in the three soaks: 6.0, 5.6 and 5.7 t/s. Throughput was level; Cluaiz held twice the
+queue with the lowest machine memory. No OOM kill in any soak.
+
+**Docker ramps, W1 (same cap):** seconds per request at one request at a time: Qwen3 0.6B Cluaiz 1.89,
+Ollama 1.61; Qwen3 1.7B Cluaiz 3.68, Ollama 3.78; Llama 3.2 3B Cluaiz 6.44, Ollama 6.50. With 1.7B, the
+95th-percentile wait passed 60 s at 16 requests for Cluaiz and at 32 for Ollama; with 3B at 16 for both.
+No engine returned errors in these chat steps; "break" here means the wait passed 60 s.
+
+#### Cluaiz alone: mixed load for 1 hour
+
+Chat (Qwen3 0.6B), embeddings, TTS and STT together, 16 requests in flight: 1,063 / 1,063 OK (698 chat,
+204 embeddings, 81 TTS, 80 STT). Machine memory peak 2,434 MB of 3,915; the neighbour app passed all
+3,492 checks. Median time per request under the cap and the queue: chat 83.8 s, embeddings 17.6 s,
+TTS 39.9 s, STT 3.1 s. llama.cpp and Ollama have no speech route, so there is no comparison row.
+
+#### Two Cluaiz bugs in this build
+
+1. **Embeddings refused a second request:** at 2 at once, 1,179 of 1,252 (native) and 994 of 1,021
+   (Docker) got HTTP 429 `"Another GGUF embedding request is still active"`. Fixed in `fe21984c`
+   (requests wait in line for up to 120 s); run 38 checked 2 and 4 at once on the current code.
+2. **No usage chunk in streamed answers:** `in_tokens` is empty for every Cluaiz row, so the harness counted
+   streamed chunks as tokens (Cluaiz 6-10 per answer, the others 14-15 tokens). Cluaiz's `Agg t/s` in the
+   tables is a chunk rate. Run 38 showed the current code sends the usage chunk.
+
+#### Not proven
+
+- Speed at full CPU between engines in this run (only the smoke pass and Cluaiz's native stage had it; run
+  15 on this VPS, same settings: generation equal).
+- The VPS rerun with a build at or after `fe21984c`.
+- Answer texts were not saved, so answer lengths cannot be compared beyond the counts above.
+
+1 vCPU, 4 GB VPS with a web app and PostgreSQL running next to the engine. Cluaiz (a build from before
+`fe21984c`), llama.cpp `b12428` and Ollama 0.40.16, same models and settings. Full numbers and method:
+[SUMMARY.md](vs-ollama-and-load.md#run-26). Every number below was recounted from the raw files in this folder.
+
+#### Conclusion
+
+Cluaiz did the same chat work as llama.cpp and Ollama at the same speed, used the least memory in the
+1-hour chat soak, never failed a chat request, and was the only engine that ran chat, embeddings, text to
+speech and speech to text together (1,063 of 1,063 requests in one hour, web app never down). It had two
+bugs when many requests arrive at once (embeddings at 2, speech at 4); both are fixed, and run 40 on two
+Linux machines (4 GB and 8 GB) checked it: 0 refused requests at 1, 2 and 4 at once. Rechecks:
+[run 40](vs-ollama-and-load.md#run-40).
+
+Read with one caution: a few hours in, the host capped the CPU at 40%. Cluaiz's native stage ran before
+the cap and the others after it, so only results from the same CPU state are compared below.
+
+#### What went well (Cluaiz)
+
+| # | Result | Numbers | Compared under the same CPU? |
+|---|---|---|---|
+| 1 | Least memory in the 1-hour chat soak, while holding twice the queue | machine peak Cluaiz 1,759 MB (32 in flight), llama.cpp 1,811, Ollama 2,055 (16 in flight) | yes |
+| 2 | No failed chat request anywhere | every W1 chat step and the chat soak: all OK (1,048 / 1,048 in the soak) | yes |
+| 3 | Chat, embeddings, TTS and STT together for 1 hour | 1,063 / 1,063 (698 chat, 204 embeddings, 81 TTS, 80 STT), machine peak 2,434 MB of 3,915 | no competitor row: llama.cpp and Ollama have no speech route |
+| 4 | The web app next to it kept working | 3,492 of 3,492 checks in the mixed soak; 3,559 of 3,560 in the chat soak | yes |
+| 5 | Chat speed level with llama.cpp and Ollama | Qwen3 0.6B generation: full CPU 35.9 / 35.8 / 35.3 t/s; capped 12.7 / 12.2 / 13.9; soak 6.0 / 5.6 / 5.7 | yes |
+| 6 | JSON answers always valid | valid JSON rate 1.0 in every W1 step | yes |
+| 7 | Long tasks finished faster at full CPU | 1,000-word summary (W2), Qwen3 0.6B: 45.9 s against 118-120 s | no: Cluaiz at full CPU, the others capped |
+| 8 | Ollama dropped requests that Cluaiz did not | Ollama mixed load: 15 embedding timeouts (native) and 15 (Docker); W2 with Llama 3.2 3B: 0 of 2 | partly |
+
+#### What went wrong or needs a check
+
+| # | Problem | Numbers | State | Fix or next step |
+|---|---|---|---|---|
+| 1 | Embeddings refused a second request at once | at 2 at once: 1,179 of 1,252 HTTP 429 (native), 994 of 1,021 (Docker) | fixed in `fe21984c`; run 38 (local) and run 40 (Linux, 4 GB and 8 GB): 0 HTTP 429 at 1, 2, 4 at once | done |
+| 2 | Speech refused requests at 4 at once | 101 of 304 HTTP 429 `speech_busy` "no permits available" | fixed in `fe21984c` (speech requests wait in line too); run 40: 0 HTTP 429 at 1, 2, 4 at once on both machines | done |
+| 3 | Streamed answers had no usage chunk, so tokens could not be counted | `in_tokens` empty in every Cluaiz row | on `main` since `81ebe35f`; run 40 rows carry `in_tokens` and `out_tokens` | done |
+| 4 | Docker, smallest model: Cluaiz a little slower per request | Qwen3 0.6B, one at a time: Cluaiz 1.89 s, Ollama 1.61, llama.cpp 1.67; time to first token Cluaiz 1.08 s, Ollama 0.81. Generation speed itself equal (12.7 / 12.8 t/s) | mostly fixed: about 60 ms per request went to building the flow catalog (`ef6a7113`, now 2 ms); run 40, native, full CPU: first token 0.343 s against llama.cpp 0.315 s; Docker not rerun | rerun Docker |
+| 5 | Docker, Qwen3 1.7B: Cluaiz's queue passed 60 s earlier | 95th-percentile wait over 60 s at 16 at once for Cluaiz, at 32 for Ollama and llama.cpp | run 40 (native, 2 vCPU): with 4 at once Ollama was faster on 8 GB (0.6B about 15%, 1.7B about 12%), level on 4 GB 1.7B | find why with the same one slot |
+| 6 | llama.cpp's Docker embeddings were faster | one request: llama.cpp Docker 4.96 chunks/s; Cluaiz Docker 1.80, Ollama Docker 1.76 | unclear: 4.96 matches the full-CPU numbers (Cluaiz native 4.84), so the cap had probably lifted by then | rerun all three in the same hour |
+| 7 | One neighbour-app check timed out during the chat soak | 1 of 3,560 (5 s timeout at 2026-11-21 04:15:45 UTC) | run 40: 0 failed of 88,212 and 90,111 website requests | done |
+
+#### What went wrong with the test itself
+
+| Problem | Effect | Next time |
+|---|---|---|
+| The host capped the CPU at 40% after Cluaiz's native stage | native speed and "break" levels compare full CPU with capped CPU; an earlier summary wrongly claimed 2.6x faster | interleave engines in short blocks; record steal time and the provider's cap |
+| The Cluaiz commit was not recorded | the fixed bugs cannot be tied to a build | record `git rev-parse HEAD` with the binary |
+| Answer texts were not saved | answer length (Cluaiz 6-10 chunks, the others 14-15 tokens) cannot be checked | save every answer |
+| Old Cluaiz build | problems 1-3 were already fixed in code | build from current `main` |
+
+#### Before a public post
+
+1. Done in run 40: W1, W4 and W5 rerun with the current build, engines interleaved, answer texts saved
+   (Cluaiz and Ollama; llama.cpp did not start on the fresh VMs).
+2. Still open: llama.cpp in the same run, Docker, and why Ollama is faster with 4 requests at once.
+3. Post from the rows that hold in run 40: no failed request, about 30% less memory than Ollama, the
+   website untouched, no refused embedding or speech request.
+
+Logs, raw results and scripts: [`test/cloud/runs/2026-11-20-run26-vps-load/`](../cloud/runs/2026-11-20-run26-vps-load/)
+
 <a id="run-16"></a>
 
 ## Run 16 (2026-11-16)
@@ -572,53 +711,6 @@ machine, same day).
   used Q8_0 for all three.
 
 Logs, raw results and scripts: [`test/cloud/runs/2026-11-16-run16-vps-ollama/`](../cloud/runs/2026-11-16-run16-vps-ollama/)
-
-<a id="run-12"></a>
-
-## Run 12 (2026-11-15)
-
-v0.1.0 was published again from `c3b1b123`. This run repeats only what the three fixes touch; the rest of
-[run 11](vs-ollama-and-load.md) stands. The VM and isolated home are the same as in run 11,
-and the GPU driver packs are unchanged. Script: [`run12.sh`](../cloud/remote/run12.sh).
-
-| Check | Run 11 | Run 12 |
-|---|---|---|
-| `cluaiz pull ggml-org/gpt-oss-20b-GGUF` without a tag (non-interactive) | took `eagle3-gpt-oss-20b-Q8_0.gguf` (0.9 GB) | took `gpt-oss-20b-MXFP4.gguf` (12.1 GB) |
-| gpt-oss-20b placements | 0 / 4 (control tokens in every answer) | **4 / 4** |
-| Qwen3.5-9B auto, gpu | 2 / 2 | 2 / 2 |
-| Features | 22 / 24 | **24 / 24** |
-
-#### gpt-oss-20b against llama.cpp (prompt / generation t/s)
-
-| Mode | Cluaiz | llama-bench |
-|---|---|---|
-| auto | 2604 / 81.8 | 2923 / 81.9 |
-| gpu | 2790 / 81.8 | 2923 / 81.6 |
-| split | 262 / 16.0 | 305 / 16.4 |
-| cpu | 21 / 8.8 | 24 / 9.3 |
-
-Qwen3.5-9B (auto / gpu): 2323 / 43.8 and 2319 / 43.8 vs llama-bench 2486 / 43.8 and 2462 / 43.8. These
-match run 11, so reading plain answers with the parser did not change speed.
-
-#### The answers that failed in run 11
-
-| Model | Check | Run 11 | Run 12 |
-|---|---|---|---|
-| gpt-oss-20b | thinking | `<\|start\|>assistant<\|channel\|>final<\|message\|>No.` | `No.` (reasoning kept apart) |
-| gpt-oss-20b | answer after the tool result | its reasoning ("We have a conversation...") | "Temperature: 18 °C, Sky: cloudy" |
-| Phi-4-mini | answer after the tool result | "I will need to call the tool again" | "18°C with cloudy skies" |
-
-The check "answer after the tool result" now also fails on control tokens and on reasoning text in the
-answer.
-
-#### Compare row for gpt-oss-20b (Cluaiz only)
-
-Cold request 69.6 s, prompt 2651 t/s, generation 81.1 t/s, GPU memory 12.4 GB; replies are plain text. Ollama
-(78.5 t/s) and LM Studio (62.2 t/s) are the run 11 rows on the same file. A Cluaiz request now generated
-157-227 tokens with `max_tokens` 64: gpt-oss reasons even with thinking off, and its reasoning is not counted
-in `max_tokens`, as for every model.
-
-Logs, raw results and scripts: [`test/cloud/runs/2026-11-15-run12-l4/`](../cloud/runs/2026-11-15-run12-l4/)
 
 <a id="run-10"></a>
 
@@ -686,5 +778,5 @@ Logs, raw results and scripts: [`test/cloud/runs/2026-11-15-run10-ollama/`](../c
 | 66 | [`2026-11-24-run66-cpu-priority-website`](../cloud/runs/2026-11-24-run66-cpu-priority-website/) |
 | 40 | [`2026-11-22-run40-cluaiz-ollama-website`](../cloud/runs/2026-11-22-run40-cluaiz-ollama-website/) |
 | 16 | [`2026-11-16-run16-vps-ollama`](../cloud/runs/2026-11-16-run16-vps-ollama/) |
-| 12 | [`2026-11-15-run12-l4`](../cloud/runs/2026-11-15-run12-l4/) |
 | 10 | [`2026-11-15-run10-ollama`](../cloud/runs/2026-11-15-run10-ollama/) |
+| 26 | [`2026-11-20-run26-vps-load`](../cloud/runs/2026-11-20-run26-vps-load/) |

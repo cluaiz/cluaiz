@@ -124,7 +124,7 @@ pub trait Agent: Send {
     /// The turn reached the step or repeat limit: true readies one more generation, without tools,
     /// that answers from the tool results so far (the managed prompt `agent.final_answer`), and
     /// [`run`] generates it. Small models with a long prompt kept calling tools until the limit and
-    /// the turn had no answer (run 52 `long_input`, run 70). False (the default): the turn ends
+    /// the turn had no answer (found in a soak on 2026-11-23). False (the default): the turn ends
     /// with [`Ended::StepLimit`], e.g. when the client runs its own functions.
     fn prepare_final_answer(&mut self) -> bool {
         false

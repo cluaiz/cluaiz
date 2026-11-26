@@ -1,0 +1,49 @@
+{
+  "created_at": "2026-11-20T14:50:51+0000",
+  "machine": {
+    "cpu_model": "AMD EPYC 9354P 32-Core Processor",
+    "vcpus": 1,
+    "mem_total_mb": 3915,
+    "kernel": "6.8.0-147-generic",
+    "os": "Ubuntu 24.04.3 LTS"
+  },
+  "params": {
+    "modes": [
+      "native"
+    ],
+    "engines": [
+      "ollama",
+      "llama"
+    ],
+    "models": [
+      "qwen3-0.6b"
+    ],
+    "w6_model": "qwen3-0.6b",
+    "workloads": [
+      "W1",
+      "W4"
+    ],
+    "mem_max_mb": 3515,
+    "threads": 1,
+    "ctx": 4096,
+    "kv": "q8_0",
+    "slots": 1,
+    "levels": [
+      1,
+      2
+    ],
+    "step_secs": 25,
+    "soak_secs": 0,
+    "w4_limit": 100
+  },
+  "engines": {
+    "cluaiz_version": "cluaiz 0.1.0 (pre-release)",
+    "cluaiz_sha256": "9029575c52377a977c02e975ec9779ab479f5a39a2be69c8ddb7ae50f33e9282",
+    "ollama_version": "Warning: client version is 0.40.16",
+    "ollama_sha256": "a0c1e355537b0c037f2190edd339197fe3eb00387a46d6e26be695250262a790",
+    "llama_version": "version: 1.0.0-dev (build 12428, commit b4c0e00a4)\nbuilt with GNU 11.4.0 for Linux x86_64",
+    "llama_sha256": "75e593229831bea182e9b6b2fd63231673c85be3e52cb5ebc8daf27253daf192",
+    "ollama_image": "ollama/ollama:0.40.16",
+    "docker_images": "vps26-llama:b12428 5f9a3911457b sha256:5f9a3911457ba95be6522fd42b2ad9f1286ee55bfb141de63a4519554471822f 119MB\nvps26-cluaiz:0.1.0 87ef7dd93a2e sha256:87ef7dd93a2e174746c63d9a7ef0877c0e738ef245c1ba102fc479170844ce33 123MB\nghcr.io/cluaiz/cluaiz:latest e6ab6efe718c sha256:e6ab6efe718cfd4327dd13ca32386dfdeef2c46cdf072e825de1ea153b12fc2c 405MB\nollama/ollama:0.40.16 910d0d8107b5 sha256:910d0d8107b538fb0894e63163eb195de0cc7aefcbc666dc62d3b18f71124592 8.52GB"
+  }
+}

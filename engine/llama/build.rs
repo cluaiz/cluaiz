@@ -340,7 +340,7 @@ fn is_llvm_built(name: &str) -> bool {
 /// built with MSVC, as here. MSVC's CPU modules were slower on the same machine
 /// (test/cloud/runs/2026-11-23-run47-laptop-warm-tg-gap: CPU-only pp512 121 vs 137 t/s). Without OpenMP the
 /// modules would use ggml's own thread pool, which Cluaiz does not attach to its contexts: 4x slower MoE split
-/// generation in run 47. Returns the folder holding ggml-base, the modules and `libomp.dll`; None (with a
+/// generation on the Windows laptop (2026-11-23). Returns the folder holding ggml-base, the modules and `libomp.dll`; None (with a
 /// warning, the MSVC libraries stay) when LLVM or Ninja is missing or the build fails, so a build never breaks
 /// on it. `CLUAIZ_REQUIRE_LLVM_CPU=1` (release builds) makes that an error.
 fn build_llvm_cpu_backends(llama_path: &Path, out_dir: &Path, msvc_bin: &Path) -> Option<std::path::PathBuf> {

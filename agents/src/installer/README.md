@@ -126,9 +126,8 @@ flowchart TD
 `test_detect_pure_skill`, `test_detect_node_runtime`, `test_detect_native_runtime`,
 `a_plugin_needs_a_program`, `listed_files_are_found_once_and_stay_inside`. Part of `cargo test -p cluaiz-agents`: 161 passed, 1 ignored on 2026-11-21 (Windows 11).
 
-Real installs from the registry are part of `test/cpu/cpu_test.ps1`, which has no recorded run. No run in
-`test/cloud/runs/` installs a tool from the registry (run 8 lists installed tools only; searched
-2026-11-21).
+Real installs from the registry: run 72 (Linux release) installs the math plugin and the filesystem MCP
+with `cluaiz plugin install` and `cluaiz mcp install` (`test/benchmarks/release-and-platforms.md`).
 
 ## Pending
 

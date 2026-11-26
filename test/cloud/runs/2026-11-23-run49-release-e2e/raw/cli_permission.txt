@@ -1,9 +1,0 @@
-$ cluaiz permission
-telemetry           false
-lazy-load           true
-port                8000
-os-sandbox          auto
-chat model          none
-vector model        none
-Change one with `cluaiz permission <name> <value>`.
-exit=0

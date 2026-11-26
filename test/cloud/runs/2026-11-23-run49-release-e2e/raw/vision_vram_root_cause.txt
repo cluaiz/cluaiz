@@ -1,9 +1,0 @@
-server started, nothing loaded: GPU used/free 870 MiB, 3023 MiB
-text chat 200
-after a text chat (chat model loaded): GPU used/free 2164 MiB, 1729 MiB
-vision 1 200 red
-after vision 1: GPU used/free 2173 MiB, 1720 MiB
-vision 2 200 red
-after vision 2: GPU used/free 2173 MiB, 1720 MiB
-vision 3 200 red
-after vision 3: GPU used/free 2164 MiB, 1729 MiB

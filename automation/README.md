@@ -142,7 +142,7 @@ chat ("Please write the weekly report"), which called it.
 |---|---|---|
 | Automation is its own layer, outside the Engine and the API | flows use the Engine through small additive hooks (events, extension routes and tools) and can change without touching Engine code | flows inside `api` |
 | Not-built features fail with a message that says so | a flow must never look like it ran a step that does not exist | silently skip unknown fields |
-| `tools.rs` reads the catalog snapshot (every method and tool) only when some enabled flow has an enabled `tool` trigger | chats ask for the flow tools on every message; reading the snapshot each time cost 15-17 ms per request on a desktop (debug build) and about 60 ms on a 1 vCPU VPS (run 26); with no such flow it is now 1-2 ms | cache the snapshot (it must follow tool and method changes) |
+| `tools.rs` reads the catalog snapshot (every method and tool) only when some enabled flow has an enabled `tool` trigger | chats ask for the flow tools on every message; reading the snapshot each time cost 15-17 ms per request on a desktop (debug build) and about 60 ms on a 1 vCPU VPS (measured 2026-11-20); with no such flow it is now 1-2 ms | cache the snapshot (it must follow tool and method changes) |
 
 ## Pending
 

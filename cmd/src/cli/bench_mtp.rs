@@ -6,7 +6,7 @@
 //!
 //! MTP off, on and Auto (the load rules and the per-answer guard) alternate in every round, each a
 //! fresh load: a laptop GPU
-//! changes its clock between minutes (run 22: the same plain run gave 55 and 72 t/s), so measuring all
+//! changes its clock between minutes (the same plain run gave 55 and 72 t/s on the laptop, 2026-11-19), so measuring all
 //! "off" runs first and all "on" runs later would put that drift into the gain. With `--placements`
 //! every placement the planner can use is measured this way (full GPU, split, CPU only, MoE split,
 //! experts read from disk), which is what the Auto rules need: one model can gain in one placement

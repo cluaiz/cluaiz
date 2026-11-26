@@ -1,4 +1,0 @@
-free RAM MiB before: 13697
-exit code: 0
-seconds: 78.6
-free RAM MiB after: 13670
