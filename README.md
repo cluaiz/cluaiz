@@ -35,13 +35,6 @@ new, and flows carry the steps so you do not have to. Memory keeps only what you
 the limits you set, and an audit log records all of it. It fits your machine, works where you are, and grows with
 what you build.
 
-## Works with
-
-- **[Cluaiz App](https://github.com/cluaiz/cluaiz-app):** the desktop app. It talks to a running `cluaiz serve`, so
-  a model is loaded once.
-- **[Cluaiz Tools](https://github.com/cluaiz/cluaiz-tools):** the registry of skills, plugins and MCP servers that
-  the Engine installs. It takes pull requests.
-
 ## Why Cluaiz
 
 - **Full speed, without the tuning.** On the same model file and placement, generation is equal to official
@@ -80,6 +73,13 @@ what you build.
 | **Workflows** | Reusable flows the engine runs (schedules and triggers are in progress) | [Automation](docs/automation/README.md) |
 
 Every feature with its status and the test run that checked it: [features](docs/reference/features.md).
+
+## Works with
+
+- **[Cluaiz App](https://github.com/cluaiz/cluaiz-app):** the desktop app. It talks to a running `cluaiz serve`, so
+  a model is loaded once.
+- **[Cluaiz Tools](https://github.com/cluaiz/cluaiz-tools):** the registry of skills, plugins and MCP servers that
+  the Engine installs. It takes pull requests.
 
 ## Quick start
 
