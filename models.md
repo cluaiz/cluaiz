@@ -30,7 +30,7 @@ A family can have many sizes, quantizations and fine-tunes. The architecture in 
 | Dedicated speech-to-text | Compatible ONNX STT package | Whisper; Moonshine (English) | `/v1/audio/transcriptions` |
 | Text vectors | ONNX or GGUF embedding model | BGE, EmbeddingGemma-2 | `/v1/embeddings` |
 | Image/page vectors | Compatible ONNX image embedding graph | FashionCLIP / compatible CLIP-style exports | Embeddings or ingest |
-| Document text/OCR | Native providers; optional model processing. OCR needs the OCR pack (PDFium and Tesseract), which the release packages do not include yet | PDF, DOCX, DOC, text/code, images | `POST /v1/ingest` |
+| Document text/OCR | Native text providers; scanned pages and images need a vision model | PDF, DOCX, DOC, text/code, images | `POST /v1/ingest` |
 
 The example column identifies families; it does not give every family the same status. Use the detailed tables below.
 
@@ -97,7 +97,7 @@ A vision language model reads pixels and generates text. It needs both the langu
 
 | Family | Input / use | Status in Cluaiz |
 |:---|:---|:---|
-| Gemma 4 E4B | Images, PDF page pixels (with the OCR pack), audio input and sampled video frames | Tested selected package |
+| Gemma 4 E4B | Images, scanned PDF pages, audio input and sampled video frames | Tested selected package |
 | Gemma 3 / Gemma 3n | Package-specific visual/audio input | Backend available; do not infer audio support from the Gemma 3 name alone |
 | Qwen2-VL / Qwen2.5-VL / Qwen3-VL | Image understanding | Backend available |
 | Qwen2.5-Omni / Qwen3-Omni | Visual and audio input with matching components | Qwen2.5-Omni 3B Q4_K_M with its projector tested on the CPU for image, audio and video input; audio generation is not established by input support |
@@ -113,7 +113,7 @@ A vision language model reads pixels and generates text. It needs both the langu
 
 Chat video is prepared as ordered timestamped frames. Audio is separate and requires audio support when requested. This is not a dedicated full-video encoder or an unlimited-duration pipeline.
 
-For PDFs, compatible visual packages receive rendered page pixels when PDFium is installed; it comes with the OCR pack (PDFium and Tesseract), which the release packages do not include yet. Text-only packages use native text/OCR extraction. DOCX embedded graphics are not automatically exposed as visual input.
+For PDFs, pages with a text layer are read from it; compatible visual packages receive the pages without text as rendered images (PDFium, downloaded by the Engine the first time it is needed). Text-only packages get the PDF only when every page has text. DOCX embedded graphics are not automatically exposed as visual input.
 
 ## Text-to-speech models
 
@@ -180,12 +180,12 @@ Ingest is a processing task, not a separate model architecture. The selected mod
 
 | Mode | Compatible inputs | Output |
 |:---|:---|:---|
-| Native extraction, no model | Text/code/Markdown/CSV, PDF, DOCX, legacy DOC, images | Native text (OCR with the OCR pack), chunks and extraction metadata |
+| Native extraction, no model | Text/code/Markdown/CSV, PDF, DOCX, legacy DOC, images | Native text, chunks and extraction metadata; scanned pages and images reported as needing a vision model |
 | ONNX/GGUF text embedding model | Native-extracted document text or OCR | Text vectors, optional extracted text |
-| ONNX image embedding graph | Images, or rendered PDF pages with the OCR pack | Image/page vectors |
-| GGUF generative vision pair | Images, PDF pixels with the OCR pack; native-extracted text for text documents | Model-generated text following the extraction instruction |
+| ONNX image embedding graph | Images, or rendered PDF pages (PDFium downloaded on first use) | Image/page vectors |
+| GGUF generative vision pair | Images and PDF pages without text; native-extracted text for text pages and text documents | Model-generated text following the extraction instruction |
 
-Native extraction uses the shared document providers: `pdf-extract` for PDF text, PDFium for page rendering, Tesseract for OCR, and dedicated Word/text readers. It does not require a vision model. PDFium and Tesseract come with the OCR pack (PDFium and Tesseract), which the release packages do not include yet: until then digital PDF, DOCX, DOC and text work, and a scanned PDF is reported as unavailable.
+Native extraction uses the shared document providers: `pdf-extract` for PDF text and dedicated Word/text readers. It does not require a vision model, and it does not read scanned pages or images: those are reported as needing a vision model. With a vision model, PDFium renders only the pages without text.
 
 A folder named `ingest`, or a registry label such as `document-ocr`, does not turn an embedding graph into a generative OCR model. Dedicated ONNX Florence-2/TrOCR/Donut-style generation pipelines are not implemented. General XLSX/PPTX parsing, DOCX embedded-image reasoning and a persistent vector index are outside current ingest support.
 

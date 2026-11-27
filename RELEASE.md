@@ -10,7 +10,7 @@ Cluaiz runs local models through **llama.cpp for GGUF** and **ONNX Runtime for O
 - **Document-to-text or document-to-vector:** use native extraction, select an embedding model, or select a compatible vision model for visual interpretation.
 - **Speech APIs:** synthesize speech with supported ONNX families or experimental GGUF speech models; transcribe recordings with Whisper or Moonshine ONNX packages.
 - **EmbeddingGemma-2:** GGUF text embedding support includes its projected 768-dimensional output.
-- **Images to a vision model:** a compatible GGUF vision model reads an image and returns its text or an answer. Rendering PDF pages for it needs the OCR pack, which the release packages do not include yet.
+- **Images to a vision model:** a compatible GGUF vision model reads an image and returns its text or an answer. For a scanned PDF, only the pages without text are rendered (PDFium, downloaded by the Engine the first time it is needed) and read by the vision model.
 - **Model discovery:** installed model IDs, voices and language capabilities are available through the API.
 - **Model providers:** models of an OpenAI-compatible API, added in `providers.json`, work as `<provider>/<model>` in chat, embeddings, speech and transcription, beside the installed models. See [Model providers](docs/engine/providers.md).
 
@@ -26,7 +26,7 @@ Cluaiz runs local models through **llama.cpp for GGUF** and **ONNX Runtime for O
 | Speech-to-text | Not available on the transcription API | Whisper; Moonshine (English) |
 | Text embeddings | Supported | Supported |
 | Image embeddings | Not available | Compatible CLIP-style graphs |
-| Document extraction | Native processing; no AI model required. OCR needs the OCR pack, not in the release packages yet | Same |
+| Document extraction | Native processing; no AI model required. Scanned pages and images need a vision model | Same |
 | Image/video generation | Not available | Not available |
 
 **Supported** means an execution path is available for compatible packages. **Experimental** means a path is available for evaluation but still has integration, quality or performance limitations. **Adapter available** means family-specific code exists and complete-package acceptance is pending.
@@ -112,7 +112,7 @@ ONNX image processing currently accepts compatible batch-one F32 RGB graphs with
 |:---|:---|
 | Text, Markdown, source code and CSV | Read text and create chunks |
 | Digital PDF | Extract embedded page text |
-| Scanned PDF and images | Needs the OCR pack (PDFium and Tesseract), which the release packages do not include yet. Until then it is reported as unavailable; an image can still be read by a GGUF vision model |
+| Scanned PDF and images | Read with a GGUF vision model, in any language the model knows. Pages with text are read from their text layer; only pages without text are rendered (PDFium, downloaded on first use) and sent to the model. Without a vision model they are reported as not read |
 | DOCX | Extract supported main-body text and tables |
 | Legacy DOC | Extract supported document text |
 
@@ -120,16 +120,16 @@ ONNX image processing currently accepts compatible batch-one F32 RGB graphs with
 
 | Selection | What the engine does | Result |
 |:---|:---|:---|
-| No model / native extraction | Reads document text, and uses native OCR where the OCR pack is installed | Text, chunks and extraction metadata |
+| No model / native extraction | Reads document text; scanned pages and images are reported as needing a vision model | Text, chunks and extraction metadata |
 | ONNX or GGUF text embedding model | Extracts text, then embeds the chunks | Text vectors, with optional extracted text |
 | ONNX image embedding model | Reads image pixels or renders PDF pages | Image/page vectors |
-| Compatible GGUF vision model | Reads image pixels (PDF pages need the OCR pack to be rendered) and follows the extraction instruction | Model-generated text |
+| Compatible GGUF vision model | Reads image pixels and the PDF pages without text, and follows the extraction instruction | Model-generated text |
 
-For example, with the OCR pack a scanned invoice can be read with native OCR, embedded for search, or interpreted by a vision model. These modes share the same source handling but return different outputs. Generative ingest supports a custom instruction and output-token limit; native-first mode can process extracted text when visual input is unnecessary.
+For example, a scanned invoice can be read by a vision model, and its text then embedded for search. These modes share the same source handling but return different outputs. Generative ingest supports a custom instruction and output-token limit; native-first mode can process extracted text when visual input is unnecessary.
 
 Native extraction does not require an AI model. OCR reads characters; vision models can interpret visual content. Neither promises complete layout reconstruction or perfect recognition. Responses include warnings and omissions where applicable.
 
-Digital PDF text uses `pdf-extract`; PDFium renders pages and Tesseract performs native OCR. DOCX tables are extracted as text, not a full spreadsheet schema. Text/code files are read as content: they are not executed.
+Digital PDF text uses `pdf-extract`; PDFium renders the pages without text for the vision model. There is no OCR engine. DOCX tables are extracted as text, not a full spreadsheet schema. Text/code files are read as content: they are not executed.
 
 Audio/video use the speech or chat APIs. General XLSX/PPTX parsing, DOCX embedded-image reasoning and persistent vector-index storage are not included.
 
@@ -189,5 +189,5 @@ The APIs provide **OpenAI-style compatibility with documented extensions**. Spee
 
 Recorded acceptance covers selected Windows packages for chat/media input, speech, document extraction and embeddings, and text generation on Linux (Tesla T4, [run](test/benchmarks/speed-vs-llamacpp.md#run-5)) and macOS (Apple M5, [run](test/benchmarks/release-and-platforms.md#mac-m5)). It does not certify every model export, language, platform or device. See [acceptance tests](test/media_regression/README.md) and [historical benchmarks](test/benchmarks/README.md) for scope and reproduction.
 
-Not currently included: the OCR pack in the release packages, general ONNX generative chat/vision, image/video generation, GGUF transcription through the STT endpoint, and a built-in persistent RAG index.
+Not currently included: a native OCR engine, general ONNX generative chat/vision, image/video generation, GGUF transcription through the STT endpoint, and a built-in persistent RAG index.
 

@@ -52,7 +52,7 @@ response: |
       "chunk_size": 512,
       "chunks_count": 1,
       "chunks": ["Hello Cluaiz!"],
-      "parts": [{"page": null, "method": "utf8", "text": "Hello Cluaiz!", "omissions": [], "warnings": [], "ocr_confidence": null}]
+      "parts": [{"page": null, "method": "utf8", "text": "Hello Cluaiz!", "omissions": [], "warnings": []}]
     }]
   }
 streaming: "No SSE or CEP task. One final JSON response, including ordered per-source results."
@@ -81,7 +81,7 @@ errors:
 
 `POST /v1/ingest`, direct JSON request and final JSON response. No CEP envelope or task polling.
 
-Reads documents/images and returns text chunks, selected-model output, or vectors. **Model selection is optional.** Without a model the engine uses native document/OCR providers. With a model it runs that installed package through the existing inference owner.
+Reads documents/images and returns text chunks, selected-model output, or vectors. **Model selection is optional.** Without a model the engine uses native document providers (text layers only; no OCR engine). With a model it runs that installed package through the existing inference owner.
 
 Send JSON and your configured `Authorization: Bearer <token>`. Paths refer to the engine computer; local sources still require filesystem authorization. HTTP(S) sources follow remote-source policy, and inline data must contain actual bytes.
 
@@ -94,13 +94,13 @@ flowchart TD
     R["POST /v1/ingest: source, optional model"] --> A["Bearer check, JSON validation, input byte ceiling"]
     A --> S["Shared source resolver: server-local file, allowed URL or data URI"]
     S --> M{"Selected processing mode"}
-    M -->|"No model / auto"| N["Native PDF, Word, text or OCR extraction"]
+    M -->|"No model / auto"| N["Native PDF text, Word or text extraction"]
     M -->|"Text embedding model"| N
     N --> C["UTF-8 byte chunks and extraction provenance"]
     C -->|"Embedding requested"| E["Existing EmbeddingExecutor: actual chunk vectors"]
     M -->|"ONNX image embedding graph"| P["Decode image or render PDF pages sequentially"]
     P --> E
-    M -->|"GGUF generative vision package"| V["Existing native model owner: page pixels or native-first text"]
+    M -->|"GGUF generative vision package"| V["Existing native model owner: pages without text as pixels, text pages as text"]
     C --> F["Ordered processed_sources, status, warnings and omissions"]
     E --> F
     V --> F
@@ -109,16 +109,16 @@ flowchart TD
 
 | Selection | Image | PDF | DOCX / DOC / text | Output |
 |:---|:---|:---|:---|:---|
-| Native extraction (no `model`, or `auto`) | Native OCR | Native text, automatic OCR where needed | Native extraction | Text/chunks and provenance |
-| Text embedding package, ONNX or GGUF | Native OCR, then text vectors | Native extraction/OCR, then chunk vectors | Native extraction, then chunk vectors | Text vectors; optional extracted text |
+| Native extraction (no `model`, or `auto`) | Not read: omission and `vision_needed` | Text layer per page; a page without text is an omission with `vision_needed` | Native extraction | Text/chunks and provenance |
+| Text embedding package, ONNX or GGUF | Not read (needs a vision model) | Text layer, then chunk vectors; pages without text are omissions | Native extraction, then chunk vectors | Text vectors; optional extracted text |
 | ONNX image embedding graph | Real image pixels | Each rendered page's real pixels | Unsupported by an image-only graph; choose a text embedding model | Image/page vectors |
-| Generative GGUF vision package | Model reads pixels | Model reads rendered page pixels in order | Native text extraction, then selected model processing | Model-generated text/chunks |
+| Generative GGUF vision package | Model reads pixels | Pages with text: their text layer; pages without text: rendered and read by the model; results in page order | Native text extraction, then selected model processing | Text layer and model-generated text/chunks |
 
 Audio/video understanding belongs to the dedicated STT/Chat APIs, not this document endpoint. UTF-8 CSV/Markdown/source code can be extracted as text; this does not provide spreadsheet formula evaluation, table reconstruction or code execution. XLSX/PPTX parsing and DOCX embedded-image reasoning are not implemented here.
 
-A folder named `ingest` is an installation category, not proof of an OCR decoder. FashionCLIP-style feature graphs return vectors. A generative vision package returns text. The engine does not turn an embedding vector into invented OCR text, and does not silently substitute a different model.
+A folder named `ingest` is an installation category, not proof that a model reads images. FashionCLIP-style feature graphs return vectors. A generative vision package returns text. The engine does not turn an embedding vector into invented text, and does not silently substitute a different model.
 
-> **Release packages:** The release packages do not include the OCR pack (PDFium and Tesseract) yet. Until they do, a scanned PDF and native OCR of an image are reported as unavailable, in both native extraction and text embedding. Digital PDF, DOCX, DOC and text need no pack. An image can still be read by a selected GGUF vision model (the model's own recognition, which can be wrong); a scanned PDF cannot, because its pages are rendered with PDFium.
+> **Scanned pages and images:** read by a selected GGUF vision model (the model's own recognition, which can be wrong), in any language the model knows. A scanned PDF page (no text layer) is rendered with PDFium, which the Engine downloads the first time it is needed (about 4 MB, pinned version and SHA-256, kept in `<CLUAIZ_HOME>/bin`), and read by the vision model. Without a vision model they are reported as not read (`partial`, with a `vision_needed` sentence that names the installed vision models or says none is installed). The Engine has no OCR engine.
 
 A client can expose two controls: **Model** (including Native extraction) and **Payload example** under Body Payload. Offer PDF, scanned PDF, image, DOCX, legacy DOC, text, batch, metadata, vectors, or model text. Replace the example source with your real file/URL/data URI.
 
@@ -145,9 +145,9 @@ Unknown fields are rejected. There is no per-request `keep_alive` or `device` fi
 
 | Choice | What the Engine does | What the client receives |
 |---|---|---|
-| Omit `model`, including for a scanned PDF | Native extraction; OCR requires the packaged native providers | Recognized text and page provenance; omissions when content is unavailable |
+| Omit `model`, including for a scanned PDF | Native text extraction, no model | Text and page provenance; pages without text and images are omissions with `vision_needed` |
 | Select a text embedding package | Extract native text, chunk it, then pass each chunk to that exact model | Real chunk vectors; text is also included unless disabled |
-| Select an ONNX image embedding package | Feed actual image pixels or rendered PDF pages to its image graph | Image/page vectors, not captions or OCR prose |
+| Select an ONNX image embedding package | Feed actual image pixels or rendered PDF pages to its image graph | Image/page vectors, not captions or text |
 | Select a GGUF vision package | Read images/rendered pages with its matching projector | Generated text; model output can be inaccurate and must be checked |
 | Set `use_vision:false` with a generative package | Extract text first, then ask the backbone to process that text | Model text without claiming that the model saw pixels |
 | Set `return_text:false` | Still parse and process the source | Counts, provenance and requested vectors, without raw text/chunks |
@@ -181,7 +181,7 @@ This complete data URI contains `Hello Cluaiz!`. A UTF-8/recognized text file pa
 }
 ```
 
-The native provider extracts page text. Image-only/empty PDF regions use packaged OCR where available; inspect page omissions/warnings.
+The native provider extracts page text. A page without a text layer is an omission (`page_has_no_text_layer_needs_vision_model`); inspect page omissions/warnings.
 
 ### 3. Scanned PDF: actual inline bytes
 
@@ -192,9 +192,9 @@ The native provider extracts page text. Image-only/empty PDF regions use package
 }
 ```
 
-Do not set a model merely to enable native OCR. Packaged renderer/OCR assets must be available; an unavailable provider is reported. The release packages do not include the OCR pack (PDFium and Tesseract) yet.
+Without a model the scanned pages come back as omissions with `vision_needed`; to read them, select a GGUF vision model (example 13).
 
-### 4. Receipt/image: native OCR
+### 4. Receipt/image without a model
 
 ```json
 {
@@ -203,7 +203,7 @@ Do not set a model merely to enable native OCR. Packaged renderer/OCR assets mus
 }
 ```
 
-An allowed image URL or actual `data:image/png;base64,...` is an alternative. Native OCR reads text; it does not describe image meaning. The release packages do not include the OCR pack (PDFium and Tesseract) yet.
+An allowed image URL or actual `data:image/png;base64,...` is an alternative. Without a model the image is decoded (to prove it is readable) and reported as `image_needs_vision_model` with `vision_needed`; select a GGUF vision model to read it.
 
 ### 5. Word DOCX: native, no model
 
@@ -214,7 +214,7 @@ An allowed image URL or actual `data:image/png;base64,...` is an alternative. Na
 }
 ```
 
-The OOXML provider reads supported main-body text/table content. It is not a screenshot interpretation model; headers/footers can appear as omissions. Pictures in the body are read with native OCR when it is installed; each picture is labelled `[Picture N: …]` in its place, with its text when some was found. XLSX/XLS (sheets as Markdown tables) and PPTX/PPT (slides with notes) are read the same way.
+The OOXML provider reads supported main-body text/table content. It is not a screenshot interpretation model; headers/footers can appear as omissions. Without a vision model each picture is labelled `[Picture N: …]` in its place as not read; a chat model that reads images gets the pictures themselves. XLSX/XLS (sheets as Markdown tables) and PPTX/PPT (slides with notes) are read the same way.
 
 ### 6. Legacy Word DOC: supported native text
 
@@ -272,7 +272,7 @@ Choose a compatible installed ONNX or GGUF **text** embedding package. The engin
 }
 ```
 
-Returns an image vector, not OCR prose. Graph inputs/signatures determine whether the selected ONNX package accepts pixels. No fake text vector or caption is generated.
+Returns an image vector, not text. Graph inputs/signatures determine whether the selected ONNX package accepts pixels. No fake text vector or caption is generated.
 
 ### 11. PDF page vectors with selected ONNX image graph
 
@@ -310,7 +310,7 @@ The selected GGUF and matching projector process actual pixels through the exist
 }
 ```
 
-This needs PDFium from the OCR pack to render the pages (see the note on release packages above). Each page is rendered and inferred separately. The output cap applies per page. Large documents can take time; page rendering and selected-model inference are distinct from native PDF text extraction.
+Pages that have a text layer are returned from it; only pages without text are rendered (PDFium, downloaded on first use) and inferred, one page at a time. The output cap applies per page. Large documents can take time; page rendering and selected-model inference are distinct from native PDF text extraction.
 
 ### 14. DOCX native read, then selected model processing
 
@@ -343,7 +343,7 @@ DOCX/DOC/text is first extracted natively. The selected model processes the extr
 }
 ```
 
-Native PDF/OCR provides text; the selected backbone reads that text. This mode does not require a visual projector for the model. It still requires native extraction/OCR to complete. In contrast, image/PDF pixel mode requires the matching projector: an installed backbone file alone cannot see images, and an incomplete package is rejected before loading its weights for a visual request.
+Native extraction provides text; the selected backbone reads that text. This mode does not require a visual projector for the model. It still requires native extraction to complete (a PDF with pages without text needs pixel mode). In contrast, image/PDF pixel mode requires the matching projector: an installed backbone file alone cannot see images, and an incomplete package is rejected before loading its weights for a visual request.
 
 ## Code snippets
 
@@ -422,7 +422,7 @@ A native response shape (text is illustrative):
 }
 ```
 
-Selected-model items add `model` and `processing` (`text_embeddings`, `image_embeddings`, or `model_text`). Vector items add `embeddings`: an ordered array of standard embedding responses with `data[].embedding`, `data[].index`, `usage`, `model`, and a `page` for rendered PDF/image work. Text vectors map to native chunks; page vectors map to physical PDF pages. Vector-only items have no OCR text.
+Selected-model items add `model` and `processing` (`text_embeddings`, `image_embeddings`, or `model_text`). Vector items add `embeddings`: an ordered array of standard embedding responses with `data[].embedding`, `data[].index`, `usage`, `model`, and a `page` for rendered PDF/image work. Text vectors map to native chunks; page vectors map to physical PDF pages. Vector-only items have no text.
 
 Model text appears in `parts[].text` and returned `chunks`. Page numbers are one-based for PDFs, otherwise null. Native recognition confidence is not a model confidence score; generated text has no invented numeric confidence.
 

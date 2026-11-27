@@ -81,7 +81,7 @@ Unknown/completed IDs return `-32004` `stream_not_found`; streams without enable
 ```mermaid
 flowchart TD
     A["Ingest source + optional installed model"] --> B["Shared source authorization and byte limits"]
-    B --> C["Native PDF / OCR / Word / text extraction"]
+    B --> C["Native PDF text / Word / text extraction"]
     B --> D["Image decode or one rendered PDF page"]
     C --> E["Native text/chunks without a model"]
     C --> F["Shared ONNX/GGUF text embedding executor"]
@@ -95,7 +95,7 @@ flowchart TD
     I --> J
 ```
 
-The implementation is in `handlers/ingest/` (`mod.rs`, `model.rs`) and the shared executor in `handlers/embeddings.rs`. Image vectors are not OCR prose. File type/MIME and actual model signatures determine processing; installation directory names do not establish runtime support. Request/response examples and error semantics are in the [ingest reference](../docs/api/inference/ingest.md).
+The implementation is in `handlers/ingest/` (`mod.rs`, `model.rs`) and the shared executor in `handlers/embeddings.rs`. Image vectors are not text. File type/MIME and actual model signatures determine processing; installation directory names do not establish runtime support. Request/response examples and error semantics are in the [ingest reference](../docs/api/inference/ingest.md).
 
 For live attachment stages on chat SSE, add `return_progress:true` and handle named `cluaiz.progress` events separately from answer deltas. Read the exact fields, attachment indices, limits and terminal ordering in the [chat processing reference](../docs/api/inference/chat_completions.md#attachment-processing-events). The default contract and ONNX task SSE remain separate.
 
@@ -154,7 +154,7 @@ Text vectors and image vectors:
 {"model":"<selected-image-embedding-id>","input":[{"type":"image","source":"data:image/png;base64,<actual-file-bytes>"}],"encoding_format":"float"}
 ```
 
-Vectors are at `data[].embedding`. A combined image/text graph can accept auxiliary `{type:"text",text:"..."}`; this does not make it a vision chat/OCR model. No automatic switch from failed GGUF chat to an ONNX graph is performed.
+Vectors are at `data[].embedding`. A combined image/text graph can accept auxiliary `{type:"text",text:"..."}`; this does not make it a vision chat model. No automatic switch from failed GGUF chat to an ONNX graph is performed.
 
 Native extraction preview:
 
@@ -170,21 +170,21 @@ Direct document chat:
 
 Use `GET /v1/models` and `system.plan` with `{"model":"<selected-id>"}` to select a model/task. Distinguish declared `inputs` from loaded `available_inputs`: an unverified lazy session does not mean a declared input must be disabled forever. Missing required helpers/encoder or an unsupported modality must show its actual reason. `supported_attachments` describes wired file processing, not a native PDF input capability.
 
-Handle JSON/SSE `error` even on a streaming HTTP200, HTTP401, HTTP403 with approval details, HTTP413 and decode/runtime failures. Retain the original attachment for retries/history; do not replace it with a filename in the model prompt. Native scanned-page OCR and video require their packaged provider assets. Model/backend quality and App end-to-end behavior require separate acceptance.
+Handle JSON/SSE `error` even on a streaming HTTP200, HTTP401, HTTP403 with approval details, HTTP413 and decode/runtime failures. Retain the original attachment for retries/history; do not replace it with a filename in the model prompt. Scanned PDF pages need a vision model (PDFium is downloaded on first use); video needs its packaged provider assets. Model/backend quality and App end-to-end behavior require separate acceptance.
 
 ONNX requests with missing known processor/tokenizer/pooling/external-data files return HTTP400 `invalid_model` with the required filenames before fetching/decoding attachment sources or loading a native session. Planner declarations remain separate from readiness and report the same missing-file inventory. A rejected incomplete package does not replace the current valid ONNX resident. Runtime does not guess another model's processor or automatically fetch helpers; explicit installation/completion uses the caller's selected repository.
 
 ## Native document API contract
 
-`/v1/ingest` accepts `source` as a locator or ordered array. It uses the same source authorization and extraction service as chat and CLI. Extraction supports UTF-8 text/code (optional BOM), BOM-marked UTF-16LE/BE, legacy Word DOC text, PDF page text and DOCX main-body XML. A packaged Tesseract/PDFium provider adds image OCR and scanned/mixed PDF text automatically, without a GGUF/ONNX model. Select an installed compatible model for text embeddings, ONNX image/page vectors or generative GGUF vision text. The existing model owners execute the request. `namespace`, unknown fields, non-semantic chunking and nonzero overlap are rejected. Prepared chunks can also be sent separately to `/v1/embeddings`.
+`/v1/ingest` accepts `source` as a locator or ordered array. It uses the same source authorization and extraction service as chat and CLI. Extraction supports UTF-8 text/code (optional BOM), BOM-marked UTF-16LE/BE, legacy Word DOC text, PDF page text and DOCX main-body XML. Without a model, a PDF page without a text layer and an image are omissions with a `vision_needed` sentence (installed vision models, or that none is installed); a selected GGUF vision model reads them, and for a PDF only the pages without text are rendered (PDFium, downloaded on first use into `<CLUAIZ_HOME>/bin`). Select an installed compatible model for text embeddings, ONNX image/page vectors or generative GGUF vision text. The existing model owners execute the request. `namespace`, unknown fields, non-semantic chunking and nonzero overlap are rejected. Prepared chunks can also be sent separately to `/v1/embeddings`.
 
-`processed_sources[]` includes `source`, `status` (`ingested`, `partial`, `error`), MIME, byte chunk size, chunk count, chunks and ordered `parts[]` (`page`, `method`, real `text`, `omissions`, `warnings`, optional `ocr_confidence`). OCR methods are `native_ocr`, `pdf_ocr`, or `pdf_text_and_ocr`; confidence is Tesseract's mean score (0–100), not a correctness guarantee. `return_text:false` removes chunks and part text but keeps recognition/provenance metadata. Overall `success` requires every source to be ingested; mixed/omitted content is `partial`. The direct HTTP route returns this final result without a task envelope. All native parse failures return HTTP 400; a nested model failure preserves the first source's model HTTP status where available. Direct inference executes as the owner using the shared canonicalizer; CEP principal roots are separate. Partial/per-file failures remain visible in `processed_sources`.
+`processed_sources[]` includes `source`, `status` (`ingested`, `partial`, `error`), MIME, byte chunk size, chunk count, chunks and ordered `parts[]` (`page`, `method`, real `text`, `omissions`, `warnings`). Methods include `pdf_text`, `image`, `docx_xml`, `office_markdown` and `model_text`. `return_text:false` removes chunks and part text but keeps recognition/provenance metadata. Overall `success` requires every source to be ingested; mixed/omitted content is `partial`. The direct HTTP route returns this final result without a task envelope. All native parse failures return HTTP 400; a nested model failure preserves the first source's model HTTP status where available. Direct inference executes as the owner using the shared canonicalizer; CEP principal roots are separate. Partial/per-file failures remain visible in `processed_sources`.
 
-PDF empty pages and image/form resources are attempted through packaged native OCR. Missing native assets, empty recognition or provider failures retain page omissions and actual warnings. Direct `file_url` chat uses the same extraction (including an image file used as an OCR document); `image_url` still sends real pixels to a selected vision model. DOCX headers/footers and embedded visuals remain omissions. Legacy DOC supplies recovered body/subdocument text without rendering graphics or evaluating fields/macros; incomplete text and parser recovery warnings are reported as omissions. Direct chat refuses still-partial extraction. OCR recognizes text, not image/diagram meaning. Password handling and full layout reconstruction remain unavailable. Source/output/ZIP text and raster workspace limits are checked; parser/native internal allocations, stack exhaustion and process isolation are not certified.
+A PDF page with a text layer is read from it (pictures on that page get a warning, not an omission). A page without a text layer goes to a model that reads images as a rendered page image (PDFium, downloaded on first use into `<CLUAIZ_HOME>/bin`, pinned version, size and SHA-256); a text-only model gets an error naming the scanned pages and the PDF is not sent. `image_url` sends real pixels to a selected vision model. DOCX headers/footers and embedded visuals remain omissions. Legacy DOC supplies recovered body/subdocument text without rendering graphics or evaluating fields/macros; incomplete text and parser recovery warnings are reported as omissions. Direct chat refuses still-partial extraction. Password handling and full layout reconstruction remain unavailable. Source/output/ZIP text and raster workspace limits are checked; parser/native internal allocations, stack exhaustion and process isolation are not certified.
 
 Text/code attachment extensions are not repeated in each Chat planner response. An available `text` input uses the shared extraction route; image/audio inputs retain their separate model capability checks. A filename suffix does not prove textual contents. Ordinary text must be UTF-8 or BOM-marked UTF-16; source-code text is passed to the model, not executed. This does not add Office spreadsheets/slides or typed ONNX chat attachment dispatch.
 
-Installers/embedded launchers must place the verified native package at `EnvironmentManager::media_dir()` (`bin/media`) under the selected Cluaiz home. See [provider ownership, package and shutdown contract](../engine/media/src/documents/README.md). Runtime performs no native asset/model download. A source-only build without that package retains text extraction and explicit OCR-unavailable results.
+The native video package goes at `EnvironmentManager::media_dir()` (`bin/media`) under the selected Cluaiz home. PDFium is not a package: the Engine downloads the pinned build into `bin` the first time a page must be rendered. See [provider ownership, download and shutdown contract](../engine/media/src/documents/README.md).
 
 ## Architecture
 ```mermaid
@@ -254,7 +254,7 @@ graph TD
 - **Processor:** `preprocessor_config.json` supplies resize, crop, resample, rescale and RGB normalization. Explicit legacy `CLIPFeatureExtractor` normalization uses its documented integer-to-unit conversion; other missing rescale contracts fail. Crop padding and unsupported interpolation/dtype/topologies fail. Rust interpolation is not asserted to match Pillow numerically.
 - **Output:** `{object:"list",data:[{object:"embedding",embedding:[...],index:0}],model,usage}` contains finite normalized vectors from the graph. Named image/text/sentence embedding outputs are preferred; otherwise a single unambiguous output is required. Unpooled text requires explicit `1_Pooling/config.json` for CLS or masked mean pooling. Other ranks/modes, empty/non-finite/zero vectors fail.
 - **Options:** `encoding_format` is omitted or `float`; other formats are rejected. `keep_alive` follows the same model/settings/generation lease policy as audio: zero unloads, null/-1 retain, positive values are minutes. Audio and embeddings serialize through one ONNX owner, replacing its resident task when necessary; chat has a separate owner.
-- **Limits:** request buffers and batch outputs are checked against configured byte limits. This is not a process-wide native allocation bound. The existing HTTP request-body ceiling applies. GGUF embeddings, OCR answers, general multimodal generation, UI wiring, all packages and GPU/platform coverage are outside this reference.
+- **Limits:** request buffers and batch outputs are checked against configured byte limits. This is not a process-wide native allocation bound. The existing HTTP request-body ceiling applies. GGUF embeddings, general multimodal generation, UI wiring, all packages and GPU/platform coverage are outside this reference.
 
 ```mermaid
 flowchart LR
@@ -271,7 +271,7 @@ flowchart LR
 - **Declarations:** a combined image/text graph can declare both inputs while its standalone embedding task requires an image. Auxiliary text does not imply a text-only route. Legacy category/task labels are separate from available task routes.
 - **Readiness:** `available_inputs` and `task_routes[].available` require a successful retained native task for the same package/assets/provider-settings snapshot and known helpers. Before the first request they are empty/false with `onnx_task_session_unverified`; valid task APIs still permit the first declared request to load/validate lazily. The App can offer that request from declarations and distinguish missing files from unverified readiness.
 - **Missing assets:** `onnx_helper_assets_missing` and `missing_assets` identify absent known tokenizer/processor/pooling/external files. Presence alone does not certify contents or arbitrary graph support. Zero-retention unload and relevant provider-setting changes invalidate old readiness. ONNX does not require a GGUF projector.
-- **Outputs/routes:** embedding vectors use `/v1/embeddings`; TTS text-to-audio and STT audio-to-text use `audio.run`. Image embeddings are not OCR/chat prose. Attachments come from common decoder descriptors and validated input availability.
+- **Outputs/routes:** embedding vectors use `/v1/embeddings`; TTS text-to-audio and STT audio-to-text use `audio.run`. Image embeddings are not chat text. Attachments come from common decoder descriptors and validated input availability.
 - **Hardware:** the captured provider policy is reported; selected EP, peak memory, speed and chat-context limits remain null when not proven. No llama layer/KV estimates are invented for ONNX. `model_size_gb` is package file bytes, not peak/resident allocation.
 - **Model list:** `GET /v1/models` adds ONNX `task_support` from the same runtime resolver and persisted signatures. Native GGUF retains its existing planning/pairing behavior.
 - **Separate remaining work:** generic load remains native-chat-oriented. `/api/pull` and CEP `models.download` download through the same resolver and installer as `cluaiz pull` (see [pull_model.md](../docs/api/models/pull_model.md)).
@@ -318,7 +318,7 @@ home or port 8000; the `#[ignore]` reason in each file names the other variables
 
 | Proves | Command |
 |---|---|
-| Document chat on a text GGUF, native OCR over HTTP (`CLUAIZ_NATIVE_MEDIA_TEST_PACKAGE` for the OCR part) | `cargo test -p cluaiz-api --release --no-default-features --test document_contract real_router_pdf_attachment_reaches_text_only_llama --offline -- --ignored --nocapture` |
+| Document chat on a text GGUF, scanned page reported as needing a vision model over HTTP | `cargo test -p cluaiz-api --release --no-default-features --test document_contract real_router_pdf_attachment_reaches_text_only_llama --offline -- --ignored --nocapture` |
 | Sampled-video chat and planner | `cargo test -p cluaiz-api --test video_contract real_video_api_json_sse_and_planner_reach_selected_vision_model --release --no-default-features --offline -- --ignored --nocapture` |
 | ONNX speech and transcription | `cargo test -p cluaiz-api --release --no-default-features --test media_contract real_router_onnx_audio_selected_model_and_retention --offline -- --ignored --nocapture` |
 | ONNX text and image embeddings | `cargo test -p cluaiz-api --release --no-default-features --test embedding_contract --offline -- --ignored --nocapture` |
