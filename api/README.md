@@ -11,13 +11,13 @@ providers in [`src/providers/`](src/providers/README.md).
 
 | Topic | Section |
 |---|---|
-| Which route does what | [Route map](#route-map-srcroutesrs-2026-11-21) |
+| Which route does what | [Route map](#route-map-srcroutesrs) |
 | How a chat model is planned (`system.plan`) | [Chat planner reference](#chat-planner-reference) |
 | Skipping thinking while it runs | [Live reasoning control](#live-reasoning-control) |
 | Images, audio, video and documents in a request | [Attachment client examples](#attachment-client-examples), [Native image/audio chat contract](#native-imageaudio-chat-contract), [Native document API contract](#native-document-api-contract) |
 | Speech and embeddings with ONNX models | [ONNX audio API reference](#onnx-audio-api-reference), [ONNX embedding API reference](#onnx-embedding-api-reference) |
 | What each model can do | [Model capability reporting](#model-capability-reporting), [ONNX task capability and readiness reference](#onnx-task-capability-and-readiness-reference) |
-| Proof runs with real models | the "Executed ... acceptance" sections |
+| Proof runs with real models | [Tests](#tests); results are recorded in [`test/benchmarks/`](../test/benchmarks/README.md) |
 | Files, tests, decisions, open items | [Source files](#source-files), [Tests](#tests), [Decisions](#decisions), [Pending](#pending) |
 
 An explicit local OS transport can serve the same router with
@@ -27,7 +27,7 @@ documented in [`src/native/README.md`](src/native/README.md). Plain `serve` reta
 the existing HTTP mode. Native transport is host-level connectivity, not a
 per-extension authorization boundary.
 
-## Route map (`src/routes.rs`, 2026-11-21)
+## Route map (`src/routes.rs`)
 
 ![HTTP routes: chat, models, embeddings and audio routes, and /v1/cep and /mcp for every Engine-specific method, behind the bearer-token check; /health stays open](../docs/assets/api/route-map.png)
 
@@ -36,7 +36,7 @@ models, embeddings, audio), Ollama's (`/api/chat`, `/api/generate`, `/api/embed`
 `/api/show`, `/api/pull`, `DELETE /api/delete`, `/api/version`), `/health` and `/v1/ingest`. The Ollama chat, generate and embed routes
 (`handlers/ollama.rs`) turn Ollama's request into the OpenAI request the chat and embeddings handlers
 take, and their answer back into Ollama's shape; the official Ollama Python library worked against them
-in run 36.
+(run 36, recorded in [`test/benchmarks/api-compatibility.md`](../test/benchmarks/api-compatibility.md)).
 
 
 ## Chat planner reference
@@ -174,49 +174,6 @@ Handle JSON/SSE `error` even on a streaming HTTP200, HTTP401, HTTP403 with appro
 
 ONNX requests with missing known processor/tokenizer/pooling/external-data files return HTTP400 `invalid_model` with the required filenames before fetching/decoding attachment sources or loading a native session. Planner declarations remain separate from readiness and report the same missing-file inventory. A rejected incomplete package does not replace the current valid ONNX resident. Runtime does not guess another model's processor or automatically fetch helpers; explicit installation/completion uses the caller's selected repository.
 
-## Executed main-executable acceptance, 2026-10-15
-
-The opt-in `artifact_acceptance` target starts an actual newly linked CLI executable in a fresh home on an ephemeral loopback port, stages the complete package through the existing builder, and sends authenticated HTTP/SSE requests. It does not substitute an in-process test router. Fixture setup and the reproducible environment contract are in [`test/media_regression/README.md`](../test/media_regression/README.md).
-
-```text
-cargo test -p cluaiz-api --test artifact_acceptance --release --no-default-features --offline -- --ignored --nocapture
-
-FINAL EXECUTABLE: isolated daemon owns its token; user token unchanged; unauthenticated request -> 401
-FINAL EXECUTABLE INGEST: text PDF -> actual code 741923
-FINAL EXECUTABLE INGEST: scanned PDF -> actual code 741923
-FINAL EXECUTABLE INGEST: DOCX -> actual body/table text
-FINAL EXECUTABLE NEGATIVE: corrupt PDF -> 400; unauthorized agent path -> 403; oversized JSON -> 413
-FINAL EXECUTABLE IMAGE JSON: "Red"
-FINAL EXECUTABLE AUDIO SSE: "i had that curiosity beside me at this moment"
-FINAL EXECUTABLE VIDEO JSON: "Red, Blue"
-FINAL EXECUTABLE SCANNED DOCUMENT SSE: "741923"; chat model released
-FINAL EXECUTABLE ONNX TTS: 24064 real samples at 22050 Hz
-FINAL EXECUTABLE ONNX STT: "I had that curiosity beside me at this moment."
-FINAL EXECUTABLE ONNX TEXT: 384 finite normalized dimensions
-FINAL EXECUTABLE ONNX IMAGE: 512 finite normalized dimensions
-FINAL EXECUTABLE MISSING HELPERS: HTTP400 with required filenames before source decoding/native load
-FINAL EXECUTABLE: test-owned daemon terminated; user session-token bytes unchanged
-test real_final_executable_attachments_and_onnx_apis ... ok
-test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 146.46s
-```
-
-This Windows x86_64 CPU run selected Gemma4 E4B/projector, Piper, Whisper, the prepared MiniLM package and the installed FashionCLIP directory after adding its missing genuine processor config. The existing helper-completion owner fetched that config from the explicitly confirmed `patrickjohncyh/fashion-clip` repository; primary weights were not downloaded or changed. Test settings use two threads, context4096, a 1GiB host reserve and explicit small media/workspace ceilings; production preflight guards stay active. The duration covers the whole test, not request latency. An independent incomplete graph package returned HTTP400 `invalid_model` with required filenames. The authenticated router fixture additionally checked that rejecting it preserves the previous valid resident and that planner readiness agrees with helper presence. These results do not establish completeness of every installed/downloaded model.
-
-The harness terminates only its own daemon; this is not a graceful-shutdown proof. App integration/history/rendering, GPU inference, other-target model execution, a clean-machine installer and hosted release workflow remain separate acceptance. The release package workflow is locally checked but has not been dispatched by this test.
-
-## Executed sampled-video acceptance, 2026-10-15
-
-`cargo test -p cluaiz-api --test video_contract real_video_api_json_sse_and_planner_reach_selected_vision_model --release --no-default-features --offline -- --ignored --nocapture`, with an isolated home, actual staged decoder and external read-only Gemma 4 E4B Q4_K_M/projector, returned:
-
-```text
-REAL VIDEO API: stream=false; selected native model answered "Red, Blue"; red before blue
-REAL VIDEO API: stream=true; selected native model answered "Red, Blue"; red before blue
-REAL VIDEO PLANNER: loadable package + selected vision pairing advertise mp4; intrinsic input remains image; corrupt source returns error
-test real_video_api_json_sse_and_planner_reach_selected_vision_model ... ok
-```
-
-This Windows CPU run used two threads, context 4096, a 16 MiB decoded ceiling, 512 MiB projector workspace estimate and explicit 1 GiB host reserve in test-only settings. The complete test took 84.34 s; this is not a general request latency claim. An earlier run with larger defaults was refused by the live RAM preflight; guards were preserved. Shared-media acceptance separately exercised actual CFR/VFR timestamps, RGB rows, AAC-to-PCM, silent/corrupt/over-limit inputs, cancellation and concurrent decoder calls. Windows/Linux native ABI and lazy-package tests are separate from Windows model execution. No App UI, arbitrary video codec/model, audiovisual synchronization or other-target installer acceptance is established.
-
 ## Native document API contract
 
 `/v1/ingest` accepts `source` as a locator or ordered array. It uses the same source authorization and extraction service as chat and CLI. Extraction supports UTF-8 text/code (optional BOM), BOM-marked UTF-16LE/BE, legacy Word DOC text, PDF page text and DOCX main-body XML. A packaged Tesseract/PDFium provider adds image OCR and scanned/mixed PDF text automatically, without a GGUF/ONNX model. Select an installed compatible model for text embeddings, ONNX image/page vectors or generative GGUF vision text. The existing model owners execute the request. `namespace`, unknown fields, non-semantic chunking and nonzero overlap are rejected. Prepared chunks can also be sent separately to `/v1/embeddings`.
@@ -229,56 +186,7 @@ Text/code attachment extensions are not repeated in each Chat planner response. 
 
 Installers/embedded launchers must place the verified native package at `EnvironmentManager::media_dir()` (`bin/media`) under the selected Cluaiz home. See [provider ownership, package and shutdown contract](../engine/media/src/documents/README.md). Runtime performs no native asset/model download. A source-only build without that package retains text extraction and explicit OCR-unavailable results.
 
-## Executed document acceptance, 2026-10-14
-
-`cargo test -p cluaiz-media --release --offline` returned 21 passing unit tests and 3 passing document tests. Fixtures contain actual PDF objects and OOXML ZIP/XML, including content/order, Unicode/table/entity parsing, corrupt inputs, expansion limits, mixed-page omissions and request-source cleanup.
-
-`cargo test -p cluaiz-api --release --no-default-features --test document_contract real_router_pdf_attachment_reaches_text_only_llama --offline -- --ignored --nocapture`, with an isolated home and externally supplied read-only Llama3.2 3B Q4_K_M, produced:
-
-```text
-REAL DOCUMENT CHAT: selected text-only GGUF answered code 741923; stream=false; no projector in package
-REAL DOCUMENT CHAT: selected text-only GGUF answered code 826417; stream=true; no projector in package
-REAL DOCUMENT CHAT: partial extraction rejected; planner advertises PDF as extracted text, not native PDF model input
-test real_router_pdf_attachment_reaches_text_only_llama ... ok
-```
-
-The regular document HTTP fixture passed with token/permission rejection, real PDF/DOCX content, generic UTF-8 code files, partial-page results and invalid options. The actual ONNX embedding fixture also executed document ingestion -> extracted PDF/DOCX chunks -> `/v1/embeddings`, returning 384 finite normalized dimensions with the selected MiniLM graph; its existing image checks returned 512 dimensions. These tests use authenticated loopback HTTP on Windows CPU. They do not establish App UI acceptance, all-model compatibility, scanned OCR, video, other platforms, large-document context fitting or a parser/process memory bound.
-
 ## Architecture
-
-### Executed native OCR acceptance, 2026-10-15
-
-The Windows x86_64 CPU fixture package contains verified PDFium, Tesseract 5.2.0/Leptonica, English/Hindi traineddata and upstream license notices. It was staged with `cargo run -p cluaiz-builder --bin cluaiz-builder --release --offline -- media-assets --source <package> --output <new-directory>`; output: `Native media package staged: 28 verified files`.
-
-`cargo test -p cluaiz-media --release --offline -- --include-ignored --nocapture`, with `CLUAIZ_NATIVE_MEDIA_TEST_PACKAGE` and `CLUAIZ_OCR_HINDI_IMAGE`, passed 21 unit, 3 document and 2 native/manifest tests. Actual output included:
-
-```text
-REAL NATIVE OCR: image/png -> code 741923; confidence Some(96)
-REAL NATIVE OCR: image/jpeg -> code 741923; confidence Some(96)
-REAL NATIVE LAYERED PDF: embedded text preserved; whitespace layer replaced without byte-accounting underflow
-REAL NATIVE OCR HINDI: नमस्ते भारत
-REAL NATIVE LIFETIME: concurrent recognition, explicit unload, reload and second unload passed
-```
-
-The opt-in `document_contract` selected-GGUF test, with that package installed in a fresh isolated home, used raster-only PDFs (no embedded code/text layer) through authenticated loopback HTTP. The same command shown above for 2026-10-14 now also reported:
-
-```text
-REAL NATIVE OCR HTTP: scanned PDF and PNG -> ingest API -> actual code 741923
-REAL DOCUMENT CHAT: selected text-only GGUF answered code 741923; stream=false; scanned=true; no projector in package
-REAL NATIVE OCR HTTP: scanned PDF and PNG -> ingest API -> actual code 826417
-REAL DOCUMENT CHAT: selected text-only GGUF answered code 826417; stream=true; scanned=true; no projector in package
-test real_router_pdf_attachment_reaches_text_only_llama ... ok
-```
-
-`cargo test -p cluaiz-api --release --no-default-features --test embedding_contract --offline -- --ignored --nocapture`, with isolated actual ONNX packages and native media assets, reported:
-
-```text
-REAL NATIVE OCR ONNX: raster-only PDF -> ingest -> selected 384-dimension text graph
-test real_router_selected_onnx_image_and_text_embeddings ... ok
-```
-
-This is engine/API acceptance on one Windows CPU host. App attachment UI and installer deployment, Linux/macOS/ARM, a clean Windows machine without existing MSVC runtimes, direct daemon Ctrl+C acceptance, native mid-recognition disconnect cancellation, general neural document vision, video and full native/parser memory bounds remain unverified or pending. The native package is optional and must be supplied by the launcher/installer; changing source or rebuilding the executable alone does not install it into a user's Cluaiz environment.
-
 ```mermaid
 graph TD
     Client["Web UI / Tauri Desktop / CLI"] -->|HTTP / SSE| Router["Axum Router"]
@@ -337,21 +245,6 @@ graph TD
 - **Lifecycle:** `keep_alive: 0` unloads the audio session; null/-1 retain it; positive minutes expire only the still-matching model/settings/request generation. Audio retention never calls the chat unload method.
 - **Scope:** cached STT graphs, long-recording chunking, all TTS-family quality, cancellation inside long native calls, GPU/Linux and process memory limits are not implied by this audio API wiring. Image embeddings have the separate contract below.
 
-## Executed ONNX audio acceptance
-
-- **Command:** `cargo test -p cluaiz-api --release --no-default-features --test media_contract real_router_onnx_audio_selected_model_and_retention --offline -- --ignored --nocapture` executed an authenticated loopback HTTP fixture on Windows CPU with read-only installed Piper Amy medium and Whisper large-v3-turbo INT8 packages. The expanded fixture returned `1 passed; 0 failed` in 60.43 seconds. This is test duration, not a latency benchmark.
-- **Results:** execute/speech routes returned WAV data from the selected Piper model; decoding confirmed non-empty finite PCM with non-zero amplitude. Execute SSE and the transcription JSON alias both returned `I had that curiosity beside me at this moment.` The JSON call used language auto-detection. Reference audio/ground truth comes from the [official PyTorch speech-recognition example](https://docs.pytorch.org/audio/2.5.0/tutorials/speech_recognition_pipeline_tutorial.html).
-- **Checks:** missing auth/model, wrong task, unsupported option/malformed alias input, malformed audio and forbidden agent path were rejected. The oversized processor-window request failed and released its audio owner. Retained/replaced/zero-retention session behavior was asserted; a separate owner unit test rejects stale expiry generations.
-- **Fixture policy:** the source was fetched once through the shared bounded resolver, then its actual WAV bytes were reused as base64 in both routes. A test-only external-download timeout was supplied independently of production settings. An earlier real URL route passed; an expanded external URL run also encountered an explicit source timeout before inference. Source availability is separate from native graph acceptance.
-- **Limits:** WAV structure/amplitude is not a listening or pronunciation score. This fixture does not certify other families/languages, speech translation, cached graphs, positive GPU inference, Linux/macOS, memory peaks, simultaneous resident chat/audio or UI behavior. Scoped unit tests, compilation and lint are separate from full launch acceptance.
-
-## Executed native acceptance
-
-- **Test:** `api/tests/media_contract.rs` runs an authenticated loopback HTTP server on an OS-selected port with temporary config/registry/workspace and externally supplied read-only model assets. Windows CPU acceptance used the installed Gemma E4B Q4_K_M and BF16 projector. The real test passed in 104.92 seconds, alongside the continuation-buffer test: `2 passed; 0 failed`. A separate regular run passed the two transport/continuation tests and skipped the opt-in real-native test.
-- **Observed behavior:** PNG input produced `Red`; audio URL input produced the reference speech transcript through SSE; one image plus inline WAV request answered both tasks. Native continuation retained the image. Assertions covered lazy readiness in planner fields, PNG/WAV advertisement with PDF/video excluded, missing auth/model errors, selected-model mismatch, context-budget errors in JSON/SSE, Strict read approval/retry, per-request cancellation followed by fresh chat, legacy text dispatch and paired unload.
-- **Fixture resources:** the small native fixtures used 512 MiB configured workspace and 16 MiB decoded ceiling. Production defaults were retained. An earlier run with the default estimate explicitly refused 2,333,729,600 requested host bytes against a 2,099,379,814-byte live budget. This verifies refusal behavior; it does not certify default settings for every current machine workload or a native/process peak bound.
-- **Limits:** no App UI/browser interaction, GPU/Linux/macOS acceptance or installed plugin/MCP execution was performed by this suite. Its continuation uses supplied tool-result instructions. Native audio remains experimental upstream. Deep/mid-encode cancellation latency, full history fitting, native allocation/driver retry and the remaining ONNX/document/video phases remain unverified or pending. Dependency-inclusive lint still fails on the existing native template pointer-contract errors; whole-workspace/launch readiness is not claimed.
-
 ## ONNX embedding API reference
 
 - **Route:** `POST /v1/embeddings` executes the exact selected installed ONNX package, or the configured embedding slot when no explicit model is supplied. Missing selection/registration, undeclared embedding task and unsupported backend return errors. It does not fall back to a synthetic vector or another model.
@@ -371,15 +264,6 @@ flowchart LR
     D --> E["Real processor / tokenizer / ONNX graph"]
     E --> F["Explicit pooling and finite normalized vectors"]
 ```
-
-## Executed image/text embedding acceptance
-
-- **Command:** `cargo test -p cluaiz-api --release --no-default-features --test embedding_contract --offline -- --ignored --nocapture` passed the real authenticated loopback HTTP fixture on Windows CPU: `1 passed; 0 failed` in 6.69 seconds. The selected official MiniLM AVX2 uint8 export produced 384-dimensional finite normalized text vectors; identical text agreed and changed text differed. The installed image graph, using a temporary genuine Fashion-CLIP processor, produced 512-dimensional vectors with different red/blue results. These are behavioral assertions, not semantic-quality or latency benchmarks.
-- **Fixture assets:** image weights/tokenizer were read-only hard links in an isolated temporary package; missing processor config came from the [model maintainer](https://huggingface.co/patrickjohncyh/fashion-clip/blob/main/preprocessor_config.json). Text weights/tokenizer/pooling config came from the [official sentence-transformers package](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/tree/main). Installed model folders and real-user settings were not edited. The fixture registers both packages as embedding fixtures; it does not certify automatic installed-package discovery or planner readiness.
-- **Rejections/lifecycle:** actual assertions cover missing auth/model, empty batch, unsupported output encoding, corrupt image, forbidden local agent path, text/image graph mismatch, model/task replacement and zero-retention unload. The existing stale-generation unit test remains separate from real positive-minute expiry acceptance.
-- **Driver:** `cargo test -p onnx-engine --release --test media_integration --offline -- --ignored --nocapture` returned `1 passed; 0 failed` in 2.85 seconds and exercised the previously unsupported image `EmbeddingDriver` method. Actual graph metadata identified dynamic `num_channels`, `height`, `width` dimensions rather than imposing a universal shape.
-- **Audio regression:** the existing real Piper/Whisper HTTP suite passed again after the shared task-owner change: `1 passed; 0 failed` in 57.21 seconds. Unit suites returned API 14/runtime 2/ONNX 8 passing tests. Full workspace compilation and scoped lint exited successfully, with existing warnings still present.
-- **Remaining:** all-package capability/planner readiness, downloaded helper completeness, exact Pillow/numerical parity, semantic quality, other embedding topologies, GGUF embedding API execution, GPU/Linux/macOS, process memory peaks and App integration are not established by these fixtures.
 
 ## ONNX task capability and readiness reference
 
@@ -420,15 +304,30 @@ native package) and unit tests in `src/` (providers 49, chat handlers 20, CEP me
 | File | Tests (ignored) |
 |---|---|
 | `cep_contract.rs`, `cep_docs.rs`, `cep_system_contract.rs`, `cep_fs_contract.rs`, `cep_exec_contract.rs`, `cep_models_contract.rs`, `cep_tools_contract.rs`, `cep_audio_contract.rs` | 2, 1, 3, 2, 2, 1, 1, 1 |
-| `native_contract.rs` | 5 |
+| `native_contract.rs`, `ollama_delete_contract.rs` | 5, 1 |
 | `embedding_contract.rs`, `tts_hardening.rs` | 2 (2), 1 (1) |
 | `media_contract.rs`, `media_resource_contract.rs`, `video_contract.rs`, `document_contract.rs`, `processing_contract.rs` | 4 (2), 2, 2 (1), 2 (1), 1 |
 | `ingest_http_contract.rs`, `ingest_models.rs` | 2, 1 (1) |
 | `reasoning_contract.rs`, `mtp_contract.rs` | 3 (1), 1 (1) |
 
-`api` links the runtime and both backends, so these tests build llama.cpp and ONNX Runtime; they were not
-run on 2026-11-21. The dated "Executed ... acceptance" sections above are from 2026-10-14 and 2026-10-15.
-Route behaviour is also exercised by every cloud run (`test/benchmarks/`).
+`api` links the runtime and both backends, so these tests build llama.cpp and ONNX Runtime. The test names
+and counts above come from the files; they were not rerun for this README.
+
+How to rerun the tests that use a real model (each needs an isolated `CLUAIZ_HOME`, never the owner's
+home or port 8000; the `#[ignore]` reason in each file names the other variables it needs):
+
+| Proves | Command |
+|---|---|
+| Document chat on a text GGUF, native OCR over HTTP (`CLUAIZ_NATIVE_MEDIA_TEST_PACKAGE` for the OCR part) | `cargo test -p cluaiz-api --release --no-default-features --test document_contract real_router_pdf_attachment_reaches_text_only_llama --offline -- --ignored --nocapture` |
+| Sampled-video chat and planner | `cargo test -p cluaiz-api --test video_contract real_video_api_json_sse_and_planner_reach_selected_vision_model --release --no-default-features --offline -- --ignored --nocapture` |
+| ONNX speech and transcription | `cargo test -p cluaiz-api --release --no-default-features --test media_contract real_router_onnx_audio_selected_model_and_retention --offline -- --ignored --nocapture` |
+| ONNX text and image embeddings | `cargo test -p cluaiz-api --release --no-default-features --test embedding_contract --offline -- --ignored --nocapture` |
+| The real executable end to end (ingest, image, audio, video, ONNX) | `artifact_acceptance` target, see [`test/media_regression/README.md`](../test/media_regression/README.md) |
+
+Results of these runs are not kept here. Recorded runs, with numbers and raw logs, are in
+[`test/benchmarks/`](../test/benchmarks/README.md) and `test/cloud/runs/`; the October 2026 acceptance
+transcripts that used to be in this file are in the git history of `api/README.md`. Route behaviour is also
+exercised by every cloud run.
 
 ## Decisions
 | Decision | Why | Alternative not taken |
@@ -444,5 +343,4 @@ Route behaviour is also exercised by every cloud run (`test/benchmarks/`).
 | `n` > 1 and `logprobs` are not supported on an installed model; since 2026-11-22 they are refused with HTTP 400 naming the field instead of being ignored (`stop` and `max_completion_tokens` work since run 34, `logit_bias` on GGUF models since 2026-11-23) | OpenAI clients that need them get an error, not the result they asked for | pass them to llama.cpp (see `handlers/chat/README.md`, Pending) |
 | Ollama's `/api/create`, `/api/copy` and `/api/push` are not there (`/api/delete` is since 2026-11-26; `/api/copy` needs a registry alias, and today every installed model owns its folder, so a copy that shares it would lose its files when the other is deleted); `/api/show` sends no tensor list (`verbose`) and no `capabilities` | tools that manage models through Ollama's API get 404; clients that read `capabilities` see none | `/api/create` and `/api/push` need a Modelfile and a registry; tensor type names need the ggml type table; capabilities need a mapping from the package capabilities |
 | ONNX models show `parameter_size: Unknown` in `/api/tags`, `/api/show`, `/api/ps` (GGUF models get the counted size since 2026-11-22) | Ollama clients show no size class for speech models | a parameter count from the ONNX initializers |
-| `api` tests not in CI and not rerun since the October acceptance sections | the dated results may not hold for the current code | a CI job with the CPU backend, or a recorded run |
-| This README mixes reference text and dated acceptance logs | a reader cannot tell current behaviour from history | move the dated logs to run folders in `test/cloud/runs/` |
+| `api` tests with a real model are not in CI and have no recorded run for the current code | a regression in these routes would go unseen | a CI job with the CPU backend, or a run recorded under `test/benchmarks/` |
