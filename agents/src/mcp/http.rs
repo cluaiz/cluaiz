@@ -25,6 +25,8 @@ const META_INFO: &str = "io.modelcontextprotocol/clientInfo";
 const META_CAPABILITIES: &str = "io.modelcontextprotocol/clientCapabilities";
 /// JSON-RPC code of `HeaderMismatch` (spec 2026-07-28)
 const HEADER_MISMATCH: i64 = -32020;
+/// Largest integer JSON can carry exactly: 2^53 - 1
+const MAX_SAFE_INTEGER: i128 = 9_007_199_254_740_991;
 const PARAM_KEY: &str = "x-mcp-header";
 /// Most `tools/list` pages read to learn the `x-mcp-header` annotations before a call
 const MAX_LIST_PAGES: usize = 50;
@@ -322,27 +324,46 @@ impl HttpSession {
     }
 
     /// The `Mcp-Param-*` headers of one `tools/call` body
-    fn param_headers(&self, body: &Value) -> Vec<(String, String)> {
-        let Some(name) = body["params"].get("name").and_then(Value::as_str) else { return Vec::new() };
+    fn param_headers(&self, body: &Value) -> Result<Vec<(String, String)>> {
+        let Some(name) = body["params"].get("name").and_then(Value::as_str) else { return Ok(Vec::new()) };
         let map = self.tool_params.lock();
-        let Some(params) = map.as_ref().ok().and_then(|m| m.get(name)) else { return Vec::new() };
-        params
-            .iter()
-            .filter_map(|param| {
-                let mut node = body["params"].get("arguments")?;
-                for key in &param.path {
-                    node = node.get(key)?;
+        let Some(params) = map.as_ref().ok().and_then(|m| m.get(name)) else { return Ok(Vec::new()) };
+        let mut headers = Vec::new();
+        for param in params {
+            let Some(mut node) = body["params"].get("arguments") else { break };
+            let mut found = true;
+            for key in &param.path {
+                match node.get(key) {
+                    Some(next) => node = next,
+                    None => {
+                        found = false;
+                        break;
+                    }
                 }
-                // "Parameter value is null: Client MUST omit the header"
-                let text = match node {
-                    Value::String(s) => s.clone(),
-                    Value::Bool(b) => b.to_string(),
-                    Value::Number(n) => n.as_i64().map(|i| i.to_string()).or_else(|| n.as_u64().map(|u| u.to_string()))?,
-                    _ => return None,
-                };
-                Some((format!("mcp-param-{}", param.name), header_value(&text)))
-            })
-            .collect()
+            }
+            if !found {
+                continue;
+            }
+            // "Parameter value is null: Client MUST omit the header"
+            let text = match node {
+                Value::String(s) => s.clone(),
+                Value::Bool(b) => b.to_string(),
+                Value::Number(n) => {
+                    let Some(i) = n.as_i64().map(i128::from).or_else(|| n.as_u64().map(i128::from)) else { continue };
+                    // Spec 2026-07-28: integers in a header "MUST be within the safe range" (-2^53+1 to 2^53-1)
+                    if i.abs() > MAX_SAFE_INTEGER {
+                        return Err(anyhow!(
+                            "MCP tool '{}': integer {} for parameter '{}' is outside the JSON safe range (+-{}); not sent in the Mcp-Param-{} header",
+                            name, i, param.path.join("."), MAX_SAFE_INTEGER, param.name
+                        ));
+                    }
+                    i.to_string()
+                }
+                _ => continue,
+            };
+            headers.push((format!("mcp-param-{}", param.name), header_value(&text)));
+        }
+        Ok(headers)
     }
 
     async fn send(self: &Arc<Self>, method: &str, params: Value, limit: Duration) -> Result<Value> {
@@ -415,7 +436,7 @@ impl HttpSession {
                     request = request.header("mcp-name", header_value(name));
                 }
                 if method == "tools/call" {
-                    for (key, value) in self.param_headers(body) {
+                    for (key, value) in self.param_headers(body)? {
                         request = request.header(key, value);
                     }
                 }

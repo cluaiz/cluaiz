@@ -418,3 +418,20 @@ async fn header_mismatch_relists_tools_and_retries_the_call_once() {
     McpClient::stop_server(&dir).await;
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn integer_outside_the_safe_range_is_refused_in_an_mcp_param_header() {
+    let _serial = SERIAL.lock().await;
+    let (address, log) = serve().await;
+    let dir = package(&format!("{address}/params"), json!({}));
+    let args = json!({"region":"us-west1","count":9007199254740992u64,"flag":true,"text":"x","opts":{"level":3}});
+    let error = McpClient::call_tool(&dir, "sql", args).await.unwrap_err().to_string();
+    assert!(error.contains("safe range") && error.contains("count"), "{error}");
+    assert!(!log.lock().unwrap().iter().any(|s| s.body["method"] == "tools/call"), "the call must not be sent");
+    // The largest safe integer is still sent
+    let args = json!({"region":"us-west1","count":9007199254740991u64,"flag":true,"text":"x","opts":{"level":3}});
+    let error = McpClient::call_tool(&dir, "sql", args).await.map(|_| String::new()).unwrap_or_else(|e| e.to_string());
+    assert!(!error.contains("safe range"), "{error}");
+    McpClient::stop_server(&dir).await;
+    let _ = std::fs::remove_dir_all(&dir);
+}
