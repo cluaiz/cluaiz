@@ -11,6 +11,9 @@ use tokio::net::TcpListener;
 /// at the same time would stop each other's session, so each test takes this lock first.
 static SERIAL: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
+/// How many `tools/list` the `/drift` server has answered
+static DRIFT_LISTS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
 #[derive(Clone, Debug)]
 struct Seen {
     method: String,
@@ -49,7 +52,7 @@ fn answer(seen: &Seen) -> Reply {
         return reply(200, "text/plain", String::new());
     }
     // A 2026-07-28 server: no initialize, no session; version and client data in every request
-    if seen.path == "/modern" || seen.path == "/params" {
+    if seen.path == "/modern" || seen.path == "/params" || seen.path == "/drift" {
         return modern(seen, method, id);
     }
     // A dual-era server that lists only legacy versions at discover
@@ -130,11 +133,20 @@ fn modern(seen: &Seen, method: &str, id: Value) -> Reply {
                 "a":{"type":"string","x-mcp-header":"Same"},"b":{"type":"string","x-mcp-header":"same"}}}},
             {"name":"num","inputSchema":{"type":"object","properties":{"n":{"type":"number","x-mcp-header":"N"}}}}],
             "ttlMs":1000,"cacheScope":"private"}),
+        "tools/list" if seen.path == "/drift" => {
+            DRIFT_LISTS.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            json!({"resultType":"complete","tools":[{"name":"echo","inputSchema":{"type":"object"}}],"ttlMs":1000,"cacheScope":"private"})
+        }
         "tools/list" => json!({"resultType":"complete","tools":[{"name":"echo","description":"echoes","inputSchema":{"type":"object"}}],
             "ttlMs":1000,"cacheScope":"private"}),
         "tools/call" => {
             if seen.header("mcp-name") != seen.body["params"]["name"].as_str() {
                 return reply(400, "application/json", json!({"jsonrpc":"2.0","id":id,"error":{"code":-32020,"message":"Mcp-Name mismatch"}}).to_string());
+            }
+            // "/drift": the schema "changed", so the call fails until the client has listed tools a second time
+            // (the first listing is the one made before the first call)
+            if seen.path == "/drift" && DRIFT_LISTS.load(std::sync::atomic::Ordering::SeqCst) < 2 {
+                return reply(400, "application/json", json!({"jsonrpc":"2.0","id":id,"error":{"code":-32020,"message":"Mcp-Param mismatch"}}).to_string());
             }
             if seen.path == "/params" {
                 // The server judges the call by its headers: each must match the body, `skip` is null
@@ -389,6 +401,20 @@ async fn x_mcp_header_values_are_mirrored_and_invalid_tools_are_left_out() {
     // A value that is missing gets no header (the test server rejects a `Mcp-Param-Skip`)
     let args = json!({"region":"us-west1","count":42,"flag":true,"text":"héllo","opts":{"level":3}});
     McpClient::call_tool(&dir, "sql", args).await.unwrap();
+    McpClient::stop_server(&dir).await;
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn header_mismatch_relists_tools_and_retries_the_call_once() {
+    let _serial = SERIAL.lock().await;
+    DRIFT_LISTS.store(0, std::sync::atomic::Ordering::SeqCst);
+    let (address, log) = serve().await;
+    let dir = package(&format!("{address}/drift"), json!({}));
+    let result = McpClient::call_tool(&dir, "echo", json!({"text":"x"})).await.unwrap();
+    assert_eq!(result["content"][0]["text"], "modern:x");
+    let methods: Vec<String> = log.lock().unwrap().iter().filter_map(|s| s.body["method"].as_str().map(str::to_owned)).collect();
+    assert_eq!(methods, ["server/discover", "tools/list", "tools/call", "tools/list", "tools/call"]);
     McpClient::stop_server(&dir).await;
     let _ = std::fs::remove_dir_all(&dir);
 }

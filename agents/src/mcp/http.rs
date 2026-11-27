@@ -23,6 +23,8 @@ pub const MODERN_VERSION: &str = "2026-07-28";
 const META_VERSION: &str = "io.modelcontextprotocol/protocolVersion";
 const META_INFO: &str = "io.modelcontextprotocol/clientInfo";
 const META_CAPABILITIES: &str = "io.modelcontextprotocol/clientCapabilities";
+/// JSON-RPC code of `HeaderMismatch` (spec 2026-07-28)
+const HEADER_MISMATCH: i64 = -32020;
 const PARAM_KEY: &str = "x-mcp-header";
 /// Most `tools/list` pages read to learn the `x-mcp-header` annotations before a call
 const MAX_LIST_PAGES: usize = 50;
@@ -261,7 +263,16 @@ impl HttpSession {
                 tracing::warn!("⚠️ [McpClient] '{}' tool list for x-mcp-header could not be read: {}", self.name, e);
             }
         }
-        let mut result = self.send(method, params, limit).await?;
+        let mut result = match self.send(method, params.clone(), limit).await {
+            Err(e) if modern && method == "tools/call" && rpc_code(&e) == Some(HEADER_MISMATCH) => {
+                // Spec 2026-07-28 (Streamable HTTP, `HeaderMismatch`): "the client SHOULD call `tools/list` to
+                // check for changes to the tool's `inputSchema`, then retry the original request". Once only.
+                tracing::warn!("⚠️ [McpClient] '{}' answered HeaderMismatch; reading tools/list and retrying the call once", self.name);
+                self.learn_tools(limit).await?;
+                self.send(method, params, limit).await?
+            }
+            other => other?,
+        };
         if modern && method == "tools/list" {
             self.screen_tools(&mut result);
         }
@@ -621,6 +632,17 @@ fn count_annotations(node: &Value, names_of_properties: bool) -> usize {
 }
 
 /// The versions in a JSON array of strings
+/// The JSON-RPC error code of a failure, whether it came as a JSON-RPC reply or inside an HTTP 4xx body
+fn rpc_code(error: &anyhow::Error) -> Option<i64> {
+    let rpc = if let Some(rpc) = error.downcast_ref::<RpcFailure>() {
+        rpc.error.clone()
+    } else {
+        let body = serde_json::from_str::<Value>(&error.downcast_ref::<HttpFailure>()?.body).ok()?;
+        body.get("error")?.clone()
+    };
+    rpc.get("code").and_then(Value::as_i64)
+}
+
 fn versions_of(value: Option<&Value>) -> Vec<String> {
     value.and_then(Value::as_array).map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_owned)).collect()).unwrap_or_default()
 }
