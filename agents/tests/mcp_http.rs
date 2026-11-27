@@ -11,6 +11,8 @@ use tokio::net::TcpListener;
 /// at the same time would stop each other's session, so each test takes this lock first.
 static SERIAL: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
+/// The id of the last `tools/call` the `/resume` server saw
+static RESUME_CALL_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 /// How many `tools/list` the `/drift` server has answered
 static DRIFT_LISTS: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
 
@@ -47,6 +49,14 @@ fn answer(seen: &Seen) -> Reply {
     let id = seen.body.get("id").cloned().unwrap_or(Value::Null);
     if seen.path == "/gone" {
         return reply(404, "text/plain", "no such endpoint".into());
+    }
+    if seen.path == "/resume" && seen.method == "GET" {
+        if seen.header("last-event-id") != Some("7") || seen.header("mcp-session-id") != Some("sess-123") {
+            return reply(400, "text/plain", "bad resume".into());
+        }
+        let id = RESUME_CALL_ID.load(std::sync::atomic::Ordering::SeqCst);
+        let result = json!({"jsonrpc":"2.0","id":id,"result":{"content":[{"type":"text","text":"resumed"}]}});
+        return reply(200, "text/event-stream", format!("id: 8\ndata: {result}\n\n"));
     }
     if seen.method == "DELETE" {
         return reply(200, "text/plain", String::new());
@@ -86,6 +96,12 @@ fn answer(seen: &Seen) -> Reply {
             let text = seen.body["params"]["arguments"]["text"].as_str().unwrap_or_default().to_string();
             let result = json!({"jsonrpc":"2.0","id":id,"result":{"content":[{"type":"text","text":format!("echo:{text}")}]}});
             match seen.path.as_str() {
+                // SEP-1699: the stream ends after an event id and a retry hint, with no response; the
+                // client must GET with Last-Event-ID to receive it
+                "/resume" => {
+                    RESUME_CALL_ID.store(id.as_u64().unwrap_or(0), std::sync::atomic::Ordering::SeqCst);
+                    reply(200, "text/event-stream", "id: 7\nretry: 20\ndata:\n\n".into())
+                }
                 "/sse" => reply(
                     200,
                     "text/event-stream",
@@ -432,6 +448,22 @@ async fn integer_outside_the_safe_range_is_refused_in_an_mcp_param_header() {
     let args = json!({"region":"us-west1","count":9007199254740991u64,"flag":true,"text":"x","opts":{"level":3}});
     let error = McpClient::call_tool(&dir, "sql", args).await.map(|_| String::new()).unwrap_or_else(|e| e.to_string());
     assert!(!error.contains("safe range"), "{error}");
+    McpClient::stop_server(&dir).await;
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn closed_event_stream_is_resumed_with_get_and_last_event_id() {
+    let _serial = SERIAL.lock().await;
+    let (address, log) = serve().await;
+    let dir = package(&format!("{address}/resume"), json!({}));
+    let result = McpClient::call_tool(&dir, "echo", json!({"text":"x"})).await.unwrap();
+    assert_eq!(result["content"][0]["text"], "resumed");
+    let seen = log.lock().unwrap();
+    let get = seen.iter().find(|s| s.method == "GET").expect("a GET resume");
+    assert_eq!(get.header("last-event-id"), Some("7"));
+    assert_eq!(get.header("accept"), Some("text/event-stream"));
+    drop(seen);
     McpClient::stop_server(&dir).await;
     let _ = std::fs::remove_dir_all(&dir);
 }

@@ -25,6 +25,8 @@ const META_INFO: &str = "io.modelcontextprotocol/clientInfo";
 const META_CAPABILITIES: &str = "io.modelcontextprotocol/clientCapabilities";
 /// JSON-RPC code of `HeaderMismatch` (spec 2026-07-28)
 const HEADER_MISMATCH: i64 = -32020;
+/// Most times one reply stream is resumed with `Last-Event-ID`
+const MAX_RESUMES: usize = 20;
 /// Largest integer JSON can carry exactly: 2^53 - 1
 const MAX_SAFE_INTEGER: i128 = 9_007_199_254_740_991;
 const PARAM_KEY: &str = "x-mcp-header";
@@ -477,27 +479,57 @@ impl HttpSession {
             .unwrap_or_default()
             .to_ascii_lowercase();
         if content_type.starts_with("text/event-stream") {
-            let mut buffer = Vec::new();
-            while let Some(chunk) = response
-                .chunk()
-                .await
-                .map_err(|e| anyhow!("MCP server '{}' broke the event stream: {}", self.name, e.without_url()))?
-            {
-                buffer.extend_from_slice(&chunk);
-                while let Some(event) = take_event(&mut buffer) {
-                    if let Some(found) = self.read_event(&event, want) {
+            // Spec 2025-11-25 (SEP-1699, Streamable HTTP): a server "MAY close the connection at any time" after
+            // an event id; "The client SHOULD then poll the SSE stream by attempting to reconnect", "MUST respect
+            // the retry field", resuming "via HTTP GET with Last-Event-ID". Only when an event id was seen.
+            let mut last_id: Option<String> = None;
+            let mut retry = Duration::ZERO;
+            let mut resumes = 0;
+            loop {
+                let mut buffer = Vec::new();
+                while let Some(chunk) = response
+                    .chunk()
+                    .await
+                    .map_err(|e| anyhow!("MCP server '{}' broke the event stream: {}", self.name, e.without_url()))?
+                {
+                    buffer.extend_from_slice(&chunk);
+                    while let Some(event) = take_event(&mut buffer) {
+                        note_resume(&event, &mut last_id, &mut retry);
+                        if let Some(found) = self.read_event(&event, want) {
+                            return Ok(Some(found));
+                        }
+                    }
+                }
+                // The stream ended: an event the server did not end with a blank line still counts
+                if !buffer.is_empty() {
+                    let rest = String::from_utf8_lossy(&buffer).into_owned();
+                    note_resume(&rest, &mut last_id, &mut retry);
+                    if let Some(found) = self.read_event(&rest, want) {
                         return Ok(Some(found));
                     }
                 }
-            }
-            // The stream ended: an event the server did not end with a blank line still counts
-            if !buffer.is_empty() {
-                let rest = String::from_utf8_lossy(&buffer).into_owned();
-                if let Some(found) = self.read_event(&rest, want) {
-                    return Ok(Some(found));
+                let Some(id) = last_id.clone().filter(|_| resumes < MAX_RESUMES) else {
+                    return Err(anyhow!("MCP server '{}' closed the event stream without a response", self.name));
+                };
+                resumes += 1;
+                tokio::time::sleep(retry).await;
+                let mut get = self.client.get(self.url.clone()).headers(self.headers.clone()).header(ACCEPT, "text/event-stream").header("last-event-id", id);
+                if let Some(sid) = &session_id {
+                    get = get.header(SESSION_HEADER, sid);
+                }
+                if let Some(version) = self.protocol_version.lock().ok().and_then(|v| v.clone()) {
+                    get = get.header(VERSION_HEADER, version);
+                }
+                response = get
+                    .send()
+                    .await
+                    .map_err(|e| anyhow!("could not resume the event stream of MCP server '{}': {}", self.name, e.without_url()))?;
+                let ok_stream = response.status().is_success()
+                    && response.headers().get(CONTENT_TYPE).and_then(|v| v.to_str().ok()).is_some_and(|t| t.to_ascii_lowercase().starts_with("text/event-stream"));
+                if !ok_stream {
+                    return Err(anyhow!("MCP server '{}' closed the event stream without a response and refused to resume it (HTTP {})", self.name, response.status()));
                 }
             }
-            return Err(anyhow!("MCP server '{}' closed the event stream without a response", self.name));
         }
         let text = response.text().await.map_err(|e| anyhow!("MCP server '{}': could not read the reply: {}", self.name, e.without_url()))?;
         if content_type.starts_with("application/json") || content_type.is_empty() {
@@ -718,6 +750,22 @@ fn take_event(buffer: &mut Vec<u8>) -> Option<String> {
     let event = String::from_utf8_lossy(&buffer[..end]).into_owned();
     buffer.drain(..end + delimiter);
     Some(event)
+}
+
+/// Remembers the `id:` (non-empty) and `retry:` (milliseconds) fields of one SSE event, for a resume
+fn note_resume(event: &str, last_id: &mut Option<String>, retry: &mut Duration) {
+    for line in event.lines() {
+        if let Some(rest) = line.strip_prefix("id:") {
+            let id = rest.strip_prefix(' ').unwrap_or(rest).trim();
+            if !id.is_empty() {
+                *last_id = Some(id.to_string());
+            }
+        } else if let Some(rest) = line.strip_prefix("retry:") {
+            if let Ok(ms) = rest.trim().parse::<u64>() {
+                *retry = Duration::from_millis(ms);
+            }
+        }
+    }
 }
 
 /// The `data:` lines of one SSE event joined with newlines (the SSE rule); other fields are ignored
