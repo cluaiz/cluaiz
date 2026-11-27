@@ -102,6 +102,19 @@ static MCP_TOOL_CACHE: Lazy<Arc<RwLock<HashMap<PathBuf, Vec<Value>>>>> = Lazy::n
     Arc::new(RwLock::new(HashMap::new()))
 });
 
+/// When the cached tool list of an HTTP server stops being fresh. Stdio servers have none: their
+/// `list_changed` notification clears the cache. An HTTP server's message between calls is not
+/// received (no standalone stream), so its list expires instead.
+static MCP_TOOL_EXPIRY: Lazy<std::sync::Mutex<HashMap<PathBuf, Instant>>> = Lazy::new(Default::default);
+/// Freshness of an HTTP server's tool list when it sends no `ttlMs`
+const DEFAULT_TOOL_TTL: Duration = Duration::from_secs(300);
+
+/// Spec 2026-07-28 (server `tools/list` result): `ttlMs` is the server's freshness hint for the list
+/// (0 means do not reuse it); without it the default applies
+fn tool_ttl(result: &Value) -> Duration {
+    result.get("ttlMs").and_then(Value::as_u64).map(Duration::from_millis).unwrap_or(DEFAULT_TOOL_TTL)
+}
+
 /// Running servers, keyed by their package folder.
 static SESSIONS: Lazy<Mutex<HashMap<PathBuf, Running>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 /// When each server exited without being stopped (for the restart backoff and "unavailable")
@@ -567,7 +580,8 @@ impl McpClient {
         let cache_key = mcp_dir.to_path_buf();
         {
             let cache = MCP_TOOL_CACHE.read().await;
-            if let Some(cached_tools) = cache.get(&cache_key) {
+            let stale = MCP_TOOL_EXPIRY.lock().map(|e| e.get(&cache_key).is_some_and(|t| Instant::now() >= *t)).unwrap_or(false);
+            if let (Some(cached_tools), false) = (cache.get(&cache_key), stale) {
                 return Ok(cached_tools.clone());
             }
         }
@@ -591,12 +605,14 @@ impl McpClient {
         // A large server lists its tools in pages (MCP spec: `nextCursor`)
         let mut tools = Vec::new();
         let mut cursor: Option<String> = None;
+        let mut ttl = DEFAULT_TOOL_TTL;
         for _ in 0..MAX_TOOL_PAGES {
             let params = match &cursor {
                 Some(cursor) => json!({ "cursor": cursor }),
                 None => json!({}),
             };
             let result = session.request("tools/list", params, REQUEST_TIMEOUT).await?;
+            ttl = ttl.min(tool_ttl(&result));
             tools.extend(result.get("tools").and_then(|t| t.as_array()).cloned().unwrap_or_default());
             let next = result.get("nextCursor").and_then(|c| c.as_str()).filter(|c| !c.is_empty()).map(str::to_owned);
             if next.is_none() || next == cursor {
@@ -619,6 +635,12 @@ impl McpClient {
             tracing::warn!("⚠️ [McpClient] Could not save the tool list of {:?}: {}", mcp_dir, e);
         }
 
+        if let Ok(mut expiry) = MCP_TOOL_EXPIRY.lock() {
+            match session {
+                Running::Http(_) => expiry.insert(cache_key.clone(), Instant::now() + ttl),
+                Running::Stdio(_) => expiry.remove(&cache_key),
+            };
+        }
         let mut cache = MCP_TOOL_CACHE.write().await;
         cache.insert(cache_key, tools.clone());
         Ok(tools)
@@ -749,6 +771,13 @@ fn tools_list_cache(mcp_dir: &Path) -> PathBuf {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn tool_ttl_follows_ttl_ms_else_default() {
+        assert_eq!(super::tool_ttl(&serde_json::json!({"ttlMs": 1500})), std::time::Duration::from_millis(1500));
+        assert_eq!(super::tool_ttl(&serde_json::json!({"ttlMs": 0})), std::time::Duration::ZERO);
+        assert_eq!(super::tool_ttl(&serde_json::json!({})), super::DEFAULT_TOOL_TTL);
+    }
+
     use super::*;
 
     #[test]

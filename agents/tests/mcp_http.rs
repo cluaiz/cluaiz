@@ -469,3 +469,19 @@ async fn closed_event_stream_is_resumed_with_get_and_last_event_id() {
     McpClient::stop_server(&dir).await;
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn http_tool_list_is_reused_within_ttl_ms_then_read_again() {
+    let _serial = SERIAL.lock().await;
+    DRIFT_LISTS.store(0, std::sync::atomic::Ordering::SeqCst);
+    let (address, _log) = serve().await;
+    let dir = package(&format!("{address}/drift"), json!({}));
+    McpClient::list_tools(&dir).await.unwrap();
+    McpClient::list_tools(&dir).await.unwrap();
+    assert_eq!(DRIFT_LISTS.load(std::sync::atomic::Ordering::SeqCst), 1, "second call is inside ttlMs 1000");
+    tokio::time::sleep(std::time::Duration::from_millis(1200)).await;
+    McpClient::list_tools(&dir).await.unwrap();
+    assert_eq!(DRIFT_LISTS.load(std::sync::atomic::Ordering::SeqCst), 2, "the list expired and was read again");
+    McpClient::stop_server(&dir).await;
+    let _ = std::fs::remove_dir_all(&dir);
+}

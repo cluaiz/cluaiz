@@ -192,6 +192,18 @@ the `Origin` header ... respond with HTTP 403"): the only Origin handling is COR
 client could not send them. Already fine: only POST is routed (`routes.rs:70`, so GET/DELETE get 405), no
 session id is minted, notifications get 202. Auth and bind defaults are untouched.
 
+## Tool list freshness of HTTP servers (decision 2026-11-27)
+
+An HTTP server's `tools/list` is re-read when the cached list is older than its TTL: the smallest
+`ttlMs` of the result pages when the server sends one (2026-07-28 `tools/list` result; `0` means read again
+every time), else 300 s (`DEFAULT_TOOL_TTL` in `client.rs`). Chosen over a background `subscriptions/listen`
+stream because it adds no long-lived task or connection to fail or clean up; the cost is that a change is seen
+only on the next use after the TTL, and one extra `tools/list` per TTL. Stdio servers are unchanged (their
+`list_changed` clears the cache). Not done: the spec's caching page was not readable when this was written
+(404), so the `ttlMs` wording is not quoted here. Tests: `tool_ttl_follows_ttl_ms_else_default` (unit) and
+`http_tool_list_is_reused_within_ttl_ms_then_read_again` in `tests/mcp_http.rs`
+(`cargo test -p cluaiz-agents`).
+
 ## Pending
 
 | Item | Why it matters | Needs |
@@ -200,11 +212,11 @@ session id is minted, notifications get 202. Auth and bind defaults are untouche
 | A recorded run of `mcp_reference_server` | the real-server path has no checked-in result | one run, saved under `test/cloud/runs/` |
 | HTTP transport tested only against the in-file test server | no run against a real HTTP MCP server yet | one run against a public Streamable HTTP server, saved under `test/cloud/runs/` |
 | `x-mcp-header` tested only against the in-file server | the test server checks the headers itself | one run against a real 2026-07-28 server that uses the annotation, saved under `test/cloud/runs/` |
-| No `subscriptions/listen` | modern servers send change notifications only on that stream, so `tools/list_changed` is not received; the tool cache is cleared only by `clear_tool_cache` | open the stream and call `on_list_changed` |
+| No `subscriptions/listen` | modern servers send change notifications only on that stream, so `tools/list_changed` is not received; an HTTP server's tool list is instead re-read after its TTL (see "Tool list freshness"), so a change shows up late, not at once | open the stream and call `on_list_changed` |
 | Modern mode untested against a real server | only the in-file test server; the legacy fallback was also tested only locally | one run against a public 2026-07-28 server and an older one, saved under `test/cloud/runs/` |
-| `ttlMs` / `cacheScope` ignored | the tool list is cached by the Engine's own rules | honour the freshness hint |
+| `cacheScope` ignored | only `ttlMs` is used | none needed while the cache is per package folder |
 | Old HTTP+SSE transport (2024-11-05) not implemented | servers that only speak it (a GET that returns an `endpoint` event) cannot be used | the fallback in the spec's "Backwards Compatibility" section; skipped because it is a second transport |
-| No standalone GET stream | server messages outside a POST reply (for example a `list_changed` between calls) are not received; the tool cache is only cleared when the message comes inside a reply | `GET` with `Last-Event-ID` resume |
+| No standalone GET stream | server messages outside a POST reply (for example a `list_changed` between calls) are not received; the tool cache is only cleared when the message comes inside a reply (the TTL re-list bounds the delay) | `GET` with `Last-Event-ID` resume |
 | No OAuth | servers that need the MCP authorization flow cannot be used; a fixed token in `headers` works | the authorization flow of the spec |
 | No `CancelledNotification` on timeout | after a timeout the server may keep working on the call | send it on timeout |
 | An HTTP server is not under the OS sandbox or the `network` permission | it is a remote service, not a process of ours; each call is still asked per `registry/types.rs` | decide whether `network` should gate HTTP packages |
