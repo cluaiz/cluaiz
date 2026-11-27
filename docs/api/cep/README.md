@@ -214,7 +214,7 @@ void  cep_free(char *reply);
 
 ## MCP
 
-- **`POST /mcp`** is an MCP server (Streamable HTTP, JSON answers, protocol 2025-11-25; 2025-06-18 and 2025-03-26 also accepted).
+- **`POST /mcp`** is an MCP server (Streamable HTTP, JSON answers, protocol 2026-07-28, 2025-11-25, 2025-06-18 and 2025-03-26; `server/discover` lists them, a request needs no `initialize`, and an unsupported version in `_meta` or the `MCP-Protocol-Version` header gets error -32022 with `data.supported`).
   - Its tools are the CEP methods with the same names, and `inputSchema` is the params schema.
   - MCP clients get the methods with `scope: read` and `mcp: true` only.
   - An error from the method comes back as a tool result with `isError: true`, so the model can correct its call.

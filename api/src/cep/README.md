@@ -68,7 +68,7 @@ flowchart LR
   so the owner's `api_auth.required` decides who gets here; whoever does is the owner.
 - `mcp.rs`: `POST /mcp`, the Engine as an MCP server (Streamable HTTP, JSON responses). A tool
   is a CEP method of the same name with its params schema as `inputSchema`; a call goes through
-  the same dispatcher. Methods marked `no_mcp` are not offered. Extensions may add tools.
+  the same dispatcher. Methods marked `no_mcp` are not offered. Extensions may add tools. Protocol versions: 2026-07-28, 2025-11-25, 2025-06-18, 2025-03-26. `server/discover` answers `supportedVersions`, `capabilities` and `serverInfo`. A request needs no `initialize` (the server keeps no session); a version in `_meta` (`io.modelcontextprotocol/protocolVersion`) or the `MCP-Protocol-Version` header that is not supported gets error -32022 with `data.supported`. No version at all is accepted as before.
 - `extensions.rs`: layers outside the Engine that serve their own methods at `/v1/cep`. The
   program that starts the server installs them (Automation's `flows.*`); they reach the Engine
   only through its public doors.

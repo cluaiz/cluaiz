@@ -44,6 +44,34 @@ async fn test_cep_endpoint_basics() {
     }
 }
 
+/// `/mcp`: 2025 `initialize` unchanged, `server/discover`, stateless 2026-07-28 requests and -32022
+#[tokio::test]
+async fn test_mcp_discover_stateless_and_unsupported_version() {
+    let (_, init) = post("/mcp", "application/json", json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18"}})).await;
+    assert_eq!(init["result"]["protocolVersion"], "2025-06-18");
+    let (_, odd) = post("/mcp", "application/json", json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"1999-01-01"}})).await;
+    assert_eq!(odd["result"]["protocolVersion"], "2025-11-25");
+
+    let (_, found) = post("/mcp", "application/json", json!({"jsonrpc":"2.0","id":2,"method":"server/discover"})).await;
+    let versions: Vec<&str> = found["result"]["supportedVersions"].as_array().unwrap().iter().filter_map(Value::as_str).collect();
+    assert!(versions.contains(&"2026-07-28") && versions.contains(&"2025-11-25"), "{versions:?}");
+    assert_eq!(found["result"]["serverInfo"]["name"], "cluaiz-engine");
+    assert_eq!(found["result"]["capabilities"], init["result"]["capabilities"]);
+
+    let meta = json!({"io.modelcontextprotocol/protocolVersion": "2026-07-28"});
+    let (_, listed) = post("/mcp", "application/json", json!({"jsonrpc":"2.0","id":3,"method":"tools/list","params":{"_meta": meta}})).await;
+    assert!(listed["result"]["tools"].is_array(), "{listed}");
+
+    let bad = json!({"io.modelcontextprotocol/protocolVersion": "2031-01-01"});
+    let (_, refused) = post("/mcp", "application/json", json!({"jsonrpc":"2.0","id":4,"method":"tools/list","params":{"_meta": bad}})).await;
+    assert_eq!(refused["error"]["code"], -32022);
+    assert!(refused["error"]["data"]["supported"].as_array().unwrap().iter().any(|v| v == "2026-07-28"));
+
+    // A 2025 client without any version stays accepted
+    let (_, plain) = post("/mcp", "application/json", json!({"jsonrpc":"2.0","id":5,"method":"tools/list"})).await;
+    assert!(plain["result"]["tools"].is_array());
+}
+
 /// The route table is the market-standard routes plus CEP; nothing else exists
 #[test]
 fn test_route_table_is_the_standard_routes_and_cep() {

@@ -9,7 +9,7 @@ use crate::state::AppState;
 use axum::{
     body::Bytes,
     extract::State,
-    http::{header, StatusCode},
+    http::{header, HeaderMap, StatusCode},
     response::{IntoResponse, Response},
 };
 use cluaiz_cep::envelope::{self, Meta as CallMeta};
@@ -19,7 +19,26 @@ use serde_json::{json, Map, Value};
 use std::sync::{Arc, LazyLock};
 
 /// Protocol versions this server speaks, newest first
-const VERSIONS: [&str; 3] = ["2025-11-25", "2025-06-18", "2025-03-26"];
+const VERSIONS: [&str; 4] = ["2026-07-28", "2025-11-25", "2025-06-18", "2025-03-26"];
+
+/// What `initialize` answers when the client asks for a version this server does not speak
+/// (unchanged for 2025 clients)
+const LEGACY_DEFAULT: &str = "2025-11-25";
+
+/// MCP 2026-07-28: the protocol version rides in every request's `_meta` and in this header
+const META_VERSION: &str = "io.modelcontextprotocol/protocolVersion";
+const VERSION_HEADER: &str = "mcp-protocol-version";
+
+/// `-32022`: the request names a protocol version this server does not speak
+const UNSUPPORTED_VERSION: i32 = -32022;
+
+fn capabilities() -> Value {
+    json!({ "tools": { "listChanged": false } })
+}
+
+fn server_info() -> Value {
+    json!({ "name": "cluaiz-engine", "title": "Cluaiz Engine", "version": cluaiz_core::VERSION })
+}
 
 /// MCP clients: read-only methods, anywhere on disk the user could read (the route already sits
 /// behind the user's authentication setting)
@@ -83,13 +102,10 @@ async fn answer(state: &Arc<AppState>, method: &str, params: Map<String, Value>)
     match method {
         "initialize" => {
             let asked = params.get("protocolVersion").and_then(Value::as_str).unwrap_or_default();
-            let version = VERSIONS.iter().find(|v| **v == asked).copied().unwrap_or(VERSIONS[0]);
-            Ok(json!({
-                "protocolVersion": version,
-                "capabilities": { "tools": { "listChanged": false } },
-                "serverInfo": { "name": "cluaiz-engine", "title": "Cluaiz Engine", "version": cluaiz_core::VERSION },
-            }))
+            let version = VERSIONS.iter().find(|v| **v == asked).copied().unwrap_or(LEGACY_DEFAULT);
+            Ok(json!({ "protocolVersion": version, "capabilities": capabilities(), "serverInfo": server_info() }))
         }
+        "server/discover" => Ok(json!({ "supportedVersions": VERSIONS, "capabilities": capabilities(), "serverInfo": server_info() })),
         "ping" => Ok(json!({})),
         "tools/list" => Ok(json!({ "tools": all_tools(state).await })),
         "tools/call" => {
@@ -113,7 +129,24 @@ async fn answer(state: &Arc<AppState>, method: &str, params: Map<String, Value>)
     }
 }
 
-pub async fn handle(State(state): State<Arc<AppState>>, body: Bytes) -> Response {
+/// A request that names a protocol version (in `_meta` or the header) must name one we speak.
+/// `initialize` negotiates its own version and `server/discover` is how a client finds the
+/// list, so neither is refused. No version at all is a 2025 client: accepted as before.
+fn check_version(method: &str, meta: Option<&Value>, headers: &HeaderMap) -> Result<(), CepError> {
+    if method == "initialize" || method == "server/discover" {
+        return Ok(());
+    }
+    let from_meta = meta.and_then(|m| m.get(META_VERSION)).and_then(Value::as_str);
+    let from_header = headers.get(VERSION_HEADER).and_then(|v| v.to_str().ok());
+    for asked in [from_meta, from_header].into_iter().flatten() {
+        if !VERSIONS.contains(&asked) {
+            return Err(CepError::new(UNSUPPORTED_VERSION, format!("Unsupported protocol version: {asked}"), Some(json!({ "supported": VERSIONS, "requested": asked }))));
+        }
+    }
+    Ok(())
+}
+
+pub async fn handle(State(state): State<Arc<AppState>>, headers: HeaderMap, body: Bytes) -> Response {
     // MCP has no batches: one object per POST. Its params may carry MCP's own `_meta`
     // (progressToken…), which is not CEP's, so the message is read here rather than by
     // `envelope::parse`.
@@ -134,8 +167,12 @@ pub async fn handle(State(state): State<Arc<AppState>>, body: Bytes) -> Response
         Some(Value::Object(params)) => params,
         _ => Map::new(),
     };
-    params.remove("_meta");
-    let outcome = answer(&state, &method, params).await;
+    let meta = params.remove("_meta");
+    // The server keeps no session, so a 2026-07-28 request needs no `initialize` before it
+    let outcome = match check_version(&method, meta.as_ref(), &headers) {
+        Ok(()) => answer(&state, &method, params).await,
+        Err(error) => Err(error),
+    };
     match id {
         // A notification (notifications/initialized and the like) is accepted with no body
         None => StatusCode::ACCEPTED.into_response(),
