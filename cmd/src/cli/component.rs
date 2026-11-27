@@ -8,6 +8,9 @@ pub async fn execute(component_type: &str, command: ComponentCommand) -> Result<
         ComponentCommand::Install { component_name, yes, no_recommended } => {
             install_component(component_type, &component_name, yes, no_recommended).await?;
         }
+        ComponentCommand::Add { name, url, header } => {
+            add_http_mcp(component_type, &name, &url, &header)?;
+        }
         ComponentCommand::Permission { component_id, permission, state } => {
             permission_command(component_type, &component_id, permission.as_deref(), state.as_deref())?;
         }
@@ -86,6 +89,11 @@ async fn install_component(component_type: &str, component_name: &str, yes: bool
                     format!("{} turns countdown", tool.default_turns)
                 };
                 println!("┃ ⏳ Lifespan:      {}", turns_str.cyan());
+                if component_type == "mcp" {
+                    if let Some(url) = ToolsInstaller::http_mcp_url(std::path::Path::new(&tool.local_dir)) {
+                        println!("       {} HTTP server: {}", "↳".bright_black(), url);
+                    }
+                }
                 if !tool.semantic_triggers.is_empty() {
                     println!("┃ 🎯 Triggers:      {:?}", tool.semantic_triggers);
                 }
@@ -194,6 +202,25 @@ fn permission_command(component_type: &str, component_id: &str, permission: Opti
         println!("  {} {} ({}{sensitive}){scope}: {state} [{chosen}] - {}", "•".cyan(), p.title.bold(), p.kind, p.info);
     }
     println!("  Change one with: cluaiz {component_type} permission {component_id} <permission> on|off");
+    Ok(())
+}
+
+/// `cluaiz mcp add <name> --url <url> [--header "Name: value"]`: writes the package of an HTTP MCP server
+fn add_http_mcp(component_type: &str, name: &str, url: &str, headers: &[String]) -> Result<()> {
+    if component_type != "mcp" {
+        return Err(color_eyre::eyre::eyre!("Only an MCP server can be added by its address: cluaiz mcp add <name> --url <url>"));
+    }
+    let headers = headers
+        .iter()
+        .map(|text| cluaiz_agents::parse_header(text))
+        .collect::<anyhow::Result<Vec<_>>>()
+        .map_err(|e| color_eyre::eyre::eyre!("{}", e))?;
+    let added = ToolsInstaller::add_http_mcp(name, url, &headers).map_err(|e| color_eyre::eyre::eyre!("{}", e))?;
+    println!("  {} Added MCP server '{}' at {}", "✅".green(), added.id.bold(), added.url);
+    for setting in &added.settings {
+        println!("     Its header needs the setting {}. Save it with: cluaiz mcp config {} {}", setting.bold(), added.id, setting);
+    }
+    println!("     It connects when a tool of it is first used. Check it with: cluaiz mcp list");
     Ok(())
 }
 

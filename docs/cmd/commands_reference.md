@@ -122,6 +122,7 @@ cluaiz provider test myapi model-name
 | Command | Alias | Description |
 |---------|-------|-------------|
 | `cluaiz <type> install <id>` | `i` | Install from the Cluaiz Tools registry (`<type>` = `skill`, `plugin` or `mcp`) |
+| `cluaiz mcp add <name> --url <url> [--header "Name: value"]` | | Add an MCP server by its address (Streamable HTTP); nothing is downloaded. `--header` can be repeated |
 | `cluaiz <type> list` | `ls` | Installed components of that type |
 | `cluaiz <type> remove <id>` | `rm` | Remove an installed component |
 | `cluaiz <type> cache …` | | Cached files of a component |
@@ -134,6 +135,16 @@ An MCP server is reached in one of two ways, set in the `execution` block of the
 
 * **Program (stdio):** `"execution": {"command": "npx", "args": ["-y", "some-mcp-server"]}`. The Engine starts it and keeps it running.
 * **HTTP (Streamable HTTP):** `"execution": {"url": "https://example.com/mcp", "headers": {"Authorization": "Bearer ${EXAMPLE_TOKEN}"}}`. The Engine connects to the URL and opens a session. `${EXAMPLE_TOKEN}` is a setting the package declares in `env`; set it with `cluaiz mcp config <id>` so the token is not written in the package file. If `url` is set, `command` is not used. Servers that need OAuth, or that only speak the older HTTP+SSE transport, are not supported yet ([details](../../agents/src/mcp/README.md)).
+
+To add an HTTP server without editing a file, give its address; the command writes that `package.json` for you. Write a secret as `${NAME}` in the header and save its value with `cluaiz mcp config`, so it is not stored in the package file:
+
+```bash
+cluaiz mcp add notes --url https://example.com/mcp --header "Authorization: Bearer ${EXAMPLE_TOKEN}"
+cluaiz mcp config notes EXAMPLE_TOKEN
+cluaiz mcp list
+```
+
+`cluaiz mcp list` shows the address of an HTTP server (never its headers). A name that is already installed is refused; remove it first.
 
 ```bash
 cluaiz plugin install cluaiz-search

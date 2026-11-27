@@ -211,6 +211,18 @@ pub enum ComponentCommand {
         #[arg(long)]
         no_recommended: bool,
     },
+    /// Add an MCP server by its address (`cluaiz mcp add <name> --url <url>`), without a download
+    Add {
+        /// Name to give the server (one folder name)
+        name: String,
+        /// The server's MCP endpoint, http:// or https:// (Streamable HTTP)
+        #[arg(long)]
+        url: String,
+        /// A header to send, `"Name: value"`; repeat for more. Write a secret as `${NAME}` (for example
+        /// "Authorization: Bearer ${TOKEN}") and save its value with `cluaiz mcp config <name> NAME`
+        #[arg(long = "header")]
+        header: Vec<String>,
+    },
     /// Show a component's permissions, or switch one on or off
     Permission {
         /// Component id

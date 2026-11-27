@@ -46,6 +46,10 @@ The package's `package.json` says how to reach the server. Which form is used de
   "env": { "EXAMPLE_TOKEN": { "info": "API token of the server" } } }
 ```
 
+- Add one from the CLI, with no file edited: `cluaiz mcp add <name> --url <url> [--header "Name: value"]`
+  (code: `installer/http_mcp.rs`). It writes exactly this `package.json` (and declares each `${NAME}` in
+  `env`), refuses a name that is installed, and `cluaiz mcp list` shows the url. Why not the registry
+  install: that downloads a bundle from cluaiz-tools, and a remote server has nothing to download.
 - `url` set: HTTP. `command` and `args` are ignored (a warning is logged when both are set).
 - `headers` are sent with every request. `${NAME}` in a value is replaced by the setting `NAME`
   (declared in the package's `env`, set with `cluaiz mcp config <id>` or the system environment), so
@@ -144,6 +148,7 @@ that day. MCP over the Engine's own CEP server: `test/cep/mcp_journey.py`.
 
 | Item | Why it matters | Needs |
 |---|---|---|
+| `cluaiz mcp add` tested only as unit tests | the five tests in `installer/http_mcp.rs` check the written file with `McpManifestParser`, not a real `cluaiz mcp add` then a tool call; `cargo build -p cmd` was not run when it was written | a run in an isolated `CLUAIZ_HOME`: `mcp add`, `mcp list`, `mcp config`, then one tool call against a real HTTP server, saved under `test/cloud/runs/` |
 | A recorded run of `mcp_reference_server` | the real-server path has no checked-in result | one run, saved under `test/cloud/runs/` |
 | HTTP transport tested only against the in-file test server | no run against a real HTTP MCP server yet | one run against a public Streamable HTTP server, saved under `test/cloud/runs/` |
 | Old HTTP+SSE transport (2024-11-05) not implemented | servers that only speak it (a GET that returns an `endpoint` event) cannot be used | the fallback in the spec's "Backwards Compatibility" section; skipped because it is a second transport |

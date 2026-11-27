@@ -26,7 +26,7 @@ use serde_json::Value;
 static WORKSPACE_DIR: LazyLock<RwLock<Option<PathBuf>>> = LazyLock::new(|| RwLock::new(None));
 
 pub use execution::{CancelHandle, DeclarativeScriptRunner, EnvironmentResolver, ExecutionManifest, ExecutionPolicy, PolicyDecision, SandboxTerminalRunner, TerminalRunResult};
-pub use installer::{Approved, InstallPlan, EnvironmentStatus, RuntimeEnvironmentManager, RuntimeType, ToolsInstaller, ToolHubInstaller};
+pub use installer::{parse_header, AddedHttpMcp, Approved, InstallPlan, EnvironmentStatus, RuntimeEnvironmentManager, RuntimeType, ToolsInstaller, ToolHubInstaller};
 pub use lifecycle::{turn_key, ChatLedger, RecordedStep, SessionToolBinding, SessionToolManager, TurnLifecycleEngine, TurnRecord};
 pub use mcp::{McpClient, McpManifest};
 pub use plugins::{PluginExecutor, PluginManifest};

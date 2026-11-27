@@ -101,7 +101,9 @@ flowchart LR
   `cluaiz_api::handlers::embeddings::embed_texts`, the same GGUF / ONNX owners as `/v1/embeddings`;
   image vectors need an ONNX image embedding model.
 - `component.rs`:
-  - **Logic:** `skill|plugin|mcp install|list|remove|cache|permission`. `planned_install` builds
+  - **Logic:** `skill|plugin|mcp install|list|remove|cache|permission`; `mcp add <name> --url <url>
+    [--header "Name: value"]` (`add_http_mcp`) writes an HTTP server's package through
+    `ToolsInstaller::add_http_mcp` (no download; `list` shows the url). `planned_install` builds
     the install plan (`cluaiz_agents::installer::plan`), shows it, asks what the user's mode
     leaves open (`--yes` answers yes; no terminal: no), then installs. `permission_command`
     lists a tool's permissions or switches one (`cluaiz_agents::permissions::set`).
