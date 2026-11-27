@@ -1,0 +1,4 @@
+  │ 📁 Vault Path:     ~/run86/home/models/tts/kokoro-82m-v1.0-onnx-UINT8
+  │ 🚀 Run Command:   cluaiz run kokoro-82m-v1.0-onnx-UINT8
+  └─────────────────────────────────────────────────────────────┘
+

@@ -1,0 +1,477 @@
+2026-11-27T13:20:17.664001Z  INFO ⚡ NVIDIA CUDA + cuDNN 9 runtime libraries verified.
+2026-11-27T13:20:17.863896Z DEBUG [llama.cpp] ggml_cuda_init: found 1 CUDA devices (Total VRAM: 22563 MiB):
+2026-11-27T13:20:17.867908Z DEBUG [llama.cpp] load_backend: loaded CUDA backend from ~/cluaiz/target/debug/libggml-cuda.so
+2026-11-27T13:20:18.990886Z  INFO Successfully registered `CUDAExecutionProvider` source=session options
+2026-11-27T13:20:18.990910Z  INFO Successfully registered `CPUExecutionProvider` source=session options
+2026-11-27T13:20:19.189072Z  INFO Creating BFCArena for Cuda with following configs: initial_chunk_size_bytes: 1048576 max_dead_bytes_per_chunk: 134217728 initial_growth_chunk_size_bytes: 2097152 max_power_of_two_extend_bytes: 1073741824 memory limit: 18446744073709551615 arena_extend_strategy: 0
+2026-11-27T13:20:19.189110Z  INFO Creating BFCArena for CudaPinned with following configs: initial_chunk_size_bytes: 1048576 max_dead_bytes_per_chunk: 134217728 initial_growth_chunk_size_bytes: 2097152 max_power_of_two_extend_bytes: 1073741824 memory limit: 18446744073709551615 arena_extend_strategy
+2026-11-27T13:20:19.522015Z  INFO CUDA kernel not found in registries for Op type: DequantizeLinear node name: /decoder/decoder/decode.3/pool/ConvTranspose_bias_dq
+2026-11-27T13:20:19.526192Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /encoder/bert_encoder/MatMul_quant
+2026-11-27T13:20:19.526214Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/bert_encoder/Add_quant
+2026-11-27T13:20:19.526300Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /encoder/predictor/text_encoder/lstms.5/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.526320Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/predictor/text_encoder/lstms.5/fc/Gemm_Add_quant
+2026-11-27T13:20:19.526357Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/predictor/text_encoder/lstms.5/Add_1_quant
+2026-11-27T13:20:19.526404Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /encoder/predictor/text_encoder/lstms.3/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.526425Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/predictor/text_encoder/lstms.3/fc/Gemm_Add_quant
+2026-11-27T13:20:19.526460Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/predictor/text_encoder/lstms.3/Add_1_quant
+2026-11-27T13:20:19.526491Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /encoder/predictor/text_encoder/lstms.1/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.526510Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/predictor/text_encoder/lstms.1/fc/Gemm_Add_quant
+2026-11-27T13:20:19.526546Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/predictor/text_encoder/lstms.1/Add_1_quant
+2026-11-27T13:20:19.526576Z  INFO CUDA kernel not found in registries for Op type: QLinearConcat node name: /encoder/predictor/text_encoder/Concat_1_quant
+2026-11-27T13:20:19.526869Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /encoder/predictor/duration_proj/linear_layer/MatMul_quant
+2026-11-27T13:20:19.526891Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/predictor/duration_proj/linear_layer/Add_quant
+2026-11-27T13:20:19.526909Z  INFO CUDA kernel not found in registries for Op type: QLinearSigmoid node name: /encoder/predictor/Sigmoid_quant
+2026-11-27T13:20:19.527166Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /encoder/text_encoder/cnn.0/cnn.0.0/Conv_quant
+2026-11-27T13:20:19.527205Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /encoder/text_encoder/cnn.0/cnn.0.2/LeakyRelu_quant
+2026-11-27T13:20:19.527224Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /encoder/text_encoder/cnn.1/cnn.1.0/Conv_quant
+2026-11-27T13:20:19.527268Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /encoder/text_encoder/cnn.1/cnn.0.2/LeakyRelu_quant
+2026-11-27T13:20:19.527287Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /encoder/text_encoder/cnn.2/cnn.2.0/Conv_quant
+2026-11-27T13:20:19.527315Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /encoder/text_encoder/cnn.2/cnn.0.2/LeakyRelu_quant
+2026-11-27T13:20:19.527358Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/asr_res/asr_res.0/Conv_quant
+2026-11-27T13:20:19.527433Z  INFO CUDA kernel not found in registries for Op type: DequantizeLinear node name: /encoder/F0.1/pool/ConvTranspose_bias_dq
+2026-11-27T13:20:19.527583Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /encoder/F0.0/norm1/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.527607Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/F0.0/norm1/fc/Gemm_Add_quant
+2026-11-27T13:20:19.527632Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/F0.0/norm1/Add_1_quant
+2026-11-27T13:20:19.527701Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /encoder/F0.0/actv/LeakyRelu_quant
+2026-11-27T13:20:19.527719Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /encoder/F0.0/conv1/Conv_quant
+2026-11-27T13:20:19.527848Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /encoder/F0.0/norm2/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.527872Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/F0.0/norm2/fc/Gemm_Add_quant
+2026-11-27T13:20:19.527897Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/F0.0/norm2/Add_1_quant
+2026-11-27T13:20:19.527967Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /encoder/F0.0/actv_1/LeakyRelu_quant
+2026-11-27T13:20:19.527985Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /encoder/F0.0/conv2/Conv_quant
+2026-11-27T13:20:19.528137Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /encoder/F0.1/norm1/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.528155Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/F0.1/norm1/fc/Gemm_Add_quant
+2026-11-27T13:20:19.528178Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/F0.1/norm1/Add_1_quant
+2026-11-27T13:20:19.528247Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /encoder/F0.1/actv/LeakyRelu_quant
+2026-11-27T13:20:19.528281Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /encoder/F0.1/conv1/Conv_quant
+2026-11-27T13:20:19.528396Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /encoder/F0.1/norm2/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.528414Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/F0.1/norm2/fc/Gemm_Add_quant
+2026-11-27T13:20:19.528441Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/F0.1/norm2/Add_1_quant
+2026-11-27T13:20:19.528511Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /encoder/F0.1/actv_1/LeakyRelu_quant
+2026-11-27T13:20:19.528528Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /encoder/F0.1/conv2/Conv_quant
+2026-11-27T13:20:19.528568Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /encoder/F0.1/conv1x1/Conv_quant
+2026-11-27T13:20:19.528585Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/F0.1/Add_quant
+2026-11-27T13:20:19.528722Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /encoder/F0.2/norm1/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.528740Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/F0.2/norm1/fc/Gemm_Add_quant
+2026-11-27T13:20:19.528767Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/F0.2/norm1/Add_1_quant
+2026-11-27T13:20:19.528849Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /encoder/F0.2/actv/LeakyRelu_quant
+2026-11-27T13:20:19.528869Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /encoder/F0.2/conv1/Conv_quant
+2026-11-27T13:20:19.528982Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /encoder/F0.2/norm2/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.529000Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/F0.2/norm2/fc/Gemm_Add_quant
+2026-11-27T13:20:19.529023Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/F0.2/norm2/Add_1_quant
+2026-11-27T13:20:19.529092Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /encoder/F0.2/actv_1/LeakyRelu_quant
+2026-11-27T13:20:19.529110Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /encoder/F0.2/conv2/Conv_quant
+2026-11-27T13:20:19.529174Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /encoder/F0_proj/Conv_quant
+2026-11-27T13:20:19.529208Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/F0_conv/Conv_quant
+2026-11-27T13:20:19.529274Z  INFO CUDA kernel not found in registries for Op type: DequantizeLinear node name: /encoder/N.1/pool/ConvTranspose_bias_dq
+2026-11-27T13:20:19.529299Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /encoder/N.0/norm1/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.529317Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/N.0/norm1/fc/Gemm_Add_quant
+2026-11-27T13:20:19.529340Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/N.0/norm1/Add_1_quant
+2026-11-27T13:20:19.529408Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /encoder/N.0/actv/LeakyRelu_quant
+2026-11-27T13:20:19.529426Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /encoder/N.0/conv1/Conv_quant
+2026-11-27T13:20:19.529540Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /encoder/N.0/norm2/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.529558Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/N.0/norm2/fc/Gemm_Add_quant
+2026-11-27T13:20:19.529581Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/N.0/norm2/Add_1_quant
+2026-11-27T13:20:19.529655Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /encoder/N.0/actv_1/LeakyRelu_quant
+2026-11-27T13:20:19.529673Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /encoder/N.0/conv2/Conv_quant
+2026-11-27T13:20:19.529835Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /encoder/N.1/norm1/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.529855Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/N.1/norm1/fc/Gemm_Add_quant
+2026-11-27T13:20:19.529878Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/N.1/norm1/Add_1_quant
+2026-11-27T13:20:19.529947Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /encoder/N.1/actv/LeakyRelu_quant
+2026-11-27T13:20:19.529976Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /encoder/N.1/conv1/Conv_quant
+2026-11-27T13:20:19.530090Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /encoder/N.1/norm2/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.530108Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/N.1/norm2/fc/Gemm_Add_quant
+2026-11-27T13:20:19.530131Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/N.1/norm2/Add_1_quant
+2026-11-27T13:20:19.530204Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /encoder/N.1/actv_1/LeakyRelu_quant
+2026-11-27T13:20:19.530221Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /encoder/N.1/conv2/Conv_quant
+2026-11-27T13:20:19.530255Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /encoder/N.1/conv1x1/Conv_quant
+2026-11-27T13:20:19.530272Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/N.1/Add_quant
+2026-11-27T13:20:19.530404Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /encoder/N.2/norm1/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.530421Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/N.2/norm1/fc/Gemm_Add_quant
+2026-11-27T13:20:19.530449Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/N.2/norm1/Add_1_quant
+2026-11-27T13:20:19.530519Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /encoder/N.2/actv/LeakyRelu_quant
+2026-11-27T13:20:19.530537Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /encoder/N.2/conv1/Conv_quant
+2026-11-27T13:20:19.530656Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /encoder/N.2/norm2/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.530674Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/N.2/norm2/fc/Gemm_Add_quant
+2026-11-27T13:20:19.530696Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /encoder/N.2/norm2/Add_1_quant
+2026-11-27T13:20:19.530765Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /encoder/N.2/actv_1/LeakyRelu_quant
+2026-11-27T13:20:19.530783Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /encoder/N.2/conv2/Conv_quant
+2026-11-27T13:20:19.530863Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /encoder/N_proj/Conv_quant
+2026-11-27T13:20:19.530891Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/N_conv/Conv_quant
+2026-11-27T13:20:19.530931Z  INFO CUDA kernel not found in registries for Op type: QLinearConcat node name: /decoder/decoder/Concat_quant
+2026-11-27T13:20:19.531047Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /decoder/decoder/encode/norm1/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.531065Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/encode/norm1/fc/Gemm_Add_quant
+2026-11-27T13:20:19.531089Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/encode/norm1/Add_1_quant
+2026-11-27T13:20:19.531159Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /decoder/decoder/encode/actv/LeakyRelu_quant
+2026-11-27T13:20:19.531177Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/encode/conv1/Conv_quant
+2026-11-27T13:20:19.531305Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /decoder/decoder/encode/norm2/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.531324Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/encode/norm2/fc/Gemm_Add_quant
+2026-11-27T13:20:19.531348Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/encode/norm2/Add_1_quant
+2026-11-27T13:20:19.531417Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /decoder/decoder/encode/actv_1/LeakyRelu_quant
+2026-11-27T13:20:19.531436Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/encode/conv2/Conv_quant
+2026-11-27T13:20:19.531454Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/encode/conv1x1/Conv_quant
+2026-11-27T13:20:19.531476Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/encode/Add_quant
+2026-11-27T13:20:19.531624Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /decoder/decoder/decode.0/norm1/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.531643Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/decode.0/norm1/fc/Gemm_Add_quant
+2026-11-27T13:20:19.531667Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/decode.0/norm1/Add_1_quant
+2026-11-27T13:20:19.531740Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /decoder/decoder/decode.0/actv/LeakyRelu_quant
+2026-11-27T13:20:19.531759Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/decode.0/conv1/Conv_quant
+2026-11-27T13:20:19.531887Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /decoder/decoder/decode.0/norm2/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.531907Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/decode.0/norm2/fc/Gemm_Add_quant
+2026-11-27T13:20:19.531931Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/decode.0/norm2/Add_1_quant
+2026-11-27T13:20:19.532002Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /decoder/decoder/decode.0/actv_1/LeakyRelu_quant
+2026-11-27T13:20:19.532020Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/decode.0/conv2/Conv_quant
+2026-11-27T13:20:19.532042Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/decode.0/conv1x1/Conv_quant
+2026-11-27T13:20:19.532060Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/decode.0/Add_quant
+2026-11-27T13:20:19.532194Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /decoder/decoder/decode.1/norm1/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.532212Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/decode.1/norm1/fc/Gemm_Add_quant
+2026-11-27T13:20:19.532236Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/decode.1/norm1/Add_1_quant
+2026-11-27T13:20:19.532306Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /decoder/decoder/decode.1/actv/LeakyRelu_quant
+2026-11-27T13:20:19.532325Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/decode.1/conv1/Conv_quant
+2026-11-27T13:20:19.532440Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /decoder/decoder/decode.1/norm2/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.532459Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/decode.1/norm2/fc/Gemm_Add_quant
+2026-11-27T13:20:19.532482Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/decode.1/norm2/Add_1_quant
+2026-11-27T13:20:19.532552Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /decoder/decoder/decode.1/actv_1/LeakyRelu_quant
+2026-11-27T13:20:19.532571Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/decode.1/conv2/Conv_quant
+2026-11-27T13:20:19.532593Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/decode.1/conv1x1/Conv_quant
+2026-11-27T13:20:19.532616Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/decode.1/Add_quant
+2026-11-27T13:20:19.532751Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /decoder/decoder/decode.2/norm1/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.532769Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/decode.2/norm1/fc/Gemm_Add_quant
+2026-11-27T13:20:19.532808Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/decode.2/norm1/Add_1_quant
+2026-11-27T13:20:19.532885Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /decoder/decoder/decode.2/actv/LeakyRelu_quant
+2026-11-27T13:20:19.532904Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/decode.2/conv1/Conv_quant
+2026-11-27T13:20:19.533020Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /decoder/decoder/decode.2/norm2/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.533038Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/decode.2/norm2/fc/Gemm_Add_quant
+2026-11-27T13:20:19.533062Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/decode.2/norm2/Add_1_quant
+2026-11-27T13:20:19.533132Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /decoder/decoder/decode.2/actv_1/LeakyRelu_quant
+2026-11-27T13:20:19.533151Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/decode.2/conv2/Conv_quant
+2026-11-27T13:20:19.533173Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/decode.2/conv1x1/Conv_quant
+2026-11-27T13:20:19.533190Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/decode.2/Add_quant
+2026-11-27T13:20:19.533324Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /decoder/decoder/decode.3/norm1/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.533342Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/decode.3/norm1/fc/Gemm_Add_quant
+2026-11-27T13:20:19.533366Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/decode.3/norm1/Add_1_quant
+2026-11-27T13:20:19.533436Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /decoder/decoder/decode.3/actv/LeakyRelu_quant
+2026-11-27T13:20:19.533471Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/decode.3/conv1/Conv_quant
+2026-11-27T13:20:19.533587Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /decoder/decoder/decode.3/norm2/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.533611Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/decode.3/norm2/fc/Gemm_Add_quant
+2026-11-27T13:20:19.533635Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/decode.3/norm2/Add_1_quant
+2026-11-27T13:20:19.533705Z  INFO CUDA kernel not found in registries for Op type: QLinearLeakyRelu node name: /decoder/decoder/decode.3/actv_1/LeakyRelu_quant
+2026-11-27T13:20:19.533724Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/decode.3/conv2/Conv_quant
+2026-11-27T13:20:19.533758Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/decode.3/conv1x1/Conv_quant
+2026-11-27T13:20:19.533776Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/decode.3/Add_quant
+2026-11-27T13:20:19.534211Z  INFO CUDA kernel not found in registries for Op type: STFT node name: /decoder/decoder/generator/STFT
+2026-11-27T13:20:19.534259Z  INFO CUDA kernel not found in registries for Op type: Atan node name: /decoder/decoder/generator/Atan
+2026-11-27T13:20:19.534405Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/generator/noise_convs.0/Conv_quant
+2026-11-27T13:20:19.534528Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /decoder/decoder/generator/noise_res.0/adain1.0/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.534553Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.0/adain1.0/fc/Gemm_Add_quant
+2026-11-27T13:20:19.534582Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.0/adain1.0/Add_1_quant
+2026-11-27T13:20:19.534725Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/generator/noise_res.0/convs1.0/Conv_quant
+2026-11-27T13:20:19.534862Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /decoder/decoder/generator/noise_res.0/adain2.0/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.534883Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.0/adain2.0/fc/Gemm_Add_quant
+2026-11-27T13:20:19.534909Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.0/adain2.0/Add_1_quant
+2026-11-27T13:20:19.535043Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/generator/noise_res.0/convs2.0/Conv_quant
+2026-11-27T13:20:19.535062Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.0/Add_2_quant
+2026-11-27T13:20:19.535177Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /decoder/decoder/generator/noise_res.0/adain1.1/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.535197Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.0/adain1.1/fc/Gemm_Add_quant
+2026-11-27T13:20:19.535222Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.0/adain1.1/Add_1_quant
+2026-11-27T13:20:19.535356Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/generator/noise_res.0/convs1.1/Conv_quant
+2026-11-27T13:20:19.535473Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /decoder/decoder/generator/noise_res.0/adain2.1/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.535493Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.0/adain2.1/fc/Gemm_Add_quant
+2026-11-27T13:20:19.535518Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.0/adain2.1/Add_1_quant
+2026-11-27T13:20:19.535658Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/generator/noise_res.0/convs2.1/Conv_quant
+2026-11-27T13:20:19.535677Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.0/Add_5_quant
+2026-11-27T13:20:19.535807Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /decoder/decoder/generator/noise_res.0/adain1.2/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.535829Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.0/adain1.2/fc/Gemm_Add_quant
+2026-11-27T13:20:19.535855Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.0/adain1.2/Add_1_quant
+2026-11-27T13:20:19.535991Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/generator/noise_res.0/convs1.2/Conv_quant
+2026-11-27T13:20:19.536107Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /decoder/decoder/generator/noise_res.0/adain2.2/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.536131Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.0/adain2.2/fc/Gemm_Add_quant
+2026-11-27T13:20:19.536156Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.0/adain2.2/Add_1_quant
+2026-11-27T13:20:19.536290Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/generator/noise_res.0/convs2.2/Conv_quant
+2026-11-27T13:20:19.536313Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.0/Add_8_quant
+2026-11-27T13:20:19.540672Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/generator/noise_convs.1/Conv_quant
+2026-11-27T13:20:19.540801Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /decoder/decoder/generator/noise_res.1/adain1.0/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.540826Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.1/adain1.0/fc/Gemm_Add_quant
+2026-11-27T13:20:19.540851Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.1/adain1.0/Add_1_quant
+2026-11-27T13:20:19.540990Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/generator/noise_res.1/convs1.0/Conv_quant
+2026-11-27T13:20:19.541108Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /decoder/decoder/generator/noise_res.1/adain2.0/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.541127Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.1/adain2.0/fc/Gemm_Add_quant
+2026-11-27T13:20:19.541153Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.1/adain2.0/Add_1_quant
+2026-11-27T13:20:19.541288Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/generator/noise_res.1/convs2.0/Conv_quant
+2026-11-27T13:20:19.541306Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.1/Add_2_quant
+2026-11-27T13:20:19.541423Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /decoder/decoder/generator/noise_res.1/adain1.1/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.541443Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.1/adain1.1/fc/Gemm_Add_quant
+2026-11-27T13:20:19.541468Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.1/adain1.1/Add_1_quant
+2026-11-27T13:20:19.541607Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/generator/noise_res.1/convs1.1/Conv_quant
+2026-11-27T13:20:19.541725Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /decoder/decoder/generator/noise_res.1/adain2.1/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.541745Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.1/adain2.1/fc/Gemm_Add_quant
+2026-11-27T13:20:19.541770Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.1/adain2.1/Add_1_quant
+2026-11-27T13:20:19.541917Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/generator/noise_res.1/convs2.1/Conv_quant
+2026-11-27T13:20:19.541938Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.1/Add_5_quant
+2026-11-27T13:20:19.542065Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /decoder/decoder/generator/noise_res.1/adain1.2/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.542085Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.1/adain1.2/fc/Gemm_Add_quant
+2026-11-27T13:20:19.542110Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.1/adain1.2/Add_1_quant
+2026-11-27T13:20:19.542245Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/generator/noise_res.1/convs1.2/Conv_quant
+2026-11-27T13:20:19.542366Z  INFO CUDA kernel not found in registries for Op type: QLinearMatMul node name: /decoder/decoder/generator/noise_res.1/adain2.2/fc/Gemm_MatMul_quant
+2026-11-27T13:20:19.542385Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.1/adain2.2/fc/Gemm_Add_quant
+2026-11-27T13:20:19.542410Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.1/adain2.2/Add_1_quant
+2026-11-27T13:20:19.542543Z  INFO CUDA kernel not found in registries for Op type: QLinearConv node name: /decoder/decoder/generator/noise_res.1/convs2.2/Conv_quant
+2026-11-27T13:20:19.542562Z  INFO CUDA kernel not found in registries for Op type: QLinearAdd node name: /decoder/decoder/generator/noise_res.1/Add_8_quant
+2026-11-27T13:20:19.587078Z  INFO GraphTransformer TransposeOptimizer_CPUExecutionProvider modified: 0 with status: OK
+2026-11-27T13:20:19.867104Z  INFO Add MemcpyFromHost after /decoder/decoder/Concat_output_0_QuantizeInput_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.867166Z  INFO Add MemcpyFromHost after /decoder/decoder/F0_conv/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.867211Z  INFO Add MemcpyFromHost after /decoder/decoder/N_conv/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.867271Z  INFO Add MemcpyFromHost after /decoder/decoder/asr_res/asr_res.0/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.867315Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.0/Add_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.867370Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.0/conv1/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.867413Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.0/norm1/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.867454Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.0/norm1/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.867509Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.0/norm2/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.867550Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.0/norm2/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.867592Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.1/Add_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.867634Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.1/conv1/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.867677Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.1/norm1/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.867717Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.1/norm1/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.867767Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.1/norm2/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.867880Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.1/norm2/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.867926Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.2/Add_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.867969Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.2/conv1/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.868012Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.2/norm1/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.868053Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.2/norm1/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.868093Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.2/norm2/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.868132Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.2/norm2/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.868172Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.3/Add_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.868213Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.3/actv/LeakyRelu_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.868254Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.3/conv1/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.868294Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.3/norm1/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.868334Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.3/norm1/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.868375Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.3/norm2/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.868417Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.3/norm2/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.868456Z  INFO Add MemcpyFromHost after /decoder/decoder/decode.3/pool/ConvTranspose_bias_dq for CUDAExecutionProvider
+2026-11-27T13:20:19.868504Z  INFO Add MemcpyFromHost after /decoder/decoder/encode/Add_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.868547Z  INFO Add MemcpyFromHost after /decoder/decoder/encode/conv1/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.868590Z  INFO Add MemcpyFromHost after /decoder/decoder/encode/norm1/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.868631Z  INFO Add MemcpyFromHost after /decoder/decoder/encode/norm1/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.868679Z  INFO Add MemcpyFromHost after /decoder/decoder/encode/norm2/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.868719Z  INFO Add MemcpyFromHost after /decoder/decoder/encode/norm2/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.868758Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/Atan_output_0 for CUDAExecutionProvider
+2026-11-27T13:20:19.868817Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/STFT_output_0 for CUDAExecutionProvider
+2026-11-27T13:20:19.868877Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_convs.0/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.868916Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_convs.1/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.868961Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.0/Add_2_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869002Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.0/Add_5_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869042Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.0/Add_8_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869084Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.0/adain1.0/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869127Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.0/adain1.0/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869169Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.0/adain1.1/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869210Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.0/adain1.1/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869251Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.0/adain1.2/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869292Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.0/adain1.2/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869333Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.0/adain2.0/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869376Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.0/adain2.0/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869418Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.0/adain2.1/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869460Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.0/adain2.1/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869510Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.0/adain2.2/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869554Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.0/adain2.2/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869593Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.0/convs1.0/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869634Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.0/convs1.1/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869674Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.0/convs1.2/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869716Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.1/Add_2_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869755Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.1/Add_5_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869816Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.1/Add_8_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869869Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.1/adain1.0/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869912Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.1/adain1.0/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869954Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.1/adain1.1/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.869999Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.1/adain1.1/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870042Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.1/adain1.2/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870084Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.1/adain1.2/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870126Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.1/adain2.0/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870170Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.1/adain2.0/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870211Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.1/adain2.1/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870254Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.1/adain2.1/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870295Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.1/adain2.2/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870337Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.1/adain2.2/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870378Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.1/convs1.0/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870419Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.1/convs1.1/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870458Z  INFO Add MemcpyFromHost after /decoder/decoder/generator/noise_res.1/convs1.2/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870526Z  INFO Add MemcpyFromHost after /encoder/F0.0/conv1/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870567Z  INFO Add MemcpyFromHost after /encoder/F0.0/conv2/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870607Z  INFO Add MemcpyFromHost after /encoder/F0.0/norm1/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870648Z  INFO Add MemcpyFromHost after /encoder/F0.0/norm1/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870687Z  INFO Add MemcpyFromHost after /encoder/F0.0/norm2/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870727Z  INFO Add MemcpyFromHost after /encoder/F0.0/norm2/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870768Z  INFO Add MemcpyFromHost after /encoder/F0.1/Add_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870826Z  INFO Add MemcpyFromHost after /encoder/F0.1/actv/LeakyRelu_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870870Z  INFO Add MemcpyFromHost after /encoder/F0.1/conv1/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870912Z  INFO Add MemcpyFromHost after /encoder/F0.1/norm1/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870952Z  INFO Add MemcpyFromHost after /encoder/F0.1/norm1/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.870991Z  INFO Add MemcpyFromHost after /encoder/F0.1/norm2/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.871031Z  INFO Add MemcpyFromHost after /encoder/F0.1/norm2/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.871079Z  INFO Add MemcpyFromHost after /encoder/F0.1/pool/ConvTranspose_bias_dq for CUDAExecutionProvider
+2026-11-27T13:20:19.871120Z  INFO Add MemcpyFromHost after /encoder/F0.2/conv1/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.871165Z  INFO Add MemcpyFromHost after /encoder/F0.2/conv2/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.871220Z  INFO Add MemcpyFromHost after /encoder/F0.2/norm1/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.871261Z  INFO Add MemcpyFromHost after /encoder/F0.2/norm1/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.871302Z  INFO Add MemcpyFromHost after /encoder/F0.2/norm2/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.871341Z  INFO Add MemcpyFromHost after /encoder/F0.2/norm2/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.871382Z  INFO Add MemcpyFromHost after /encoder/F0_proj/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.871425Z  INFO Add MemcpyFromHost after /encoder/N.0/conv1/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.871466Z  INFO Add MemcpyFromHost after /encoder/N.0/conv2/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.871531Z  INFO Add MemcpyFromHost after /encoder/N.0/norm1/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.871571Z  INFO Add MemcpyFromHost after /encoder/N.0/norm1/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.871611Z  INFO Add MemcpyFromHost after /encoder/N.0/norm2/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.871651Z  INFO Add MemcpyFromHost after /encoder/N.0/norm2/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.871692Z  INFO Add MemcpyFromHost after /encoder/N.1/Add_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.871732Z  INFO Add MemcpyFromHost after /encoder/N.1/actv/LeakyRelu_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.871772Z  INFO Add MemcpyFromHost after /encoder/N.1/conv1/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.871832Z  INFO Add MemcpyFromHost after /encoder/N.1/norm1/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.871874Z  INFO Add MemcpyFromHost after /encoder/N.1/norm1/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.871915Z  INFO Add MemcpyFromHost after /encoder/N.1/norm2/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.871954Z  INFO Add MemcpyFromHost after /encoder/N.1/norm2/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.871995Z  INFO Add MemcpyFromHost after /encoder/N.1/pool/ConvTranspose_bias_dq for CUDAExecutionProvider
+2026-11-27T13:20:19.872037Z  INFO Add MemcpyFromHost after /encoder/N.2/conv1/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.872077Z  INFO Add MemcpyFromHost after /encoder/N.2/conv2/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.872116Z  INFO Add MemcpyFromHost after /encoder/N.2/norm1/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.872156Z  INFO Add MemcpyFromHost after /encoder/N.2/norm1/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.872196Z  INFO Add MemcpyFromHost after /encoder/N.2/norm2/Add_1_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.872236Z  INFO Add MemcpyFromHost after /encoder/N.2/norm2/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.872275Z  INFO Add MemcpyFromHost after /encoder/N_proj/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.872333Z  INFO Add MemcpyFromHost after /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention/Sqrt_1_output_0 for CUDAExecutionProvider
+2026-11-27T13:20:19.872392Z  INFO Add MemcpyFromHost after /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_1/Sqrt_1_output_0 for CUDAExecutionProvider
+2026-11-27T13:20:19.872448Z  INFO Add MemcpyFromHost after /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_10/Sqrt_1_output_0 for CUDAExecutionProvider
+2026-11-27T13:20:19.872506Z  INFO Add MemcpyFromHost after /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_11/Sqrt_1_output_0 for CUDAExecutionProvider
+2026-11-27T13:20:19.872558Z  INFO Add MemcpyFromHost after /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_2/Sqrt_1_output_0 for CUDAExecutionProvider
+2026-11-27T13:20:19.872609Z  INFO Add MemcpyFromHost after /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_3/Sqrt_1_output_0 for CUDAExecutionProvider
+2026-11-27T13:20:19.872660Z  INFO Add MemcpyFromHost after /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_4/Sqrt_1_output_0 for CUDAExecutionProvider
+2026-11-27T13:20:19.872711Z  INFO Add MemcpyFromHost after /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_5/Sqrt_1_output_0 for CUDAExecutionProvider
+2026-11-27T13:20:19.872761Z  INFO Add MemcpyFromHost after /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_6/Sqrt_1_output_0 for CUDAExecutionProvider
+2026-11-27T13:20:19.872833Z  INFO Add MemcpyFromHost after /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_7/Sqrt_1_output_0 for CUDAExecutionProvider
+2026-11-27T13:20:19.872886Z  INFO Add MemcpyFromHost after /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_8/Sqrt_1_output_0 for CUDAExecutionProvider
+2026-11-27T13:20:19.872938Z  INFO Add MemcpyFromHost after /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_9/Sqrt_1_output_0 for CUDAExecutionProvider
+2026-11-27T13:20:19.872983Z  INFO Add MemcpyFromHost after /encoder/bert_encoder/Add_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.873025Z  INFO Add MemcpyFromHost after /encoder/predictor/Sigmoid_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.873071Z  INFO Add MemcpyFromHost after /encoder/predictor/text_encoder/Concat_1_output_0_QuantizeInput_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.873120Z  INFO Add MemcpyFromHost after /encoder/predictor/text_encoder/lstms.1/Add_1_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.873161Z  INFO Add MemcpyFromHost after /encoder/predictor/text_encoder/lstms.1/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.873206Z  INFO Add MemcpyFromHost after /encoder/predictor/text_encoder/lstms.3/Add_1_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.873248Z  INFO Add MemcpyFromHost after /encoder/predictor/text_encoder/lstms.3/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.873294Z  INFO Add MemcpyFromHost after /encoder/predictor/text_encoder/lstms.5/Add_1_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.873335Z  INFO Add MemcpyFromHost after /encoder/predictor/text_encoder/lstms.5/fc/Gemm_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.873379Z  INFO Add MemcpyFromHost after /encoder/text_encoder/cnn.0/cnn.0.0/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.873425Z  INFO Add MemcpyFromHost after /encoder/text_encoder/cnn.1/cnn.1.0/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.873469Z  INFO Add MemcpyFromHost after /encoder/text_encoder/cnn.2/cnn.0.2/LeakyRelu_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.873520Z  INFO Add MemcpyFromHost after /encoder/text_encoder/cnn.2/cnn.2.0/Conv_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.873618Z  INFO Add MemcpyToHost before /decoder/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.873665Z  INFO Add MemcpyToHost before /decoder/decoder/Concat_1_output_0_/decoder/decoder/decode.0/conv1x1/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.873708Z  INFO Add MemcpyToHost before /decoder/decoder/Concat_2_output_0_/decoder/decoder/decode.1/conv1x1/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.873752Z  INFO Add MemcpyToHost before /decoder/decoder/Concat_3_output_0_/decoder/decoder/decode.2/conv1x1/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.873828Z  INFO Add MemcpyToHost before /decoder/decoder/Unsqueeze_1_output_0_QuantizeInput_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.873872Z  INFO Add MemcpyToHost before /decoder/decoder/Unsqueeze_output_0_QuantizeInput_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.873926Z  INFO Add MemcpyToHost before /decoder/decoder/decode.0/norm1/Add_3_output_0_/decoder/decoder/decode.0/actv/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.873971Z  INFO Add MemcpyToHost before /decoder/decoder/decode.0/norm1/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.874018Z  INFO Add MemcpyToHost before /decoder/decoder/decode.0/norm2/Add_3_output_0_/decoder/decoder/decode.0/actv_1/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.874063Z  INFO Add MemcpyToHost before /decoder/decoder/decode.0/norm2/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.874112Z  INFO Add MemcpyToHost before /decoder/decoder/decode.1/norm1/Add_3_output_0_/decoder/decoder/decode.1/actv/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.874156Z  INFO Add MemcpyToHost before /decoder/decoder/decode.1/norm1/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.874203Z  INFO Add MemcpyToHost before /decoder/decoder/decode.1/norm2/Add_3_output_0_/decoder/decoder/decode.1/actv_1/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.874247Z  INFO Add MemcpyToHost before /decoder/decoder/decode.1/norm2/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.874297Z  INFO Add MemcpyToHost before /decoder/decoder/decode.2/norm1/Add_3_output_0_/decoder/decoder/decode.2/actv/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.874342Z  INFO Add MemcpyToHost before /decoder/decoder/decode.2/norm1/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.874388Z  INFO Add MemcpyToHost before /decoder/decoder/decode.2/norm2/Add_3_output_0_/decoder/decoder/decode.2/actv_1/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.874433Z  INFO Add MemcpyToHost before /decoder/decoder/decode.2/norm2/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.874494Z  INFO Add MemcpyToHost before /decoder/decoder/decode.3/norm1/Add_3_output_0_/decoder/decoder/decode.3/actv/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.874540Z  INFO Add MemcpyToHost before /decoder/decoder/decode.3/norm1/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.874589Z  INFO Add MemcpyToHost before /decoder/decoder/decode.3/norm2/Add_3_output_0_/decoder/decoder/decode.3/actv_1/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.874633Z  INFO Add MemcpyToHost before /decoder/decoder/decode.3/norm2/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.874678Z  INFO Add MemcpyToHost before /decoder/decoder/decode.3/pool/ConvTranspose_output_0_/decoder/decoder/decode.3/conv1/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.874728Z  INFO Add MemcpyToHost before /decoder/decoder/decode.3/upsample/Resize_output_0_/decoder/decoder/decode.3/conv1x1/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.874781Z  INFO Add MemcpyToHost before /decoder/decoder/encode/norm1/Add_3_output_0_/decoder/decoder/encode/actv/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.874842Z  INFO Add MemcpyToHost before /decoder/decoder/encode/norm1/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.874893Z  INFO Add MemcpyToHost before /decoder/decoder/encode/norm2/Add_3_output_0_/decoder/decoder/encode/actv_1/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.874937Z  INFO Add MemcpyToHost before /decoder/decoder/encode/norm2/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.874993Z  INFO Add MemcpyToHost before /decoder/decoder/generator/Concat_3_output_0_/decoder/decoder/generator/noise_convs.0/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.875035Z  INFO Add MemcpyToHost before /decoder/decoder/generator/Div_output_0 for CUDAExecutionProvider
+2026-11-27T13:20:19.875080Z  INFO Add MemcpyToHost before /decoder/decoder/generator/Reshape_3_output_0 for CUDAExecutionProvider
+2026-11-27T13:20:19.875156Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.0/Add_1_output_0_/decoder/decoder/generator/noise_res.0/convs2.0/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.875203Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.0/Add_3_output_0_/decoder/decoder/generator/noise_res.0/convs1.1/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.875247Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.0/Add_4_output_0_/decoder/decoder/generator/noise_res.0/convs2.1/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.875293Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.0/Add_6_output_0_/decoder/decoder/generator/noise_res.0/convs1.2/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.875337Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.0/Add_7_output_0_/decoder/decoder/generator/noise_res.0/convs2.2/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.875381Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.0/Add_output_0_/decoder/decoder/generator/noise_res.0/convs1.0/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.875443Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.0/adain1.0/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.875498Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.0/adain1.1/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.875547Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.0/adain1.2/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.875598Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.0/adain2.0/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.875645Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.0/adain2.1/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.875693Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.0/adain2.2/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.875742Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.1/Add_1_output_0_/decoder/decoder/generator/noise_res.1/convs2.0/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.875788Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.1/Add_3_output_0_/decoder/decoder/generator/noise_res.1/convs1.1/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.875858Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.1/Add_4_output_0_/decoder/decoder/generator/noise_res.1/convs2.1/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.875905Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.1/Add_6_output_0_/decoder/decoder/generator/noise_res.1/convs1.2/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.875949Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.1/Add_7_output_0_/decoder/decoder/generator/noise_res.1/convs2.2/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.875993Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.1/Add_output_0_/decoder/decoder/generator/noise_res.1/convs1.0/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.876055Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.1/adain1.0/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.876103Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.1/adain1.1/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.876157Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.1/adain1.2/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.876205Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.1/adain2.0/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.876253Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.1/adain2.1/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.876301Z  INFO Add MemcpyToHost before /decoder/decoder/generator/noise_res.1/adain2.2/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.876672Z  INFO Add MemcpyToHost before /encoder/Cast_1_output_0 for CUDAExecutionProvider
+2026-11-27T13:20:19.876725Z  INFO Add MemcpyToHost before /encoder/F0.0/norm1/Add_3_output_0_/encoder/F0.0/actv/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.876770Z  INFO Add MemcpyToHost before /encoder/F0.0/norm1/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.876836Z  INFO Add MemcpyToHost before /encoder/F0.0/norm2/Add_3_output_0_/encoder/F0.0/actv_1/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.876883Z  INFO Add MemcpyToHost before /encoder/F0.0/norm2/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.876933Z  INFO Add MemcpyToHost before /encoder/F0.1/norm1/Add_3_output_0_/encoder/F0.1/actv/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.876977Z  INFO Add MemcpyToHost before /encoder/F0.1/norm1/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.877023Z  INFO Add MemcpyToHost before /encoder/F0.1/norm2/Add_3_output_0_/encoder/F0.1/actv_1/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.877067Z  INFO Add MemcpyToHost before /encoder/F0.1/norm2/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.877113Z  INFO Add MemcpyToHost before /encoder/F0.1/pool/ConvTranspose_output_0_/encoder/F0.1/conv1/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.877157Z  INFO Add MemcpyToHost before /encoder/F0.1/upsample/Resize_output_0_/encoder/F0.1/conv1x1/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.877200Z  INFO Add MemcpyToHost before /encoder/F0.2/Div_2_output_0_/encoder/F0_proj/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.877246Z  INFO Add MemcpyToHost before /encoder/F0.2/norm1/Add_3_output_0_/encoder/F0.2/actv/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.877295Z  INFO Add MemcpyToHost before /encoder/F0.2/norm1/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.877343Z  INFO Add MemcpyToHost before /encoder/F0.2/norm2/Add_3_output_0_/encoder/F0.2/actv_1/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.877387Z  INFO Add MemcpyToHost before /encoder/F0.2/norm2/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.877433Z  INFO Add MemcpyToHost before /encoder/MatMul_1_output_0_/decoder/decoder/asr_res/asr_res.0/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.877489Z  INFO Add MemcpyToHost before /encoder/N.0/norm1/Add_2_output_0_/encoder/N.0/actv/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.877534Z  INFO Add MemcpyToHost before /encoder/N.0/norm1/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.877577Z  INFO Add MemcpyToHost before /encoder/N.0/norm2/Add_3_output_0_/encoder/N.0/actv_1/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.877622Z  INFO Add MemcpyToHost before /encoder/N.0/norm2/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.877672Z  INFO Add MemcpyToHost before /encoder/N.1/norm1/Add_3_output_0_/encoder/N.1/actv/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.877716Z  INFO Add MemcpyToHost before /encoder/N.1/norm1/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.877761Z  INFO Add MemcpyToHost before /encoder/N.1/norm2/Add_3_output_0_/encoder/N.1/actv_1/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.877828Z  INFO Add MemcpyToHost before /encoder/N.1/norm2/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.877876Z  INFO Add MemcpyToHost before /encoder/N.1/pool/ConvTranspose_output_0_/encoder/N.1/conv1/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.877919Z  INFO Add MemcpyToHost before /encoder/N.1/upsample/Resize_output_0_/encoder/N.1/conv1x1/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.877961Z  INFO Add MemcpyToHost before /encoder/N.2/Div_2_output_0_/encoder/N_proj/Conv_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.878008Z  INFO Add MemcpyToHost before /encoder/N.2/norm1/Add_3_output_0_/encoder/N.2/actv/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.878051Z  INFO Add MemcpyToHost before /encoder/N.2/norm1/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.878096Z  INFO Add MemcpyToHost before /encoder/N.2/norm2/Add_3_output_0_/encoder/N.2/actv_1/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.878140Z  INFO Add MemcpyToHost before /encoder/N.2/norm2/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.878185Z  INFO Add MemcpyToHost before /encoder/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.878431Z  INFO Add MemcpyToHost before /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/full_layer_layer_norm_11/LayerNormalization_output_0_/encoder/bert_encoder/MatMul_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.878502Z  INFO Add MemcpyToHost before /encoder/predictor/lstm/Transpose_2_output_0_/encoder/predictor/duration_proj/linear_layer/MatMul_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.878551Z  INFO Add MemcpyToHost before /encoder/predictor/text_encoder/Expand_output_0_QuantizeInput_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.878602Z  INFO Add MemcpyToHost before /encoder/predictor/text_encoder/lstms.1/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.878655Z  INFO Add MemcpyToHost before /encoder/predictor/text_encoder/lstms.3/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.878712Z  INFO Add MemcpyToHost before /encoder/predictor/text_encoder/lstms.5/Slice_output_0_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.878766Z  INFO Add MemcpyToHost before /encoder/text_encoder/cnn.0/cnn.0.1/Transpose_1_output_0_/encoder/text_encoder/cnn.0/cnn.0.2/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.878832Z  INFO Add MemcpyToHost before /encoder/text_encoder/cnn.1/cnn.1.1/Transpose_1_output_0_/encoder/text_encoder/cnn.1/cnn.0.2/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.878883Z  INFO Add MemcpyToHost before /encoder/text_encoder/cnn.2/cnn.2.1/LayerNormalization_output_0_/encoder/text_encoder/cnn.2/cnn.0.2/LeakyRelu_QuantizeLinear for CUDAExecutionProvider
+2026-11-27T13:20:19.878928Z  INFO Add MemcpyToHost before /encoder/text_encoder/embedding/Gather_output_0_QuantizeInput_quantized for CUDAExecutionProvider
+2026-11-27T13:20:19.879097Z  WARN 241 Memcpy nodes are added to the graph main_graph for CUDAExecutionProvider. It might have negative impact on performance (including unable to run CUDA graph). Set session_options.log_severity_level=1 to see the detail logs before this message.
+2026-11-27T13:20:19.945377Z  INFO cuDNN version: 91300
+2026-11-27T13:20:20.296953Z  INFO Extending BFCArena for Cuda. bin_num:2 (requested) num_bytes: 1024 (actual) rounded_bytes:1024
+2026-11-27T13:20:20.297215Z  INFO Extending BFCArena for Cuda. bin_num:13 (requested) num_bytes: 2883584 (actual) rounded_bytes:2883584
+2026-11-27T13:20:20.299167Z  INFO Extending BFCArena for Cuda. bin_num:14 (requested) num_bytes: 6291456 (actual) rounded_bytes:6291456
+2026-11-27T13:20:20.301665Z  INFO Extending BFCArena for Cuda. bin_num:11 (requested) num_bytes: 786432 (actual) rounded_bytes:786432
+2026-11-27T13:20:20.305036Z  INFO Extending BFCArena for Cuda. bin_num:0 (requested) num_bytes: 1 (actual) rounded_bytes:256
+2026-11-27T13:20:20.313385Z  INFO Extending BFCArena for Cuda. bin_num:0 (requested) num_bytes: 1 (actual) rounded_bytes:256
+2026-11-27T13:20:20.331663Z  INFO Extending BFCArena for Cuda. bin_num:14 (requested) num_bytes: 6291456 (actual) rounded_bytes:6291456
+2026-11-27T13:20:20.364520Z  INFO Extending BFCArena for Cuda. bin_num:14 (requested) num_bytes: 6307840 (actual) rounded_bytes:6307840
+2026-11-27T13:20:20.478125Z  INFO CUDA provider registered and session created session=0
+2026-11-27T13:20:22.381779Z  INFO Extending BFCArena for CudaPinned. bin_num:4 (requested) num_bytes: 6912 (actual) rounded_bytes:6912
+2026-11-27T13:20:22.982870Z  INFO Extending BFCArena for CudaPinned. bin_num:11 (requested) num_bytes: 1019084 (actual) rounded_bytes:1019136
+2026-11-27T13:20:23.045303Z  INFO Extending BFCArena for CudaPinned. bin_num:13 (requested) num_bytes: 2964608 (actual) rounded_bytes:2964736
+2026-11-27T13:20:23.119662Z  INFO Extending BFCArena for Cuda. bin_num:5 (requested) num_bytes: 11791 (actual) rounded_bytes:12032
+2026-11-27T13:20:23.197114Z  INFO 📏 [ONNX] onnx:kokoro-82m-v1.0-onnx-UINT8:text_to_speech:cuda takes 0.72 GB on the GPU

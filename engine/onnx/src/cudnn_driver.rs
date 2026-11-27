@@ -386,6 +386,10 @@ fn runtime_library_paths(drivers_dir: &Path) -> Option<Vec<PathBuf>> {
         if !is_component_ready(drivers_dir, cuda_variant, comp, source) {
             continue;
         }
+        #[cfg(unix)]
+        if comp.component == "cudnn" {
+            link_full_version_names(drivers_dir, source, &comp.version);
+        }
         let mut own: Vec<PathBuf> = if cfg!(windows) {
             // `cudnn64_9.dll` pulls its `cudnn_*64_9.dll` parts from its own folder when opened by full path
             source
@@ -415,6 +419,35 @@ fn runtime_library_paths(drivers_dir: &Path) -> Option<Vec<PathBuf>> {
         paths.extend(own);
     }
     Some(paths)
+}
+
+/// cuDNN 9 on Linux opens its parts by their full version (`libcudnn.so.9` asks for
+/// `libcudnn_graph.so.9.13.0`, found through its `$ORIGIN` runpath). Only the short names are kept
+/// on disk, so without these links the request misses `drivers_dir`: it fails on a clean machine
+/// (CUDNN_STATUS_SUBLIBRARY_LOADING_FAILED) or loads a second, system copy of cuDNN (Run 86,
+/// 2026-11-27). Each link points at the short-name file, so it costs no disk space.
+#[cfg(unix)]
+fn link_full_version_names(drivers_dir: &Path, source: &CudaComponentPlatformSource, version: &str) {
+    let full: Vec<&str> = version.split('.').take(3).collect();
+    let Some(major) = full.first() else { return };
+    if full.len() < 3 || !source.library_extension.ends_with(&format!(".{major}")) {
+        return;
+    }
+    let suffix = format!(".{}.{}", full[1], full[2]);
+    for entry in std::fs::read_dir(drivers_dir).into_iter().flatten().flatten() {
+        let name = entry.file_name();
+        let Some(name) = name.to_str() else { continue };
+        if !name.starts_with(&source.library_prefix) || !name.ends_with(&source.library_extension) {
+            continue;
+        }
+        let link = drivers_dir.join(format!("{name}{suffix}"));
+        if std::fs::symlink_metadata(&link).is_ok() {
+            continue;
+        }
+        if let Err(err) = std::os::unix::fs::symlink(name, &link) {
+            tracing::warn!(?link, %err, "Could not link a cuDNN library under its full version");
+        }
+    }
 }
 
 /// Opens every path with `open`. A library opens only after the ones it links (cuBLAS needs
@@ -955,6 +988,32 @@ fn extract_component_from_tar_xz(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn cudnn_parts_are_linked_under_their_full_version() {
+        let dir = std::env::temp_dir().join(format!("cudnn-links-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("libcudnn.so.9"), b"x").unwrap();
+        std::fs::write(dir.join("libcudnn_graph.so.9"), b"x").unwrap();
+        std::fs::write(dir.join("libcublas.so.13"), b"x").unwrap();
+        let source = CudaComponentPlatformSource {
+            platform: "linux-x86_64".into(),
+            relative_path: String::new(),
+            bytes: 0,
+            sha256: String::new(),
+            sentinel_libraries: vec!["libcudnn.so.9".into()],
+            library_prefix: "libcudnn".into(),
+            library_extension: ".so.9".into(),
+        };
+        link_full_version_names(&dir, &source, "9.13.0.50");
+        link_full_version_names(&dir, &source, "9.13.0.50");
+        assert_eq!(std::fs::read_link(dir.join("libcudnn_graph.so.9.13.0")).unwrap(), PathBuf::from("libcudnn_graph.so.9"));
+        assert!(dir.join("libcudnn.so.9.13.0").is_file());
+        assert!(!dir.join("libcublas.so.13.13.0").exists());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 
     #[test]
     fn manifest_parses_both_cuda12_and_cuda13_with_all_four_components() {

@@ -1,0 +1,13 @@
+tts1 http=200 bytes=368626 s=4.593750
+tts2 http=200 bytes=368626 s=0.575507
+tts3 http=200 bytes=368626 s=0.570774
+pid, used_gpu_memory [MiB]
+7927, 728 MiB
+stt1 http=400 s=0.057124
+stt2 http=400 s=0.017624
+server alive at end
+tts wav http=400
+stt wav1 http=415 s=0.000941
+stt wav2 http=415 s=0.000868
+stt wav1 http=200 s=2.203502
+stt wav2 http=200 s=0.405676

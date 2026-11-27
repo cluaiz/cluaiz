@@ -1,0 +1,19 @@
+  ⬇️  [Cluaiz CUDA Setup] Downloading NVIDIA cuda_cudart v13.0.48 (cuda13, 1.4 MB)...
+  ✅  [Cluaiz CUDA Setup] Installed cuda_cudart v13.0.48 into "~/run86/home/bin"
+  ⬇️  [Cluaiz CUDA Setup] Downloading NVIDIA libcublas v13.0.0.19 (cuda13, 760.4 MB)...
+  ✅  [Cluaiz CUDA Setup] Installed libcublas v13.0.0.19 into "~/run86/home/bin"
+  ⬇️  [Cluaiz CUDA Setup] Downloading NVIDIA libcufft v12.0.0.15 (cuda13, 338.2 MB)...
+  ✅  [Cluaiz CUDA Setup] Installed libcufft v12.0.0.15 into "~/run86/home/bin"
+  ⬇️  [Cluaiz CUDA Setup] Downloading NVIDIA cudnn v9.13.0.50 (cuda13, 611.6 MB)...
+  ✅  [Cluaiz CUDA Setup] Installed cudnn v9.13.0.50 into "~/run86/home/bin"
+Hardware profile re-scanned.
+os        Ubuntu 24.04 (x86_64)
+cpu       Intel(R) Xeon(R) CPU @ 2.20GHz | 4 cores, 8 threads
+ram       29.83 GB free of 31.34 GB
+gpu 0     NVIDIA L4 | 22.03 GB free of 22.49 GB VRAM
+backend   CUDA0: NVIDIA L4
+
+real	3m32.226s
+user	2m51.441s
+sys	0m11.250s
+exit=0

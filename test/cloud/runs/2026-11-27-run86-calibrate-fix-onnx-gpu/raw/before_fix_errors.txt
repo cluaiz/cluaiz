@@ -1,0 +1,3 @@
+2026-11-27T13:11:37.563285Z ERROR CUDNN_BACKEND_TENSOR_DESCRIPTOR cudnnFinalize failedptrDesc->finalize() cudnn_status: CUDNN_STATUS_SUBLIBRARY_LOADING_FAILED
+2026-11-27T13:11:37.563585Z ERROR Non-zero status code returned while running ConvTranspose node. Name:'/encoder/F0.1/pool/ConvTranspose' Status Message: Failed to initialize CUDNN Frontend: /home/runner/work/ort-artifacts/ort-artifacts/onnxruntime/onnxruntime/core/providers/cuda/cudnn_fe_call.cc:11
+2026-11-27T13:11:38.993277Z ERROR CUDNN failure 3009: CUDNN_STATUS_NOT_SUPPORTED_SUBLIBRARY_UNAVAILABLE ; GPU=0 ; hostname=cluaiz-l4b.us-central1-a.c.fluid-furnace-485116-q4.internal ; file=/home/runner/work/ort-artifacts/ort-artifacts/onnxruntime/onnxruntime/core/providers/cuda/cudnn_common.h ; lin

@@ -1,0 +1,2 @@
+ldpath tts1 http=500 bytes=2489 s=3.824537
+ldpath tts2 http=200 bytes=366994 s=4.889265
