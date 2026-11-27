@@ -812,6 +812,13 @@
   "metadata": true
  },
  {
+  "title": "DELETE",
+  "description": "Removes an installed model, as cluaiz rm does; answers 200 with an empty body",
+  "kind": "docs",
+  "path": "docs/api/models/delete_model.md",
+  "metadata": true
+ },
+ {
   "title": "GET",
   "description": "List locally installed models in the OpenAI list format",
   "kind": "docs",

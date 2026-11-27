@@ -21,6 +21,7 @@ The default base URL is `http://127.0.0.1:8000`; use your configured host/port. 
 | Models | GET | `/api/tags` | No body → installed model list in the tags shape | [List models](../api/models/list_models.md) |
 | Models | POST | `/api/show` | `{"model"}` → details and GGUF header in the show shape | [Show](../api/models/show_model.md) |
 | Models | POST | `/api/pull` | Model identifier/download controls → pull progress/result | [Pull](../api/models/pull_model.md) |
+| Models | DELETE | `/api/delete` | `{"model"}` → 200, empty body | [Delete](../api/models/delete_model.md) |
 | Models | DELETE | `/api/delete` | `{"model"}` → 200 with an empty body, or 404 when not installed | [Coming from Ollama](../get-started/coming-from-ollama.md) |
 | System | GET | `/health` | No body → Engine liveness JSON | [Health](../api/system/health.md) |
 | Engine controls | POST | `/v1/cep` | JSON-RPC `method/params` → `result` or `error`; long methods return a task | [CEP](../api/cep/README.md) |

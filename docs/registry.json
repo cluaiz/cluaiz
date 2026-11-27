@@ -410,6 +410,11 @@
             "slug": "pull-model",
             "title": "POST /api/pull",
             "file_path": "docs/api/models/pull_model.md"
+          },
+          {
+            "slug": "delete-model",
+            "title": "DELETE /api/delete",
+            "file_path": "docs/api/models/delete_model.md"
           }
         ]
       },

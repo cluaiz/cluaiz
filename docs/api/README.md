@@ -114,6 +114,7 @@ Invoke-RestMethod "$base/v1/embeddings" -Method Post -Headers $headers `
 * [**`GET /v1/models` & `GET /api/tags`**](./models/list_models.md): installed models in the OpenAI and Ollama formats. Manage them with [`models.*`](./cep/models/README.md).
 * [**`POST /api/show`**](./models/show_model.md): one installed model's details and GGUF header (Ollama); the CEP method is [`models.inspect`](./cep/models/models/models.inspect.md).
 * [**`POST /api/pull`**](./models/pull_model.md): download a model (Ollama); the CEP task is [`models.download`](./cep/models/models/models.download.md).
+* [**`DELETE /api/delete`**](./models/delete_model.md): remove an installed model (Ollama); the CEP method is [`models.remove`](./cep/models/models/models.remove.md).
 
 ### 4. Health
 * [**`GET /health`**](./system/health.md): the only route that is always open.
