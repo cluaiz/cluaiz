@@ -12,7 +12,7 @@
 | Linux L4 release v0.1.0 | features and journeys pass | 8 |
 | Linux CPU release v0.1.0 | features and journeys pass; `flow draft` needs more than 4096 context | 7 |
 | MacBook Air M5 16 GB, release v0.1.0 | installs and chats at plain llama.cpp's speed for the same settings | Mac M5 |
-| Install and CPU runs on clean machines: Linux x64 / ARM64, Windows Server, macOS | every supported system installed and answered (tg128 2.1-23.9 t/s); glibc below 2.38 stops with a message | 6 |
+| Install and CPU runs on clean machines: Linux x64 / ARM64, Windows Server, macOS | every supported system installed and answered (tg128 2.1-23.9 t/s); glibc below 2.38 stopped with a message (the installer asks for 2.39 since commit 9df63744, 2026-11-10; no symbol dump recorded) | 6 |
 
 Below: every current run of this test type, newest first, in full.
 
@@ -287,7 +287,7 @@ build, the planner and the server. Model: `unsloth/Qwen3-0.6B-GGUF` Q4_K_M, `clu
 | AWS m7i-flex.large: same Xeon, 7.7 GB | Windows Server 2025 | ✅ `install.ps1` | ✅ | 130.9 | 18.5 | `cascadelake` (no sapphirerapids build on Windows) |
 | GitHub `macos-15`: Apple M1 (virtual), 7 GB | macOS 15.8 | ✅ `install.sh` | ✅ | 176.7 | 2.1 | Metal (`MTL0`, virtual GPU) |
 | Docker on the x64 machine | Debian 13, Fedora 42, Ubuntu 24.04 | ✅ | ✅ | | | |
-| Docker on the x64 machine | Ubuntu 22.04 (glibc 2.35), Debian 12 (2.36), Rocky 9 (2.34) | ⛔ stops: "Cluaiz needs glibc 2.38 or newer" | | | | |
+| Docker on the x64 machine | Ubuntu 22.04 (glibc 2.35), Debian 12 (2.36), Rocky 9 (2.34) | ⛔ stops: "Cluaiz needs glibc 2.38 or newer" (the installer text on 2026-11-09; 2.39 since 9df63744) | | | | |
 
 Also on the 3.7 GB x64 machine: Qwen3 4B Q4_K_M (2.3 GB file) planned CPU only, 4096 tokens, 2.91 GB, answered;
 pp512 23.1 t/s, tg128 3.3 t/s.
