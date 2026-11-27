@@ -464,6 +464,10 @@ pub fn route_llama_logs() {
         crate::ffi::mtmd::mtmd_helper_log_set(Some(mtmd_log_callback), std::ptr::null_mut());
     }
     load_backends();
+    static ABORT_REPORT: std::sync::Once = std::sync::Once::new();
+    ABORT_REPORT.call_once(|| {
+        crate::abort_report::install(&cluaiz_core::env::EnvironmentManager::current().global_dir)
+    });
 }
 
 /// Loads the backend libraries beside the executable once: the CPU variant this processor supports

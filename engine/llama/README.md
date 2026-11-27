@@ -268,6 +268,41 @@ In short: how an image or audio request is turned into model input in the right 
 | A larger image after small ones | the growth of an encode is counted after it ran, so the first large image is checked against the remaining estimate only | a run with 448 px then 1792 px images on a GPU projector |
 | Unit test for the request VRAM rule | the llama suite is not run on the dev machine | CI |
 
+## llama.cpp abort report (Stage 0 of the crash-isolation plan, 2026-11-27)
+
+When ggml aborts (`GGML_ABORT`, `GGML_ASSERT`, `CUDA_CHECK`), `ggml_abort` (`ggml.c`, near line 253) prints,
+calls the callback set by `ggml_set_abort_callback`, then always calls `abort()`. `abort_report.rs` sets that
+callback once (from `route_llama_logs`, `native/core.rs`, through a `Once`). The callback writes
+`[cluaiz] llama.cpp aborted: <message>` to stderr and appends `<unix seconds>	<message>` to
+`<Cluaiz home>/last_crash.txt`, then flushes to disk. The next `cluaiz serve` start
+(`api/src/lib.rs`, `run_daemon_with_native_endpoint`, through `cluaiz_runtime::report_previous_abort`) logs one
+warn line with that text and renames the file to `last_crash.prev.txt` (an older `.prev` is replaced).
+The home folder is `EnvironmentManager::current().global_dir`, so `CLUAIZ_HOME` is honoured.
+This does not recover anything: the process still ends.
+
+| Decision | Why | Alternative not taken |
+|---|---|---|
+| Direct file write + flush, no `tracing` in the callback | the process dies right after; a log layer may buffer or lock | write through the Engine log file |
+| Rename to `.prev`, not delete | history is not dropped silently | delete after reporting |
+| Report only at `serve` | the plan asks for the server; other commands print to their own terminal | report at every command |
+| No recovery in the callback | `longjmp` out of C over Rust frames is undefined behaviour (skips Rust destructors and locks) | longjmp back to the request loop (rejected) |
+
+Not covered: an abort from ONNX Runtime or cuDNN (the real run-4b crash) never reaches a ggml callback; a
+killed or crashed process without `ggml_abort` (segfault) leaves no marker.
+
+**Test.** `cargo test -p llama-engine --lib abort_report` (marker write, read, rename, long message). Status
+2026-11-27: the three tests passed when the module was compiled alone with `rustc --test` (3 passed, 0 failed);
+the crate test run was not done because it started a full CUDA llama.cpp rebuild. The abort path itself needs
+a forced `ggml_abort` and is not tested yet.
+
+### Pending
+
+| Item | Why it matters | Needs |
+|---|---|---|
+| Stage 1 runner process | a crash still ends the whole server; this only records it | the runner split of `EngineHost` (plan, owner's yes) |
+| Forced abort test | the callback is not proven to run in a real abort | a debug-only trigger and a cached build |
+| Crate test run | see Test | a build that reuses the cached llama.cpp |
+
 ## llama.cpp log lines
 
 `route_llama_logs` (`native/core.rs`) sends every llama.cpp / ggml (and mtmd) log line to the Engine log

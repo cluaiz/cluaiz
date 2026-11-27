@@ -26,6 +26,10 @@ pub fn gguf_hardware() -> cluaiz_hw::SystemInfo {
 pub fn loaded_gpu_backends() -> Vec<String> {
     llama_engine::loaded_gpu_backends()
 }
+/// At a `serve` start: warns once when the last run ended in a llama.cpp abort (see `llama_engine::abort_report`).
+pub fn report_previous_abort() {
+    llama_engine::abort_report::report_previous(&cluaiz_core::env::EnvironmentManager::current().global_dir);
+}
 pub use llama_engine::{ContextReport, GenerationTimings, ThinkingReport};
 /// Tells the model catalogue which quantizations the bundled llama.cpp can read, so a pull offers
 /// only GGUF files that load (a llama.cpp fork's `PTQ1_0` or `PQ2_0` is left out). Call once at start.

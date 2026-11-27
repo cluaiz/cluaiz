@@ -167,6 +167,12 @@ extern "C" {
     /// 🛑 Free the global llama + ggml backend.
     pub fn llama_backend_free();
 
+    /// Sets the function `ggml_abort` calls (with the message) just before it calls `abort()`. It cannot
+    /// stop the abort. Returns the previous callback.
+    pub fn ggml_set_abort_callback(
+        callback: Option<extern "C" fn(*const c_char)>,
+    ) -> Option<extern "C" fn(*const c_char)>;
+
     /// Loads every backend library in `dir_path`: the best CPU variant for this processor and any GPU pack.
     pub fn ggml_backend_load_all_from_path(dir_path: *const c_char);
 

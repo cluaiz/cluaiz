@@ -2,6 +2,7 @@
 //! Safe Rust API wrapping compiled llama.cpp C/C++ memory directly as an `rlib`.
 //! Statically linked into the unified process space, eliminating dual-memory static copy bugs.
 
+pub mod abort_report;
 pub mod ffi;
 pub mod native;
 pub mod moe_override;

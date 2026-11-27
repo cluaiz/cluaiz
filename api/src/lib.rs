@@ -48,6 +48,7 @@ pub async fn run_daemon() -> anyhow::Result<()> {
 
 /// The explicit native mode serves the same router without opening a TCP listener.
 pub async fn run_daemon_with_native_endpoint(endpoint: Option<String>) -> anyhow::Result<()> {
+    cluaiz_runtime::report_previous_abort();
     let native = endpoint.as_deref().map(native::NativeListener::bind).transpose()?;
     let state = Arc::new(boot::boot());
     let host = state.host.clone();
