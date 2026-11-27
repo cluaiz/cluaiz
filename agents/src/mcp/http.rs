@@ -17,7 +17,7 @@ use tokio::time::timeout;
 const SESSION_HEADER: &str = "mcp-session-id";
 const VERSION_HEADER: &str = "mcp-protocol-version";
 /// The legacy version asked for at `initialize`; the server may answer with another one (version negotiation)
-pub const PROTOCOL_VERSION: &str = "2025-06-18";
+pub const PROTOCOL_VERSION: &str = "2025-11-25";
 /// The newest version supported: stateless, no `initialize` (spec 2026-07-28)
 pub const MODERN_VERSION: &str = "2026-07-28";
 const META_VERSION: &str = "io.modelcontextprotocol/protocolVersion";

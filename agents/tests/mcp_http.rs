@@ -460,6 +460,8 @@ async fn closed_event_stream_is_resumed_with_get_and_last_event_id() {
     let result = McpClient::call_tool(&dir, "echo", json!({"text":"x"})).await.unwrap();
     assert_eq!(result["content"][0]["text"], "resumed");
     let seen = log.lock().unwrap();
+    let init = seen.iter().find(|s| s.body["method"] == "initialize").expect("an initialize");
+    assert_eq!(init.body["params"]["protocolVersion"], "2025-11-25");
     let get = seen.iter().find(|s| s.method == "GET").expect("a GET resume");
     assert_eq!(get.header("last-event-id"), Some("7"));
     assert_eq!(get.header("accept"), Some("text/event-stream"));
