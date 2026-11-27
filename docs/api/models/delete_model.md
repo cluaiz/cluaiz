@@ -15,12 +15,10 @@ request_payload: |
   {
     "model": "smollm-135m-gguf-Q2_K"
   }
-response: |
-  (empty body)
 errors:
   - status: 400
     type: "error"
-    when: "The body is missing or is not JSON, `model` is empty, or `model` looks like a path (`..`, `/`, `\`)"
+    when: "The body is missing or is not JSON, `model` is empty, or `model` looks like a path (`..`, `/` or a backslash)"
   - status: 401
     type: "unauthenticated"
     when: "API authentication is on and no valid token was sent"
