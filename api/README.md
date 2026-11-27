@@ -303,7 +303,7 @@ native package) and unit tests in `src/` (providers 49, chat handlers 20, CEP me
 
 | File | Tests (ignored) |
 |---|---|
-| `cep_contract.rs`, `cep_docs.rs`, `cep_system_contract.rs`, `cep_fs_contract.rs`, `cep_exec_contract.rs`, `cep_models_contract.rs`, `cep_tools_contract.rs`, `cep_audio_contract.rs` | 2, 1, 3, 2, 2, 1, 1, 1 |
+| `cep_contract.rs`, `cep_docs.rs`, `cep_system_contract.rs`, `cep_fs_contract.rs`, `cep_exec_contract.rs`, `cep_models_contract.rs`, `cep_tools_contract.rs`, `cep_audio_contract.rs` | 3, 1, 3, 2, 2, 1, 1, 1 |
 | `native_contract.rs`, `ollama_delete_contract.rs` | 5, 1 |
 | `embedding_contract.rs`, `tts_hardening.rs` | 2 (2), 1 (1) |
 | `media_contract.rs`, `media_resource_contract.rs`, `video_contract.rs`, `document_contract.rs`, `processing_contract.rs` | 4 (2), 2, 2 (1), 2 (1), 1 |

@@ -52,7 +52,8 @@ what you build.
 - **One engine for chat, voice, vision and embeddings.** Chat, vision, speech, transcription and embeddings share one process, one
   model store and one API, so an app does not wire up a separate server for each.
 - **Works with what you already use.** Any OpenAI client can point at Cluaiz, and MCP clients such as Claude
-  Desktop and Cursor reach it through `cluaiz mcp-server`.
+  Desktop and Cursor reach it through `cluaiz mcp-server`, and MCP servers that run over HTTP are added with
+  `cluaiz mcp add <name> --url <url>`.
 - **You stay in control.** Agents act in a sandboxed mode by default, ask before changes outside the workspace,
   and every write, command and admin call goes to an audit log. WebAssembly plugins run with no file access and
   only the network they declare.
