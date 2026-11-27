@@ -137,13 +137,11 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          # The windows-2022 image has LLVM 20.1.8 under C:/Program Files/LLVM; whether its folder holds
-          # libomp.lib and libomp.dll is not documented. When one is missing, install the LLVM version
-          # that llama.cpp's own Windows release installs (choco llvm 22.1.8, its release.yml)
-          if [ ! -f "C:/Program Files/LLVM/bin/libomp.dll" ] || [ ! -f "C:/Program Files/LLVM/lib/libomp.lib" ]; then
-            echo "libomp missing from the runner's LLVM; installing llvm 22.1.8 with choco"
-            choco install llvm --version=22.1.8 --allow-downgrade --force -y --no-progress
-          fi
+          # The windows-2022 image has LLVM 20.1.8 under C:/Program Files/LLVM, but build.rs is tuned to
+          # clang 22 (engine/llama/build.rs comments on the CPU variants) and whether 20.1.8 ships libomp is
+          # not documented. Always install the LLVM that llama.cpp's own Windows release installs (choco
+          # llvm 22.1.8, its release.yml), so every release builds with the same clang
+          choco install llvm --version=22.1.8 --allow-downgrade --force -y --no-progress
           "C:/Program Files/LLVM/bin/clang.exe" --version || echo "clang not found in C:/Program Files/LLVM/bin"
           missing=0
           for f in "C:/Program Files/LLVM/bin/libomp.dll" "C:/Program Files/LLVM/lib/libomp.lib"; do
