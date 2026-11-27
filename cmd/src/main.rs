@@ -726,3 +726,30 @@ async fn main() -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn mcp_add_parses_name_url_and_repeated_headers() {
+        let cli = Cli::try_parse_from([
+            "cluaiz", "mcp", "add", "gh", "--url", "https://x/mcp",
+            "--header", "Authorization: Bearer ${T}", "--header", "X-A: b",
+        ])
+        .expect("mcp add should parse");
+        match cli.command {
+            Some(CliCommand::Mcp { command: ComponentCommand::Add { name, url, header } }) => {
+                assert_eq!(name, "gh");
+                assert_eq!(url, "https://x/mcp");
+                assert_eq!(header, ["Authorization: Bearer ${T}", "X-A: b"]);
+            }
+            _ => panic!("expected `mcp add`"),
+        }
+    }
+
+    #[test]
+    fn mcp_add_without_url_fails() {
+        assert!(Cli::try_parse_from(["cluaiz", "mcp", "add", "gh"]).is_err());
+    }
+}
