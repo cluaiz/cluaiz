@@ -542,9 +542,18 @@ async fn main() -> Result<()> {
         }
         CliCommand::Status => cli::status::execute(),
         CliCommand::Calibrate => {
-            let _ = cluaiz_hw::HardwareProber::calibrate();
-            if let Err(err) = onnx_engine::cudnn_driver::provision_cuda_runtime_at_setup() {
-                tracing::warn!("CUDA/cuDNN 9 runtime provisioning during calibrate returned: {}", err);
+            // The CUDA download uses reqwest's blocking client, which owns its own tokio runtime.
+            // Dropping that runtime on an async worker panics, so the whole step runs on a
+            // blocking thread.
+            let provisioned = tokio::task::spawn_blocking(|| {
+                let _ = cluaiz_hw::HardwareProber::calibrate();
+                onnx_engine::cudnn_driver::provision_cuda_runtime_at_setup()
+            })
+            .await;
+            match provisioned {
+                Ok(Err(err)) => tracing::warn!("CUDA/cuDNN 9 runtime provisioning during calibrate returned: {}", err),
+                Err(err) => tracing::warn!("calibrate step stopped: {}", err),
+                Ok(Ok(_)) => {}
             }
             println!("Hardware profile re-scanned.");
             cli::status::execute();
