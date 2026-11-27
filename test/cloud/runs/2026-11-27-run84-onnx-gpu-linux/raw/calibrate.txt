@@ -1,0 +1,12 @@
+  ⬇️  [Cluaiz CUDA Setup] Downloading NVIDIA cuda_cudart v13.0.48 (cuda13, 1.4 MB)...
+[31mThe application panicked (crashed).[0m
+Message:  [36mCannot drop a runtime in a context where blocking is not allowed. This happens when a runtime is dropped from within an asynchronous context.[0m
+Location: [35m/home/<user>/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.54.1/src/runtime/blocking/shutdown.rs[0m:[35m51[0m
+
+Backtrace omitted. Run with RUST_BACKTRACE=1 environment variable to display it.
+Run with RUST_BACKTRACE=full to include source snippets.
+
+real	0m4.316s
+user	0m4.058s
+sys	0m0.363s
+exit=101

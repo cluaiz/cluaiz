@@ -1,0 +1,6 @@
+total 3333380
+drwxrwxr-x 2 Aryan Aryan       4096 Nov 27 09:14 .
+drwxrwxr-x 4 Aryan Aryan       4096 Nov 27 09:14 ..
+-rw-rw-r-- 1 Aryan Aryan 2740937888 Nov 27 09:14 Qwen3.5-4B-Q4_K_M.gguf
+-rw-rw-r-- 1 Aryan Aryan  672423616 Nov 27 09:14 mmproj-F16.gguf
+-rw-rw-r-- 1 Aryan Aryan        870 Nov 27 09:14 model_manifest.json

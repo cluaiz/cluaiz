@@ -1,0 +1,11 @@
+tts1 http=200 bytes=366994 s=6.135708
+server alive after tts1
+tts2 http=200 bytes=366994 s=1.909703
+server alive after tts2
+tts3 http=200 bytes=366994 s=2.001475
+server alive after tts3
+stt1 http=415 s=0.001181
+server alive after stt1
+stt2 http=415 s=0.000821
+server alive after stt2
+{"channel":"pre-release","engine":"Cluaiz Engine","message":"Cluaiz Engine is alive and operational.","status":"alive","version":"0.1.0"}

@@ -1,0 +1,5 @@
+  │ 🆔 Registered ID:  qwen3.5-0.8b-gguf-Q4_K_M
+  │ 📁 Vault Path:     /home/<user>/run74/home/models/chat/qwen3.5-0.8b-gguf-Q4_K_M
+  │ 🚀 Run Command:   cluaiz run qwen3.5-0.8b-gguf-Q4_K_M
+  └─────────────────────────────────────────────────────────────┘
+

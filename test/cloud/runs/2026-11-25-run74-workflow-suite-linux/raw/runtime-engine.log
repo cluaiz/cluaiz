@@ -1,0 +1,112 @@
+2026-11-27T09:07:38.151874Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-27T09:07:38.195926Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-27T09:07:41.864791Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+Starting the Cluaiz API server on http://localhost:8013 ...
+2026-11-27T09:07:41.865282Z  INFO 🔒 [Auth] Initialized local session secret at <engine-home>/session.token
+2026-11-27T09:07:42.065888Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-27T09:07:42.083437Z  INFO 🌐 Cluaiz API Server running on http://<ip>:8013
+2026-11-27T09:07:42.462697Z  INFO Automation: saved flow qa-1795770458130-startup (user) at <engine-home>/flows/qa-1795770458130-startup.flow.json
+2026-11-27T09:07:42.490040Z  INFO Automation: saved flow qa-1795770458130-webhook (user) at <engine-home>/flows/qa-1795770458130-webhook.flow.json
+2026-11-27T09:07:42.515020Z  INFO Automation: saved flow qa-1795770458130-restart (user) at <engine-home>/flows/qa-1795770458130-restart.flow.json
+2026-11-27T09:07:43.262089Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-27T09:07:43.307248Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-27T09:07:46.976713Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+Starting the Cluaiz API server on http://localhost:8013 ...
+2026-11-27T09:07:46.977199Z  INFO 🔒 [Auth] Initialized local session secret at <engine-home>/session.token
+2026-11-27T09:07:47.176955Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-27T09:07:47.194236Z  INFO 🌐 Cluaiz API Server running on http://<ip>:8013
+2026-11-27T09:07:47.202672Z  INFO Automation: run run_050cc55c434e of qa-1795770458130-restart goes on after a restart
+2026-11-27T09:07:47.271625Z  INFO Automation: startup_0 started run run_4b7364651476 of qa-1795770458130-startup
+2026-11-27T09:08:04.832150Z  INFO Automation: webhook qa-1795770458130-webhook from <ip> answered 401 Unauthorized
+2026-11-27T09:08:04.842765Z  INFO Automation: webhook_0 started run run_b682797fb8a6 of qa-1795770458130-webhook
+2026-11-27T09:08:04.843069Z  INFO Automation: webhook qa-1795770458130-webhook from <ip> answered 202 Accepted
+2026-11-27T09:08:04.876283Z  INFO Automation: saved flow qa-1795770458130-tool-trigger (user) at <engine-home>/flows/qa-1795770458130-tool-trigger.flow.json
+2026-11-27T09:08:04.913609Z  INFO Automation: tool_0 started run run_0cb4cd872465 of qa-1795770458130-tool-trigger
+2026-11-27T09:08:04.952286Z  INFO Automation: saved flow qa-1795770458130-code (user) at <engine-home>/flows/qa-1795770458130-code.flow.json
+2026-11-27T09:08:08.885280Z  INFO Automation: saved flow qa-1795770458130-tool-step (user) at <engine-home>/flows/qa-1795770458130-tool-step.flow.json
+2026-11-27T09:08:08.901673Z  INFO ⚡ [PluginExecutor] Executing plugin binary at: "<engine-home>/tools/plugins/math/math.wasm"
+2026-11-27T09:08:12.819901Z  INFO Automation: saved flow qa-1795770458130-ask (user) at <engine-home>/flows/qa-1795770458130-ask.flow.json
+2026-11-27T09:08:12.837822Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-0.8b-gguf-Q4_K_M' to "<engine-home>/models/chat/qwen3.5-0.8b-gguf-Q4_K_M/Qwen3.5-0.8B-Q4_K_M.gguf"
+2026-11-27T09:08:13.669559Z  INFO 📐 [EngineHost] llama.cpp dry run, full GPU at 4096 tokens: model 0.49 + context 0.05 + compute 0.49 = 1.02 GB vs estimate 1.00 GB (+0.01) in 745 ms
+2026-11-27T09:08:13.691738Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3.5-0.8b-gguf-Q4_K_M
+║   • Architecture    : qwen35 | 24 layers | heads 8 | KV heads 2 | head size K 256 / V 256 | dense | hybrid: 6 attention layers with a KV cache, 18 linear-attention layers with a 1.1 MB state
+║   • Weights         : file 0.53 GB (as Hugging Face counts it) | input embeddings 0.19 GB (always CPU) | output head 0.19 GB | vocab 248320
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 16384 tokens, KV Kv16 (Auto: 16384 tokens, KV Kv16, buffer 0.45 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 21.84 of 22.49 GB | buffer kept free 0.45 GB (card-sized gap: 0.15 GB reserve + 0.30 GB for the GPU pool, model not measured on this machine yet; estimate corrected by llama.cpp's dry run +0.01 GB)
+║   • RAM             : free 29.75 of 31.34 GB | Cluaiz may use 28.36 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 24 on GPU, 0 in RAM (of 24)
+║   • VRAM            : 1.18 GB (weights + KV 0.21 + logits)
+║   • RAM             : 0.19 GB (incl. KV 0.00)
+║   • Reason         : Full GPU: weights 0.49 + KV 0.21 + buffers 0.49 = 1.18 GB vs usable VRAM 21.58 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  1.18 GB | RAM  0.19 GB | weights 0.49 + KV 0.21 + buffers 0.49 = 1.18 GB vs usable VRAM 21.58 GB
+║   • GPU + RAM split  [FITS]     VRAM  1.16 GB | RAM  0.21 GB | 23 / 24 blocks + output head on GPU (1.16 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  1.17 GB | weights 0.49 + KV 0.21 + logits 0.47 = 1.17 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-27T09:08:13.692448Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-27T09:08:13.692762Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 4, n_threads_batch = 4
+2026-11-27T09:08:13.692791Z  INFO 🧬 [Native-Llama] Loading model: <engine-home>/models/chat/qwen3.5-0.8b-gguf-Q4_K_M/Qwen3.5-0.8B-Q4_K_M.gguf | ctx: 16384 tokens
+2026-11-27T09:08:14.242988Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "<engine-home>/models/chat/qwen3.5-0.8b-gguf-Q4_K_M"
+2026-11-27T09:08:14.260583Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-11-27T09:08:14.260621Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-11-27T09:08:14.260641Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16384 tokens
+2026-11-27T09:08:14.260663Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-27T09:08:14.260680Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-27T09:08:14.260704Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-27T09:08:14.260731Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 4/4
+2026-11-27T09:08:14.260755Z  INFO 🔮 [MTP] MTP asked for, but this model has no multi-token-prediction layers: decoding without it
+2026-11-27T09:08:14.517090Z  INFO 🔍 [EngineHost] VRAM planned 1.18 GB, taken 1.22 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-27T09:08:14.517395Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: <engine-home>/models/chat/qwen3.5-0.8b-gguf-Q4_K_M/Qwen3.5-0.8B-Q4_K_M.gguf
+2026-11-27T09:08:14.545106Z  INFO 🧮 [Tokens] Conversation 113 tokens (2 messages) counted in 0.77 ms
+2026-11-27T09:08:14.545785Z  INFO ⏱️ [Preflight] 1708 ms total | model load 1698 ms | registry + template + tags 7 ms | skills + tools 1 ms | rest 0 ms
+2026-11-27T09:08:14.550039Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (629 bytes) in 0 ms
+2026-11-27T09:08:14.624255Z  INFO 🧰 [NativeTools] Format peg-native | grammar none (lazy false, 0 triggers)
+2026-11-27T09:08:14.626302Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795770494
+2026-11-27T09:08:14.650446Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-27T09:08:14.650602Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-27T09:08:14.650633Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 130 tokens in 65 ms (2004.10 t/s) | generation 1 tokens in 18 ms (54.73 t/s)
+2026-11-27T09:08:14.650655Z  INFO 🧠 [Context] prompt 130 tokens (0 from the cache) | context 131 of 16384 | stop eos
+2026-11-27T09:08:14.984144Z  INFO Automation: saved flow qa-1795770458130-agent (user) at <engine-home>/flows/qa-1795770458130-agent.flow.json
+2026-11-27T09:08:15.000217Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-0.8b-gguf-Q4_K_M' to "<engine-home>/models/chat/qwen3.5-0.8b-gguf-Q4_K_M/Qwen3.5-0.8B-Q4_K_M.gguf"
+2026-11-27T09:08:15.021358Z  INFO 📏 [EngineHost] The loaded model now takes +0.04 GB over its estimate; learned for its next load
+2026-11-27T09:08:15.023654Z  INFO 🧮 [Tokens] Conversation 144 tokens (2 messages) counted in 0.79 ms
+2026-11-27T09:08:15.023880Z  INFO 🪶 [Tools] Small model (752393024 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-27T09:08:15.026813Z  INFO ⏱️ [Preflight] 26 ms total | model load 21 ms | registry + template + tags 1 ms | skills + tools 1 ms | rest 2 ms
+2026-11-27T09:08:15.105595Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-27T09:08:15.105675Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795770495
+2026-11-27T09:08:16.722930Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-27T09:08:16.723263Z  INFO 🧰 [NativeTools] Parsed 1 call(s): ["plugin_math_math_evaluate"]
+2026-11-27T09:08:16.723296Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 968 tokens in 59 ms (16285.60 t/s) | generation 34 tokens in 136 ms (249.27 t/s)
+2026-11-27T09:08:16.723330Z  INFO 🧠 [Context] prompt 968 tokens (0 from the cache) | context 1002 of 16384 | stop eos
+2026-11-27T09:08:16.725655Z  INFO ⚡ [PluginExecutor] Executing plugin binary at: "<engine-home>/tools/plugins/math/math.wasm"
+2026-11-27T09:08:20.590616Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-0.8b-gguf-Q4_K_M' to "<engine-home>/models/chat/qwen3.5-0.8b-gguf-Q4_K_M/Qwen3.5-0.8B-Q4_K_M.gguf"
+2026-11-27T09:08:20.611405Z  INFO 📏 [EngineHost] The loaded model now takes +0.05 GB over its estimate; learned for its next load
+2026-11-27T09:08:20.613282Z  INFO 🧮 [Tokens] Conversation 198 tokens (4 messages) counted in 0.30 ms
+2026-11-27T09:08:20.613487Z  INFO 🪶 [Tools] Small model (752393024 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: ["read_item"] (context_policy small_model_tools: "full" keeps them)
+2026-11-27T09:08:20.614169Z  INFO ⏱️ [Preflight] 23 ms total | model load 20 ms | registry + template + tags 1 ms | skills + tools 0 ms | rest 0 ms
+2026-11-27T09:08:20.685796Z  INFO 🧰 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)
+2026-11-27T09:08:20.685878Z  INFO 🎲 [Native-Llama] Dynamic Sampler Chain (Penalties -> Top-K(40) -> Top-P(0.95) -> Min-P(0.05) -> Temp(0.8) -> Dist): seed=1795770500
+2026-11-27T09:08:20.716343Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-27T09:08:20.716445Z  INFO 🧰 [NativeTools] Parsed 0 call(s): []
+2026-11-27T09:08:20.716471Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 661 tokens in 55 ms (11917.00 t/s) | generation 4 tokens in 25 ms (162.30 t/s)
+2026-11-27T09:08:20.716507Z  INFO 🧠 [Context] prompt 661 tokens (0 from the cache) | context 665 of 16384 | stop eos

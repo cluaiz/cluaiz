@@ -1,0 +1,25 @@
+2026-11-27T09:06:27.028219Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-27T09:06:27.073033Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-27T09:06:30.749009Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+Starting the Cluaiz API server on http://localhost:8013 ...
+2026-11-27T09:06:30.749589Z  INFO 🔒 [Auth] Initialized local session secret at /home/<user>/run74/home/session.token
+2026-11-27T09:06:33.262229Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-27T09:06:33.279046Z  INFO 🌐 Cluaiz API Server running on http://127.0.0.1:8013
+2026-11-27T09:06:34.349135Z  INFO Automation: saved flow qa-1795770394216-child (user) at /home/<user>/run74/home/flows/qa-1795770394216-child.flow.json
+2026-11-27T09:06:34.376960Z  INFO Automation: saved flow qa-1795770394216-logic (user) at /home/<user>/run74/home/flows/qa-1795770394216-logic.flow.json
+2026-11-27T09:06:36.445162Z  INFO Automation: qa-1795770394216-logic (run_c3d4f1f7ec08) started qa-1795770394216-child as run run_734dca083e29
+2026-11-27T09:06:36.578221Z  INFO Automation: qa-1795770394216-logic (run_41a3167301c1) started qa-1795770394216-child as run run_82dd0c6a8139
+2026-11-27T09:06:36.941259Z  INFO Automation: saved flow qa-1795770394216-negative (user) at /home/<user>/run74/home/flows/qa-1795770394216-negative.flow.json
+2026-11-27T09:06:37.334524Z  INFO Automation: saved flow qa-1795770394216-engine-event (user) at /home/<user>/run74/home/flows/qa-1795770394216-engine-event.flow.json
+2026-11-27T09:06:37.356248Z  INFO Automation: saved flow qa-1795770394216-event (user) at /home/<user>/run74/home/flows/qa-1795770394216-event.flow.json
+2026-11-27T09:06:37.377165Z  INFO Automation: saved flow qa-1795770394216-sender (user) at /home/<user>/run74/home/flows/qa-1795770394216-sender.flow.json
+2026-11-27T09:06:37.409312Z  INFO Automation: event_0 started run run_c1515e3fcbfe of qa-1795770394216-event
+2026-11-27T09:06:37.409375Z  INFO Automation: engine_0 started run run_b6a01bdd19e6 of qa-1795770394216-engine-event
+2026-11-27T09:06:37.780287Z  INFO Automation: saved flow qa-1795770394216-file (user) at /home/<user>/run74/home/flows/qa-1795770394216-file.flow.json
+2026-11-27T09:06:37.780436Z  INFO Automation: saved flow qa-1795770394216-every (user) at /home/<user>/run74/home/flows/qa-1795770394216-every.flow.json
+2026-11-27T09:06:37.780806Z  INFO Automation: saved flow qa-1795770394216-poll (user) at /home/<user>/run74/home/flows/qa-1795770394216-poll.flow.json
+2026-11-27T09:06:37.782239Z  INFO Automation: saved flow qa-1795770394216-schedule (user) at /home/<user>/run74/home/flows/qa-1795770394216-schedule.flow.json
+2026-11-27T09:06:37.796549Z  INFO Automation: poll_0 started run run_593b914f52f8 of qa-1795770394216-poll
+2026-11-27T09:06:39.097538Z  INFO Automation: file_0 started run run_6e2ca3a746f0 of qa-1795770394216-file
+2026-11-27T09:07:00.009686Z  INFO Automation: schedule_0 started run run_406ff0320ad4 of qa-1795770394216-schedule
+2026-11-27T09:07:37.792042Z  INFO Automation: every_0 started run run_aa2db1b83dd9 of qa-1795770394216-every

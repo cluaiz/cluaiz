@@ -1,0 +1,3 @@
+ID                            CATEGORY    FORMAT        SIZE
+moonshine-tiny-onnx-INT8      stt         onnx       0.05 GB
+kokoro-82m-v1.0-onnx-UINT8    tts         onnx       0.18 GB

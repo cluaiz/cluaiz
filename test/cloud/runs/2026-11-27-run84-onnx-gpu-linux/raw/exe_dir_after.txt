@@ -1,0 +1,5 @@
+libggml-cuda.so
+libonnxruntime_providers_cuda.so
+libonnxruntime_providers_nv_tensorrt_rtx.so
+libonnxruntime_providers_shared.so
+libonnxruntime_providers_tensorrt.so

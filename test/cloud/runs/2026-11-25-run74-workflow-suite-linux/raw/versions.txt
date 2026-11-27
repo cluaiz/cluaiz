@@ -1,0 +1,2 @@
+v18.19.1
+29958376dd1e4870469d86980a2b2a8e131e97aec4f3aa762f8bbb7faddfe1e5  /home/<user>/cluaiz/target/debug/cluaiz

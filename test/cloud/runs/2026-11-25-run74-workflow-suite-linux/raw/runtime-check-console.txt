@@ -1,0 +1,11 @@
+Prepared restart fixture with waiting run run_050cc55c434e
+PASS startup trigger {"kind":"startup","status":"succeeded","runId":"run_4b7364651476"}
+PASS restart recovery keeps the completed first step {"status":"succeeded","resumed":"run_050cc55c434e","output":{"survived":true}}
+PASS webhook rejects missing secret and processes valid body {"rejected":401,"accepted":202,"output":84}
+PASS tool trigger is listed and callable through MCP {"listed":true,"kind":"tool","outputs":{"ok":true}}
+PASS Code runs real WebAssembly {"answer":{"expression":"7 * 6","formatted":"42","result":42,"status":"success"}}
+PASS Tool runs installed math plugin {"answer":{"expression":"7 * 6","formatted":"42","result":42,"status":"success"}}
+PASS Ask gets an answer from the local model {"model":"qwen3.5-0.8b-gguf-Q4_K_M","answer":"READY"}
+PASS Agent calls the math tool and answers {"model":"qwen3.5-0.8b-gguf-Q4_K_M","answer":"6687"}
+Totals: 8 passed, 0 failed
+exit=0

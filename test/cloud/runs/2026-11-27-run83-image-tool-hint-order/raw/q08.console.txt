@@ -1,0 +1,21 @@
+0 probe H1_text_hint_then_image 200 pass=True content='red' tool_calls=[] prompt_tokens=75 2.3s
+1 probe H2_no_hint 200 pass=True content=' red' tool_calls=[] prompt_tokens=37 0.2s
+2 probe H3_image_then_hint 200 pass=True content='red' tool_calls=[] prompt_tokens=75 0.2s
+3 run H1_text_hint_then_image 200 pass=True content='red' tool_calls=[] prompt_tokens=75 0.2s
+4 run H2_no_hint 200 pass=True content=' red' tool_calls=[] prompt_tokens=37 0.2s
+5 run H3_image_then_hint 200 pass=True content='red' tool_calls=[] prompt_tokens=75 0.2s
+6 run H2_no_hint 200 pass=True content=' red' tool_calls=[] prompt_tokens=37 0.2s
+7 run H3_image_then_hint 200 pass=True content='red' tool_calls=[] prompt_tokens=75 0.2s
+8 run H1_text_hint_then_image 200 pass=True content='red' tool_calls=[] prompt_tokens=75 0.2s
+9 run H3_image_then_hint 200 pass=True content='red' tool_calls=[] prompt_tokens=75 0.2s
+10 run H1_text_hint_then_image 200 pass=True content='red' tool_calls=[] prompt_tokens=75 0.2s
+11 run H2_no_hint 200 pass=True content=' red' tool_calls=[] prompt_tokens=37 0.2s
+12 run H1_text_hint_then_image 200 pass=True content='red' tool_calls=[] prompt_tokens=75 0.2s
+13 run H2_no_hint 200 pass=True content=' red' tool_calls=[] prompt_tokens=37 0.2s
+14 run H3_image_then_hint 200 pass=True content='red' tool_calls=[] prompt_tokens=75 0.2s
+15 run H2_no_hint 200 pass=True content=' red' tool_calls=[] prompt_tokens=37 0.2s
+16 run H3_image_then_hint 200 pass=True content='red' tool_calls=[] prompt_tokens=75 0.2s
+17 run H1_text_hint_then_image 200 pass=True content='red' tool_calls=[] prompt_tokens=75 0.2s
+SCORE q08 H1_text_hint_then_image 5/5
+SCORE q08 H2_no_hint 5/5
+SCORE q08 H3_image_then_hint 5/5

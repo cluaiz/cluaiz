@@ -1,0 +1,1 @@
+kokoro=kokoro-82m-v1.0-onnx-UINT8 moonshine=moonshine-tiny-onnx-INT8

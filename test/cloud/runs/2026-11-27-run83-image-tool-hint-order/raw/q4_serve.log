@@ -1,0 +1,1208 @@
+2026-11-27T09:14:30.983621Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-27T09:14:31.026329Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-27T09:14:34.694417Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+2026-11-27T09:14:34.694501Z DEBUG ℹ️ [cluaiz] Running from workspace binary; global deployment available via dev-sync.
+Starting the Cluaiz API server on http://localhost:8014 ...
+2026-11-27T09:14:34.694896Z  INFO 🔒 [Auth] Initialized local session secret at /home/<user>/run83/home/session.token
+2026-11-27T09:14:34.776998Z DEBUG [llama.cpp] ggml_cuda_init: found 1 CUDA devices (Total VRAM: 22563 MiB):
+2026-11-27T09:14:34.778133Z DEBUG [llama.cpp] Device 0: NVIDIA L4, compute capability 8.9, VMM: yes, VRAM: 22563 MiB
+2026-11-27T09:14:34.779165Z DEBUG [llama.cpp] load_backend: loaded CUDA backend from /home/<user>/cluaiz/target/debug/libggml-cuda.so
+2026-11-27T09:14:34.787975Z DEBUG [llama.cpp] load_backend: loaded CPU backend from /home/<user>/cluaiz/target/debug/libggml-cpu-cascadelake.so
+2026-11-27T09:14:34.789322Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-27T09:14:34.806408Z  INFO 🌐 Cluaiz API Server running on http://127.0.0.1:8014
+2026-11-27T09:14:34.975370Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-4b-gguf-Q4_K_M' to "/home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/Qwen3.5-4B-Q4_K_M.gguf"
+2026-11-27T09:14:35.155259Z DEBUG [llama.cpp] llama_model_loader: loaded meta data with 46 key-value pairs and 426 tensors from /home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/Qwen3.5-4B-Q4_K_M.gguf (version GGUF V3 (latest))
+2026-11-27T09:14:35.155322Z DEBUG [llama.cpp] llama_model_loader: Dumping metadata keys/values. Note: KV overrides do not apply in this output.
+2026-11-27T09:14:35.155463Z DEBUG [llama.cpp] llama_model_loader: - type  f32:  177 tensors
+2026-11-27T09:14:35.155479Z DEBUG [llama.cpp] llama_model_loader: - type q8_0:   48 tensors
+2026-11-27T09:14:35.155495Z DEBUG [llama.cpp] llama_model_loader: - type q4_K:  131 tensors
+2026-11-27T09:14:35.155510Z DEBUG [llama.cpp] llama_model_loader: - type q5_K:   48 tensors
+2026-11-27T09:14:35.155533Z DEBUG [llama.cpp] llama_model_loader: - type q6_K:   22 tensors
+2026-11-27T09:14:35.155552Z DEBUG [llama.cpp] print_info: file format = GGUF V3 (latest)
+2026-11-27T09:14:35.155569Z DEBUG [llama.cpp] print_info: file type   = Q4_K - Medium
+2026-11-27T09:14:35.155584Z DEBUG [llama.cpp] print_info: file size   = 2.54 GiB (5.19 BPW)
+2026-11-27T09:14:35.269891Z DEBUG [llama.cpp] llama_prepare_model_devices: using device CUDA0 (NVIDIA L4) (0000:00:03.0) - 20922 MiB free
+2026-11-27T09:14:35.455988Z DEBUG [llama.cpp] init_tokenizer: initializing tokenizer for type 2
+2026-11-27T09:14:35.496407Z DEBUG [llama.cpp] load: 0 unused tokens
+2026-11-27T09:14:35.496458Z DEBUG [llama.cpp] load: control token: 248075 '<tts_text_bos_single>' is not marked as EOG
+2026-11-27T09:14:35.496475Z DEBUG [llama.cpp] load: control token: 248074 '<tts_text_eod>' is not marked as EOG
+2026-11-27T09:14:35.496492Z DEBUG [llama.cpp] load: control token: 248070 '<|audio_start|>' is not marked as EOG
+2026-11-27T09:14:35.496509Z DEBUG [llama.cpp] load: control token: 248062 '<|fim_suffix|>' is not marked as EOG
+2026-11-27T09:14:35.496535Z DEBUG [llama.cpp] load: control token: 248056 '<|image_pad|>' is not marked as EOG
+2026-11-27T09:14:35.496552Z DEBUG [llama.cpp] load: control token: 248054 '<|vision_end|>' is not marked as EOG
+2026-11-27T09:14:35.496568Z DEBUG [llama.cpp] load: control token: 248053 '<|vision_start|>' is not marked as EOG
+2026-11-27T09:14:35.496585Z DEBUG [llama.cpp] load: control token: 248045 '<|im_start|>' is not marked as EOG
+2026-11-27T09:14:35.497578Z DEBUG [llama.cpp] load: control token: 248073 '<tts_text_bos>' is not marked as EOG
+2026-11-27T09:14:35.497637Z DEBUG [llama.cpp] load: control token: 248055 '<|vision_pad|>' is not marked as EOG
+2026-11-27T09:14:35.498194Z DEBUG [llama.cpp] load: control token: 248049 '<|box_start|>' is not marked as EOG
+2026-11-27T09:14:35.507156Z DEBUG [llama.cpp] load: control token: 248052 '<|quad_end|>' is not marked as EOG
+2026-11-27T09:14:35.510277Z DEBUG [llama.cpp] load: control token: 248076 '<|audio_pad|>' is not marked as EOG
+2026-11-27T09:14:35.513534Z DEBUG [llama.cpp] load: control token: 248060 '<|fim_prefix|>' is not marked as EOG
+2026-11-27T09:14:35.516457Z DEBUG [llama.cpp] load: control token: 248051 '<|quad_start|>' is not marked as EOG
+2026-11-27T09:14:35.520244Z DEBUG [llama.cpp] load: control token: 248072 '<tts_pad>' is not marked as EOG
+2026-11-27T09:14:35.527013Z DEBUG [llama.cpp] load: control token: 248071 '<|audio_end|>' is not marked as EOG
+2026-11-27T09:14:35.528456Z DEBUG [llama.cpp] load: control token: 248050 '<|box_end|>' is not marked as EOG
+2026-11-27T09:14:35.538177Z DEBUG [llama.cpp] load: control token: 248061 '<|fim_middle|>' is not marked as EOG
+2026-11-27T09:14:35.539776Z DEBUG [llama.cpp] load: control token: 248057 '<|video_pad|>' is not marked as EOG
+2026-11-27T09:14:35.542730Z DEBUG [llama.cpp] load: control token: 248048 '<|object_ref_end|>' is not marked as EOG
+2026-11-27T09:14:35.543172Z DEBUG [llama.cpp] load: control token: 248047 '<|object_ref_start|>' is not marked as EOG
+2026-11-27T09:14:35.554558Z DEBUG [llama.cpp] load: printing all EOG tokens:
+2026-11-27T09:14:35.554580Z DEBUG [llama.cpp] load:   - 248044 ('<|endoftext|>')
+2026-11-27T09:14:35.554595Z DEBUG [llama.cpp] load:   - 248046 ('<|im_end|>')
+2026-11-27T09:14:35.554610Z DEBUG [llama.cpp] load:   - 248063 ('<|fim_pad|>')
+2026-11-27T09:14:35.554626Z DEBUG [llama.cpp] load:   - 248064 ('<|repo_name|>')
+2026-11-27T09:14:35.554641Z DEBUG [llama.cpp] load:   - 248065 ('<|file_sep|>')
+2026-11-27T09:14:35.555511Z DEBUG [llama.cpp] load: special tokens cache size = 33
+2026-11-27T09:14:35.608698Z DEBUG [llama.cpp] load: token to piece cache size = 1.7581 MB
+2026-11-27T09:14:35.608750Z DEBUG [llama.cpp] print_info: arch                  = qwen35
+2026-11-27T09:14:35.608767Z DEBUG [llama.cpp] print_info: vocab_only            = 0
+2026-11-27T09:14:35.608784Z DEBUG [llama.cpp] print_info: no_alloc              = 1
+2026-11-27T09:14:35.608799Z DEBUG [llama.cpp] print_info: n_ctx_train           = 262144
+2026-11-27T09:14:35.608816Z DEBUG [llama.cpp] print_info: n_embd_inp            = 2560
+2026-11-27T09:14:35.608830Z DEBUG [llama.cpp] print_info: n_embd                = 2560
+2026-11-27T09:14:35.608847Z DEBUG [llama.cpp] print_info: n_embd_out            = 2560
+2026-11-27T09:14:35.608862Z DEBUG [llama.cpp] print_info: n_layer               = 32
+2026-11-27T09:14:35.608877Z DEBUG [llama.cpp] print_info: n_layer_all           = 32
+2026-11-27T09:14:35.608932Z DEBUG [llama.cpp] print_info: n_head                = 16
+2026-11-27T09:14:35.608969Z DEBUG [llama.cpp] print_info: n_head_kv             = 4
+2026-11-27T09:14:35.608984Z DEBUG [llama.cpp] print_info: n_rot                 = 64
+2026-11-27T09:14:35.608999Z DEBUG [llama.cpp] print_info: n_swa                 = 0
+2026-11-27T09:14:35.609028Z DEBUG [llama.cpp] print_info: is_swa_any            = 0
+2026-11-27T09:14:35.609044Z DEBUG [llama.cpp] print_info: non_causal_type       = 0
+2026-11-27T09:14:35.609059Z DEBUG [llama.cpp] print_info: n_embd_head_k         = 256
+2026-11-27T09:14:35.609074Z DEBUG [llama.cpp] print_info: n_embd_head_v         = 256
+2026-11-27T09:14:35.609093Z DEBUG [llama.cpp] print_info: n_gqa                 = 4
+2026-11-27T09:14:35.609113Z DEBUG [llama.cpp] print_info: n_embd_k_gqa          = 1024
+2026-11-27T09:14:35.609133Z DEBUG [llama.cpp] print_info: n_embd_v_gqa          = 1024
+2026-11-27T09:14:35.609149Z DEBUG [llama.cpp] print_info: f_norm_eps            = 0.0e+00
+2026-11-27T09:14:35.609164Z DEBUG [llama.cpp] print_info: f_norm_rms_eps        = 1.0e-06
+2026-11-27T09:14:35.609179Z DEBUG [llama.cpp] print_info: f_clamp_kqv           = 0.0e+00
+2026-11-27T09:14:35.609194Z DEBUG [llama.cpp] print_info: f_max_alibi_bias      = 0.0e+00
+2026-11-27T09:14:35.609209Z DEBUG [llama.cpp] print_info: f_logit_scale         = 0.0e+00
+2026-11-27T09:14:35.609229Z DEBUG [llama.cpp] print_info: f_attn_scale          = 0.0e+00
+2026-11-27T09:14:35.609244Z DEBUG [llama.cpp] print_info: f_attn_value_scale    = 0.0000
+2026-11-27T09:14:35.609263Z DEBUG [llama.cpp] print_info: n_ff                  = 9216
+2026-11-27T09:14:35.609278Z DEBUG [llama.cpp] print_info: n_expert              = 0
+2026-11-27T09:14:35.609293Z DEBUG [llama.cpp] print_info: n_expert_used         = 0
+2026-11-27T09:14:35.609308Z DEBUG [llama.cpp] print_info: n_expert_groups       = 0
+2026-11-27T09:14:35.609322Z DEBUG [llama.cpp] print_info: n_group_used          = 0
+2026-11-27T09:14:35.609337Z DEBUG [llama.cpp] print_info: causal attn           = 1
+2026-11-27T09:14:35.609352Z DEBUG [llama.cpp] print_info: pooling type          = -1
+2026-11-27T09:14:35.609367Z DEBUG [llama.cpp] print_info: rope type             = 40
+2026-11-27T09:14:35.609382Z DEBUG [llama.cpp] print_info: rope scaling          = linear
+2026-11-27T09:14:35.609398Z DEBUG [llama.cpp] print_info: freq_base_train       = 10000000.0
+2026-11-27T09:14:35.609414Z DEBUG [llama.cpp] print_info: freq_scale_train      = 1
+2026-11-27T09:14:35.609428Z DEBUG [llama.cpp] print_info: n_ctx_orig_yarn       = 262144
+2026-11-27T09:14:35.609444Z DEBUG [llama.cpp] print_info: rope_yarn_log_mul     = 0.0000
+2026-11-27T09:14:35.609458Z DEBUG [llama.cpp] print_info: rope_finetuned        = unknown
+2026-11-27T09:14:35.609473Z DEBUG [llama.cpp] print_info: mrope sections        = [11, 11, 10, 0]
+2026-11-27T09:14:35.609488Z DEBUG [llama.cpp] print_info: ssm_d_conv            = 4
+2026-11-27T09:14:35.609503Z DEBUG [llama.cpp] print_info: ssm_d_inner           = 4096
+2026-11-27T09:14:35.609524Z DEBUG [llama.cpp] print_info: ssm_d_state           = 128
+2026-11-27T09:14:35.609540Z DEBUG [llama.cpp] print_info: ssm_dt_rank           = 32
+2026-11-27T09:14:35.609554Z DEBUG [llama.cpp] print_info: ssm_n_group           = 16
+2026-11-27T09:14:35.609569Z DEBUG [llama.cpp] print_info: ssm_dt_b_c_rms        = 0
+2026-11-27T09:14:35.609589Z DEBUG [llama.cpp] print_info: model type            = 4B
+2026-11-27T09:14:35.609605Z DEBUG [llama.cpp] print_info: model params          = 4.21 B
+2026-11-27T09:14:35.609619Z DEBUG [llama.cpp] print_info: general.name          = Qwen3.5-4B
+2026-11-27T09:14:35.609639Z DEBUG [llama.cpp] print_info: vocab type            = BPE
+2026-11-27T09:14:35.609656Z DEBUG [llama.cpp] print_info: n_vocab               = 248320
+2026-11-27T09:14:35.609671Z DEBUG [llama.cpp] print_info: n_merges              = 247587
+2026-11-27T09:14:35.609686Z DEBUG [llama.cpp] print_info: BOS token             = 11 ','
+2026-11-27T09:14:35.609701Z DEBUG [llama.cpp] print_info: EOS token             = 248046 '<|im_end|>'
+2026-11-27T09:14:35.609716Z DEBUG [llama.cpp] print_info: EOT token             = 248046 '<|im_end|>'
+2026-11-27T09:14:35.609731Z DEBUG [llama.cpp] print_info: PAD token             = 248055 '<|vision_pad|>'
+2026-11-27T09:14:35.609746Z DEBUG [llama.cpp] print_info: LF token              = 198 'Ċ'
+2026-11-27T09:14:35.609761Z DEBUG [llama.cpp] print_info: FIM PRE token         = 248060 '<|fim_prefix|>'
+2026-11-27T09:14:35.609776Z DEBUG [llama.cpp] print_info: FIM SUF token         = 248062 '<|fim_suffix|>'
+2026-11-27T09:14:35.609792Z DEBUG [llama.cpp] print_info: FIM MID token         = 248061 '<|fim_middle|>'
+2026-11-27T09:14:35.609807Z DEBUG [llama.cpp] print_info: FIM PAD token         = 248063 '<|fim_pad|>'
+2026-11-27T09:14:35.609822Z DEBUG [llama.cpp] print_info: FIM REP token         = 248064 '<|repo_name|>'
+2026-11-27T09:14:35.609837Z DEBUG [llama.cpp] print_info: FIM SEP token         = 248065 '<|file_sep|>'
+2026-11-27T09:14:35.609853Z DEBUG [llama.cpp] print_info: EOG token             = 248044 '<|endoftext|>'
+2026-11-27T09:14:35.609868Z DEBUG [llama.cpp] print_info: EOG token             = 248046 '<|im_end|>'
+2026-11-27T09:14:35.609883Z DEBUG [llama.cpp] print_info: EOG token             = 248063 '<|fim_pad|>'
+2026-11-27T09:14:35.609898Z DEBUG [llama.cpp] print_info: EOG token             = 248064 '<|repo_name|>'
+2026-11-27T09:14:35.609914Z DEBUG [llama.cpp] print_info: EOG token             = 248065 '<|file_sep|>'
+2026-11-27T09:14:35.609933Z DEBUG [llama.cpp] print_info: max token length      = 256
+2026-11-27T09:14:35.612186Z DEBUG [llama.cpp] load_tensors: loading model tensors, this can take a while... (load_mode = none)
+2026-11-27T09:14:35.627028Z DEBUG [llama.cpp] load_tensors: offloading output layer to GPU
+2026-11-27T09:14:35.627056Z DEBUG [llama.cpp] load_tensors: offloading 31 repeating layers to GPU
+2026-11-27T09:14:35.627071Z DEBUG [llama.cpp] load_tensors: offloaded 33/33 layers to GPU
+2026-11-27T09:14:35.627099Z DEBUG [llama.cpp] load_tensors:        CUDA0 model buffer size =     0.00 MiB
+2026-11-27T09:14:35.627116Z DEBUG [llama.cpp] load_tensors:    CUDA_Host model buffer size =     0.00 MiB
+2026-11-27T09:14:35.633813Z DEBUG [llama.cpp] llama_init_from_model: enabling flash_attn since it is required for quantized V cache
+2026-11-27T09:14:35.633891Z DEBUG [llama.cpp] llama_context: constructing llama_context
+2026-11-27T09:14:35.633912Z DEBUG [llama.cpp] llama_context: n_seq_max             = 1
+2026-11-27T09:14:35.633968Z DEBUG [llama.cpp] llama_context: n_ctx                 = 4096
+2026-11-27T09:14:35.633988Z DEBUG [llama.cpp] llama_context: n_ctx_seq             = 4096
+2026-11-27T09:14:35.634004Z DEBUG [llama.cpp] llama_context: n_batch               = 512
+2026-11-27T09:14:35.634020Z DEBUG [llama.cpp] llama_context: n_ubatch              = 512
+2026-11-27T09:14:35.634035Z DEBUG [llama.cpp] llama_context: causal_attn           = 1
+2026-11-27T09:14:35.634051Z DEBUG [llama.cpp] llama_context: flash_attn            = enabled
+2026-11-27T09:14:35.634066Z DEBUG [llama.cpp] llama_context: kv_unified            = false
+2026-11-27T09:14:35.634085Z DEBUG [llama.cpp] llama_context: freq_base             = 10000000.0
+2026-11-27T09:14:35.634101Z DEBUG [llama.cpp] llama_context: freq_scale            = 1
+2026-11-27T09:14:35.634116Z DEBUG [llama.cpp] llama_context: n_rs_seq              = 0
+2026-11-27T09:14:35.634132Z DEBUG [llama.cpp] llama_context: n_outputs_max         = 512
+2026-11-27T09:14:35.634147Z DEBUG [llama.cpp] llama_context: n_outputs_max_per_seq = 1
+2026-11-27T09:14:35.634164Z DEBUG [llama.cpp] llama_context: n_ctx_seq (4096) < n_ctx_train (262144) -- the full capacity of the model will not be utilized
+2026-11-27T09:14:35.636254Z DEBUG [llama.cpp] set_abort_callback: call
+2026-11-27T09:14:35.637605Z DEBUG [llama.cpp] llama_context:  CUDA_Host  output buffer size =     0.95 MiB
+2026-11-27T09:14:35.637798Z DEBUG [llama.cpp] llama_kv_cache:      CUDA0 KV buffer size =     0.00 MiB
+2026-11-27T09:14:35.637823Z DEBUG [llama.cpp] llama_kv_cache: size =   68.00 MiB (  4096 cells,   8 layers,  1/1 seqs), K (q8_0):   34.00 MiB, V (q8_0):   34.00 MiB
+2026-11-27T09:14:35.637842Z DEBUG [llama.cpp] llama_kv_cache: n_rot_k = 256, n_embd_head_k_all = 256
+2026-11-27T09:14:35.637858Z DEBUG [llama.cpp] llama_kv_cache: n_rot_v = 64, n_embd_head_k_all = 256
+2026-11-27T09:14:35.637996Z DEBUG [llama.cpp] init_rotation:      CUDA0 rotation buffer size =     0.00 MiB
+2026-11-27T09:14:35.638021Z DEBUG [llama.cpp] llama_memory_recurrent, layer   0: dev = CUDA0
+2026-11-27T09:14:35.638042Z DEBUG [llama.cpp] llama_memory_recurrent, layer   1: dev = CUDA0
+2026-11-27T09:14:35.638059Z DEBUG [llama.cpp] llama_memory_recurrent, layer   2: dev = CUDA0
+2026-11-27T09:14:35.638076Z DEBUG [llama.cpp] llama_memory_recurrent: layer   3: skipped
+2026-11-27T09:14:35.638091Z DEBUG [llama.cpp] llama_memory_recurrent, layer   4: dev = CUDA0
+2026-11-27T09:14:35.638107Z DEBUG [llama.cpp] llama_memory_recurrent, layer   5: dev = CUDA0
+2026-11-27T09:14:35.638123Z DEBUG [llama.cpp] llama_memory_recurrent, layer   6: dev = CUDA0
+2026-11-27T09:14:35.638139Z DEBUG [llama.cpp] llama_memory_recurrent: layer   7: skipped
+2026-11-27T09:14:35.638155Z DEBUG [llama.cpp] llama_memory_recurrent, layer   8: dev = CUDA0
+2026-11-27T09:14:35.638171Z DEBUG [llama.cpp] llama_memory_recurrent, layer   9: dev = CUDA0
+2026-11-27T09:14:35.638187Z DEBUG [llama.cpp] llama_memory_recurrent, layer  10: dev = CUDA0
+2026-11-27T09:14:35.638213Z DEBUG [llama.cpp] llama_memory_recurrent: layer  11: skipped
+2026-11-27T09:14:35.638228Z DEBUG [llama.cpp] llama_memory_recurrent, layer  12: dev = CUDA0
+2026-11-27T09:14:35.638248Z DEBUG [llama.cpp] llama_memory_recurrent, layer  13: dev = CUDA0
+2026-11-27T09:14:35.638264Z DEBUG [llama.cpp] llama_memory_recurrent, layer  14: dev = CUDA0
+2026-11-27T09:14:35.638281Z DEBUG [llama.cpp] llama_memory_recurrent: layer  15: skipped
+2026-11-27T09:14:35.638296Z DEBUG [llama.cpp] llama_memory_recurrent, layer  16: dev = CUDA0
+2026-11-27T09:14:35.638312Z DEBUG [llama.cpp] llama_memory_recurrent, layer  17: dev = CUDA0
+2026-11-27T09:14:35.638328Z DEBUG [llama.cpp] llama_memory_recurrent, layer  18: dev = CUDA0
+2026-11-27T09:14:35.638344Z DEBUG [llama.cpp] llama_memory_recurrent: layer  19: skipped
+2026-11-27T09:14:35.638359Z DEBUG [llama.cpp] llama_memory_recurrent, layer  20: dev = CUDA0
+2026-11-27T09:14:35.638375Z DEBUG [llama.cpp] llama_memory_recurrent, layer  21: dev = CUDA0
+2026-11-27T09:14:35.638391Z DEBUG [llama.cpp] llama_memory_recurrent, layer  22: dev = CUDA0
+2026-11-27T09:14:35.638407Z DEBUG [llama.cpp] llama_memory_recurrent: layer  23: skipped
+2026-11-27T09:14:35.638422Z DEBUG [llama.cpp] llama_memory_recurrent, layer  24: dev = CUDA0
+2026-11-27T09:14:35.638439Z DEBUG [llama.cpp] llama_memory_recurrent, layer  25: dev = CUDA0
+2026-11-27T09:14:35.638454Z DEBUG [llama.cpp] llama_memory_recurrent, layer  26: dev = CUDA0
+2026-11-27T09:14:35.638471Z DEBUG [llama.cpp] llama_memory_recurrent: layer  27: skipped
+2026-11-27T09:14:35.638486Z DEBUG [llama.cpp] llama_memory_recurrent, layer  28: dev = CUDA0
+2026-11-27T09:14:35.638502Z DEBUG [llama.cpp] llama_memory_recurrent, layer  29: dev = CUDA0
+2026-11-27T09:14:35.638525Z DEBUG [llama.cpp] llama_memory_recurrent, layer  30: dev = CUDA0
+2026-11-27T09:14:35.638542Z DEBUG [llama.cpp] llama_memory_recurrent: layer  31: skipped
+2026-11-27T09:14:35.638559Z DEBUG [llama.cpp] llama_memory_recurrent:      CUDA0 RS buffer size =     0.00 MiB
+2026-11-27T09:14:35.638589Z DEBUG [llama.cpp] llama_memory_recurrent: size =   50.25 MiB (     1 cells,  32 layers,  1 seqs  0 rs_seq), R (f32):    2.25 MiB, S (f32):   48.00 MiB, P (f32):    0.00 MiB
+2026-11-27T09:14:35.638608Z DEBUG [llama.cpp] llama_context: enumerating backends
+2026-11-27T09:14:35.640172Z DEBUG [llama.cpp] llama_context: backend_ptrs.size() = 2
+2026-11-27T09:14:35.640192Z DEBUG [llama.cpp] sched_reserve: reserving ...
+2026-11-27T09:14:35.640210Z DEBUG [llama.cpp] sched_reserve: max_nodes = 13664
+2026-11-27T09:14:35.640374Z DEBUG [llama.cpp] sched_reserve: reserving full memory module
+2026-11-27T09:14:35.640404Z DEBUG [llama.cpp] sched_reserve: worst-case: n_tokens = 512, n_seqs = 1, n_outputs = 1
+2026-11-27T09:14:35.640421Z DEBUG [llama.cpp] resolve_fused_ops: resolving fused DeepSeek V4 HC support:
+2026-11-27T09:14:35.640442Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2026-11-27T09:14:35.642377Z DEBUG [llama.cpp] resolve_fused_ops: fused DeepSeek V4 HC pre enabled
+2026-11-27T09:14:35.642403Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2026-11-27T09:14:35.644022Z DEBUG [llama.cpp] resolve_fused_ops: fused DeepSeek V4 HC comb enabled
+2026-11-27T09:14:35.644053Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2026-11-27T09:14:35.645631Z DEBUG [llama.cpp] resolve_fused_ops: fused DeepSeek V4 HC post enabled
+2026-11-27T09:14:35.645655Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =  512, n_seqs =  1, n_outputs =  512
+2026-11-27T09:14:35.648214Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2026-11-27T09:14:35.649792Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =  512, n_seqs =  1, n_outputs =  512
+2026-11-27T09:14:35.651362Z DEBUG [llama.cpp] sched_reserve:      CUDA0 compute buffer size =   509.02 MiB
+2026-11-27T09:14:35.651394Z DEBUG [llama.cpp] sched_reserve:  CUDA_Host compute buffer size =    24.03 MiB
+2026-11-27T09:14:35.651414Z DEBUG [llama.cpp] sched_reserve: graph: nodes = 2001, splits = 2, input objects = 4, input tensors = 10
+2026-11-27T09:14:35.651435Z DEBUG [llama.cpp] sched_reserve: reserve took 11.22 ms, sched copies = 1
+2026-11-27T09:14:35.735100Z  INFO 📐 [EngineHost] llama.cpp dry run, full GPU at 4096 tokens: model 2.54 + context 0.12 + compute 0.50 = 3.16 GB vs estimate 3.13 GB (+0.03) in 675 ms
+2026-11-27T09:14:35.758314Z  INFO 
+╔════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                           CLUAIZ RESOURCE EXECUTION PLAN                                           ║
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [MODEL]
+║   • Model ID        : qwen3.5-4b-gguf-Q4_K_M
+║   • Architecture    : qwen35 | 32 layers | heads 16 | KV heads 4 | head size K 256 / V 256 | dense | hybrid: 8 attention layers with a KV cache, 24 linear-attention layers with a 2.2 MB state
+║   • Weights         : file 2.74 GB (as Hugging Face counts it) | input embeddings 0.49 GB (always CPU) | output head 0.49 GB | vocab 248320
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CONTEXT]
+║   • Native limit    : 262144 tokens
+║   • Active context  : 16384 tokens, KV Kv16 (Auto: 16384 tokens, KV Kv16, buffer 1.00 GB)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [HARDWARE]
+║   • GPU             : NVIDIA L4 | free 20.43 of 22.49 GB | buffer kept free 1.00 GB (card-sized gap: 1.00 GB reserve + 0.30 GB for the GPU pool, model not measured on this machine yet; estimate corrected by llama.cpp's dry run +0.03 GB)
+║   • RAM             : free 29.17 of 31.34 GB | Cluaiz may use 27.78 GB
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [PLACEMENT]
+║   • Mode            : Full GPU
+║   • llama.cpp       : n_gpu_layers = -1 | n_cpu_moe = 0 | n_ctx = 16384 | KV Kv16 | offload_kqv = 1 | op_offload = 1
+║   • Blocks          : 32 on GPU, 0 in RAM (of 32)
+║   • VRAM            : 3.59 GB (weights + KV 0.55 + logits)
+║   • RAM             : 0.49 GB (incl. KV 0.00)
+║   • Reason         : Full GPU: weights 2.54 + KV 0.55 + buffers 0.50 = 3.59 GB vs usable VRAM 19.62 GB
+║   • Speed           : not measured (chosen by rule order; cluaiz bench --placements measures it)
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [CANDIDATES]
+║   • Full GPU         [FITS]     VRAM  3.59 GB | RAM  0.49 GB | weights 2.54 + KV 0.55 + buffers 0.50 = 3.59 GB vs usable VRAM 19.62 GB
+║   • GPU + RAM split  [FITS]     VRAM  3.52 GB | RAM  0.56 GB | 31 / 32 blocks + output head on GPU (3.52 GB), 1 blocks in RAM
+║   • CPU only         [FITS]     VRAM  0.00 GB | RAM  3.57 GB | weights 2.54 + KV 0.55 + logits 0.47 = 3.57 GB in RAM
+╠════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║ [SETTINGS]
+║   • batch 512 / ubatch 512 | threads 4 / batch 4 | flash attention Auto | KV setting Auto -> used Kv16 | mmap true
+╚════════════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+2026-11-27T09:14:35.759004Z  INFO 🔮 [MTP] Auto: on with the per-answer guard (no measurement for this placement)
+2026-11-27T09:14:35.759320Z DEBUG 🆘 [MEMORY TRACE: 1. BEFORE MODEL LOAD] Free RAM: 29.17 GB / 31.34 GB
+2026-11-27T09:14:35.759342Z  INFO 📊 [Native-Llama] FFI Parameters: n_gpu_layers = -1, load_mode = 1, n_threads = 4, n_threads_batch = 4
+2026-11-27T09:14:35.759360Z  INFO 🧬 [Native-Llama] Loading model: /home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/Qwen3.5-4B-Q4_K_M.gguf | ctx: 16384 tokens
+2026-11-27T09:14:35.835724Z DEBUG [llama.cpp] llama_model_loader: loaded meta data with 46 key-value pairs and 426 tensors from /home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/Qwen3.5-4B-Q4_K_M.gguf (version GGUF V3 (latest))
+2026-11-27T09:14:35.835781Z DEBUG [llama.cpp] llama_model_loader: Dumping metadata keys/values. Note: KV overrides do not apply in this output.
+2026-11-27T09:14:35.835886Z DEBUG [llama.cpp] llama_model_loader: - type  f32:  177 tensors
+2026-11-27T09:14:35.835902Z DEBUG [llama.cpp] llama_model_loader: - type q8_0:   48 tensors
+2026-11-27T09:14:35.835917Z DEBUG [llama.cpp] llama_model_loader: - type q4_K:  131 tensors
+2026-11-27T09:14:35.835933Z DEBUG [llama.cpp] llama_model_loader: - type q5_K:   48 tensors
+2026-11-27T09:14:35.835965Z DEBUG [llama.cpp] llama_model_loader: - type q6_K:   22 tensors
+2026-11-27T09:14:35.835997Z DEBUG [llama.cpp] print_info: file format = GGUF V3 (latest)
+2026-11-27T09:14:35.836014Z DEBUG [llama.cpp] print_info: file type   = Q4_K - Medium
+2026-11-27T09:14:35.836030Z DEBUG [llama.cpp] print_info: file size   = 2.54 GiB (5.19 BPW)
+2026-11-27T09:14:35.841055Z DEBUG [llama.cpp] llama_prepare_model_devices: using device CUDA0 (NVIDIA L4) (0000:00:03.0) - 20922 MiB free
+2026-11-27T09:14:35.998532Z DEBUG [llama.cpp] init_tokenizer: initializing tokenizer for type 2
+2026-11-27T09:14:36.039473Z DEBUG [llama.cpp] load: 0 unused tokens
+2026-11-27T09:14:36.039522Z DEBUG [llama.cpp] load: control token: 248075 '<tts_text_bos_single>' is not marked as EOG
+2026-11-27T09:14:36.039540Z DEBUG [llama.cpp] load: control token: 248074 '<tts_text_eod>' is not marked as EOG
+2026-11-27T09:14:36.039556Z DEBUG [llama.cpp] load: control token: 248070 '<|audio_start|>' is not marked as EOG
+2026-11-27T09:14:36.039573Z DEBUG [llama.cpp] load: control token: 248062 '<|fim_suffix|>' is not marked as EOG
+2026-11-27T09:14:36.039590Z DEBUG [llama.cpp] load: control token: 248056 '<|image_pad|>' is not marked as EOG
+2026-11-27T09:14:36.039606Z DEBUG [llama.cpp] load: control token: 248054 '<|vision_end|>' is not marked as EOG
+2026-11-27T09:14:36.039638Z DEBUG [llama.cpp] load: control token: 248053 '<|vision_start|>' is not marked as EOG
+2026-11-27T09:14:36.039656Z DEBUG [llama.cpp] load: control token: 248045 '<|im_start|>' is not marked as EOG
+2026-11-27T09:14:36.040710Z DEBUG [llama.cpp] load: control token: 248073 '<tts_text_bos>' is not marked as EOG
+2026-11-27T09:14:36.040750Z DEBUG [llama.cpp] load: control token: 248055 '<|vision_pad|>' is not marked as EOG
+2026-11-27T09:14:36.041338Z DEBUG [llama.cpp] load: control token: 248049 '<|box_start|>' is not marked as EOG
+2026-11-27T09:14:36.050706Z DEBUG [llama.cpp] load: control token: 248052 '<|quad_end|>' is not marked as EOG
+2026-11-27T09:14:36.053919Z DEBUG [llama.cpp] load: control token: 248076 '<|audio_pad|>' is not marked as EOG
+2026-11-27T09:14:36.057258Z DEBUG [llama.cpp] load: control token: 248060 '<|fim_prefix|>' is not marked as EOG
+2026-11-27T09:14:36.060249Z DEBUG [llama.cpp] load: control token: 248051 '<|quad_start|>' is not marked as EOG
+2026-11-27T09:14:36.064062Z DEBUG [llama.cpp] load: control token: 248072 '<tts_pad>' is not marked as EOG
+2026-11-27T09:14:36.070737Z DEBUG [llama.cpp] load: control token: 248071 '<|audio_end|>' is not marked as EOG
+2026-11-27T09:14:36.072192Z DEBUG [llama.cpp] load: control token: 248050 '<|box_end|>' is not marked as EOG
+2026-11-27T09:14:36.082042Z DEBUG [llama.cpp] load: control token: 248061 '<|fim_middle|>' is not marked as EOG
+2026-11-27T09:14:36.083706Z DEBUG [llama.cpp] load: control token: 248057 '<|video_pad|>' is not marked as EOG
+2026-11-27T09:14:36.086759Z DEBUG [llama.cpp] load: control token: 248048 '<|object_ref_end|>' is not marked as EOG
+2026-11-27T09:14:36.087211Z DEBUG [llama.cpp] load: control token: 248047 '<|object_ref_start|>' is not marked as EOG
+2026-11-27T09:14:36.100667Z DEBUG [llama.cpp] load: printing all EOG tokens:
+2026-11-27T09:14:36.100691Z DEBUG [llama.cpp] load:   - 248044 ('<|endoftext|>')
+2026-11-27T09:14:36.100722Z DEBUG [llama.cpp] load:   - 248046 ('<|im_end|>')
+2026-11-27T09:14:36.100738Z DEBUG [llama.cpp] load:   - 248063 ('<|fim_pad|>')
+2026-11-27T09:14:36.100753Z DEBUG [llama.cpp] load:   - 248064 ('<|repo_name|>')
+2026-11-27T09:14:36.100768Z DEBUG [llama.cpp] load:   - 248065 ('<|file_sep|>')
+2026-11-27T09:14:36.101659Z DEBUG [llama.cpp] load: special tokens cache size = 33
+2026-11-27T09:14:36.155718Z DEBUG [llama.cpp] load: token to piece cache size = 1.7581 MB
+2026-11-27T09:14:36.155768Z DEBUG [llama.cpp] print_info: arch                  = qwen35
+2026-11-27T09:14:36.155786Z DEBUG [llama.cpp] print_info: vocab_only            = 0
+2026-11-27T09:14:36.155802Z DEBUG [llama.cpp] print_info: no_alloc              = 0
+2026-11-27T09:14:36.155817Z DEBUG [llama.cpp] print_info: n_ctx_train           = 262144
+2026-11-27T09:14:36.155833Z DEBUG [llama.cpp] print_info: n_embd_inp            = 2560
+2026-11-27T09:14:36.155848Z DEBUG [llama.cpp] print_info: n_embd                = 2560
+2026-11-27T09:14:36.155863Z DEBUG [llama.cpp] print_info: n_embd_out            = 2560
+2026-11-27T09:14:36.155878Z DEBUG [llama.cpp] print_info: n_layer               = 32
+2026-11-27T09:14:36.155894Z DEBUG [llama.cpp] print_info: n_layer_all           = 32
+2026-11-27T09:14:36.155923Z DEBUG [llama.cpp] print_info: n_head                = 16
+2026-11-27T09:14:36.155955Z DEBUG [llama.cpp] print_info: n_head_kv             = 4
+2026-11-27T09:14:36.155972Z DEBUG [llama.cpp] print_info: n_rot                 = 64
+2026-11-27T09:14:36.155987Z DEBUG [llama.cpp] print_info: n_swa                 = 0
+2026-11-27T09:14:36.156003Z DEBUG [llama.cpp] print_info: is_swa_any            = 0
+2026-11-27T09:14:36.156017Z DEBUG [llama.cpp] print_info: non_causal_type       = 0
+2026-11-27T09:14:36.156033Z DEBUG [llama.cpp] print_info: n_embd_head_k         = 256
+2026-11-27T09:14:36.156048Z DEBUG [llama.cpp] print_info: n_embd_head_v         = 256
+2026-11-27T09:14:36.156066Z DEBUG [llama.cpp] print_info: n_gqa                 = 4
+2026-11-27T09:14:36.156084Z DEBUG [llama.cpp] print_info: n_embd_k_gqa          = 1024
+2026-11-27T09:14:36.156102Z DEBUG [llama.cpp] print_info: n_embd_v_gqa          = 1024
+2026-11-27T09:14:36.156129Z DEBUG [llama.cpp] print_info: f_norm_eps            = 0.0e+00
+2026-11-27T09:14:36.156145Z DEBUG [llama.cpp] print_info: f_norm_rms_eps        = 1.0e-06
+2026-11-27T09:14:36.156160Z DEBUG [llama.cpp] print_info: f_clamp_kqv           = 0.0e+00
+2026-11-27T09:14:36.156175Z DEBUG [llama.cpp] print_info: f_max_alibi_bias      = 0.0e+00
+2026-11-27T09:14:36.156190Z DEBUG [llama.cpp] print_info: f_logit_scale         = 0.0e+00
+2026-11-27T09:14:36.156205Z DEBUG [llama.cpp] print_info: f_attn_scale          = 0.0e+00
+2026-11-27T09:14:36.156220Z DEBUG [llama.cpp] print_info: f_attn_value_scale    = 0.0000
+2026-11-27T09:14:36.156238Z DEBUG [llama.cpp] print_info: n_ff                  = 9216
+2026-11-27T09:14:36.156254Z DEBUG [llama.cpp] print_info: n_expert              = 0
+2026-11-27T09:14:36.156269Z DEBUG [llama.cpp] print_info: n_expert_used         = 0
+2026-11-27T09:14:36.156288Z DEBUG [llama.cpp] print_info: n_expert_groups       = 0
+2026-11-27T09:14:36.156304Z DEBUG [llama.cpp] print_info: n_group_used          = 0
+2026-11-27T09:14:36.156319Z DEBUG [llama.cpp] print_info: causal attn           = 1
+2026-11-27T09:14:36.156334Z DEBUG [llama.cpp] print_info: pooling type          = -1
+2026-11-27T09:14:36.156349Z DEBUG [llama.cpp] print_info: rope type             = 40
+2026-11-27T09:14:36.156364Z DEBUG [llama.cpp] print_info: rope scaling          = linear
+2026-11-27T09:14:36.156380Z DEBUG [llama.cpp] print_info: freq_base_train       = 10000000.0
+2026-11-27T09:14:36.156396Z DEBUG [llama.cpp] print_info: freq_scale_train      = 1
+2026-11-27T09:14:36.156411Z DEBUG [llama.cpp] print_info: n_ctx_orig_yarn       = 262144
+2026-11-27T09:14:36.156426Z DEBUG [llama.cpp] print_info: rope_yarn_log_mul     = 0.0000
+2026-11-27T09:14:36.156446Z DEBUG [llama.cpp] print_info: rope_finetuned        = unknown
+2026-11-27T09:14:36.156461Z DEBUG [llama.cpp] print_info: mrope sections        = [11, 11, 10, 0]
+2026-11-27T09:14:36.156477Z DEBUG [llama.cpp] print_info: ssm_d_conv            = 4
+2026-11-27T09:14:36.156492Z DEBUG [llama.cpp] print_info: ssm_d_inner           = 4096
+2026-11-27T09:14:36.156507Z DEBUG [llama.cpp] print_info: ssm_d_state           = 128
+2026-11-27T09:14:36.156522Z DEBUG [llama.cpp] print_info: ssm_dt_rank           = 32
+2026-11-27T09:14:36.156537Z DEBUG [llama.cpp] print_info: ssm_n_group           = 16
+2026-11-27T09:14:36.156552Z DEBUG [llama.cpp] print_info: ssm_dt_b_c_rms        = 0
+2026-11-27T09:14:36.156568Z DEBUG [llama.cpp] print_info: model type            = 4B
+2026-11-27T09:14:36.156583Z DEBUG [llama.cpp] print_info: model params          = 4.21 B
+2026-11-27T09:14:36.156598Z DEBUG [llama.cpp] print_info: general.name          = Qwen3.5-4B
+2026-11-27T09:14:36.156615Z DEBUG [llama.cpp] print_info: vocab type            = BPE
+2026-11-27T09:14:36.156630Z DEBUG [llama.cpp] print_info: n_vocab               = 248320
+2026-11-27T09:14:36.156645Z DEBUG [llama.cpp] print_info: n_merges              = 247587
+2026-11-27T09:14:36.156665Z DEBUG [llama.cpp] print_info: BOS token             = 11 ','
+2026-11-27T09:14:36.156680Z DEBUG [llama.cpp] print_info: EOS token             = 248046 '<|im_end|>'
+2026-11-27T09:14:36.156695Z DEBUG [llama.cpp] print_info: EOT token             = 248046 '<|im_end|>'
+2026-11-27T09:14:36.156710Z DEBUG [llama.cpp] print_info: PAD token             = 248055 '<|vision_pad|>'
+2026-11-27T09:14:36.156725Z DEBUG [llama.cpp] print_info: LF token              = 198 'Ċ'
+2026-11-27T09:14:36.156740Z DEBUG [llama.cpp] print_info: FIM PRE token         = 248060 '<|fim_prefix|>'
+2026-11-27T09:14:36.156756Z DEBUG [llama.cpp] print_info: FIM SUF token         = 248062 '<|fim_suffix|>'
+2026-11-27T09:14:36.156771Z DEBUG [llama.cpp] print_info: FIM MID token         = 248061 '<|fim_middle|>'
+2026-11-27T09:14:36.156786Z DEBUG [llama.cpp] print_info: FIM PAD token         = 248063 '<|fim_pad|>'
+2026-11-27T09:14:36.156801Z DEBUG [llama.cpp] print_info: FIM REP token         = 248064 '<|repo_name|>'
+2026-11-27T09:14:36.156820Z DEBUG [llama.cpp] print_info: FIM SEP token         = 248065 '<|file_sep|>'
+2026-11-27T09:14:36.156839Z DEBUG [llama.cpp] print_info: EOG token             = 248044 '<|endoftext|>'
+2026-11-27T09:14:36.156854Z DEBUG [llama.cpp] print_info: EOG token             = 248046 '<|im_end|>'
+2026-11-27T09:14:36.156870Z DEBUG [llama.cpp] print_info: EOG token             = 248063 '<|fim_pad|>'
+2026-11-27T09:14:36.156885Z DEBUG [llama.cpp] print_info: EOG token             = 248064 '<|repo_name|>'
+2026-11-27T09:14:36.156900Z DEBUG [llama.cpp] print_info: EOG token             = 248065 '<|file_sep|>'
+2026-11-27T09:14:36.156916Z DEBUG [llama.cpp] print_info: max token length      = 256
+2026-11-27T09:14:36.156935Z DEBUG [llama.cpp] load_tensors: loading model tensors, this can take a while... (load_mode = mmap)
+2026-11-27T09:14:36.167746Z DEBUG [llama.cpp] done_getting_tensors: tensor 'token_embd.weight' (q6_K) (and 0 others) cannot be used with preferred buffer type CUDA_Host, using CPU instead
+2026-11-27T09:14:36.484060Z DEBUG [llama.cpp] load_tensors: offloading output layer to GPU
+2026-11-27T09:14:36.484086Z DEBUG [llama.cpp] load_tensors: offloading 31 repeating layers to GPU
+2026-11-27T09:14:36.484102Z DEBUG [llama.cpp] load_tensors: offloaded 33/33 layers to GPU
+2026-11-27T09:14:36.484127Z DEBUG [llama.cpp] load_tensors:        CUDA0 model buffer size =  2603.50 MiB
+2026-11-27T09:14:37.167236Z DEBUG 🆘 [MEMORY TRACE: 2. AFTER MODEL LOAD] Free RAM: 29.17 GB / 31.34 GB
+2026-11-27T09:14:37.167279Z  INFO 🧬 [Native-Llama] Starting DNA Discovery for: "/home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M"
+2026-11-27T09:14:37.171136Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking start tag: "<think>"
+2026-11-27T09:14:37.171159Z  INFO 🧠 [Native-Llama] llama.cpp detected native thinking end tag: "</think>"
+2026-11-27T09:14:37.171183Z  INFO 🎯 [Native-Llama] Hardware Handshake: Context Window strictly locked to: 16384 tokens
+2026-11-27T09:14:37.171203Z  INFO 🧠 [Native-Llama] op_offload = 1
+2026-11-27T09:14:37.171218Z  INFO 🧠 [Native-Llama] KV Cache offloaded to dedicated GPU VRAM (Single Source of Truth).
+2026-11-27T09:14:37.171240Z  INFO 🔍 [Native-Llama] Model Header Truth: is_pure_recurrent=false
+2026-11-27T09:14:37.171256Z  INFO ⚡ [Native-Llama] flash_attn_type=-1 (-1 auto, 0 off, 1 on), threads 4/4
+2026-11-27T09:14:37.171277Z  INFO 🔮 [MTP] MTP asked for, but this model has no multi-token-prediction layers: decoding without it
+2026-11-27T09:14:37.171487Z DEBUG 🆘 [MEMORY TRACE: 4. BEFORE CONTEXT CREATION] Free RAM: 29.17 GB / 31.34 GB
+2026-11-27T09:14:37.171576Z DEBUG [llama.cpp] llama_context: constructing llama_context
+2026-11-27T09:14:37.171597Z DEBUG [llama.cpp] llama_context: n_seq_max             = 1
+2026-11-27T09:14:37.171612Z DEBUG [llama.cpp] llama_context: n_ctx                 = 16384
+2026-11-27T09:14:37.171627Z DEBUG [llama.cpp] llama_context: n_ctx_seq             = 16384
+2026-11-27T09:14:37.171643Z DEBUG [llama.cpp] llama_context: n_batch               = 512
+2026-11-27T09:14:37.171658Z DEBUG [llama.cpp] llama_context: n_ubatch              = 512
+2026-11-27T09:14:37.171673Z DEBUG [llama.cpp] llama_context: causal_attn           = 1
+2026-11-27T09:14:37.171700Z DEBUG [llama.cpp] llama_context: flash_attn            = auto
+2026-11-27T09:14:37.171716Z DEBUG [llama.cpp] llama_context: kv_unified            = false
+2026-11-27T09:14:37.171735Z DEBUG [llama.cpp] llama_context: freq_base             = 10000000.0
+2026-11-27T09:14:37.171751Z DEBUG [llama.cpp] llama_context: freq_scale            = 1
+2026-11-27T09:14:37.171766Z DEBUG [llama.cpp] llama_context: n_rs_seq              = 0
+2026-11-27T09:14:37.171782Z DEBUG [llama.cpp] llama_context: n_outputs_max         = 512
+2026-11-27T09:14:37.171797Z DEBUG [llama.cpp] llama_context: n_outputs_max_per_seq = 1
+2026-11-27T09:14:37.171814Z DEBUG [llama.cpp] llama_context: n_ctx_seq (16384) < n_ctx_train (262144) -- the full capacity of the model will not be utilized
+2026-11-27T09:14:37.174070Z DEBUG [llama.cpp] set_abort_callback: call
+2026-11-27T09:14:37.175393Z DEBUG [llama.cpp] llama_context:  CUDA_Host  output buffer size =     0.95 MiB
+2026-11-27T09:14:37.178082Z DEBUG [llama.cpp] llama_kv_cache:      CUDA0 KV buffer size =   512.00 MiB
+2026-11-27T09:14:37.178111Z DEBUG [llama.cpp] llama_kv_cache: size =  512.00 MiB ( 16384 cells,   8 layers,  1/1 seqs), K (f16):  256.00 MiB, V (f16):  256.00 MiB
+2026-11-27T09:14:37.178130Z DEBUG [llama.cpp] llama_kv_cache: n_rot_k = 0, n_embd_head_k_all = 256
+2026-11-27T09:14:37.178146Z DEBUG [llama.cpp] llama_kv_cache: n_rot_v = 0, n_embd_head_k_all = 256
+2026-11-27T09:14:37.178167Z DEBUG [llama.cpp] llama_memory_recurrent, layer   0: dev = CUDA0
+2026-11-27T09:14:37.178186Z DEBUG [llama.cpp] llama_memory_recurrent, layer   1: dev = CUDA0
+2026-11-27T09:14:37.178202Z DEBUG [llama.cpp] llama_memory_recurrent, layer   2: dev = CUDA0
+2026-11-27T09:14:37.178219Z DEBUG [llama.cpp] llama_memory_recurrent: layer   3: skipped
+2026-11-27T09:14:37.178234Z DEBUG [llama.cpp] llama_memory_recurrent, layer   4: dev = CUDA0
+2026-11-27T09:14:37.178250Z DEBUG [llama.cpp] llama_memory_recurrent, layer   5: dev = CUDA0
+2026-11-27T09:14:37.178266Z DEBUG [llama.cpp] llama_memory_recurrent, layer   6: dev = CUDA0
+2026-11-27T09:14:37.178282Z DEBUG [llama.cpp] llama_memory_recurrent: layer   7: skipped
+2026-11-27T09:14:37.178297Z DEBUG [llama.cpp] llama_memory_recurrent, layer   8: dev = CUDA0
+2026-11-27T09:14:37.178312Z DEBUG [llama.cpp] llama_memory_recurrent, layer   9: dev = CUDA0
+2026-11-27T09:14:37.178328Z DEBUG [llama.cpp] llama_memory_recurrent, layer  10: dev = CUDA0
+2026-11-27T09:14:37.178344Z DEBUG [llama.cpp] llama_memory_recurrent: layer  11: skipped
+2026-11-27T09:14:37.178359Z DEBUG [llama.cpp] llama_memory_recurrent, layer  12: dev = CUDA0
+2026-11-27T09:14:37.178375Z DEBUG [llama.cpp] llama_memory_recurrent, layer  13: dev = CUDA0
+2026-11-27T09:14:37.178391Z DEBUG [llama.cpp] llama_memory_recurrent, layer  14: dev = CUDA0
+2026-11-27T09:14:37.178407Z DEBUG [llama.cpp] llama_memory_recurrent: layer  15: skipped
+2026-11-27T09:14:37.178422Z DEBUG [llama.cpp] llama_memory_recurrent, layer  16: dev = CUDA0
+2026-11-27T09:14:37.178438Z DEBUG [llama.cpp] llama_memory_recurrent, layer  17: dev = CUDA0
+2026-11-27T09:14:37.178454Z DEBUG [llama.cpp] llama_memory_recurrent, layer  18: dev = CUDA0
+2026-11-27T09:14:37.178477Z DEBUG [llama.cpp] llama_memory_recurrent: layer  19: skipped
+2026-11-27T09:14:37.178493Z DEBUG [llama.cpp] llama_memory_recurrent, layer  20: dev = CUDA0
+2026-11-27T09:14:37.178508Z DEBUG [llama.cpp] llama_memory_recurrent, layer  21: dev = CUDA0
+2026-11-27T09:14:37.178530Z DEBUG [llama.cpp] llama_memory_recurrent, layer  22: dev = CUDA0
+2026-11-27T09:14:37.178546Z DEBUG [llama.cpp] llama_memory_recurrent: layer  23: skipped
+2026-11-27T09:14:37.178561Z DEBUG [llama.cpp] llama_memory_recurrent, layer  24: dev = CUDA0
+2026-11-27T09:14:37.178577Z DEBUG [llama.cpp] llama_memory_recurrent, layer  25: dev = CUDA0
+2026-11-27T09:14:37.178593Z DEBUG [llama.cpp] llama_memory_recurrent, layer  26: dev = CUDA0
+2026-11-27T09:14:37.178609Z DEBUG [llama.cpp] llama_memory_recurrent: layer  27: skipped
+2026-11-27T09:14:37.178624Z DEBUG [llama.cpp] llama_memory_recurrent, layer  28: dev = CUDA0
+2026-11-27T09:14:37.178639Z DEBUG [llama.cpp] llama_memory_recurrent, layer  29: dev = CUDA0
+2026-11-27T09:14:37.178655Z DEBUG [llama.cpp] llama_memory_recurrent, layer  30: dev = CUDA0
+2026-11-27T09:14:37.178671Z DEBUG [llama.cpp] llama_memory_recurrent: layer  31: skipped
+2026-11-27T09:14:37.179095Z DEBUG [llama.cpp] llama_memory_recurrent:      CUDA0 RS buffer size =    50.25 MiB
+2026-11-27T09:14:37.179126Z DEBUG [llama.cpp] llama_memory_recurrent: size =   50.25 MiB (     1 cells,  32 layers,  1 seqs  0 rs_seq), R (f32):    2.25 MiB, S (f32):   48.00 MiB, P (f32):    0.00 MiB
+2026-11-27T09:14:37.179147Z DEBUG [llama.cpp] llama_context: enumerating backends
+2026-11-27T09:14:37.180413Z DEBUG [llama.cpp] llama_context: backend_ptrs.size() = 2
+2026-11-27T09:14:37.180432Z DEBUG [llama.cpp] sched_reserve: reserving ...
+2026-11-27T09:14:37.180448Z DEBUG [llama.cpp] sched_reserve: max_nodes = 13664
+2026-11-27T09:14:37.181228Z DEBUG [llama.cpp] sched_reserve: reserving full memory module
+2026-11-27T09:14:37.181251Z DEBUG [llama.cpp] sched_reserve: worst-case: n_tokens = 512, n_seqs = 1, n_outputs = 1
+2026-11-27T09:14:37.181272Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2026-11-27T09:14:37.183056Z DEBUG [llama.cpp] resolve_fused_ops: Flash Attention enabled
+2026-11-27T09:14:37.183076Z DEBUG [llama.cpp] resolve_fused_ops: resolving fused DeepSeek V4 HC support:
+2026-11-27T09:14:37.183095Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2026-11-27T09:14:37.184687Z DEBUG [llama.cpp] resolve_fused_ops: fused DeepSeek V4 HC pre enabled
+2026-11-27T09:14:37.184710Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2026-11-27T09:14:37.186240Z DEBUG [llama.cpp] resolve_fused_ops: fused DeepSeek V4 HC comb enabled
+2026-11-27T09:14:37.186262Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2026-11-27T09:14:37.187816Z DEBUG [llama.cpp] resolve_fused_ops: fused DeepSeek V4 HC post enabled
+2026-11-27T09:14:37.187840Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =  512, n_seqs =  1, n_outputs =  512
+2026-11-27T09:14:37.208356Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =    1, n_seqs =  1, n_outputs =    1
+2026-11-27T09:14:37.210989Z DEBUG [llama.cpp] graph_reserve: reserving a graph for ubatch with n_tokens =  512, n_seqs =  1, n_outputs =  512
+2026-11-27T09:14:37.213354Z DEBUG [llama.cpp] sched_reserve:      CUDA0 compute buffer size =   521.02 MiB
+2026-11-27T09:14:37.213378Z DEBUG [llama.cpp] sched_reserve:  CUDA_Host compute buffer size =    36.03 MiB
+2026-11-27T09:14:37.213398Z DEBUG [llama.cpp] sched_reserve: graph: nodes = 1905, splits = 2, input objects = 4, input tensors = 10
+2026-11-27T09:14:37.213416Z DEBUG [llama.cpp] sched_reserve: reserve took 32.97 ms, sched copies = 1
+2026-11-27T09:14:37.213859Z DEBUG 🆘 [MEMORY TRACE: 5. AFTER CONTEXT CREATION] Free RAM: 29.13 GB / 31.34 GB
+2026-11-27T09:14:37.410538Z  INFO 🔍 [EngineHost] VRAM planned 3.59 GB, taken 3.63 GB | n_ctx planned 16384 created 16384 | n_gpu_layers -1 n_cpu_moe 0
+2026-11-27T09:14:37.410846Z  INFO ✅ [EngineHost] Model successfully loaded into unified process space: /home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/Qwen3.5-4B-Q4_K_M.gguf
+2026-11-27T09:14:37.438962Z  INFO 🧮 [Tokens] Conversation 47 tokens (1 messages) counted in 0.36 ms
+2026-11-27T09:14:37.453684Z  INFO ⏱️ [Preflight] 2478 ms total | model load 2393 ms | registry + template + tags 7 ms | skills + tools 0 ms | rest 14 ms
+2026-11-27T09:14:37.478251Z DEBUG [llama.cpp] mtmd_model_loader: model name:   Qwen3.5-4B
+2026-11-27T09:14:37.478278Z DEBUG [llama.cpp] mtmd_model_loader: description:
+2026-11-27T09:14:37.478297Z DEBUG [llama.cpp] mtmd_model_loader: GGUF version: 3
+2026-11-27T09:14:37.478315Z DEBUG [llama.cpp] mtmd_model_loader: alignment:    32
+2026-11-27T09:14:37.478331Z DEBUG [llama.cpp] mtmd_model_loader: n_tensors:    298
+2026-11-27T09:14:37.478349Z DEBUG [llama.cpp] mtmd_model_loader: n_kv:         32
+2026-11-27T09:14:37.478369Z DEBUG [llama.cpp] mtmd_model_loader: has vision encoder
+2026-11-27T09:14:37.478402Z DEBUG [llama.cpp] mtmd_model_loader: tensor[0]: n_dims = 1, name = v.blk.0.attn_out.bias, tensor_size=4096, offset=0, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.478429Z DEBUG [llama.cpp] mtmd_model_loader: tensor[1]: n_dims = 2, name = v.blk.0.attn_out.weight, tensor_size=2097152, offset=4096, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.478453Z DEBUG [llama.cpp] mtmd_model_loader: tensor[2]: n_dims = 1, name = v.blk.0.attn_qkv.bias, tensor_size=12288, offset=2101248, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.478477Z DEBUG [llama.cpp] mtmd_model_loader: tensor[3]: n_dims = 2, name = v.blk.0.attn_qkv.weight, tensor_size=6291456, offset=2113536, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.478520Z DEBUG [llama.cpp] mtmd_model_loader: tensor[4]: n_dims = 1, name = v.blk.0.ffn_up.bias, tensor_size=16384, offset=8404992, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.478544Z DEBUG [llama.cpp] mtmd_model_loader: tensor[5]: n_dims = 2, name = v.blk.0.ffn_up.weight, tensor_size=8388608, offset=8421376, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.478568Z DEBUG [llama.cpp] mtmd_model_loader: tensor[6]: n_dims = 1, name = v.blk.0.ffn_down.bias, tensor_size=4096, offset=16809984, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.478595Z DEBUG [llama.cpp] mtmd_model_loader: tensor[7]: n_dims = 2, name = v.blk.0.ffn_down.weight, tensor_size=8388608, offset=16814080, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.478620Z DEBUG [llama.cpp] mtmd_model_loader: tensor[8]: n_dims = 1, name = v.blk.0.ln1.bias, tensor_size=4096, offset=25202688, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.478643Z DEBUG [llama.cpp] mtmd_model_loader: tensor[9]: n_dims = 1, name = v.blk.0.ln1.weight, tensor_size=4096, offset=25206784, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.478676Z DEBUG [llama.cpp] mtmd_model_loader: tensor[10]: n_dims = 1, name = v.blk.0.ln2.bias, tensor_size=4096, offset=25210880, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.478700Z DEBUG [llama.cpp] mtmd_model_loader: tensor[11]: n_dims = 1, name = v.blk.0.ln2.weight, tensor_size=4096, offset=25214976, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.478723Z DEBUG [llama.cpp] mtmd_model_loader: tensor[12]: n_dims = 1, name = v.blk.1.attn_out.bias, tensor_size=4096, offset=25219072, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.478747Z DEBUG [llama.cpp] mtmd_model_loader: tensor[13]: n_dims = 2, name = v.blk.1.attn_out.weight, tensor_size=2097152, offset=25223168, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.478771Z DEBUG [llama.cpp] mtmd_model_loader: tensor[14]: n_dims = 1, name = v.blk.1.attn_qkv.bias, tensor_size=12288, offset=27320320, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.478795Z DEBUG [llama.cpp] mtmd_model_loader: tensor[15]: n_dims = 2, name = v.blk.1.attn_qkv.weight, tensor_size=6291456, offset=27332608, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.478823Z DEBUG [llama.cpp] mtmd_model_loader: tensor[16]: n_dims = 1, name = v.blk.1.ffn_up.bias, tensor_size=16384, offset=33624064, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.478847Z DEBUG [llama.cpp] mtmd_model_loader: tensor[17]: n_dims = 2, name = v.blk.1.ffn_up.weight, tensor_size=8388608, offset=33640448, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.478871Z DEBUG [llama.cpp] mtmd_model_loader: tensor[18]: n_dims = 1, name = v.blk.1.ffn_down.bias, tensor_size=4096, offset=42029056, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.478895Z DEBUG [llama.cpp] mtmd_model_loader: tensor[19]: n_dims = 2, name = v.blk.1.ffn_down.weight, tensor_size=8388608, offset=42033152, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.478918Z DEBUG [llama.cpp] mtmd_model_loader: tensor[20]: n_dims = 1, name = v.blk.1.ln1.bias, tensor_size=4096, offset=50421760, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.478958Z DEBUG [llama.cpp] mtmd_model_loader: tensor[21]: n_dims = 1, name = v.blk.1.ln1.weight, tensor_size=4096, offset=50425856, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.478984Z DEBUG [llama.cpp] mtmd_model_loader: tensor[22]: n_dims = 1, name = v.blk.1.ln2.bias, tensor_size=4096, offset=50429952, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479008Z DEBUG [llama.cpp] mtmd_model_loader: tensor[23]: n_dims = 1, name = v.blk.1.ln2.weight, tensor_size=4096, offset=50434048, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479031Z DEBUG [llama.cpp] mtmd_model_loader: tensor[24]: n_dims = 1, name = v.blk.10.attn_out.bias, tensor_size=4096, offset=50438144, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479056Z DEBUG [llama.cpp] mtmd_model_loader: tensor[25]: n_dims = 2, name = v.blk.10.attn_out.weight, tensor_size=2097152, offset=50442240, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.479086Z DEBUG [llama.cpp] mtmd_model_loader: tensor[26]: n_dims = 1, name = v.blk.10.attn_qkv.bias, tensor_size=12288, offset=52539392, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479112Z DEBUG [llama.cpp] mtmd_model_loader: tensor[27]: n_dims = 2, name = v.blk.10.attn_qkv.weight, tensor_size=6291456, offset=52551680, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.479136Z DEBUG [llama.cpp] mtmd_model_loader: tensor[28]: n_dims = 1, name = v.blk.10.ffn_up.bias, tensor_size=16384, offset=58843136, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479165Z DEBUG [llama.cpp] mtmd_model_loader: tensor[29]: n_dims = 2, name = v.blk.10.ffn_up.weight, tensor_size=8388608, offset=58859520, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.479190Z DEBUG [llama.cpp] mtmd_model_loader: tensor[30]: n_dims = 1, name = v.blk.10.ffn_down.bias, tensor_size=4096, offset=67248128, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479214Z DEBUG [llama.cpp] mtmd_model_loader: tensor[31]: n_dims = 2, name = v.blk.10.ffn_down.weight, tensor_size=8388608, offset=67252224, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.479238Z DEBUG [llama.cpp] mtmd_model_loader: tensor[32]: n_dims = 1, name = v.blk.10.ln1.bias, tensor_size=4096, offset=75640832, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479261Z DEBUG [llama.cpp] mtmd_model_loader: tensor[33]: n_dims = 1, name = v.blk.10.ln1.weight, tensor_size=4096, offset=75644928, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479285Z DEBUG [llama.cpp] mtmd_model_loader: tensor[34]: n_dims = 1, name = v.blk.10.ln2.bias, tensor_size=4096, offset=75649024, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479308Z DEBUG [llama.cpp] mtmd_model_loader: tensor[35]: n_dims = 1, name = v.blk.10.ln2.weight, tensor_size=4096, offset=75653120, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479332Z DEBUG [llama.cpp] mtmd_model_loader: tensor[36]: n_dims = 1, name = v.blk.11.attn_out.bias, tensor_size=4096, offset=75657216, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479356Z DEBUG [llama.cpp] mtmd_model_loader: tensor[37]: n_dims = 2, name = v.blk.11.attn_out.weight, tensor_size=2097152, offset=75661312, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.479380Z DEBUG [llama.cpp] mtmd_model_loader: tensor[38]: n_dims = 1, name = v.blk.11.attn_qkv.bias, tensor_size=12288, offset=77758464, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479404Z DEBUG [llama.cpp] mtmd_model_loader: tensor[39]: n_dims = 2, name = v.blk.11.attn_qkv.weight, tensor_size=6291456, offset=77770752, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.479429Z DEBUG [llama.cpp] mtmd_model_loader: tensor[40]: n_dims = 1, name = v.blk.11.ffn_up.bias, tensor_size=16384, offset=84062208, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479453Z DEBUG [llama.cpp] mtmd_model_loader: tensor[41]: n_dims = 2, name = v.blk.11.ffn_up.weight, tensor_size=8388608, offset=84078592, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.479477Z DEBUG [llama.cpp] mtmd_model_loader: tensor[42]: n_dims = 1, name = v.blk.11.ffn_down.bias, tensor_size=4096, offset=92467200, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479501Z DEBUG [llama.cpp] mtmd_model_loader: tensor[43]: n_dims = 2, name = v.blk.11.ffn_down.weight, tensor_size=8388608, offset=92471296, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.479525Z DEBUG [llama.cpp] mtmd_model_loader: tensor[44]: n_dims = 1, name = v.blk.11.ln1.bias, tensor_size=4096, offset=100859904, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479552Z DEBUG [llama.cpp] mtmd_model_loader: tensor[45]: n_dims = 1, name = v.blk.11.ln1.weight, tensor_size=4096, offset=100864000, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479577Z DEBUG [llama.cpp] mtmd_model_loader: tensor[46]: n_dims = 1, name = v.blk.11.ln2.bias, tensor_size=4096, offset=100868096, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479604Z DEBUG [llama.cpp] mtmd_model_loader: tensor[47]: n_dims = 1, name = v.blk.11.ln2.weight, tensor_size=4096, offset=100872192, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479628Z DEBUG [llama.cpp] mtmd_model_loader: tensor[48]: n_dims = 1, name = v.blk.12.attn_out.bias, tensor_size=4096, offset=100876288, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479652Z DEBUG [llama.cpp] mtmd_model_loader: tensor[49]: n_dims = 2, name = v.blk.12.attn_out.weight, tensor_size=2097152, offset=100880384, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.479676Z DEBUG [llama.cpp] mtmd_model_loader: tensor[50]: n_dims = 1, name = v.blk.12.attn_qkv.bias, tensor_size=12288, offset=102977536, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479701Z DEBUG [llama.cpp] mtmd_model_loader: tensor[51]: n_dims = 2, name = v.blk.12.attn_qkv.weight, tensor_size=6291456, offset=102989824, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.479725Z DEBUG [llama.cpp] mtmd_model_loader: tensor[52]: n_dims = 1, name = v.blk.12.ffn_up.bias, tensor_size=16384, offset=109281280, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479749Z DEBUG [llama.cpp] mtmd_model_loader: tensor[53]: n_dims = 2, name = v.blk.12.ffn_up.weight, tensor_size=8388608, offset=109297664, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.479774Z DEBUG [llama.cpp] mtmd_model_loader: tensor[54]: n_dims = 1, name = v.blk.12.ffn_down.bias, tensor_size=4096, offset=117686272, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479798Z DEBUG [llama.cpp] mtmd_model_loader: tensor[55]: n_dims = 2, name = v.blk.12.ffn_down.weight, tensor_size=8388608, offset=117690368, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.479822Z DEBUG [llama.cpp] mtmd_model_loader: tensor[56]: n_dims = 1, name = v.blk.12.ln1.bias, tensor_size=4096, offset=126078976, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479846Z DEBUG [llama.cpp] mtmd_model_loader: tensor[57]: n_dims = 1, name = v.blk.12.ln1.weight, tensor_size=4096, offset=126083072, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479870Z DEBUG [llama.cpp] mtmd_model_loader: tensor[58]: n_dims = 1, name = v.blk.12.ln2.bias, tensor_size=4096, offset=126087168, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479893Z DEBUG [llama.cpp] mtmd_model_loader: tensor[59]: n_dims = 1, name = v.blk.12.ln2.weight, tensor_size=4096, offset=126091264, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479918Z DEBUG [llama.cpp] mtmd_model_loader: tensor[60]: n_dims = 1, name = v.blk.13.attn_out.bias, tensor_size=4096, offset=126095360, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.479953Z DEBUG [llama.cpp] mtmd_model_loader: tensor[61]: n_dims = 2, name = v.blk.13.attn_out.weight, tensor_size=2097152, offset=126099456, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.479980Z DEBUG [llama.cpp] mtmd_model_loader: tensor[62]: n_dims = 1, name = v.blk.13.attn_qkv.bias, tensor_size=12288, offset=128196608, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480008Z DEBUG [llama.cpp] mtmd_model_loader: tensor[63]: n_dims = 2, name = v.blk.13.attn_qkv.weight, tensor_size=6291456, offset=128208896, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.480033Z DEBUG [llama.cpp] mtmd_model_loader: tensor[64]: n_dims = 1, name = v.blk.13.ffn_up.bias, tensor_size=16384, offset=134500352, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480057Z DEBUG [llama.cpp] mtmd_model_loader: tensor[65]: n_dims = 2, name = v.blk.13.ffn_up.weight, tensor_size=8388608, offset=134516736, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.480082Z DEBUG [llama.cpp] mtmd_model_loader: tensor[66]: n_dims = 1, name = v.blk.13.ffn_down.bias, tensor_size=4096, offset=142905344, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480107Z DEBUG [llama.cpp] mtmd_model_loader: tensor[67]: n_dims = 2, name = v.blk.13.ffn_down.weight, tensor_size=8388608, offset=142909440, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.480134Z DEBUG [llama.cpp] mtmd_model_loader: tensor[68]: n_dims = 1, name = v.blk.13.ln1.bias, tensor_size=4096, offset=151298048, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480163Z DEBUG [llama.cpp] mtmd_model_loader: tensor[69]: n_dims = 1, name = v.blk.13.ln1.weight, tensor_size=4096, offset=151302144, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480187Z DEBUG [llama.cpp] mtmd_model_loader: tensor[70]: n_dims = 1, name = v.blk.13.ln2.bias, tensor_size=4096, offset=151306240, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480211Z DEBUG [llama.cpp] mtmd_model_loader: tensor[71]: n_dims = 1, name = v.blk.13.ln2.weight, tensor_size=4096, offset=151310336, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480235Z DEBUG [llama.cpp] mtmd_model_loader: tensor[72]: n_dims = 1, name = v.blk.14.attn_out.bias, tensor_size=4096, offset=151314432, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480260Z DEBUG [llama.cpp] mtmd_model_loader: tensor[73]: n_dims = 2, name = v.blk.14.attn_out.weight, tensor_size=2097152, offset=151318528, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.480284Z DEBUG [llama.cpp] mtmd_model_loader: tensor[74]: n_dims = 1, name = v.blk.14.attn_qkv.bias, tensor_size=12288, offset=153415680, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480309Z DEBUG [llama.cpp] mtmd_model_loader: tensor[75]: n_dims = 2, name = v.blk.14.attn_qkv.weight, tensor_size=6291456, offset=153427968, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.480334Z DEBUG [llama.cpp] mtmd_model_loader: tensor[76]: n_dims = 1, name = v.blk.14.ffn_up.bias, tensor_size=16384, offset=159719424, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480358Z DEBUG [llama.cpp] mtmd_model_loader: tensor[77]: n_dims = 2, name = v.blk.14.ffn_up.weight, tensor_size=8388608, offset=159735808, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.480383Z DEBUG [llama.cpp] mtmd_model_loader: tensor[78]: n_dims = 1, name = v.blk.14.ffn_down.bias, tensor_size=4096, offset=168124416, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480408Z DEBUG [llama.cpp] mtmd_model_loader: tensor[79]: n_dims = 2, name = v.blk.14.ffn_down.weight, tensor_size=8388608, offset=168128512, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.480432Z DEBUG [llama.cpp] mtmd_model_loader: tensor[80]: n_dims = 1, name = v.blk.14.ln1.bias, tensor_size=4096, offset=176517120, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480456Z DEBUG [llama.cpp] mtmd_model_loader: tensor[81]: n_dims = 1, name = v.blk.14.ln1.weight, tensor_size=4096, offset=176521216, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480483Z DEBUG [llama.cpp] mtmd_model_loader: tensor[82]: n_dims = 1, name = v.blk.14.ln2.bias, tensor_size=4096, offset=176525312, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480508Z DEBUG [llama.cpp] mtmd_model_loader: tensor[83]: n_dims = 1, name = v.blk.14.ln2.weight, tensor_size=4096, offset=176529408, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480532Z DEBUG [llama.cpp] mtmd_model_loader: tensor[84]: n_dims = 1, name = v.blk.15.attn_out.bias, tensor_size=4096, offset=176533504, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480556Z DEBUG [llama.cpp] mtmd_model_loader: tensor[85]: n_dims = 2, name = v.blk.15.attn_out.weight, tensor_size=2097152, offset=176537600, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.480580Z DEBUG [llama.cpp] mtmd_model_loader: tensor[86]: n_dims = 1, name = v.blk.15.attn_qkv.bias, tensor_size=12288, offset=178634752, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480605Z DEBUG [llama.cpp] mtmd_model_loader: tensor[87]: n_dims = 2, name = v.blk.15.attn_qkv.weight, tensor_size=6291456, offset=178647040, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.480630Z DEBUG [llama.cpp] mtmd_model_loader: tensor[88]: n_dims = 1, name = v.blk.15.ffn_up.bias, tensor_size=16384, offset=184938496, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480654Z DEBUG [llama.cpp] mtmd_model_loader: tensor[89]: n_dims = 2, name = v.blk.15.ffn_up.weight, tensor_size=8388608, offset=184954880, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.480682Z DEBUG [llama.cpp] mtmd_model_loader: tensor[90]: n_dims = 1, name = v.blk.15.ffn_down.bias, tensor_size=4096, offset=193343488, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480707Z DEBUG [llama.cpp] mtmd_model_loader: tensor[91]: n_dims = 2, name = v.blk.15.ffn_down.weight, tensor_size=8388608, offset=193347584, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.480731Z DEBUG [llama.cpp] mtmd_model_loader: tensor[92]: n_dims = 1, name = v.blk.15.ln1.bias, tensor_size=4096, offset=201736192, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480755Z DEBUG [llama.cpp] mtmd_model_loader: tensor[93]: n_dims = 1, name = v.blk.15.ln1.weight, tensor_size=4096, offset=201740288, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480786Z DEBUG [llama.cpp] mtmd_model_loader: tensor[94]: n_dims = 1, name = v.blk.15.ln2.bias, tensor_size=4096, offset=201744384, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480811Z DEBUG [llama.cpp] mtmd_model_loader: tensor[95]: n_dims = 1, name = v.blk.15.ln2.weight, tensor_size=4096, offset=201748480, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480835Z DEBUG [llama.cpp] mtmd_model_loader: tensor[96]: n_dims = 1, name = v.blk.16.attn_out.bias, tensor_size=4096, offset=201752576, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480860Z DEBUG [llama.cpp] mtmd_model_loader: tensor[97]: n_dims = 2, name = v.blk.16.attn_out.weight, tensor_size=2097152, offset=201756672, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.480884Z DEBUG [llama.cpp] mtmd_model_loader: tensor[98]: n_dims = 1, name = v.blk.16.attn_qkv.bias, tensor_size=12288, offset=203853824, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480909Z DEBUG [llama.cpp] mtmd_model_loader: tensor[99]: n_dims = 2, name = v.blk.16.attn_qkv.weight, tensor_size=6291456, offset=203866112, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.480934Z DEBUG [llama.cpp] mtmd_model_loader: tensor[100]: n_dims = 1, name = v.blk.16.ffn_up.bias, tensor_size=16384, offset=210157568, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.480981Z DEBUG [llama.cpp] mtmd_model_loader: tensor[101]: n_dims = 2, name = v.blk.16.ffn_up.weight, tensor_size=8388608, offset=210173952, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.481007Z DEBUG [llama.cpp] mtmd_model_loader: tensor[102]: n_dims = 1, name = v.blk.16.ffn_down.bias, tensor_size=4096, offset=218562560, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481032Z DEBUG [llama.cpp] mtmd_model_loader: tensor[103]: n_dims = 2, name = v.blk.16.ffn_down.weight, tensor_size=8388608, offset=218566656, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.481057Z DEBUG [llama.cpp] mtmd_model_loader: tensor[104]: n_dims = 1, name = v.blk.16.ln1.bias, tensor_size=4096, offset=226955264, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481081Z DEBUG [llama.cpp] mtmd_model_loader: tensor[105]: n_dims = 1, name = v.blk.16.ln1.weight, tensor_size=4096, offset=226959360, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481105Z DEBUG [llama.cpp] mtmd_model_loader: tensor[106]: n_dims = 1, name = v.blk.16.ln2.bias, tensor_size=4096, offset=226963456, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481129Z DEBUG [llama.cpp] mtmd_model_loader: tensor[107]: n_dims = 1, name = v.blk.16.ln2.weight, tensor_size=4096, offset=226967552, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481154Z DEBUG [llama.cpp] mtmd_model_loader: tensor[108]: n_dims = 1, name = v.blk.17.attn_out.bias, tensor_size=4096, offset=226971648, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481185Z DEBUG [llama.cpp] mtmd_model_loader: tensor[109]: n_dims = 2, name = v.blk.17.attn_out.weight, tensor_size=2097152, offset=226975744, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.481210Z DEBUG [llama.cpp] mtmd_model_loader: tensor[110]: n_dims = 1, name = v.blk.17.attn_qkv.bias, tensor_size=12288, offset=229072896, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481238Z DEBUG [llama.cpp] mtmd_model_loader: tensor[111]: n_dims = 2, name = v.blk.17.attn_qkv.weight, tensor_size=6291456, offset=229085184, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.481263Z DEBUG [llama.cpp] mtmd_model_loader: tensor[112]: n_dims = 1, name = v.blk.17.ffn_up.bias, tensor_size=16384, offset=235376640, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481288Z DEBUG [llama.cpp] mtmd_model_loader: tensor[113]: n_dims = 2, name = v.blk.17.ffn_up.weight, tensor_size=8388608, offset=235393024, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.481313Z DEBUG [llama.cpp] mtmd_model_loader: tensor[114]: n_dims = 1, name = v.blk.17.ffn_down.bias, tensor_size=4096, offset=243781632, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481338Z DEBUG [llama.cpp] mtmd_model_loader: tensor[115]: n_dims = 2, name = v.blk.17.ffn_down.weight, tensor_size=8388608, offset=243785728, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.481362Z DEBUG [llama.cpp] mtmd_model_loader: tensor[116]: n_dims = 1, name = v.blk.17.ln1.bias, tensor_size=4096, offset=252174336, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481386Z DEBUG [llama.cpp] mtmd_model_loader: tensor[117]: n_dims = 1, name = v.blk.17.ln1.weight, tensor_size=4096, offset=252178432, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481410Z DEBUG [llama.cpp] mtmd_model_loader: tensor[118]: n_dims = 1, name = v.blk.17.ln2.bias, tensor_size=4096, offset=252182528, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481437Z DEBUG [llama.cpp] mtmd_model_loader: tensor[119]: n_dims = 1, name = v.blk.17.ln2.weight, tensor_size=4096, offset=252186624, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481462Z DEBUG [llama.cpp] mtmd_model_loader: tensor[120]: n_dims = 1, name = v.blk.18.attn_out.bias, tensor_size=4096, offset=252190720, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481487Z DEBUG [llama.cpp] mtmd_model_loader: tensor[121]: n_dims = 2, name = v.blk.18.attn_out.weight, tensor_size=2097152, offset=252194816, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.481512Z DEBUG [llama.cpp] mtmd_model_loader: tensor[122]: n_dims = 1, name = v.blk.18.attn_qkv.bias, tensor_size=12288, offset=254291968, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481537Z DEBUG [llama.cpp] mtmd_model_loader: tensor[123]: n_dims = 2, name = v.blk.18.attn_qkv.weight, tensor_size=6291456, offset=254304256, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.481561Z DEBUG [llama.cpp] mtmd_model_loader: tensor[124]: n_dims = 1, name = v.blk.18.ffn_up.bias, tensor_size=16384, offset=260595712, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481586Z DEBUG [llama.cpp] mtmd_model_loader: tensor[125]: n_dims = 2, name = v.blk.18.ffn_up.weight, tensor_size=8388608, offset=260612096, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.481611Z DEBUG [llama.cpp] mtmd_model_loader: tensor[126]: n_dims = 1, name = v.blk.18.ffn_down.bias, tensor_size=4096, offset=269000704, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481636Z DEBUG [llama.cpp] mtmd_model_loader: tensor[127]: n_dims = 2, name = v.blk.18.ffn_down.weight, tensor_size=8388608, offset=269004800, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.481661Z DEBUG [llama.cpp] mtmd_model_loader: tensor[128]: n_dims = 1, name = v.blk.18.ln1.bias, tensor_size=4096, offset=277393408, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481685Z DEBUG [llama.cpp] mtmd_model_loader: tensor[129]: n_dims = 1, name = v.blk.18.ln1.weight, tensor_size=4096, offset=277397504, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481709Z DEBUG [llama.cpp] mtmd_model_loader: tensor[130]: n_dims = 1, name = v.blk.18.ln2.bias, tensor_size=4096, offset=277401600, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481733Z DEBUG [llama.cpp] mtmd_model_loader: tensor[131]: n_dims = 1, name = v.blk.18.ln2.weight, tensor_size=4096, offset=277405696, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481758Z DEBUG [llama.cpp] mtmd_model_loader: tensor[132]: n_dims = 1, name = v.blk.19.attn_out.bias, tensor_size=4096, offset=277409792, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481786Z DEBUG [llama.cpp] mtmd_model_loader: tensor[133]: n_dims = 2, name = v.blk.19.attn_out.weight, tensor_size=2097152, offset=277413888, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.481812Z DEBUG [llama.cpp] mtmd_model_loader: tensor[134]: n_dims = 1, name = v.blk.19.attn_qkv.bias, tensor_size=12288, offset=279511040, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481837Z DEBUG [llama.cpp] mtmd_model_loader: tensor[135]: n_dims = 2, name = v.blk.19.attn_qkv.weight, tensor_size=6291456, offset=279523328, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.481868Z DEBUG [llama.cpp] mtmd_model_loader: tensor[136]: n_dims = 1, name = v.blk.19.ffn_up.bias, tensor_size=16384, offset=285814784, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481894Z DEBUG [llama.cpp] mtmd_model_loader: tensor[137]: n_dims = 2, name = v.blk.19.ffn_up.weight, tensor_size=8388608, offset=285831168, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.481922Z DEBUG [llama.cpp] mtmd_model_loader: tensor[138]: n_dims = 1, name = v.blk.19.ffn_down.bias, tensor_size=4096, offset=294219776, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.481966Z DEBUG [llama.cpp] mtmd_model_loader: tensor[139]: n_dims = 2, name = v.blk.19.ffn_down.weight, tensor_size=8388608, offset=294223872, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.481993Z DEBUG [llama.cpp] mtmd_model_loader: tensor[140]: n_dims = 1, name = v.blk.19.ln1.bias, tensor_size=4096, offset=302612480, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482017Z DEBUG [llama.cpp] mtmd_model_loader: tensor[141]: n_dims = 1, name = v.blk.19.ln1.weight, tensor_size=4096, offset=302616576, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482042Z DEBUG [llama.cpp] mtmd_model_loader: tensor[142]: n_dims = 1, name = v.blk.19.ln2.bias, tensor_size=4096, offset=302620672, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482066Z DEBUG [llama.cpp] mtmd_model_loader: tensor[143]: n_dims = 1, name = v.blk.19.ln2.weight, tensor_size=4096, offset=302624768, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482090Z DEBUG [llama.cpp] mtmd_model_loader: tensor[144]: n_dims = 1, name = v.blk.2.attn_out.bias, tensor_size=4096, offset=302628864, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482116Z DEBUG [llama.cpp] mtmd_model_loader: tensor[145]: n_dims = 2, name = v.blk.2.attn_out.weight, tensor_size=2097152, offset=302632960, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.482141Z DEBUG [llama.cpp] mtmd_model_loader: tensor[146]: n_dims = 1, name = v.blk.2.attn_qkv.bias, tensor_size=12288, offset=304730112, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482170Z DEBUG [llama.cpp] mtmd_model_loader: tensor[147]: n_dims = 2, name = v.blk.2.attn_qkv.weight, tensor_size=6291456, offset=304742400, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.482196Z DEBUG [llama.cpp] mtmd_model_loader: tensor[148]: n_dims = 1, name = v.blk.2.ffn_up.bias, tensor_size=16384, offset=311033856, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482221Z DEBUG [llama.cpp] mtmd_model_loader: tensor[149]: n_dims = 2, name = v.blk.2.ffn_up.weight, tensor_size=8388608, offset=311050240, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.482246Z DEBUG [llama.cpp] mtmd_model_loader: tensor[150]: n_dims = 1, name = v.blk.2.ffn_down.bias, tensor_size=4096, offset=319438848, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482271Z DEBUG [llama.cpp] mtmd_model_loader: tensor[151]: n_dims = 2, name = v.blk.2.ffn_down.weight, tensor_size=8388608, offset=319442944, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.482295Z DEBUG [llama.cpp] mtmd_model_loader: tensor[152]: n_dims = 1, name = v.blk.2.ln1.bias, tensor_size=4096, offset=327831552, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482320Z DEBUG [llama.cpp] mtmd_model_loader: tensor[153]: n_dims = 1, name = v.blk.2.ln1.weight, tensor_size=4096, offset=327835648, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482348Z DEBUG [llama.cpp] mtmd_model_loader: tensor[154]: n_dims = 1, name = v.blk.2.ln2.bias, tensor_size=4096, offset=327839744, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482372Z DEBUG [llama.cpp] mtmd_model_loader: tensor[155]: n_dims = 1, name = v.blk.2.ln2.weight, tensor_size=4096, offset=327843840, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482397Z DEBUG [llama.cpp] mtmd_model_loader: tensor[156]: n_dims = 1, name = v.blk.20.attn_out.bias, tensor_size=4096, offset=327847936, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482425Z DEBUG [llama.cpp] mtmd_model_loader: tensor[157]: n_dims = 2, name = v.blk.20.attn_out.weight, tensor_size=2097152, offset=327852032, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.482451Z DEBUG [llama.cpp] mtmd_model_loader: tensor[158]: n_dims = 1, name = v.blk.20.attn_qkv.bias, tensor_size=12288, offset=329949184, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482476Z DEBUG [llama.cpp] mtmd_model_loader: tensor[159]: n_dims = 2, name = v.blk.20.attn_qkv.weight, tensor_size=6291456, offset=329961472, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.482501Z DEBUG [llama.cpp] mtmd_model_loader: tensor[160]: n_dims = 1, name = v.blk.20.ffn_up.bias, tensor_size=16384, offset=336252928, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482527Z DEBUG [llama.cpp] mtmd_model_loader: tensor[161]: n_dims = 2, name = v.blk.20.ffn_up.weight, tensor_size=8388608, offset=336269312, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.482552Z DEBUG [llama.cpp] mtmd_model_loader: tensor[162]: n_dims = 1, name = v.blk.20.ffn_down.bias, tensor_size=4096, offset=344657920, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482577Z DEBUG [llama.cpp] mtmd_model_loader: tensor[163]: n_dims = 2, name = v.blk.20.ffn_down.weight, tensor_size=8388608, offset=344662016, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.482602Z DEBUG [llama.cpp] mtmd_model_loader: tensor[164]: n_dims = 1, name = v.blk.20.ln1.bias, tensor_size=4096, offset=353050624, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482626Z DEBUG [llama.cpp] mtmd_model_loader: tensor[165]: n_dims = 1, name = v.blk.20.ln1.weight, tensor_size=4096, offset=353054720, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482651Z DEBUG [llama.cpp] mtmd_model_loader: tensor[166]: n_dims = 1, name = v.blk.20.ln2.bias, tensor_size=4096, offset=353058816, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482675Z DEBUG [llama.cpp] mtmd_model_loader: tensor[167]: n_dims = 1, name = v.blk.20.ln2.weight, tensor_size=4096, offset=353062912, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482700Z DEBUG [llama.cpp] mtmd_model_loader: tensor[168]: n_dims = 1, name = v.blk.21.attn_out.bias, tensor_size=4096, offset=353067008, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482726Z DEBUG [llama.cpp] mtmd_model_loader: tensor[169]: n_dims = 2, name = v.blk.21.attn_out.weight, tensor_size=2097152, offset=353071104, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.482751Z DEBUG [llama.cpp] mtmd_model_loader: tensor[170]: n_dims = 1, name = v.blk.21.attn_qkv.bias, tensor_size=12288, offset=355168256, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482776Z DEBUG [llama.cpp] mtmd_model_loader: tensor[171]: n_dims = 2, name = v.blk.21.attn_qkv.weight, tensor_size=6291456, offset=355180544, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.482801Z DEBUG [llama.cpp] mtmd_model_loader: tensor[172]: n_dims = 1, name = v.blk.21.ffn_up.bias, tensor_size=16384, offset=361472000, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482827Z DEBUG [llama.cpp] mtmd_model_loader: tensor[173]: n_dims = 2, name = v.blk.21.ffn_up.weight, tensor_size=8388608, offset=361488384, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.482852Z DEBUG [llama.cpp] mtmd_model_loader: tensor[174]: n_dims = 1, name = v.blk.21.ffn_down.bias, tensor_size=4096, offset=369876992, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482883Z DEBUG [llama.cpp] mtmd_model_loader: tensor[175]: n_dims = 2, name = v.blk.21.ffn_down.weight, tensor_size=8388608, offset=369881088, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.482908Z DEBUG [llama.cpp] mtmd_model_loader: tensor[176]: n_dims = 1, name = v.blk.21.ln1.bias, tensor_size=4096, offset=378269696, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482933Z DEBUG [llama.cpp] mtmd_model_loader: tensor[177]: n_dims = 1, name = v.blk.21.ln1.weight, tensor_size=4096, offset=378273792, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.482974Z DEBUG [llama.cpp] mtmd_model_loader: tensor[178]: n_dims = 1, name = v.blk.21.ln2.bias, tensor_size=4096, offset=378277888, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483000Z DEBUG [llama.cpp] mtmd_model_loader: tensor[179]: n_dims = 1, name = v.blk.21.ln2.weight, tensor_size=4096, offset=378281984, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483025Z DEBUG [llama.cpp] mtmd_model_loader: tensor[180]: n_dims = 1, name = v.blk.22.attn_out.bias, tensor_size=4096, offset=378286080, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483050Z DEBUG [llama.cpp] mtmd_model_loader: tensor[181]: n_dims = 2, name = v.blk.22.attn_out.weight, tensor_size=2097152, offset=378290176, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.483076Z DEBUG [llama.cpp] mtmd_model_loader: tensor[182]: n_dims = 1, name = v.blk.22.attn_qkv.bias, tensor_size=12288, offset=380387328, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483101Z DEBUG [llama.cpp] mtmd_model_loader: tensor[183]: n_dims = 2, name = v.blk.22.attn_qkv.weight, tensor_size=6291456, offset=380399616, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.483127Z DEBUG [llama.cpp] mtmd_model_loader: tensor[184]: n_dims = 1, name = v.blk.22.ffn_up.bias, tensor_size=16384, offset=386691072, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483153Z DEBUG [llama.cpp] mtmd_model_loader: tensor[185]: n_dims = 2, name = v.blk.22.ffn_up.weight, tensor_size=8388608, offset=386707456, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.483182Z DEBUG [llama.cpp] mtmd_model_loader: tensor[186]: n_dims = 1, name = v.blk.22.ffn_down.bias, tensor_size=4096, offset=395096064, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483208Z DEBUG [llama.cpp] mtmd_model_loader: tensor[187]: n_dims = 2, name = v.blk.22.ffn_down.weight, tensor_size=8388608, offset=395100160, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.483233Z DEBUG [llama.cpp] mtmd_model_loader: tensor[188]: n_dims = 1, name = v.blk.22.ln1.bias, tensor_size=4096, offset=403488768, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483257Z DEBUG [llama.cpp] mtmd_model_loader: tensor[189]: n_dims = 1, name = v.blk.22.ln1.weight, tensor_size=4096, offset=403492864, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483282Z DEBUG [llama.cpp] mtmd_model_loader: tensor[190]: n_dims = 1, name = v.blk.22.ln2.bias, tensor_size=4096, offset=403496960, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483306Z DEBUG [llama.cpp] mtmd_model_loader: tensor[191]: n_dims = 1, name = v.blk.22.ln2.weight, tensor_size=4096, offset=403501056, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483331Z DEBUG [llama.cpp] mtmd_model_loader: tensor[192]: n_dims = 1, name = v.blk.23.attn_out.bias, tensor_size=4096, offset=403505152, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483356Z DEBUG [llama.cpp] mtmd_model_loader: tensor[193]: n_dims = 2, name = v.blk.23.attn_out.weight, tensor_size=2097152, offset=403509248, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.483387Z DEBUG [llama.cpp] mtmd_model_loader: tensor[194]: n_dims = 1, name = v.blk.23.attn_qkv.bias, tensor_size=12288, offset=405606400, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483414Z DEBUG [llama.cpp] mtmd_model_loader: tensor[195]: n_dims = 2, name = v.blk.23.attn_qkv.weight, tensor_size=6291456, offset=405618688, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.483440Z DEBUG [llama.cpp] mtmd_model_loader: tensor[196]: n_dims = 1, name = v.blk.23.ffn_up.bias, tensor_size=16384, offset=411910144, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483469Z DEBUG [llama.cpp] mtmd_model_loader: tensor[197]: n_dims = 2, name = v.blk.23.ffn_up.weight, tensor_size=8388608, offset=411926528, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.483494Z DEBUG [llama.cpp] mtmd_model_loader: tensor[198]: n_dims = 1, name = v.blk.23.ffn_down.bias, tensor_size=4096, offset=420315136, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483520Z DEBUG [llama.cpp] mtmd_model_loader: tensor[199]: n_dims = 2, name = v.blk.23.ffn_down.weight, tensor_size=8388608, offset=420319232, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.483545Z DEBUG [llama.cpp] mtmd_model_loader: tensor[200]: n_dims = 1, name = v.blk.23.ln1.bias, tensor_size=4096, offset=428707840, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483570Z DEBUG [llama.cpp] mtmd_model_loader: tensor[201]: n_dims = 1, name = v.blk.23.ln1.weight, tensor_size=4096, offset=428711936, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483594Z DEBUG [llama.cpp] mtmd_model_loader: tensor[202]: n_dims = 1, name = v.blk.23.ln2.bias, tensor_size=4096, offset=428716032, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483619Z DEBUG [llama.cpp] mtmd_model_loader: tensor[203]: n_dims = 1, name = v.blk.23.ln2.weight, tensor_size=4096, offset=428720128, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483645Z DEBUG [llama.cpp] mtmd_model_loader: tensor[204]: n_dims = 1, name = v.blk.3.attn_out.bias, tensor_size=4096, offset=428724224, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483670Z DEBUG [llama.cpp] mtmd_model_loader: tensor[205]: n_dims = 2, name = v.blk.3.attn_out.weight, tensor_size=2097152, offset=428728320, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.483696Z DEBUG [llama.cpp] mtmd_model_loader: tensor[206]: n_dims = 1, name = v.blk.3.attn_qkv.bias, tensor_size=12288, offset=430825472, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483722Z DEBUG [llama.cpp] mtmd_model_loader: tensor[207]: n_dims = 2, name = v.blk.3.attn_qkv.weight, tensor_size=6291456, offset=430837760, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.483747Z DEBUG [llama.cpp] mtmd_model_loader: tensor[208]: n_dims = 1, name = v.blk.3.ffn_up.bias, tensor_size=16384, offset=437129216, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483773Z DEBUG [llama.cpp] mtmd_model_loader: tensor[209]: n_dims = 2, name = v.blk.3.ffn_up.weight, tensor_size=8388608, offset=437145600, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.483798Z DEBUG [llama.cpp] mtmd_model_loader: tensor[210]: n_dims = 1, name = v.blk.3.ffn_down.bias, tensor_size=4096, offset=445534208, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483823Z DEBUG [llama.cpp] mtmd_model_loader: tensor[211]: n_dims = 2, name = v.blk.3.ffn_down.weight, tensor_size=8388608, offset=445538304, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.483848Z DEBUG [llama.cpp] mtmd_model_loader: tensor[212]: n_dims = 1, name = v.blk.3.ln1.bias, tensor_size=4096, offset=453926912, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483876Z DEBUG [llama.cpp] mtmd_model_loader: tensor[213]: n_dims = 1, name = v.blk.3.ln1.weight, tensor_size=4096, offset=453931008, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483901Z DEBUG [llama.cpp] mtmd_model_loader: tensor[214]: n_dims = 1, name = v.blk.3.ln2.bias, tensor_size=4096, offset=453935104, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483926Z DEBUG [llama.cpp] mtmd_model_loader: tensor[215]: n_dims = 1, name = v.blk.3.ln2.weight, tensor_size=4096, offset=453939200, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483963Z DEBUG [llama.cpp] mtmd_model_loader: tensor[216]: n_dims = 1, name = v.blk.4.attn_out.bias, tensor_size=4096, offset=453943296, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.483990Z DEBUG [llama.cpp] mtmd_model_loader: tensor[217]: n_dims = 2, name = v.blk.4.attn_out.weight, tensor_size=2097152, offset=453947392, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.484020Z DEBUG [llama.cpp] mtmd_model_loader: tensor[218]: n_dims = 1, name = v.blk.4.attn_qkv.bias, tensor_size=12288, offset=456044544, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484046Z DEBUG [llama.cpp] mtmd_model_loader: tensor[219]: n_dims = 2, name = v.blk.4.attn_qkv.weight, tensor_size=6291456, offset=456056832, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.484071Z DEBUG [llama.cpp] mtmd_model_loader: tensor[220]: n_dims = 1, name = v.blk.4.ffn_up.bias, tensor_size=16384, offset=462348288, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484097Z DEBUG [llama.cpp] mtmd_model_loader: tensor[221]: n_dims = 2, name = v.blk.4.ffn_up.weight, tensor_size=8388608, offset=462364672, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.484122Z DEBUG [llama.cpp] mtmd_model_loader: tensor[222]: n_dims = 1, name = v.blk.4.ffn_down.bias, tensor_size=4096, offset=470753280, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484147Z DEBUG [llama.cpp] mtmd_model_loader: tensor[223]: n_dims = 2, name = v.blk.4.ffn_down.weight, tensor_size=8388608, offset=470757376, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.484177Z DEBUG [llama.cpp] mtmd_model_loader: tensor[224]: n_dims = 1, name = v.blk.4.ln1.bias, tensor_size=4096, offset=479145984, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484202Z DEBUG [llama.cpp] mtmd_model_loader: tensor[225]: n_dims = 1, name = v.blk.4.ln1.weight, tensor_size=4096, offset=479150080, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484227Z DEBUG [llama.cpp] mtmd_model_loader: tensor[226]: n_dims = 1, name = v.blk.4.ln2.bias, tensor_size=4096, offset=479154176, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484252Z DEBUG [llama.cpp] mtmd_model_loader: tensor[227]: n_dims = 1, name = v.blk.4.ln2.weight, tensor_size=4096, offset=479158272, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484277Z DEBUG [llama.cpp] mtmd_model_loader: tensor[228]: n_dims = 1, name = v.blk.5.attn_out.bias, tensor_size=4096, offset=479162368, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484303Z DEBUG [llama.cpp] mtmd_model_loader: tensor[229]: n_dims = 2, name = v.blk.5.attn_out.weight, tensor_size=2097152, offset=479166464, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.484329Z DEBUG [llama.cpp] mtmd_model_loader: tensor[230]: n_dims = 1, name = v.blk.5.attn_qkv.bias, tensor_size=12288, offset=481263616, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484357Z DEBUG [llama.cpp] mtmd_model_loader: tensor[231]: n_dims = 2, name = v.blk.5.attn_qkv.weight, tensor_size=6291456, offset=481275904, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.484384Z DEBUG [llama.cpp] mtmd_model_loader: tensor[232]: n_dims = 1, name = v.blk.5.ffn_up.bias, tensor_size=16384, offset=487567360, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484409Z DEBUG [llama.cpp] mtmd_model_loader: tensor[233]: n_dims = 2, name = v.blk.5.ffn_up.weight, tensor_size=8388608, offset=487583744, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.484448Z DEBUG [llama.cpp] mtmd_model_loader: tensor[234]: n_dims = 1, name = v.blk.5.ffn_down.bias, tensor_size=4096, offset=495972352, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484474Z DEBUG [llama.cpp] mtmd_model_loader: tensor[235]: n_dims = 2, name = v.blk.5.ffn_down.weight, tensor_size=8388608, offset=495976448, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.484499Z DEBUG [llama.cpp] mtmd_model_loader: tensor[236]: n_dims = 1, name = v.blk.5.ln1.bias, tensor_size=4096, offset=504365056, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484524Z DEBUG [llama.cpp] mtmd_model_loader: tensor[237]: n_dims = 1, name = v.blk.5.ln1.weight, tensor_size=4096, offset=504369152, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484548Z DEBUG [llama.cpp] mtmd_model_loader: tensor[238]: n_dims = 1, name = v.blk.5.ln2.bias, tensor_size=4096, offset=504373248, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484573Z DEBUG [llama.cpp] mtmd_model_loader: tensor[239]: n_dims = 1, name = v.blk.5.ln2.weight, tensor_size=4096, offset=504377344, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484602Z DEBUG [llama.cpp] mtmd_model_loader: tensor[240]: n_dims = 1, name = v.blk.6.attn_out.bias, tensor_size=4096, offset=504381440, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484628Z DEBUG [llama.cpp] mtmd_model_loader: tensor[241]: n_dims = 2, name = v.blk.6.attn_out.weight, tensor_size=2097152, offset=504385536, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.484654Z DEBUG [llama.cpp] mtmd_model_loader: tensor[242]: n_dims = 1, name = v.blk.6.attn_qkv.bias, tensor_size=12288, offset=506482688, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484680Z DEBUG [llama.cpp] mtmd_model_loader: tensor[243]: n_dims = 2, name = v.blk.6.attn_qkv.weight, tensor_size=6291456, offset=506494976, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.484705Z DEBUG [llama.cpp] mtmd_model_loader: tensor[244]: n_dims = 1, name = v.blk.6.ffn_up.bias, tensor_size=16384, offset=512786432, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484731Z DEBUG [llama.cpp] mtmd_model_loader: tensor[245]: n_dims = 2, name = v.blk.6.ffn_up.weight, tensor_size=8388608, offset=512802816, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.484756Z DEBUG [llama.cpp] mtmd_model_loader: tensor[246]: n_dims = 1, name = v.blk.6.ffn_down.bias, tensor_size=4096, offset=521191424, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484782Z DEBUG [llama.cpp] mtmd_model_loader: tensor[247]: n_dims = 2, name = v.blk.6.ffn_down.weight, tensor_size=8388608, offset=521195520, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.484807Z DEBUG [llama.cpp] mtmd_model_loader: tensor[248]: n_dims = 1, name = v.blk.6.ln1.bias, tensor_size=4096, offset=529584128, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484832Z DEBUG [llama.cpp] mtmd_model_loader: tensor[249]: n_dims = 1, name = v.blk.6.ln1.weight, tensor_size=4096, offset=529588224, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484860Z DEBUG [llama.cpp] mtmd_model_loader: tensor[250]: n_dims = 1, name = v.blk.6.ln2.bias, tensor_size=4096, offset=529592320, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484886Z DEBUG [llama.cpp] mtmd_model_loader: tensor[251]: n_dims = 1, name = v.blk.6.ln2.weight, tensor_size=4096, offset=529596416, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484911Z DEBUG [llama.cpp] mtmd_model_loader: tensor[252]: n_dims = 1, name = v.blk.7.attn_out.bias, tensor_size=4096, offset=529600512, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.484947Z DEBUG [llama.cpp] mtmd_model_loader: tensor[253]: n_dims = 2, name = v.blk.7.attn_out.weight, tensor_size=2097152, offset=529604608, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.484978Z DEBUG [llama.cpp] mtmd_model_loader: tensor[254]: n_dims = 1, name = v.blk.7.attn_qkv.bias, tensor_size=12288, offset=531701760, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485004Z DEBUG [llama.cpp] mtmd_model_loader: tensor[255]: n_dims = 2, name = v.blk.7.attn_qkv.weight, tensor_size=6291456, offset=531714048, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.485030Z DEBUG [llama.cpp] mtmd_model_loader: tensor[256]: n_dims = 1, name = v.blk.7.ffn_up.bias, tensor_size=16384, offset=538005504, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485055Z DEBUG [llama.cpp] mtmd_model_loader: tensor[257]: n_dims = 2, name = v.blk.7.ffn_up.weight, tensor_size=8388608, offset=538021888, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.485081Z DEBUG [llama.cpp] mtmd_model_loader: tensor[258]: n_dims = 1, name = v.blk.7.ffn_down.bias, tensor_size=4096, offset=546410496, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485106Z DEBUG [llama.cpp] mtmd_model_loader: tensor[259]: n_dims = 2, name = v.blk.7.ffn_down.weight, tensor_size=8388608, offset=546414592, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.485132Z DEBUG [llama.cpp] mtmd_model_loader: tensor[260]: n_dims = 1, name = v.blk.7.ln1.bias, tensor_size=4096, offset=554803200, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485165Z DEBUG [llama.cpp] mtmd_model_loader: tensor[261]: n_dims = 1, name = v.blk.7.ln1.weight, tensor_size=4096, offset=554807296, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485191Z DEBUG [llama.cpp] mtmd_model_loader: tensor[262]: n_dims = 1, name = v.blk.7.ln2.bias, tensor_size=4096, offset=554811392, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485217Z DEBUG [llama.cpp] mtmd_model_loader: tensor[263]: n_dims = 1, name = v.blk.7.ln2.weight, tensor_size=4096, offset=554815488, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485242Z DEBUG [llama.cpp] mtmd_model_loader: tensor[264]: n_dims = 1, name = v.blk.8.attn_out.bias, tensor_size=4096, offset=554819584, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485268Z DEBUG [llama.cpp] mtmd_model_loader: tensor[265]: n_dims = 2, name = v.blk.8.attn_out.weight, tensor_size=2097152, offset=554823680, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.485294Z DEBUG [llama.cpp] mtmd_model_loader: tensor[266]: n_dims = 1, name = v.blk.8.attn_qkv.bias, tensor_size=12288, offset=556920832, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485320Z DEBUG [llama.cpp] mtmd_model_loader: tensor[267]: n_dims = 2, name = v.blk.8.attn_qkv.weight, tensor_size=6291456, offset=556933120, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.485345Z DEBUG [llama.cpp] mtmd_model_loader: tensor[268]: n_dims = 1, name = v.blk.8.ffn_up.bias, tensor_size=16384, offset=563224576, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485374Z DEBUG [llama.cpp] mtmd_model_loader: tensor[269]: n_dims = 2, name = v.blk.8.ffn_up.weight, tensor_size=8388608, offset=563240960, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.485400Z DEBUG [llama.cpp] mtmd_model_loader: tensor[270]: n_dims = 1, name = v.blk.8.ffn_down.bias, tensor_size=4096, offset=571629568, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485426Z DEBUG [llama.cpp] mtmd_model_loader: tensor[271]: n_dims = 2, name = v.blk.8.ffn_down.weight, tensor_size=8388608, offset=571633664, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.485452Z DEBUG [llama.cpp] mtmd_model_loader: tensor[272]: n_dims = 1, name = v.blk.8.ln1.bias, tensor_size=4096, offset=580022272, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485477Z DEBUG [llama.cpp] mtmd_model_loader: tensor[273]: n_dims = 1, name = v.blk.8.ln1.weight, tensor_size=4096, offset=580026368, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485502Z DEBUG [llama.cpp] mtmd_model_loader: tensor[274]: n_dims = 1, name = v.blk.8.ln2.bias, tensor_size=4096, offset=580030464, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485528Z DEBUG [llama.cpp] mtmd_model_loader: tensor[275]: n_dims = 1, name = v.blk.8.ln2.weight, tensor_size=4096, offset=580034560, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485553Z DEBUG [llama.cpp] mtmd_model_loader: tensor[276]: n_dims = 1, name = v.blk.9.attn_out.bias, tensor_size=4096, offset=580038656, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485579Z DEBUG [llama.cpp] mtmd_model_loader: tensor[277]: n_dims = 2, name = v.blk.9.attn_out.weight, tensor_size=2097152, offset=580042752, shape:[1024, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.485605Z DEBUG [llama.cpp] mtmd_model_loader: tensor[278]: n_dims = 1, name = v.blk.9.attn_qkv.bias, tensor_size=12288, offset=582139904, shape:[3072, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485631Z DEBUG [llama.cpp] mtmd_model_loader: tensor[279]: n_dims = 2, name = v.blk.9.attn_qkv.weight, tensor_size=6291456, offset=582152192, shape:[1024, 3072, 1, 1], type = f16
+2026-11-27T09:14:37.485657Z DEBUG [llama.cpp] mtmd_model_loader: tensor[280]: n_dims = 1, name = v.blk.9.ffn_up.bias, tensor_size=16384, offset=588443648, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485683Z DEBUG [llama.cpp] mtmd_model_loader: tensor[281]: n_dims = 2, name = v.blk.9.ffn_up.weight, tensor_size=8388608, offset=588460032, shape:[1024, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.485712Z DEBUG [llama.cpp] mtmd_model_loader: tensor[282]: n_dims = 1, name = v.blk.9.ffn_down.bias, tensor_size=4096, offset=596848640, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485738Z DEBUG [llama.cpp] mtmd_model_loader: tensor[283]: n_dims = 2, name = v.blk.9.ffn_down.weight, tensor_size=8388608, offset=596852736, shape:[4096, 1024, 1, 1], type = f16
+2026-11-27T09:14:37.485764Z DEBUG [llama.cpp] mtmd_model_loader: tensor[284]: n_dims = 1, name = v.blk.9.ln1.bias, tensor_size=4096, offset=605241344, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485789Z DEBUG [llama.cpp] mtmd_model_loader: tensor[285]: n_dims = 1, name = v.blk.9.ln1.weight, tensor_size=4096, offset=605245440, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485814Z DEBUG [llama.cpp] mtmd_model_loader: tensor[286]: n_dims = 1, name = v.blk.9.ln2.bias, tensor_size=4096, offset=605249536, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485842Z DEBUG [llama.cpp] mtmd_model_loader: tensor[287]: n_dims = 1, name = v.blk.9.ln2.weight, tensor_size=4096, offset=605253632, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485868Z DEBUG [llama.cpp] mtmd_model_loader: tensor[288]: n_dims = 1, name = mm.0.bias, tensor_size=16384, offset=605257728, shape:[4096, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485893Z DEBUG [llama.cpp] mtmd_model_loader: tensor[289]: n_dims = 2, name = mm.0.weight, tensor_size=33554432, offset=605274112, shape:[4096, 4096, 1, 1], type = f16
+2026-11-27T09:14:37.485920Z DEBUG [llama.cpp] mtmd_model_loader: tensor[290]: n_dims = 1, name = mm.2.bias, tensor_size=10240, offset=638828544, shape:[2560, 1, 1, 1], type = f32
+2026-11-27T09:14:37.485958Z DEBUG [llama.cpp] mtmd_model_loader: tensor[291]: n_dims = 2, name = mm.2.weight, tensor_size=20971520, offset=638838784, shape:[4096, 2560, 1, 1], type = f16
+2026-11-27T09:14:37.485985Z DEBUG [llama.cpp] mtmd_model_loader: tensor[292]: n_dims = 1, name = v.post_ln.bias, tensor_size=4096, offset=659810304, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.486010Z DEBUG [llama.cpp] mtmd_model_loader: tensor[293]: n_dims = 1, name = v.post_ln.weight, tensor_size=4096, offset=659814400, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.486036Z DEBUG [llama.cpp] mtmd_model_loader: tensor[294]: n_dims = 1, name = v.patch_embd.bias, tensor_size=4096, offset=659818496, shape:[1024, 1, 1, 1], type = f32
+2026-11-27T09:14:37.486061Z DEBUG [llama.cpp] mtmd_model_loader: tensor[295]: n_dims = 4, name = v.patch_embd.weight, tensor_size=1572864, offset=659822592, shape:[16, 16, 3, 1024], type = f16
+2026-11-27T09:14:37.486087Z DEBUG [llama.cpp] mtmd_model_loader: tensor[296]: n_dims = 4, name = v.patch_embd.weight.1, tensor_size=1572864, offset=661395456, shape:[16, 16, 3, 1024], type = f16
+2026-11-27T09:14:37.486113Z DEBUG [llama.cpp] mtmd_model_loader: tensor[297]: n_dims = 2, name = v.position_embd.weight, tensor_size=9437184, offset=662968320, shape:[1024, 2304, 1, 1], type = f32
+2026-11-27T09:14:37.486225Z  WARN [llama.cpp] load_hparams: Qwen-VL models require at minimum 1024 image tokens to function correctly on grounding tasks
+2026-11-27T09:14:37.486245Z  WARN [llama.cpp] load_hparams: if you encounter problems with accuracy, try adding --image-min-tokens 1024
+2026-11-27T09:14:37.486263Z  WARN [llama.cpp] load_hparams: more info: https://github.com/ggml-org/llama.cpp/issues/16842
+2026-11-27T09:14:37.486280Z DEBUG [llama.cpp] load_hparams: projector:          qwen3vl_merger
+2026-11-27T09:14:37.486297Z DEBUG [llama.cpp] load_hparams: n_embd:             1024
+2026-11-27T09:14:37.486313Z DEBUG [llama.cpp] load_hparams: n_head:             16
+2026-11-27T09:14:37.486329Z DEBUG [llama.cpp] load_hparams: n_ff:               4096
+2026-11-27T09:14:37.486345Z DEBUG [llama.cpp] load_hparams: n_layer:            24
+2026-11-27T09:14:37.486361Z DEBUG [llama.cpp] load_hparams: ffn_op:             gelu
+2026-11-27T09:14:37.486377Z DEBUG [llama.cpp] load_hparams: projection_dim:     2560
+2026-11-27T09:14:37.486391Z DEBUG [llama.cpp] --- vision hparams ---
+2026-11-27T09:14:37.486414Z DEBUG [llama.cpp] load_hparams: image_size:         768
+2026-11-27T09:14:37.486430Z DEBUG [llama.cpp] load_hparams: patch_size:         16
+2026-11-27T09:14:37.486446Z DEBUG [llama.cpp] load_hparams: has_llava_proj:     0
+2026-11-27T09:14:37.486462Z DEBUG [llama.cpp] load_hparams: minicpmv_version:   0
+2026-11-27T09:14:37.486480Z DEBUG [llama.cpp] load_hparams: n_merge:            2
+2026-11-27T09:14:37.486496Z DEBUG [llama.cpp] load_hparams: n_wa_pattern: 0
+2026-11-27T09:14:37.486512Z DEBUG [llama.cpp] load_hparams: image_min_pixels:   8192
+2026-11-27T09:14:37.486528Z DEBUG [llama.cpp] load_hparams: image_max_pixels:   4194304
+2026-11-27T09:14:37.486549Z DEBUG [llama.cpp] load_hparams: model size:         641.26 MiB
+2026-11-27T09:14:37.486567Z DEBUG [llama.cpp] load_hparams: metadata size:      0.10 MiB
+2026-11-27T09:14:37.808990Z DEBUG [llama.cpp] load_tensors: loaded 298 tensors from /home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/mmproj-F16.gguf
+2026-11-27T09:14:37.813329Z DEBUG [llama.cpp] mtmd_backends: using CUDA0 backend
+2026-11-27T09:14:37.829985Z DEBUG [llama.cpp] get_dummy_batch: warmup with image size = 1472 x 1472
+2026-11-27T09:14:37.871477Z  INFO Projector loaded placement=Gpu free_vram_before_mib=17200 taken_by_load_mib=642 weights_mib=641 workspace_mib=1024 buffer_mib=1024
+2026-11-27T09:14:37.904498Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=534
+2026-11-27T09:14:37.905299Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (268 bytes) in 0 ms
+2026-11-27T09:14:37.905965Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (268 bytes) in 0 ms
+2026-11-27T09:14:37.906110Z DEBUG [llama.cpp] mtmd_group_mergeable_bitmaps: no merging for part index 1
+2026-11-27T09:14:37.909129Z DEBUG [llama.cpp] add_media: preproc_out has 1 entries, grid_x = 0, grid_y = 0, has_overview = 0
+2026-11-27T09:14:37.909167Z DEBUG [llama.cpp] image_tokens->nx = 14
+2026-11-27T09:14:37.909181Z DEBUG [llama.cpp] image_tokens->ny = 14
+2026-11-27T09:14:37.909195Z DEBUG [llama.cpp] batch_f32 size = 1
+2026-11-27T09:14:37.949468Z DEBUG [llama.cpp] reserve_compute_meta: graph splits = 1, nodes = 736
+2026-11-27T09:14:37.949590Z DEBUG [llama.cpp] warmup: flash attention is enabled
+2026-11-27T09:14:37.951590Z DEBUG [llama.cpp] encode: copying image 1/1 to input buffer (nx=448, ny=448)
+2026-11-27T09:14:38.059304Z DEBUG [llama.cpp] encode: output embedding shape [2560, 196, 1]
+2026-11-27T09:14:38.059980Z DEBUG [llama.cpp] decoding image batch 1/1, n_tokens_batch = 196
+2026-11-27T09:14:38.081853Z DEBUG [llama.cpp] image decoded (batch 1/1) in 21 ms
+2026-11-27T09:14:38.130681Z DEBUG Native media prefill evaluated prompt_tokens=257 prompt_positions=75
+2026-11-27T09:14:38.130796Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-27T09:14:38.144477Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 1114
+2026-11-27T09:14:38.144531Z DEBUG 📤 [NativeStream] Emitting token_id 1114: "red"
+2026-11-27T09:14:38.164198Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-27T09:14:38.164236Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 257 tokens in 230 ms (1118.06 t/s) | generation 1 tokens in 19 ms (53.57 t/s)
+2026-11-27T09:14:38.164258Z  INFO 🧠 [Context] prompt 75 tokens (0 from the cache) | context 76 of 16384 | stop eos
+2026-11-27T09:14:38.185429Z  INFO Media request on the GPU projector free_vram_before_mib=16558 grown_mib=48 held_by_projector_mib=690
+2026-11-27T09:14:38.189407Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-4b-gguf-Q4_K_M' to "/home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/Qwen3.5-4B-Q4_K_M.gguf"
+2026-11-27T09:14:38.211117Z  INFO 📏 [EngineHost] The loaded model now takes +0.72 GB over its estimate; learned for its next load
+2026-11-27T09:14:38.212457Z  INFO 🧮 [Tokens] Conversation 9 tokens (1 messages) counted in 0.13 ms
+2026-11-27T09:14:38.225748Z  INFO ⏱️ [Preflight] 36 ms total | model load 21 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 12 ms
+2026-11-27T09:14:38.280761Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=386
+2026-11-27T09:14:38.281542Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (123 bytes) in 0 ms
+2026-11-27T09:14:38.282155Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (123 bytes) in 0 ms
+2026-11-27T09:14:38.282248Z DEBUG [llama.cpp] mtmd_group_mergeable_bitmaps: no merging for part index 1
+2026-11-27T09:14:38.283539Z DEBUG [llama.cpp] add_media: preproc_out has 1 entries, grid_x = 0, grid_y = 0, has_overview = 0
+2026-11-27T09:14:38.283565Z DEBUG [llama.cpp] image_tokens->nx = 14
+2026-11-27T09:14:38.283579Z DEBUG [llama.cpp] image_tokens->ny = 14
+2026-11-27T09:14:38.283593Z DEBUG [llama.cpp] batch_f32 size = 1
+2026-11-27T09:14:38.303545Z DEBUG [llama.cpp] encode: copying image 1/1 to input buffer (nx=448, ny=448)
+2026-11-27T09:14:38.329742Z DEBUG [llama.cpp] encode: output embedding shape [2560, 196, 1]
+2026-11-27T09:14:38.330396Z DEBUG [llama.cpp] decoding image batch 1/1, n_tokens_batch = 196
+2026-11-27T09:14:38.351678Z DEBUG [llama.cpp] image decoded (batch 1/1) in 21 ms
+2026-11-27T09:14:38.391510Z DEBUG Native media prefill evaluated prompt_tokens=219 prompt_positions=37
+2026-11-27T09:14:38.391600Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-27T09:14:38.400170Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 2438
+2026-11-27T09:14:38.400209Z DEBUG 📤 [NativeStream] Emitting token_id 2438: " red"
+2026-11-27T09:14:38.418978Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-27T09:14:38.419010Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 219 tokens in 113 ms (1944.87 t/s) | generation 1 tokens in 18 ms (56.08 t/s)
+2026-11-27T09:14:38.419029Z  INFO 🧠 [Context] prompt 37 tokens (0 from the cache) | context 38 of 16384 | stop eos
+2026-11-27T09:14:38.440129Z  INFO Media request on the GPU projector free_vram_before_mib=16510 grown_mib=4 held_by_projector_mib=694
+2026-11-27T09:14:38.443577Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-4b-gguf-Q4_K_M' to "/home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/Qwen3.5-4B-Q4_K_M.gguf"
+2026-11-27T09:14:38.470492Z  INFO 📏 [EngineHost] The loaded model now takes +0.72 GB over its estimate; learned for its next load
+2026-11-27T09:14:38.471695Z  INFO 🧮 [Tokens] Conversation 47 tokens (1 messages) counted in 0.02 ms
+2026-11-27T09:14:38.485372Z  INFO ⏱️ [Preflight] 42 ms total | model load 26 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 13 ms
+2026-11-27T09:14:38.540207Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=534
+2026-11-27T09:14:38.541027Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (268 bytes) in 0 ms
+2026-11-27T09:14:38.541668Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (268 bytes) in 0 ms
+2026-11-27T09:14:38.541786Z DEBUG [llama.cpp] mtmd_group_mergeable_bitmaps: no merging for part index 1
+2026-11-27T09:14:38.543101Z DEBUG [llama.cpp] add_media: preproc_out has 1 entries, grid_x = 0, grid_y = 0, has_overview = 0
+2026-11-27T09:14:38.543130Z DEBUG [llama.cpp] image_tokens->nx = 14
+2026-11-27T09:14:38.543144Z DEBUG [llama.cpp] image_tokens->ny = 14
+2026-11-27T09:14:38.543157Z DEBUG [llama.cpp] batch_f32 size = 1
+2026-11-27T09:14:38.562605Z DEBUG [llama.cpp] encode: copying image 1/1 to input buffer (nx=448, ny=448)
+2026-11-27T09:14:38.582199Z DEBUG [llama.cpp] encode: output embedding shape [2560, 196, 1]
+2026-11-27T09:14:38.582829Z DEBUG [llama.cpp] decoding image batch 1/1, n_tokens_batch = 196
+2026-11-27T09:14:38.601762Z DEBUG [llama.cpp] image decoded (batch 1/1) in 19 ms
+2026-11-27T09:14:38.651838Z DEBUG Native media prefill evaluated prompt_tokens=257 prompt_positions=75
+2026-11-27T09:14:38.651929Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-27T09:14:38.664597Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 1114
+2026-11-27T09:14:38.664654Z DEBUG 📤 [NativeStream] Emitting token_id 1114: "red"
+2026-11-27T09:14:38.682594Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-27T09:14:38.682625Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 257 tokens in 117 ms (2188.99 t/s) | generation 1 tokens in 17 ms (59.02 t/s)
+2026-11-27T09:14:38.682645Z  INFO 🧠 [Context] prompt 75 tokens (0 from the cache) | context 76 of 16384 | stop eos
+2026-11-27T09:14:38.703843Z  INFO Media request on the GPU projector free_vram_before_mib=16506 grown_mib=0 held_by_projector_mib=694
+2026-11-27T09:14:38.707519Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-4b-gguf-Q4_K_M' to "/home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/Qwen3.5-4B-Q4_K_M.gguf"
+2026-11-27T09:14:38.731076Z  INFO 🧮 [Tokens] Conversation 47 tokens (1 messages) counted in 0.03 ms
+2026-11-27T09:14:38.745623Z  INFO ⏱️ [Preflight] 38 ms total | model load 21 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 13 ms
+2026-11-27T09:14:38.802040Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=534
+2026-11-27T09:14:38.802838Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (268 bytes) in 0 ms
+2026-11-27T09:14:38.803501Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (268 bytes) in 0 ms
+2026-11-27T09:14:38.803632Z DEBUG [llama.cpp] mtmd_group_mergeable_bitmaps: no merging for part index 1
+2026-11-27T09:14:38.804928Z DEBUG [llama.cpp] add_media: preproc_out has 1 entries, grid_x = 0, grid_y = 0, has_overview = 0
+2026-11-27T09:14:38.804974Z DEBUG [llama.cpp] image_tokens->nx = 14
+2026-11-27T09:14:38.805002Z DEBUG [llama.cpp] image_tokens->ny = 14
+2026-11-27T09:14:38.805017Z DEBUG [llama.cpp] batch_f32 size = 1
+2026-11-27T09:14:38.824774Z DEBUG [llama.cpp] encode: copying image 1/1 to input buffer (nx=448, ny=448)
+2026-11-27T09:14:38.843874Z DEBUG [llama.cpp] encode: output embedding shape [2560, 196, 1]
+2026-11-27T09:14:38.844520Z DEBUG [llama.cpp] decoding image batch 1/1, n_tokens_batch = 196
+2026-11-27T09:14:38.862754Z DEBUG [llama.cpp] image decoded (batch 1/1) in 18 ms
+2026-11-27T09:14:38.907727Z DEBUG Native media prefill evaluated prompt_tokens=257 prompt_positions=75
+2026-11-27T09:14:38.907817Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-27T09:14:38.923794Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 1114
+2026-11-27T09:14:38.923836Z DEBUG 📤 [NativeStream] Emitting token_id 1114: "red"
+2026-11-27T09:14:38.942163Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-27T09:14:38.942194Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 257 tokens in 115 ms (2238.21 t/s) | generation 1 tokens in 17 ms (57.75 t/s)
+2026-11-27T09:14:38.942214Z  INFO 🧠 [Context] prompt 75 tokens (0 from the cache) | context 76 of 16384 | stop eos
+2026-11-27T09:14:38.963674Z  INFO Media request on the GPU projector free_vram_before_mib=16506 grown_mib=0 held_by_projector_mib=694
+2026-11-27T09:14:38.967186Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-4b-gguf-Q4_K_M' to "/home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/Qwen3.5-4B-Q4_K_M.gguf"
+2026-11-27T09:14:38.994164Z  INFO 🧮 [Tokens] Conversation 9 tokens (1 messages) counted in 0.03 ms
+2026-11-27T09:14:39.007532Z  INFO ⏱️ [Preflight] 41 ms total | model load 25 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 12 ms
+2026-11-27T09:14:39.064564Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=386
+2026-11-27T09:14:39.065388Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (123 bytes) in 0 ms
+2026-11-27T09:14:39.066038Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (123 bytes) in 0 ms
+2026-11-27T09:14:39.066134Z DEBUG [llama.cpp] mtmd_group_mergeable_bitmaps: no merging for part index 1
+2026-11-27T09:14:39.067431Z DEBUG [llama.cpp] add_media: preproc_out has 1 entries, grid_x = 0, grid_y = 0, has_overview = 0
+2026-11-27T09:14:39.067471Z DEBUG [llama.cpp] image_tokens->nx = 14
+2026-11-27T09:14:39.067485Z DEBUG [llama.cpp] image_tokens->ny = 14
+2026-11-27T09:14:39.067499Z DEBUG [llama.cpp] batch_f32 size = 1
+2026-11-27T09:14:39.087209Z DEBUG [llama.cpp] encode: copying image 1/1 to input buffer (nx=448, ny=448)
+2026-11-27T09:14:39.105009Z DEBUG [llama.cpp] encode: output embedding shape [2560, 196, 1]
+2026-11-27T09:14:39.105626Z DEBUG [llama.cpp] decoding image batch 1/1, n_tokens_batch = 196
+2026-11-27T09:14:39.123799Z DEBUG [llama.cpp] image decoded (batch 1/1) in 18 ms
+2026-11-27T09:14:39.164828Z DEBUG Native media prefill evaluated prompt_tokens=219 prompt_positions=37
+2026-11-27T09:14:39.164913Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-27T09:14:39.171380Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 2438
+2026-11-27T09:14:39.171421Z DEBUG 📤 [NativeStream] Emitting token_id 2438: " red"
+2026-11-27T09:14:39.188997Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-27T09:14:39.189026Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 219 tokens in 100 ms (2187.35 t/s) | generation 1 tokens in 17 ms (59.93 t/s)
+2026-11-27T09:14:39.189046Z  INFO 🧠 [Context] prompt 37 tokens (0 from the cache) | context 38 of 16384 | stop eos
+2026-11-27T09:14:39.210920Z  INFO Media request on the GPU projector free_vram_before_mib=16506 grown_mib=0 held_by_projector_mib=694
+2026-11-27T09:14:39.214144Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-4b-gguf-Q4_K_M' to "/home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/Qwen3.5-4B-Q4_K_M.gguf"
+2026-11-27T09:14:39.237367Z  INFO 🧮 [Tokens] Conversation 47 tokens (1 messages) counted in 0.03 ms
+2026-11-27T09:14:39.250699Z  INFO ⏱️ [Preflight] 37 ms total | model load 21 ms | registry + template + tags 1 ms | skills + tools 0 ms | rest 12 ms
+2026-11-27T09:14:39.307679Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=534
+2026-11-27T09:14:39.308488Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (268 bytes) in 0 ms
+2026-11-27T09:14:39.309176Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (268 bytes) in 0 ms
+2026-11-27T09:14:39.309299Z DEBUG [llama.cpp] mtmd_group_mergeable_bitmaps: no merging for part index 1
+2026-11-27T09:14:39.310578Z DEBUG [llama.cpp] add_media: preproc_out has 1 entries, grid_x = 0, grid_y = 0, has_overview = 0
+2026-11-27T09:14:39.310616Z DEBUG [llama.cpp] image_tokens->nx = 14
+2026-11-27T09:14:39.310630Z DEBUG [llama.cpp] image_tokens->ny = 14
+2026-11-27T09:14:39.310643Z DEBUG [llama.cpp] batch_f32 size = 1
+2026-11-27T09:14:39.330188Z DEBUG [llama.cpp] encode: copying image 1/1 to input buffer (nx=448, ny=448)
+2026-11-27T09:14:39.349072Z DEBUG [llama.cpp] encode: output embedding shape [2560, 196, 1]
+2026-11-27T09:14:39.349693Z DEBUG [llama.cpp] decoding image batch 1/1, n_tokens_batch = 196
+2026-11-27T09:14:39.368350Z DEBUG [llama.cpp] image decoded (batch 1/1) in 19 ms
+2026-11-27T09:14:39.413273Z DEBUG Native media prefill evaluated prompt_tokens=257 prompt_positions=75
+2026-11-27T09:14:39.413366Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-27T09:14:39.426342Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 1114
+2026-11-27T09:14:39.426385Z DEBUG 📤 [NativeStream] Emitting token_id 1114: "red"
+2026-11-27T09:14:39.447722Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-27T09:14:39.447755Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 257 tokens in 112 ms (2300.68 t/s) | generation 1 tokens in 20 ms (49.08 t/s)
+2026-11-27T09:14:39.447775Z  INFO 🧠 [Context] prompt 75 tokens (0 from the cache) | context 76 of 16384 | stop eos
+2026-11-27T09:14:39.469172Z  INFO Media request on the GPU projector free_vram_before_mib=16506 grown_mib=0 held_by_projector_mib=694
+2026-11-27T09:14:39.472406Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-4b-gguf-Q4_K_M' to "/home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/Qwen3.5-4B-Q4_K_M.gguf"
+2026-11-27T09:14:39.495028Z  INFO 🧮 [Tokens] Conversation 9 tokens (1 messages) counted in 0.05 ms
+2026-11-27T09:14:39.508437Z  INFO ⏱️ [Preflight] 36 ms total | model load 21 ms | registry + template + tags 1 ms | skills + tools 0 ms | rest 12 ms
+2026-11-27T09:14:39.566375Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=386
+2026-11-27T09:14:39.567504Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (123 bytes) in 0 ms
+2026-11-27T09:14:39.568164Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (123 bytes) in 0 ms
+2026-11-27T09:14:39.568280Z DEBUG [llama.cpp] mtmd_group_mergeable_bitmaps: no merging for part index 1
+2026-11-27T09:14:39.569697Z DEBUG [llama.cpp] add_media: preproc_out has 1 entries, grid_x = 0, grid_y = 0, has_overview = 0
+2026-11-27T09:14:39.569724Z DEBUG [llama.cpp] image_tokens->nx = 14
+2026-11-27T09:14:39.569738Z DEBUG [llama.cpp] image_tokens->ny = 14
+2026-11-27T09:14:39.569752Z DEBUG [llama.cpp] batch_f32 size = 1
+2026-11-27T09:14:39.592583Z DEBUG [llama.cpp] encode: copying image 1/1 to input buffer (nx=448, ny=448)
+2026-11-27T09:14:39.610315Z DEBUG [llama.cpp] encode: output embedding shape [2560, 196, 1]
+2026-11-27T09:14:39.610982Z DEBUG [llama.cpp] decoding image batch 1/1, n_tokens_batch = 196
+2026-11-27T09:14:39.629454Z DEBUG [llama.cpp] image decoded (batch 1/1) in 18 ms
+2026-11-27T09:14:39.676000Z DEBUG Native media prefill evaluated prompt_tokens=219 prompt_positions=37
+2026-11-27T09:14:39.676091Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-27T09:14:39.682995Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 2438
+2026-11-27T09:14:39.683035Z DEBUG 📤 [NativeStream] Emitting token_id 2438: " red"
+2026-11-27T09:14:39.700839Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-27T09:14:39.700871Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 219 tokens in 109 ms (2002.73 t/s) | generation 1 tokens in 17 ms (59.39 t/s)
+2026-11-27T09:14:39.700891Z  INFO 🧠 [Context] prompt 37 tokens (0 from the cache) | context 38 of 16384 | stop eos
+2026-11-27T09:14:39.722399Z  INFO Media request on the GPU projector free_vram_before_mib=16506 grown_mib=0 held_by_projector_mib=694
+2026-11-27T09:14:39.726247Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-4b-gguf-Q4_K_M' to "/home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/Qwen3.5-4B-Q4_K_M.gguf"
+2026-11-27T09:14:39.749532Z  INFO 🧮 [Tokens] Conversation 47 tokens (1 messages) counted in 0.03 ms
+2026-11-27T09:14:39.763087Z  INFO ⏱️ [Preflight] 37 ms total | model load 21 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 12 ms
+2026-11-27T09:14:39.820010Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=534
+2026-11-27T09:14:39.820809Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (268 bytes) in 0 ms
+2026-11-27T09:14:39.821491Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (268 bytes) in 0 ms
+2026-11-27T09:14:39.821624Z DEBUG [llama.cpp] mtmd_group_mergeable_bitmaps: no merging for part index 1
+2026-11-27T09:14:39.822964Z DEBUG [llama.cpp] add_media: preproc_out has 1 entries, grid_x = 0, grid_y = 0, has_overview = 0
+2026-11-27T09:14:39.822993Z DEBUG [llama.cpp] image_tokens->nx = 14
+2026-11-27T09:14:39.823007Z DEBUG [llama.cpp] image_tokens->ny = 14
+2026-11-27T09:14:39.823020Z DEBUG [llama.cpp] batch_f32 size = 1
+2026-11-27T09:14:39.842633Z DEBUG [llama.cpp] encode: copying image 1/1 to input buffer (nx=448, ny=448)
+2026-11-27T09:14:39.861977Z DEBUG [llama.cpp] encode: output embedding shape [2560, 196, 1]
+2026-11-27T09:14:39.862618Z DEBUG [llama.cpp] decoding image batch 1/1, n_tokens_batch = 196
+2026-11-27T09:14:39.881111Z DEBUG [llama.cpp] image decoded (batch 1/1) in 19 ms
+2026-11-27T09:14:39.931609Z DEBUG Native media prefill evaluated prompt_tokens=257 prompt_positions=75
+2026-11-27T09:14:39.931723Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-27T09:14:39.944197Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 1114
+2026-11-27T09:14:39.944242Z DEBUG 📤 [NativeStream] Emitting token_id 1114: "red"
+2026-11-27T09:14:39.962650Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-27T09:14:39.962682Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 257 tokens in 117 ms (2194.07 t/s) | generation 1 tokens in 17 ms (57.49 t/s)
+2026-11-27T09:14:39.962701Z  INFO 🧠 [Context] prompt 75 tokens (0 from the cache) | context 76 of 16384 | stop eos
+2026-11-27T09:14:39.984468Z  INFO Media request on the GPU projector free_vram_before_mib=16506 grown_mib=0 held_by_projector_mib=694
+2026-11-27T09:14:39.987685Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-4b-gguf-Q4_K_M' to "/home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/Qwen3.5-4B-Q4_K_M.gguf"
+2026-11-27T09:14:40.010293Z  INFO 🧮 [Tokens] Conversation 47 tokens (1 messages) counted in 0.03 ms
+2026-11-27T09:14:40.023741Z  INFO ⏱️ [Preflight] 36 ms total | model load 21 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 12 ms
+2026-11-27T09:14:40.081611Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=534
+2026-11-27T09:14:40.082439Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (268 bytes) in 0 ms
+2026-11-27T09:14:40.083121Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (268 bytes) in 0 ms
+2026-11-27T09:14:40.083244Z DEBUG [llama.cpp] mtmd_group_mergeable_bitmaps: no merging for part index 1
+2026-11-27T09:14:40.084562Z DEBUG [llama.cpp] add_media: preproc_out has 1 entries, grid_x = 0, grid_y = 0, has_overview = 0
+2026-11-27T09:14:40.084589Z DEBUG [llama.cpp] image_tokens->nx = 14
+2026-11-27T09:14:40.084604Z DEBUG [llama.cpp] image_tokens->ny = 14
+2026-11-27T09:14:40.084618Z DEBUG [llama.cpp] batch_f32 size = 1
+2026-11-27T09:14:40.104188Z DEBUG [llama.cpp] encode: copying image 1/1 to input buffer (nx=448, ny=448)
+2026-11-27T09:14:40.123829Z DEBUG [llama.cpp] encode: output embedding shape [2560, 196, 1]
+2026-11-27T09:14:40.124483Z DEBUG [llama.cpp] decoding image batch 1/1, n_tokens_batch = 196
+2026-11-27T09:14:40.142749Z DEBUG [llama.cpp] image decoded (batch 1/1) in 18 ms
+2026-11-27T09:14:40.192593Z DEBUG Native media prefill evaluated prompt_tokens=257 prompt_positions=75
+2026-11-27T09:14:40.192684Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-27T09:14:40.205211Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 1114
+2026-11-27T09:14:40.205252Z DEBUG 📤 [NativeStream] Emitting token_id 1114: "red"
+2026-11-27T09:14:40.223529Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-27T09:14:40.223561Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 257 tokens in 117 ms (2204.70 t/s) | generation 1 tokens in 17 ms (57.85 t/s)
+2026-11-27T09:14:40.223582Z  INFO 🧠 [Context] prompt 75 tokens (0 from the cache) | context 76 of 16384 | stop eos
+2026-11-27T09:14:40.244469Z  INFO Media request on the GPU projector free_vram_before_mib=16506 grown_mib=0 held_by_projector_mib=694
+2026-11-27T09:14:40.247649Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-4b-gguf-Q4_K_M' to "/home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/Qwen3.5-4B-Q4_K_M.gguf"
+2026-11-27T09:14:40.269999Z  INFO 🧮 [Tokens] Conversation 47 tokens (1 messages) counted in 0.03 ms
+2026-11-27T09:14:40.283372Z  INFO ⏱️ [Preflight] 36 ms total | model load 20 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 12 ms
+2026-11-27T09:14:40.339072Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=534
+2026-11-27T09:14:40.339870Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (268 bytes) in 0 ms
+2026-11-27T09:14:40.340539Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (268 bytes) in 0 ms
+2026-11-27T09:14:40.340672Z DEBUG [llama.cpp] mtmd_group_mergeable_bitmaps: no merging for part index 1
+2026-11-27T09:14:40.341969Z DEBUG [llama.cpp] add_media: preproc_out has 1 entries, grid_x = 0, grid_y = 0, has_overview = 0
+2026-11-27T09:14:40.341997Z DEBUG [llama.cpp] image_tokens->nx = 14
+2026-11-27T09:14:40.342011Z DEBUG [llama.cpp] image_tokens->ny = 14
+2026-11-27T09:14:40.342025Z DEBUG [llama.cpp] batch_f32 size = 1
+2026-11-27T09:14:40.361577Z DEBUG [llama.cpp] encode: copying image 1/1 to input buffer (nx=448, ny=448)
+2026-11-27T09:14:40.380694Z DEBUG [llama.cpp] encode: output embedding shape [2560, 196, 1]
+2026-11-27T09:14:40.381324Z DEBUG [llama.cpp] decoding image batch 1/1, n_tokens_batch = 196
+2026-11-27T09:14:40.399579Z DEBUG [llama.cpp] image decoded (batch 1/1) in 18 ms
+2026-11-27T09:14:40.445817Z DEBUG Native media prefill evaluated prompt_tokens=257 prompt_positions=75
+2026-11-27T09:14:40.445916Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-27T09:14:40.462347Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 1114
+2026-11-27T09:14:40.462391Z DEBUG 📤 [NativeStream] Emitting token_id 1114: "red"
+2026-11-27T09:14:40.480719Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-27T09:14:40.480764Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 257 tokens in 116 ms (2208.02 t/s) | generation 1 tokens in 17 ms (57.58 t/s)
+2026-11-27T09:14:40.480785Z  INFO 🧠 [Context] prompt 75 tokens (0 from the cache) | context 76 of 16384 | stop eos
+2026-11-27T09:14:40.502241Z  INFO Media request on the GPU projector free_vram_before_mib=16506 grown_mib=0 held_by_projector_mib=694
+2026-11-27T09:14:40.505410Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-4b-gguf-Q4_K_M' to "/home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/Qwen3.5-4B-Q4_K_M.gguf"
+2026-11-27T09:14:40.527808Z  INFO 🧮 [Tokens] Conversation 47 tokens (1 messages) counted in 0.03 ms
+2026-11-27T09:14:40.541086Z  INFO ⏱️ [Preflight] 36 ms total | model load 20 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 12 ms
+2026-11-27T09:14:40.596543Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=535
+2026-11-27T09:14:40.597354Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (269 bytes) in 0 ms
+2026-11-27T09:14:40.598036Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (269 bytes) in 0 ms
+2026-11-27T09:14:40.598166Z DEBUG [llama.cpp] mtmd_group_mergeable_bitmaps: no merging for part index 1
+2026-11-27T09:14:40.599474Z DEBUG [llama.cpp] add_media: preproc_out has 1 entries, grid_x = 0, grid_y = 0, has_overview = 0
+2026-11-27T09:14:40.599501Z DEBUG [llama.cpp] image_tokens->nx = 14
+2026-11-27T09:14:40.599523Z DEBUG [llama.cpp] image_tokens->ny = 14
+2026-11-27T09:14:40.599537Z DEBUG [llama.cpp] batch_f32 size = 1
+2026-11-27T09:14:40.619099Z DEBUG [llama.cpp] encode: copying image 1/1 to input buffer (nx=448, ny=448)
+2026-11-27T09:14:40.638498Z DEBUG [llama.cpp] encode: output embedding shape [2560, 196, 1]
+2026-11-27T09:14:40.639136Z DEBUG [llama.cpp] decoding image batch 1/1, n_tokens_batch = 196
+2026-11-27T09:14:40.657378Z DEBUG [llama.cpp] image decoded (batch 1/1) in 18 ms
+2026-11-27T09:14:40.709328Z DEBUG Native media prefill evaluated prompt_tokens=257 prompt_positions=75
+2026-11-27T09:14:40.709421Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-27T09:14:40.722208Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 1114
+2026-11-27T09:14:40.722249Z DEBUG 📤 [NativeStream] Emitting token_id 1114: "red"
+2026-11-27T09:14:40.741743Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-27T09:14:40.741773Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 257 tokens in 119 ms (2165.49 t/s) | generation 1 tokens in 19 ms (53.76 t/s)
+2026-11-27T09:14:40.741792Z  INFO 🧠 [Context] prompt 75 tokens (0 from the cache) | context 76 of 16384 | stop eos
+2026-11-27T09:14:40.763010Z  INFO Media request on the GPU projector free_vram_before_mib=16506 grown_mib=0 held_by_projector_mib=694
+2026-11-27T09:14:40.766132Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-4b-gguf-Q4_K_M' to "/home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/Qwen3.5-4B-Q4_K_M.gguf"
+2026-11-27T09:14:40.788565Z  INFO 🧮 [Tokens] Conversation 9 tokens (1 messages) counted in 0.03 ms
+2026-11-27T09:14:40.801785Z  INFO ⏱️ [Preflight] 36 ms total | model load 20 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 12 ms
+2026-11-27T09:14:40.857071Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=387
+2026-11-27T09:14:40.857879Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (124 bytes) in 0 ms
+2026-11-27T09:14:40.858532Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (124 bytes) in 0 ms
+2026-11-27T09:14:40.858631Z DEBUG [llama.cpp] mtmd_group_mergeable_bitmaps: no merging for part index 1
+2026-11-27T09:14:40.859958Z DEBUG [llama.cpp] add_media: preproc_out has 1 entries, grid_x = 0, grid_y = 0, has_overview = 0
+2026-11-27T09:14:40.859988Z DEBUG [llama.cpp] image_tokens->nx = 14
+2026-11-27T09:14:40.860002Z DEBUG [llama.cpp] image_tokens->ny = 14
+2026-11-27T09:14:40.860016Z DEBUG [llama.cpp] batch_f32 size = 1
+2026-11-27T09:14:40.879300Z DEBUG [llama.cpp] encode: copying image 1/1 to input buffer (nx=448, ny=448)
+2026-11-27T09:14:40.898763Z DEBUG [llama.cpp] encode: output embedding shape [2560, 196, 1]
+2026-11-27T09:14:40.899417Z DEBUG [llama.cpp] decoding image batch 1/1, n_tokens_batch = 196
+2026-11-27T09:14:40.917685Z DEBUG [llama.cpp] image decoded (batch 1/1) in 18 ms
+2026-11-27T09:14:40.966713Z DEBUG Native media prefill evaluated prompt_tokens=219 prompt_positions=37
+2026-11-27T09:14:40.966804Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-27T09:14:40.973413Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 2438
+2026-11-27T09:14:40.973453Z DEBUG 📤 [NativeStream] Emitting token_id 2438: " red"
+2026-11-27T09:14:40.991059Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-27T09:14:40.991091Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 219 tokens in 110 ms (1998.19 t/s) | generation 1 tokens in 17 ms (60.14 t/s)
+2026-11-27T09:14:40.991112Z  INFO 🧠 [Context] prompt 37 tokens (0 from the cache) | context 38 of 16384 | stop eos
+2026-11-27T09:14:41.012339Z  INFO Media request on the GPU projector free_vram_before_mib=16506 grown_mib=0 held_by_projector_mib=694
+2026-11-27T09:14:41.015485Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-4b-gguf-Q4_K_M' to "/home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/Qwen3.5-4B-Q4_K_M.gguf"
+2026-11-27T09:14:41.037843Z  INFO 🧮 [Tokens] Conversation 47 tokens (1 messages) counted in 0.03 ms
+2026-11-27T09:14:41.051325Z  INFO ⏱️ [Preflight] 36 ms total | model load 20 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 12 ms
+2026-11-27T09:14:41.106058Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=535
+2026-11-27T09:14:41.106857Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (269 bytes) in 0 ms
+2026-11-27T09:14:41.107527Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (269 bytes) in 0 ms
+2026-11-27T09:14:41.107652Z DEBUG [llama.cpp] mtmd_group_mergeable_bitmaps: no merging for part index 1
+2026-11-27T09:14:41.108967Z DEBUG [llama.cpp] add_media: preproc_out has 1 entries, grid_x = 0, grid_y = 0, has_overview = 0
+2026-11-27T09:14:41.109010Z DEBUG [llama.cpp] image_tokens->nx = 14
+2026-11-27T09:14:41.109025Z DEBUG [llama.cpp] image_tokens->ny = 14
+2026-11-27T09:14:41.109038Z DEBUG [llama.cpp] batch_f32 size = 1
+2026-11-27T09:14:41.130663Z DEBUG [llama.cpp] encode: copying image 1/1 to input buffer (nx=448, ny=448)
+2026-11-27T09:14:41.148424Z DEBUG [llama.cpp] encode: output embedding shape [2560, 196, 1]
+2026-11-27T09:14:41.149072Z DEBUG [llama.cpp] decoding image batch 1/1, n_tokens_batch = 196
+2026-11-27T09:14:41.167404Z DEBUG [llama.cpp] image decoded (batch 1/1) in 18 ms
+2026-11-27T09:14:41.215977Z DEBUG Native media prefill evaluated prompt_tokens=257 prompt_positions=75
+2026-11-27T09:14:41.216068Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-27T09:14:41.228759Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 1114
+2026-11-27T09:14:41.228800Z DEBUG 📤 [NativeStream] Emitting token_id 1114: "red"
+2026-11-27T09:14:41.247695Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-27T09:14:41.247724Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 257 tokens in 116 ms (2222.01 t/s) | generation 1 tokens in 18 ms (55.66 t/s)
+2026-11-27T09:14:41.247744Z  INFO 🧠 [Context] prompt 75 tokens (0 from the cache) | context 76 of 16384 | stop eos
+2026-11-27T09:14:41.268677Z  INFO Media request on the GPU projector free_vram_before_mib=16506 grown_mib=0 held_by_projector_mib=694
+2026-11-27T09:14:41.271736Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-4b-gguf-Q4_K_M' to "/home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/Qwen3.5-4B-Q4_K_M.gguf"
+2026-11-27T09:14:41.293976Z  INFO 🧮 [Tokens] Conversation 9 tokens (1 messages) counted in 0.03 ms
+2026-11-27T09:14:41.307160Z  INFO ⏱️ [Preflight] 35 ms total | model load 20 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 12 ms
+2026-11-27T09:14:41.362607Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=387
+2026-11-27T09:14:41.363420Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (124 bytes) in 0 ms
+2026-11-27T09:14:41.364074Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (124 bytes) in 0 ms
+2026-11-27T09:14:41.364172Z DEBUG [llama.cpp] mtmd_group_mergeable_bitmaps: no merging for part index 1
+2026-11-27T09:14:41.365488Z DEBUG [llama.cpp] add_media: preproc_out has 1 entries, grid_x = 0, grid_y = 0, has_overview = 0
+2026-11-27T09:14:41.365516Z DEBUG [llama.cpp] image_tokens->nx = 14
+2026-11-27T09:14:41.365530Z DEBUG [llama.cpp] image_tokens->ny = 14
+2026-11-27T09:14:41.365544Z DEBUG [llama.cpp] batch_f32 size = 1
+2026-11-27T09:14:41.384850Z DEBUG [llama.cpp] encode: copying image 1/1 to input buffer (nx=448, ny=448)
+2026-11-27T09:14:41.404922Z DEBUG [llama.cpp] encode: output embedding shape [2560, 196, 1]
+2026-11-27T09:14:41.405547Z DEBUG [llama.cpp] decoding image batch 1/1, n_tokens_batch = 196
+2026-11-27T09:14:41.423791Z DEBUG [llama.cpp] image decoded (batch 1/1) in 18 ms
+2026-11-27T09:14:41.471342Z DEBUG Native media prefill evaluated prompt_tokens=219 prompt_positions=37
+2026-11-27T09:14:41.471447Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-27T09:14:41.478107Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 2438
+2026-11-27T09:14:41.478146Z DEBUG 📤 [NativeStream] Emitting token_id 2438: " red"
+2026-11-27T09:14:41.496296Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-27T09:14:41.496327Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 219 tokens in 109 ms (2013.40 t/s) | generation 1 tokens in 17 ms (58.19 t/s)
+2026-11-27T09:14:41.496347Z  INFO 🧠 [Context] prompt 37 tokens (0 from the cache) | context 38 of 16384 | stop eos
+2026-11-27T09:14:41.517665Z  INFO Media request on the GPU projector free_vram_before_mib=16506 grown_mib=0 held_by_projector_mib=694
+2026-11-27T09:14:41.520863Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-4b-gguf-Q4_K_M' to "/home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/Qwen3.5-4B-Q4_K_M.gguf"
+2026-11-27T09:14:41.543356Z  INFO 🧮 [Tokens] Conversation 47 tokens (1 messages) counted in 0.03 ms
+2026-11-27T09:14:41.556628Z  INFO ⏱️ [Preflight] 36 ms total | model load 20 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 12 ms
+2026-11-27T09:14:41.612107Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=535
+2026-11-27T09:14:41.612928Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (269 bytes) in 0 ms
+2026-11-27T09:14:41.613610Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (269 bytes) in 0 ms
+2026-11-27T09:14:41.613738Z DEBUG [llama.cpp] mtmd_group_mergeable_bitmaps: no merging for part index 1
+2026-11-27T09:14:41.615048Z DEBUG [llama.cpp] add_media: preproc_out has 1 entries, grid_x = 0, grid_y = 0, has_overview = 0
+2026-11-27T09:14:41.615076Z DEBUG [llama.cpp] image_tokens->nx = 14
+2026-11-27T09:14:41.615090Z DEBUG [llama.cpp] image_tokens->ny = 14
+2026-11-27T09:14:41.615104Z DEBUG [llama.cpp] batch_f32 size = 1
+2026-11-27T09:14:41.634633Z DEBUG [llama.cpp] encode: copying image 1/1 to input buffer (nx=448, ny=448)
+2026-11-27T09:14:41.654026Z DEBUG [llama.cpp] encode: output embedding shape [2560, 196, 1]
+2026-11-27T09:14:41.654655Z DEBUG [llama.cpp] decoding image batch 1/1, n_tokens_batch = 196
+2026-11-27T09:14:41.672954Z DEBUG [llama.cpp] image decoded (batch 1/1) in 18 ms
+2026-11-27T09:14:41.718556Z DEBUG Native media prefill evaluated prompt_tokens=257 prompt_positions=75
+2026-11-27T09:14:41.718647Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-27T09:14:41.737575Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 1114
+2026-11-27T09:14:41.737615Z DEBUG 📤 [NativeStream] Emitting token_id 1114: "red"
+2026-11-27T09:14:41.755342Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-27T09:14:41.755373Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 257 tokens in 119 ms (2168.43 t/s) | generation 1 tokens in 17 ms (59.26 t/s)
+2026-11-27T09:14:41.755393Z  INFO 🧠 [Context] prompt 75 tokens (0 from the cache) | context 76 of 16384 | stop eos
+2026-11-27T09:14:41.776775Z  INFO Media request on the GPU projector free_vram_before_mib=16506 grown_mib=0 held_by_projector_mib=694
+2026-11-27T09:14:41.779893Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-4b-gguf-Q4_K_M' to "/home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/Qwen3.5-4B-Q4_K_M.gguf"
+2026-11-27T09:14:41.802318Z  INFO 🧮 [Tokens] Conversation 9 tokens (1 messages) counted in 0.03 ms
+2026-11-27T09:14:41.815656Z  INFO ⏱️ [Preflight] 36 ms total | model load 20 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 12 ms
+2026-11-27T09:14:41.871776Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=387
+2026-11-27T09:14:41.872597Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (124 bytes) in 0 ms
+2026-11-27T09:14:41.873225Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (124 bytes) in 0 ms
+2026-11-27T09:14:41.873316Z DEBUG [llama.cpp] mtmd_group_mergeable_bitmaps: no merging for part index 1
+2026-11-27T09:14:41.874644Z DEBUG [llama.cpp] add_media: preproc_out has 1 entries, grid_x = 0, grid_y = 0, has_overview = 0
+2026-11-27T09:14:41.874671Z DEBUG [llama.cpp] image_tokens->nx = 14
+2026-11-27T09:14:41.874685Z DEBUG [llama.cpp] image_tokens->ny = 14
+2026-11-27T09:14:41.874699Z DEBUG [llama.cpp] batch_f32 size = 1
+2026-11-27T09:14:41.893974Z DEBUG [llama.cpp] encode: copying image 1/1 to input buffer (nx=448, ny=448)
+2026-11-27T09:14:41.913833Z DEBUG [llama.cpp] encode: output embedding shape [2560, 196, 1]
+2026-11-27T09:14:41.914436Z DEBUG [llama.cpp] decoding image batch 1/1, n_tokens_batch = 196
+2026-11-27T09:14:41.932626Z DEBUG [llama.cpp] image decoded (batch 1/1) in 18 ms
+2026-11-27T09:14:41.981314Z DEBUG Native media prefill evaluated prompt_tokens=219 prompt_positions=37
+2026-11-27T09:14:41.981404Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-27T09:14:41.989873Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 2438
+2026-11-27T09:14:41.989911Z DEBUG 📤 [NativeStream] Emitting token_id 2438: " red"
+2026-11-27T09:14:42.007484Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-27T09:14:42.007527Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 219 tokens in 111 ms (1966.15 t/s) | generation 1 tokens in 17 ms (60.22 t/s)
+2026-11-27T09:14:42.007562Z  INFO 🧠 [Context] prompt 37 tokens (0 from the cache) | context 38 of 16384 | stop eos
+2026-11-27T09:14:42.029202Z  INFO Media request on the GPU projector free_vram_before_mib=16506 grown_mib=0 held_by_projector_mib=694
+2026-11-27T09:14:42.032330Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-4b-gguf-Q4_K_M' to "/home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/Qwen3.5-4B-Q4_K_M.gguf"
+2026-11-27T09:14:42.054549Z  INFO 🧮 [Tokens] Conversation 47 tokens (1 messages) counted in 0.03 ms
+2026-11-27T09:14:42.068147Z  INFO ⏱️ [Preflight] 36 ms total | model load 20 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 13 ms
+2026-11-27T09:14:42.125716Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=535
+2026-11-27T09:14:42.126563Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (269 bytes) in 0 ms
+2026-11-27T09:14:42.127226Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (269 bytes) in 0 ms
+2026-11-27T09:14:42.127348Z DEBUG [llama.cpp] mtmd_group_mergeable_bitmaps: no merging for part index 1
+2026-11-27T09:14:42.128637Z DEBUG [llama.cpp] add_media: preproc_out has 1 entries, grid_x = 0, grid_y = 0, has_overview = 0
+2026-11-27T09:14:42.128662Z DEBUG [llama.cpp] image_tokens->nx = 14
+2026-11-27T09:14:42.128676Z DEBUG [llama.cpp] image_tokens->ny = 14
+2026-11-27T09:14:42.128690Z DEBUG [llama.cpp] batch_f32 size = 1
+2026-11-27T09:14:42.148232Z DEBUG [llama.cpp] encode: copying image 1/1 to input buffer (nx=448, ny=448)
+2026-11-27T09:14:42.169202Z DEBUG [llama.cpp] encode: output embedding shape [2560, 196, 1]
+2026-11-27T09:14:42.169819Z DEBUG [llama.cpp] decoding image batch 1/1, n_tokens_batch = 196
+2026-11-27T09:14:42.188053Z DEBUG [llama.cpp] image decoded (batch 1/1) in 18 ms
+2026-11-27T09:14:42.237316Z DEBUG Native media prefill evaluated prompt_tokens=257 prompt_positions=75
+2026-11-27T09:14:42.237408Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-27T09:14:42.249899Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 1114
+2026-11-27T09:14:42.249959Z DEBUG 📤 [NativeStream] Emitting token_id 1114: "red"
+2026-11-27T09:14:42.267691Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-27T09:14:42.267720Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 257 tokens in 117 ms (2192.72 t/s) | generation 1 tokens in 17 ms (59.48 t/s)
+2026-11-27T09:14:42.267739Z  INFO 🧠 [Context] prompt 75 tokens (0 from the cache) | context 76 of 16384 | stop eos
+2026-11-27T09:14:42.288470Z  INFO Media request on the GPU projector free_vram_before_mib=16506 grown_mib=0 held_by_projector_mib=694
+2026-11-27T09:14:42.291567Z  INFO 🤖 [API] Model override requested. Resolved 'qwen3.5-4b-gguf-Q4_K_M' to "/home/<user>/run83/home/models/chat/qwen3.5-4b-gguf-Q4_K_M/Qwen3.5-4B-Q4_K_M.gguf"
+2026-11-27T09:14:42.313192Z  INFO 🧮 [Tokens] Conversation 47 tokens (1 messages) counted in 0.03 ms
+2026-11-27T09:14:42.326633Z  INFO ⏱️ [Preflight] 35 ms total | model load 20 ms | registry + template + tags 0 ms | skills + tools 0 ms | rest 12 ms
+2026-11-27T09:14:42.379000Z DEBUG 🔥 [NativeStream] stream_tokens CALLED! prompt len=535
+2026-11-27T09:14:42.379784Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (269 bytes) in 0 ms
+2026-11-27T09:14:42.380451Z  INFO 📝 [NativeTemplate] llama.cpp native common template rendered prompt (269 bytes) in 0 ms
+2026-11-27T09:14:42.380581Z DEBUG [llama.cpp] mtmd_group_mergeable_bitmaps: no merging for part index 1
+2026-11-27T09:14:42.381865Z DEBUG [llama.cpp] add_media: preproc_out has 1 entries, grid_x = 0, grid_y = 0, has_overview = 0
+2026-11-27T09:14:42.381891Z DEBUG [llama.cpp] image_tokens->nx = 14
+2026-11-27T09:14:42.381905Z DEBUG [llama.cpp] image_tokens->ny = 14
+2026-11-27T09:14:42.381919Z DEBUG [llama.cpp] batch_f32 size = 1
+2026-11-27T09:14:42.401361Z DEBUG [llama.cpp] encode: copying image 1/1 to input buffer (nx=448, ny=448)
+2026-11-27T09:14:42.427459Z DEBUG [llama.cpp] encode: output embedding shape [2560, 196, 1]
+2026-11-27T09:14:42.428077Z DEBUG [llama.cpp] decoding image batch 1/1, n_tokens_batch = 196
+2026-11-27T09:14:42.454533Z DEBUG [llama.cpp] image decoded (batch 1/1) in 26 ms
+2026-11-27T09:14:42.538557Z DEBUG Native media prefill evaluated prompt_tokens=257 prompt_positions=75
+2026-11-27T09:14:42.538648Z  INFO 🎲 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.
+2026-11-27T09:14:42.582087Z DEBUG 🎲 [NativeStream] Initial sampled token_id: 1114
+2026-11-27T09:14:42.582128Z DEBUG 📤 [NativeStream] Emitting token_id 1114: "red"
+2026-11-27T09:14:42.606400Z  INFO 🛑 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.
+2026-11-27T09:14:42.606429Z  INFO ⏱️ [NativeStream] llama.cpp timings: prompt 257 tokens in 196 ms (1309.72 t/s) | generation 1 tokens in 23 ms (42.84 t/s)
+2026-11-27T09:14:42.606448Z  INFO 🧠 [Context] prompt 75 tokens (0 from the cache) | context 76 of 16384 | stop eos
+2026-11-27T09:14:42.627690Z  INFO Media request on the GPU projector free_vram_before_mib=16506 grown_mib=0 held_by_projector_mib=694

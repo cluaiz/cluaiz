@@ -1,0 +1,6 @@
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  moonshine-tiny-onnx-INT8
+  │ 📁 Vault Path:     /home/<user>/run84/home/models/stt/moonshine-tiny-onnx-INT8
+  │ 🚀 Run Command:   cluaiz run moonshine-tiny-onnx-INT8
+  └─────────────────────────────────────────────────────────────┘
+

@@ -1,0 +1,89 @@
+  ⬇️  [Cluaiz CUDA Setup] Downloading NVIDIA libcublas v13.0.0.19 (cuda13, 760.4 MB)...
+  ✅  [Cluaiz CUDA Setup] Installed libcublas v13.0.0.19 into "/home/<user>/run84/home/bin"
+  ⬇️  [Cluaiz CUDA Setup] Downloading NVIDIA libcufft v12.0.0.15 (cuda13, 338.2 MB)...
+[31mThe application panicked (crashed).[0m
+Message:  [36mCannot drop a runtime in a context where blocking is not allowed. This happens when a runtime is dropped from within an asynchronous context.[0m
+Location: [35m/home/<user>/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tokio-1.54.1/src/runtime/blocking/shutdown.rs[0m:[35m51[0m
+
+  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ BACKTRACE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   1: [91m<color_eyre[d3e6088c78eeb390]::config::PanicHook>::panic_report[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+   2: [91m<color_eyre[d3e6088c78eeb390]::config::PanicHook>::into_panic_hook::{closure#0}[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+   3: [91mstd[c60ef17cbf7de79f]::panicking::panic_with_hook[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+   4: [91mstd[c60ef17cbf7de79f]::panicking::panic_handler::{closure#0}[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+   5: [91mstd[c60ef17cbf7de79f]::sys::backtrace::__rust_end_short_backtrace::<std[c60ef17cbf7de79f]::panicking::panic_handler::{closure#0}, !>[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+   6: [91m__rustc[45371133cddedda4]::rust_begin_unwind[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+   7: [91mcore[62e902411887be45]::panicking::panic_fmt[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+   8: [91m<tokio[f37eeb3dc31cbb00]::runtime::blocking::shutdown::Receiver>::wait[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+   9: [91m<tokio[f37eeb3dc31cbb00]::runtime::blocking::pool::BlockingPool>::shutdown[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  10: [91m<tokio[f37eeb3dc31cbb00]::runtime::blocking::pool::BlockingPool as core[62e902411887be45]::ops::drop::Drop>::drop[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  11: [91mcore[62e902411887be45]::ptr::drop_glue::<tokio[f37eeb3dc31cbb00]::runtime::blocking::pool::BlockingPool>[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  12: [91mcore[62e902411887be45]::ptr::drop_glue::<tokio[f37eeb3dc31cbb00]::runtime::runtime::Runtime>[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  13: [91mreqwest[711dc3ba1601d319]::blocking::wait::enter[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  14: [91mreqwest[711dc3ba1601d319]::blocking::wait::timeout::<tokio[f37eeb3dc31cbb00]::sync::oneshot::Receiver<core[62e902411887be45]::result::Result<(), reqwest[711dc3ba1601d319]::error::Error>>, core[62e902411887be45]::result::Result<(), reqwest[711dc3ba1601d319]::error::Error>, tokio[f37eeb3dc31cbb00]::sync::oneshot::error::RecvError>[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  15: [91m<reqwest[711dc3ba1601d319]::blocking::client::ClientHandle>::new[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  16: [91m<reqwest[711dc3ba1601d319]::blocking::client::ClientBuilder>::build[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  17: [91monnx_engine[af20ab8e71c2e4c1]::cudnn_driver::download_attempt[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  18: [91monnx_engine[af20ab8e71c2e4c1]::cudnn_driver::download_to_file[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  19: [91monnx_engine[af20ab8e71c2e4c1]::cudnn_driver::ensure_cuda_runtime_ready[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  20: [91monnx_engine[af20ab8e71c2e4c1]::cudnn_driver::provision_cuda_runtime_at_setup[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  21: [91mcluaiz[a4bbb3a7a71d48a2]::main::{closure#0}[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  22: [91m<core[62e902411887be45]::pin::Pin<alloc[2a0ada2ddd1fabff]::boxed::Box<cluaiz[a4bbb3a7a71d48a2]::main::{closure#0}>> as core[62e902411887be45]::future::future::Future>::poll[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  23: [91m<tokio[f37eeb3dc31cbb00]::runtime::park::CachedParkThread>::block_on::<core[62e902411887be45]::pin::Pin<alloc[2a0ada2ddd1fabff]::boxed::Box<cluaiz[a4bbb3a7a71d48a2]::main::{closure#0}>>>::{closure#0}[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  24: [91m<tokio[f37eeb3dc31cbb00]::runtime::park::CachedParkThread>::block_on::<core[62e902411887be45]::pin::Pin<alloc[2a0ada2ddd1fabff]::boxed::Box<cluaiz[a4bbb3a7a71d48a2]::main::{closure#0}>>>[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  25: [91m<tokio[f37eeb3dc31cbb00]::runtime::context::blocking::BlockingRegionGuard>::block_on::<core[62e902411887be45]::pin::Pin<alloc[2a0ada2ddd1fabff]::boxed::Box<cluaiz[a4bbb3a7a71d48a2]::main::{closure#0}>>>[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  26: [91m<tokio[f37eeb3dc31cbb00]::runtime::scheduler::multi_thread::MultiThread>::block_on::<core[62e902411887be45]::pin::Pin<alloc[2a0ada2ddd1fabff]::boxed::Box<cluaiz[a4bbb3a7a71d48a2]::main::{closure#0}>>>::{closure#0}[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  27: [91mtokio[f37eeb3dc31cbb00]::runtime::context::runtime::enter_runtime::<<tokio[f37eeb3dc31cbb00]::runtime::scheduler::multi_thread::MultiThread>::block_on<core[62e902411887be45]::pin::Pin<alloc[2a0ada2ddd1fabff]::boxed::Box<cluaiz[a4bbb3a7a71d48a2]::main::{closure#0}>>>::{closure#0}, core[62e902411887be45]::result::Result<(), eyre[e04db7e1f6fae8e5]::Report>>[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  28: [91m<tokio[f37eeb3dc31cbb00]::runtime::scheduler::multi_thread::MultiThread>::block_on::<core[62e902411887be45]::pin::Pin<alloc[2a0ada2ddd1fabff]::boxed::Box<cluaiz[a4bbb3a7a71d48a2]::main::{closure#0}>>>[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  29: [91m<tokio[f37eeb3dc31cbb00]::runtime::runtime::Runtime>::block_on_inner::<core[62e902411887be45]::pin::Pin<alloc[2a0ada2ddd1fabff]::boxed::Box<cluaiz[a4bbb3a7a71d48a2]::main::{closure#0}>>>[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  30: [91m<tokio[f37eeb3dc31cbb00]::runtime::runtime::Runtime>::block_on::<cluaiz[a4bbb3a7a71d48a2]::main::{closure#0}>[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  31: [91mcluaiz[a4bbb3a7a71d48a2]::main[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  32: [91m<fn() -> core[62e902411887be45]::result::Result<(), eyre[e04db7e1f6fae8e5]::Report> as core[62e902411887be45]::ops::function::FnOnce<()>>::call_once[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  33: [91mstd[c60ef17cbf7de79f]::sys::backtrace::__rust_begin_short_backtrace::<fn() -> core[62e902411887be45]::result::Result<(), eyre[e04db7e1f6fae8e5]::Report>, core[62e902411887be45]::result::Result<(), eyre[e04db7e1f6fae8e5]::Report>>[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  34: [91mstd[c60ef17cbf7de79f]::rt::lang_start::<core[62e902411887be45]::result::Result<(), eyre[e04db7e1f6fae8e5]::Report>>::{closure#0}[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  35: [91mstd[c60ef17cbf7de79f]::rt::lang_start_internal[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  36: [91mstd[c60ef17cbf7de79f]::rt::lang_start::<core[62e902411887be45]::result::Result<(), eyre[e04db7e1f6fae8e5]::Report>>[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  37: [32mmain[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  38: [32m__libc_start_main[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+  39: [32m_start[0m[90m<unknown>[0m
+      at [35m<unknown source file>[0m:[35m<unknown line>[0m
+
+Run with COLORBT_SHOW_HIDDEN=1 environment variable to disable frame filtering.
+Run with RUST_BACKTRACE=full to include source snippets.

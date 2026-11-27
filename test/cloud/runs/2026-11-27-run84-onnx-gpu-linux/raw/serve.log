@@ -1,0 +1,1437 @@
+2026-11-27T09:20:56.772835Z  INFO 🛠️ Initializing Tools Engine (Registry & Governance)...
+2026-11-27T09:20:56.814835Z  INFO ⚡ NVIDIA GPU hardware acceleration verified.
+2026-11-27T09:20:56.814908Z DEBUG 🔌 Hardware dynamic drivers directory verified: "/home/<user>/run84/home/bin"
+2026-11-27T09:20:56.815513Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+2026-11-27T09:20:56.815563Z DEBUG ℹ️ [cluaiz] Running from workspace binary; global deployment available via dev-sync.
+Starting the Cluaiz API server on http://localhost:8015 ...
+2026-11-27T09:20:56.815908Z  INFO 🔒 [Auth] Initialized local session secret at /home/<user>/run84/home/session.token
+2026-11-27T09:20:56.901210Z DEBUG [llama.cpp] ggml_cuda_init: found 1 CUDA devices (Total VRAM: 22563 MiB):
+2026-11-27T09:20:56.902193Z DEBUG [llama.cpp] Device 0: NVIDIA L4, compute capability 8.9, VMM: yes, VRAM: 22563 MiB
+2026-11-27T09:20:56.903422Z DEBUG [llama.cpp] load_backend: loaded CUDA backend from /home/<user>/cluaiz/target/debug/libggml-cuda.so
+2026-11-27T09:20:56.912358Z DEBUG [llama.cpp] load_backend: loaded CPU backend from /home/<user>/cluaiz/target/debug/libggml-cpu-cascadelake.so
+2026-11-27T09:20:56.913593Z  INFO 🧩 [Llama-Engine] Backends loaded; GPU offload available
+2026-11-27T09:20:56.930723Z  INFO 🌐 Cluaiz API Server running on http://127.0.0.1:8015
+2026-11-27T09:20:57.932326Z  INFO TTS package load admission (estimates, not a reservation) model=kokoro-82m-v1.0-onnx-UINT8 gpu=true host_estimate_bytes=1251206456 device_estimate_bytes=1251206456
+2026-11-27T09:20:57.976162Z  INFO Discovered OrtHardwareDevice {vendor_id:0x10de, device_id:0x27b8, vendor:, type:1, metadata: [Discrete=1, card_idx=0, pci_bus_id=0000:00:03.0, ]}
+2026-11-27T09:20:57.976191Z  INFO Discovered OrtHardwareDevice {vendor_id:0x8086, device_id:0x0, vendor:Intel, type:0, metadata: []}
+2026-11-27T09:20:57.976733Z  INFO 📦 [ONNX Engine] Loading primary model from: /home/<user>/run84/home/models/tts/kokoro-82m-v1.0-onnx-UINT8/model_uint8.onnx (pool_size: 1)
+2026-11-27T09:20:57.979804Z DEBUG 📖 [ONNX Engine] "/home/<user>/run84/home/models/tts/kokoro-82m-v1.0-onnx-UINT8/tokenizer.json" is a vocabulary only: data did not match any variant of untagged enum PostProcessorWrapper at line 54 column 3
+2026-11-27T09:20:58.000514Z  INFO 📡 [Telemetry] 20.6GB VRAM free, 0.2GB needed: running on the GPU.
+2026-11-27T09:20:58.000693Z  INFO CUDA/cuDNN 9 runtime libraries not yet present; spawning background provisioning thread and using CPU/DirectML for the current session drivers_dir="/home/<user>/run84/home/bin"
+2026-11-27T09:20:58.000842Z  INFO Successfully registered `CPUExecutionProvider` source=session options
+2026-11-27T09:20:58.000974Z  INFO Session Options {  execution_mode:0 execution_order:DEFAULT enable_profiling:0 optimized_model_filepath:"" enable_mem_pattern:1 enable_mem_reuse:1 enable_cpu_mem_arena:1 profile_file_prefix:onnxruntime_profile_ session_logid: session_log_severity_level:-1 session_log_verbosity_level:0 max_num_graph_transformation_steps:10 graph_optimization_level:3 intra_op_param:OrtThreadPoolParams { thread_pool_size: 0 auto_set_affinity: 0 allow_spinning: 0 spin_duration_us: -1 spin_backoff_max: 1 dynamic_block_base_: 0 stack_size: 0 affinity_str:  set_denormal_as_zero: 0 } inter_op_param:OrtThreadPoolParams { thread_pool_size: 0 auto_set_affinity: 0 allow_spinning: 0 spin_duration_us: -1 spin_backoff_max: 1 dynamic_block_base_: 0 stack_size: 0 affinity_str:  set_denormal_as_zero: 0 } use_per_session_threads:1 thread_pool_allow_spinning:1 use_deterministic_compute:0 ep_selection_policy:5 config_options: {  } }
+2026-11-27T09:20:58.001024Z  INFO Flush-to-zero and denormal-as-zero are off
+2026-11-27T09:20:58.001041Z  INFO Creating and using per session threadpools since use_per_session_threads_ is true
+2026-11-27T09:20:58.001058Z  INFO Dynamic block base set to 0
+  ⬇️  [Cluaiz CUDA Setup] Downloading NVIDIA cuda_cudart v13.0.48 (cuda13, 1.4 MB)...
+2026-11-27T09:20:58.001301Z  INFO Downloading NVIDIA runtime archive for ONNX CUDA Execution Provider component=cuda_cudart version=13.0.48 cuda_variant=cuda13 platform=linux-x86_64 bytes=1487372
+2026-11-27T09:20:58.002249Z DEBUG starting new connection: https://developer.download.nvidia.com/
+2026-11-27T09:20:58.011365Z DEBUG connecting to 23.45.46.203:443
+2026-11-27T09:20:58.023094Z DEBUG connected to 23.45.46.203:443
+2026-11-27T09:20:58.188416Z  INFO Initializing session.
+2026-11-27T09:20:58.188451Z  INFO Creating BFCArena for Cpu with following configs: initial_chunk_size_bytes: 1048576 max_dead_bytes_per_chunk: 134217728 initial_growth_chunk_size_bytes: 2097152 max_power_of_two_extend_bytes: 1073741824 memory limit: 18446744073709551615 arena_extend_strategy: 0
+2026-11-27T09:20:58.191514Z  INFO This model does not have any local functions defined. AOT Inlining is not performed
+2026-11-27T09:20:58.302781Z  INFO GraphTransformer EnsureUniqueDQForNodeUnit modified: 1 with status: OK
+2026-11-27T09:20:58.326073Z  INFO GraphTransformer Level1_RuleBasedTransformer modified: 0 with status: OK
+2026-11-27T09:20:58.326987Z  INFO GraphTransformer DoubleQDQPairsRemover modified: 0 with status: OK
+2026-11-27T09:20:58.329539Z  INFO Total shared scalar initializer count: 1
+2026-11-27T09:20:58.329634Z  INFO GraphTransformer ConstantSharing modified: 1 with status: OK
+2026-11-27T09:20:58.353117Z  INFO GraphTransformer CommonSubexpressionElimination modified: 0 with status: OK
+2026-11-27T09:20:58.354701Z  INFO GraphTransformer ConstantFolding modified: 0 with status: OK
+2026-11-27T09:20:58.355789Z  INFO GraphTransformer MatMulAddFusion modified: 0 with status: OK
+2026-11-27T09:20:58.356851Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention/Reshape_output_0
+2026-11-27T09:20:58.356892Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention/Reshape_1_output_0
+2026-11-27T09:20:58.356928Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention/Reshape_2_output_0
+2026-11-27T09:20:58.356990Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_1/Reshape_output_0
+2026-11-27T09:20:58.357027Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_1/Reshape_1_output_0
+2026-11-27T09:20:58.357060Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_1/Reshape_2_output_0
+2026-11-27T09:20:58.357100Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_2/Reshape_output_0
+2026-11-27T09:20:58.357135Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_2/Reshape_1_output_0
+2026-11-27T09:20:58.357168Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_2/Reshape_2_output_0
+2026-11-27T09:20:58.357209Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_3/Reshape_output_0
+2026-11-27T09:20:58.357242Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_3/Reshape_1_output_0
+2026-11-27T09:20:58.357277Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_3/Reshape_2_output_0
+2026-11-27T09:20:58.357316Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_4/Reshape_output_0
+2026-11-27T09:20:58.357350Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_4/Reshape_1_output_0
+2026-11-27T09:20:58.357385Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_4/Reshape_2_output_0
+2026-11-27T09:20:58.357425Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_5/Reshape_output_0
+2026-11-27T09:20:58.357460Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_5/Reshape_1_output_0
+2026-11-27T09:20:58.357514Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_5/Reshape_2_output_0
+2026-11-27T09:20:58.357554Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_6/Reshape_output_0
+2026-11-27T09:20:58.357587Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_6/Reshape_1_output_0
+2026-11-27T09:20:58.357620Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_6/Reshape_2_output_0
+2026-11-27T09:20:58.357668Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_7/Reshape_output_0
+2026-11-27T09:20:58.357703Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_7/Reshape_1_output_0
+2026-11-27T09:20:58.357736Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_7/Reshape_2_output_0
+2026-11-27T09:20:58.357776Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_8/Reshape_output_0
+2026-11-27T09:20:58.357809Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_8/Reshape_1_output_0
+2026-11-27T09:20:58.357842Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_8/Reshape_2_output_0
+2026-11-27T09:20:58.357881Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_9/Reshape_output_0
+2026-11-27T09:20:58.357924Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_9/Reshape_1_output_0
+2026-11-27T09:20:58.357976Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_9/Reshape_2_output_0
+2026-11-27T09:20:58.358018Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_10/Reshape_output_0
+2026-11-27T09:20:58.358052Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_10/Reshape_1_output_0
+2026-11-27T09:20:58.358085Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_10/Reshape_2_output_0
+2026-11-27T09:20:58.358125Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_11/Reshape_output_0
+2026-11-27T09:20:58.358159Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_11/Reshape_1_output_0
+2026-11-27T09:20:58.358192Z  INFO Fused reshape node: /encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention_11/Reshape_2_output_0
+2026-11-27T09:20:58.358249Z  INFO Fused reshape node: /decoder/decoder/generator/Reshape_output_0
+2026-11-27T09:20:58.358291Z  INFO Total fused reshape node count: 37
+2026-11-27T09:20:58.358307Z  INFO GraphTransformer ReshapeFusion modified: 1 with status: OK
+2026-11-27T09:20:58.376331Z  INFO Removing initializer '/encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention/Constant_5_output_0'. It is no longer used by any node.
+2026-11-27T09:20:58.376365Z  INFO Removing initializer '/encoder/bert/encoder/albert_layer_groups.0/albert_layers.0/attention/Constant_4_output_0'. It is no longer used by any node.
+2026-11-27T09:20:58.376800Z  INFO GraphTransformer FreeDimensionOverrideTransformer modified: 0 with status: OK
+2026-11-27T09:20:58.377863Z  INFO GraphTransformer SliceConcatToSpaceToDepthFusion modified: 0 with status: OK
+2026-11-27T09:20:58.378871Z  INFO GraphTransformer GeluFusionL1 modified: 0 with status: OK
+2026-11-27T09:20:58.379821Z  INFO GraphTransformer LayerNormFusionL1 modified: 0 with status: OK
+2026-11-27T09:20:58.381193Z  INFO GraphTransformer QDQPropagationTransformer modified: 1 with status: OK
+2026-11-27T09:20:58.401803Z  INFO GraphTransformer WeightBiasQuantization modified: 1 with status: OK
+2026-11-27T09:20:58.423353Z  INFO GraphTransformer EnsureUniqueDQForNodeUnit modified: 0 with status: OK
+2026-11-27T09:20:58.424290Z  INFO GraphTransformer WhereDummyDq modified: 0 with status: OK
+2026-11-27T09:20:58.430998Z  INFO GraphTransformer TransposeOptimizer modified: 1 with status: OK
+2026-11-27T09:20:58.449646Z  INFO Removing NodeArg 'Transpose_token_90_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.449671Z  INFO Removing NodeArg 'Transpose_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.449689Z  INFO Removing NodeArg 'Transpose_token_92_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.449717Z  INFO Removing NodeArg 'Transpose_token_89_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.449767Z  INFO Removing NodeArg 'Transpose_token_91_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.449886Z  INFO Removing NodeArg 'Transpose_token_88_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.451608Z  INFO GraphTransformer Level1_RuleBasedTransformer modified: 0 with status: OK
+2026-11-27T09:20:58.452662Z  INFO GraphTransformer DoubleQDQPairsRemover modified: 0 with status: OK
+2026-11-27T09:20:58.456624Z  INFO GraphTransformer CommonSubexpressionElimination modified: 0 with status: OK
+2026-11-27T09:20:58.467262Z  INFO GraphTransformer ConstantFolding modified: 1 with status: OK
+2026-11-27T09:20:58.485555Z  INFO Removing initializer '/encoder/N.1/pool/ConvTranspose_bias_div_round'. It is no longer used by any node.
+2026-11-27T09:20:58.485580Z  INFO Removing initializer '/encoder/N.1/pool/ConvTranspose_bias_div'. It is no longer used by any node.
+2026-11-27T09:20:58.485598Z  INFO Removing initializer '/encoder/F0.1/pool/ConvTranspose_bias_div_round'. It is no longer used by any node.
+2026-11-27T09:20:58.485616Z  INFO Removing initializer '/decoder/decoder/decode.3/pool/ConvTranspose_bias_div_round'. It is no longer used by any node.
+2026-11-27T09:20:58.485660Z  INFO Removing initializer '/decoder/decoder/decode.3/Mul_output_0'. It is no longer used by any node.
+2026-11-27T09:20:58.485712Z  INFO Removing initializer 'encoder.predictor.N.1.pool.bias'. It is no longer used by any node.
+2026-11-27T09:20:58.485729Z  INFO Removing initializer '/encoder/N.1/Mul_output_0'. It is no longer used by any node.
+2026-11-27T09:20:58.485755Z  INFO Removing initializer 'encoder.predictor.F0.1.pool.bias'. It is no longer used by any node.
+2026-11-27T09:20:58.485801Z  INFO Removing initializer '/encoder/F0.1/pool/ConvTranspose_bias_div'. It is no longer used by any node.
+2026-11-27T09:20:58.485857Z  INFO Removing initializer '/decoder/decoder/decode.3/pool/ConvTranspose_bias_div'. It is no longer used by any node.
+2026-11-27T09:20:58.485923Z  INFO Removing initializer 'decoder.decoder.decode.3.pool.bias'. It is no longer used by any node.
+2026-11-27T09:20:58.485962Z  INFO Removing initializer '/encoder/F0.1/Mul_output_0'. It is no longer used by any node.
+2026-11-27T09:20:58.487558Z  INFO GraphTransformer MatMulAddFusion modified: 0 with status: OK
+2026-11-27T09:20:58.488658Z  INFO GraphTransformer ReshapeFusion modified: 0 with status: OK
+2026-11-27T09:20:58.488683Z  INFO GraphTransformer FreeDimensionOverrideTransformer modified: 0 with status: OK
+2026-11-27T09:20:58.489660Z  INFO GraphTransformer SliceConcatToSpaceToDepthFusion modified: 0 with status: OK
+2026-11-27T09:20:58.490660Z  INFO GraphTransformer GeluFusionL1 modified: 0 with status: OK
+2026-11-27T09:20:58.491640Z  INFO GraphTransformer LayerNormFusionL1 modified: 0 with status: OK
+2026-11-27T09:20:58.492967Z  INFO GraphTransformer QDQPropagationTransformer modified: 0 with status: OK
+2026-11-27T09:20:58.493958Z  INFO GraphTransformer WeightBiasQuantization modified: 0 with status: OK
+2026-11-27T09:20:58.494998Z  INFO GraphTransformer EnsureUniqueDQForNodeUnit modified: 0 with status: OK
+2026-11-27T09:20:58.495978Z  INFO GraphTransformer WhereDummyDq modified: 0 with status: OK
+2026-11-27T09:20:58.497474Z  INFO GraphTransformer Level1_RuleBasedTransformer modified: 0 with status: OK
+2026-11-27T09:20:58.498491Z  INFO GraphTransformer DoubleQDQPairsRemover modified: 0 with status: OK
+2026-11-27T09:20:58.502458Z  INFO GraphTransformer CommonSubexpressionElimination modified: 0 with status: OK
+2026-11-27T09:20:58.503998Z  INFO GraphTransformer ConstantFolding modified: 0 with status: OK
+2026-11-27T09:20:58.505028Z  INFO GraphTransformer MatMulAddFusion modified: 0 with status: OK
+2026-11-27T09:20:58.506107Z  INFO GraphTransformer ReshapeFusion modified: 0 with status: OK
+2026-11-27T09:20:58.506131Z  INFO GraphTransformer FreeDimensionOverrideTransformer modified: 0 with status: OK
+2026-11-27T09:20:58.507134Z  INFO GraphTransformer SliceConcatToSpaceToDepthFusion modified: 0 with status: OK
+2026-11-27T09:20:58.508164Z  INFO GraphTransformer GeluFusionL1 modified: 0 with status: OK
+2026-11-27T09:20:58.509176Z  INFO GraphTransformer LayerNormFusionL1 modified: 0 with status: OK
+2026-11-27T09:20:58.510531Z  INFO GraphTransformer QDQPropagationTransformer modified: 0 with status: OK
+2026-11-27T09:20:58.511567Z  INFO GraphTransformer WeightBiasQuantization modified: 0 with status: OK
+2026-11-27T09:20:58.512622Z  INFO GraphTransformer EnsureUniqueDQForNodeUnit modified: 0 with status: OK
+2026-11-27T09:20:58.513623Z  INFO GraphTransformer WhereDummyDq modified: 0 with status: OK
+2026-11-27T09:20:58.526219Z  INFO Running graph optimizations in loop 1 time/s (Graph Optimizations Loop Level : 1)
+2026-11-27T09:20:58.527750Z  INFO GraphTransformer Level2_RuleBasedTransformer modified: 0 with status: OK
+2026-11-27T09:20:58.535869Z  INFO GraphTransformer TransposeOptimizer_CPUExecutionProvider modified: 1 with status: OK
+2026-11-27T09:20:58.556319Z  INFO Removing NodeArg 'Transpose_token_114_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.556346Z  INFO Removing NodeArg 'Transpose_token_113_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.556364Z  INFO Removing NodeArg 'Transpose_token_106_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.556381Z  INFO Removing NodeArg 'Transpose_token_105_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.556397Z  INFO Removing NodeArg 'Transpose_token_103_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.556437Z  INFO Removing NodeArg 'Transpose_token_107_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.556523Z  INFO Removing NodeArg 'Transpose_token_104_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.556546Z  INFO Removing NodeArg 'Transpose_token_112_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.556597Z  INFO Removing NodeArg 'Transpose_token_109_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.556638Z  INFO Removing NodeArg 'Transpose_token_111_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.556659Z  INFO Removing NodeArg 'Transpose_token_108_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.556683Z  INFO Removing NodeArg 'Transpose_token_110_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.558333Z  INFO GraphTransformer QDQS8ToU8Transformer modified: 0 with status: OK
+2026-11-27T09:20:58.560302Z  INFO GraphTransformer QDQSelectorActionTransformer modified: 1 with status: OK
+2026-11-27T09:20:58.574935Z DEBUG pooling idle connection for ("https", developer.download.nvidia.com)
+2026-11-27T09:20:58.582221Z  INFO GraphTransformer GemmActivationFusion modified: 0 with status: OK
+2026-11-27T09:20:58.583410Z  INFO GraphTransformer MatMulIntegerToFloatFusion modified: 0 with status: OK
+2026-11-27T09:20:58.584418Z  INFO GraphTransformer DynamicQuantizeMatMulFusion modified: 0 with status: OK
+2026-11-27T09:20:58.585732Z  INFO GraphTransformer ConvActivationFusion modified: 0 with status: OK
+2026-11-27T09:20:58.585755Z  INFO GraphTransformer GeluFusionL2 modified: 0 with status: OK
+2026-11-27T09:20:58.585773Z  INFO GraphTransformer LayerNormFusionL2 modified: 0 with status: OK
+2026-11-27T09:20:58.586846Z  INFO GraphTransformer SimplifiedLayerNormFusion modified: 0 with status: OK
+2026-11-27T09:20:58.587935Z  INFO GraphTransformer AttentionFusion modified: 0 with status: OK
+2026-11-27T09:20:58.588919Z  INFO GraphTransformer EmbedLayerNormFusion modified: 0 with status: OK
+2026-11-27T09:20:58.590877Z  INFO GraphTransformer GatherSliceToSplitFusion modified: 0 with status: OK
+2026-11-27T09:20:58.591915Z  INFO GraphTransformer GatherToSliceFusion modified: 0 with status: OK
+2026-11-27T09:20:58.593021Z  INFO GraphTransformer MatmulTransposeFusion modified: 0 with status: OK
+2026-11-27T09:20:58.594135Z  INFO GraphTransformer BiasGeluFusion modified: 0 with status: OK
+2026-11-27T09:20:58.595141Z  INFO GraphTransformer GroupQueryAttentionFusion modified: 0 with status: OK
+2026-11-27T09:20:58.596205Z  INFO GraphTransformer MatMulAddFusion modified: 0 with status: OK
+2026-11-27T09:20:58.597226Z  INFO GraphTransformer SkipLayerNormFusion modified: 0 with status: OK
+2026-11-27T09:20:58.598416Z  INFO GraphTransformer BiasSkipLayerNormFusion modified: 1 with status: OK
+2026-11-27T09:20:58.620157Z  INFO GraphTransformer FastGeluFusion modified: 0 with status: OK
+2026-11-27T09:20:58.621151Z  INFO GraphTransformer QuickGeluFusion modified: 0 with status: OK
+2026-11-27T09:20:58.622030Z  INFO GraphTransformer BiasSoftmaxFusion modified: 0 with status: OK
+2026-11-27T09:20:58.622875Z  INFO GraphTransformer BiasDropoutFusion modified: 0 with status: OK
+2026-11-27T09:20:58.623927Z  INFO GraphTransformer MatMulScaleFusion modified: 0 with status: OK
+2026-11-27T09:20:58.624800Z  INFO GraphTransformer MatMulActivationFusion modified: 0 with status: OK
+2026-11-27T09:20:58.625890Z  INFO GraphTransformer MatMulNBitsFusion modified: 0 with status: OK
+2026-11-27T09:20:58.626744Z  INFO GraphTransformer GroupQueryAttentionPreNormFusion modified: 0 with status: OK
+2026-11-27T09:20:58.627673Z  INFO GraphTransformer QDQFinalCleanupTransformer modified: 0 with status: OK
+2026-11-27T09:20:58.628580Z  INFO GraphTransformer Level2_RuleBasedTransformer modified: 0 with status: OK
+2026-11-27T09:20:58.629535Z  INFO GraphTransformer QDQS8ToU8Transformer modified: 0 with status: OK
+2026-11-27T09:20:58.631086Z  INFO GraphTransformer QDQSelectorActionTransformer modified: 0 with status: OK
+2026-11-27T09:20:58.631921Z  INFO GraphTransformer GemmActivationFusion modified: 0 with status: OK
+2026-11-27T09:20:58.632868Z  INFO GraphTransformer MatMulIntegerToFloatFusion modified: 0 with status: OK
+2026-11-27T09:20:58.633725Z  INFO GraphTransformer DynamicQuantizeMatMulFusion modified: 0 with status: OK
+2026-11-27T09:20:58.634778Z  INFO GraphTransformer ConvActivationFusion modified: 0 with status: OK
+2026-11-27T09:20:58.634800Z  INFO GraphTransformer GeluFusionL2 modified: 0 with status: OK
+2026-11-27T09:20:58.634817Z  INFO GraphTransformer LayerNormFusionL2 modified: 0 with status: OK
+2026-11-27T09:20:58.635738Z  INFO GraphTransformer SimplifiedLayerNormFusion modified: 0 with status: OK
+2026-11-27T09:20:58.636670Z  INFO GraphTransformer AttentionFusion modified: 0 with status: OK
+2026-11-27T09:20:58.637537Z  INFO GraphTransformer EmbedLayerNormFusion modified: 0 with status: OK
+2026-11-27T09:20:58.639271Z  INFO GraphTransformer GatherSliceToSplitFusion modified: 0 with status: OK
+2026-11-27T09:20:58.640181Z  INFO GraphTransformer GatherToSliceFusion modified: 0 with status: OK
+2026-11-27T09:20:58.641150Z  INFO GraphTransformer MatmulTransposeFusion modified: 0 with status: OK
+2026-11-27T09:20:58.642092Z  INFO GraphTransformer BiasGeluFusion modified: 0 with status: OK
+2026-11-27T09:20:58.642931Z  INFO GraphTransformer GroupQueryAttentionFusion modified: 0 with status: OK
+2026-11-27T09:20:58.643825Z  INFO GraphTransformer MatMulAddFusion modified: 0 with status: OK
+2026-11-27T09:20:58.644719Z  INFO GraphTransformer SkipLayerNormFusion modified: 0 with status: OK
+2026-11-27T09:20:58.645582Z  INFO GraphTransformer BiasSkipLayerNormFusion modified: 0 with status: OK
+2026-11-27T09:20:58.646637Z  INFO GraphTransformer FastGeluFusion modified: 0 with status: OK
+2026-11-27T09:20:58.647611Z  INFO GraphTransformer QuickGeluFusion modified: 0 with status: OK
+2026-11-27T09:20:58.648489Z  INFO GraphTransformer BiasSoftmaxFusion modified: 0 with status: OK
+2026-11-27T09:20:58.649353Z  INFO GraphTransformer BiasDropoutFusion modified: 0 with status: OK
+2026-11-27T09:20:58.650445Z  INFO GraphTransformer MatMulScaleFusion modified: 0 with status: OK
+2026-11-27T09:20:58.651325Z  INFO GraphTransformer MatMulActivationFusion modified: 0 with status: OK
+2026-11-27T09:20:58.652434Z  INFO GraphTransformer MatMulNBitsFusion modified: 0 with status: OK
+2026-11-27T09:20:58.653292Z  INFO GraphTransformer GroupQueryAttentionPreNormFusion modified: 0 with status: OK
+2026-11-27T09:20:58.654338Z  INFO GraphTransformer QDQFinalCleanupTransformer modified: 0 with status: OK
+2026-11-27T09:20:58.655490Z  INFO GraphTransformer NchwcTransformer modified: 0 with status: OK
+2026-11-27T09:20:58.682303Z  INFO GraphTransformer NhwcTransformer modified: 1 with status: OK
+2026-11-27T09:20:58.704777Z  INFO Removing NodeArg 'Transpose_token_736_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.704804Z  INFO Removing NodeArg 'Transpose_token_735_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.704822Z  INFO Removing NodeArg 'Transpose_token_732_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.704839Z  INFO Removing NodeArg 'Transpose_token_721_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.704856Z  INFO Removing NodeArg 'Transpose_token_719_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.704873Z  INFO Removing NodeArg 'Transpose_token_714_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.704890Z  INFO Removing NodeArg 'Transpose_token_710_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.704906Z  INFO Removing NodeArg 'Transpose_token_706_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.704922Z  INFO Removing NodeArg 'Transpose_token_704_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.704955Z  INFO Removing NodeArg 'Transpose_token_703_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.704974Z  INFO Removing NodeArg 'Transpose_token_701_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.704991Z  INFO Removing NodeArg 'Transpose_token_696_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705007Z  INFO Removing NodeArg 'Transpose_token_692_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705024Z  INFO Removing NodeArg 'Transpose_token_689_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705050Z  INFO Removing NodeArg 'Transpose_token_687_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705067Z  INFO Removing NodeArg 'Transpose_token_686_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705083Z  INFO Removing NodeArg 'Transpose_token_683_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705100Z  INFO Removing NodeArg 'Transpose_token_682_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705116Z  INFO Removing NodeArg 'Transpose_token_679_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705133Z  INFO Removing NodeArg 'Transpose_token_678_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705150Z  INFO Removing NodeArg 'Transpose_token_669_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705166Z  INFO Removing NodeArg 'Transpose_token_668_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705183Z  INFO Removing NodeArg 'Transpose_token_665_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705199Z  INFO Removing NodeArg 'Transpose_token_664_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705215Z  INFO Removing NodeArg 'Transpose_token_663_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705232Z  INFO Removing NodeArg 'Transpose_token_655_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705248Z  INFO Removing NodeArg 'Transpose_token_644_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705264Z  INFO Removing NodeArg 'Transpose_token_643_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705280Z  INFO Removing NodeArg 'Transpose_token_639_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705297Z  INFO Removing NodeArg 'Transpose_token_638_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705317Z  INFO Removing NodeArg 'Transpose_token_635_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705335Z  INFO Removing NodeArg 'Transpose_token_722_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705352Z  INFO Removing NodeArg 'Transpose_token_615_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705368Z  INFO Removing NodeArg 'Transpose_token_612_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705385Z  INFO Removing NodeArg 'Transpose_token_610_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705402Z  INFO Removing NodeArg 'Transpose_token_621_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705419Z  INFO Removing NodeArg 'Transpose_token_609_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705436Z  INFO Removing NodeArg 'Transpose_token_608_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705452Z  INFO Removing NodeArg 'Transpose_token_607_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705477Z  INFO Removing NodeArg 'Transpose_token_594_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705494Z  INFO Removing NodeArg 'Transpose_token_586_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705511Z  INFO Removing NodeArg 'Transpose_token_585_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705527Z  INFO Removing NodeArg 'Transpose_token_583_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705544Z  INFO Removing NodeArg 'Transpose_token_571_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705561Z  INFO Removing NodeArg 'Transpose_token_569_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705578Z  INFO Removing NodeArg 'Transpose_token_568_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705595Z  INFO Removing NodeArg 'Transpose_token_562_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705620Z  INFO Removing NodeArg 'Transpose_token_685_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705637Z  INFO Removing NodeArg 'Transpose_token_561_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705653Z  INFO Removing NodeArg 'Transpose_token_559_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705670Z  INFO Removing NodeArg 'Transpose_token_558_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705690Z  INFO Removing NodeArg 'Transpose_token_557_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705707Z  INFO Removing NodeArg 'Transpose_token_556_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705723Z  INFO Removing NodeArg 'Transpose_token_553_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705740Z  INFO Removing NodeArg 'Transpose_token_549_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705756Z  INFO Removing NodeArg 'Transpose_token_544_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705772Z  INFO Removing NodeArg 'Transpose_token_539_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705789Z  INFO Removing NodeArg 'Transpose_token_533_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705806Z  INFO Removing NodeArg 'Transpose_token_530_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705822Z  INFO Removing NodeArg 'Transpose_token_529_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705839Z  INFO Removing NodeArg 'Transpose_token_528_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705855Z  INFO Removing NodeArg 'Transpose_token_526_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705871Z  INFO Removing NodeArg 'Transpose_token_524_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705887Z  INFO Removing NodeArg 'Transpose_token_522_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705903Z  INFO Removing NodeArg 'Transpose_token_519_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705920Z  INFO Removing NodeArg 'Transpose_token_509_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705946Z  INFO Removing NodeArg 'Transpose_token_508_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705971Z  INFO Removing NodeArg 'Transpose_token_589_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.705987Z  INFO Removing NodeArg 'Transpose_token_505_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706004Z  INFO Removing NodeArg 'Transpose_token_504_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706021Z  INFO Removing NodeArg 'Transpose_token_578_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706038Z  INFO Removing NodeArg 'Transpose_token_500_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706055Z  INFO Removing NodeArg 'Transpose_token_487_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706071Z  INFO Removing NodeArg 'Transpose_token_484_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706088Z  INFO Removing NodeArg 'Transpose_token_480_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706104Z  INFO Removing NodeArg 'Transpose_token_477_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706121Z  INFO Removing NodeArg 'Transpose_token_475_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706137Z  INFO Removing NodeArg 'Transpose_token_474_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706154Z  INFO Removing NodeArg 'Transpose_token_470_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706174Z  INFO Removing NodeArg 'Transpose_token_466_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706191Z  INFO Removing NodeArg 'Transpose_token_464_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706207Z  INFO Removing NodeArg 'Transpose_token_506_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706224Z  INFO Removing NodeArg 'Transpose_token_460_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706241Z  INFO Removing NodeArg 'Transpose_token_459_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706257Z  INFO Removing NodeArg 'Transpose_token_457_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706274Z  INFO Removing NodeArg 'Transpose_token_456_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706290Z  INFO Removing NodeArg 'Transpose_token_455_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706306Z  INFO Removing NodeArg 'Transpose_token_453_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706323Z  INFO Removing NodeArg 'Transpose_token_449_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706339Z  INFO Removing NodeArg 'Transpose_token_448_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706356Z  INFO Removing NodeArg 'Transpose_token_433_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706373Z  INFO Removing NodeArg 'Transpose_token_431_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706389Z  INFO Removing NodeArg 'Transpose_token_427_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706406Z  INFO Removing NodeArg 'Transpose_token_425_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706422Z  INFO Removing NodeArg 'Transpose_token_424_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706438Z  INFO Removing NodeArg 'Transpose_token_421_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706455Z  INFO Removing NodeArg 'Transpose_token_416_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706477Z  INFO Removing NodeArg 'Transpose_token_412_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706495Z  INFO Removing NodeArg 'Transpose_token_410_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706511Z  INFO Removing NodeArg 'Transpose_token_407_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706528Z  INFO Removing NodeArg 'Transpose_token_406_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706544Z  INFO Removing NodeArg 'Transpose_token_404_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706561Z  INFO Removing NodeArg 'Transpose_token_399_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706581Z  INFO Removing NodeArg 'Transpose_token_395_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706598Z  INFO Removing NodeArg 'Transpose_token_595_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706614Z  INFO Removing NodeArg 'Transpose_token_393_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706631Z  INFO Removing NodeArg 'Transpose_token_392_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706647Z  INFO Removing NodeArg 'Transpose_token_389_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706663Z  INFO Removing NodeArg 'Transpose_token_386_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706680Z  INFO Removing NodeArg 'Transpose_token_385_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706696Z  INFO Removing NodeArg 'Transpose_token_382_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706715Z  INFO Removing NodeArg 'Transpose_token_667_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706732Z  INFO Removing NodeArg 'Transpose_token_373_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706749Z  INFO Removing NodeArg 'Transpose_token_372_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706765Z  INFO Removing NodeArg 'Transpose_token_587_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706781Z  INFO Removing NodeArg 'Transpose_token_370_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706798Z  INFO Removing NodeArg 'Transpose_token_366_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706814Z  INFO Removing NodeArg 'Transpose_token_388_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706831Z  INFO Removing NodeArg 'Transpose_token_363_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706847Z  INFO Removing NodeArg 'Transpose_token_354_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706864Z  INFO Removing NodeArg 'Transpose_token_582_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706881Z  INFO Removing NodeArg 'Transpose_token_350_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706897Z  INFO Removing NodeArg 'Transpose_token_349_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706914Z  INFO Removing NodeArg 'Transpose_token_347_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706930Z  INFO Removing NodeArg 'Transpose_token_345_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706958Z  INFO Removing NodeArg 'Transpose_token_434_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706977Z  INFO Removing NodeArg 'Transpose_token_335_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.706993Z  INFO Removing NodeArg 'Transpose_token_332_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707010Z  INFO Removing NodeArg 'Transpose_token_330_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707026Z  INFO Removing NodeArg 'Transpose_token_329_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707043Z  INFO Removing NodeArg 'Transpose_token_327_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707059Z  INFO Removing NodeArg 'Transpose_token_326_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707076Z  INFO Removing NodeArg 'Transpose_token_316_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707093Z  INFO Removing NodeArg 'Transpose_token_313_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707109Z  INFO Removing NodeArg 'Transpose_token_312_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707125Z  INFO Removing NodeArg 'Transpose_token_309_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707142Z  INFO Removing NodeArg 'Transpose_token_305_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707159Z  INFO Removing NodeArg 'Transpose_token_300_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707176Z  INFO Removing NodeArg 'Transpose_token_293_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707197Z  INFO Removing NodeArg 'Transpose_token_292_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707214Z  INFO Removing NodeArg 'Transpose_token_289_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707230Z  INFO Removing NodeArg 'Transpose_token_285_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707246Z  INFO Removing NodeArg 'Transpose_token_282_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707267Z  INFO Removing NodeArg '/decoder/decoder/decode.3/conv2/Conv_quant_token_279_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707286Z  INFO Removing NodeArg 'Transpose_token_274_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707302Z  INFO Removing NodeArg 'Transpose_token_270_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707319Z  INFO Removing NodeArg '/decoder/decoder/decode.2/conv2/Conv_quant_token_268'. It is no longer used by any node.
+2026-11-27T09:20:58.707336Z  INFO Removing NodeArg 'Transpose_token_322_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707353Z  INFO Removing NodeArg '/decoder/decoder/decode.2/conv1/Conv_quant_token_264'. It is no longer used by any node.
+2026-11-27T09:20:58.707371Z  INFO Removing NodeArg '/decoder/decoder/decode.2/conv1/Conv_quant_token_263_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707388Z  INFO Removing NodeArg 'Transpose_token_262_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707405Z  INFO Removing NodeArg '/decoder/decoder/decode.1/conv1x1/Conv_quant_token_260'. It is no longer used by any node.
+2026-11-27T09:20:58.707423Z  INFO Removing NodeArg '/decoder/decoder/decode.1/conv1x1/Conv_quant_token_259_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707441Z  INFO Removing NodeArg 'Transpose_token_258_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707458Z  INFO Removing NodeArg '/decoder/decoder/decode.1/conv2/Conv_quant_token_255_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707481Z  INFO Removing NodeArg 'Transpose_token_254_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707499Z  INFO Removing NodeArg '/decoder/decoder/decode.1/conv1/Conv_quant_token_251_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707516Z  INFO Removing NodeArg 'Transpose_token_250_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707533Z  INFO Removing NodeArg '/decoder/decoder/decode.0/conv1x1/Conv_quant_token_248'. It is no longer used by any node.
+2026-11-27T09:20:58.707552Z  INFO Removing NodeArg '/decoder/decoder/decode.0/conv1/Conv_quant_token_240'. It is no longer used by any node.
+2026-11-27T09:20:58.707569Z  INFO Removing NodeArg 'Transpose_token_238_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707586Z  INFO Removing NodeArg 'Transpose_token_295_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707603Z  INFO Removing NodeArg '/decoder/decoder/encode/conv1/Conv_quant_token_228'. It is no longer used by any node.
+2026-11-27T09:20:58.707621Z  INFO Removing NodeArg 'Transpose_token_222_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707637Z  INFO Removing NodeArg '/encoder/N_proj/Conv_quant_token_220'. It is no longer used by any node.
+2026-11-27T09:20:58.707654Z  INFO Removing NodeArg '/encoder/N_proj/Conv_quant_token_219_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707671Z  INFO Removing NodeArg 'Transpose_token_218_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707688Z  INFO Removing NodeArg '/encoder/N.2/conv2/Conv_quant_token_216'. It is no longer used by any node.
+2026-11-27T09:20:58.707706Z  INFO Removing NodeArg 'Transpose_token_214_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707723Z  INFO Removing NodeArg '/encoder/N.2/conv1/Conv_quant_token_211_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707741Z  INFO Removing NodeArg '/encoder/N.1/conv1x1/Conv_quant_token_208'. It is no longer used by any node.
+2026-11-27T09:20:58.707758Z  INFO Removing NodeArg 'Transpose_token_206_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707781Z  INFO Removing NodeArg 'Transpose_token_574_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707799Z  INFO Removing NodeArg '/encoder/N.1/conv2/Conv_quant_token_203_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707816Z  INFO Removing NodeArg 'Transpose_token_630_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707832Z  INFO Removing NodeArg 'Transpose_token_198_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707849Z  INFO Removing NodeArg '/encoder/N.0/conv2/Conv_quant_token_195_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707866Z  INFO Removing NodeArg 'Transpose_token_194_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707883Z  INFO Removing NodeArg '/encoder/N.0/conv1/Conv_quant_token_192'. It is no longer used by any node.
+2026-11-27T09:20:58.707900Z  INFO Removing NodeArg 'Transpose_token_502_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707917Z  INFO Removing NodeArg 'Transpose_token_190_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707934Z  INFO Removing NodeArg '/decoder/decoder/F0_conv/Conv_quant_token_188'. It is no longer used by any node.
+2026-11-27T09:20:58.707967Z  INFO Removing NodeArg '/decoder/decoder/F0_conv/Conv_quant_token_187_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.707985Z  INFO Removing NodeArg 'Transpose_token_428_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708002Z  INFO Removing NodeArg '/encoder/F0_proj/Conv_quant_token_184'. It is no longer used by any node.
+2026-11-27T09:20:58.708019Z  INFO Removing NodeArg '/encoder/F0_proj/Conv_quant_token_183_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708036Z  INFO Removing NodeArg 'Transpose_token_182_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708053Z  INFO Removing NodeArg '/encoder/F0.2/conv2/Conv_quant_token_180'. It is no longer used by any node.
+2026-11-27T09:20:58.708071Z  INFO Removing NodeArg '/encoder/F0.2/conv2/Conv_quant_token_179_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708088Z  INFO Removing NodeArg '/encoder/F0.2/conv1/Conv_quant_token_176'. It is no longer used by any node.
+2026-11-27T09:20:58.708105Z  INFO Removing NodeArg '/encoder/F0.2/conv1/Conv_quant_token_175_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708123Z  INFO Removing NodeArg 'Transpose_token_174_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708140Z  INFO Removing NodeArg '/encoder/F0.1/conv1x1/Conv_quant_token_172'. It is no longer used by any node.
+2026-11-27T09:20:58.708158Z  INFO Removing NodeArg '/decoder/decoder/encode/conv1x1/Conv_quant_token_236'. It is no longer used by any node.
+2026-11-27T09:20:58.708176Z  INFO Removing NodeArg '/encoder/F0.1/conv2/Conv_quant_token_167_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708193Z  INFO Removing NodeArg 'Transpose_token_166_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708209Z  INFO Removing NodeArg '/encoder/F0.1/conv1/Conv_quant_token_164'. It is no longer used by any node.
+2026-11-27T09:20:58.708227Z  INFO Removing NodeArg '/encoder/F0.0/conv2/Conv_quant_token_160'. It is no longer used by any node.
+2026-11-27T09:20:58.708244Z  INFO Removing NodeArg '/encoder/F0.0/conv2/Conv_quant_token_159_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708262Z  INFO Removing NodeArg '/decoder/decoder/asr_res/asr_res.0/Conv_quant_token_152'. It is no longer used by any node.
+2026-11-27T09:20:58.708281Z  INFO Removing NodeArg '/decoder/decoder/asr_res/asr_res.0/Conv_quant_token_151_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708303Z  INFO Removing NodeArg '/encoder/text_encoder/cnn.2/cnn.2.0/Conv_quant_token_148'. It is no longer used by any node.
+2026-11-27T09:20:58.708322Z  INFO Removing NodeArg '/encoder/text_encoder/cnn.2/cnn.2.0/Conv_quant_token_147_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708339Z  INFO Removing NodeArg 'Transpose_token_146_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708359Z  INFO Removing NodeArg 'Transpose_token_142_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708376Z  INFO Removing NodeArg '/encoder/text_encoder/cnn.0/cnn.0.0/Conv_quant_token_139_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708403Z  INFO Removing NodeArg '/decoder/decoder/decode.3/conv2/Conv_quant_token_280'. It is no longer used by any node.
+2026-11-27T09:20:58.708423Z  INFO Removing NodeArg '/encoder/N.2/conv1/Conv_quant_token_212'. It is no longer used by any node.
+2026-11-27T09:20:58.708442Z  INFO Removing NodeArg 'Transpose_token_622_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708458Z  INFO Removing NodeArg 'Transpose_token_660_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708480Z  INFO Removing NodeArg '/encoder/F0.0/conv1/Conv_quant_token_156'. It is no longer used by any node.
+2026-11-27T09:20:58.708500Z  INFO Removing NodeArg 'Transpose_token_658_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708518Z  INFO Removing NodeArg 'Transpose_token_333_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708537Z  INFO Removing NodeArg '/decoder/decoder/decode.0/conv1/Conv_quant_token_239_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708556Z  INFO Removing NodeArg 'Transpose_token_690_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708573Z  INFO Removing NodeArg 'Transpose_token_723_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708589Z  INFO Removing NodeArg 'Transpose_token_567_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708606Z  INFO Removing NodeArg 'Transpose_token_364_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708626Z  INFO Removing NodeArg 'Transpose_token_438_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708643Z  INFO Removing NodeArg 'Transpose_token_724_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708660Z  INFO Removing NodeArg '/encoder/N.1/conv1/Conv_quant_token_200'. It is no longer used by any node.
+2026-11-27T09:20:58.708679Z  INFO Removing NodeArg 'Transpose_token_540_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708695Z  INFO Removing NodeArg 'Transpose_token_420_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708714Z  INFO Removing NodeArg 'Transpose_token_394_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708730Z  INFO Removing NodeArg 'Transpose_token_631_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708748Z  INFO Removing NodeArg 'Transpose_token_520_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708767Z  INFO Removing NodeArg '/decoder/decoder/decode.3/conv1/Conv_quant_token_275_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708789Z  INFO Removing NodeArg 'Transpose_token_511_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708807Z  INFO Removing NodeArg 'Transpose_token_543_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708825Z  INFO Removing NodeArg 'Transpose_token_290_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708842Z  INFO Removing NodeArg '/decoder/decoder/decode.2/conv1x1/Conv_quant_token_272'. It is no longer used by any node.
+2026-11-27T09:20:58.708867Z  INFO Removing NodeArg 'Transpose_token_626_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708889Z  INFO Removing NodeArg 'Transpose_token_572_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708909Z  INFO Removing NodeArg 'Transpose_token_362_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708926Z  INFO Removing NodeArg 'Transpose_token_611_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708959Z  INFO Removing NodeArg 'Transpose_token_617_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.708981Z  INFO Removing NodeArg 'Transpose_token_488_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709000Z  INFO Removing NodeArg 'Transpose_token_563_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709021Z  INFO Removing NodeArg 'Transpose_token_532_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709039Z  INFO Removing NodeArg 'Transpose_token_482_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709056Z  INFO Removing NodeArg 'Transpose_token_605_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709073Z  INFO Removing NodeArg 'Transpose_token_162_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709092Z  INFO Removing NodeArg 'Transpose_token_498_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709110Z  INFO Removing NodeArg '/decoder/decoder/N_conv/Conv_quant_token_224'. It is no longer used by any node.
+2026-11-27T09:20:58.709129Z  INFO Removing NodeArg 'Transpose_token_637_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709146Z  INFO Removing NodeArg 'Transpose_token_652_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709164Z  INFO Removing NodeArg 'Transpose_token_344_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709185Z  INFO Removing NodeArg 'Transpose_token_291_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709203Z  INFO Removing NodeArg 'Transpose_token_718_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709220Z  INFO Removing NodeArg 'Transpose_token_445_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709241Z  INFO Removing NodeArg 'Transpose_token_307_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709261Z  INFO Removing NodeArg 'Transpose_token_619_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709278Z  INFO Removing NodeArg 'Transpose_token_653_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709295Z  INFO Removing NodeArg '/decoder/decoder/decode.3/conv1x1/Conv_quant_token_283_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709313Z  INFO Removing NodeArg 'Transpose_token_497_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709330Z  INFO Removing NodeArg '/decoder/decoder/decode.3/conv1x1/Conv_quant_token_284'. It is no longer used by any node.
+2026-11-27T09:20:58.709349Z  INFO Removing NodeArg 'Transpose_token_446_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709366Z  INFO Removing NodeArg 'Transpose_token_525_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709384Z  INFO Removing NodeArg '/decoder/decoder/decode.0/conv2/Conv_quant_token_243_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709404Z  INFO Removing NodeArg 'Transpose_token_442_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709420Z  INFO Removing NodeArg 'Transpose_token_452_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709437Z  INFO Removing NodeArg 'Transpose_token_715_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709456Z  INFO Removing NodeArg '/encoder/N.0/conv2/Conv_quant_token_196'. It is no longer used by any node.
+2026-11-27T09:20:58.709483Z  INFO Removing NodeArg 'Transpose_token_339_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709501Z  INFO Removing NodeArg 'Transpose_token_642_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709519Z  INFO Removing NodeArg 'Transpose_token_501_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709536Z  INFO Removing NodeArg 'Transpose_token_535_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709554Z  INFO Removing NodeArg '/decoder/decoder/decode.1/conv1/Conv_quant_token_252'. It is no longer used by any node.
+2026-11-27T09:20:58.709572Z  INFO Removing NodeArg '/decoder/decoder/decode.0/conv2/Conv_quant_token_244'. It is no longer used by any node.
+2026-11-27T09:20:58.709589Z  INFO Removing NodeArg 'Transpose_token_432_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709606Z  INFO Removing NodeArg 'Transpose_token_336_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709625Z  INFO Removing NodeArg 'Transpose_token_593_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709649Z  INFO Removing NodeArg 'Transpose_token_620_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709674Z  INFO Removing NodeArg '/decoder/decoder/decode.0/conv1x1/Conv_quant_token_247_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709695Z  INFO Removing NodeArg 'Transpose_token_554_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709711Z  INFO Removing NodeArg 'Transpose_token_656_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709729Z  INFO Removing NodeArg 'Transpose_token_564_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709747Z  INFO Removing NodeArg 'Transpose_token_230_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709763Z  INFO Removing NodeArg 'Transpose_token_633_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709780Z  INFO Removing NodeArg 'Transpose_token_311_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709798Z  INFO Removing NodeArg '/decoder/decoder/decode.3/conv1/Conv_quant_token_276'. It is no longer used by any node.
+2026-11-27T09:20:58.709816Z  INFO Removing NodeArg 'Transpose_token_713_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709836Z  INFO Removing NodeArg 'Transpose_token_358_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709852Z  INFO Removing NodeArg 'Transpose_token_278_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709874Z  INFO Removing NodeArg 'Transpose_token_483_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709894Z  INFO Removing NodeArg 'Transpose_token_361_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709913Z  INFO Removing NodeArg 'Transpose_token_178_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709930Z  INFO Removing NodeArg 'Transpose_token_536_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709961Z  INFO Removing NodeArg 'Transpose_token_308_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709982Z  INFO Removing NodeArg 'Transpose_token_573_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.709999Z  INFO Removing NodeArg 'Transpose_token_210_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710018Z  INFO Removing NodeArg 'Transpose_token_186_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710037Z  INFO Removing NodeArg '/encoder/F0.1/conv1x1/Conv_quant_token_171_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710056Z  INFO Removing NodeArg '/decoder/decoder/encode/conv1/Conv_quant_token_227_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710080Z  INFO Removing NodeArg 'Transpose_token_717_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710098Z  INFO Removing NodeArg 'Transpose_token_287_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710116Z  INFO Removing NodeArg '/encoder/text_encoder/cnn.1/cnn.1.0/Conv_quant_token_143_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710136Z  INFO Removing NodeArg 'Transpose_token_733_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710152Z  INFO Removing NodeArg 'Transpose_token_423_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710174Z  INFO Removing NodeArg '/encoder/F0.0/conv1/Conv_quant_token_155_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710194Z  INFO Removing NodeArg 'Transpose_token_709_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710211Z  INFO Removing NodeArg 'Transpose_token_700_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710228Z  INFO Removing NodeArg 'Transpose_token_359_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710247Z  INFO Removing NodeArg 'Transpose_token_348_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710264Z  INFO Removing NodeArg 'Transpose_token_463_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710281Z  INFO Removing NodeArg 'Transpose_token_591_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710298Z  INFO Removing NodeArg 'Transpose_token_381_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710321Z  INFO Removing NodeArg 'Transpose_token_371_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710339Z  INFO Removing NodeArg 'Transpose_token_461_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710360Z  INFO Removing NodeArg 'Transpose_token_657_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710377Z  INFO Removing NodeArg 'Transpose_token_641_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710395Z  INFO Removing NodeArg 'Transpose_token_451_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710417Z  INFO Removing NodeArg 'Transpose_token_170_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710434Z  INFO Removing NodeArg '/encoder/F0.1/conv1/Conv_quant_token_163_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710453Z  INFO Removing NodeArg '/encoder/N.1/conv1x1/Conv_quant_token_207_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710478Z  INFO Removing NodeArg 'Transpose_token_681_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710495Z  INFO Removing NodeArg 'Transpose_token_384_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710513Z  INFO Removing NodeArg 'Transpose_token_315_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710530Z  INFO Removing NodeArg 'Transpose_token_493_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710550Z  INFO Removing NodeArg 'Transpose_token_318_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710569Z  INFO Removing NodeArg 'Transpose_token_659_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710592Z  INFO Removing NodeArg 'Transpose_token_154_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710612Z  INFO Removing NodeArg 'Transpose_token_202_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710629Z  INFO Removing NodeArg 'Transpose_token_531_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710645Z  INFO Removing NodeArg 'Transpose_token_390_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710667Z  INFO Removing NodeArg 'Transpose_token_343_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710689Z  INFO Removing NodeArg '/encoder/text_encoder/cnn.0/cnn.0.0/Conv_quant_token_140'. It is no longer used by any node.
+2026-11-27T09:20:58.710708Z  INFO Removing NodeArg 'Transpose_token_600_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710725Z  INFO Removing NodeArg 'Transpose_token_510_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710744Z  INFO Removing NodeArg 'Transpose_token_523_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710762Z  INFO Removing NodeArg 'Transpose_token_545_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710778Z  INFO Removing NodeArg 'Transpose_token_150_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710795Z  INFO Removing NodeArg 'Transpose_token_443_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710812Z  INFO Removing NodeArg 'Transpose_token_242_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710829Z  INFO Removing NodeArg 'Transpose_token_377_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710850Z  INFO Removing NodeArg 'Transpose_token_403_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710867Z  INFO Removing NodeArg 'Transpose_token_604_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710889Z  INFO Removing NodeArg 'Transpose_token_707_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710905Z  INFO Removing NodeArg 'Transpose_token_408_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710924Z  INFO Removing NodeArg 'Transpose_token_340_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710954Z  INFO Removing NodeArg 'Transpose_token_674_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710973Z  INFO Removing NodeArg 'Transpose_token_409_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.710993Z  INFO Removing NodeArg 'Transpose_token_538_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711020Z  INFO Removing NodeArg 'Transpose_token_341_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711042Z  INFO Removing NodeArg 'Transpose_token_648_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711060Z  INFO Removing NodeArg 'Transpose_token_711_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711077Z  INFO Removing NodeArg 'Transpose_token_246_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711095Z  INFO Removing NodeArg '/decoder/decoder/decode.2/conv1x1/Conv_quant_token_271_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711115Z  INFO Removing NodeArg '/encoder/text_encoder/cnn.1/cnn.1.0/Conv_quant_token_144'. It is no longer used by any node.
+2026-11-27T09:20:58.711138Z  INFO Removing NodeArg 'Transpose_token_486_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711155Z  INFO Removing NodeArg '/decoder/decoder/encode/conv2/Conv_quant_token_232'. It is no longer used by any node.
+2026-11-27T09:20:58.711173Z  INFO Removing NodeArg 'Transpose_token_465_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711190Z  INFO Removing NodeArg 'Transpose_token_479_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711208Z  INFO Removing NodeArg '/decoder/decoder/encode/conv1x1/Conv_quant_token_235_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711227Z  INFO Removing NodeArg 'Transpose_token_596_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711244Z  INFO Removing NodeArg 'Transpose_token_478_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711265Z  INFO Removing NodeArg 'Transpose_token_489_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711286Z  INFO Removing NodeArg 'Transpose_token_294_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711304Z  INFO Removing NodeArg '/encoder/N.1/conv1/Conv_quant_token_199_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711323Z  INFO Removing NodeArg 'Transpose_token_542_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711341Z  INFO Removing NodeArg '/decoder/decoder/decode.2/conv2/Conv_quant_token_267_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711359Z  INFO Removing NodeArg '/decoder/decoder/decode.1/conv2/Conv_quant_token_256'. It is no longer used by any node.
+2026-11-27T09:20:58.711378Z  INFO Removing NodeArg 'Transpose_token_158_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711396Z  INFO Removing NodeArg '/decoder/decoder/N_conv/Conv_quant_token_223_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711413Z  INFO Removing NodeArg 'Transpose_token_515_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711431Z  INFO Removing NodeArg 'Transpose_token_705_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711447Z  INFO Removing NodeArg 'Transpose_token_296_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711475Z  INFO Removing NodeArg 'Transpose_token_226_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711492Z  INFO Removing NodeArg 'Transpose_token_429_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711511Z  INFO Removing NodeArg 'Transpose_token_670_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711532Z  INFO Removing NodeArg '/encoder/N.0/conv1/Conv_quant_token_191_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711550Z  INFO Removing NodeArg 'Transpose_token_266_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711567Z  INFO Removing NodeArg 'Transpose_token_534_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711584Z  INFO Removing NodeArg '/encoder/F0.1/conv2/Conv_quant_token_168'. It is no longer used by any node.
+2026-11-27T09:20:58.711603Z  INFO Removing NodeArg 'Transpose_token_286_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711620Z  INFO Removing NodeArg 'Transpose_token_560_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711636Z  INFO Removing NodeArg 'Transpose_token_288_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711658Z  INFO Removing NodeArg 'Transpose_token_317_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711675Z  INFO Removing NodeArg '/encoder/N.1/conv2/Conv_quant_token_204'. It is no longer used by any node.
+2026-11-27T09:20:58.711695Z  INFO Removing NodeArg '/decoder/decoder/encode/conv2/Conv_quant_token_231_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711714Z  INFO Removing NodeArg 'Transpose_token_304_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711730Z  INFO Removing NodeArg 'Transpose_token_337_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711758Z  INFO Removing NodeArg 'Transpose_token_234_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711775Z  INFO Removing NodeArg 'Transpose_token_616_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711792Z  INFO Removing NodeArg 'Transpose_token_634_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711809Z  INFO Removing NodeArg 'Transpose_token_691_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711826Z  INFO Removing NodeArg 'Transpose_token_138_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711846Z  INFO Removing NodeArg 'Transpose_token_367_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711864Z  INFO Removing NodeArg 'Transpose_token_590_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711880Z  INFO Removing NodeArg '/encoder/N.2/conv2/Conv_quant_token_215_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711897Z  INFO Removing NodeArg 'Transpose_token_728_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.711914Z  INFO Removing NodeArg 'Transpose_token_368_out0'. It is no longer used by any node.
+2026-11-27T09:20:58.714233Z  INFO GraphTransformer ConvAddActivationFusion modified: 0 with status: OK
+2026-11-27T09:20:58.715758Z  INFO GraphTransformer NchwcTransformer modified: 0 with status: OK
+2026-11-27T09:20:58.719814Z  INFO GraphTransformer NhwcTransformer modified: 0 with status: OK
+2026-11-27T09:20:58.721301Z  INFO GraphTransformer ConvAddActivationFusion modified: 0 with status: OK
+2026-11-27T09:20:58.726123Z  INFO GraphTransformer RemoveDuplicateCastTransformer modified: 0 with status: OK
+2026-11-27T09:20:58.726145Z  INFO GraphTransformer CastFloat16Transformer modified: 0 with status: OK
+2026-11-27T09:20:58.726177Z  INFO GraphTransformer MemcpyTransformer modified: 0 with status: OK
+2026-11-27T09:20:58.742696Z  INFO Use DeviceBasedPartition as default
+  ✅  [Cluaiz CUDA Setup] Installed cuda_cudart v13.0.48 into "/home/<user>/run84/home/bin"
+  ⬇️  [Cluaiz CUDA Setup] Downloading NVIDIA libcublas v13.0.0.19 (cuda13, 760.4 MB)...
+2026-11-27T09:20:58.768438Z  INFO Downloading NVIDIA runtime archive for ONNX CUDA Execution Provider component=libcublas version=13.0.0.19 cuda_variant=cuda13 platform=linux-x86_64 bytes=797380780
+2026-11-27T09:20:58.769262Z DEBUG starting new connection: https://developer.download.nvidia.com/
+2026-11-27T09:20:58.774473Z DEBUG connecting to 23.45.46.203:443
+2026-11-27T09:20:58.785799Z DEBUG connected to 23.45.46.203:443
+2026-11-27T09:20:59.247413Z  INFO Saving initialized tensors.
+2026-11-27T09:20:59.247957Z  INFO Reserving memory in BFCArena for Cpu size: 50
+2026-11-27T09:20:59.248041Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.248112Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.248150Z  INFO Reserving memory in BFCArena for Cpu size: 24
+2026-11-27T09:20:59.248175Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.248242Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.248273Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.248294Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.248324Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.248344Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.248369Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.248402Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.248436Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.248467Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.248492Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.248512Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.248532Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.248551Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.248573Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.248598Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.248623Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.248654Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.248680Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.248701Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.248723Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.248747Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.248774Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.248795Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.248825Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.248855Z  INFO Reserving memory in BFCArena for Cpu size: 36
+2026-11-27T09:20:59.248875Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.248894Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.248924Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.248958Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.248980Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.249002Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.249020Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.249101Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.249155Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.249189Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.249210Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.249228Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.249258Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.249284Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.249318Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.249411Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.249457Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.249519Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.249570Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.249591Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.249611Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.249644Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.249682Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.249756Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.249779Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.249828Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.249996Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.250032Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.250054Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.250091Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.250126Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.250164Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.250184Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.250227Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.250249Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.250306Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.250326Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.250345Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.250366Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.250393Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.250414Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.250433Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.250516Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.250545Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.250588Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.250607Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.250635Z  INFO Reserving memory in BFCArena for Cpu size: 50
+2026-11-27T09:20:59.250654Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.250688Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.250734Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.250811Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.250847Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.250865Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.250905Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.250929Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.250984Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251006Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251033Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251052Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.251071Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.251092Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251125Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.251146Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251173Z  INFO Reserving memory in BFCArena for Cpu size: 16
+2026-11-27T09:20:59.251192Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251253Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251272Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.251306Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251332Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251350Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.251394Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.251413Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251476Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.251550Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251581Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251602Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251621Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.251657Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251682Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251714Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251733Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251756Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251779Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251798Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251821Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251840Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.251866Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251889Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.251917Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.252022Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.252043Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.252065Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.252090Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.252109Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.252166Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.252201Z  INFO Reserving memory in BFCArena for Cpu size: 12
+2026-11-27T09:20:59.252231Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.252269Z  INFO Reserving memory in BFCArena for Cpu size: 16
+2026-11-27T09:20:59.252307Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.252370Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.252394Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.252423Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.252465Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.252492Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.252532Z  INFO Reserving memory in BFCArena for Cpu size: 24
+2026-11-27T09:20:59.252560Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.252579Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.252665Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.252697Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.252714Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.252732Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.252770Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.252809Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.252842Z  INFO Reserving memory in BFCArena for Cpu size: 16
+2026-11-27T09:20:59.252875Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.252977Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253014Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.253033Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253052Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253074Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253092Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253112Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253131Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253156Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.253180Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.253203Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253221Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253239Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.253256Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253274Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.253292Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253324Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253352Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.253371Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.253390Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.253412Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.253451Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.253475Z  INFO Reserving memory in BFCArena for Cpu size: 24
+2026-11-27T09:20:59.253493Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253512Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.253533Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253559Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253588Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253616Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.253636Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253653Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.253674Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253694Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.253716Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253739Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.253760Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.253795Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.253820Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253839Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253858Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253877Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.253898Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.253916Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253934Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253971Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.253991Z  INFO Reserving memory in BFCArena for Cpu size: 64
+2026-11-27T09:20:59.254016Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.254079Z  INFO Reserving memory in BFCArena for Cpu size: 48
+2026-11-27T09:20:59.254107Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.254130Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.254154Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.254185Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.254209Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.254235Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.254253Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.254330Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.254353Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.254395Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.254426Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.254454Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.254495Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.254514Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.254540Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.254558Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.254578Z  INFO Reserving memory in BFCArena for Cpu size: 16
+2026-11-27T09:20:59.254653Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.254685Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.254740Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.254762Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.254780Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.254801Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.254818Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.254842Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.254867Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.254894Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.254922Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.254958Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.254991Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.255022Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.255041Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.255063Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.255087Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.255110Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.255131Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.255157Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.255175Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.255197Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.255285Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.255326Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.255354Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.255373Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.255398Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.255427Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.255472Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.255500Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.255541Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.255616Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.255653Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.255692Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.255712Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.255747Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.255778Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.255797Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.255829Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.255853Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.255871Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.255888Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.255906Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.255925Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.255968Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.255990Z  INFO Reserving memory in BFCArena for Cpu size: 16
+2026-11-27T09:20:59.256056Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.256076Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.256140Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.256167Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.256185Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.256212Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.256249Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.256322Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.256410Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.256456Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.256491Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.256509Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.256541Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.256563Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.256634Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.256666Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.256686Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.256710Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.256737Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.256755Z  INFO Reserving memory in BFCArena for Cpu size: 16
+2026-11-27T09:20:59.256774Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.256799Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.256827Z  INFO Reserving memory in BFCArena for Cpu size: 3
+2026-11-27T09:20:59.256854Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.256879Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.256907Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.256935Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.256981Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.257051Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.257091Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.257143Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.257162Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.257184Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.257202Z  INFO Reserving memory in BFCArena for Cpu size: 12
+2026-11-27T09:20:59.257221Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.257239Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.257257Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.257284Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.257302Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.257319Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.257337Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.257361Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.257380Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.257409Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.257435Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.257469Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.257497Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.257563Z  INFO Reserving memory in BFCArena for Cpu size: 16
+2026-11-27T09:20:59.257582Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.257617Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.257636Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.257654Z  INFO Reserving memory in BFCArena for Cpu size: 36
+2026-11-27T09:20:59.257679Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.257699Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.257717Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.257738Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.257771Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.257789Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.257822Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.257919Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.257979Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258012Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258054Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258084Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258105Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.258146Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.258171Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258191Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258216Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258246Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258266Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.258287Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258362Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258393Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.258420Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258460Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.258484Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.258537Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258561Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258585Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258606Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258669Z  INFO Reserving memory in BFCArena for Cpu size: 16
+2026-11-27T09:20:59.258693Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258711Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258729Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258751Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258768Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258787Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258812Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258833Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258851Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258876Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258894Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.258920Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258955Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.258977Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.259001Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.259018Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.259039Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.259067Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.259088Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.259107Z  INFO Reserving memory in BFCArena for Cpu size: 80
+2026-11-27T09:20:59.259127Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.259153Z  INFO Reserving memory in BFCArena for Cpu size: 16
+2026-11-27T09:20:59.259175Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.259196Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.259218Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.259240Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.259258Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.259275Z  INFO Reserving memory in BFCArena for Cpu size: 48
+2026-11-27T09:20:59.259300Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.259327Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.259345Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.259362Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.259379Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.259400Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.259513Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.259601Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.259631Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.259658Z  INFO Reserving memory in BFCArena for Cpu size: 16
+2026-11-27T09:20:59.259680Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.259705Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.259729Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.259746Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.259775Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.259807Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.259833Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.259859Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.259879Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.259964Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.259994Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.260028Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.260062Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.260090Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.260109Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.260141Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.260163Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.260189Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.260213Z  INFO Reserving memory in BFCArena for Cpu size: 16
+2026-11-27T09:20:59.260232Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.260264Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.260282Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.260300Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.260327Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.260351Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.260369Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.260475Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.260501Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.260520Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.260544Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.260570Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.260588Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.260615Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.260633Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.260653Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.260680Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.260698Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.260719Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.260737Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.260757Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.260781Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.260807Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.260827Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.260844Z  INFO Reserving memory in BFCArena for Cpu size: 24
+2026-11-27T09:20:59.260864Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.260886Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.260915Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.260933Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.260981Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.261014Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.261034Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.261053Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.261071Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.261089Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.261110Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.261136Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.261158Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.261179Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.261197Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.261219Z  INFO Reserving memory in BFCArena for Cpu size: 3
+2026-11-27T09:20:59.261237Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.261306Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.261337Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.261362Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.261381Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.261408Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.261583Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.261669Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.261716Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.261750Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.261830Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.261859Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.261882Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.261901Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.261962Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.261989Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.262014Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.262036Z  INFO Reserving memory in BFCArena for Cpu size: 12
+2026-11-27T09:20:59.262057Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.262077Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.262216Z  INFO Reserving memory in BFCArena for Cpu size: 24
+2026-11-27T09:20:59.262298Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.262329Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.262350Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.262373Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.262412Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.262444Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.262524Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.262544Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.262565Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.262597Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.262617Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.262635Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.262663Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.262681Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.262699Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.262719Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.262743Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.262760Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.262778Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.262796Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.262824Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.262844Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.262862Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.262882Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.262899Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.262921Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.262960Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.262981Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.262998Z  INFO Reserving memory in BFCArena for Cpu size: 88
+2026-11-27T09:20:59.263016Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.263038Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.263061Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.263080Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.263098Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.263118Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.263138Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.263179Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.263217Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.263273Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.263298Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.263318Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.263335Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.263359Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.263401Z  INFO Reserving memory in BFCArena for Cpu size: 80
+2026-11-27T09:20:59.263422Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.263449Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.263476Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.263494Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.263567Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.263590Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.263607Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.263625Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.263659Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.263679Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.263698Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.263759Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.263788Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.263817Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.263866Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.263906Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.263931Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.264008Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.264027Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.264061Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.264083Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.264106Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.264124Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.264143Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.264167Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.264188Z  INFO Reserving memory in BFCArena for Cpu size: 1
+2026-11-27T09:20:59.264206Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.264237Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.264261Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.264339Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.264359Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.264382Z  INFO Reserving memory in BFCArena for Cpu size: 8
+2026-11-27T09:20:59.264405Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.264422Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.264471Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.264500Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.264528Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.264546Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.264563Z  INFO Reserving memory in BFCArena for Cpu size: 32
+2026-11-27T09:20:59.264593Z  INFO Reserving memory in BFCArena for Cpu size: 4
+2026-11-27T09:20:59.264611Z  INFO Done saving initialized tensors
+2026-11-27T09:20:59.269889Z  INFO Reserving memory in BFCArena for Cpu size: 67584
+2026-11-27T09:20:59.270083Z  INFO Reserving memory in BFCArena for Cpu size: 67584
+2026-11-27T09:20:59.270164Z  INFO Reserving memory in BFCArena for Cpu size: 67584
+2026-11-27T09:20:59.270237Z  INFO Reserving memory in BFCArena for Cpu size: 67584
+2026-11-27T09:20:59.270350Z  INFO Reserving memory in BFCArena for Cpu size: 67584
+2026-11-27T09:20:59.270417Z  INFO Reserving memory in BFCArena for Cpu size: 67584
+2026-11-27T09:20:59.270500Z  INFO Reserving memory in BFCArena for Cpu size: 135168
+2026-11-27T09:20:59.270624Z  INFO Reserving memory in BFCArena for Cpu size: 289344
+2026-11-27T09:20:59.271063Z  INFO Reserving memory in BFCArena for Cpu size: 270336
+2026-11-27T09:20:59.271326Z  INFO Reserving memory in BFCArena for Cpu size: 289344
+2026-11-27T09:20:59.271923Z  INFO Reserving memory in BFCArena for Cpu size: 270336
+2026-11-27T09:20:59.272226Z  INFO Reserving memory in BFCArena for Cpu size: 289344
+2026-11-27T09:20:59.272756Z  INFO Reserving memory in BFCArena for Cpu size: 270336
+2026-11-27T09:20:59.273075Z  INFO Reserving memory in BFCArena for Cpu size: 289344
+2026-11-27T09:20:59.273614Z  INFO Reserving memory in BFCArena for Cpu size: 270336
+2026-11-27T09:20:59.273813Z  INFO Reserving memory in BFCArena for Cpu size: 137280
+2026-11-27T09:20:59.274012Z  INFO Reserving memory in BFCArena for Cpu size: 33792
+2026-11-27T09:20:59.274067Z  INFO Reserving memory in BFCArena for Cpu size: 33792
+2026-11-27T09:20:59.274118Z  INFO Reserving memory in BFCArena for Cpu size: 33792
+2026-11-27T09:20:59.274174Z  INFO Reserving memory in BFCArena for Cpu size: 33792
+2026-11-27T09:20:59.274233Z  INFO Reserving memory in BFCArena for Cpu size: 33792
+2026-11-27T09:20:59.274290Z  INFO Reserving memory in BFCArena for Cpu size: 33792
+2026-11-27T09:20:59.274383Z  INFO Reserving memory in BFCArena for Cpu size: 67584
+2026-11-27T09:20:59.274467Z  INFO Reserving memory in BFCArena for Cpu size: 67584
+2026-11-27T09:20:59.274546Z  INFO Reserving memory in BFCArena for Cpu size: 67584
+2026-11-27T09:20:59.274660Z  INFO Reserving memory in BFCArena for Cpu size: 135168
+2026-11-27T09:20:59.274788Z  INFO Reserving memory in BFCArena for Cpu size: 135168
+2026-11-27T09:20:59.274899Z  INFO Reserving memory in BFCArena for Cpu size: 135168
+2026-11-27T09:20:59.275111Z  INFO Reserving memory in BFCArena for Cpu size: 135168
+2026-11-27T09:20:59.275330Z  INFO Reserving memory in BFCArena for Cpu size: 135168
+2026-11-27T09:20:59.275582Z  INFO Reserving memory in BFCArena for Cpu size: 135168
+2026-11-27T09:20:59.275798Z  INFO Reserving memory in BFCArena for Cpu size: 67584
+2026-11-27T09:20:59.275925Z  INFO Reserving memory in BFCArena for Cpu size: 67584
+2026-11-27T09:20:59.276023Z  INFO Reserving memory in BFCArena for Cpu size: 67584
+2026-11-27T09:20:59.276105Z  INFO Reserving memory in BFCArena for Cpu size: 135168
+2026-11-27T09:20:59.276282Z  INFO Reserving memory in BFCArena for Cpu size: 135168
+2026-11-27T09:20:59.276548Z  INFO Reserving memory in BFCArena for Cpu size: 135168
+2026-11-27T09:20:59.276969Z  INFO Reserving memory in BFCArena for Cpu size: 131072
+2026-11-27T09:20:59.277079Z  INFO Reserving memory in BFCArena for Cpu size: 131072
+2026-11-27T09:20:59.277250Z  INFO Reserving memory in BFCArena for Cpu size: 131072
+2026-11-27T09:20:59.277385Z  INFO Reserving memory in BFCArena for Cpu size: 131072
+2026-11-27T09:20:59.277614Z  INFO Reserving memory in BFCArena for Cpu size: 131072
+2026-11-27T09:20:59.277790Z  INFO Reserving memory in BFCArena for Cpu size: 131072
+2026-11-27T09:20:59.278010Z  INFO Reserving memory in BFCArena for Cpu size: 262144
+2026-11-27T09:20:59.278471Z  INFO Reserving memory in BFCArena for Cpu size: 262144
+2026-11-27T09:20:59.278808Z  INFO Reserving memory in BFCArena for Cpu size: 262144
+2026-11-27T09:20:59.279312Z  INFO Reserving memory in BFCArena for Cpu size: 262144
+2026-11-27T09:20:59.279639Z  INFO Reserving memory in BFCArena for Cpu size: 262144
+2026-11-27T09:20:59.279980Z  INFO Reserving memory in BFCArena for Cpu size: 262144
+2026-11-27T09:20:59.280294Z  INFO Reserving memory in BFCArena for Cpu size: 262144
+2026-11-27T09:20:59.280649Z  INFO Reserving memory in BFCArena for Cpu size: 262144
+2026-11-27T09:20:59.281079Z  INFO Reserving memory in BFCArena for Cpu size: 262144
+2026-11-27T09:20:59.281400Z  INFO Reserving memory in BFCArena for Cpu size: 262144
+2026-11-27T09:20:59.281721Z  INFO Reserving memory in BFCArena for Cpu size: 262144
+2026-11-27T09:20:59.282059Z  INFO Reserving memory in BFCArena for Cpu size: 262144
+2026-11-27T09:20:59.282372Z  INFO Reserving memory in BFCArena for Cpu size: 262144
+2026-11-27T09:20:59.282807Z  INFO Reserving memory in BFCArena for Cpu size: 262144
+2026-11-27T09:20:59.283217Z  INFO Reserving memory in BFCArena for Cpu size: 262144
+2026-11-27T09:20:59.283642Z  INFO Reserving memory in BFCArena for Cpu size: 262144
+2026-11-27T09:20:59.283976Z  INFO Reserving memory in BFCArena for Cpu size: 262144
+2026-11-27T09:20:59.284379Z  INFO Reserving memory in BFCArena for Cpu size: 262144
+2026-11-27T09:20:59.284812Z  INFO Reserving memory in BFCArena for Cpu size: 131072
+2026-11-27T09:20:59.284921Z  INFO Reserving memory in BFCArena for Cpu size: 131072
+2026-11-27T09:20:59.285046Z  INFO Reserving memory in BFCArena for Cpu size: 131072
+2026-11-27T09:20:59.285175Z  INFO Reserving memory in BFCArena for Cpu size: 131072
+2026-11-27T09:20:59.285351Z  INFO Reserving memory in BFCArena for Cpu size: 131072
+2026-11-27T09:20:59.285527Z  INFO Reserving memory in BFCArena for Cpu size: 131072
+2026-11-27T09:20:59.285646Z  INFO Reserving memory in BFCArena for Cpu size: 131072
+2026-11-27T09:20:59.285772Z  INFO Reserving memory in BFCArena for Cpu size: 131072
+2026-11-27T09:20:59.285895Z  INFO Reserving memory in BFCArena for Cpu size: 131072
+2026-11-27T09:20:59.286087Z  INFO Reserving memory in BFCArena for Cpu size: 131072
+2026-11-27T09:20:59.286211Z  INFO Reserving memory in BFCArena for Cpu size: 131072
+2026-11-27T09:20:59.286378Z  INFO Reserving memory in BFCArena for Cpu size: 131072
+2026-11-27T09:20:59.287074Z  INFO Reserving memory in BFCArena for Cpu size: 393216
+2026-11-27T09:20:59.287688Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.290745Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.294043Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.297559Z  INFO Reserving memory in BFCArena for Cpu size: 4194304
+2026-11-27T09:20:59.302698Z  INFO Reserving memory in BFCArena for Cpu size: 2097152
+2026-11-27T09:20:59.304016Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.306836Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.315053Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.324164Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.327871Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.329706Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.331579Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.333498Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.341158Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.346088Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.347924Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.349761Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.351619Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.353448Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.357772Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.362324Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.363961Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.365417Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.367079Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.368722Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.373363Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.378209Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.379699Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.381326Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.382904Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.384386Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.388815Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.393013Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.394670Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.396311Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.397890Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.399604Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.404251Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.408335Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.410022Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.411763Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.413557Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.415308Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.419933Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.424513Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.426192Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.427872Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.429463Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.431142Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.436370Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.440859Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.442639Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.444193Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.445911Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.447715Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.452213Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.456836Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.458527Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.460122Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.461809Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.463503Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.468466Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.472979Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.474696Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.476228Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.477838Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.479448Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.484042Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.489095Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.490865Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.492540Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.494159Z  INFO Reserving memory in BFCArena for Cpu size: 2359296
+2026-11-27T09:20:59.495870Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.501444Z  INFO Reserving memory in BFCArena for Cpu size: 6291456
+2026-11-27T09:20:59.506082Z  INFO Reserving memory in BFCArena for Cpu size: 395264
+2026-11-27T09:20:59.506484Z  INFO Reserving memory in BFCArena for Cpu size: 5242880
+2026-11-27T09:20:59.510983Z  INFO Reserving memory in BFCArena for Cpu size: 2097152
+2026-11-27T09:20:59.512623Z  INFO Reserving memory in BFCArena for Cpu size: 5242880
+2026-11-27T09:20:59.516678Z  INFO Reserving memory in BFCArena for Cpu size: 2097152
+2026-11-27T09:20:59.518523Z  INFO Reserving memory in BFCArena for Cpu size: 5242880
+2026-11-27T09:20:59.525220Z  INFO Reserving memory in BFCArena for Cpu size: 2097152
+2026-11-27T09:20:59.526915Z  INFO Reserving memory in BFCArena for Cpu size: 5242880
+2026-11-27T09:20:59.534178Z  INFO Reserving memory in BFCArena for Cpu size: 2097152
+2026-11-27T09:20:59.536044Z  INFO Reserving memory in BFCArena for Cpu size: 33024
+2026-11-27T09:20:59.536216Z  INFO Reserving memory in BFCArena for Cpu size: 5242880
+2026-11-27T09:20:59.543775Z  INFO Reserving memory in BFCArena for Cpu size: 2097152
+2026-11-27T09:20:59.545789Z  INFO Reserving memory in BFCArena for Cpu size: 576
+2026-11-27T09:20:59.545968Z  INFO Reserving memory in BFCArena for Cpu size: 68608
+2026-11-27T09:20:59.546018Z  INFO Reserving memory in BFCArena for Cpu size: 67584
+2026-11-27T09:20:59.546136Z  INFO Reserving memory in BFCArena for Cpu size: 3584
+2026-11-27T09:20:59.546154Z  INFO Reserving memory in BFCArena for Cpu size: 2816
+2026-11-27T09:20:59.546372Z  INFO Extending BFCArena for Cpu. bin_num:10 (requested) num_bytes: 458752 (actual) rounded_bytes:458752
+2026-11-27T09:20:59.546393Z  INFO Extended allocation by 1048576 bytes.
+2026-11-27T09:20:59.546415Z  INFO Total allocated bytes: 78777842
+2026-11-27T09:20:59.546430Z  INFO Allocated memory at 0x7ff35f0a7180 to 0x7ff35f1a7180
+2026-11-27T09:20:59.547889Z  INFO Extending BFCArena for Cpu. bin_num:10 (requested) num_bytes: 458752 (actual) rounded_bytes:458752
+2026-11-27T09:20:59.547911Z  INFO Extended allocation by 2097152 bytes.
+2026-11-27T09:20:59.547924Z  INFO Total allocated bytes: 80874994
+2026-11-27T09:20:59.547954Z  INFO Allocated memory at 0x7ff335e00280 to 0x7ff336000280
+2026-11-27T09:20:59.553246Z  INFO Extending BFCArena for Cpu. bin_num:9 (requested) num_bytes: 180224 (actual) rounded_bytes:180224
+2026-11-27T09:20:59.553270Z  INFO Extended allocation by 4194304 bytes.
+2026-11-27T09:20:59.553283Z  INFO Total allocated bytes: 85069298
+2026-11-27T09:20:59.553297Z  INFO Allocated memory at 0x7ff3355001c0 to 0x7ff3359001c0
+2026-11-27T09:20:59.554809Z  INFO Extending BFCArena for Cpu. bin_num:15 (requested) num_bytes: 10485760 (actual) rounded_bytes:10485760
+2026-11-27T09:20:59.554874Z  INFO Extended allocation by 16777216 bytes.
+2026-11-27T09:20:59.554888Z  INFO Total allocated bytes: 101846514
+2026-11-27T09:20:59.554925Z  INFO Allocated memory at 0x7ff3587fa040 to 0x7ff3597fa040
+2026-11-27T09:20:59.579845Z  INFO Extending BFCArena for Cpu. bin_num:12 (requested) num_bytes: 1310720 (actual) rounded_bytes:1310720
+2026-11-27T09:20:59.579933Z  INFO Extended allocation by 16777216 bytes.
+2026-11-27T09:20:59.579978Z  INFO Total allocated bytes: 118623730
+2026-11-27T09:20:59.580004Z  INFO Allocated memory at 0x7ff3597fc040 to 0x7ff35a7fc040
+2026-11-27T09:20:59.592809Z  INFO Reserving memory in BFCArena for Cpu size: 4160
+2026-11-27T09:20:59.592848Z  INFO Reserving memory in BFCArena for Cpu size: 256
+2026-11-27T09:20:59.592887Z  INFO Reserving memory in BFCArena for Cpu size: 3
+2026-11-27T09:20:59.599777Z  INFO Reserving memory in BFCArena for Cpu size: 4160
+2026-11-27T09:20:59.599802Z  INFO Reserving memory in BFCArena for Cpu size: 256
+2026-11-27T09:20:59.599839Z  INFO Reserving memory in BFCArena for Cpu size: 3
+2026-11-27T09:20:59.599870Z  INFO Reserving memory in BFCArena for Cpu size: 1585152
+2026-11-27T09:20:59.600125Z  INFO Reserving memory in BFCArena for Cpu size: 1579008
+2026-11-27T09:20:59.611746Z  INFO Reserving memory in BFCArena for Cpu size: 532480
+2026-11-27T09:20:59.611871Z  INFO Reserving memory in BFCArena for Cpu size: 526336
+2026-11-27T09:20:59.612884Z  INFO Reserving memory in BFCArena for Cpu size: 3354624
+2026-11-27T09:20:59.613544Z  INFO Reserving memory in BFCArena for Cpu size: 3348480
+2026-11-27T09:20:59.629997Z  INFO Reserving memory in BFCArena for Cpu size: 1122304
+2026-11-27T09:20:59.630245Z  INFO Reserving memory in BFCArena for Cpu size: 1116160
+2026-11-27T09:20:59.632221Z  INFO Reserving memory in BFCArena for Cpu size: 3354624
+2026-11-27T09:20:59.632663Z  INFO Reserving memory in BFCArena for Cpu size: 3348480
+2026-11-27T09:20:59.640903Z  INFO Extending BFCArena for Cpu. bin_num:13 (requested) num_bytes: 3145728 (actual) rounded_bytes:3145728
+2026-11-27T09:20:59.640987Z  INFO Extended allocation by 33554432 bytes.
+2026-11-27T09:20:59.641004Z  INFO Total allocated bytes: 162135666
+2026-11-27T09:20:59.641019Z  INFO Allocated memory at 0x7ff349fff040 to 0x7ff34bfff040
+2026-11-27T09:20:59.648505Z  INFO Reserving memory in BFCArena for Cpu size: 1122304
+2026-11-27T09:20:59.648687Z  INFO Reserving memory in BFCArena for Cpu size: 1116160
+2026-11-27T09:20:59.650591Z  INFO Reserving memory in BFCArena for Cpu size: 3354624
+2026-11-27T09:20:59.651202Z  INFO Reserving memory in BFCArena for Cpu size: 3348480
+2026-11-27T09:20:59.670573Z  INFO Reserving memory in BFCArena for Cpu size: 1122304
+2026-11-27T09:20:59.670758Z  INFO Reserving memory in BFCArena for Cpu size: 1116160
+2026-11-27T09:20:59.672561Z  INFO Reserving memory in BFCArena for Cpu size: 1677312
+2026-11-27T09:20:59.672883Z  INFO Reserving memory in BFCArena for Cpu size: 1674240
+2026-11-27T09:20:59.678994Z  INFO Reserving memory in BFCArena for Cpu size: 561152
+2026-11-27T09:20:59.679051Z  INFO Reserving memory in BFCArena for Cpu size: 558080
+2026-11-27T09:20:59.685950Z  INFO Session successfully initialized.
+2026-11-27T09:20:59.686223Z  INFO ⚙️ [Sovereign-Cascade] ONNX Session [0] committed on Tier 3 (CPU Thread Pool).
+2026-11-27T09:20:59.686615Z  INFO ✅ [ONNX Pool] 1 session(s) loaded and ready.
+2026-11-27T09:20:59.756541Z DEBUG 🎙️ [TTS Router] Original Length: 75 chars | Total Sentences/Chunks: 2
+2026-11-27T09:20:59.758642Z DEBUG 🎯 [TTS Router] FamilyAdapter Detected Model Family: Kokoro
+2026-11-27T09:20:59.759326Z DEBUG 🎙️ [TTS Router] Dynamically Resolved Target Sample Rate: 24000 Hz
+2026-11-27T09:20:59.759347Z DEBUG 🎙️ [TTS Router] Kokoro Handler Activated with sample_rate=24000Hz.
+2026-11-27T09:20:59.759905Z DEBUG 📖 [PhonemeMap] Loaded 115 symbol table entries (max_key_len=3) from "tokenizer.json"
+2026-11-27T09:20:59.761032Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-27T09:20:59.774690Z DEBUG 📖 [Kokoro Handler] Loaded style vector: "af_heart.bin" (130560 dims)
+2026-11-27T09:20:59.775000Z  INFO 📖 [Lexicon] Downloading en_US.txt (3180267 bytes)
+2026-11-27T09:20:59.775963Z DEBUG starting new connection: https://raw.githubusercontent.com/
+2026-11-27T09:20:59.777253Z DEBUG connecting to 185.199.108.133:443
+2026-11-27T09:20:59.788426Z DEBUG connected to 185.199.108.133:443
+2026-11-27T09:21:00.021025Z DEBUG pooling idle connection for ("https", raw.githubusercontent.com)
+2026-11-27T09:21:00.458826Z  INFO 📖 [Lexicon] Saved 125927 words to "/home/<user>/run84/home/data/lexicons/en_US-2af6f154.bin"
+2026-11-27T09:21:00.629035Z  INFO 📖 [Lexicon] Loaded 125927 words for 'en-us' from en_US.txt
+2026-11-27T09:21:00.630110Z DEBUG 📖 [PhonemeMap] Loaded 115 symbol table entries (max_key_len=3) from "tokenizer.json"
+2026-11-27T09:21:02.213453Z  INFO 🔤 [G2P Router] Dictionary rewritten into the model's 'misaki' phoneme symbols
+2026-11-27T09:21:02.214035Z DEBUG 🔤 [G2P Router] 1 words from the lexicon, 0 not in it (said from dictionary pieces or as written)
+2026-11-27T09:21:02.214087Z DEBUG 🎙️ [Kokoro Handler] Chunk 1/2: 7 chars → 9 tokens
+2026-11-27T09:21:02.214115Z DEBUG 🎙️ [Kokoro Handler] Executing with 9 phoneme IDs, style_dim=130560, speed=1
+2026-11-27T09:21:02.290560Z DEBUG pooling idle connection for ("https", developer.download.nvidia.com)
+2026-11-27T09:21:02.502644Z  INFO Extending BFCArena for Cpu. bin_num:13 (requested) num_bytes: 3502592 (actual) rounded_bytes:3502592
+2026-11-27T09:21:02.502708Z  INFO Extended allocation by 67108864 bytes.
+2026-11-27T09:21:02.502724Z  INFO Total allocated bytes: 237082226
+2026-11-27T09:21:02.502739Z  INFO Allocated memory at 0x7ff31ffff040 to 0x7ff323fff040
+2026-11-27T09:21:02.620582Z DEBUG 📖 [PhonemeMap] Loaded 115 symbol table entries (max_key_len=3) from "tokenizer.json"
+2026-11-27T09:21:02.620846Z DEBUG 🔤 [G2P Router] 12 words from the lexicon, 2 not in it (said from dictionary pieces or as written)
+2026-11-27T09:21:02.620961Z DEBUG 🎙️ [Kokoro Handler] Chunk 2/2: 67 chars → 75 tokens
+2026-11-27T09:21:02.620991Z DEBUG 🎙️ [Kokoro Handler] Executing with 75 phoneme IDs, style_dim=130560, speed=1
+2026-11-27T09:21:04.114069Z DEBUG 🎙️ [TTS Router] Original Length: 75 chars | Total Sentences/Chunks: 2
+2026-11-27T09:21:04.115734Z DEBUG 🎯 [TTS Router] FamilyAdapter Detected Model Family: Kokoro
+2026-11-27T09:21:04.116372Z DEBUG 🎙️ [TTS Router] Dynamically Resolved Target Sample Rate: 24000 Hz
+2026-11-27T09:21:04.116391Z DEBUG 🎙️ [TTS Router] Kokoro Handler Activated with sample_rate=24000Hz.
+2026-11-27T09:21:04.116846Z DEBUG 📖 [PhonemeMap] Loaded 115 symbol table entries (max_key_len=3) from "tokenizer.json"
+2026-11-27T09:21:04.117701Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-27T09:21:04.130072Z DEBUG 📖 [Kokoro Handler] Loaded style vector: "af_heart.bin" (130560 dims)
+2026-11-27T09:21:04.130331Z DEBUG 🔤 [G2P Router] 1 words from the lexicon, 0 not in it (said from dictionary pieces or as written)
+2026-11-27T09:21:04.130374Z DEBUG 🎙️ [Kokoro Handler] Chunk 1/2: 7 chars → 9 tokens
+2026-11-27T09:21:04.130398Z DEBUG 🎙️ [Kokoro Handler] Executing with 9 phoneme IDs, style_dim=130560, speed=1
+2026-11-27T09:21:04.514280Z DEBUG 🔤 [G2P Router] 12 words from the lexicon, 2 not in it (said from dictionary pieces or as written)
+2026-11-27T09:21:04.514373Z DEBUG 🎙️ [Kokoro Handler] Chunk 2/2: 67 chars → 75 tokens
+2026-11-27T09:21:04.514397Z DEBUG 🎙️ [Kokoro Handler] Executing with 75 phoneme IDs, style_dim=130560, speed=1
+2026-11-27T09:21:04.514671Z  INFO Extending BFCArena for Cpu. bin_num:18 (requested) num_bytes: 87767808 (actual) rounded_bytes:87767808
+2026-11-27T09:21:04.514725Z  INFO Extended allocation by 134217728 bytes.
+2026-11-27T09:21:04.514739Z  INFO Total allocated bytes: 371299954
+2026-11-27T09:21:04.514754Z  INFO Allocated memory at 0x7ff317ffe040 to 0x7ff31fffe040
+2026-11-27T09:21:05.904727Z DEBUG 🎙️ [TTS Router] Original Length: 75 chars | Total Sentences/Chunks: 2
+2026-11-27T09:21:05.906398Z DEBUG 🎯 [TTS Router] FamilyAdapter Detected Model Family: Kokoro
+2026-11-27T09:21:05.907030Z DEBUG 🎙️ [TTS Router] Dynamically Resolved Target Sample Rate: 24000 Hz
+2026-11-27T09:21:05.907062Z DEBUG 🎙️ [TTS Router] Kokoro Handler Activated with sample_rate=24000Hz.
+2026-11-27T09:21:05.907537Z DEBUG 📖 [PhonemeMap] Loaded 115 symbol table entries (max_key_len=3) from "tokenizer.json"
+2026-11-27T09:21:05.908380Z  INFO 🎙️ [Kokoro Handler] Voice 'af_heart' for language 'en-us'
+2026-11-27T09:21:05.920738Z DEBUG 📖 [Kokoro Handler] Loaded style vector: "af_heart.bin" (130560 dims)
+2026-11-27T09:21:05.920994Z DEBUG 🔤 [G2P Router] 1 words from the lexicon, 0 not in it (said from dictionary pieces or as written)
+2026-11-27T09:21:05.921041Z DEBUG 🎙️ [Kokoro Handler] Chunk 1/2: 7 chars → 9 tokens
+2026-11-27T09:21:05.921065Z DEBUG 🎙️ [Kokoro Handler] Executing with 9 phoneme IDs, style_dim=130560, speed=1
+2026-11-27T09:21:06.303763Z DEBUG 🔤 [G2P Router] 12 words from the lexicon, 2 not in it (said from dictionary pieces or as written)
+2026-11-27T09:21:06.303854Z DEBUG 🎙️ [Kokoro Handler] Chunk 2/2: 67 chars → 75 tokens
+2026-11-27T09:21:06.303877Z DEBUG 🎙️ [Kokoro Handler] Executing with 75 phoneme IDs, style_dim=130560, speed=1

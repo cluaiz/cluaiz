@@ -1,0 +1,17 @@
+2026-11-27T09:20:56.815513Z  INFO NVIDIA CUDA + cuDNN 9 runtime libraries not installed yet; ONNX models run without CUDA until they are (run `cluaiz calibrate` to install them now)
+2026-11-27T09:20:56.901210Z DEBUG [llama.cpp] ggml_cuda_init: found 1 CUDA devices (Total VRAM: 22563 MiB):
+2026-11-27T09:20:56.903422Z DEBUG [llama.cpp] load_backend: loaded CUDA backend from /home/<user>/cluaiz/target/debug/libggml-cuda.so
+2026-11-27T09:20:57.932326Z  INFO TTS package load admission (estimates, not a reservation) model=kokoro-82m-v1.0-onnx-UINT8 gpu=true host_estimate_bytes=1251206456 device_estimate_bytes=1251206456
+2026-11-27T09:20:57.976733Z  INFO 📦 [ONNX Engine] Loading primary model from: /home/<user>/run84/home/models/tts/kokoro-82m-v1.0-onnx-UINT8/model_uint8.onnx (pool_size: 1)
+2026-11-27T09:20:57.979804Z DEBUG 📖 [ONNX Engine] "/home/<user>/run84/home/models/tts/kokoro-82m-v1.0-onnx-UINT8/tokenizer.json" is a vocabulary only: data did not match any variant of untagged enum PostProcessorWrapper at line 54 column 3
+2026-11-27T09:20:58.000693Z  INFO CUDA/cuDNN 9 runtime libraries not yet present; spawning background provisioning thread and using CPU/DirectML for the current session drivers_dir="/home/<user>/run84/home/bin"
+2026-11-27T09:20:58.000842Z  INFO Successfully registered `CPUExecutionProvider` source=session options
+2026-11-27T09:20:58.000974Z  INFO Session Options {  execution_mode:0 execution_order:DEFAULT enable_profiling:0 optimized_model_filepath:"" enable_mem_pattern:1 enable_mem_reuse:1 enable_cpu_mem_arena:1 profile_file_prefix:onnxruntime_profile_ session_logid: session_log_severity_level:-1 session_log_verbosity_level:0 max_num_graph_transformation_steps:10 graph_optimization_level:3 intra_op_param:OrtThreadPoolParams { thread_pool_size: 0 auto_set_affinity: 0 allow_spinning: 0 spin_duration_us: -1 spin_backoff_max: 1 dynamic_block_base_: 0 stack_size: 0 affinity_str:  set_denormal_as_zero: 0 } inter_op_param:OrtThreadPoolParams { thread_pool_size: 0 auto_set_affinity: 0 allow_spinning: 0 spin_duration_us: -1 spin_backoff_max: 1 dynamic_block_base_: 0 stack_size: 0 affinity_str:  set_denormal_as_zero: 0 } use_per_session_threads:1 thread_pool_allow_spinning:1 use_deterministic_compute:0 ep_selection_policy:5 config_options: {  } }
+  ⬇️  [Cluaiz CUDA Setup] Downloading NVIDIA cuda_cudart v13.0.48 (cuda13, 1.4 MB)...
+2026-11-27T09:20:58.001301Z  INFO Downloading NVIDIA runtime archive for ONNX CUDA Execution Provider component=cuda_cudart version=13.0.48 cuda_variant=cuda13 platform=linux-x86_64 bytes=1487372
+2026-11-27T09:20:58.535869Z  INFO GraphTransformer TransposeOptimizer_CPUExecutionProvider modified: 1 with status: OK
+  ✅  [Cluaiz CUDA Setup] Installed cuda_cudart v13.0.48 into "/home/<user>/run84/home/bin"
+  ⬇️  [Cluaiz CUDA Setup] Downloading NVIDIA libcublas v13.0.0.19 (cuda13, 760.4 MB)...
+2026-11-27T09:20:58.768438Z  INFO Downloading NVIDIA runtime archive for ONNX CUDA Execution Provider component=libcublas version=13.0.0.19 cuda_variant=cuda13 platform=linux-x86_64 bytes=797380780
+2026-11-27T09:20:59.686223Z  INFO ⚙️ [Sovereign-Cascade] ONNX Session [0] committed on Tier 3 (CPU Thread Pool).
+2026-11-27T09:20:59.686615Z  INFO ✅ [ONNX Pool] 1 session(s) loaded and ready.

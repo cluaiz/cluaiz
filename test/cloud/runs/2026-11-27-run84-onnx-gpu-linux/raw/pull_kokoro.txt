@@ -1,0 +1,6 @@
+  ┌─────────────────────────────────────────────────────────────┐
+  │ 🆔 Registered ID:  kokoro-82m-v1.0-onnx-UINT8
+  │ 📁 Vault Path:     /home/<user>/run84/home/models/tts/kokoro-82m-v1.0-onnx-UINT8
+  │ 🚀 Run Command:   cluaiz run kokoro-82m-v1.0-onnx-UINT8
+  └─────────────────────────────────────────────────────────────┘
+

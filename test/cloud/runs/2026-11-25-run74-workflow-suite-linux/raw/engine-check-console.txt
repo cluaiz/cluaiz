@@ -1,0 +1,10 @@
+server ready after 7 s
+PASS call, switch, parallel, repeat, wait, run, return and rerun_from {"status":"succeeded","rerun":"succeeded","outputs":{"child":{"ok":true}}}
+PASS fail step yields an explicit error {"status":"failed","error":"Expected acceptance failure"}
+PASS emit step, event trigger, Engine event trigger {"emit":"succeeded","event":"event","value":42,"engineEvent":"engine"}
+PASS poll trigger {"kind":"poll","status":"succeeded","runId":"run_593b914f52f8"}
+PASS file trigger sees a new matching file {"kind":"file","status":"succeeded","runId":"run_6e2ca3a746f0"}
+PASS schedule trigger {"kind":"schedule","status":"succeeded","runId":"run_406ff0320ad4"}
+PASS every trigger {"kind":"every","status":"succeeded","runId":"run_aa2db1b83dd9"}
+Totals: 7 passed, 0 failed
+exit=0

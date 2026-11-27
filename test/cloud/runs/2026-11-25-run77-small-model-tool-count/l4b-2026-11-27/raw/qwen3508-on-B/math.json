@@ -1,0 +1,260 @@
+{
+  "status": 200,
+  "seconds": 11.52,
+  "steps": 3,
+  "engine_calls": [
+    "tools 'find_tools' (sub_func: None)",
+    "tools 'load_tool' (sub_func: None)",
+    "plugin 'math' (sub_func: Some(\"math_evaluate\"))"
+  ],
+  "reply": {
+    "choices": [
+      {
+        "finish_reason": "stop",
+        "index": 0,
+        "message": {
+          "content": "42",
+          "reasoning_content": "<think>",
+          "role": "assistant"
+        }
+      }
+    ],
+    "context_report": {
+      "plan": {
+        "available_tokens": 12834,
+        "compaction": null,
+        "history_mode": "recent",
+        "messages_over_budget": 0,
+        "n_ctx": 16384,
+        "needs_compaction": false,
+        "notes": {
+          "system": [],
+          "with_message": []
+        },
+        "policy": {
+          "auto_load": "off",
+          "compact_at_pct": 85,
+          "compact_to_pct": 60,
+          "cross_chat": "ask",
+          "evidence_cap_pct": 15,
+          "indexer": "auto",
+          "margin_pct": 2,
+          "mcp_prewarm": "on",
+          "notes": "ask",
+          "notes_change": "ask",
+          "notes_history_days": 0,
+          "notes_match": "auto",
+          "notes_max": 3,
+          "notes_recall_pct": 50,
+          "notes_similar_pct": 50,
+          "project_files": "on",
+          "recent_turns_min": 2,
+          "small_model_tools": "lean",
+          "suggestions_cap_pct": 5,
+          "tool_format": "native"
+        },
+        "project": {
+          "budget_chars": 16384,
+          "chars": 546,
+          "parts": [
+            {
+              "chars": 177,
+              "kind": "skill",
+              "name": "math",
+              "placement": "index",
+              "total": 164
+            },
+            {
+              "chars": 148,
+              "kind": "skill",
+              "name": "filesystem",
+              "placement": "index",
+              "total": 125
+            }
+          ],
+          "problems": [],
+          "read_item": false,
+          "root": "/home/<vps>/run77/home/<vps>",
+          "with_message": [],
+          "workflow": null
+        },
+        "protected_tokens": 151,
+        "recall": null,
+        "reserve": {
+          "answer": 1536,
+          "margin": 327,
+          "thinking": 1536
+        },
+        "task": null,
+        "used_tokens": 0
+      },
+      "timing": {
+        "count_ms": 0,
+        "ingest_ms": 0,
+        "matcher_ms": 0.11,
+        "model_load_ms": 20,
+        "plan_ms": 0,
+        "preflight_ms": 24,
+        "recall_ms": 0,
+        "registry_template_ms": 1,
+        "render_ms": 0,
+        "tools_ms": 0
+      },
+      "tools": {
+        "auto_loaded": null,
+        "bound": [],
+        "conversation_tokens": 122,
+        "estimate": "load costs and load room are estimated from characters",
+        "events": [
+          {
+            "ok": true,
+            "op": "find_tools",
+            "result_tokens": 63,
+            "target": "math"
+          },
+          {
+            "ok": true,
+            "op": "load_tool",
+            "result_tokens": 386,
+            "target": "math"
+          }
+        ],
+        "format": "native",
+        "hint_tokens": 0,
+        "load_room_tokens": 13156,
+        "loaded_in_chat": [],
+        "meta_tools": true,
+        "search_offered": false,
+        "small_model": {
+          "applied": true,
+          "left_out": [
+            "read_item"
+          ],
+          "params": 752393024,
+          "setting": "lean",
+          "threshold_params": 2000000000
+        },
+        "suggested": [],
+        "system_tools_tokens": 28,
+        "template_tools_tokens": 540,
+        "token_counts": "tokenizer"
+      }
+    },
+    "created": 1795771224,
+    "engine": {
+      "context": {
+        "cache_n": 2065,
+        "cause": "restart",
+        "dropped_messages": 0,
+        "dropped_tokens": 0,
+        "edit_at": 2068,
+        "kv_reuse": "prefix",
+        "n_ctx": 16384,
+        "n_tokens": 2157,
+        "processed_tokens": 86,
+        "prompt_tokens": 2151,
+        "reused_chunk_tokens": 0,
+        "shifted_tokens": 0,
+        "stop": "eos",
+        "truncated": false
+      },
+      "load": {
+        "cache_type": "Kv16",
+        "n_cpu_moe": 0,
+        "n_ctx": 16384,
+        "n_gpu_layers": -1,
+        "offload_kqv": true,
+        "op_offload": true,
+        "placement": "GpuOnly",
+        "planner": "Full GPU: weights 0.49 + KV 0.21 + buffers 0.49 = 1.18 GB vs usable VRAM 21.83 GB",
+        "settings": {
+          "flash_attn": "Auto",
+          "n_batch": 512,
+          "n_threads": 4,
+          "n_threads_batch": 4,
+          "n_ubatch": 512,
+          "use_mmap": true
+        },
+        "total_layers": 24
+      },
+      "thinking": {
+        "budget_tokens": 9993,
+        "capped": false,
+        "effort": "auto",
+        "ended_by": "model",
+        "used_tokens": 2
+      },
+      "timings": {
+        "predicted_ms": 32.032000000000004,
+        "predicted_n": 6,
+        "predicted_per_second": 187.3126873126873,
+        "prompt_ms": 32.091,
+        "prompt_n": 86,
+        "prompt_per_second": 2679.8790938269294
+      }
+    },
+    "id": "chatcmpl-37ec7cc3f0bf42738d2f2ad5ab15707e",
+    "model": "qwen3.5-0.8b-gguf-Q4_K_M",
+    "object": "chat.completion",
+    "usage": {
+      "completion_tokens": 634,
+      "completion_tokens_details": {
+        "reasoning_tokens": 519
+      },
+      "model_load_ms": 20,
+      "prompt_tokens": 2151,
+      "time_to_first_token_ms": 91,
+      "tokens_per_second": 55.6,
+      "total_time_ms": 11493,
+      "total_tokens": 2785
+    }
+  },
+  "log_lines": [
+    "2026-11-27T09:20:12.878266Z  INFO \ud83e\udd16 [API] Model override requested. Resolved 'qwen3.5-0.8b-gguf-Q4_K_M' to \"/home/<vps>/run77/home/<vps>/chat/qwen3.5-0.8b-gguf-Q4_K_M/Qwen3.5-0.8B-Q4_K_M.gguf\"",
+    "2026-11-27T09:20:12.901115Z  INFO \ud83e\uddee [Tokens] Conversation 122 tokens (2 messages) counted in 0.08 ms",
+    "2026-11-27T09:20:12.901552Z  INFO \ud83e\udeb6 [Tools] Small model (752393024 weights, under 2000000000): only the client's tools, bound tools and tool search; left out: [\"read_item\"] (context_policy small_model_tools: \"full\" keeps them)",
+    "2026-11-27T09:20:12.902554Z  INFO \u23f1\ufe0f [Preflight] 24 ms total | model load 20 ms | registry + template + tags 1 ms | skills + tools 0 ms | rest 0 ms",
+    "2026-11-27T09:20:12.989796Z  INFO \ud83e\uddf0 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)",
+    "2026-11-27T09:20:12.989858Z  INFO \ud83c\udfb2 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.",
+    "2026-11-27T09:20:12.989913Z  INFO \ud83e\udde0 [NativeStream] Auto thinking ceiling 10326 tokens (273.7 t/s for up to 180 s, room 13769)",
+    "2026-11-27T09:20:15.773267Z  INFO \ud83d\uded1 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.",
+    "2026-11-27T09:20:15.773644Z  INFO \ud83e\uddf0 [NativeTools] Parsed 1 call(s): [\"find_tools\"]",
+    "2026-11-27T09:20:15.773678Z  INFO \u23f1\ufe0f [NativeStream] llama.cpp timings: prompt 1079 tokens in 74 ms (14589.36 t/s) | generation 412 tokens in 1474 ms (279.48 t/s)",
+    "2026-11-27T09:20:15.773697Z  INFO \ud83e\udde0 [Context] prompt 1079 tokens (0 from the cache) | context 1491 of 16384 | stop eos",
+    "2026-11-27T09:20:15.774016Z  INFO \ud83d\udd0d [API] Tool call: tools 'find_tools' (sub_func: None) with payload: {\"query\":\"math\"}",
+    "2026-11-27T09:20:15.774329Z  INFO \ud83d\udd0e [Tools] find_tools(\"math\")",
+    "2026-11-27T09:20:15.774562Z  INFO \u2705 [API] Tool 'find_tools' done (220 chars)",
+    "2026-11-27T09:20:15.774634Z  INFO \ud83d\udd04 [API] Step 1: generating again with the tool result",
+    "2026-11-27T09:20:15.790175Z  INFO \ud83e\udde0 [Context] Restarted from the checkpoint at 1075 tokens (sliding window or recurrent state)",
+    "2026-11-27T09:20:15.823358Z  INFO \ud83e\uddf0 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)",
+    "2026-11-27T09:20:15.823418Z  INFO \ud83c\udfb2 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.",
+    "2026-11-27T09:20:15.823481Z  INFO \ud83e\udde0 [NativeStream] Auto thinking ceiling 10563 tokens (279.5 t/s for up to 180 s, room 14085)",
+    "2026-11-27T09:20:17.971629Z  INFO \ud83d\uded1 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.",
+    "2026-11-27T09:20:17.971987Z  INFO \ud83e\uddf0 [NativeTools] Parsed 1 call(s): [\"load_tool\"]",
+    "2026-11-27T09:20:17.972020Z  INFO \u23f1\ufe0f [NativeStream] llama.cpp timings: prompt 100 tokens in 30 ms (3349.19 t/s) | generation 94 tokens in 344 ms (273.60 t/s)",
+    "2026-11-27T09:20:17.972039Z  INFO \ud83e\udde0 [Context] prompt 1175 tokens (1075 from the cache) | context 1269 of 16384 | stop eos",
+    "2026-11-27T09:20:17.972309Z  INFO \ud83d\udd0d [API] Tool call: tools 'load_tool' (sub_func: None) with payload: {\"functions\":[\"multiply\"],\"id\":\"math\"}",
+    "2026-11-27T09:20:17.973431Z  INFO \ud83d\udce6 [Tools] load_tool(\"math\") -> Some(\"math\")",
+    "2026-11-27T09:20:17.973979Z  INFO \u2705 [API] Tool 'load_tool' done (1350 chars)",
+    "2026-11-27T09:20:17.974045Z  INFO \ud83d\udd04 [API] Step 2: generating again with the tool result",
+    "2026-11-27T09:20:18.120845Z  INFO \ud83e\uddf0 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)",
+    "2026-11-27T09:20:18.120907Z  INFO \ud83c\udfb2 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.",
+    "2026-11-27T09:20:18.120999Z  INFO \ud83e\udde0 [NativeStream] Auto thinking ceiling 9963 tokens (273.6 t/s for up to 180 s, room 13285)",
+    "2026-11-27T09:20:20.399972Z  INFO \ud83d\uded1 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.",
+    "2026-11-27T09:20:20.400325Z  INFO \ud83e\uddf0 [NativeTools] Parsed 1 call(s): [\"math_evaluate\"]",
+    "2026-11-27T09:20:20.400358Z  INFO \u23f1\ufe0f [NativeStream] llama.cpp timings: prompt 2069 tokens in 126 ms (16372.95 t/s) | generation 122 tokens in 450 ms (271.29 t/s)",
+    "2026-11-27T09:20:20.400376Z  INFO \ud83e\udde0 [Context] prompt 2069 tokens (0 from the cache) | context 2191 of 16384 | stop eos",
+    "2026-11-27T09:20:20.401059Z  INFO \ud83d\udd0d [API] Tool call: plugin 'math' (sub_func: Some(\"math_evaluate\")) with payload: {\"expression\":\"6*7\",\"precision\":0}",
+    "2026-11-27T09:20:20.401825Z  INFO \u26a1 [PluginExecutor] Executing plugin binary at: \"/home/<vps>/run77/home/<vps>/plugins/math/math.wasm\"",
+    "2026-11-27T09:20:24.294164Z  INFO \u2705 [API] Tool 'math' done (70 chars)",
+    "2026-11-27T09:20:24.294340Z  INFO \ud83d\udd04 [API] Step 3: generating again with the tool result",
+    "2026-11-27T09:20:24.317560Z  INFO \ud83e\udde0 [Context] Restarted from the checkpoint at 2065 tokens (sliding window or recurrent state)",
+    "2026-11-27T09:20:24.352884Z  INFO \ud83e\uddf0 [NativeTools] Format peg-native | grammar on (lazy true, 1 triggers)",
+    "2026-11-27T09:20:24.352984Z  INFO \ud83c\udfb2 [Native-Llama] Temperature is zero (0.00): Forcing Greedy Sampler.",
+    "2026-11-27T09:20:24.353089Z  INFO \ud83e\udde0 [NativeStream] Auto thinking ceiling 9993 tokens (271.3 t/s for up to 180 s, room 13325)",
+    "2026-11-27T09:20:24.391429Z  INFO \ud83d\uded1 [NativeStream] EOG reached for token=248046. Gracefully terminating generation.",
+    "2026-11-27T09:20:24.391551Z  INFO \ud83e\uddf0 [NativeTools] Parsed 0 call(s): []",
+    "2026-11-27T09:20:24.391576Z  INFO \u23f1\ufe0f [NativeStream] llama.cpp timings: prompt 86 tokens in 32 ms (2679.88 t/s) | generation 6 tokens in 32 ms (187.31 t/s)",
+    "2026-11-27T09:20:24.391595Z  INFO \ud83e\udde0 [Context] prompt 2151 tokens (2065 from the cache) | context 2157 of 16384 | stop eos"
+  ]
+}
