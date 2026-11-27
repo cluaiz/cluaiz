@@ -44,6 +44,20 @@ fn answer(seen: &Seen) -> Reply {
     if seen.method == "DELETE" {
         return reply(200, "text/plain", String::new());
     }
+    // A 2026-07-28 server: no initialize, no session; version and client data in every request
+    if seen.path == "/modern" {
+        return modern(seen, method, id);
+    }
+    // A dual-era server that lists only legacy versions at discover
+    if seen.path == "/legacy-list" && method == "server/discover" {
+        return reply(400, "application/json", json!({"jsonrpc":"2.0","id":id,"error":{"code":-32022,"message":"Unsupported protocol version",
+            "data":{"supported":["2025-11-25"],"requested":"2026-07-28"}}}).to_string());
+    }
+    // A server that only knows newer versions
+    if seen.path == "/future" {
+        return reply(400, "application/json", json!({"jsonrpc":"2.0","id":id,"error":{"code":-32022,"message":"Unsupported protocol version",
+            "data":{"supported":["2027-01-01"],"requested":"2026-07-28"}}}).to_string());
+    }
     if method == "initialize" {
         let mut r = reply(200, "application/json", json!({"jsonrpc":"2.0","id":id,"result":{
             "protocolVersion":"2025-03-26","capabilities":{"tools":{}},"serverInfo":{"name":"test","version":"1"}}}).to_string());
@@ -81,6 +95,36 @@ fn answer(seen: &Seen) -> Reply {
         }
         _ => reply(400, "text/plain", "unknown method".into()),
     }
+}
+
+fn modern(seen: &Seen, method: &str, id: Value) -> Reply {
+    let meta = &seen.body["params"]["_meta"];
+    if seen.header("mcp-session-id").is_some() || method == "initialize" || method.starts_with("notifications/") {
+        return reply(400, "text/plain", "legacy traffic".into());
+    }
+    if seen.header("mcp-protocol-version") != Some("2026-07-28")
+        || meta["io.modelcontextprotocol/protocolVersion"] != "2026-07-28"
+        || meta["io.modelcontextprotocol/clientInfo"]["name"] != "cluaiz-engine"
+        || !meta["io.modelcontextprotocol/clientCapabilities"].is_object()
+        || seen.header("mcp-method") != Some(method)
+    {
+        return reply(400, "application/json", json!({"jsonrpc":"2.0","id":id,"error":{"code":-32020,"message":"Header mismatch"}}).to_string());
+    }
+    let result = match method {
+        "server/discover" => json!({"resultType":"complete","supportedVersions":["2026-07-28"],"capabilities":{"tools":{}},
+            "ttlMs":1000,"cacheScope":"private"}),
+        "tools/list" => json!({"resultType":"complete","tools":[{"name":"echo","description":"echoes","inputSchema":{"type":"object"}}],
+            "ttlMs":1000,"cacheScope":"private"}),
+        "tools/call" => {
+            if seen.header("mcp-name") != seen.body["params"]["name"].as_str() {
+                return reply(400, "application/json", json!({"jsonrpc":"2.0","id":id,"error":{"code":-32020,"message":"Mcp-Name mismatch"}}).to_string());
+            }
+            let text = seen.body["params"]["arguments"]["text"].as_str().unwrap_or_default();
+            json!({"resultType":"complete","content":[{"type":"text","text":format!("modern:{text}")}]})
+        }
+        _ => return reply(404, "application/json", json!({"jsonrpc":"2.0","id":id,"error":{"code":-32601,"message":"Method not found"}}).to_string()),
+    };
+    reply(200, "application/json", json!({"jsonrpc":"2.0","id":id,"result":result}).to_string())
 }
 
 /// Starts the server; returns its address and the list of requests it received
@@ -173,13 +217,14 @@ async fn initialize_session_list_and_json_call() {
         assert_eq!(init.header("authorization"), Some("Bearer abc"));
         assert!(init.header("mcp-session-id").is_none(), "no session id before initialize");
         // The server's session id and the negotiated version ride on every later request
-        for later in seen.iter().filter(|s| s.body["method"] != "initialize") {
+        for later in seen.iter().filter(|s| s.body["method"] != "initialize" && s.body["method"] != "server/discover") {
             assert_eq!(later.header("mcp-session-id"), Some("sess-123"), "{:?}", later.body);
             assert_eq!(later.header("mcp-protocol-version"), Some("2025-03-26"));
             assert_eq!(later.header("authorization"), Some("Bearer abc"));
         }
         let methods: Vec<_> = seen.iter().filter_map(|s| s.body["method"].as_str()).collect();
-        assert_eq!(methods, ["initialize", "notifications/initialized", "tools/list", "tools/call"]);
+        // The modern probe goes first; this server is legacy, so it falls back to initialize
+        assert_eq!(methods, ["server/discover", "initialize", "notifications/initialized", "tools/list", "tools/call"]);
     }
 
     // Stopping the server ends the session with a DELETE that carries the session id
@@ -240,4 +285,45 @@ async fn header_values_never_leak_into_errors_and_bad_urls_are_refused() {
     let dir = package("http://127.0.0.1:1/mcp?token=SECRET", json!({"Authorization": "Bearer SECRET"}));
     let error = McpClient::call_tool(&dir, "echo", json!({})).await.unwrap_err().to_string();
     assert!(!error.contains("SECRET"), "{error}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn stateless_2026_07_28_server_needs_no_initialize_and_no_session() {
+    let (address, log) = serve().await;
+    let dir = package(&format!("{address}/modern"), json!({"Authorization": "Bearer abc"}));
+
+    let tools = McpClient::list_tools(&dir).await.unwrap();
+    assert_eq!(tools[0]["name"], "echo");
+    let result = McpClient::call_tool(&dir, "echo", json!({"text": "hi"})).await.unwrap();
+    assert_eq!(result["content"][0]["text"], "modern:hi");
+
+    McpClient::stop_server(&dir).await;
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    let seen = log.lock().unwrap();
+    let methods: Vec<_> = seen.iter().filter_map(|s| s.body["method"].as_str()).collect();
+    assert_eq!(methods, ["server/discover", "tools/list", "tools/call"], "no initialize, no notifications/initialized");
+    for s in seen.iter() {
+        assert_eq!(s.header("mcp-protocol-version"), Some("2026-07-28"));
+        assert_eq!(s.header("authorization"), Some("Bearer abc"));
+        assert!(s.header("mcp-session-id").is_none());
+    }
+    assert!(seen.iter().all(|s| s.method == "POST"), "a stateless server gets no DELETE");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn modern_probe_falls_back_or_refuses_by_the_servers_modern_error() {
+    // A modern error that lists only older versions: the legacy path runs and works
+    let (address, log) = serve().await;
+    let dir = package(&format!("{address}/legacy-list"), json!({}));
+    let result = McpClient::call_tool(&dir, "echo", json!({"text": "old"})).await.unwrap();
+    assert_eq!(result["content"][0]["text"], "echo:old");
+    assert!(log.lock().unwrap().iter().any(|s| s.body["method"] == "initialize"));
+    McpClient::stop_server(&dir).await;
+
+    // A server that speaks only newer versions: no fallback, a clear error
+    let dir = package(&format!("{address}/future"), json!({}));
+    let error = McpClient::call_tool(&dir, "echo", json!({})).await.unwrap_err().to_string();
+    assert!(error.contains("2027-01-01"), "{error}");
+    assert!(!error.contains("did not initialize"), "{error}");
 }

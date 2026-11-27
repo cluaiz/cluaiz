@@ -1,5 +1,8 @@
-//! MCP client over Streamable HTTP (MCP spec 2025-06-18, "Transports"). Every JSON-RPC message is one
-//! HTTP POST to the server's single MCP endpoint; the reply is one JSON body or an SSE stream.
+//! MCP client over Streamable HTTP. Every JSON-RPC message is one HTTP POST to the server's single MCP
+//! endpoint; the reply is one JSON body or an SSE stream. Two eras are spoken: the modern one (spec
+//! 2026-07-28: no `initialize`, no session, version and client data in every request's `_meta`) is tried
+//! first with `server/discover`; the legacy one (spec 2025-06-18: `initialize`, `Mcp-Session-Id`) is the
+//! fallback.
 
 use anyhow::{anyhow, Result};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue, ACCEPT, CONTENT_TYPE};
@@ -13,10 +16,52 @@ use tokio::time::timeout;
 
 const SESSION_HEADER: &str = "mcp-session-id";
 const VERSION_HEADER: &str = "mcp-protocol-version";
-/// The version asked for at `initialize`; the server may answer with another one (version negotiation)
+/// The legacy version asked for at `initialize`; the server may answer with another one (version negotiation)
 pub const PROTOCOL_VERSION: &str = "2025-06-18";
+/// The newest version supported: stateless, no `initialize` (spec 2026-07-28)
+pub const MODERN_VERSION: &str = "2026-07-28";
+const META_VERSION: &str = "io.modelcontextprotocol/protocolVersion";
+const META_INFO: &str = "io.modelcontextprotocol/clientInfo";
+const META_CAPABILITIES: &str = "io.modelcontextprotocol/clientCapabilities";
 /// Longest piece of an error body put into an error message
 const BODY_SNIPPET: usize = 200;
+
+/// A non-success HTTP answer, kept whole so the caller can read the status and body (the spec decides
+/// by them whether a server is modern or legacy)
+#[derive(Debug)]
+struct HttpFailure {
+    status: u16,
+    body: String,
+    message: String,
+}
+
+impl std::fmt::Display for HttpFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+impl std::error::Error for HttpFailure {}
+
+/// A JSON-RPC error object from the server, kept whole for the same reason
+#[derive(Debug)]
+struct RpcFailure {
+    error: Value,
+}
+
+impl std::fmt::Display for RpcFailure {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "MCP error: {}", self.error)
+    }
+}
+
+impl std::error::Error for RpcFailure {}
+
+/// What the first modern request shows about the server
+enum Era {
+    Modern,
+    Legacy,
+}
 
 /// One connection to an HTTP MCP server: the endpoint, the fixed headers from the package, and the
 /// `Mcp-Session-Id` the server assigned at `initialize`.
@@ -30,6 +75,8 @@ pub struct HttpSession {
     workspace: PathBuf,
     session_id: std::sync::Mutex<Option<String>>,
     protocol_version: std::sync::Mutex<Option<String>>,
+    /// True when the server speaks 2026-07-28: no session, `_meta` and request headers on every request
+    modern: AtomicBool,
     next_id: AtomicU64,
     pub alive: AtomicBool,
     last_used: std::sync::Mutex<Instant>,
@@ -40,7 +87,8 @@ pub struct HttpSession {
 }
 
 impl HttpSession {
-    /// Opens the session: `initialize`, then `notifications/initialized`.
+    /// Opens the connection. A modern request (`server/discover`) goes first; a server that is not
+    /// modern gets the legacy `initialize` then `notifications/initialized`.
     pub async fn connect(
         name: &str,
         url: &str,
@@ -82,13 +130,23 @@ impl HttpSession {
             client,
             workspace,
             session_id: std::sync::Mutex::new(None),
-            protocol_version: std::sync::Mutex::new(None),
+            protocol_version: std::sync::Mutex::new(Some(MODERN_VERSION.to_string())),
+            modern: AtomicBool::new(true),
             next_id: AtomicU64::new(1),
             alive: AtomicBool::new(true),
             last_used: std::sync::Mutex::new(Instant::now()),
             warm: AtomicBool::new(false),
             on_list_changed,
         });
+        match session.probe_modern(limit).await? {
+            Era::Modern => return Ok(session),
+            Era::Legacy => {
+                session.modern.store(false, Ordering::SeqCst);
+                if let Ok(mut version) = session.protocol_version.lock() {
+                    *version = None;
+                }
+            }
+        }
         let init = session
             .request(
                 "initialize",
@@ -113,6 +171,59 @@ impl HttpSession {
         Ok(session)
     }
 
+    /// The first request: `server/discover` with the modern headers and `_meta`. Spec 2026-07-28
+    /// (Streamable HTTP, "Backward Compatibility"): on `400 Bad Request` "inspect the response body
+    /// before falling back"; a body with "a recognized modern JSON-RPC error" means a modern server,
+    /// anything else means a legacy one, which gets `initialize`.
+    async fn probe_modern(self: &Arc<Self>, limit: Duration) -> Result<Era> {
+        let outcome = self.request("server/discover", json!({}), limit).await;
+        let error = match outcome {
+            Ok(result) => {
+                let versions = versions_of(result.get("supportedVersions"));
+                return if versions.iter().any(|v| v == MODERN_VERSION) {
+                    Ok(Era::Modern)
+                } else if let Some(newer) = versions.iter().find(|v| v.as_str() > MODERN_VERSION) {
+                    Err(anyhow!("MCP server '{}' needs protocol version {} or later, which this client does not speak", self.name, newer))
+                } else {
+                    // A discover answer without 2026-07-28: not a modern server for this client
+                    Ok(Era::Legacy)
+                };
+            }
+            Err(e) => e,
+        };
+        // The recognized modern error codes: HeaderMismatch -32020, MissingRequiredClientCapability -32021,
+        // UnsupportedProtocolVersion -32022
+        let rpc = if let Some(rpc) = error.downcast_ref::<RpcFailure>() {
+            Some(rpc.error.clone())
+        } else {
+            error
+                .downcast_ref::<HttpFailure>()
+                .and_then(|h| serde_json::from_str::<Value>(&h.body).ok())
+                .and_then(|body| body.get("error").cloned())
+        };
+        if let Some(rpc) = &rpc {
+            if matches!(rpc.get("code").and_then(Value::as_i64), Some(-32022..=-32020)) {
+                let versions = versions_of(rpc.get("data").and_then(|d| d.get("supported")));
+                if !versions.is_empty() && !versions.iter().any(|v| v == MODERN_VERSION) {
+                    return if versions.iter().any(|v| v.as_str() > MODERN_VERSION) {
+                        Err(anyhow!("MCP server '{}' supports only protocol versions {:?}, newer than this client", self.name, versions))
+                    } else {
+                        // A dual-era server that lists only legacy versions: speak legacy
+                        Ok(Era::Legacy)
+                    };
+                }
+                return Err(anyhow!("MCP server '{}' rejected the request: {}", self.name, error));
+            }
+        }
+        // Not a modern error: a 4xx status or a JSON-RPC error (an old server does not know the method)
+        let legacy_status = error.downcast_ref::<HttpFailure>().map(|h| (400..500).contains(&h.status)).unwrap_or(false);
+        if rpc.is_some() || legacy_status {
+            return Ok(Era::Legacy);
+        }
+        // Not reachable, timeout, 5xx: no era is known
+        Err(error)
+    }
+
     pub fn workspace(&self) -> &PathBuf {
         &self.workspace
     }
@@ -127,6 +238,19 @@ impl HttpSession {
             *last_used = Instant::now();
         }
         let id = self.next_id.fetch_add(1, Ordering::SeqCst);
+        let mut params = params;
+        if self.modern.load(Ordering::SeqCst) {
+            // Spec 2026-07-28: every request carries its version, identity and capabilities in `_meta`
+            if !params.is_object() {
+                params = json!({});
+            }
+            params["_meta"] = json!({
+                META_VERSION: MODERN_VERSION,
+                META_INFO: { "name": "cluaiz-engine", "version": cluaiz_core::VERSION },
+                // Nothing offered: no roots, sampling or elicitation, so the server never asks for them
+                META_CAPABILITIES: {}
+            });
+        }
         let body = json!({"jsonrpc": "2.0", "id": id, "method": method, "params": params});
         let exchange = timeout(limit, self.post(&body, Some(id), method == "initialize")).await;
         let response = match exchange {
@@ -136,9 +260,14 @@ impl HttpSession {
             Err(_) => return Err(anyhow!("Timeout ({}s) waiting for MCP server '{}' to answer {}", limit.as_secs(), self.name, method)),
         };
         if let Some(error) = response.get("error") {
-            return Err(anyhow!("MCP error: {}", error));
+            return Err(anyhow::Error::new(RpcFailure { error: error.clone() }));
         }
-        Ok(response.get("result").cloned().unwrap_or(Value::Null))
+        let result = response.get("result").cloned().unwrap_or(Value::Null);
+        // "Clients MUST treat results from earlier-protocol servers that omit the field as complete"
+        if result.get("resultType").and_then(Value::as_str) == Some("input_required") {
+            return Err(anyhow!("MCP server '{}' asked for more input (resultType input_required), which this client does not offer", self.name));
+        }
+        Ok(result)
     }
 
     /// One POST. `want_id` is the id of the request in the body: the reply (JSON or SSE) is read until
@@ -156,9 +285,24 @@ impl HttpSession {
         if let Some(id) = &session_id {
             request = request.header(SESSION_HEADER, id);
         }
-        // Not on `initialize`: the version is only known after it
+        // Legacy: not on `initialize`, the version is only known after it. Modern: always set.
         if let Some(version) = self.protocol_version.lock().ok().and_then(|v| v.clone()) {
             request = request.header(VERSION_HEADER, version);
+        }
+        if self.modern.load(Ordering::SeqCst) {
+            // Spec 2026-07-28, "Standard Request Headers": `Mcp-Method` on all requests, `Mcp-Name` on
+            // tools/call, resources/read, prompts/get
+            if let Some(method) = body.get("method").and_then(Value::as_str) {
+                request = request.header("mcp-method", header_value(method));
+                let name_field = match method {
+                    "tools/call" | "prompts/get" => Some("name"),
+                    "resources/read" => Some("uri"),
+                    _ => None,
+                };
+                if let Some(name) = name_field.and_then(|f| body["params"].get(f)).and_then(Value::as_str) {
+                    request = request.header("mcp-name", header_value(name));
+                }
+            }
         }
         let mut response = request
             .send()
@@ -180,7 +324,8 @@ impl HttpSession {
         }
         if !status.is_success() {
             let text = response.text().await.unwrap_or_default();
-            return Err(anyhow!("MCP server '{}' answered HTTP {}{}", self.name, status, snippet(&text)));
+            let message = format!("MCP server '{}' answered HTTP {}{}", self.name, status, snippet(&text));
+            return Err(anyhow::Error::new(HttpFailure { status: status.as_u16(), body: text, message }));
         }
         let Some(want) = want_id else { return Ok(None) };
         if status == reqwest::StatusCode::ACCEPTED {
@@ -313,6 +458,42 @@ impl HttpSession {
     }
 }
 
+/// The versions in a JSON array of strings
+fn versions_of(value: Option<&Value>) -> Vec<String> {
+    value.and_then(Value::as_array).map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_owned)).collect()).unwrap_or_default()
+}
+
+/// An `Mcp-Name` / `Mcp-Method` value: plain when it is visible ASCII and not shaped like the sentinel,
+/// else `=?base64?...?=` (spec 2026-07-28, "Value Encoding")
+fn header_value(value: &str) -> String {
+    let plain = !value.is_empty()
+        && value.bytes().all(|b| (0x20..=0x7e).contains(&b))
+        && !value.starts_with(' ')
+        && !value.ends_with(' ')
+        && !(value.starts_with("=?base64?") && value.ends_with("?="));
+    if plain {
+        value.to_string()
+    } else {
+        format!("=?base64?{}?=", base64(value.as_bytes()))
+    }
+}
+
+fn base64(bytes: &[u8]) -> String {
+    const TABLE: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::new();
+    for chunk in bytes.chunks(3) {
+        let n = (chunk[0] as u32) << 16 | (*chunk.get(1).unwrap_or(&0) as u32) << 8 | *chunk.get(2).unwrap_or(&0) as u32;
+        for i in 0..4 {
+            if i <= chunk.len() {
+                out.push(TABLE[(n >> (18 - 6 * i) & 63) as usize] as char);
+            } else {
+                out.push('=');
+            }
+        }
+    }
+    out
+}
+
 /// ": <first part of the body>" for an error message, or nothing when the body is empty
 fn snippet(text: &str) -> String {
     let text = text.trim();
@@ -359,6 +540,16 @@ mod tests {
         // The last event has no blank line yet: it stays in the buffer
         assert!(take_event(&mut buffer).is_none());
         assert_eq!(buffer, b"data: part");
+    }
+
+    #[test]
+    fn names_are_plain_or_base64_as_the_spec_shows() {
+        assert_eq!(header_value("get_weather"), "get_weather");
+        // Examples of the spec's "Encoding examples" table
+        assert_eq!(header_value("Hello, 世界"), "=?base64?SGVsbG8sIOS4lueVjA==?=");
+        assert_eq!(header_value(" padded "), "=?base64?IHBhZGRlZCA=?=");
+        assert_eq!(header_value("line1\nline2"), "=?base64?bGluZTEKbGluZTI=?=");
+        assert_eq!(header_value("=?base64?literal?="), "=?base64?PT9iYXNlNjQ/bGl0ZXJhbD89?=");
     }
 
     #[test]

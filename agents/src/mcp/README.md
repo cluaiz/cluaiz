@@ -4,7 +4,7 @@ description: The Engine as an MCP client: starts installed MCP servers, keeps ea
 # MCP client (`agents/src/mcp/`)
 
 The Engine as an MCP **client**: it connects to installed MCP servers over stdio (a long-lived process) or
-Streamable HTTP (a session at a URL), lists their tools and calls them. (The Engine as an MCP **server** is `api/src/cep/mcp.rs`
+Streamable HTTP (a URL; stateless on spec 2026-07-28 servers, a session on older ones), lists their tools and calls them. (The Engine as an MCP **server** is `api/src/cep/mcp.rs`
 and `cluaiz mcp-server`.)
 
 ## At a glance
@@ -57,7 +57,35 @@ The package's `package.json` says how to reach the server. Which form is used de
 - Tool listing, tool calls, `expose`, the tool cache, the 4-server limit and the idle stop work the same
   for both forms (`Running` in `client.rs`).
 
-## HTTP transport (`http.rs`), what is implemented
+## Two eras of the HTTP transport
+
+Read on 2026-11-27: spec 2026-07-28 changelog, "Streamable HTTP", "Versioning and Compatibility" and
+"Discovery" (modelcontextprotocol.io/specification/2026-07-28/...). The spec calls versions from 2026-07-28
+"modern" and 2025-11-25 and earlier "legacy".
+
+| Spec text (2026-07-28) | What the client does |
+|---|---|
+| "Remove protocol-level sessions and the `Mcp-Session-Id` header from the Streamable HTTP transport" | in modern mode no session id is read, sent or deleted; in legacy mode a session is kept only when the server returns one |
+| "Make MCP stateless: remove the `initialize`/`notifications/initialized` handshake. Every request now carries its protocol version and client capabilities in `_meta`" | every modern request gets `io.modelcontextprotocol/protocolVersion` `2026-07-28`, `clientInfo` and `clientCapabilities` (`{}`: no roots, sampling or elicitation offered) in `params._meta` |
+| "Every POST request to the MCP endpoint MUST include an `MCP-Protocol-Version` header" matching the `_meta` value | sent on every modern request |
+| "Standard Request Headers": `Mcp-Method` on all requests, `Mcp-Name` for `tools/call`, `resources/read`, `prompts/get` | both sent; a value that is not plain ASCII (or is shaped like the sentinel) goes as `=?base64?...?=` |
+| "A client ... MAY detect which era the server implements by attempting a modern request first. On 400 Bad Request, the client SHOULD inspect the response body before falling back" | the first request is `server/discover`; see the decision table below |
+| `UnsupportedProtocolVersionError` code `-32022` with `data.supported` | a list with only older versions: legacy path; only newer versions: clear error, no fallback |
+| "All results now carry a required `resultType` field ... Clients MUST treat results from earlier-protocol servers that omit the field as complete" | a missing field is complete; `input_required` (multi round-trip) is refused with a clear error because no input is offered |
+| "Remove SSE stream resumability" and the GET stream; server requests on a stream replaced by multi round-trip | nothing to do: the client never used GET or `Last-Event-ID`; legacy server requests on a stream are still answered as before |
+
+How the first request (`server/discover`) decides (`probe_modern` in `http.rs`):
+
+| Answer | Result |
+|---|---|
+| result whose `supportedVersions` has `2026-07-28` | modern; no `initialize` is sent |
+| 4xx or a JSON-RPC error that is not `-32020`..`-32022` (an old server does not know the method) | legacy: `initialize` as before |
+| `-32020`..`-32022` listing only versions older than 2026-07-28 | legacy |
+| `-32020`..`-32022` listing only newer versions, or `supportedVersions` only newer | error, no fallback |
+| other `-32020`..`-32022` | error with the server's message |
+| connect failure, timeout, 5xx | error (the era is unknown) |
+
+## HTTP transport, legacy era (`http.rs`), what is implemented
 
 From the MCP spec 2025-06-18, "Transports" > "Streamable HTTP" (read 2026-11-26). The 2025-03-26 version
 was not read separately; the client also reads a JSON array reply, which that version allows.
@@ -138,11 +166,25 @@ Messages show the URL without its query string, and header values are never put 
 | `header_values_expand_named_settings` | `${NAME}` in header values |
 | `url_form_and_command_form_are_told_apart` (`manifest.rs`) | `execution.url` / `headers` are read; the command form is unchanged |
 | `sse_events_split_on_blank_lines_and_join_data_lines`, `error_body_snippet_is_short` (`http.rs`) | event-stream parsing (LF and CRLF, several `data:` lines) and short error bodies |
-| `tests/mcp_http.rs` (4 tests, own local HTTP server, no network) | through `McpClient`: `initialize` with the session id and negotiated version sent on every later request, `Accept` and custom headers, `tools/list`, `tools/call` with a JSON reply and with an event-stream reply (a notification first), a DELETE with the session id on stop, 500 with body, an HTML reply, 404 at `initialize`, connection refused, a bad scheme, and no secret in an error. Rerun: `cargo test -p cluaiz-agents --test mcp_http` |
+| `names_are_plain_or_base64_as_the_spec_shows` (`http.rs`) | `Mcp-Name` encoding gives the spec's own table values |
+| `tests/mcp_http.rs` (6 tests, own local HTTP server, no network) | through `McpClient`: `initialize` with the session id and negotiated version sent on every later request, `Accept` and custom headers, `tools/list`, `tools/call` with a JSON reply and with an event-stream reply (a notification first), a DELETE with the session id on stop, 500 with body, an HTML reply, 404 at `initialize`, connection refused, a bad scheme, and no secret in an error; a stateless 2026-07-28 server (`server/discover`, `_meta` and `Mcp-Method`/`Mcp-Name` on every request, no `initialize`, no session, no DELETE); the fallback to legacy when the server's modern error lists only older versions; no fallback when it lists only newer ones. Rerun: `cargo test -p cluaiz-agents --test mcp_http` |
 | `tests/mcp_reference_server.rs` (ignored) | the client against a real stdio server (`@modelcontextprotocol/server-everything`); `cargo test -p cluaiz-agents --test mcp_reference_server -- --ignored --nocapture` |
 
-`cargo test -p cluaiz-agents` on 2026-11-26: 181 unit tests passed (1 ignored), `mcp_http` 4 passed. The reference-server test was not run
+`cargo test -p cluaiz-agents` on 2026-11-27: 187 unit tests passed (1 ignored), `mcp_http` 6 passed. The reference-server test was not run
 that day. MCP over the Engine's own CEP server: `test/cep/mcp_journey.py`.
+
+## The Engine's own MCP server against 2026-07-28 (checked, not changed, 2026-11-27)
+
+`api/src/cep/mcp.rs` speaks the legacy era only. Gaps against the 2026-07-28 text: `VERSIONS` lists
+2025-11-25 at newest (`mcp.rs:22`); no `server/discover`, which "servers MUST implement" (`answer`,
+`mcp.rs:82-113`, falls to method not found at line 112); `_meta` is dropped (`mcp.rs:137`) so the version in it
+and `MCP-Protocol-Version` are never checked and `UnsupportedProtocolVersionError` is never returned; no
+`Mcp-Method`/`Mcp-Name` validation; no `resultType`, `ttlMs`, `cacheScope`; an unknown method answers 200
+with a JSON-RPC error (`mcp.rs:139-148`) where the spec wants 404. No `Origin` check ("Servers MUST validate
+the `Origin` header ... respond with HTTP 403"): the only Origin handling is CORS `allow_origin(Any)`
+(`api/src/routes.rs:29`), and `allow_headers` (`routes.rs:22-26`) lacks the `MCP-*` headers, so a browser
+client could not send them. Already fine: only POST is routed (`routes.rs:70`, so GET/DELETE get 405), no
+session id is minted, notifications get 202. Auth and bind defaults are untouched.
 
 ## Pending
 
@@ -151,6 +193,11 @@ that day. MCP over the Engine's own CEP server: `test/cep/mcp_journey.py`.
 | `cluaiz mcp add` tested only as unit tests | the five tests in `installer/http_mcp.rs` check the written file with `McpManifestParser`, not a real `cluaiz mcp add` then a tool call; `cargo build -p cmd` was not run when it was written | a run in an isolated `CLUAIZ_HOME`: `mcp add`, `mcp list`, `mcp config`, then one tool call against a real HTTP server, saved under `test/cloud/runs/` |
 | A recorded run of `mcp_reference_server` | the real-server path has no checked-in result | one run, saved under `test/cloud/runs/` |
 | HTTP transport tested only against the in-file test server | no run against a real HTTP MCP server yet | one run against a public Streamable HTTP server, saved under `test/cloud/runs/` |
+| `x-mcp-header` not implemented | spec 2026-07-28: clients "MUST support" mirroring annotated tool parameters into `Mcp-Param-*` headers; a server that requires them answers `HeaderMismatch` `-32020` for such tools | mirror the annotated values; reject invalid annotations from `tools/list` |
+| No `subscriptions/listen` | modern servers send change notifications only on that stream, so `tools/list_changed` is not received; the tool cache is cleared only by `clear_tool_cache` | open the stream and call `on_list_changed` |
+| Modern mode untested against a real server | only the in-file test server; the legacy fallback was also tested only locally | one run against a public 2026-07-28 server and an older one, saved under `test/cloud/runs/` |
+| `ttlMs` / `cacheScope` ignored | the tool list is cached by the Engine's own rules | honour the freshness hint |
+| Legacy `initialize` still offers 2025-06-18 | 2025-11-25 was not read; its servers answer with an older version they support | read 2025-11-25 and offer it |
 | Old HTTP+SSE transport (2024-11-05) not implemented | servers that only speak it (a GET that returns an `endpoint` event) cannot be used | the fallback in the spec's "Backwards Compatibility" section; skipped because it is a second transport |
 | No standalone GET stream | server messages outside a POST reply (for example a `list_changed` between calls) are not received; the tool cache is only cleared when the message comes inside a reply | `GET` with `Last-Event-ID` resume |
 | No OAuth | servers that need the MCP authorization flow cannot be used; a fixed token in `headers` works | the authorization flow of the spec |
