@@ -196,49 +196,20 @@ async fn real_router_pdf_attachment_reaches_text_only_llama() -> Result<()> {
     let state = Arc::new(AppState::new_test_state(workspace.path().to_path_buf()));
     *state.permission_schema.write().await = policy;
     let router = cluaiz_api::routes::build_api_router(state.clone());
-    let native_assets = if std::env::var_os("CLUAIZ_NATIVE_MEDIA_TEST_PACKAGE").is_some() {
-        Some(cluaiz_media::native_assets::NativeAssets::from_environment()?)
-    } else {
-        None
-    };
+    // A scanned page (a picture, no text layer) without a model: reported as needing a vision
+    // model, never as read; no renderer is downloaded for this
+    let white = cluaiz_core::media::DecodedImage::new(612, 792, vec![255; 612 * 792 * 3].into())?;
+    let scanned = document_fixtures::raster::pdf(&white, Some("First page text 315904"))?;
+    let body = support::ingest(&router, json!({"source":inline("application/pdf", &scanned)})).await?.map_err(|e| anyhow::anyhow!("{e}"))?.to_string();
+    let extracted: Value = serde_json::from_str(&body)?;
+    let item = &extracted["processed_sources"][0];
+    assert_eq!(item["status"], "partial", "{body}");
+    assert_eq!(item["parts"][1]["omissions"][0], cluaiz_media::documents::PAGE_WITHOUT_TEXT);
+    assert!(item["vision_needed"].as_str().is_some_and(|hint| hint.contains("vision model")), "{body}");
+    assert!(item["chunks"].to_string().contains("315904"));
+    println!("REAL DOCUMENT SCANNED PAGE: text page read, scanned page reported as needing a vision model");
     for (code, stream) in [("741923", false), ("826417", true)] {
         let pdf = document_fixtures::pdf(&[Some(&format!("The recorded order code is {code}."))])?;
-        let pdf = if let Some(assets) = &native_assets {
-            let image =
-                cluaiz_media::documents::pdf_render::with_document(&pdf, assets, |document| {
-                    document.render_page(1, cluaiz_core::media_limits::MediaLimits::default())
-                })?;
-            let scanned = document_fixtures::raster::pdf(&image, None)?;
-            assert!(!scanned
-                .windows(code.len())
-                .any(|window| window == code.as_bytes()));
-            let body = support::ingest(&router, json!({"source":inline("application/pdf", &scanned)})).await?.map_err(|e| anyhow::anyhow!("{e}"))?.to_string();
-            let extracted: Value = serde_json::from_str(&body)?;
-            assert_eq!(extracted["status"], "success");
-            assert_eq!(
-                extracted["processed_sources"][0]["parts"][0]["method"],
-                "pdf_ocr"
-            );
-            assert!(extracted["processed_sources"][0]["parts"][0]["text"]
-                .as_str()
-                .is_some_and(|text| text.contains(code)));
-            let png = document_fixtures::raster::encoded(&image, image::ImageOutputFormat::Png)?;
-            let body = support::ingest(&router, json!({"source":inline("image/png", &png)})).await?.map_err(|e| anyhow::anyhow!("{e}"))?.to_string();
-            let extracted: Value = serde_json::from_str(&body)?;
-            assert_eq!(
-                extracted["processed_sources"][0]["parts"][0]["method"],
-                "native_ocr"
-            );
-            assert!(extracted["processed_sources"][0]["parts"][0]["text"]
-                .as_str()
-                .is_some_and(|text| text.contains(code)));
-            println!(
-                "REAL NATIVE OCR HTTP: scanned PDF and PNG -> ingest API -> actual code {code}"
-            );
-            scanned
-        } else {
-            pdf
-        };
         let source = if stream {
             inline("application/pdf", &pdf)
         } else {
@@ -278,7 +249,7 @@ async fn real_router_pdf_attachment_reaches_text_only_llama() -> Result<()> {
         if stream {
             assert!(body.contains("[DONE]"), "{body}");
         }
-        println!("REAL DOCUMENT CHAT: selected text-only GGUF answered code {code}; stream={stream}; scanned={}; no projector in package", native_assets.is_some());
+        println!("REAL DOCUMENT CHAT: selected text-only GGUF answered code {code}; stream={stream}; no projector in package");
     }
     for (mime, bytes, code) in [
         (

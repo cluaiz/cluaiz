@@ -38,6 +38,5 @@ pub(super) fn extract(bytes: &[u8], limits: MediaLimits) -> Result<Vec<DocumentP
         text,
         omissions,
         warnings,
-        ocr_confidence: None,
     }])
 }

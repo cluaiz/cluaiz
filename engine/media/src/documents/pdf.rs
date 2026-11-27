@@ -29,7 +29,7 @@ impl Write for LimitedText {
     }
 }
 
-pub(super) fn extract(bytes: &[u8], limits: MediaLimits) -> Result<Vec<DocumentPart>> {
+pub(crate) fn extract(bytes: &[u8], limits: MediaLimits) -> Result<Vec<DocumentPart>> {
     // The upstream parser has panic paths. Do not turn malformed input into process failure.
     // This is not a total-process allocation bound: parser-owned PDF allocations remain separate.
     std::panic::catch_unwind(|| extract_inner(bytes, limits)).map_err(|_| {
@@ -67,20 +67,25 @@ fn extract_inner(bytes: &[u8], limits: MediaLimits) -> Result<Vec<DocumentPart>>
         remaining = writer.remaining;
         let text =
             String::from_utf8(writer.bytes).context("PDF extraction produced invalid UTF-8")?;
-        let mut omissions = if text.trim().is_empty() {
-            vec!["page_has_no_extractable_text_ocr_or_vision_unavailable"]
+        // A page without a text layer (a scanned page, or a page that is only a picture) is an
+        // omission: its content needs rendering and a vision model, and is never passed off as read
+        let scanned = text.trim().is_empty();
+        let mut omissions = Vec::new();
+        let mut warnings = Vec::new();
+        if scanned {
+            omissions.push(super::PAGE_WITHOUT_TEXT);
+            warnings.push(format!("Page {page} has no text layer (a scanned page or a picture); reading it needs a vision model"));
         } else {
-            Vec::new()
-        };
-        // Conservatively report image/form resources instead of claiming that their
-        // visible contents were recognized by text extraction. Includes inherited resources.
-        let (direct, inherited) = doc.get_page_resources(*page_id)?;
-        let mut visual = direct.is_some_and(|resources| resources.has(b"XObject"));
-        for id in inherited {
-            visual |= doc.get_dictionary(id)?.has(b"XObject");
-        }
-        if visual {
-            omissions.push("page_visual_resources_not_fully_extracted");
+            // A page with text is read from its text layer. Pictures on it (image/form resources,
+            // inherited ones too) are not read; say so instead of claiming they were
+            let (direct, inherited) = doc.get_page_resources(*page_id)?;
+            let mut visual = direct.is_some_and(|resources| resources.has(b"XObject"));
+            for id in inherited {
+                visual |= doc.get_dictionary(id)?.has(b"XObject");
+            }
+            if visual {
+                warnings.push(format!("Page {page} also has pictures; only its text layer was read"));
+            }
         }
         parts.try_reserve(1)?;
         parts.push(DocumentPart {
@@ -88,87 +93,8 @@ fn extract_inner(bytes: &[u8], limits: MediaLimits) -> Result<Vec<DocumentPart>>
             method: "pdf_text",
             text,
             omissions,
-            warnings: Vec::new(),
-            ocr_confidence: None,
+            warnings,
         });
     }
     Ok(parts)
-}
-
-/// Retain existing embedded text when recognizing visual resources on the same
-/// page. OCR failures stay local to their physical page and preserve prior text.
-pub(super) fn recognize_pages(
-    bytes: &[u8],
-    parts: &mut [DocumentPart],
-    limits: MediaLimits,
-    assets: &crate::native_assets::NativeAssets,
-) -> Result<()> {
-    let metadata = u64::try_from(std::mem::size_of_val(parts))?;
-    let mut retained = parts.iter().try_fold(metadata, |total, part| {
-        total
-            .checked_add(part.text.len() as u64)
-            .context("PDF retained text size overflow")
-    })?;
-    let result = super::pdf_render::with_document(bytes, assets, |document| {
-        for part in parts.iter_mut().filter(|part| !part.omissions.is_empty()) {
-            let remaining = limits
-                .max_decoded_bytes()
-                .checked_sub(retained)
-                .filter(|bytes| *bytes > 0)
-                .context("PDF OCR decoded budget is exhausted")?;
-            let page_limits = MediaLimits::new(limits.max_input_bytes(), remaining)?;
-            let result = (|| {
-                let image = document
-                    .render_page(part.page.context("PDF page number missing")?, page_limits)?;
-                super::ocr::recognize(&image, page_limits, assets)
-            })();
-            match result {
-                Ok(result) => {
-                    let old_len = part.text.len();
-                    if part.text.trim().is_empty() {
-                        part.text = result.text;
-                        part.method = "pdf_ocr";
-                    } else {
-                        let part_limits = MediaLimits::new(
-                            limits.max_input_bytes(),
-                            limits
-                                .max_decoded_bytes()
-                                .checked_sub(
-                                    retained
-                                        .checked_sub(u64::try_from(old_len)?)
-                                        .context("PDF retained text accounting underflow")?,
-                                )
-                                .context("PDF text assembly budget exhausted")?,
-                        )?;
-                        super::append(
-                            &mut part.text,
-                            "\n[OCR recognized page text]\n",
-                            part_limits,
-                        )?;
-                        super::append(&mut part.text, &result.text, part_limits)?;
-                        part.method = "pdf_text_and_ocr";
-                    }
-                    retained = retained
-                        .checked_sub(u64::try_from(old_len)?)
-                        .and_then(|retained| retained.checked_add(part.text.len() as u64))
-                        .context("PDF OCR text size overflow")?;
-                    limits.check_decoded_bytes(retained)?;
-                    part.ocr_confidence = Some(result.confidence);
-                    part.omissions.clear();
-                    part.warnings.push(super::OCR_TEXT_SCOPE.into());
-                }
-                Err(error) => part
-                    .warnings
-                    .push(format!("Native page OCR failed: {error:#}")),
-            }
-        }
-        Ok(())
-    });
-    if let Err(error) = result {
-        for part in parts.iter_mut().filter(|part| !part.omissions.is_empty()) {
-            part.warnings
-                .push(format!("Native PDF rendering/OCR unavailable: {error:#}"));
-        }
-    }
-    Ok(())
 }

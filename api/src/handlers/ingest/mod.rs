@@ -2,7 +2,7 @@
 
 mod model;
 
-use self::model::{document_item, ModelFailure, Processor};
+use self::model::{document_item, vision_hint, ModelFailure, Processor};
 use crate::{
     utils::{authorize_source, task_error},
     AppState,
@@ -174,7 +174,12 @@ pub async fn file_ingest(
                     documents::extract(&bytes, &format, limits)
                 })
                 .await??;
-                document_item(document, limits, chunk_size, return_text)?
+                let hint = vision_hint(&document);
+                let mut item = document_item(document, limits, chunk_size, return_text)?;
+                if let Some(hint) = hint {
+                    item["vision_needed"] = json!(hint);
+                }
+                item
             };
             item["source"] = json!(original);
             Ok::<_, anyhow::Error>(item)

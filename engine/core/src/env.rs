@@ -122,7 +122,7 @@ impl EnvironmentManager {
     pub fn drivers_dir(&self) -> PathBuf {
         self.bin_dir()
     }
-    /// The native media package (OCR, PDF rendering, video decoding), when installed
+    /// The native media package (video decoding), when installed
     pub fn media_dir(&self) -> PathBuf {
         self.bin_dir().join("media")
     }

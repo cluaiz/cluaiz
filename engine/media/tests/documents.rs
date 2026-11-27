@@ -33,7 +33,12 @@ fn test_real_pdf_pages_order_partial_and_corruption() -> Result<()> {
     let doc = extract(&mixed, limits.max_decoded_bytes())?;
     assert!(!doc.complete());
     assert!(doc.parts[1].text.trim().is_empty());
-    assert!(!doc.parts[1].omissions.is_empty());
+    assert_eq!(doc.parts[1].omissions, [documents::PAGE_WITHOUT_TEXT]);
+    assert!(doc.parts[0].omissions.is_empty());
+    // Only the page without text goes to rendering and a vision model
+    assert_eq!(documents::pages_without_text(&doc.parts), [2]);
+    assert_eq!(documents::pages_without_text(&extract(&bytes, limits.max_decoded_bytes())?.parts), Vec::<u32>::new());
+    assert_eq!(documents::pages_without_text(&extract(&support::pdf(&[None, Some("x"), None])?, limits.max_decoded_bytes())?.parts), [1, 3]);
     assert!(doc.text(limits, true).is_err());
     assert!(doc.text(limits, false)?.contains("Known text"));
     assert!(extract(b"%PDF-1.4\ncorrupt", limits.max_decoded_bytes()).is_err());

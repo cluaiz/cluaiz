@@ -1,13 +1,19 @@
-//! Serialized PDFium rendering. Retain one page bitmap, never a whole rasterized PDF.
+//! Serialized PDFium rendering. Retain one page bitmap, never a whole rasterized PDF. The library
+//! is the pinned prebuilt that `pdfium_fetch` downloads into `<CLUAIZ_HOME>/bin` on first use.
 
-use crate::native_assets::{load_library, symbol, NativeAssets};
+use crate::native_assets::{load_library, symbol};
 use anyhow::{bail, Context, Result};
 use cluaiz_core::{media::DecodedImage, media_limits::MediaLimits};
 use std::{
     ffi::{c_char, c_int, c_ulong, c_void},
+    path::Path,
     ptr::NonNull,
     sync::Mutex,
 };
+
+/// Page rendering resolution. 150 DPI keeps body text legible for a vision model while an A4 page
+/// stays about 1240x1754 pixels (6.5 MB of RGB); the model's own processor resizes it further.
+pub const RENDER_DPI: u32 = 150;
 
 type Handle = *mut c_void;
 type Close = unsafe extern "system" fn(Handle);
@@ -33,17 +39,8 @@ struct Pdfium {
 static CACHE: Mutex<Option<Pdfium>> = Mutex::new(None);
 
 impl Pdfium {
-    fn load(assets: &NativeAssets) -> Result<Self> {
-        let config = assets
-            .manifest
-            .pdf
-            .as_ref()
-            .context("PDF renderer is not included in this package")?;
-        if config.dpi == 0 {
-            bail!("PDF render DPI must be positive");
-        }
-        assets.verify()?;
-        let library = load_library(&assets.library(&config.library)?)?;
+    fn load(path: &Path) -> Result<Self> {
+        let library = load_library(path)?;
         // SAFETY: signatures follow the stable PDFium fpdfview.h C ABI (stdcall
         // on Windows). Resolve ALL functions before initializing global state.
         unsafe {
@@ -61,8 +58,8 @@ impl Pdfium {
                 fill: symbol(&library, b"FPDFBitmap_FillRect\0")?,
                 render: symbol(&library, b"FPDF_RenderPageBitmap\0")?,
                 destroy: symbol(&library, b"FPDF_DestroyLibrary\0")?,
-                identity: assets.identity.clone(),
-                dpi: config.dpi,
+                identity: path.display().to_string(),
+                dpi: RENDER_DPI,
                 _library: library,
             };
             init();
@@ -203,18 +200,19 @@ impl PdfDocument<'_> {
 /// PDFium state across requests. Rendered canonical images may outlive the scope.
 pub fn with_document<T>(
     bytes: &[u8],
-    assets: &NativeAssets,
     action: impl FnOnce(&PdfDocument<'_>) -> Result<T>,
 ) -> Result<T> {
+    let library = super::pdfium_fetch::ensure()?;
+    let identity = library.display().to_string();
     let mut cache = CACHE
         .lock()
         .map_err(|_| anyhow::anyhow!("PDF renderer lock is poisoned"))?;
     if cache
         .as_ref()
-        .is_none_or(|engine| engine.identity != assets.identity)
+        .is_none_or(|engine| engine.identity != identity)
     {
         *cache = None;
-        *cache = Some(Pdfium::load(assets)?);
+        *cache = Some(Pdfium::load(&library).context("Cannot load the PDF renderer (PDFium)")?);
     }
     let engine = cache.as_ref().context("PDF renderer is unavailable")?;
     // SAFETY: borrowed source lives until document drop, before releasing cache.

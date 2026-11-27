@@ -244,9 +244,8 @@ async fn prepare_resolved(
             decode_audio(bytes, decode_limits).map(|audio| vec![PreparedPart::Audio { audio }])
         }
         Some(cluaiz_core::Modality::Text) => {
-            if document_images && format.document_kind(&bytes)? == crate::formats::DocumentKind::Pdf
-            {
-                return prepare_pdf_pages(&bytes, decode_limits, &cancellation);
+            if format.document_kind(&bytes)? == crate::formats::DocumentKind::Pdf {
+                return prepare_pdf(&bytes, &format, decode_limits, document_images, &cancellation);
             }
             // A Word or Office document for a model that reads pictures: its pictures go to the
             // model as images in their place
@@ -349,44 +348,71 @@ fn prepare_segments(
     Ok(parts)
 }
 
-/// Reuse serialized PDFium; native bitmaps are temporary, retained RGB pages are bounded.
-fn prepare_pdf_pages(
+/// Pages with a text layer are read from it; only pages without text are rendered (PDFium, fetched
+/// on first use) and sent as images, to a model that reads images. A text-only model gets the PDF
+/// only when every page has text: a page it cannot read is refused, never dropped silently.
+fn prepare_pdf(
     bytes: &[u8],
+    format: &crate::formats::MediaFormat,
     limits: MediaLimits,
+    reads_images: bool,
     cancellation: &AtomicBool,
 ) -> Result<Vec<PreparedPart>> {
-    let assets = crate::native_assets::NativeAssets::from_environment()?;
-    crate::documents::pdf_render::with_document(bytes, &assets, |document| {
+    if cancellation.load(Ordering::Acquire) {
+        anyhow::bail!("PDF preparation cancelled");
+    }
+    let pages = crate::documents::pdf_pages(bytes, limits)?;
+    let scanned = crate::documents::pages_without_text(&pages);
+    if scanned.is_empty() {
+        let document = crate::documents::ExtractedDocument { mime_type: format.mime_type.clone(), parts: pages };
+        return Ok(vec![PreparedPart::Text { text: document.text(limits, true)? }]);
+    }
+    if !reads_images {
+        anyhow::bail!("{}", needs_vision_message(&scanned, pages.len()));
+    }
+    let text_bytes = pages.iter().map(|part| part.text.len() as u64).sum::<u64>();
+    limits.check_decoded_bytes(text_bytes)?;
+    crate::documents::pdf_render::with_document(bytes, |document| {
         let mut parts = Vec::new();
         let mut retained = 0_u64;
-        for page in 1..=document.page_count()? {
+        for part in pages {
             if cancellation.load(Ordering::Acquire) {
                 anyhow::bail!("PDF preparation cancelled");
             }
-            let label = PreparedPart::Text {
-                text: format!("Document page {page}:\n"),
+            let page = part.page.context("PDF page number missing")?;
+            let add = |item: PreparedPart, parts: &mut Vec<PreparedPart>, retained: &mut u64| -> Result<()> {
+                *retained = retained
+                    .checked_add(item.retained_bytes() as u64)
+                    .context("PDF page size overflow")?;
+                limits.check_decoded_bytes(*retained)?;
+                parts.try_reserve(1)?;
+                parts.push(item);
+                Ok(())
             };
-            retained = retained
-                .checked_add(label.retained_bytes() as u64)
-                .context("PDF page label size overflow")?;
-            let remaining = limits
-                .max_decoded_bytes()
-                .checked_sub(retained)
-                .filter(|remaining| *remaining > 0)
-                .context("PDF pages exceed the decoded byte budget")?;
-            let page_limits = MediaLimits::new(limits.max_input_bytes(), remaining)?;
-            let image = PreparedPart::Image {
-                image: document.render_page(page, page_limits)?,
-            };
-            retained = retained
-                .checked_add(image.retained_bytes() as u64)
-                .context("PDF page buffer size overflow")?;
-            limits.check_decoded_bytes(retained)?;
-            parts.try_reserve(2)?;
-            parts.extend([label, image]);
+            if scanned.contains(&page) {
+                add(PreparedPart::Text { text: format!("Document page {page} (a scanned page, shown next as an image):\n") }, &mut parts, &mut retained)?;
+                let remaining = limits
+                    .max_decoded_bytes()
+                    .checked_sub(retained)
+                    .filter(|remaining| *remaining > 0)
+                    .context("PDF pages exceed the decoded byte budget")?;
+                let page_limits = MediaLimits::new(limits.max_input_bytes(), remaining)?;
+                add(PreparedPart::Image { image: document.render_page(page, page_limits)? }, &mut parts, &mut retained)?;
+            } else {
+                add(PreparedPart::Text { text: format!("Document page {page}:\n{}\n", part.text) }, &mut parts, &mut retained)?;
+            }
         }
         Ok(parts)
     })
+}
+
+/// What a model that cannot read images is told about a PDF with pages that have no text layer.
+pub fn needs_vision_message(scanned: &[u32], total: usize) -> String {
+    let list = scanned.iter().map(u32::to_string).collect::<Vec<_>>().join(", ");
+    format!(
+        "This PDF has {} of {total} pages without a text layer (scanned pages: {list}). Reading them needs a vision model, and the selected model cannot read images. Choose a GGUF model that has its vision projector (mmproj) installed; the document was not sent, so no page is answered from partial content",
+        scanned.len()
+    )
 }
 
 #[cfg(test)]

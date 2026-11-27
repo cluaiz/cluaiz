@@ -83,7 +83,7 @@ async fn chat_pdf(
     Ok(())
 }
 
-async fn pdf_preparation(pdf: &str, mut settings: cluaiz_core::ActiveUserSettings) -> Result<()> {
+async fn pdf_preparation(pdf: &str, settings: cluaiz_core::ActiveUserSettings) -> Result<()> {
     use cluaiz_core::{
         media::{InputPart, PreparedPart},
         ChatEnvelope, ChatMessage,
@@ -109,14 +109,15 @@ async fn pdf_preparation(pdf: &str, mut settings: cluaiz_core::ActiveUserSetting
         .with_document_images(true);
     let prepared = cluaiz_media::request::prepare_chat(request(), &resolver, |_| Ok(())).await?;
     let parts = &prepared.messages[0].content;
+    // Every page has a text layer: read from it, nothing rendered
     assert_eq!(
         parts
             .iter()
             .filter(|p| matches!(p, PreparedPart::Image { .. }))
             .count(),
-        2
+        0
     );
-    let labels = parts
+    let text = parts
         .iter()
         .filter_map(|p| {
             if let PreparedPart::Text { text } = p {
@@ -125,22 +126,8 @@ async fn pdf_preparation(pdf: &str, mut settings: cluaiz_core::ActiveUserSetting
                 None
             }
         })
-        .collect::<Vec<_>>();
-    assert_eq!(labels, vec!["Document page 1:\n", "Document page 2:\n"]);
-    assert!(
-        !labels.join("").contains("ALPHA731"),
-        "PDF pixels must not be replaced with native/OCR text"
-    );
-    settings.media.limits =
-        cluaiz_core::media_limits::MediaLimits::new(settings.media.limits.max_input_bytes(), 1024)?;
-    let limited = cluaiz_media::source::SourceResolver::from_environment(settings.media)?
-        .with_document_images(true);
-    assert!(
-        cluaiz_media::request::prepare_chat(request(), &limited, |_| Ok(()))
-            .await
-            .is_err(),
-        "Page workspace must respect the decoded budget"
-    );
+        .collect::<String>();
+    assert!(text.contains("ALPHA731"), "{text}");
     let signal = Arc::new(std::sync::atomic::AtomicBool::new(true));
     let cancelled = resolver.with_cancellation(signal);
     assert!(
@@ -148,7 +135,7 @@ async fn pdf_preparation(pdf: &str, mut settings: cluaiz_core::ActiveUserSetting
             .await
             .is_err()
     );
-    println!("REAL CHAT PDF PREPARATION: two pixel pages in order; byte-limit and cancellation errors retained");
+    println!("REAL CHAT PDF PREPARATION: text pages read from the text layer, no page rendered; cancellation error retained");
     Ok(())
 }
 

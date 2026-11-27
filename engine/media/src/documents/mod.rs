@@ -3,10 +3,10 @@
 pub mod chunker;
 mod doc;
 mod docx;
-pub mod ocr;
 pub mod office;
 mod pdf;
 pub mod pdf_render;
+pub mod pdfium_fetch;
 mod text;
 
 use crate::formats::{DocumentKind, MediaFormat};
@@ -34,8 +34,28 @@ pub struct DocumentPart {
     pub text: String,
     pub omissions: Vec<&'static str>,
     pub warnings: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub ocr_confidence: Option<i32>,
+}
+
+/// Omission of a PDF page that has no text layer: it is read only by rendering it for a vision model
+pub const PAGE_WITHOUT_TEXT: &str = "page_has_no_text_layer_needs_vision_model";
+/// Omission of an image given to extraction without a vision model
+pub const IMAGE_NEEDS_VISION: &str = "image_needs_vision_model";
+
+/// The page numbers among PDF parts that have no text layer, in order: the only pages that are
+/// rendered and sent to a vision model. Pages with text are read from their text layer.
+pub fn pages_without_text(parts: &[DocumentPart]) -> Vec<u32> {
+    parts
+        .iter()
+        .filter(|part| part.omissions.contains(&PAGE_WITHOUT_TEXT))
+        .filter_map(|part| part.page)
+        .collect()
+}
+
+/// Page-by-page text of a PDF, with pages that have no text layer marked by `PAGE_WITHOUT_TEXT`.
+/// No renderer and no download: only the text layer is read.
+pub fn pdf_pages(bytes: &[u8], limits: MediaLimits) -> Result<Vec<DocumentPart>> {
+    limits.check_input_bytes(u64::try_from(bytes.len())?)?;
+    pdf::extract(bytes, limits)
 }
 
 /// Missing recognition is represented explicitly rather than fabricated text.
@@ -74,104 +94,48 @@ impl ExtractedDocument {
             append(&mut text, "\n", limits)?;
         }
         if text.trim().is_empty() {
-            bail!("Document contains no extracted text; OCR or vision may be required");
+            bail!("Document contains no extracted text; its pages or pictures need a vision model to be read");
         }
         Ok(text)
     }
 }
 
-/// Signature/registered MIME evidence determines the provider, never a model name.
+/// Signature/registered MIME evidence determines the provider, never a model name. Extraction
+/// reads text only and runs no model: PDF pages without a text layer and images come back as
+/// omissions that say a vision model is needed; Word/Office pictures are labelled as not read.
 pub fn extract(
     bytes: &[u8],
     format: &MediaFormat,
     limits: MediaLimits,
 ) -> Result<ExtractedDocument> {
-    extract_with_assets(bytes, format, limits, None)
-}
-
-/// Explicit assets are useful for embedded callers and isolated acceptance tests.
-/// None resolves packaged assets lazily, only when recognition is actually needed.
-pub fn extract_with_assets(
-    bytes: &[u8],
-    format: &MediaFormat,
-    limits: MediaLimits,
-    assets: Option<&crate::native_assets::NativeAssets>,
-) -> Result<ExtractedDocument> {
     limits.check_input_bytes(u64::try_from(bytes.len())?)?;
     let parts = match format.document_kind(bytes)? {
-        DocumentKind::Pdf => {
-            let mut parts = pdf::extract(bytes, limits)?;
-            if parts.iter().any(|part| !part.omissions.is_empty()) {
-                let owned;
-                let assets = match assets {
-                    Some(assets) => Ok(assets),
-                    None => {
-                        owned = crate::native_assets::NativeAssets::from_environment();
-                        owned.as_ref().map_err(|e| anyhow::anyhow!("{e:#}"))
-                    }
-                };
-                match assets {
-                    Ok(assets) => pdf::recognize_pages(bytes, &mut parts, limits, assets)?,
-                    Err(error) => {
-                        for part in &mut parts {
-                            if !part.omissions.is_empty() {
-                                part.warnings
-                                    .push(format!("Native OCR/PDF assets unavailable: {error:#}"));
-                            }
-                        }
-                    }
-                }
-            }
-            parts
-        }
+        DocumentKind::Pdf => pdf::extract(bytes, limits)?,
         DocumentKind::Doc => match doc::extract(bytes, limits) {
             Ok(parts) => parts,
             // A compound file that is a legacy workbook or presentation, not a Word document
             Err(error) => match office::segments(bytes, office::OfficeKind::LegacyCompound, limits) {
-                Ok(segments) => with_pictures(segments, "office_markdown", Vec::new(), limits, assets),
+                Ok(segments) => with_pictures(segments, "office_markdown", Vec::new()),
                 Err(_) => return Err(error),
             },
         },
         DocumentKind::Docx => {
             let body = docx::extract(bytes, limits)?;
-            with_pictures(body.segments, "docx_xml", body.omissions, limits, assets)
+            with_pictures(body.segments, "docx_xml", body.omissions)
         }
         DocumentKind::Office(kind) => {
-            with_pictures(office::segments(bytes, kind, limits)?, "office_markdown", Vec::new(), limits, assets)
+            with_pictures(office::segments(bytes, kind, limits)?, "office_markdown", Vec::new())
         }
         DocumentKind::Image => {
-            let image = crate::image::decode_image(bytes, limits)?;
-            let mut part = DocumentPart {
+            // Decoding proves it is a readable image; its content needs a vision model
+            crate::image::decode_image(bytes, limits)?;
+            vec![DocumentPart {
                 page: None,
-                method: "native_ocr",
+                method: "image",
                 text: String::new(),
-                omissions: Vec::new(),
-                warnings: Vec::new(),
-                ocr_confidence: None,
-            };
-            let result = (|| {
-                let owned;
-                let assets = match assets {
-                    Some(assets) => assets,
-                    None => {
-                        owned = crate::native_assets::NativeAssets::from_environment()?;
-                        &owned
-                    }
-                };
-                ocr::recognize(&image, limits, assets)
-            })();
-            match result {
-                Ok(result) => {
-                    part.text = result.text;
-                    part.ocr_confidence = Some(result.confidence);
-                    part.warnings.push(OCR_TEXT_SCOPE.into());
-                }
-                Err(error) => {
-                    part.omissions.push("native_ocr_unavailable_or_failed");
-                    part.warnings.push(format!("{error:#}"));
-                }
-            }
-            vec![part]
+                omissions: vec![IMAGE_NEEDS_VISION],
+                warnings: vec!["An image is read by a vision model; text extraction alone cannot read it".into()],
+            }]
         }
         DocumentKind::Text => {
             let (text, method) = text::decode(bytes, limits)?;
@@ -181,7 +145,6 @@ pub fn extract_with_assets(
                 text,
                 omissions: Vec::new(),
                 warnings: Vec::new(),
-                ocr_confidence: None,
             }]
         }
     };
@@ -209,65 +172,32 @@ pub fn picture_label(number: usize, note: &str) -> String {
 ")
 }
 
-/// Text segments become parts; each picture is read with OCR (its text follows its label), and
-/// a picture with no text, in a format that cannot be decoded, or without OCR installed gets a
-/// label that says so. An unread picture is marked in the text, so it is not an omission: the
-/// model knows a picture was there and that its content is not in the text.
+/// Text segments become parts; each picture gets a label in its place saying it was not read (a
+/// model that reads pictures gets them through `segments` instead). An unread picture is marked in
+/// the text, so it is not an omission: the model knows a picture was there and that its content is
+/// not in the text.
 fn with_pictures(
     segments: Vec<Segment>,
     method: &'static str,
     omissions: Vec<&'static str>,
-    limits: MediaLimits,
-    assets: Option<&crate::native_assets::NativeAssets>,
 ) -> Vec<DocumentPart> {
     let mut parts: Vec<DocumentPart> = Vec::new();
-    let mut owned: Option<Result<crate::native_assets::NativeAssets>> = None;
     let mut number = 0usize;
-    let part = |method, text, warnings| DocumentPart { page: None, method, text, omissions: Vec::new(), warnings, ocr_confidence: None };
+    let part = |method, text| DocumentPart { page: None, method, text, omissions: Vec::new(), warnings: Vec::new() };
     for segment in segments {
         match segment {
             Segment::Text(text) => {
                 if !text.trim().is_empty() {
-                    parts.push(part(method, text, Vec::new()));
+                    parts.push(part(method, text));
                 }
             }
             Segment::Unread(why) => {
                 number += 1;
-                parts.push(part(method, picture_label(number, &format!("{why}; its content is not in this text")), Vec::new()));
+                parts.push(part(method, picture_label(number, &format!("{why}; its content is not in this text"))));
             }
-            Segment::Image(data) => {
+            Segment::Image(_) => {
                 number += 1;
-                let image = match crate::image::decode_image(&data, limits) {
-                    Ok(image) => image,
-                    Err(error) => {
-                        parts.push(part("embedded_image_ocr", picture_label(number, "a picture in a format that cannot be read; its content is not in this text"), vec![format!("Picture {number}: {error:#}")]));
-                        continue;
-                    }
-                };
-                let assets = match assets {
-                    Some(assets) => Ok(assets),
-                    None => owned
-                        .get_or_insert_with(crate::native_assets::NativeAssets::from_environment)
-                        .as_ref()
-                        .map_err(|e| anyhow::anyhow!("{e:#}")),
-                };
-                let mut picture = part("embedded_image_ocr", String::new(), Vec::new());
-                match assets.and_then(|assets| ocr::recognize(&image, limits, assets)) {
-                    Ok(found) => {
-                        picture.text = format!("{}{}
-", picture_label(number, "a picture; the text read from it follows"), found.text.trim());
-                        picture.ocr_confidence = Some(found.confidence);
-                        picture.warnings.push(OCR_TEXT_SCOPE.into());
-                    }
-                    Err(error) if error.to_string() == ocr::NO_TEXT => {
-                        picture.text = picture_label(number, "a picture with no text in it; what it shows is not in this text");
-                    }
-                    Err(error) => {
-                        picture.text = picture_label(number, "a picture that was not read; its content is not in this text (text recognition is not installed)");
-                        picture.warnings.push(format!("Picture {number}: {error:#}"));
-                    }
-                }
-                parts.push(picture);
+                parts.push(part(method, picture_label(number, "a picture that was not read; its content is not in this text (reading pictures needs a vision model)")));
             }
         }
     }
@@ -277,15 +207,10 @@ fn with_pictures(
     parts
 }
 
-pub(super) const OCR_TEXT_SCOPE: &str = "OCR returns recognized text; it does not interpret diagrams, image meaning or certify recognition accuracy";
-
-/// Call after request workers stop, before exiting an embedding host/CLI. Each
-/// provider lock waits for native use to finish, then runs its actual destructor.
+/// Call after request workers stop, before exiting an embedding host/CLI. The PDF renderer lock
+/// waits for native use to finish, then runs its actual destructor.
 pub fn release_native_providers() -> Result<()> {
-    let ocr = ocr::unload();
-    let pdf = pdf_render::unload();
-    ocr?;
-    pdf
+    pdf_render::unload()
 }
 
 /// Checks before text growth; callers also account for retained request/batch data.

@@ -1,4 +1,5 @@
-//! Explicit packaged-provider assets. No PATH search, runtime download or model lookup.
+//! Explicit packaged-provider assets (the native video decoder). No PATH search, runtime download
+//! or model lookup. The PDF renderer is not here: `documents::pdfium_fetch` downloads it.
 
 use anyhow::{bail, Context, Result};
 use cluaiz_core::EnvironmentManager;
@@ -22,23 +23,6 @@ pub struct AssetFile {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-pub struct OcrAssets {
-    pub library: String,
-    pub data_directory: PathBuf,
-    pub languages: String,
-    pub deadline_ms: u32,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct PdfAssets {
-    pub library: String,
-    /// Rendering resolution, independent of a model's input size.
-    pub dpi: u32,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
 pub struct VideoAssets {
     pub library: String,
 }
@@ -50,8 +34,6 @@ pub struct AssetManifest {
     pub os: String,
     pub arch: String,
     pub files: BTreeMap<String, AssetFile>,
-    pub ocr: Option<OcrAssets>,
-    pub pdf: Option<PdfAssets>,
     pub video: Option<VideoAssets>,
 }
 
@@ -69,7 +51,7 @@ impl NativeAssets {
     pub fn read(root: &Path) -> Result<Self> {
         let root = root
             .canonicalize()
-            .context("The OCR pack (PDFium and Tesseract) is not installed; the release packages do not include it yet")?;
+            .context("The native video package is not installed")?;
         let file = std::fs::File::open(root.join(MANIFEST_NAME))
             .context("Packaged native media manifest is unavailable")?;
         // Manifests are package metadata, not arbitrary-sized attachment input.

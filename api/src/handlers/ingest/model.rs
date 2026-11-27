@@ -156,7 +156,7 @@ impl Processor {
                 options,
             }
         } else {
-            return Err(invalid("Select a compatible text/image embedding package or generative GGUF vision package; a folder category alone does not establish an OCR decoder"));
+            return Err(invalid("Select a compatible text/image embedding package or generative GGUF vision package; a folder category alone does not make a model read images"));
         };
         Ok(Some(Self { id: entry.id, kind }))
     }
@@ -220,19 +220,35 @@ impl Processor {
                     .context("Source ownership size overflow")?,
             )?;
             let bytes: Arc<[u8]> = bytes.into();
-            let pages = if source_kind == DocumentKind::Pdf {
+            // A vision model gets only the PDF pages without a text layer; pages with text are read
+            // from it. An image embedding graph embeds every page.
+            let pages: Vec<u32> = if source_kind == DocumentKind::Pdf {
                 let input = bytes.clone();
                 let retained = lease.clone();
-                tokio::task::spawn_blocking(move || {
+                let limits = settings.media.limits;
+                let vision_kind = matches!(&self.kind, Kind::Vision { .. });
+                let (pages, text_parts) = tokio::task::spawn_blocking(move || -> Result<(Vec<u32>, Vec<DocumentPart>)> {
                     let _retained = retained;
-                    let assets = cluaiz_media::native_assets::NativeAssets::from_environment()?;
-                    documents::pdf_render::with_document(&input, &assets, |pdf| pdf.page_count())
+                    if vision_kind {
+                        let mut text = documents::pdf_pages(&input, limits)?;
+                        let scanned = documents::pages_without_text(&text);
+                        text.retain(|part| part.page.is_some_and(|page| !scanned.contains(&page)));
+                        Ok((scanned, text))
+                    } else {
+                        let count = documents::pdf_render::with_document(&input, |pdf| pdf.page_count())?;
+                        Ok(((1..=count).collect(), Vec::new()))
+                    }
                 })
-                .await??
+                .await??;
+                for part in &text_parts {
+                    retain_output(&serde_json::to_value(part)?, &mut output_bytes, &settings)?;
+                }
+                parts.extend(text_parts);
+                pages
             } else {
-                1
+                vec![1]
             };
-            for page in 1..=pages {
+            for page in pages {
                 if cancel.load(Ordering::Acquire) {
                     bail!("Ingest processing cancelled");
                 }
@@ -242,8 +258,7 @@ impl Processor {
                 let image = tokio::task::spawn_blocking(move || {
                     let _retained = retained;
                     if source_kind == DocumentKind::Pdf {
-                        let assets = cluaiz_media::native_assets::NativeAssets::from_environment()?;
-                        documents::pdf_render::with_document(&input, &assets, |pdf| {
+                        documents::pdf_render::with_document(&input, |pdf| {
                             pdf.render_page(page, limits)
                         })
                     } else {
@@ -328,6 +343,8 @@ impl Processor {
             }
         }
         guard.complete();
+        // Text pages and vision pages back in page order
+        parts.sort_by_key(|part| part.page);
         let vector_only = parts.is_empty() && !vectors.is_empty();
         let document = ExtractedDocument { mime_type, parts };
         let mut item = document_item(document, settings.media.limits, chunk_size, return_text)?;
@@ -345,6 +362,43 @@ impl Processor {
         }
         Ok(item)
     }
+}
+
+/// Said when extraction without a model left pages or an image unread: which installed models can
+/// read them, or that none is installed.
+pub(super) fn vision_hint(document: &ExtractedDocument) -> Option<String> {
+    let unread = document.parts.iter().any(|part| {
+        part.omissions
+            .iter()
+            .any(|o| *o == documents::PAGE_WITHOUT_TEXT || *o == documents::IMAGE_NEEDS_VISION)
+    });
+    if !unread {
+        return None;
+    }
+    let registry = InstalledStateRegistry::load();
+    let mut models: Vec<&str> = registry
+        .installed_models
+        .values()
+        .filter(|entry| {
+            entry.format_type.eq_ignore_ascii_case("gguf")
+                && entry.supported_tasks.iter().any(|t| {
+                    matches!(
+                        t.replace('-', "_").to_ascii_lowercase().as_str(),
+                        "multimodal_vision" | "spatial_vision" | "document_ocr" | "vision" | "vision_chat"
+                    )
+                })
+        })
+        .map(|entry| entry.id.as_str())
+        .collect();
+    models.sort_unstable();
+    Some(if models.is_empty() {
+        "Pages without a text layer and images are read by a vision model, and no vision model is installed. Install a GGUF vision model with its mmproj projector, then pass it as `model`".into()
+    } else {
+        format!(
+            "Pages without a text layer and images are read by a vision model; pass one as `model`. Installed vision models: {}",
+            models.join(", ")
+        )
+    })
 }
 
 pub(super) fn document_item(
@@ -369,7 +423,7 @@ pub(super) fn document_item(
             .parts
             .iter()
             .map(|p| json!({"page":p.page,"method":p.method,
-        "omissions":p.omissions,"warnings":p.warnings,"ocr_confidence":p.ocr_confidence}))
+        "omissions":p.omissions,"warnings":p.warnings}))
             .collect::<Vec<_>>());
     }
     Ok(item)
@@ -490,6 +544,6 @@ async fn vision(
         .is_some_and(|context| matches!(context.stop, "limit" | "cancel"));
     Ok(DocumentPart { page, method:"model_text", text,
         omissions: if clipped { vec!["model_generation_incomplete"] } else { Vec::new() },
-        warnings: vec!["Generated recognition may be inaccurate; this is selected-model output, not native OCR".into()],
-        ocr_confidence:None })
+        warnings: vec!["Generated recognition may be inaccurate; this is selected-model output".into()],
+        })
 }

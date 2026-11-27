@@ -284,7 +284,7 @@ async fn real_router_selected_onnx_image_and_text_embeddings() -> Result<()> {
     println!("REAL ONNX TEXT: {} finite normalized dimensions; repeated input agrees, changed input differs",first.len());
     // The same native extraction service feeds actual ONNX vectors through its
     // public API contract; a file is never represented by its filename.
-    let mut documents = vec![
+    let documents = vec![
         (
             "application/pdf",
             document_fixtures::pdf(&[Some("The attached document records order ALPHA731")])?,
@@ -294,18 +294,6 @@ async fn real_router_selected_onnx_image_and_text_embeddings() -> Result<()> {
             document_fixtures::docx(document_fixtures::DOCX_XML)?,
         ),
     ];
-    if std::env::var_os("CLUAIZ_NATIVE_MEDIA_TEST_PACKAGE").is_some() {
-        let assets = cluaiz_media::native_assets::NativeAssets::from_environment()?;
-        let pdf = document_fixtures::pdf(&[Some("Scanned receipt code 741923")])?;
-        let image =
-            cluaiz_media::documents::pdf_render::with_document(&pdf, &assets, |document| {
-                document.render_page(1, cluaiz_core::media_limits::MediaLimits::default())
-            })?;
-        documents.push((
-            "application/pdf",
-            document_fixtures::raster::pdf(&image, None)?,
-        ));
-    }
     for (mime, bytes) in documents {
         let source = format!(
             "data:{mime};base64,{}",
@@ -315,10 +303,6 @@ async fn real_router_selected_onnx_image_and_text_embeddings() -> Result<()> {
         let document: Value = serde_json::from_str(&body)?;
         assert_eq!(document["status"], "success");
         let chunks = document["processed_sources"][0]["chunks"].clone();
-        let scanned = document["processed_sources"][0]["parts"][0]["method"] == "pdf_ocr";
-        if scanned {
-            assert!(chunks.to_string().contains("741923"));
-        }
         assert!(!chunks
             .as_array()
             .context("Real document chunks")?
@@ -332,9 +316,6 @@ async fn real_router_selected_onnx_image_and_text_embeddings() -> Result<()> {
         assert_eq!(status, StatusCode::OK, "{body}");
         assert_eq!(vector(&body, 0)?.len(), first.len());
         println!("REAL DOCUMENT ONNX: {mime} -> native extracted chunks -> {} finite normalized embedding dimensions", first.len());
-        if scanned {
-            println!("REAL NATIVE OCR ONNX: raster-only PDF -> ingest -> selected 384-dimension text graph");
-        }
     }
     assert_eq!(
         state.host.onnx.resident_model().await?,

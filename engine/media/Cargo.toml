@@ -14,7 +14,7 @@ image = "0.24"
 symphonia = { version = "0.5", features = ["aac", "isomp4", "pcm", "wav", "mp3", "mkv", "flac"] }
 audiopus = "0.2"
 rayon = "1.10"
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream", "blocking"] }
 tempfile = "3"
 tokio = { version = "1", features = ["fs", "io-util", "rt", "macros"] }
 serde = { version = "1", features = ["derive"] }
@@ -22,6 +22,9 @@ pdf-extract = "0.12.1"
 zip = { version = "9.0.5", default-features = false, features = ["deflate"] }
 quick-xml = "0.41"
 libloading = "0.8.9"
+flate2 = "1.1"
+tar = "0.4"
+tracing = "0.1"
 sha2 = "0.10"
 serde_json = "1.0"
 hound = "3.5"
