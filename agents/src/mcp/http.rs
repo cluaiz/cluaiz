@@ -23,6 +23,9 @@ pub const MODERN_VERSION: &str = "2026-07-28";
 const META_VERSION: &str = "io.modelcontextprotocol/protocolVersion";
 const META_INFO: &str = "io.modelcontextprotocol/clientInfo";
 const META_CAPABILITIES: &str = "io.modelcontextprotocol/clientCapabilities";
+const PARAM_KEY: &str = "x-mcp-header";
+/// Most `tools/list` pages read to learn the `x-mcp-header` annotations before a call
+const MAX_LIST_PAGES: usize = 50;
 /// Longest piece of an error body put into an error message
 const BODY_SNIPPET: usize = 200;
 
@@ -57,6 +60,14 @@ impl std::fmt::Display for RpcFailure {
 
 impl std::error::Error for RpcFailure {}
 
+/// One tool parameter the server asked to be mirrored into an `Mcp-Param-{name}` header
+#[derive(Debug, PartialEq)]
+struct ParamHeader {
+    name: String,
+    /// The `properties` keys leading to the parameter inside `arguments`
+    path: Vec<String>,
+}
+
 /// What the first modern request shows about the server
 enum Era {
     Modern,
@@ -77,6 +88,10 @@ pub struct HttpSession {
     protocol_version: std::sync::Mutex<Option<String>>,
     /// True when the server speaks 2026-07-28: no session, `_meta` and request headers on every request
     modern: AtomicBool,
+    /// The `x-mcp-header` parameters of each tool, learned from `tools/list` (modern servers only)
+    tool_params: std::sync::Mutex<HashMap<String, Vec<ParamHeader>>>,
+    /// True once this session has read `tools/list`, so `tool_params` is known
+    tools_listed: AtomicBool,
     next_id: AtomicU64,
     pub alive: AtomicBool,
     last_used: std::sync::Mutex<Instant>,
@@ -132,6 +147,8 @@ impl HttpSession {
             session_id: std::sync::Mutex::new(None),
             protocol_version: std::sync::Mutex::new(Some(MODERN_VERSION.to_string())),
             modern: AtomicBool::new(true),
+            tool_params: std::sync::Mutex::new(HashMap::new()),
+            tools_listed: AtomicBool::new(false),
             next_id: AtomicU64::new(1),
             alive: AtomicBool::new(true),
             last_used: std::sync::Mutex::new(Instant::now()),
@@ -232,8 +249,92 @@ impl HttpSession {
         self.last_used.lock().map(|t| t.elapsed()).unwrap_or_default()
     }
 
-    /// Sends a request and waits for its response; a JSON-RPC error becomes `Err`.
+    /// Sends a request and waits for its response; a JSON-RPC error becomes `Err`. On a modern server
+    /// the `x-mcp-header` annotations of `tools/list` are checked here (an invalid tool is left out of
+    /// the result) and remembered, and a `tools/call` first reads them when this session has not yet.
     pub async fn request(self: &Arc<Self>, method: &str, params: Value, limit: Duration) -> Result<Value> {
+        let modern = self.modern.load(Ordering::SeqCst);
+        if modern && method == "tools/call" && !self.tools_listed.load(Ordering::SeqCst) {
+            // The headers of this call depend on the tool's schema; a failed listing is not fatal, the
+            // server then judges the call as it is
+            if let Err(e) = self.learn_tools(limit).await {
+                tracing::warn!("⚠️ [McpClient] '{}' tool list for x-mcp-header could not be read: {}", self.name, e);
+            }
+        }
+        let mut result = self.send(method, params, limit).await?;
+        if modern && method == "tools/list" {
+            self.screen_tools(&mut result);
+        }
+        Ok(result)
+    }
+
+    /// Reads every `tools/list` page once, only to learn the annotations
+    async fn learn_tools(self: &Arc<Self>, limit: Duration) -> Result<()> {
+        let mut cursor: Option<String> = None;
+        for _ in 0..MAX_LIST_PAGES {
+            let params = cursor.as_ref().map(|c| json!({ "cursor": c })).unwrap_or_else(|| json!({}));
+            let mut page = self.send("tools/list", params, limit).await?;
+            self.screen_tools(&mut page);
+            let next = page.get("nextCursor").and_then(Value::as_str).filter(|c| !c.is_empty()).map(str::to_owned);
+            if next.is_none() || next == cursor {
+                break;
+            }
+            cursor = next;
+        }
+        Ok(())
+    }
+
+    /// Spec 2026-07-28 (Tools, "x-mcp-header"): "Clients using the Streamable HTTP transport MUST reject
+    /// tool definitions where any `x-mcp-header` value violates these constraints. Rejection means the
+    /// client MUST exclude the invalid tool from the result of `tools/list`." A valid tool's annotations
+    /// are kept for its calls.
+    fn screen_tools(&self, result: &mut Value) {
+        self.tools_listed.store(true, Ordering::SeqCst);
+        let Some(tools) = result.get_mut("tools").and_then(Value::as_array_mut) else { return };
+        let mut known = HashMap::new();
+        tools.retain(|tool| {
+            let name = tool.get("name").and_then(Value::as_str).unwrap_or_default().to_string();
+            match param_annotations(tool.get("inputSchema")) {
+                Ok(params) => {
+                    known.insert(name, params);
+                    true
+                }
+                Err(reason) => {
+                    tracing::warn!("⚠️ [McpClient] '{}' tool '{}' left out: {}", self.name, name, reason);
+                    false
+                }
+            }
+        });
+        if let Ok(mut map) = self.tool_params.lock() {
+            map.extend(known);
+        }
+    }
+
+    /// The `Mcp-Param-*` headers of one `tools/call` body
+    fn param_headers(&self, body: &Value) -> Vec<(String, String)> {
+        let Some(name) = body["params"].get("name").and_then(Value::as_str) else { return Vec::new() };
+        let map = self.tool_params.lock();
+        let Some(params) = map.as_ref().ok().and_then(|m| m.get(name)) else { return Vec::new() };
+        params
+            .iter()
+            .filter_map(|param| {
+                let mut node = body["params"].get("arguments")?;
+                for key in &param.path {
+                    node = node.get(key)?;
+                }
+                // "Parameter value is null: Client MUST omit the header"
+                let text = match node {
+                    Value::String(s) => s.clone(),
+                    Value::Bool(b) => b.to_string(),
+                    Value::Number(n) => n.as_i64().map(|i| i.to_string()).or_else(|| n.as_u64().map(|u| u.to_string()))?,
+                    _ => return None,
+                };
+                Some((format!("mcp-param-{}", param.name), header_value(&text)))
+            })
+            .collect()
+    }
+
+    async fn send(self: &Arc<Self>, method: &str, params: Value, limit: Duration) -> Result<Value> {
         if let Ok(mut last_used) = self.last_used.lock() {
             *last_used = Instant::now();
         }
@@ -301,6 +402,11 @@ impl HttpSession {
                 };
                 if let Some(name) = name_field.and_then(|f| body["params"].get(f)).and_then(Value::as_str) {
                     request = request.header("mcp-name", header_value(name));
+                }
+                if method == "tools/call" {
+                    for (key, value) in self.param_headers(body) {
+                        request = request.header(key, value);
+                    }
                 }
             }
         }
@@ -458,6 +564,62 @@ impl HttpSession {
     }
 }
 
+/// The `x-mcp-header` parameters of a tool's `inputSchema`, or the reason the tool is invalid.
+/// Rules: spec 2026-07-28, Streamable HTTP, "Custom Headers from Tool Parameters" > "Schema Extension".
+fn param_annotations(schema: Option<&Value>) -> std::result::Result<Vec<ParamHeader>, String> {
+    let Some(schema) = schema else { return Ok(Vec::new()) };
+    let mut found = Vec::new();
+    reachable(schema, &mut Vec::new(), &mut found);
+    // An annotation anywhere else (inside `items`, `anyOf`, `$defs`, ...) "makes the annotation and thus
+    // the tool definition invalid"
+    if count_annotations(schema, false) != found.len() {
+        return Err("x-mcp-header is not on a property reachable through `properties` keys only".into());
+    }
+    let mut out: Vec<ParamHeader> = Vec::new();
+    for (path, node) in found {
+        let name = node.get(PARAM_KEY).and_then(Value::as_str).ok_or("x-mcp-header is not a string")?;
+        if name.is_empty() {
+            return Err("x-mcp-header is empty".into());
+        }
+        if !name.bytes().all(|b| b.is_ascii_alphanumeric() || b"!#$%&'*+-.^_`|~".contains(&b)) {
+            return Err(format!("x-mcp-header '{name}' is not an HTTP field-name token"));
+        }
+        if !matches!(node.get("type").and_then(Value::as_str), Some("string" | "integer" | "boolean")) {
+            return Err(format!("x-mcp-header '{name}' is on a parameter that is not a string, integer or boolean"));
+        }
+        if out.iter().any(|p| p.name.eq_ignore_ascii_case(name)) {
+            return Err(format!("x-mcp-header '{name}' is used twice (compared without case)"));
+        }
+        out.push(ParamHeader { name: name.to_string(), path });
+    }
+    Ok(out)
+}
+
+/// Annotated properties reached from `node` through `properties` keys only
+fn reachable<'a>(node: &'a Value, path: &mut Vec<String>, out: &mut Vec<(Vec<String>, &'a Value)>) {
+    let Some(properties) = node.get("properties").and_then(Value::as_object) else { return };
+    for (key, child) in properties {
+        path.push(key.clone());
+        if child.get(PARAM_KEY).is_some() {
+            out.push((path.clone(), child));
+        }
+        reachable(child, path, out);
+        path.pop();
+    }
+}
+
+/// Every `x-mcp-header` keyword in a schema (a property that is merely named so is not one)
+fn count_annotations(node: &Value, names_of_properties: bool) -> usize {
+    match node {
+        Value::Object(map) => {
+            let own = usize::from(!names_of_properties && map.contains_key(PARAM_KEY));
+            own + map.iter().map(|(key, child)| count_annotations(child, !names_of_properties && key == "properties")).sum::<usize>()
+        }
+        Value::Array(items) => items.iter().map(|child| count_annotations(child, false)).sum(),
+        _ => 0,
+    }
+}
+
 /// The versions in a JSON array of strings
 fn versions_of(value: Option<&Value>) -> Vec<String> {
     value.and_then(Value::as_array).map(|a| a.iter().filter_map(|v| v.as_str().map(str::to_owned)).collect()).unwrap_or_default()
@@ -550,6 +712,43 @@ mod tests {
         assert_eq!(header_value(" padded "), "=?base64?IHBhZGRlZCA=?=");
         assert_eq!(header_value("line1\nline2"), "=?base64?bGluZTEKbGluZTI=?=");
         assert_eq!(header_value("=?base64?literal?="), "=?base64?PT9iYXNlNjQ/bGl0ZXJhbD89?=");
+    }
+
+    fn annotated(schema: Value) -> std::result::Result<Vec<ParamHeader>, String> {
+        param_annotations(Some(&schema))
+    }
+
+    #[test]
+    fn x_mcp_header_valid_schema_gives_paths_including_nested() {
+        let params = annotated(json!({"type":"object","properties":{
+            "region":{"type":"string","x-mcp-header":"Region"},
+            "opts":{"type":"object","properties":{"level":{"type":"integer","x-mcp-header":"Level"}}},
+            "query":{"type":"string"}}}))
+        .unwrap();
+        assert_eq!(params.len(), 2);
+        assert!(params.contains(&ParamHeader { name: "Region".into(), path: vec!["region".into()] }));
+        assert!(params.contains(&ParamHeader { name: "Level".into(), path: vec!["opts".into(), "level".into()] }));
+        assert!(param_annotations(None).unwrap().is_empty());
+    }
+
+    #[test]
+    fn x_mcp_header_violations_make_the_tool_invalid() {
+        let one = |p: Value| json!({"type":"object","properties":{"a":p}});
+        assert!(annotated(one(json!({"type":"string","x-mcp-header":""}))).is_err(), "empty");
+        assert!(annotated(one(json!({"type":"string","x-mcp-header":"Bad Name"}))).is_err(), "space is not a tchar");
+        assert!(annotated(one(json!({"type":"string","x-mcp-header":"A\r\nB"}))).is_err(), "CR LF");
+        assert!(annotated(one(json!({"type":"number","x-mcp-header":"N"}))).is_err(), "number not permitted");
+        assert!(annotated(one(json!({"type":"object","x-mcp-header":"O"}))).is_err(), "not primitive");
+        assert!(annotated(one(json!({"x-mcp-header":"NoType"}))).is_err(), "no type");
+        assert!(annotated(one(json!({"type":"string","x-mcp-header":7}))).is_err(), "not a string");
+        assert!(annotated(json!({"type":"object","properties":{
+            "a":{"type":"string","x-mcp-header":"Dup"},"b":{"type":"string","x-mcp-header":"dup"}}})).is_err(), "case-insensitive duplicate");
+        // Not statically reachable: under items, a composition keyword, or $defs
+        assert!(annotated(json!({"type":"object","properties":{"list":{"type":"array","items":{"type":"string","x-mcp-header":"I"}}}})).is_err());
+        assert!(annotated(json!({"type":"object","anyOf":[{"properties":{"a":{"type":"string","x-mcp-header":"X"}}}]})).is_err());
+        assert!(annotated(json!({"type":"object","$defs":{"d":{"type":"string","x-mcp-header":"D"}},"properties":{}})).is_err());
+        // A property that is merely named x-mcp-header is not an annotation
+        assert!(annotated(json!({"type":"object","properties":{"x-mcp-header":{"type":"string"}}})).unwrap().is_empty());
     }
 
     #[test]

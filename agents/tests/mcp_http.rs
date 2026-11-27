@@ -7,6 +7,10 @@ use std::sync::{Arc, Mutex};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
 
+/// The client keeps at most 4 servers running and stops the least recently used one; tests that run
+/// at the same time would stop each other's session, so each test takes this lock first.
+static SERIAL: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 #[derive(Clone, Debug)]
 struct Seen {
     method: String,
@@ -45,7 +49,7 @@ fn answer(seen: &Seen) -> Reply {
         return reply(200, "text/plain", String::new());
     }
     // A 2026-07-28 server: no initialize, no session; version and client data in every request
-    if seen.path == "/modern" {
+    if seen.path == "/modern" || seen.path == "/params" {
         return modern(seen, method, id);
     }
     // A dual-era server that lists only legacy versions at discover
@@ -113,11 +117,38 @@ fn modern(seen: &Seen, method: &str, id: Value) -> Reply {
     let result = match method {
         "server/discover" => json!({"resultType":"complete","supportedVersions":["2026-07-28"],"capabilities":{"tools":{}},
             "ttlMs":1000,"cacheScope":"private"}),
+        "tools/list" if seen.path == "/params" => json!({"resultType":"complete","tools":[
+            {"name":"sql","inputSchema":{"type":"object","properties":{
+                "region":{"type":"string","x-mcp-header":"Region"},
+                "count":{"type":"integer","x-mcp-header":"Count"},
+                "flag":{"type":"boolean","x-mcp-header":"Flag"},
+                "text":{"type":"string","x-mcp-header":"Text"},
+                "skip":{"type":"string","x-mcp-header":"Skip"},
+                "opts":{"type":"object","properties":{"level":{"type":"integer","x-mcp-header":"Level"}}},
+                "query":{"type":"string"}}}},
+            {"name":"dup","inputSchema":{"type":"object","properties":{
+                "a":{"type":"string","x-mcp-header":"Same"},"b":{"type":"string","x-mcp-header":"same"}}}},
+            {"name":"num","inputSchema":{"type":"object","properties":{"n":{"type":"number","x-mcp-header":"N"}}}}],
+            "ttlMs":1000,"cacheScope":"private"}),
         "tools/list" => json!({"resultType":"complete","tools":[{"name":"echo","description":"echoes","inputSchema":{"type":"object"}}],
             "ttlMs":1000,"cacheScope":"private"}),
         "tools/call" => {
             if seen.header("mcp-name") != seen.body["params"]["name"].as_str() {
                 return reply(400, "application/json", json!({"jsonrpc":"2.0","id":id,"error":{"code":-32020,"message":"Mcp-Name mismatch"}}).to_string());
+            }
+            if seen.path == "/params" {
+                // The server judges the call by its headers: each must match the body, `skip` is null
+                let expected = [
+                    ("mcp-param-region", "us-west1"),
+                    ("mcp-param-count", "42"),
+                    ("mcp-param-flag", "true"),
+                    ("mcp-param-text", "=?base64?aMOpbGxv?="),
+                    ("mcp-param-level", "3"),
+                ];
+                let wrong = expected.iter().any(|(k, v)| seen.header(k) != Some(*v)) || seen.header("mcp-param-skip").is_some();
+                if wrong {
+                    return reply(400, "application/json", json!({"jsonrpc":"2.0","id":id,"error":{"code":-32020,"message":"Mcp-Param mismatch"}}).to_string());
+                }
             }
             let text = seen.body["params"]["arguments"]["text"].as_str().unwrap_or_default();
             json!({"resultType":"complete","content":[{"type":"text","text":format!("modern:{text}")}]})
@@ -201,6 +232,7 @@ fn package(url: &str, headers: Value) -> std::path::PathBuf {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn initialize_session_list_and_json_call() {
+    let _serial = SERIAL.lock().await;
     let (address, log) = serve().await;
     let dir = package(&format!("{address}/json"), json!({"Authorization": "Bearer abc"}));
 
@@ -243,6 +275,7 @@ async fn initialize_session_list_and_json_call() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn call_answered_by_an_event_stream() {
+    let _serial = SERIAL.lock().await;
     let (address, _log) = serve().await;
     let dir = package(&format!("{address}/sse"), json!({}));
     let result = McpClient::call_tool(&dir, "echo", json!({"text": "stream"})).await.unwrap();
@@ -253,6 +286,7 @@ async fn call_answered_by_an_event_stream() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn http_errors_and_non_json_bodies_are_clear_errors() {
+    let _serial = SERIAL.lock().await;
     let (address, _log) = serve().await;
 
     let dir = package(&format!("{address}/fail"), json!({}));
@@ -278,6 +312,7 @@ async fn http_errors_and_non_json_bodies_are_clear_errors() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn header_values_never_leak_into_errors_and_bad_urls_are_refused() {
+    let _serial = SERIAL.lock().await;
     let dir = package("ftp://example.test/mcp", json!({}));
     let error = McpClient::call_tool(&dir, "echo", json!({})).await.unwrap_err().to_string();
     assert!(error.contains("http:// or https://"), "{error}");
@@ -289,6 +324,7 @@ async fn header_values_never_leak_into_errors_and_bad_urls_are_refused() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn stateless_2026_07_28_server_needs_no_initialize_and_no_session() {
+    let _serial = SERIAL.lock().await;
     let (address, log) = serve().await;
     let dir = package(&format!("{address}/modern"), json!({"Authorization": "Bearer abc"}));
 
@@ -313,6 +349,7 @@ async fn stateless_2026_07_28_server_needs_no_initialize_and_no_session() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn modern_probe_falls_back_or_refuses_by_the_servers_modern_error() {
+    let _serial = SERIAL.lock().await;
     // A modern error that lists only older versions: the legacy path runs and works
     let (address, log) = serve().await;
     let dir = package(&format!("{address}/legacy-list"), json!({}));
@@ -326,4 +363,32 @@ async fn modern_probe_falls_back_or_refuses_by_the_servers_modern_error() {
     let error = McpClient::call_tool(&dir, "echo", json!({})).await.unwrap_err().to_string();
     assert!(error.contains("2027-01-01"), "{error}");
     assert!(!error.contains("did not initialize"), "{error}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn x_mcp_header_values_are_mirrored_and_invalid_tools_are_left_out() {
+    let _serial = SERIAL.lock().await;
+    let (address, log) = serve().await;
+    let dir = package(&format!("{address}/params"), json!({}));
+
+    // A call before any listing: the client reads `tools/list` first to learn the annotations
+    let args = json!({"region":"us-west1","count":42,"flag":true,"text":"héllo","skip":null,"opts":{"level":3},"query":"select 1"});
+    let result = McpClient::call_tool(&dir, "sql", args).await.unwrap();
+    assert_eq!(result["content"][0]["text"], "modern:héllo");
+    {
+        let seen = log.lock().unwrap();
+        let methods: Vec<_> = seen.iter().filter_map(|s| s.body["method"].as_str()).collect();
+        assert_eq!(methods, ["server/discover", "tools/list", "tools/call"]);
+    }
+
+    // The listing leaves out the two tools whose annotations break the rules, with the others kept
+    let tools = McpClient::list_tools(&dir).await.unwrap();
+    let names: Vec<_> = tools.iter().filter_map(|t| t["name"].as_str()).collect();
+    assert_eq!(names, ["sql"], "duplicate header names and a number parameter are invalid");
+
+    // A value that is missing gets no header (the test server rejects a `Mcp-Param-Skip`)
+    let args = json!({"region":"us-west1","count":42,"flag":true,"text":"héllo","opts":{"level":3}});
+    McpClient::call_tool(&dir, "sql", args).await.unwrap();
+    McpClient::stop_server(&dir).await;
+    let _ = std::fs::remove_dir_all(&dir);
 }
