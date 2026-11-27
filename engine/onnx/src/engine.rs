@@ -76,16 +76,27 @@ pub struct OnnxEngine {
     pub(crate) duration_predictor_session: Option<Arc<std::sync::Mutex<Session>>>,
 }
 
+/// True when an error text shows the GPU provider itself failed (library, handle, out of memory),
+/// not the request. Shape/type/asset errors are not listed: a CPU retry would fail the same way.
+/// A native abort never reaches here (it ends the process); only an `Err` returned by ONNX Runtime does.
+pub(crate) fn is_gpu_provider_fault(message: &str) -> bool {
+    (message.contains("cuDNN is unavailable or disabled for CUDA Execution Provider")
+        && message.contains("LoadLibrary failed"))
+        || (message.contains("DmlExecutionProvider") && message.contains("80070057"))
+        || message.contains("CUDA failure")
+        || message.contains("CUDNN failure")
+        || message.contains("CUBLAS failure")
+        || message.contains("Cannot load symbol cublas")
+        || (message.contains("CUDAExecutionProvider") && message.contains("Failed to allocate memory"))
+}
+
 impl OnnxEngine {
     /// Retry only known provider faults before output; never restart delivered/cancelled audio.
     pub fn permits_cpu_execution_retry(&self, error: &anyhow::Error, retry_blocked: bool) -> bool {
         if retry_blocked || self.settings.n_gpu_layers == 0 {
             return false;
         }
-        let message = format!("{error:#}");
-        (message.contains("cuDNN is unavailable or disabled for CUDA Execution Provider")
-            && message.contains("LoadLibrary failed"))
-            || (message.contains("DmlExecutionProvider") && message.contains("80070057"))
+        is_gpu_provider_fault(&format!("{error:#}"))
     }
 
     pub fn new() -> Result<Self> {
@@ -658,6 +669,9 @@ mod provider_tests {
         let failures = [
             "cuDNN is unavailable or disabled for CUDA Execution Provider: LoadLibrary failed for cudnn64_9.dll with error 2",
             "DmlExecutionProvider/MLOperatorAuthorImpl.cpp Exception 80070057 The parameter is incorrect",
+            "CUDNN failure 4: CUDNN_STATUS_INTERNAL_ERROR ; GPU=0 ; hostname=vm",
+            "CUDA failure 2: out of memory ; GPU=0",
+            "Invalid handle. Cannot load symbol cublasLtCreate",
         ];
         for message in failures {
             let error = anyhow::anyhow!(message).context("TTS execution");
